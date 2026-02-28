@@ -8255,6 +8255,9 @@ export const hubEmails = pgTable("hub_emails", {
   processingStatus: varchar("processing_status", { length: 30 }).notNull().default("new").$type<
     "new" | "processing" | "classified" | "draft_generated" | "reviewed" | "sent" | "ignored" | "needs_review"
   >(),
+  emailType: varchar("email_type", { length: 30 }).$type<
+    "hunter_reply" | "system_notification" | "client_inquiry" | "lead_inquiry" | "unknown"
+  >(),
   
   // Timestamps
   receivedAt: timestamp("received_at", { withTimezone: true }),
@@ -8544,6 +8547,7 @@ export const emailAccountKnowledgeItems = pgTable("email_account_knowledge_items
   fileName: text("file_name"),
   fileSize: integer("file_size"),
   order: integer("order").default(0).notNull(),
+  sourceType: varchar("source_type", { length: 50 }),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
 }, (table) => ({

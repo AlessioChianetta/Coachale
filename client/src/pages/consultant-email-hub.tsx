@@ -90,10 +90,14 @@ import {
   Webhook,
   BookOpen,
   Zap,
+  Target,
+  TrendingUp,
+  Filter,
 } from "lucide-react";
 import { Link } from "wouter";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
+import millieAvatar from "@assets/generated_images/millie_ai_email_assistant_avatar.png";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 import { ImportWizardDialog } from "@/components/email-hub/ImportWizardDialog";
 import { EmailImportDialog } from "@/components/email-hub/EmailImportDialog";
@@ -143,10 +147,11 @@ interface Email {
   receivedAt: string;
   isRead: boolean;
   isStarred: boolean;
-  processingStatus: "new" | "processing" | "classified" | "draft_generated" | "sent" | "needs_review";
+  processingStatus: "new" | "processing" | "classified" | "draft_generated" | "sent" | "needs_review" | "ignored";
   urgency?: "low" | "medium" | "high" | "urgent";
   classification?: string;
   hasAttachments?: boolean;
+  emailType?: "hunter_reply" | "system_notification" | "client_inquiry" | "lead_inquiry" | "unknown";
 }
 
 interface AIResponse {
@@ -188,6 +193,7 @@ type InboxFilter = {
   readStatus: "all" | "read" | "unread";
   starred: boolean;
   processingStatus: string | null;
+  emailType: string | null;
 };
 
 type FolderType = "inbox" | "drafts" | "sent" | "trash" | "ai-drafts" | "starred";
@@ -287,6 +293,7 @@ export default function ConsultantEmailHub() {
     readStatus: "all",
     starred: false,
     processingStatus: null,
+    emailType: null,
   });
   
   const [showImportWizard, setShowImportWizard] = useState(false);
@@ -305,6 +312,8 @@ export default function ConsultantEmailHub() {
   const [knowledgeAccountName, setKnowledgeAccountName] = useState<string>("");
   const [showTicketView, setShowTicketView] = useState<"list" | "settings" | null>(null);
   const [showAiEventsView, setShowAiEventsView] = useState(false);
+  const [showOutreachPipeline, setShowOutreachPipeline] = useState(false);
+  const [outreachStatusFilter, setOutreachStatusFilter] = useState<string>("all");
   const [isSyncing, setIsSyncing] = useState(false);
 
   const { toast } = useToast();
@@ -344,7 +353,6 @@ export default function ConsultantEmailHub() {
       const emailData = JSON.parse(event.data);
       console.log("[SSE] New email received:", emailData.subject);
       
-      // Invalidate queries to refresh the inbox
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
@@ -357,7 +365,7 @@ export default function ConsultantEmailHub() {
     
     eventSource.addEventListener("ai_processed", (event) => {
       const data = JSON.parse(event.data);
-      console.log("[SSE] AI processed email:", data);
+      console.log("[SSE] Millie processed email:", data);
       
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-stats"] });
@@ -467,6 +475,46 @@ export default function ConsultantEmailHub() {
 
   const emailAIResponses: AIResponse[] = emailAIResponsesData?.data || [];
 
+  const { data: outreachData, isLoading: isLoadingOutreach, refetch: refetchOutreach } = useQuery({
+    queryKey: ["/api/email-hub/outreach-pipeline", outreachStatusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (outreachStatusFilter && outreachStatusFilter !== "all") {
+        params.set("status", outreachStatusFilter);
+      }
+      const response = await fetch(`/api/email-hub/outreach-pipeline?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch outreach pipeline");
+      return response.json();
+    },
+    enabled: showOutreachPipeline,
+  });
+
+  const outreachLeads = outreachData?.data?.leads || [];
+  const outreachStats = outreachData?.data?.stats || { totalSent: 0, totalReplied: 0, totalInSequence: 0, totalCompleted: 0, followUpsInQueue: 0 };
+
+  const cancelFollowUpMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const response = await fetch(`/api/email-hub/outreach-pipeline/cancel-followup/${taskId}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to cancel follow-up");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/outreach-pipeline"] });
+      toast({ title: "Successo", description: "Follow-up annullato" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
   const filteredEmails = useMemo(() => {
     let result = emails;
     if (searchQuery.trim()) {
@@ -478,8 +526,11 @@ export default function ConsultantEmailHub() {
         e.snippet?.toLowerCase().includes(q)
       );
     }
+    if (inboxFilter.emailType) {
+      result = result.filter(e => e.emailType === inboxFilter.emailType);
+    }
     return result;
-  }, [emails, searchQuery]);
+  }, [emails, searchQuery, inboxFilter.emailType]);
 
   const totalPages = Math.ceil(filteredEmails.length / ITEMS_PER_PAGE);
   const paginatedEmails = filteredEmails.slice(
@@ -696,7 +747,7 @@ export default function ConsultantEmailHub() {
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmail?.id, "ai-responses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
-      toast({ title: "Risposta generata", description: "La bozza AI è pronta per la revisione" });
+      toast({ title: "Millie ha generato una bozza", description: "La bozza è pronta per la revisione" });
     },
     onError: (error: any) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
@@ -875,12 +926,12 @@ export default function ConsultantEmailHub() {
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-stats"] });
       toast({ 
-        title: "Elaborazione AI completata", 
+        title: "Millie ha completato l'elaborazione", 
         description: result.data.message || `${result.data.processed} email elaborate`
       });
     },
     onError: (error: any) => {
-      toast({ title: "Errore elaborazione AI", description: error.message, variant: "destructive" });
+      toast({ title: "Errore elaborazione Millie", description: error.message, variant: "destructive" });
     },
   });
 
@@ -1013,6 +1064,7 @@ export default function ConsultantEmailHub() {
     setCurrentPage(1);
     setShowTicketView(null);
     setShowAiEventsView(false);
+    setShowOutreachPipeline(false);
     setShowFullEmailView(false);
     
     setInboxFilter(prev => ({ 
@@ -1020,7 +1072,8 @@ export default function ConsultantEmailHub() {
       readStatus: "all", 
       processingStatus: null,
       starred: folder === "starred",
-      accountId: accountId || null
+      accountId: accountId || null,
+      emailType: null
     }));
     
     if (folder === "ai-drafts") {
@@ -1063,7 +1116,7 @@ export default function ConsultantEmailHub() {
       case "drafts": return "Bozze";
       case "sent": return "Inviata";
       case "trash": return "Cestino";
-      case "ai-drafts": return "Bozze AI";
+      case "ai-drafts": return "Bozze Millie";
       case "starred": return "Importante";
       default: return "Posta in arrivo";
     }
@@ -1085,6 +1138,25 @@ export default function ConsultantEmailHub() {
             Menu principale
           </Button>
         )}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 px-1 py-1">
+                <img src={millieAvatar} alt="Millie" className="h-8 w-8 rounded-full ring-2 ring-violet-500/50" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-semibold text-white truncate block">Millie</span>
+                  <span className="text-[10px] text-violet-300 truncate block">Email Hub</span>
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xs">
+              <p className="font-medium">Millie — Email Writer AI</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Millie analizza le email in arrivo usando la tua Knowledge Base e il Sales Agent per generare risposte intelligenti
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <Button 
           className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2"
           onClick={() => {
@@ -1179,6 +1251,7 @@ export default function ConsultantEmailHub() {
             onClick={() => {
               setShowTicketView("list");
               setShowAiEventsView(false);
+              setShowOutreachPipeline(false);
             }}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
               showTicketView === "list"
@@ -1194,6 +1267,7 @@ export default function ConsultantEmailHub() {
             onClick={() => {
               setShowTicketView("settings");
               setShowAiEventsView(false);
+              setShowOutreachPipeline(false);
             }}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
               showTicketView === "settings"
@@ -1209,6 +1283,7 @@ export default function ConsultantEmailHub() {
             onClick={() => {
               setShowAiEventsView(true);
               setShowTicketView(null);
+              setShowOutreachPipeline(false);
             }}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
               showAiEventsView
@@ -1217,7 +1292,24 @@ export default function ConsultantEmailHub() {
             }`}
           >
             <Zap className="h-4 w-4" />
-            <span className="text-sm flex-1 text-left">Cronologia AI</span>
+            <span className="text-sm flex-1 text-left">Cronologia Millie</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setShowOutreachPipeline(true);
+              setShowAiEventsView(false);
+              setShowTicketView(null);
+              setShowFullEmailView(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              showOutreachPipeline
+                ? "bg-emerald-600/20 text-emerald-300" 
+                : "hover:bg-white/5 text-slate-300"
+            }`}
+          >
+            <Target className="h-4 w-4" />
+            <span className="text-sm flex-1 text-left">Outreach Pipeline</span>
           </button>
           
           <Link href="/consultant/knowledge-documents">
@@ -1259,7 +1351,7 @@ export default function ConsultantEmailHub() {
                   {batchProcessMutation.isPending || aiStats.processingAI > 0 ? (
                     <>
                       <Loader2 className="h-3 w-3 animate-spin shrink-0" />
-                      <span className="truncate">Elaborazione...</span>
+                      <span className="truncate">Millie elabora...</span>
                     </>
                   ) : (
                     <>
@@ -1281,7 +1373,7 @@ export default function ConsultantEmailHub() {
                   disabled={batchProcessMutation.isPending}
                 >
                   <Zap className="h-3 w-3 mr-1 shrink-0" />
-                  <span className="truncate">Genera bozze</span>
+                  <span className="truncate">Millie genera bozze</span>
                 </Button>
               )}
             </div>
@@ -1296,8 +1388,8 @@ export default function ConsultantEmailHub() {
                   : "hover:bg-white/5 text-slate-300"
               }`}
             >
-              <Sparkles className="h-4 w-4" />
-              <span className="text-sm flex-1 text-left">Bozze AI</span>
+              <img src={millieAvatar} alt="Millie" className="h-4 w-4 rounded-full" />
+              <span className="text-sm flex-1 text-left">Bozze Millie</span>
               <Badge variant="destructive" className="h-5 px-1.5 text-xs">
                 {pendingDrafts.length}
               </Badge>
@@ -1375,9 +1467,9 @@ export default function ConsultantEmailHub() {
                           </div>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs">
-                          <p className="font-medium">Invio automatico attivo</p>
+                          <p className="font-medium">Millie — Invio automatico attivo</p>
                           <p className="text-xs text-slate-400 mt-1">
-                            Le email con confidenza &gt; {Math.round((account.confidenceThreshold || 0.8) * 100)}% vengono inviate automaticamente
+                            Millie invia automaticamente le email con confidenza &gt; {Math.round((account.confidenceThreshold || 0.8) * 100)}%
                           </p>
                         </TooltipContent>
                       </Tooltip>
@@ -1426,7 +1518,7 @@ export default function ConsultantEmailHub() {
                         }}
                       >
                         <Sparkles className="h-4 w-4 mr-2 text-violet-400" />
-                        Impostazioni AI
+                        Personalità di Millie
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => {
@@ -1688,6 +1780,51 @@ export default function ConsultantEmailHub() {
             Preferiti
           </Button>
           
+          <Select
+            value={inboxFilter.emailType || "all"}
+            onValueChange={(value) => {
+              setInboxFilter(prev => ({ ...prev, emailType: value === "all" ? null : value }));
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="h-7 w-[140px] text-xs">
+              <SelectValue placeholder="Tipo email" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti i tipi</SelectItem>
+              <SelectItem value="hunter_reply">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Risposta Lead
+                </span>
+              </SelectItem>
+              <SelectItem value="client_inquiry">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                  Cliente
+                </span>
+              </SelectItem>
+              <SelectItem value="lead_inquiry">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-violet-500" />
+                  Lead CRM
+                </span>
+              </SelectItem>
+              <SelectItem value="system_notification">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-slate-400" />
+                  Sistema
+                </span>
+              </SelectItem>
+              <SelectItem value="unknown">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-slate-300" />
+                  Sconosciuto
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          
           <div className="ml-auto flex items-center gap-1 text-xs text-slate-500">
             <span>{filteredEmails.length > 0 ? `${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, filteredEmails.length)}` : "0"} di {filteredEmails.length}</span>
             <Button
@@ -1716,8 +1853,8 @@ export default function ConsultantEmailHub() {
         {selectedFolder === "ai-drafts" ? (
           pendingDrafts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-              <Sparkles className="h-12 w-12 mb-4 text-slate-300" />
-              <p className="text-sm">Nessuna bozza AI in attesa</p>
+              <img src={millieAvatar} alt="Millie" className="h-12 w-12 rounded-full mb-4 opacity-40" />
+              <p className="text-sm">Nessuna bozza di Millie in attesa</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1728,9 +1865,7 @@ export default function ConsultantEmailHub() {
                   onClick={() => setExpandedDraftId(expandedDraftId === draft.id ? null : draft.id)}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${getAvatarColor(draft.originalEmail?.fromName || "A")}`}>
-                      <Sparkles className="h-4 w-4" />
-                    </div>
+                    <img src={millieAvatar} alt="Millie" className="w-8 h-8 rounded-full ring-1 ring-violet-400/50" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm truncate">
@@ -1838,8 +1973,8 @@ export default function ConsultantEmailHub() {
                     </span>
                     {email.processingStatus === "draft_generated" && (
                       <Badge className="h-5 px-1.5 text-xs bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300">
-                        <Sparkles className="h-3 w-3 mr-0.5" />
-                        AI
+                        <img src={millieAvatar} alt="Millie" className="h-3 w-3 rounded-full mr-0.5" />
+                        Millie
                       </Badge>
                     )}
                     {email.processingStatus === "needs_review" && (
@@ -1852,6 +1987,31 @@ export default function ConsultantEmailHub() {
                       <Badge className="h-5 px-1.5 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
                         <Check className="h-3 w-3 mr-0.5" />
                         Risposto
+                      </Badge>
+                    )}
+                    {email.processingStatus === "ignored" && (
+                      <Badge className="h-5 px-1.5 text-xs bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        Ignorata
+                      </Badge>
+                    )}
+                    {email.emailType === "hunter_reply" && (
+                      <Badge className="h-5 px-1.5 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                        Risposta Lead
+                      </Badge>
+                    )}
+                    {email.emailType === "system_notification" && email.processingStatus !== "ignored" && (
+                      <Badge className="h-5 px-1.5 text-xs bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        Sistema
+                      </Badge>
+                    )}
+                    {email.emailType === "client_inquiry" && (
+                      <Badge className="h-5 px-1.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                        Cliente
+                      </Badge>
+                    )}
+                    {email.emailType === "lead_inquiry" && (
+                      <Badge className="h-5 px-1.5 text-xs bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300">
+                        Lead CRM
                       </Badge>
                     )}
                     {(email as any).senderClient && (
@@ -1947,8 +2107,8 @@ export default function ConsultantEmailHub() {
             {emailAIResponses.length > 0 && (
               <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-violet-500" />
-                  Risposte AI
+                  <img src={millieAvatar} alt="Millie" className="h-4 w-4 rounded-full" />
+                  Risposte di Millie
                 </h4>
                 <div className="space-y-3">
                   {emailAIResponses.map((resp) => (
@@ -2005,7 +2165,7 @@ export default function ConsultantEmailHub() {
               ) : (
                 <Sparkles className="h-4 w-4" />
               )}
-              AI Genera Bozza
+              Millie Genera Bozza
             </Button>
             <Button size="sm" variant="outline" className="gap-1">
               <Forward className="h-4 w-4" />
@@ -2018,7 +2178,7 @@ export default function ConsultantEmailHub() {
         </>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8">
-          <Mail className="h-16 w-16 mb-4 text-slate-200" />
+          <img src={millieAvatar} alt="Millie" className="h-16 w-16 rounded-full mb-4 opacity-30" />
           <p className="text-sm text-center">Seleziona un'email per visualizzarla</p>
         </div>
       )}
@@ -2109,7 +2269,7 @@ export default function ConsultantEmailHub() {
                     ) : (
                       <Sparkles className="h-4 w-4" />
                     )}
-                    AI Genera Bozza
+                    Millie Genera Bozza
                   </Button>
                 </motion.div>
                 <motion.div 
@@ -2219,8 +2379,8 @@ export default function ConsultantEmailHub() {
               {emailAIResponses.length > 0 && (
                 <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700">
                   <h4 className="text-lg font-medium mb-4 flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-violet-500" />
-                    Risposte AI Generate
+                    <img src={millieAvatar} alt="Millie" className="h-5 w-5 rounded-full" />
+                    Risposte generate da Millie
                   </h4>
                   <div className="space-y-4">
                     {emailAIResponses.map((resp) => (
@@ -2235,7 +2395,7 @@ export default function ConsultantEmailHub() {
                                  resp.status === "approved" ? "Approvato" :
                                  resp.status === "edited" ? "Modificato" :
                                  resp.status === "rejected" ? "Rifiutato" :
-                                 resp.status === "auto_sent" ? "Inviato Auto" :
+                                 resp.status === "auto_sent" ? "Millie ha inviato" :
                                  resp.status === "draft_needs_review" ? "Richiede Revisione" : "Inviato"}
                               </Badge>
                             </div>
@@ -2469,8 +2629,8 @@ export default function ConsultantEmailHub() {
 
           <div className="space-y-4">
             <h4 className="font-medium flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Impostazioni AI
+              <img src={millieAvatar} alt="Millie" className="h-4 w-4 rounded-full" />
+              Personalità di Millie
             </h4>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -2637,8 +2797,8 @@ export default function ConsultantEmailHub() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-medium flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Risposte AI
+                  <img src={millieAvatar} alt="Millie" className="h-4 w-4 rounded-full" />
+                  Risposte di Millie
                 </h4>
                 <Button
                   size="sm"
@@ -2653,7 +2813,7 @@ export default function ConsultantEmailHub() {
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 mr-1" />
-                      Genera Risposta AI
+                      Millie Genera Risposta
                     </>
                   )}
                 </Button>
@@ -2661,7 +2821,7 @@ export default function ConsultantEmailHub() {
 
               {emailAIResponses.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Nessuna risposta AI generata per questa email
+                  Millie non ha ancora generato risposte per questa email
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -2703,7 +2863,7 @@ export default function ConsultantEmailHub() {
     <Dialog open={!!editingDraft} onOpenChange={(open) => !open && setEditingDraft(null)}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Modifica Bozza AI</DialogTitle>
+          <DialogTitle>Modifica Bozza di Millie</DialogTitle>
           <DialogDescription>
             Modifica il contenuto della risposta prima di inviarla
           </DialogDescription>
@@ -2734,8 +2894,9 @@ export default function ConsultantEmailHub() {
     return (
       <div className="flex justify-center items-center min-h-screen bg-slate-100 dark:bg-slate-900">
         <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-violet-600 mx-auto" />
-          <p className="text-slate-600 dark:text-slate-400">Caricamento Email Hub...</p>
+          <img src={millieAvatar} alt="Millie" className="h-16 w-16 rounded-full mx-auto mb-2 animate-pulse" />
+          <Loader2 className="h-8 w-8 animate-spin text-violet-600 mx-auto" />
+          <p className="text-slate-600 dark:text-slate-400">Millie sta caricando l'Email Hub...</p>
         </div>
       </div>
     );
@@ -2756,7 +2917,333 @@ export default function ConsultantEmailHub() {
         <div className="flex-1 flex overflow-hidden">
           {!isMobile && renderLeftSidebar()}
           <AnimatePresence mode="wait">
-            {showAiEventsView ? (
+            {showOutreachPipeline ? (
+              <motion.div
+                key="outreach-pipeline-view"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ type: "spring", stiffness: 400, damping: 35, mass: 0.6 }}
+                className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-6"
+              >
+                <div className="max-w-6xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Target className="h-6 w-6 text-emerald-500" />
+                        Outreach Pipeline
+                      </h1>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Vista completa del flusso email Hunter — primo contatto e follow-up
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchOutreach()}
+                      disabled={isLoadingOutreach}
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingOutreach ? "animate-spin" : ""}`} />
+                      Aggiorna
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                    <Card className="bg-white dark:bg-slate-800">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Send className="h-4 w-4 text-blue-500" />
+                          <span className="text-xs text-muted-foreground">Totale inviate</span>
+                        </div>
+                        <p className="text-2xl font-bold">{outreachStats.totalSent}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-white dark:bg-slate-800">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Reply className="h-4 w-4 text-emerald-500" />
+                          <span className="text-xs text-muted-foreground">Risposte</span>
+                        </div>
+                        <p className="text-2xl font-bold text-emerald-600">{outreachStats.totalReplied}</p>
+                        {outreachStats.totalSent > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {Math.round((outreachStats.totalReplied / outreachStats.totalSent) * 100)}% tasso risposta
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-white dark:bg-slate-800">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <TrendingUp className="h-4 w-4 text-amber-500" />
+                          <span className="text-xs text-muted-foreground">In sequenza</span>
+                        </div>
+                        <p className="text-2xl font-bold text-amber-600">{outreachStats.totalInSequence}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-white dark:bg-slate-800">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <CheckCircle className="h-4 w-4 text-slate-500" />
+                          <span className="text-xs text-muted-foreground">Completate</span>
+                        </div>
+                        <p className="text-2xl font-bold">{outreachStats.totalCompleted}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-white dark:bg-slate-800">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Clock className="h-4 w-4 text-violet-500" />
+                          <span className="text-xs text-muted-foreground">Follow-up in coda</span>
+                        </div>
+                        <p className="text-2xl font-bold text-violet-600">{outreachStats.followUpsInQueue}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-4">
+                    <Filter className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Filtra per stato:</span>
+                    {[
+                      { value: "all", label: "Tutti" },
+                      { value: "in_sequence", label: "In sequenza" },
+                      { value: "responded", label: "Ha risposto" },
+                      { value: "completed", label: "Completata" },
+                      { value: "no_response", label: "Nessuna risposta" },
+                    ].map((opt) => (
+                      <Button
+                        key={opt.value}
+                        variant={outreachStatusFilter === opt.value ? "secondary" : "ghost"}
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setOutreachStatusFilter(opt.value)}
+                      >
+                        {opt.label}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {isLoadingOutreach ? (
+                    <div className="flex justify-center py-16">
+                      <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                    </div>
+                  ) : outreachLeads.length === 0 ? (
+                    <Card className="bg-white dark:bg-slate-800">
+                      <CardContent className="py-16 text-center">
+                        <Target className="h-12 w-12 mx-auto text-slate-300 mb-4" />
+                        <p className="text-sm text-muted-foreground">Nessun lead contattato tramite Hunter</p>
+                        <p className="text-xs text-muted-foreground mt-1">Le email di outreach appariranno qui</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card className="bg-white dark:bg-slate-800 overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                              <th className="text-left py-3 px-4 font-medium text-muted-foreground">Lead</th>
+                              <th className="text-left py-3 px-4 font-medium text-muted-foreground">Primo contatto</th>
+                              <th className="text-left py-3 px-4 font-medium text-muted-foreground">Follow-up 1</th>
+                              <th className="text-left py-3 px-4 font-medium text-muted-foreground">Follow-up 2</th>
+                              <th className="text-left py-3 px-4 font-medium text-muted-foreground">Stato</th>
+                              <th className="text-right py-3 px-4 font-medium text-muted-foreground">Azioni</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {outreachLeads.map((lead: any) => (
+                              <tr key={lead.email} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                                <td className="py-3 px-4">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium text-slate-900 dark:text-white">
+                                      {lead.businessName || lead.name}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">{lead.email}</span>
+                                    {lead.category && (
+                                      <span className="text-xs text-muted-foreground mt-0.5">{lead.category}</span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  {lead.firstContact ? (
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                                        <span className="text-xs">Inviata</span>
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">
+                                        {format(new Date(lead.firstContact.sentAt), "dd/MM/yy")}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                                        {lead.firstContact.subject}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  {lead.followUp1 ? (
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-1.5">
+                                        {lead.followUp1.status === 'completed' ? (
+                                          <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                                        ) : lead.followUp1.status === 'cancelled' ? (
+                                          <XCircle className="h-3.5 w-3.5 text-slate-400" />
+                                        ) : (
+                                          <Clock className="h-3.5 w-3.5 text-amber-500" />
+                                        )}
+                                        <span className="text-xs">
+                                          {lead.followUp1.status === 'completed' ? 'Inviato' :
+                                           lead.followUp1.status === 'cancelled' ? 'Annullato' :
+                                           'Schedulato'}
+                                        </span>
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">
+                                        {format(new Date(lead.followUp1.scheduledAt), "dd/MM/yy")}
+                                      </span>
+                                      {lead.followUp1.templateName && (
+                                        <span className="text-xs text-violet-500 truncate max-w-[150px]">
+                                          {lead.followUp1.templateName}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  {lead.followUp2 ? (
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-1.5">
+                                        {lead.followUp2.status === 'completed' ? (
+                                          <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                                        ) : lead.followUp2.status === 'cancelled' ? (
+                                          <XCircle className="h-3.5 w-3.5 text-slate-400" />
+                                        ) : (
+                                          <Clock className="h-3.5 w-3.5 text-amber-500" />
+                                        )}
+                                        <span className="text-xs">
+                                          {lead.followUp2.status === 'completed' ? 'Inviato' :
+                                           lead.followUp2.status === 'cancelled' ? 'Annullato' :
+                                           'Schedulato'}
+                                        </span>
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">
+                                        {format(new Date(lead.followUp2.scheduledAt), "dd/MM/yy")}
+                                      </span>
+                                      {lead.followUp2.templateName && (
+                                        <span className="text-xs text-violet-500 truncate max-w-[150px]">
+                                          {lead.followUp2.templateName}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  {lead.globalStatus === 'responded' ? (
+                                    <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                                      Ha risposto
+                                    </Badge>
+                                  ) : lead.globalStatus === 'in_sequence' ? (
+                                    <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                                      In sequenza
+                                    </Badge>
+                                  ) : lead.globalStatus === 'completed' ? (
+                                    <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                      Completata
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
+                                      Nessuna risposta
+                                    </Badge>
+                                  )}
+                                  {lead.replies.length > 0 && (
+                                    <div className="mt-1">
+                                      <span className="text-xs text-emerald-600">
+                                        {lead.replies.length} {lead.replies.length === 1 ? 'risposta' : 'risposte'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </td>
+
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                    {lead.followUps.some((fu: any) => ['scheduled', 'waiting_approval', 'approved'].includes(fu.status)) && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-7 w-7 text-destructive hover:text-destructive"
+                                              onClick={() => {
+                                                const pendingFu = lead.followUps.find((fu: any) =>
+                                                  ['scheduled', 'waiting_approval', 'approved'].includes(fu.status)
+                                                );
+                                                if (pendingFu && confirm("Annullare questo follow-up?")) {
+                                                  cancelFollowUpMutation.mutate(pendingFu.id);
+                                                }
+                                              }}
+                                              disabled={cancelFollowUpMutation.isPending}
+                                            >
+                                              <XCircle className="h-4 w-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>Annulla follow-up</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                    {lead.firstContact && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-7 w-7"
+                                              onClick={() => {
+                                                const emailToView: Email = {
+                                                  id: lead.firstContact.id,
+                                                  accountId: '',
+                                                  messageId: lead.firstContact.messageId,
+                                                  fromEmail: lead.email,
+                                                  subject: lead.firstContact.subject,
+                                                  receivedAt: lead.firstContact.sentAt,
+                                                  isRead: true,
+                                                  isStarred: false,
+                                                  processingStatus: 'sent',
+                                                  toEmail: lead.email,
+                                                };
+                                                setSelectedEmail(emailToView);
+                                                setShowFullEmailView(true);
+                                                setShowOutreachPipeline(false);
+                                              }}
+                                            >
+                                              <Eye className="h-4 w-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>Vedi email</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              </motion.div>
+            ) : showAiEventsView ? (
               <motion.div
                 key="ai-events-view"
                 initial={{ opacity: 0, x: 30 }}

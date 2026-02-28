@@ -3909,6 +3909,253 @@ router.get("/webhook-logs", async (req: AuthRequest, res) => {
   }
 });
 
+router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const statusFilter = req.query.status as string | undefined;
+    const dateFrom = req.query.dateFrom as string | undefined;
+    const dateTo = req.query.dateTo as string | undefined;
+
+    const outboundEmails = await db.execute(sql`
+      SELECT
+        he.id, he.account_id, he.message_id, he.thread_id,
+        he.subject, he.from_email, he.to_recipients,
+        he.sent_at, he.created_at, he.processing_status,
+        he.email_type, he.snippet
+      FROM hub_emails he
+      WHERE he.consultant_id = ${consultantId}
+        AND he.direction = 'outbound'
+        AND he.processing_status IN ('sent', 'processed')
+        AND he.sent_at IS NOT NULL
+        AND he.sent_at > NOW() - INTERVAL '90 days'
+      ORDER BY he.sent_at DESC
+      LIMIT 500
+    `);
+
+    const leadMap = new Map<string, any>();
+
+    for (const email of outboundEmails.rows as any[]) {
+      let toRecipients: any[] = [];
+      if (typeof email.to_recipients === 'string') {
+        try { toRecipients = JSON.parse(email.to_recipients); } catch {}
+      } else if (Array.isArray(email.to_recipients)) {
+        toRecipients = email.to_recipients;
+      }
+      const recipientEmail = toRecipients[0]?.email || '';
+      if (!recipientEmail) continue;
+
+      if (!leadMap.has(recipientEmail)) {
+        leadMap.set(recipientEmail, {
+          email: recipientEmail,
+          name: toRecipients[0]?.name || recipientEmail.split('@')[0],
+          businessName: null,
+          category: null,
+          emails: [],
+          followUps: [],
+          replies: [],
+          globalStatus: 'in_sequence',
+        });
+      }
+      const lead = leadMap.get(recipientEmail)!;
+      lead.emails.push({
+        id: email.id,
+        subject: email.subject,
+        sentAt: email.sent_at,
+        snippet: email.snippet,
+        messageId: email.message_id,
+        threadId: email.thread_id,
+      });
+    }
+
+    if (leadMap.size === 0) {
+      return res.json({
+        success: true,
+        data: {
+          leads: [],
+          stats: { totalSent: 0, totalReplied: 0, totalInSequence: 0, totalCompleted: 0, followUpsInQueue: 0 },
+        },
+      });
+    }
+
+    const recipientEmails = Array.from(leadMap.keys());
+
+    const replyResults = await db.execute(sql`
+      SELECT he.from_email, he.subject, he.received_at, he.snippet, he.in_reply_to
+      FROM hub_emails he
+      WHERE he.consultant_id = ${consultantId}
+        AND he.direction = 'inbound'
+        AND he.from_email = ANY(${recipientEmails})
+        AND he.created_at > NOW() - INTERVAL '90 days'
+      ORDER BY he.received_at DESC
+    `);
+
+    for (const reply of replyResults.rows as any[]) {
+      const lead = leadMap.get(reply.from_email);
+      if (lead) {
+        lead.replies.push({
+          subject: reply.subject,
+          receivedAt: reply.received_at,
+          snippet: reply.snippet,
+        });
+      }
+    }
+
+    const followUpResults = await db.execute(sql`
+      SELECT
+        ast.id, ast.contact_name, ast.status, ast.scheduled_at,
+        ast.additional_context, ast.result_data, ast.completed_at
+      FROM ai_scheduled_tasks ast
+      WHERE ast.consultant_id = ${consultantId}
+        AND ast.preferred_channel = 'email'
+        AND (ast.ai_role = 'hunter' OR ast.task_category = 'prospecting')
+        AND ast.created_at > NOW() - INTERVAL '90 days'
+      ORDER BY ast.created_at ASC
+    `);
+
+    for (const fu of followUpResults.rows as any[]) {
+      let ctx: any = {};
+      if (typeof fu.additional_context === 'string') {
+        try { ctx = JSON.parse(fu.additional_context); } catch {}
+      } else if (fu.additional_context) {
+        ctx = fu.additional_context;
+      }
+      let rd: any = {};
+      if (typeof fu.result_data === 'string') {
+        try { rd = JSON.parse(fu.result_data); } catch {}
+      } else if (fu.result_data) {
+        rd = fu.result_data;
+      }
+
+      const leadEmail = ctx.lead_email || '';
+      const lead = leadMap.get(leadEmail);
+      if (lead) {
+        lead.followUps.push({
+          id: fu.id,
+          status: fu.status,
+          scheduledAt: fu.scheduled_at,
+          completedAt: fu.completed_at,
+          sequence: rd.follow_up_sequence || 0,
+          templateId: ctx.template_id || null,
+          templateName: ctx.template_name || null,
+        });
+      }
+    }
+
+    const leadSearchResults = await db.execute(sql`
+      SELECT lsr.email, lsr.business_name, lsr.category, lsr.lead_status
+      FROM lead_scraper_results lsr
+      INNER JOIN lead_scraper_searches lss ON lsr.search_id = lss.id
+      WHERE lss.consultant_id = ${consultantId}
+        AND lsr.email = ANY(${recipientEmails})
+    `);
+
+    for (const lr of leadSearchResults.rows as any[]) {
+      const lead = leadMap.get(lr.email);
+      if (lead) {
+        lead.businessName = lr.business_name;
+        lead.category = lr.category;
+        if (lr.lead_status) lead.leadStatus = lr.lead_status;
+      }
+    }
+
+    let totalReplied = 0;
+    let totalInSequence = 0;
+    let totalCompleted = 0;
+    let followUpsInQueue = 0;
+
+    for (const lead of leadMap.values()) {
+      lead.emails.sort((a: any, b: any) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+
+      const hasReply = lead.replies.length > 0;
+      const maxFollowUp = lead.followUps.reduce((max: number, fu: any) => Math.max(max, fu.sequence || 0), 0);
+      const hasPendingFollowUp = lead.followUps.some((fu: any) =>
+        ['scheduled', 'waiting_approval', 'approved', 'in_progress'].includes(fu.status)
+      );
+
+      if (hasReply) {
+        lead.globalStatus = 'responded';
+        totalReplied++;
+      } else if (maxFollowUp >= 2 && !hasPendingFollowUp) {
+        lead.globalStatus = 'completed';
+        totalCompleted++;
+      } else if (hasPendingFollowUp || maxFollowUp < 2) {
+        lead.globalStatus = 'in_sequence';
+        totalInSequence++;
+      } else {
+        lead.globalStatus = 'no_response';
+      }
+
+      if (hasPendingFollowUp) followUpsInQueue++;
+
+      lead.firstContact = lead.emails[0] || null;
+      lead.followUp1 = lead.followUps.find((fu: any) => fu.sequence === 1) || null;
+      lead.followUp2 = lead.followUps.find((fu: any) => fu.sequence === 2) || null;
+    }
+
+    let leads = Array.from(leadMap.values());
+
+    if (statusFilter && statusFilter !== 'all') {
+      leads = leads.filter((l: any) => l.globalStatus === statusFilter);
+    }
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      leads = leads.filter((l: any) => l.firstContact && new Date(l.firstContact.sentAt) >= from);
+    }
+    if (dateTo) {
+      const to = new Date(dateTo);
+      leads = leads.filter((l: any) => l.firstContact && new Date(l.firstContact.sentAt) <= to);
+    }
+
+    leads.sort((a: any, b: any) => {
+      const dateA = a.firstContact?.sentAt ? new Date(a.firstContact.sentAt).getTime() : 0;
+      const dateB = b.firstContact?.sentAt ? new Date(b.firstContact.sentAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    res.json({
+      success: true,
+      data: {
+        leads,
+        stats: {
+          totalSent: leadMap.size,
+          totalReplied,
+          totalInSequence,
+          totalCompleted,
+          followUpsInQueue,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching outreach pipeline:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/outreach-pipeline/cancel-followup/:taskId", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const taskId = req.params.taskId;
+
+    const result = await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'cancelled', updated_at = NOW()
+      WHERE id = ${taskId}
+        AND consultant_id = ${consultantId}
+        AND status IN ('scheduled', 'waiting_approval', 'approved')
+      RETURNING id
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Follow-up non trovato o già completato" });
+    }
+
+    res.json({ success: true, message: "Follow-up annullato" });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error cancelling follow-up:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Initialize IDLE connections for all existing accounts on server startup
 export async function initializeEmailHubIdle() {
   console.log("[EMAIL-HUB INIT] Starting IDLE initialization for existing accounts...");

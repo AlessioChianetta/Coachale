@@ -328,6 +328,21 @@ router.post("/hunter/trigger-direct", authenticateToken, requireAnyRole(["consul
   }
 });
 
+router.post("/hunter/check-followups", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { checkEmailFollowUps } = await import("../cron/ai-task-scheduler");
+    const result = await checkEmailFollowUps(consultantId);
+
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error("❌ [HUNTER-FOLLOWUPS] Error:", error.message);
+    res.status(500).json({ success: false, reason: error.message });
+  }
+});
+
 router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

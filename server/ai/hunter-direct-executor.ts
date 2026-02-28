@@ -2,6 +2,7 @@ import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
 import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } from "./provider-factory";
+import { selectTemplateForScenario, GOLDEN_RULES, type EmailTemplate } from "./email-templates-library";
 
 const LOG_PREFIX = "🎯 [HUNTER-DIRECT]";
 
@@ -96,13 +97,29 @@ export async function runDirectHunterForConsultant(consultantId: string): Promis
     const { GoogleGenAI } = await import("@google/genai");
     const genAI = new GoogleGenAI({ apiKey });
 
+    const emailTemplate: EmailTemplate = selectTemplateForScenario("first_contact");
+
     const channelPrompt = selectedChannel === "voice"
       ? `Genera un'istruzione per una chiamata commerciale (max 3 frasi): cosa dire, obiettivo della chiamata, tono da usare. Rispondi in JSON: { "call_instruction": "...", "scheduled_offset_minutes": 60 } dove scheduled_offset_minutes è tra 30 e 480.`
       : selectedChannel === "whatsapp"
       ? `Genera un messaggio WhatsApp breve e professionale (max 2-3 frasi) per un primo contatto commerciale. Non usare formattazione markdown. Rispondi in JSON: { "message": "...", "scheduled_offset_minutes": 15 } dove scheduled_offset_minutes è tra 5 e 60.`
-      : `Genera un'email professionale con oggetto e corpo per un primo contatto commerciale (max 5 frasi nel corpo). Rispondi in JSON: { "subject": "...", "body": "...", "scheduled_offset_minutes": 0 }`;
+      : `Genera un'email professionale con oggetto e corpo per un primo contatto commerciale.
+Usa come RIFERIMENTO STRUTTURALE il seguente template persuasivo (adattalo al lead specifico, NON copiarlo letteralmente):
 
-    const aiPrompt = `Sei un assistente commerciale AI. Devi preparare il primo contatto per un lead trovato automaticamente.
+--- TEMPLATE DI RIFERIMENTO: "${emailTemplate.name}" ---
+SCENARIO: ${emailTemplate.whenToUse}
+LEVA PSICOLOGICA: ${emailTemplate.psychologicalLever}
+OGGETTO DI ESEMPIO: ${emailTemplate.subject}
+CORPO DI ESEMPIO:
+${emailTemplate.body}
+--- FINE TEMPLATE ---
+
+${GOLDEN_RULES}
+
+Rispondi in JSON: { "subject": "...", "body": "...", "scheduled_offset_minutes": 0, "template_used": "${emailTemplate.id}" }
+IMPORTANTE: Sostituisci tutti i placeholder ({contactName}, {businessName}, {sector}, ecc.) con i dati reali del lead. Il corpo deve essere in testo piano (no markdown/HTML). Max 6-8 righe effettive.`;
+
+    const aiPrompt = `Sei un assistente commerciale AI esperto di copywriting persuasivo B2B. Devi preparare il primo contatto per un lead trovato automaticamente.
 
 CONSULENTE: ${consultantName}
 LEAD: ${lead.business_name}

@@ -3794,6 +3794,236 @@ function computeNextWorkingSlot(settings: { working_hours_start: string; working
   return tomorrow;
 }
 
+export async function checkEmailFollowUps(consultantId: string): Promise<{ followUpsCreated: number }> {
+  const LOG = '📧 [EMAIL-FOLLOWUP]';
+  let followUpsCreated = 0;
+
+  try {
+    const outboundEmails = await db.execute(sql`
+      SELECT
+        he.id, he.account_id, he.consultant_id, he.message_id, he.thread_id,
+        he.subject, he.from_email, he.to_recipients, he.sent_at, he.created_at,
+        he.body_text, he.snippet
+      FROM hub_emails he
+      WHERE he.consultant_id = ${consultantId}
+        AND he.direction = 'outbound'
+        AND he.processing_status = 'sent'
+        AND he.sent_at IS NOT NULL
+        AND he.sent_at < NOW() - INTERVAL '3 days'
+        AND he.sent_at > NOW() - INTERVAL '30 days'
+      ORDER BY he.sent_at DESC
+      LIMIT 100
+    `);
+
+    if (outboundEmails.rows.length === 0) {
+      console.log(`${LOG} No outbound emails to check for ${consultantId}`);
+      return { followUpsCreated: 0 };
+    }
+
+    console.log(`${LOG} Checking ${outboundEmails.rows.length} outbound emails for follow-ups (consultant: ${consultantId})`);
+
+    for (const outEmail of outboundEmails.rows as any[]) {
+      try {
+        let toRecipients: any[] = [];
+        if (typeof outEmail.to_recipients === 'string') {
+          try { toRecipients = JSON.parse(outEmail.to_recipients); } catch {}
+        } else if (Array.isArray(outEmail.to_recipients)) {
+          toRecipients = outEmail.to_recipients;
+        }
+        const recipientEmail = toRecipients[0]?.email || '';
+        if (!recipientEmail) continue;
+
+        const replyCheck = await db.execute(sql`
+          SELECT id FROM hub_emails
+          WHERE consultant_id = ${consultantId}
+            AND direction = 'inbound'
+            AND from_email = ${recipientEmail}
+            AND (
+              in_reply_to = ${outEmail.message_id}
+              OR thread_id = ${outEmail.thread_id || ''}
+              OR created_at > ${outEmail.sent_at}
+            )
+          LIMIT 1
+        `);
+
+        if (replyCheck.rows.length > 0) {
+          await db.execute(sql`
+            UPDATE lead_scraper_results
+            SET lead_status = 'responded'
+            WHERE consultant_id = ${consultantId}
+              AND email = ${recipientEmail}
+              AND lead_status IN ('nuovo', 'in_outreach', 'contattato')
+          `);
+          console.log(`${LOG} Reply found for ${recipientEmail} - marking as responded`);
+          continue;
+        }
+
+        const existingFollowUps = await db.execute(sql`
+          SELECT id, result_data FROM ai_scheduled_tasks
+          WHERE consultant_id = ${consultantId}
+            AND ai_role = 'hunter'
+            AND preferred_channel = 'email'
+            AND status IN ('scheduled', 'waiting_approval', 'approved', 'in_progress', 'completed')
+            AND result_data::text LIKE ${'%' + outEmail.id + '%'}
+          ORDER BY created_at ASC
+        `);
+
+        let followUpCount = 0;
+        let hasCompletedFollowUp1 = false;
+        let hasPendingFollowUp = false;
+
+        for (const fu of existingFollowUps.rows as any[]) {
+          const rd = typeof fu.result_data === 'string' ? JSON.parse(fu.result_data) : (fu.result_data || {});
+          if (rd.follow_up_sequence) {
+            followUpCount = Math.max(followUpCount, rd.follow_up_sequence);
+            if (rd.follow_up_sequence === 1 && fu.status === 'completed') {
+              hasCompletedFollowUp1 = true;
+            }
+            if (['scheduled', 'waiting_approval', 'approved', 'in_progress'].includes(fu.status)) {
+              hasPendingFollowUp = true;
+            }
+          }
+        }
+
+        if (hasPendingFollowUp) continue;
+        if (followUpCount >= 2) continue;
+
+        const sentAt = new Date(outEmail.sent_at);
+        const now = new Date();
+        const daysSinceSent = (now.getTime() - sentAt.getTime()) / (1000 * 60 * 60 * 24);
+
+        let templateScenario: string | null = null;
+        let followUpSequence = 0;
+
+        if (followUpCount === 0 && daysSinceSent >= 3) {
+          templateScenario = 'follow_up_1';
+          followUpSequence = 1;
+        } else if (followUpCount === 1 && hasCompletedFollowUp1 && daysSinceSent >= 7) {
+          templateScenario = 'follow_up_2';
+          followUpSequence = 2;
+        }
+
+        if (!templateScenario) continue;
+
+        const { selectTemplateForScenario } = await import('../ai/email-templates-library');
+        const template = selectTemplateForScenario(templateScenario);
+
+        const recipientName = toRecipients[0]?.name || recipientEmail.split('@')[0];
+        const taskId = `followup_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+        const smtpResult = await db.execute(sql`
+          SELECT id FROM email_accounts
+          WHERE id = ${outEmail.account_id} AND consultant_id = ${consultantId} AND smtp_host IS NOT NULL
+          LIMIT 1
+        `);
+        if (smtpResult.rows.length === 0) {
+          console.log(`${LOG} No SMTP config for account ${outEmail.account_id}, skipping`);
+          continue;
+        }
+
+        const additionalCtx = JSON.stringify({
+          hunter_direct: true,
+          follow_up_sequence: followUpSequence,
+          original_email_id: outEmail.id,
+          lead_email: recipientEmail,
+          email_account_id: outEmail.account_id,
+          business_name: recipientName,
+          template_id: template.id,
+          template_name: template.name,
+          original_subject: outEmail.subject,
+        });
+
+        const resultData = JSON.stringify({
+          follow_up_sequence: followUpSequence,
+          original_email_id: outEmail.id,
+          template_scenario: templateScenario,
+          skip_guardrails: false,
+        });
+
+        const instruction = `Oggetto: Re: ${outEmail.subject || 'Proposta'}\n\n[Follow-up ${followUpSequence}] Template: ${template.name}\nDestinatario: ${recipientName} <${recipientEmail}>\n\nUsa il template "${template.name}" per generare un follow-up all'email originale.\n\nTemplate di riferimento:\n${template.body}`;
+
+        await db.execute(sql`
+          INSERT INTO ai_scheduled_tasks (
+            id, consultant_id, contact_phone, contact_name,
+            task_type, ai_instruction, scheduled_at, timezone,
+            status, priority, task_category, ai_role,
+            preferred_channel, additional_context, result_data,
+            max_attempts, current_attempt, retry_delay_minutes,
+            created_at, updated_at
+          ) VALUES (
+            ${taskId}, ${consultantId}, '', ${recipientName},
+            'ai_task', ${instruction},
+            NOW() + INTERVAL '30 minutes',
+            'Europe/Rome', 'waiting_approval', 2, 'prospecting', 'hunter',
+            'email', ${additionalCtx}::text, ${resultData}::jsonb,
+            1, 0, 5,
+            NOW(), NOW()
+          )
+        `);
+
+        followUpsCreated++;
+        console.log(`${LOG} Created follow-up ${followUpSequence} for ${recipientEmail} (template: ${template.name}, task: ${taskId})`);
+
+        await logActivity(consultantId, {
+          event_type: 'email_followup_scheduled',
+          title: `Follow-up ${followUpSequence} schedulato per ${recipientName}`,
+          description: `Template: ${template.name} — ${recipientEmail}`,
+          icon: '📧',
+          severity: 'info',
+          task_id: taskId,
+          ai_role: 'hunter',
+        });
+      } catch (emailErr: any) {
+        console.error(`${LOG} Error processing email ${outEmail.id}: ${emailErr.message}`);
+      }
+    }
+
+    console.log(`${LOG} Completed follow-up check for ${consultantId}: ${followUpsCreated} follow-ups created`);
+    return { followUpsCreated };
+  } catch (error: any) {
+    console.error(`${LOG} Error checking follow-ups for ${consultantId}: ${error.message}`);
+    return { followUpsCreated: 0 };
+  }
+}
+
+async function runEmailFollowUpChecks(): Promise<void> {
+  const result = await withCronLock('email-followup-checker', async () => {
+    console.log('📧 [EMAIL-FOLLOWUP] Starting email follow-up check cycle...');
+
+    const consultantsResult = await db.execute(sql`
+      SELECT DISTINCT aas.consultant_id
+      FROM ai_autonomy_settings aas
+      WHERE aas.is_active = true
+        AND (aas.channels_enabled->>'email')::boolean = true
+    `);
+
+    const consultants = consultantsResult.rows as { consultant_id: string }[];
+
+    if (consultants.length === 0) {
+      console.log('📧 [EMAIL-FOLLOWUP] No consultants with email enabled');
+      return { checked: 0 };
+    }
+
+    let totalFollowUps = 0;
+
+    for (const { consultant_id } of consultants) {
+      try {
+        const result = await checkEmailFollowUps(consultant_id);
+        totalFollowUps += result.followUpsCreated;
+      } catch (error: any) {
+        console.error(`📧 [EMAIL-FOLLOWUP] Error for consultant ${consultant_id}: ${error.message}`);
+      }
+    }
+
+    console.log(`📧 [EMAIL-FOLLOWUP] Completed. Total follow-ups created: ${totalFollowUps}`);
+    return { checked: consultants.length, followUps: totalFollowUps };
+  }, { lockDurationMs: 3 * 60 * 1000 });
+
+  if (result === null) {
+    return;
+  }
+}
+
 /**
  * Initialize the AI Task Scheduler CRON job
  */
@@ -3822,9 +4052,20 @@ export function initAITaskScheduler(): void {
   }, {
     timezone: 'Europe/Rome'
   });
+
+  cron.schedule('0 9,14,18 * * *', async () => {
+    try {
+      await runEmailFollowUpChecks();
+    } catch (error: any) {
+      console.error('❌ [EMAIL-FOLLOWUP] Cron error:', error.message);
+    }
+  }, {
+    timezone: 'Europe/Rome'
+  });
   
   console.log('✅ [AI-SCHEDULER] AI Task Scheduler started (runs every minute)');
   console.log('✅ [AUTONOMOUS-GEN] Autonomous Task Generation started (fixed schedule: XX:00 and XX:30)');
+  console.log('✅ [EMAIL-FOLLOWUP] Email Follow-up Checker started (runs at 09:00, 14:00, 18:00)');
 }
 
 /**
