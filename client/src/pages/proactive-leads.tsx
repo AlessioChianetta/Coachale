@@ -91,6 +91,7 @@ import Papa from "papaparse";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import it from "date-fns/locale/it";
@@ -1497,77 +1498,115 @@ export default function ProactiveLeadsPage() {
               ]}
             />
 
-            {/* Page View Switcher */}
-            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
-              <button
-                onClick={() => setPageView("leads")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  pageView === "leads"
-                    ? "bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-400 shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                }`}
-              >
-                <Users className="h-4 w-4" />
-                Lead Proattivi
-              </button>
-              <button
-                onClick={() => setPageView("hunter")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  pageView === "hunter"
-                    ? "bg-white dark:bg-gray-700 text-teal-700 dark:text-teal-400 shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                }`}
-              >
-                <Crosshair className="h-4 w-4" />
-                Outbox Hunter
-                {hunterActions.length > 0 && (
-                  <Badge className="bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400 text-[10px] px-1.5 py-0 min-w-[20px] h-5">
-                    {hunterActionsData?.total || hunterActions.length}
-                  </Badge>
-                )}
-              </button>
+            {/* Unified Header */}
+            <div className={cn(
+              "rounded-xl border p-5 space-y-4",
+              pageView === "hunter"
+                ? "bg-gradient-to-r from-teal-50/80 to-cyan-50/80 dark:from-teal-950/30 dark:to-cyan-950/30 border-teal-200/60 dark:border-teal-800/40"
+                : "bg-gradient-to-r from-blue-50/80 to-purple-50/80 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200/60 dark:border-blue-800/40"
+            )}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "p-2.5 rounded-xl shadow-md",
+                    pageView === "hunter"
+                      ? "bg-gradient-to-br from-teal-500 to-cyan-600"
+                      : "bg-gradient-to-br from-blue-500 to-purple-600"
+                  )}>
+                    {pageView === "hunter"
+                      ? <Crosshair className="h-6 w-6 text-white" />
+                      : <Users className="h-6 w-6 text-white" />
+                    }
+                  </div>
+                  <div>
+                    <h1 className={cn(
+                      "text-2xl font-bold bg-clip-text text-transparent",
+                      pageView === "hunter"
+                        ? "bg-gradient-to-r from-teal-600 to-cyan-600"
+                        : "bg-gradient-to-r from-blue-600 to-purple-600"
+                    )}>
+                      {pageView === "hunter" ? "Outbox Hunter" : "Gestione Lead Proattivi"}
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {pageView === "hunter"
+                        ? "Tutte le azioni eseguite da Hunter: chiamate, WhatsApp e email inviate ai lead"
+                        : "Gestisci e monitora i tuoi lead proattivi con follow-up automatici via WhatsApp"
+                      }
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+                  {pageView === "hunter" ? (
+                    <>
+                      <Button onClick={() => refetchHunterActions()} variant="outline" size="sm" className="flex-1 sm:flex-none">
+                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                        Aggiorna
+                      </Button>
+                      <Button
+                        onClick={() => triggerDirectMutation.mutate()}
+                        size="sm"
+                        className="bg-teal-600 hover:bg-teal-700 text-white flex-1 sm:flex-none"
+                        disabled={triggerDirectMutation.isPending}
+                      >
+                        {triggerDirectMutation.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1.5" />}
+                        Avvia Ora
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button onClick={() => refetchLeads()} variant="outline" size="sm" disabled={isRefetchingLeads} className="flex-1 sm:flex-none">
+                        {isRefetchingLeads ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                        Aggiorna
+                      </Button>
+                      <Button onClick={() => triggerCrmImportMutation.mutate()} variant="outline" size="sm" className="bg-purple-600 hover:bg-purple-700 text-white flex-1 sm:flex-none" disabled={triggerCrmImportMutation.isPending}>
+                        {triggerCrmImportMutation.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
+                        Importa Ora
+                      </Button>
+                      <Button onClick={() => setIsBulkImportDialogOpen(true)} variant="outline" size="sm" className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none">
+                        <Upload className="h-3.5 w-3.5 mr-1.5" />
+                        Import CSV
+                      </Button>
+                      <Button onClick={handleAddNew} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none" disabled={agents.length === 0}>
+                        <Plus className="h-3.5 w-3.5 mr-1.5" />
+                        Aggiungi Lead
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-1 p-1 bg-white/60 dark:bg-gray-800/60 rounded-lg w-fit backdrop-blur-sm">
+                <button
+                  onClick={() => setPageView("leads")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    pageView === "leads"
+                      ? "bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-400 shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                  }`}
+                >
+                  <Users className="h-4 w-4" />
+                  Lead Proattivi
+                </button>
+                <button
+                  onClick={() => setPageView("hunter")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    pageView === "hunter"
+                      ? "bg-white dark:bg-gray-700 text-teal-700 dark:text-teal-400 shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                  }`}
+                >
+                  <Crosshair className="h-4 w-4" />
+                  Outbox Hunter
+                  {hunterActions.length > 0 && (
+                    <Badge className="bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400 text-[10px] px-1.5 py-0 min-w-[20px] h-5">
+                      {hunterActionsData?.total || hunterActions.length}
+                    </Badge>
+                  )}
+                </button>
+              </div>
             </div>
 
             {pageView === "hunter" ? (
               <>
-                {/* Hunter Outbox Header */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-xl bg-gradient-to-r from-teal-600/10 to-cyan-600/10 dark:from-teal-600/20 dark:to-cyan-600/20">
-                  <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
-                      <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg shadow-lg">
-                        <Crosshair className="h-7 w-7 text-white" />
-                      </div>
-                      <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
-                        Outbox Hunter
-                      </span>
-                    </h1>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">
-                      Tutte le azioni eseguite da Hunter: chiamate, WhatsApp e email inviate ai lead
-                    </p>
-                  </div>
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <Button
-                      onClick={() => refetchHunterActions()}
-                      variant="outline"
-                      className="flex-1 sm:flex-none"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Aggiorna
-                    </Button>
-                    <Button
-                      onClick={() => triggerDirectMutation.mutate()}
-                      className="bg-teal-600 hover:bg-teal-700 text-white flex-1 sm:flex-none"
-                      disabled={triggerDirectMutation.isPending}
-                    >
-                      {triggerDirectMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Zap className="h-4 w-4 mr-2" />
-                      )}
-                      Avvia Ora
-                    </Button>
-                  </div>
-                </div>
 
                 {/* Hunter Filters */}
                 <div className="flex flex-wrap gap-3">
@@ -2093,66 +2132,6 @@ export default function ProactiveLeadsPage() {
               </>
             ) : (
             <>
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 dark:from-blue-600/20 dark:to-purple-600/20">
-              <div>
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg shadow-lg">
-                    <Users className="h-7 w-7 text-white" />
-                  </div>
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Gestione Lead Proattivi
-                  </span>
-                </h1>
-                <p className="mt-2 text-gray-600 dark:text-gray-400">
-                  Gestisci e monitora i tuoi lead proattivi con follow-up automatici via WhatsApp
-                </p>
-              </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button
-                  onClick={() => refetchLeads()}
-                  variant="outline"
-                  disabled={isRefetchingLeads}
-                  className="flex-1 sm:flex-none"
-                >
-                  {isRefetchingLeads ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                  )}
-                  Aggiorna
-                </Button>
-                <Button
-                  onClick={() => triggerCrmImportMutation.mutate()}
-                  className="bg-purple-600 hover:bg-purple-700 flex-1 sm:flex-none"
-                  variant="outline"
-                  disabled={triggerCrmImportMutation.isPending}
-                >
-                  {triggerCrmImportMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Play className="h-4 w-4 mr-2" />
-                  )}
-                  Importa Ora
-                </Button>
-                <Button
-                  onClick={() => setIsBulkImportDialogOpen(true)}
-                  className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-none"
-                  variant="outline"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import CSV
-                </Button>
-                <Button
-                  onClick={handleAddNew}
-                  className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
-                  disabled={agents.length === 0}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Aggiungi Lead
-                </Button>
-              </div>
-            </div>
 
             {/* Info Alert */}
             <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
