@@ -2094,37 +2094,48 @@ export default function ConsultantEmailHub() {
             </div>
           </div>
           
-          <ScrollArea className="flex-1 p-4">
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <div 
-                className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300"
-                dangerouslySetInnerHTML={{ 
-                  __html: emailDetailData?.data?.bodyHtml || emailDetailData?.data?.bodyText || selectedEmail.snippet || "Caricamento contenuto..." 
-                }}
-              />
-            </div>
+          <ScrollArea className="flex-1">
+            <div className="p-4">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+                <div className="p-4 sm:p-5">
+                  <div 
+                    className="prose prose-sm dark:prose-invert max-w-none
+                      prose-p:text-slate-600 dark:prose-p:text-slate-400 prose-p:leading-relaxed
+                      prose-a:text-violet-600 dark:prose-a:text-violet-400
+                      prose-blockquote:border-l-violet-400 prose-blockquote:bg-slate-50 dark:prose-blockquote:bg-slate-800/50 prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:px-3
+                      prose-hr:border-slate-200 dark:prose-hr:border-slate-700
+                      prose-li:text-slate-600 dark:prose-li:text-slate-400"
+                    dangerouslySetInnerHTML={{ 
+                      __html: emailDetailData?.data?.bodyHtml || emailDetailData?.data?.bodyText?.replace(/\n/g, '<br>') || selectedEmail.snippet || "Caricamento contenuto..." 
+                    }}
+                  />
+                </div>
+              </div>
             
-            {emailAIResponses.length > 0 && (
-              <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <img src={millieAvatar} alt="Millie" className="h-4 w-4 rounded-full" />
-                  Risposte di Millie
-                </h4>
-                <div className="space-y-3">
-                  {emailAIResponses.map((resp) => (
-                    <div key={resp.id} className="p-3 bg-violet-50 dark:bg-violet-950/30 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm font-medium">{resp.draftSubject}</span>
-                        {getConfidenceBadge(resp.confidence)}
+              {emailAIResponses.length > 0 && (
+                <div className="mt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <img src={millieAvatar} alt="Millie" className="h-5 w-5 rounded-full ring-2 ring-violet-500/30" />
+                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Risposte di Millie</h4>
+                  </div>
+                  <div className="space-y-2.5">
+                    {emailAIResponses.map((resp) => (
+                      <div key={resp.id} className="rounded-lg border border-violet-200 dark:border-violet-800/60 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/40 dark:to-slate-900 overflow-hidden">
+                        <div className="px-4 py-2.5 border-b border-violet-100 dark:border-violet-800/40 flex items-center gap-2">
+                          <span className="text-sm font-medium flex-1">{resp.draftSubject}</span>
+                          {getConfidenceBadge(resp.confidence)}
+                        </div>
+                        <div className="px-4 py-3">
+                          <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">
+                            {resp.draftBodyText || resp.draftBodyHtml}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
-                        {resp.draftBodyText || resp.draftBodyHtml}
-                      </p>
-                    </div>
                   ))}
                 </div>
               </div>
             )}
+            </div>
           </ScrollArea>
           
           <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex gap-2 flex-wrap">
@@ -2208,117 +2219,65 @@ export default function ConsultantEmailHub() {
                 </Button>
               </motion.div>
               <div className="flex-1" />
-              <div className="flex items-center gap-2">
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.05, duration: 0.12 }}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="gap-1.5 text-xs"
+                  onClick={() => {
+                    setComposerReplyTo(selectedEmail);
+                    setComposerReplyAll(false);
+                    setShowComposer(true);
+                  }}
                 >
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="gap-1"
-                    onClick={() => {
-                      setComposerReplyTo(selectedEmail);
-                      setComposerReplyAll(false);
-                      setShowComposer(true);
-                    }}
-                  >
-                    <Reply className="h-4 w-4" />
-                    Rispondi
-                  </Button>
-                </motion.div>
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.08, duration: 0.12 }}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+                  <Reply className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Rispondi</span>
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="gap-1.5 text-xs"
+                  onClick={() => {
+                    setComposerReplyTo(selectedEmail);
+                    setComposerReplyAll(true);
+                    setShowComposer(true);
+                  }}
                 >
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="gap-1"
-                    onClick={() => {
-                      setComposerReplyTo(selectedEmail);
-                      setComposerReplyAll(true);
-                      setShowComposer(true);
-                    }}
-                  >
-                    <Users className="h-4 w-4" />
-                    Rispondi a tutti
-                  </Button>
-                </motion.div>
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.08, duration: 0.12 }}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+                  <Users className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Rispondi a tutti</span>
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 transition-all duration-150"
+                  onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)}
+                  disabled={generateAIResponseMutation.isPending}
                 >
-                  <Button 
-                    size="sm" 
-                    className="gap-1 bg-violet-600 hover:bg-violet-700 transition-all duration-150"
-                    onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)}
-                    disabled={generateAIResponseMutation.isPending}
-                  >
-                    {generateAIResponseMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4" />
-                    )}
-                    Millie Genera Bozza
-                  </Button>
-                </motion.div>
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.11, duration: 0.12 }}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+                  {generateAIResponseMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  <span className="hidden sm:inline">Millie Genera Bozza</span>
+                  <span className="sm:hidden">Millie</span>
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs">
+                  <Forward className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Inoltra</span>
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => toggleStarMutation.mutate(selectedEmail.id)}
                 >
-                  <Button size="sm" variant="outline" className="gap-1">
-                    <Forward className="h-4 w-4" />
-                    Inoltra
-                  </Button>
-                </motion.div>
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.14, duration: 0.12 }}
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => toggleStarMutation.mutate(selectedEmail.id)}
-                  >
-                    <motion.div
-                      animate={selectedEmail.isStarred ? { scale: [1, 1.3, 1] } : {}}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {selectedEmail.isStarred ? (
-                        <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                      ) : (
-                        <Star className="h-4 w-4" />
-                      )}
-                    </motion.div>
-                  </Button>
-                </motion.div>
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.17, duration: 0.12 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button size="sm" variant="outline" className="gap-1 text-destructive hover:text-destructive transition-colors duration-150">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </motion.div>
+                  {selectedEmail.isStarred ? (
+                    <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                  ) : (
+                    <Star className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive transition-colors duration-150">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
             
@@ -2326,7 +2285,7 @@ export default function ConsultantEmailHub() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05, duration: 0.2 }}
-              className="text-xl font-semibold mb-4"
+              className="text-lg sm:text-xl font-semibold mb-4 text-slate-900 dark:text-white leading-tight"
             >
               {selectedEmail.subject || "(Nessun oggetto)"}
             </motion.h1>
@@ -2335,62 +2294,78 @@ export default function ConsultantEmailHub() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08, duration: 0.2 }}
-              className="flex items-start gap-4"
+              className="flex items-start gap-3 sm:gap-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 sm:p-4"
             >
               <motion.div 
                 initial={{ scale: 0.85 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
-                className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-lg ${getAvatarColor(selectedEmail.fromName || selectedEmail.fromEmail)}`}
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-white font-semibold text-base shrink-0 shadow-sm ${getAvatarColor(selectedEmail.fromName || selectedEmail.fromEmail)}`}
               >
                 {(selectedEmail.fromName || selectedEmail.fromEmail).charAt(0).toUpperCase()}
               </motion.div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{selectedEmail.fromName || selectedEmail.fromEmail}</span>
-                  <span className="text-sm text-slate-500">&lt;{selectedEmail.fromEmail}&gt;</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="font-semibold text-sm text-slate-900 dark:text-white">{selectedEmail.fromName || selectedEmail.fromEmail}</span>
+                  <span className="text-xs text-slate-400 truncate">&lt;{selectedEmail.fromEmail}&gt;</span>
                 </div>
-                <div className="text-sm text-slate-500">
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                   A: {selectedEmail.toEmail}
                 </div>
               </div>
-              <div className="text-sm text-slate-400">
-                {format(new Date(selectedEmail.receivedAt), "dd MMMM yyyy, HH:mm")}
+              <div className="text-xs text-slate-400 dark:text-slate-500 shrink-0 text-right whitespace-nowrap">
+                {format(new Date(selectedEmail.receivedAt), "dd MMM yyyy")}
+                <br />
+                <span className="text-[11px]">{format(new Date(selectedEmail.receivedAt), "HH:mm")}</span>
               </div>
             </motion.div>
           </motion.div>
           
-          <ScrollArea className="flex-1 p-6">
-            <motion.div 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.12, duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="max-w-4xl mx-auto"
-            >
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <div 
-                  className="whitespace-pre-wrap text-slate-700 dark:text-slate-300"
-                  dangerouslySetInnerHTML={{ 
-                    __html: emailDetailData?.data?.bodyHtml || emailDetailData?.data?.bodyText || selectedEmail.snippet || "Caricamento contenuto..." 
-                  }}
-                />
-              </div>
-              
-              {emailAIResponses.length > 0 && (
-                <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700">
-                  <h4 className="text-lg font-medium mb-4 flex items-center gap-2">
-                    <img src={millieAvatar} alt="Millie" className="h-5 w-5 rounded-full" />
-                    Risposte generate da Millie
-                  </h4>
-                  <div className="space-y-4">
-                    {emailAIResponses.map((resp) => (
-                      <Card key={resp.id} className="bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800">
-                        <CardHeader className="pb-2">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-base">{resp.draftSubject}</CardTitle>
-                            <div className="flex items-center gap-2">
+          <ScrollArea className="flex-1">
+            <div className="p-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12, duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="max-w-4xl mx-auto"
+              >
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+                  <div className="p-6 sm:p-8">
+                    <div 
+                      className="prose prose-sm dark:prose-invert max-w-none
+                        prose-headings:font-semibold prose-headings:text-slate-800 dark:prose-headings:text-slate-200
+                        prose-p:text-slate-600 dark:prose-p:text-slate-400 prose-p:leading-relaxed
+                        prose-a:text-violet-600 dark:prose-a:text-violet-400 prose-a:no-underline hover:prose-a:underline
+                        prose-strong:text-slate-800 dark:prose-strong:text-slate-200
+                        prose-img:rounded-lg prose-img:max-w-full
+                        prose-table:border-collapse prose-td:border prose-td:border-slate-200 dark:prose-td:border-slate-700 prose-td:px-3 prose-td:py-2
+                        prose-th:border prose-th:border-slate-200 dark:prose-th:border-slate-700 prose-th:px-3 prose-th:py-2 prose-th:bg-slate-50 dark:prose-th:bg-slate-800
+                        prose-blockquote:border-l-violet-400 prose-blockquote:bg-slate-50 dark:prose-blockquote:bg-slate-800/50 prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:px-4
+                        prose-code:bg-slate-100 dark:prose-code:bg-slate-800 prose-code:rounded prose-code:px-1.5 prose-code:py-0.5 prose-code:text-xs
+                        prose-pre:bg-slate-900 dark:prose-pre:bg-slate-950 prose-pre:rounded-lg
+                        prose-hr:border-slate-200 dark:prose-hr:border-slate-700
+                        prose-li:text-slate-600 dark:prose-li:text-slate-400"
+                      dangerouslySetInnerHTML={{ 
+                        __html: emailDetailData?.data?.bodyHtml || emailDetailData?.data?.bodyText?.replace(/\n/g, '<br>') || selectedEmail.snippet || "Caricamento contenuto..." 
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                {emailAIResponses.length > 0 && (
+                  <div className="mt-6">
+                    <div className="flex items-center gap-2.5 mb-4">
+                      <img src={millieAvatar} alt="Millie" className="h-7 w-7 rounded-full ring-2 ring-violet-500/30" />
+                      <h4 className="text-base font-semibold text-slate-800 dark:text-slate-200">Risposte generate da Millie</h4>
+                    </div>
+                    <div className="space-y-3">
+                      {emailAIResponses.map((resp) => (
+                        <div key={resp.id} className="rounded-xl border border-violet-200 dark:border-violet-800/60 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/40 dark:to-slate-900 overflow-hidden shadow-sm">
+                          <div className="px-5 py-3 border-b border-violet-100 dark:border-violet-800/40 flex items-center justify-between">
+                            <span className="font-medium text-sm text-slate-800 dark:text-slate-200 flex-1 mr-3">{resp.draftSubject}</span>
+                            <div className="flex items-center gap-2 shrink-0">
                               {getConfidenceBadge(resp.confidence)}
-                              <Badge variant={resp.status === "sent" || resp.status === "auto_sent" ? "default" : resp.status === "draft_needs_review" ? "destructive" : "outline"}>
+                              <Badge variant={resp.status === "sent" || resp.status === "auto_sent" ? "default" : resp.status === "draft_needs_review" ? "destructive" : "outline"} className="text-xs">
                                 {resp.status === "draft" ? "Bozza" :
                                  resp.status === "approved" ? "Approvato" :
                                  resp.status === "edited" ? "Modificato" :
@@ -2400,33 +2375,33 @@ export default function ConsultantEmailHub() {
                               </Badge>
                             </div>
                           </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm whitespace-pre-wrap text-slate-600 dark:text-slate-400">
-                            {resp.draftBodyText || resp.draftBodyHtml}
-                          </p>
+                          <div className="px-5 py-4">
+                            <p className="text-sm whitespace-pre-wrap text-slate-600 dark:text-slate-400 leading-relaxed">
+                              {resp.draftBodyText || resp.draftBodyHtml}
+                            </p>
+                          </div>
                           {resp.status === "draft" && (
-                            <div className="flex gap-2 mt-4">
-                              <Button size="sm" variant="default">
-                                <Check className="h-4 w-4 mr-1" />
+                            <div className="px-5 py-3 border-t border-violet-100 dark:border-violet-800/40 bg-violet-50/50 dark:bg-violet-950/20 flex gap-2">
+                              <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5">
+                                <Check className="h-3.5 w-3.5" />
                                 Approva e Invia
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => {
+                              <Button size="sm" variant="outline" className="gap-1.5 border-violet-300 dark:border-violet-700" onClick={() => {
                                 setEditingDraft(resp);
                                 setEditedDraftContent(resp.draftBodyText || resp.draftBodyHtml || "");
                               }}>
-                                <Edit className="h-4 w-4 mr-1" />
+                                <Edit className="h-3.5 w-3.5" />
                                 Modifica
                               </Button>
                             </div>
                           )}
-                        </CardContent>
-                      </Card>
-                    ))}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </motion.div>
+                )}
+              </motion.div>
+            </div>
           </ScrollArea>
         </>
       ) : null}
