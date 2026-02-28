@@ -1,0 +1,51 @@
+2consultant-email-hub.tsx:sourcemap:940 Uncaught TypeError: name.charCodeAt is not a function
+    at getAvatarColor (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/pages/consultant-email-hub.tsx:940:24)
+    at ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/pages/consultant-email-hub.tsx:3052:260
+    at Array.map (<anonymous>)
+    at renderEmailList (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/pages/consultant-email-hub.tsx:3002:243)
+    at ConsultantEmailHub (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/pages/consultant-email-hub.tsx:6282:23)
+    at renderWithHooks (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=acfd96f4:11548:26)
+    at updateFunctionComponent (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=acfd96f4:14582:28)
+    at beginWork (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=acfd96f4:15924:22)
+    at HTMLUnknownElement.callCallback2 (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=acfd96f4:3674:22)
+    at Object.invokeGuardedCallbackDev (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=acfd96f4:3699:24)Comprendi l'errore
+injected.js:37 The above error occurred in the <ConsultantEmailHub> component:
+
+    at ConsultantEmailHub (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/pages/consultant-email-hub.tsx:188:20)
+    at AuthGuard (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/App.tsx?v=neB8AqEdCNGQfXhcIW5iV:341:35)
+    at Provider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/App.tsx?v=neB8AqEdCNGQfXhcIW5iV:2155:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+(anonime) @ injected.js:37Comprendi l'errore
+chunk-RPCDYKBN.js?v=acfd96f4:9129 Uncaught TypeError: name.charCodeAt is not a function
+    at getAvatarColor (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/pages/consultant-email-hub.tsx:940:24)
+    at ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/pages/consultant-email-hub.tsx:3052:260
+    at Array.map (<anonymous>)
+    at renderEmailList (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/pages/consultant-email-hub.tsx:3002:243)
+    at ConsultantEmailHub (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/pages/consultant-email-hub.tsx:6282:23)
+    at renderWithHooks (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=acfd96f4:11548:26)
+    at updateFunctionComponent (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=acfd96f4:14582:28)
+    at beginWork (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=acfd96f4:15924:22)
+    at beginWork$1 (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=acfd96f4:19753:22)
+    at performUnitOfWork (ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=acfd96f4:19198:20)Comprendi l'errore
+client:536 WebSocket connection to 'wss://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/?token=IqAz86YZ-i9A' failed: 
+setupWebSocket @ client:536
+(anonime) @ client:531Comprendi l'errore
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=IqAz86YZ-i9A' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)

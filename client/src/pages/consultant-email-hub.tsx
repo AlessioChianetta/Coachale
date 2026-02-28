@@ -1095,13 +1095,23 @@ export default function ConsultantEmailHub() {
     });
   };
 
-  const getAvatarColor = (name: string) => {
+  const getAvatarColor = (name: any) => {
     const colors = [
       "bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500",
       "bg-rose-500", "bg-cyan-500", "bg-fuchsia-500", "bg-lime-500"
     ];
-    const index = name.charCodeAt(0) % colors.length;
+    const safeName = typeof name === "string" && name ? name : "?";
+    const index = safeName.charCodeAt(0) % colors.length;
     return colors[index];
+  };
+
+  const getEmailDisplayName = (email: Email) => {
+    if (email.direction === "outbound") {
+      if (typeof email.toEmail === "string" && email.toEmail) return email.toEmail;
+      if (Array.isArray(email.toRecipients) && email.toRecipients.length > 0) return String(email.toRecipients[0]);
+      return email.fromEmail || "?";
+    }
+    return email.fromName || email.fromEmail || "?";
   };
 
   const getConfidenceBadge = (confidence: number) => {
@@ -1964,8 +1974,8 @@ export default function ConsultantEmailHub() {
                   onClick={(e) => e.stopPropagation()}
                 />
                 
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium shrink-0 ${getAvatarColor(email.direction === "outbound" ? (email.toEmail || email.fromEmail) : (email.fromName || email.fromEmail))}`}>
-                  {(email.direction === "outbound" ? (email.toEmail || email.fromEmail) : (email.fromName || email.fromEmail)).charAt(0).toUpperCase()}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium shrink-0 ${getAvatarColor(getEmailDisplayName(email))}`}>
+                  {getEmailDisplayName(email).charAt(0).toUpperCase()}
                 </div>
                 
                 <div className="flex-1 min-w-0">
@@ -1974,7 +1984,7 @@ export default function ConsultantEmailHub() {
                       <span className="text-xs text-slate-400 mr-0.5">A:</span>
                     )}
                     <span className={`text-sm truncate ${!email.isRead ? "font-semibold text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>
-                      {email.direction === "outbound" ? (email.toEmail || email.fromEmail) : (email.fromName || email.fromEmail)}
+                      {getEmailDisplayName(email)}
                     </span>
                     {email.processingStatus === "draft_generated" && (
                       <Badge className="h-5 px-1.5 text-xs bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300">
