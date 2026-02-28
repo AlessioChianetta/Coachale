@@ -252,9 +252,14 @@ async function processAITasks(): Promise<void> {
 async function executeTask(task: AIScheduledTask): Promise<void> {
   const attemptNumber = task.current_attempt + 1;
   
+  const taskType = task.task_type || (task as any).taskType || '';
+  const channel = task.preferred_channel || (task as any).preferredChannel || '';
+  const aiRole = task.ai_role || (task as any).aiRole || '';
+
   console.log(`🤖 [AI-SCHEDULER] ══════ STEP 3: executeTask ══════`);
-  console.log(`   📋 id=${task.id}, task_type=${task.task_type}, ai_role=${task.ai_role}, attempt=${attemptNumber}/${task.max_attempts}`);
+  console.log(`   📋 id=${task.id}, task_type="${taskType}", preferred_channel="${channel}", ai_role="${aiRole}", attempt=${attemptNumber}/${task.max_attempts}`);
   console.log(`   📋 contact=${task.contact_phone || task.contact_name || 'N/A'}, result_data=${JSON.stringify(task.result_data)}`);
+  console.log(`   📋 RAW KEYS: ${JSON.stringify(Object.keys(task))}`);
   
   console.log(`🤖 [AI-SCHEDULER] STEP 3a: Setting status to in_progress...`);
   await db.execute(sql`
@@ -269,7 +274,7 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
   const updatedTask = { ...task, current_attempt: attemptNumber };
   
   try {
-    if (task.task_type === 'ai_task' && task.preferred_channel === 'email' && task.ai_role === 'hunter') {
+    if (taskType === 'ai_task' && channel === 'email' && aiRole === 'hunter') {
       const skipGuardrails = task.result_data && typeof task.result_data === 'object' && (task.result_data as any).skip_guardrails === true;
       if (skipGuardrails) {
         console.log(`🤖 [AI-SCHEDULER] STEP 3b: Hunter email (manually approved) → direct send`);
@@ -278,21 +283,37 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
       }
     }
 
-    if (task.task_type === 'ai_task') {
+    if (taskType === 'ai_task') {
       console.log(`🤖 [AI-SCHEDULER] STEP 3b: task_type=ai_task → calling executeAutonomousTask`);
       await executeAutonomousTask(updatedTask);
       return;
     }
 
-    if (task.task_type === 'single_whatsapp') {
-      console.log(`🤖 [AI-SCHEDULER] STEP 3b: task_type=single_whatsapp → direct WA send (no Decision Engine)`);
+    if (taskType === 'single_whatsapp' || (channel === 'whatsapp' && taskType !== 'ai_task')) {
+      console.log(`🤖 [AI-SCHEDULER] STEP 3b: task_type=${taskType}, channel=${channel} → direct WA send`);
       await executeSingleWhatsApp(updatedTask);
       return;
     }
 
-    console.log(`🤖 [AI-SCHEDULER] STEP 3b: task_type=${task.task_type} → calling initiateVoiceCall`);
+    if (taskType === 'single_call' || channel === 'voice') {
+      console.log(`🤖 [AI-SCHEDULER] STEP 3b: task_type=${taskType}, channel=${channel} → calling initiateVoiceCall`);
+      const callSuccess = await initiateVoiceCall(updatedTask);
+      if (callSuccess.success) {
+        await handleSuccess(updatedTask, callSuccess);
+      } else {
+        await handleFailure(updatedTask, callSuccess.reason || 'Unknown error');
+      }
+      return;
+    }
+
+    if (channel === 'email' && aiRole === 'hunter') {
+      console.log(`🤖 [AI-SCHEDULER] STEP 3b: Fallback email handler for channel=${channel} → direct email send`);
+      await executeSingleEmail(updatedTask);
+      return;
+    }
+
+    console.error(`🤖 [AI-SCHEDULER] STEP 3b: UNKNOWN task_type="${taskType}" channel="${channel}" — falling back to voice call`);
     const callSuccess = await initiateVoiceCall(updatedTask);
-    
     if (callSuccess.success) {
       await handleSuccess(updatedTask, callSuccess);
     } else {

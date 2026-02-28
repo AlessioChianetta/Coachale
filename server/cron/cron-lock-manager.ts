@@ -33,12 +33,13 @@ export async function acquireCronLock(
       RETURNING id
     `);
     
-    const acquired = result.rowCount && result.rowCount > 0;
+    const rowCount = result.rowCount ?? (result as any).count ?? (result.rows ? result.rows.length : 0);
+    const acquired = rowCount > 0;
     
     if (acquired) {
       console.log(`🔒 [CronLock] Acquired lock for "${jobName}" (instance: ${INSTANCE_ID.slice(0, 8)})`);
     } else {
-      console.log(`⏳ [CronLock] Lock for "${jobName}" held by another process, skipping...`);
+      console.log(`⏳ [CronLock] Lock for "${jobName}" held by another process, skipping... (rowCount=${result.rowCount}, rows=${result.rows?.length}, keys=${Object.keys(result).join(',')})`);
     }
     
     return !!acquired;
