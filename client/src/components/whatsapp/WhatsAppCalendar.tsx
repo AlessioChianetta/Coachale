@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, User, MessageSquare, Sparkles, Building2, Tag, TrendingUp, Pencil, X, CalendarPlus, Phone, Loader2, Trash2, Check, Send, RotateCcw, AlertTriangle } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, User, MessageSquare, Sparkles, Building2, Tag, TrendingUp, Pencil, X, CalendarPlus, Phone, Loader2, Trash2, Check, Send, RotateCcw, AlertTriangle, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
@@ -356,6 +356,7 @@ export default function WhatsAppCalendar() {
   const [refreshKey, setRefreshKey] = useState(0);
   const gridScrollRef = useRef<HTMLDivElement>(null);
   const hasScrolledRef = useRef(false);
+  const [waConfigNames, setWaConfigNames] = useState<Record<string, { name: string; phone: string }>>({});
 
   const refetchTasks = useCallback(async () => {
     try {
@@ -367,6 +368,19 @@ export default function WhatsAppCalendar() {
       const whatsappTasks = data.tasks.filter((t: AITask) => t.preferred_channel === "whatsapp");
       setTasks(whatsappTasks);
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/whatsapp/config", { headers: getAuthHeaders() })
+      .then(r => r.json())
+      .then(data => {
+        const map: Record<string, { name: string; phone: string }> = {};
+        for (const c of (Array.isArray(data) ? data : data.configs || [])) {
+          map[c.id] = { name: c.agentName || c.agent_name || "Dipendente WA", phone: c.twilioWhatsappNumber || c.twilio_whatsapp_number || "" };
+        }
+        setWaConfigNames(map);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -689,6 +703,21 @@ export default function WhatsAppCalendar() {
                                           {waTemplateFilled || task.ai_instruction}
                                         </div>
                                       </div>
+
+                                      {task.whatsapp_config_id && (() => {
+                                        const cfg = waConfigNames[task.whatsapp_config_id];
+                                        if (!cfg) return null;
+                                        return (
+                                          <div className="flex items-center gap-2 p-2 rounded-lg bg-teal-50/70 dark:bg-teal-950/20 border border-teal-200/50 dark:border-teal-800/30">
+                                            <Bot className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                              <span className="text-[10px] uppercase font-semibold text-teal-700 dark:text-teal-400 shrink-0">Dipendente:</span>
+                                              <span className="text-xs font-medium text-foreground truncate">{cfg.name}</span>
+                                              {cfg.phone && <span className="text-[10px] text-muted-foreground shrink-0">({cfg.phone})</span>}
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
 
                                       {task.scheduling_reason && (
                                         <div className="p-2.5 rounded-lg bg-muted/50 border border-border/50">

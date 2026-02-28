@@ -3079,7 +3079,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
                completed_at, created_at, updated_at, call_after_task, ai_role,
                preferred_channel, tone, objective,
                scheduling_reason, scheduled_by, original_scheduled_at,
-               parent_task_id, additional_context,
+               parent_task_id, additional_context, whatsapp_config_id,
                current_attempt, max_attempts, error_message,
                (SELECT COUNT(*)::int FROM ai_activity_log al WHERE al.task_id = ai_scheduled_tasks.id AND (al.title ILIKE '%follow-up%' OR al.title ILIKE '%follow_up%' OR al.title ILIKE '%aggregat%')) as follow_up_count
         FROM ai_scheduled_tasks
