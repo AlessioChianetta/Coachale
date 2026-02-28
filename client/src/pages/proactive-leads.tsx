@@ -321,6 +321,56 @@ export default function ProactiveLeadsPage() {
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
   const [selectedViewLead, setSelectedViewLead] = useState<ProactiveLead | null>(null);
 
+  const [consultantNotes, setConsultantNotes] = useState("");
+  const [consultantNotesLoading, setConsultantNotesLoading] = useState(false);
+  const [consultantNotesSaving, setConsultantNotesSaving] = useState(false);
+  const [consultantNotesSaved, setConsultantNotesSaved] = useState(false);
+  const [consultantNotesOriginal, setConsultantNotesOriginal] = useState("");
+
+  const fetchConsultantNotes = async (leadId: string) => {
+    setConsultantNotesLoading(true);
+    setConsultantNotesSaved(false);
+    try {
+      const res = await fetch(`/api/ai-autonomy/lead-notes/proactive/${leadId}`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setConsultantNotes(data.notes || "");
+        setConsultantNotesOriginal(data.notes || "");
+      }
+    } catch (e) {
+      console.error("Error fetching consultant notes:", e);
+    } finally {
+      setConsultantNotesLoading(false);
+    }
+  };
+
+  const saveConsultantNotes = async (leadId: string) => {
+    if (consultantNotes === consultantNotesOriginal) return;
+    setConsultantNotesSaving(true);
+    setConsultantNotesSaved(false);
+    try {
+      const res = await fetch(`/api/ai-autonomy/lead-notes/proactive/${leadId}`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: consultantNotes }),
+      });
+      if (res.ok) {
+        setConsultantNotesOriginal(consultantNotes);
+        setConsultantNotesSaved(true);
+        toast({ title: "Note salvate" });
+        setTimeout(() => setConsultantNotesSaved(false), 2000);
+      } else {
+        toast({ title: "Errore", description: "Impossibile salvare le note", variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+    } finally {
+      setConsultantNotesSaving(false);
+    }
+  };
+
   // Bulk selection state
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
@@ -2477,6 +2527,7 @@ export default function ProactiveLeadsPage() {
                                           onClick={() => {
                                             setSelectedViewLead(lead);
                                             setViewDetailsOpen(true);
+                                            fetchConsultantNotes(lead.id);
                                           }}
                                         >
                                           <Eye className="h-4 w-4 text-teal-600" />
@@ -3988,6 +4039,47 @@ export default function ProactiveLeadsPage() {
                   </div>
                 </div>
               )}
+
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-teal-500" />
+                    Note Personali
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    {consultantNotesSaving && (
+                      <span className="text-xs text-gray-400 flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Salvataggio...
+                      </span>
+                    )}
+                    {consultantNotesSaved && (
+                      <span className="text-xs text-emerald-500 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Salvato
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Queste note vengono inviate all'AI in ogni canale (chiamate, WhatsApp, email)
+                </p>
+                {consultantNotesLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-teal-500" />
+                  </div>
+                ) : (
+                  <Textarea
+                    value={consultantNotes}
+                    onChange={(e) => setConsultantNotes(e.target.value)}
+                    onBlur={() => {
+                      if (selectedViewLead) saveConsultantNotes(selectedViewLead.id);
+                    }}
+                    placeholder="Aggiungi note personalizzate per questo lead... (es. preferisce essere contattato di mattina, interessato al pacchetto premium, ecc.)"
+                    className="min-h-[100px] text-sm"
+                  />
+                )}
+              </div>
             </div>
           )}
 

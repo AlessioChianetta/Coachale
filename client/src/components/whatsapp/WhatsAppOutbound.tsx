@@ -19,6 +19,8 @@ interface UnifiedContact {
   email?: string;
   source: "cliente" | "lead";
   role?: string;
+  leadType?: "scraper" | "proactive";
+  rawLeadId?: string;
 }
 
 interface WhatsAppAgent {
@@ -78,6 +80,7 @@ export default function WhatsAppOutbound() {
   const [templateVariables, setTemplateVariables] = useState<Record<string, string>>({});
   const [useManualInstruction, setUseManualInstruction] = useState(false);
   const [customContext, setCustomContext] = useState("");
+  const [savedLeadNotes, setSavedLeadNotes] = useState("");
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -126,6 +129,8 @@ export default function WhatsAppOutbound() {
                   name,
                   phone,
                   source: "lead",
+                  leadType: "proactive",
+                  rawLeadId: l.id,
                 });
               }
             }
@@ -290,14 +295,32 @@ export default function WhatsAppOutbound() {
     return true;
   }, [form.agent_config_id, contactMode, selectedContact, manualPhone, useManualInstruction, selectedTemplateId]);
 
-  const handleSelectContact = (c: UnifiedContact) => {
+  const handleSelectContact = async (c: UnifiedContact) => {
     setSelectedContact(c);
     setContactSearch(c.name);
+
+    if (c.leadType && c.rawLeadId) {
+      try {
+        const res = await fetch(`/api/ai-autonomy/lead-notes/${c.leadType}/${c.rawLeadId}`, {
+          headers: getAuthHeaders(),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const notes = data.notes || '';
+          setSavedLeadNotes(notes);
+          if (notes) setCustomContext(notes);
+        }
+      } catch {}
+    } else {
+      setSavedLeadNotes('');
+    }
   };
 
   const handleClearContact = () => {
     setSelectedContact(null);
     setContactSearch("");
+    setCustomContext("");
+    setSavedLeadNotes("");
   };
 
   const normalizePhone = (raw: string): string => {
@@ -392,6 +415,15 @@ export default function WhatsAppOutbound() {
       });
 
       if (res.ok) {
+        if (selectedContact?.leadType && selectedContact?.rawLeadId && customContext.trim() !== savedLeadNotes) {
+          try {
+            await fetch(`/api/ai-autonomy/lead-notes/${selectedContact.leadType}/${selectedContact.rawLeadId}`, {
+              method: "PATCH",
+              headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+              body: JSON.stringify({ notes: customContext.trim() }),
+            });
+          } catch {}
+        }
         toast({ title: "Invio programmato", description: `Messaggio per ${contactName} programmato con successo` });
         setForm(initialForm);
         setContactSearch("");
@@ -402,6 +434,7 @@ export default function WhatsAppOutbound() {
         setTemplateVariables({});
         setUseManualInstruction(false);
         setCustomContext("");
+        setSavedLeadNotes("");
       } else {
         const err = await res.json().catch(() => ({}));
         toast({ title: "Errore", description: err.error || "Impossibile creare il task", variant: "destructive" });
@@ -765,10 +798,18 @@ export default function WhatsAppOutbound() {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-sm font-medium">
                     <Pencil className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    Contesto personalizzato
+                    Dettagli lead
+                    {savedLeadNotes && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-indigo-300 text-indigo-600 dark:border-indigo-700 dark:text-indigo-400">
+                        Salvato nel lead
+                      </Badge>
+                    )}
                   </Label>
                   <p className="text-[11px] text-muted-foreground -mt-1">
-                    Aggiungi note sul lead o istruzioni extra per l'AI (opzionale)
+                    {savedLeadNotes
+                      ? "Queste note sono salvate nel lead e verranno usate in ogni messaggio futuro (Hunter incluso)"
+                      : "Aggiungi note sul lead — verranno salvate e usate in ogni messaggio futuro (Hunter incluso)"
+                    }
                   </p>
                   <Textarea
                     placeholder="Es: Il lead ha già mostrato interesse per il corso avanzato. Conosce già il nostro brand tramite Instagram. Chiamalo per nome, tono informale..."

@@ -612,7 +612,7 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
       lr.id, lr.business_name, lr.phone, lr.email, lr.category, lr.website, lr.address,
       lr.rating, lr.reviews_count, lr.ai_compatibility_score, lr.ai_sales_summary,
       lr.lead_status, lr.outreach_task_id, lr.website_data, lr.created_at,
-      lr.lead_next_action, lr.lead_next_action_date,
+      lr.lead_next_action, lr.lead_next_action_date, lr.lead_notes,
       (
         SELECT MAX(la.created_at)
         FROM lead_scraper_activities la
@@ -706,6 +706,7 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
         reviewsCount: lead.reviews_count,
         score: lead.ai_compatibility_score,
         salesSummary: lead.ai_sales_summary ? lead.ai_sales_summary.substring(0, 500) : null,
+        consultantNotes: lead.lead_notes || '',
         leadStatus: lead.lead_status,
         daysSinceLastContact: daysSinceActivity !== null ? Math.round(daysSinceActivity) : null,
         daysSinceCreated: Math.round(daysSinceCreated),
@@ -785,6 +786,7 @@ function buildLeadContext(lead: any, consultantName: string, salesCtx: any, talk
     lead.salesSummary ? `Analisi AI del lead: ${lead.salesSummary}` : '',
     lead.aiReason || lead.reason ? `Motivo del contatto: ${lead.aiReason || lead.reason}` : '',
     talkingPoints?.length ? `Talking points suggeriti: ${talkingPoints.join('; ')}` : '',
+    lead.consultantNotes ? `📝 Note personalizzate del consulente: ${lead.consultantNotes}` : '',
     `━━━ CONSULENTE ━━━`,
     `Nome consulente: ${consultantName}`,
     salesCtx.services_offered ? `Servizi offerti: ${salesCtx.services_offered}` : '',
@@ -1679,7 +1681,7 @@ router.post("/hunter-single-lead", authenticateToken, requireAnyRole(["consultan
 
     const leadResult = await db.execute(sql`
       SELECT id, business_name, category, phone, email, website, address,
-             ai_compatibility_score, ai_sales_summary, rating, reviews_count
+             ai_compatibility_score, ai_sales_summary, rating, reviews_count, lead_notes
       FROM lead_scraper_results WHERE id = ${leadId} LIMIT 1
     `);
     if (leadResult.rows.length === 0) {
@@ -1694,6 +1696,7 @@ router.post("/hunter-single-lead", authenticateToken, requireAnyRole(["consultan
       score: dbLead.ai_compatibility_score,
       salesSummary: dbLead.ai_sales_summary,
       rating: dbLead.rating, reviewsCount: dbLead.reviews_count,
+      consultantNotes: dbLead.lead_notes || '',
     };
 
     const settingsResult = await db.execute(sql`
@@ -6663,6 +6666,77 @@ router.post("/tasks/bulk-action", authenticateToken, requireAnyRole(["consultant
   } catch (error: any) {
     console.error("[AI-BULK] Error:", error);
     return res.status(500).json({ error: "Failed to execute bulk action" });
+  }
+});
+
+router.get("/lead-notes/:leadType/:leadId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as any).user?.id;
+    const { leadType, leadId } = req.params;
+
+    if (leadType === 'scraper') {
+      const result = await db.execute(sql`
+        SELECT lr.lead_notes
+        FROM lead_scraper_results lr
+        JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+        WHERE lr.id = ${leadId} AND ls.consultant_id = ${consultantId}
+        LIMIT 1
+      `);
+      if (result.rows.length === 0) return res.status(404).json({ error: "Lead non trovato" });
+      return res.json({ notes: (result.rows[0] as any).lead_notes || '' });
+    } else if (leadType === 'proactive') {
+      const result = await db.execute(sql`
+        SELECT consultant_notes
+        FROM proactive_leads
+        WHERE id = ${leadId} AND consultant_id = ${consultantId}
+        LIMIT 1
+      `);
+      if (result.rows.length === 0) return res.status(404).json({ error: "Lead non trovato" });
+      return res.json({ notes: (result.rows[0] as any).consultant_notes || '' });
+    } else {
+      return res.status(400).json({ error: "leadType deve essere 'scraper' o 'proactive'" });
+    }
+  } catch (error: any) {
+    console.error("[LEAD-NOTES] GET error:", error);
+    return res.status(500).json({ error: "Errore nel recupero delle note" });
+  }
+});
+
+router.patch("/lead-notes/:leadType/:leadId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as any).user?.id;
+    const { leadType, leadId } = req.params;
+    const { notes } = req.body;
+
+    if (typeof notes !== 'string') {
+      return res.status(400).json({ error: "Il campo 'notes' è obbligatorio (stringa)" });
+    }
+
+    const trimmedNotes = notes.trim() || null;
+
+    if (leadType === 'scraper') {
+      const result = await db.execute(sql`
+        UPDATE lead_scraper_results
+        SET lead_notes = ${trimmedNotes}
+        WHERE id = ${leadId}
+          AND search_id IN (SELECT id FROM lead_scraper_searches WHERE consultant_id = ${consultantId})
+      `);
+      if (result.rowCount === 0) return res.status(404).json({ error: "Lead non trovato" });
+      return res.json({ success: true, notes: trimmedNotes || '' });
+    } else if (leadType === 'proactive') {
+      const result = await db.execute(sql`
+        UPDATE proactive_leads
+        SET consultant_notes = ${trimmedNotes}
+        WHERE id = ${leadId} AND consultant_id = ${consultantId}
+      `);
+      if (result.rowCount === 0) return res.status(404).json({ error: "Lead non trovato" });
+      return res.json({ success: true, notes: trimmedNotes || '' });
+    } else {
+      return res.status(400).json({ error: "leadType deve essere 'scraper' o 'proactive'" });
+    }
+  } catch (error: any) {
+    console.error("[LEAD-NOTES] PATCH error:", error);
+    return res.status(500).json({ error: "Errore nel salvataggio delle note" });
   }
 });
 

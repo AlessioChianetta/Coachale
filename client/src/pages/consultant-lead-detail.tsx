@@ -200,6 +200,11 @@ export default function ConsultantLeadDetail() {
   const [newScheduledAt, setNewScheduledAt] = useState("");
   const [newCompletedAt, setNewCompletedAt] = useState("");
 
+  const [personalNotes, setPersonalNotes] = useState("");
+  const [personalNotesLoaded, setPersonalNotesLoaded] = useState(false);
+  const [savingPersonalNotes, setSavingPersonalNotes] = useState(false);
+  const [personalNotesSaved, setPersonalNotesSaved] = useState(false);
+
   const [hunterDialog, setHunterDialog] = useState<{
     open: boolean;
     channels: { voice: boolean; whatsapp: boolean; email: boolean };
@@ -261,6 +266,43 @@ export default function ConsultantLeadDetail() {
       setCrmValue(lead.leadValue ? String(lead.leadValue) : "");
     }
   }, [lead]);
+
+  useEffect(() => {
+    if (leadId && !personalNotesLoaded) {
+      fetch(`/api/ai-autonomy/lead-notes/scraper/${leadId}`, { headers: getAuthHeaders() })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            setPersonalNotes(data.notes || "");
+            setPersonalNotesLoaded(true);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [leadId, personalNotesLoaded]);
+
+  const savePersonalNotes = async () => {
+    if (!leadId) return;
+    setSavingPersonalNotes(true);
+    setPersonalNotesSaved(false);
+    try {
+      const res = await fetch(`/api/ai-autonomy/lead-notes/scraper/${leadId}`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: personalNotes }),
+      });
+      if (res.ok) {
+        setPersonalNotesSaved(true);
+        setTimeout(() => setPersonalNotesSaved(false), 2000);
+      } else {
+        toast({ title: "Errore", description: "Impossibile salvare le note personali", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+    } finally {
+      setSavingPersonalNotes(false);
+    }
+  };
 
   const updateCrmMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -716,6 +758,35 @@ export default function ConsultantLeadDetail() {
                   {updateCrmMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                   Salva CRM
                 </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border border-indigo-200 dark:border-indigo-800 shadow-sm bg-indigo-50/30 dark:bg-indigo-950/10">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Pencil className="h-4 w-4 text-indigo-500" />Note personali
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-indigo-300 text-indigo-600 dark:border-indigo-700 dark:text-indigo-400">
+                      Condivise con AI
+                    </Badge>
+                  </CardTitle>
+                  <div className="flex items-center gap-1.5">
+                    {savingPersonalNotes && <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />}
+                    {personalNotesSaved && <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-5 pt-1">
+                <Textarea
+                  placeholder="Aggiungi note personali su questo lead... Queste note verranno condivise con l'AI in tutti i canali (chiamate, WhatsApp, email)."
+                  value={personalNotes}
+                  onChange={(e) => setPersonalNotes(e.target.value)}
+                  onBlur={savePersonalNotes}
+                  className="min-h-[100px] border-indigo-200 dark:border-indigo-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 text-sm"
+                />
+                <p className="text-[10px] text-indigo-500/70 mt-1.5">
+                  Salvataggio automatico al blur. Queste note vengono iniettate nel contesto AI per chiamate, WhatsApp e email.
+                </p>
               </CardContent>
             </Card>
 

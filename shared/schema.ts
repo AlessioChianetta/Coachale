@@ -3915,6 +3915,8 @@ export const proactiveLeads = pgTable("proactive_leads", {
   failedAttempts: integer("failed_attempts").default(0),
   lastError: text("last_error"),
 
+  consultantNotes: text("consultant_notes"),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
