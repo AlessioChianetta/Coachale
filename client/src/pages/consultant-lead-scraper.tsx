@@ -1145,21 +1145,21 @@ export default function ConsultantLeadScraper() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Ricerche", value: stats.totalSearches, icon: Search, iconColor: "text-rose-500", numColor: "text-rose-600 dark:text-rose-400" },
-            { label: "Lead Totali", value: stats.totalLeads, icon: Building2, iconColor: "text-violet-500", numColor: "text-violet-600 dark:text-violet-400" },
-            { label: "Email", value: stats.emailCount, icon: Mail, iconColor: "text-blue-500", numColor: "text-blue-600 dark:text-blue-400" },
-            { label: "Telefoni", value: stats.phoneCount, icon: Phone, iconColor: "text-emerald-500", numColor: "text-emerald-600 dark:text-emerald-400" },
+            { label: "Ricerche", value: stats.totalSearches, icon: Search, iconColor: "text-rose-500", numColor: "text-rose-600 dark:text-rose-400", bgGrad: "from-rose-50 to-white dark:from-rose-950/10 dark:to-gray-900", ringColor: "ring-rose-100 dark:ring-rose-900/20" },
+            { label: "Lead Totali", value: stats.totalLeads, icon: Building2, iconColor: "text-violet-500", numColor: "text-violet-600 dark:text-violet-400", bgGrad: "from-violet-50 to-white dark:from-violet-950/10 dark:to-gray-900", ringColor: "ring-violet-100 dark:ring-violet-900/20" },
+            { label: "Email", value: stats.emailCount, icon: Mail, iconColor: "text-blue-500", numColor: "text-blue-600 dark:text-blue-400", bgGrad: "from-blue-50 to-white dark:from-blue-950/10 dark:to-gray-900", ringColor: "ring-blue-100 dark:ring-blue-900/20" },
+            { label: "Telefoni", value: stats.phoneCount, icon: Phone, iconColor: "text-emerald-500", numColor: "text-emerald-600 dark:text-emerald-400", bgGrad: "from-emerald-50 to-white dark:from-emerald-950/10 dark:to-gray-900", ringColor: "ring-emerald-100 dark:ring-emerald-900/20" },
           ].map((stat, i) => (
-            <div key={i} className="relative overflow-hidden rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div key={i} className={`relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br ${stat.bgGrad} border border-gray-100 dark:border-gray-800 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ring-1 ${stat.ringColor} hover:shadow-md transition-shadow`}>
               <div className="flex items-start justify-between">
-                <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800">
-                  <stat.icon className={`h-3.5 w-3.5 ${stat.iconColor}`} />
+                <div className={`p-2 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-sm`}>
+                  <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
                 </div>
               </div>
-              <p className={`text-2xl font-black tracking-tight leading-none mt-2 mb-0.5 ${stat.numColor}`}>{stat.value}</p>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{stat.label}</p>
+              <p className={`text-[32px] md:text-[36px] font-black tracking-tighter leading-none mt-3 mb-1 ${stat.numColor}`}>{stat.value}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -1220,17 +1220,17 @@ export default function ConsultantLeadScraper() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full flex justify-start gap-0 bg-transparent p-0 border-b border-gray-200 dark:border-gray-700 rounded-none h-auto">
-            <TabsTrigger value="ricerca" className="flex items-center gap-1.5 px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-400 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium transition-colors">
+          <TabsList className="w-full flex justify-start gap-1 bg-gray-100/60 dark:bg-gray-800/40 p-1 rounded-xl h-auto">
+            <TabsTrigger value="ricerca" className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 data-[state=active]:bg-white data-[state=active]:dark:bg-gray-800 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-400 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:dark:hover:text-gray-300 data-[state=inactive]:hover:bg-white/50 data-[state=inactive]:dark:hover:bg-gray-800/30">
               <Search className="h-3.5 w-3.5" />Ricerca
             </TabsTrigger>
-            <TabsTrigger value="crm" className="flex items-center gap-1.5 px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-400 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium transition-colors">
+            <TabsTrigger value="crm" className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 data-[state=active]:bg-white data-[state=active]:dark:bg-gray-800 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-400 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:dark:hover:text-gray-300 data-[state=inactive]:hover:bg-white/50 data-[state=inactive]:dark:hover:bg-gray-800/30">
               <ClipboardList className="h-3.5 w-3.5" />CRM Lead
             </TabsTrigger>
-            <TabsTrigger value="agent" className="flex items-center gap-1.5 px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-400 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium transition-colors">
+            <TabsTrigger value="agent" className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 data-[state=active]:bg-white data-[state=active]:dark:bg-gray-800 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-400 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:dark:hover:text-gray-300 data-[state=inactive]:hover:bg-white/50 data-[state=inactive]:dark:hover:bg-gray-800/30">
               <Bot className="h-3.5 w-3.5" />Sales Agent
             </TabsTrigger>
-            <TabsTrigger value="hunter" className="flex items-center gap-1.5 px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-400 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium transition-colors">
+            <TabsTrigger value="hunter" className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 data-[state=active]:bg-white data-[state=active]:dark:bg-gray-800 data-[state=active]:text-teal-700 data-[state=active]:dark:text-teal-400 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:dark:hover:text-gray-300 data-[state=inactive]:hover:bg-white/50 data-[state=inactive]:dark:hover:bg-gray-800/30">
               <Crosshair className="h-3.5 w-3.5" />Hunter
               {hunterStatus?.isEnabled && <span className="ml-1 w-2 h-2 rounded-full bg-teal-500 animate-pulse" />}
             </TabsTrigger>
@@ -1658,21 +1658,29 @@ export default function ConsultantLeadScraper() {
 
           <TabsContent value="crm" className="mt-4">
             <div className="space-y-4">
-              <div className="flex items-stretch overflow-x-auto">
-                {LEAD_STATUSES.map((s, idx) => (
-                  <button
-                    key={s.value}
-                    className={`relative flex-1 min-w-[100px] flex flex-col items-center justify-center py-3 px-2 text-center transition-all ${
-                      crmFilterStatus === s.value
-                        ? `${s.color} shadow-sm font-semibold`
-                        : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    } ${idx === 0 ? "rounded-l-lg border border-gray-200 dark:border-gray-700" : idx === LEAD_STATUSES.length - 1 ? "rounded-r-lg border border-l-0 border-gray-200 dark:border-gray-700" : "border border-l-0 border-gray-200 dark:border-gray-700"}`}
-                    onClick={() => setCrmFilterStatus(crmFilterStatus === s.value ? "tutti" : s.value)}
-                  >
-                    <span className="text-lg font-black">{crmStats[s.value] || 0}</span>
-                    <span className="text-[10px] font-medium leading-tight">{s.label}</span>
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {LEAD_STATUSES.map((s) => {
+                  const count = crmStats[s.value] || 0;
+                  const isActive = crmFilterStatus === s.value;
+                  return (
+                    <button
+                      key={s.value}
+                      className={cn(
+                        "flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-150 whitespace-nowrap border",
+                        isActive
+                          ? `${s.color} shadow-sm ring-1 ring-offset-1 ring-current/10`
+                          : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600"
+                      )}
+                      onClick={() => setCrmFilterStatus(crmFilterStatus === s.value ? "tutti" : s.value)}
+                    >
+                      {s.label}
+                      <span className={cn(
+                        "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-md text-[11px] font-bold",
+                        isActive ? "bg-white/30 dark:bg-black/20" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                      )}>{count}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -1733,12 +1741,12 @@ export default function ConsultantLeadScraper() {
                         ))}
                       </div>
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
                         <Input
-                          placeholder="Cerca lead..."
+                          placeholder="Cerca azienda, email o telefono..."
                           value={crmSearch}
                           onChange={(e) => setCrmSearch(e.target.value)}
-                          className="pl-9 w-[250px] h-9"
+                          className="pl-9 w-[300px] h-10 rounded-xl border-gray-200 dark:border-gray-700 focus-visible:ring-violet-500/30 focus-visible:border-violet-400"
                         />
                         {crmSearch && (
                           <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => setCrmSearch("")}>
@@ -1764,17 +1772,15 @@ export default function ConsultantLeadScraper() {
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow className="bg-gray-50 dark:bg-gray-800/50">
-                            <TableHead className="font-semibold">Nome</TableHead>
-                            <TableHead className="text-center font-semibold w-[70px]">Fonte</TableHead>
-                            <TableHead className="text-center font-semibold w-[80px]">Canali</TableHead>
-                            <TableHead className="font-semibold">Email</TableHead>
-                            <TableHead className="font-semibold">Telefono</TableHead>
-                            <TableHead className="text-center font-semibold">Score</TableHead>
-                            <TableHead className="text-center font-semibold">Stato</TableHead>
-                            <TableHead className="font-semibold">Prossima azione</TableHead>
-                            <TableHead className="text-right font-semibold">Valore</TableHead>
-                            <TableHead className="text-right font-semibold w-[60px]"></TableHead>
+                          <TableRow className="bg-gray-50/80 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800">
+                            <TableHead className="font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 pl-4">Lead</TableHead>
+                            <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[70px]">Fonte</TableHead>
+                            <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[80px]">Canali</TableHead>
+                            <TableHead className="font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Contatti</TableHead>
+                            <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[80px]">Score</TableHead>
+                            <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[110px]">Stato</TableHead>
+                            <TableHead className="font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Prossima azione</TableHead>
+                            <TableHead className="text-right font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[60px]"></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1783,23 +1789,28 @@ export default function ConsultantLeadScraper() {
                             return (
                               <TableRow
                                 key={r.id}
-                                className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-l-3 ${statusInfo.borderColor}`}
+                                className={cn("cursor-pointer hover:bg-violet-50/30 dark:hover:bg-gray-800/40 transition-all duration-150 border-l-[3px] group", statusInfo.borderColor)}
                                 onClick={() => navigateToLead(r.id)}
                               >
-                                <TableCell>
-                                  <div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="font-semibold text-gray-900 dark:text-white">{r.businessName || "-"}</span>
-                                      {r.outreachTaskId && (
-                                        <Badge className="text-[9px] px-1.5 py-0 h-4 bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800 gap-0.5">
-                                          <Crosshair className="h-2.5 w-2.5" />Auto
-                                        </Badge>
-                                      )}
+                                <TableCell className="py-4 pl-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shrink-0 text-sm font-bold", statusInfo.color)}>
+                                      {(r.businessName || "?").charAt(0).toUpperCase()}
                                     </div>
-                                    {r.category && <p className="text-sm text-gray-500 mt-0.5">{r.category}</p>}
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="font-semibold text-gray-900 dark:text-white text-sm truncate">{r.businessName || "-"}</span>
+                                        {r.outreachTaskId && (
+                                          <Badge className="text-[9px] px-1.5 py-0 h-4 bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800 gap-0.5">
+                                            <Crosshair className="h-2.5 w-2.5" />Auto
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {r.category && <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate mt-0.5">{r.category}</p>}
+                                    </div>
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-center">
+                                <TableCell className="text-center py-4">
                                   {r.source === "google_search" ? (
                                     <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-blue-300 text-blue-600 bg-blue-50 dark:bg-blue-950/30 gap-0.5">
                                       <Globe className="h-2.5 w-2.5" />Search
@@ -1810,7 +1821,7 @@ export default function ConsultantLeadScraper() {
                                     </Badge>
                                   )}
                                 </TableCell>
-                                <TableCell className="text-center">
+                                <TableCell className="text-center py-4">
                                   {(r.contactedChannels && r.contactedChannels.length > 0) ? (
                                     <div className="flex items-center justify-center gap-1">
                                       {r.contactedChannels.includes("voice") && <PhoneCall className="h-3 w-3 text-green-500" />}
@@ -1821,16 +1832,21 @@ export default function ConsultantLeadScraper() {
                                     <span className="text-[10px] text-muted-foreground">—</span>
                                   )}
                                 </TableCell>
-                                <TableCell className="text-sm text-gray-600 dark:text-gray-400">{r.email || "-"}</TableCell>
-                                <TableCell className="text-sm text-gray-600 dark:text-gray-400">{r.phone || "-"}</TableCell>
-                                <TableCell className="text-center">{getScoreBar(r.aiCompatibilityScore)}</TableCell>
-                                <TableCell className="text-center">
-                                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${statusInfo.color}`}>{statusInfo.label}</Badge>
+                                <TableCell className="py-4">
+                                  <div className="space-y-0.5">
+                                    {r.email && <p className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-[180px]">{r.email}</p>}
+                                    {r.phone && <p className="text-xs text-gray-500 dark:text-gray-500">{r.phone}</p>}
+                                    {!r.email && !r.phone && <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
+                                  </div>
                                 </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
+                                <TableCell className="text-center py-4">{getScoreBar(r.aiCompatibilityScore)}</TableCell>
+                                <TableCell className="text-center py-4">
+                                  <Badge className={cn("text-[10px] px-2 py-0.5 h-5 font-semibold border", statusInfo.color)}>{statusInfo.label}</Badge>
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground py-4">
                                   {r.leadNextAction ? (
                                     <span className="flex items-center gap-1">
-                                      <Calendar className="h-3 w-3" />{r.leadNextAction}
+                                      <Calendar className="h-3 w-3 text-violet-400" />{r.leadNextAction}
                                       {r.leadNextActionDate && <span className="text-[10px]">({new Date(r.leadNextActionDate).toLocaleDateString("it-IT")})</span>}
                                     </span>
                                   ) : "\u2014"}

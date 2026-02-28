@@ -1,0 +1,203 @@
+1️⃣ Header & KPI – Rendilo più “dashboard” e meno “box admin”
+
+Adesso i 4 box sono corretti ma un po’ piatti.
+
+Cosa migliorerei:
+
+Aumenterei il contrasto tra numero e label
+
+Aggiungerei una micro-variazione (trend, delta, periodo)
+
+Più spazio verticale
+
+Ombra più morbida, meno “card standard”
+
+Esempio miglioramento:
+
+Numero molto grande (32–40px)
+
+Label piccola uppercase e più leggera
+
+Sottotesto tipo:
+
++12% rispetto a ieri
+
+3 nuovi oggi
+
+👉 Questo rende la dashboard “viva” e non statica.
+
+2️⃣ Tab di navigazione – Troppo neutri
+
+"Ricerca | CRM Lead | Sales Agent | Hunter"
+
+Ora sembrano link normali.
+Io li trasformerei in tab più evidenti:
+
+Tab attivo con:
+
+background leggero viola 5–8%
+
+testo bold
+
+border-bottom più marcato
+
+Hover con micro animazione (transition 150ms)
+
+Darebbe più identità al prodotto.
+
+3️⃣ Filtro stato lead – Troppo piatto
+
+La barra con:
+
+46 Nuovo | 0 Contattato | 0 In trattativa…
+
+È funzionale ma visivamente piatta.
+
+Io farei:
+
+Ogni stato come pill button cliccabile
+
+Con colore semantico:
+
+Stato	Colore
+Nuovo	Grigio/blu
+Contattato	Azzurro
+In trattativa	Arancio
+Chiuso vinto	Verde
+Chiuso perso	Rosso
+Non interessato	Grigio
+
+Con badge numerico dentro la pill.
+
+Esempio:
+
+[ Nuovo 46 ]
+[ Contattato 0 ]
+
+Molto più SaaS moderno.
+
+4️⃣ Tabella CRM – Qui farei il salto di qualità 🚀
+
+Questa è la parte più importante.
+
+Problemi attuali:
+
+Troppe linee
+
+Troppo “Excel style”
+
+Densità visiva uniforme (tutto ha lo stesso peso)
+
+💎 Cosa farei io:
+1. Righe più ariose
+
+Altezza riga 64–72px
+
+Divider sottilissimo
+
+Hover con background leggero
+
+2. Nome azienda più forte
+
+Ora è solo testo.
+
+Io farei:
+
+NOME AZIENDA (bold)
+Categoria (grigio piccolo)
+
+E magari:
+
+Avatar placeholder con iniziali
+
+O icona settore
+
+3. Stato con colore vero
+
+Adesso "Nuovo" è neutro.
+
+Io lo renderei una badge colorata:
+
+Nuovo → blu chiaro
+
+In trattativa → arancio
+
+Vinto → verde pieno
+
+Perso → rosso
+
+Le badge aiutano tantissimo l’occhio.
+
+4. Colonna "Valore" invisibile
+
+Se non è valorizzata,:
+
+O la rimuovi
+
+O la usi come vero KPI (€ stimato)
+
+Altrimenti è solo rumore visivo.
+
+5️⃣ Search bar – Rendila protagonista
+
+La barra “Cerca lead…” è giusta ma non guida.
+
+Io:
+
+La allargherei
+
+Border più morbido
+
+Icona più evidente
+
+Placeholder più utile:
+
+Cerca azienda, email o telefono...
+
+6️⃣ Floating Button viola
+
+È carino, ma:
+
+Lo renderei leggermente più piccolo
+
+Con label on hover:
+
+Nuovo Lead
+
+E magari con micro-animazione quando scrolli.
+
+7️⃣ Colore – Ora è troppo timido
+
+Hai viola come brand, ma è usato poco.
+
+Io:
+
+Userei il viola per:
+
+elementi attivi
+
+focus state
+
+KPI principali
+
+Lasciando il resto molto neutro
+
+Così il brand emerge meglio.
+
+8️⃣ Tipografia – Puoi alzare il livello
+
+Se vuoi un look più “Notion / Linear / modern SaaS”:
+
+Font più pulito (Inter / Geist / SF style)
+
+Più differenza tra:
+
+Titoli
+
+Label
+
+Dati
+
+Metadati
+
+La gerarchia tipografica è il 40% della percezione premium.
