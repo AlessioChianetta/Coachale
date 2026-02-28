@@ -834,6 +834,38 @@ export default function ConsultantEmailHub() {
     },
   });
 
+  const approveAndSendMutation = useMutation({
+    mutationFn: async (responseId: string) => {
+      const approveRes = await fetch(`/api/email-hub/ai-responses/${responseId}/approve`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+      });
+      if (!approveRes.ok) throw new Error("Errore nell'approvazione");
+
+      const sendRes = await fetch(`/api/email-hub/ai-responses/${responseId}/send`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!sendRes.ok) {
+        const err = await sendRes.json();
+        throw new Error(err.error || "Errore nell'invio");
+      }
+      return sendRes.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-stats"] });
+      if (selectedEmail) {
+        queryClient.invalidateQueries({ queryKey: [`/api/email-hub/emails/${selectedEmail.id}/ai-responses`] });
+      }
+      toast({ title: "Inviata!", description: "Bozza approvata e email inviata con successo" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
   const startIdleMutation = useMutation({
     mutationFn: async (accountId: string) => {
       const response = await fetch(`/api/email-hub/accounts/${accountId}/idle/start`, {
@@ -1903,27 +1935,48 @@ export default function ConsultantEmailHub() {
                         {draft.draftBodyText || draft.draftBodyHtml}
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={() => approveDraftMutation.mutate(draft.id)} disabled={approveDraftMutation.isPending}>
-                          <Check className="h-4 w-4 mr-1" />
-                          Approva
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => {
+                        {draft.status === "draft" && (
+                          <Button
+                            size="sm"
+                            className="bg-violet-600 hover:bg-violet-700 text-white"
+                            onClick={(e) => { e.stopPropagation(); approveAndSendMutation.mutate(draft.id); }}
+                            disabled={approveAndSendMutation.isPending}
+                          >
+                            {approveAndSendMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-1" />
+                            )}
+                            Approva e Invia
+                          </Button>
+                        )}
+                        {(draft.status === "approved" || draft.status === "edited") && (
+                          <Button
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={(e) => { e.stopPropagation(); sendDraftMutation.mutate(draft.id); }}
+                            disabled={sendDraftMutation.isPending}
+                          >
+                            {sendDraftMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-1" />
+                            )}
+                            Invia Ora
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" onClick={(e) => {
+                          e.stopPropagation();
                           setEditingDraft(draft);
                           setEditedDraftContent(draft.draftBodyText || draft.draftBodyHtml || "");
                         }}>
                           <Edit className="h-4 w-4 mr-1" />
                           Modifica
                         </Button>
-                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => rejectDraftMutation.mutate(draft.id)}>
+                        <Button size="sm" variant="outline" className="text-destructive" onClick={(e) => { e.stopPropagation(); rejectDraftMutation.mutate(draft.id); }}>
                           <X className="h-4 w-4 mr-1" />
                           Rifiuta
                         </Button>
-                        {draft.status === "approved" && (
-                          <Button size="sm" variant="secondary" className="ml-auto" onClick={() => sendDraftMutation.mutate(draft.id)}>
-                            <Send className="h-4 w-4 mr-1" />
-                            Invia
-                          </Button>
-                        )}
                       </div>
                     </div>
                   )}
@@ -2362,19 +2415,47 @@ export default function ConsultantEmailHub() {
                               {resp.draftBodyText || resp.draftBodyHtml}
                             </p>
                           </div>
-                          {resp.status === "draft" && (
+                          {(resp.status === "draft" || resp.status === "approved" || resp.status === "edited") && resp.status !== "sent" && resp.status !== "auto_sent" && (
                             <div className="px-5 py-3 border-t border-violet-100 dark:border-violet-800/40 bg-violet-50/50 dark:bg-violet-950/20 flex gap-2">
-                              <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5">
-                                <Check className="h-3.5 w-3.5" />
-                                Approva e Invia
-                              </Button>
-                              <Button size="sm" variant="outline" className="gap-1.5 border-violet-300 dark:border-violet-700" onClick={() => {
-                                setEditingDraft(resp);
-                                setEditedDraftContent(resp.draftBodyText || resp.draftBodyHtml || "");
-                              }}>
-                                <Edit className="h-3.5 w-3.5" />
-                                Modifica
-                              </Button>
+                              {resp.status === "draft" && (
+                                <Button
+                                  size="sm"
+                                  className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5"
+                                  onClick={() => approveAndSendMutation.mutate(resp.id)}
+                                  disabled={approveAndSendMutation.isPending}
+                                >
+                                  {approveAndSendMutation.isPending ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Send className="h-3.5 w-3.5" />
+                                  )}
+                                  Approva e Invia
+                                </Button>
+                              )}
+                              {(resp.status === "approved" || resp.status === "edited") && (
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                                  onClick={() => sendDraftMutation.mutate(resp.id)}
+                                  disabled={sendDraftMutation.isPending}
+                                >
+                                  {sendDraftMutation.isPending ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Send className="h-3.5 w-3.5" />
+                                  )}
+                                  Invia Ora
+                                </Button>
+                              )}
+                              {resp.status === "draft" && (
+                                <Button size="sm" variant="outline" className="gap-1.5 border-violet-300 dark:border-violet-700" onClick={() => {
+                                  setEditingDraft(resp);
+                                  setEditedDraftContent(resp.draftBodyText || resp.draftBodyHtml || "");
+                                }}>
+                                  <Edit className="h-3.5 w-3.5" />
+                                  Modifica
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>
