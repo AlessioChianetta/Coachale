@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, MessageSquare, User, Clock, Sparkles, Loader2, Zap, Phone, BookUser, Hash, Bot, X } from "lucide-react";
+import { Send, MessageSquare, User, Clock, Sparkles, Loader2, Phone, BookUser, Hash, Bot, X, FileText, Eye, AlertTriangle, Pencil } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -29,45 +29,23 @@ interface WhatsAppAgent {
   integrationMode?: string;
 }
 
-const QUICK_TEMPLATES = [
-  { icon: "📅", label: "Prossima consulenza", text: "Ricordagli la prossima consulenza e chiedi se ha domande" },
-  { icon: "🎯", label: "Follow-up obiettivi", text: "Fai un follow-up sul progresso degli obiettivi settimanali" },
-  { icon: "💪", label: "Messaggio motivazionale", text: "Invia un messaggio motivazionale personalizzato" },
-  { icon: "💬", label: "Feedback sessione", text: "Chiedi feedback sull'ultima sessione di coaching" },
-  { icon: "🤝", label: "Prossimo incontro", text: "Proponi una data per il prossimo incontro" },
-];
-
-const URGENCY_OPTIONS = [
-  { value: "oggi", label: "Oggi", color: "text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400" },
-  { value: "settimana", label: "Questa settimana", color: "text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-400" },
-  { value: "normale", label: "Normale", color: "text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400" },
-];
-
-const TONE_OPTIONS = [
-  { value: "professionale", label: "Professionale" },
-  { value: "amichevole", label: "Amichevole" },
-  { value: "formale", label: "Formale" },
-  { value: "empatico", label: "Empatico" },
-];
-
-const CATEGORY_OPTIONS = [
-  { value: "outreach", label: "Primo contatto" },
-  { value: "reminder", label: "Promemoria" },
-  { value: "followup", label: "Follow-up" },
-  { value: "check_in", label: "Check-in" },
-  { value: "analysis", label: "Analisi" },
-  { value: "report", label: "Report" },
-  { value: "research", label: "Ricerca" },
-  { value: "preparation", label: "Preparazione" },
-  { value: "monitoring", label: "Monitoraggio" },
-];
-
-const PRIORITY_OPTIONS = [
-  { value: 1, label: "Bassa", color: "bg-slate-200 dark:bg-slate-700" },
-  { value: 2, label: "Media", color: "bg-blue-200 dark:bg-blue-700" },
-  { value: 3, label: "Alta", color: "bg-amber-200 dark:bg-amber-700" },
-  { value: 4, label: "Critica", color: "bg-red-200 dark:bg-red-700" },
-];
+interface TemplateAssignment {
+  assignmentId: string;
+  templateId: string;
+  templateName: string;
+  templateDescription: string | null;
+  useCase: string;
+  priority: number;
+  body: string | null;
+  isTwilioTemplate: boolean;
+  isLegacy: boolean;
+  activeVersion: {
+    id: string | null;
+    versionNumber: number | null;
+    bodyText: string | null;
+    twilioStatus: string | null;
+  } | null;
+}
 
 const initialForm = {
   ai_instruction: "",
@@ -93,6 +71,13 @@ export default function WhatsAppOutbound() {
   const [selectedContact, setSelectedContact] = useState<UnifiedContact | null>(null);
   const [manualName, setManualName] = useState("");
   const [manualPhone, setManualPhone] = useState("");
+
+  const [templates, setTemplates] = useState<TemplateAssignment[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [templateVariables, setTemplateVariables] = useState<Record<string, string>>({});
+  const [useManualInstruction, setUseManualInstruction] = useState(false);
+  const [customContext, setCustomContext] = useState("");
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -169,6 +154,103 @@ export default function WhatsAppOutbound() {
     fetchAll();
   }, []);
 
+  useEffect(() => {
+    if (!form.agent_config_id) {
+      setTemplates([]);
+      setSelectedTemplateId("");
+      setTemplateVariables({});
+      setUseManualInstruction(false);
+      return;
+    }
+
+    const fetchTemplates = async () => {
+      setLoadingTemplates(true);
+      setSelectedTemplateId("");
+      setTemplateVariables({});
+      setUseManualInstruction(false);
+      try {
+        const res = await fetch(`/api/whatsapp/template-assignments/${form.agent_config_id}`, {
+          headers: getAuthHeaders(),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const assignments: TemplateAssignment[] = data.assignments || [];
+          setTemplates(assignments);
+          if (assignments.length === 0) {
+            setUseManualInstruction(true);
+          }
+        } else {
+          setTemplates([]);
+          setUseManualInstruction(true);
+        }
+      } catch {
+        setTemplates([]);
+        setUseManualInstruction(true);
+      }
+      setLoadingTemplates(false);
+    };
+    fetchTemplates();
+  }, [form.agent_config_id]);
+
+  const selectedTemplate = useMemo(
+    () => templates.find((t) => t.templateId === selectedTemplateId) || null,
+    [templates, selectedTemplateId]
+  );
+
+  const templateBody = useMemo(() => {
+    if (!selectedTemplate) return "";
+    return selectedTemplate.activeVersion?.bodyText || selectedTemplate.body || "";
+  }, [selectedTemplate]);
+
+  const extractedVariables = useMemo(() => {
+    if (!templateBody) return [];
+    const vars: string[] = [];
+    const regex = /\{\{(\d+)\}\}/g;
+    let match;
+    while ((match = regex.exec(templateBody)) !== null) {
+      if (!vars.includes(match[1])) vars.push(match[1]);
+    }
+    const namedRegex = /\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
+    while ((match = namedRegex.exec(templateBody)) !== null) {
+      if (!vars.includes(match[1])) vars.push(match[1]);
+    }
+    return vars;
+  }, [templateBody]);
+
+  useEffect(() => {
+    if (extractedVariables.length === 0) {
+      setTemplateVariables({});
+      return;
+    }
+    const contactName = selectedContact?.name || manualName || "";
+    const prefilled: Record<string, string> = {};
+    for (const v of extractedVariables) {
+      if (v === "1" || v === "nome_lead" || v === "nome") {
+        prefilled[v] = contactName;
+      } else if (v === "nome_consulente" || v === "mio_nome") {
+        prefilled[v] = "";
+      } else if (v === "nome_azienda" || v === "azienda") {
+        prefilled[v] = "";
+      } else {
+        prefilled[v] = "";
+      }
+    }
+    setTemplateVariables(prefilled);
+  }, [extractedVariables, selectedContact, manualName]);
+
+  const previewMessage = useMemo(() => {
+    if (!templateBody) return "";
+    let result = templateBody;
+    for (const [key, val] of Object.entries(templateVariables)) {
+      if (/^\d+$/.test(key)) {
+        result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), val || `{{${key}}}`);
+      } else {
+        result = result.replace(new RegExp(`\\{${key}\\}`, "g"), val || `{${key}}`);
+      }
+    }
+    return result;
+  }, [templateBody, templateVariables]);
+
   const filteredClients = useMemo(() => {
     const clientList = contacts.filter((c) => c.source === "cliente");
     if (!contactSearch.trim()) return clientList.slice(0, 15);
@@ -199,9 +281,14 @@ export default function WhatsAppOutbound() {
 
   const canSubmit = useMemo(() => {
     if (!form.agent_config_id) return false;
-    if (contactMode === "rubrica") return !!selectedContact;
-    return manualPhone.trim().length >= 8;
-  }, [form.agent_config_id, contactMode, selectedContact, manualPhone]);
+    if (contactMode === "rubrica") {
+      if (!selectedContact) return false;
+    } else {
+      if (manualPhone.trim().length < 8) return false;
+    }
+    if (!useManualInstruction && !selectedTemplateId) return false;
+    return true;
+  }, [form.agent_config_id, contactMode, selectedContact, manualPhone, useManualInstruction, selectedTemplateId]);
 
   const handleSelectContact = (c: UnifiedContact) => {
     setSelectedContact(c);
@@ -245,10 +332,30 @@ export default function WhatsAppOutbound() {
     setSubmitting(true);
     try {
       const agentLabel = selectedAgent?.agentName || "agente";
-      const defaultInstruction = `Invia un messaggio WhatsApp a ${contactName} seguendo il template e le istruzioni di ${agentLabel}`;
+
+      let additionalContext: any = null;
+      let aiInstruction = "";
+
+      if (selectedTemplate && !useManualInstruction) {
+        aiInstruction = `Invia il template WhatsApp "${selectedTemplate.templateName}" a ${contactName}`;
+        additionalContext = {
+          use_wa_template: true,
+          wa_template_name: selectedTemplate.templateName,
+          wa_template_sid: selectedTemplate.templateId,
+          wa_template_body: templateBody,
+          wa_template_filled: previewMessage,
+          wa_template_variables: templateVariables,
+          ...(customContext.trim() ? { custom_context: customContext.trim() } : {}),
+        };
+      } else {
+        aiInstruction = form.ai_instruction.trim() || `Invia un messaggio WhatsApp a ${contactName} seguendo le istruzioni di ${agentLabel}`;
+        if (form.ai_instruction.trim()) {
+          additionalContext = form.ai_instruction.trim();
+        }
+      }
 
       const body: Record<string, any> = {
-        ai_instruction: defaultInstruction,
+        ai_instruction: aiInstruction,
         task_category: form.task_category,
         priority: form.priority,
         contact_name: contactName,
@@ -257,7 +364,7 @@ export default function WhatsAppOutbound() {
         tone: form.tone,
         urgency: form.urgency,
         scheduled_datetime: form.scheduled_datetime || new Date().toISOString(),
-        additional_context: form.ai_instruction.trim() || null,
+        additional_context: additionalContext ? (typeof additionalContext === "string" ? additionalContext : JSON.stringify(additionalContext)) : null,
         agent_config_id: form.agent_config_id,
         language: "it",
       };
@@ -270,12 +377,16 @@ export default function WhatsAppOutbound() {
       });
 
       if (res.ok) {
-        toast({ title: "Task WhatsApp creato", description: `Messaggio per ${contactName} programmato con successo` });
+        toast({ title: "Invio programmato", description: `Messaggio per ${contactName} programmato con successo` });
         setForm(initialForm);
         setContactSearch("");
         setSelectedContact(null);
         setManualName("");
         setManualPhone("");
+        setSelectedTemplateId("");
+        setTemplateVariables({});
+        setUseManualInstruction(false);
+        setCustomContext("");
       } else {
         const err = await res.json().catch(() => ({}));
         toast({ title: "Errore", description: err.error || "Impossibile creare il task", variant: "destructive" });
@@ -284,6 +395,29 @@ export default function WhatsAppOutbound() {
       toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
     }
     setSubmitting(false);
+  };
+
+  const getVariableLabel = (key: string): string => {
+    const labels: Record<string, string> = {
+      "1": "Nome lead",
+      "2": "Nome consulente",
+      "3": "Nome azienda",
+      "4": "Settore",
+      "5": "Link",
+      "nome_lead": "Nome lead",
+      "nome": "Nome",
+      "nome_consulente": "Nome consulente",
+      "mio_nome": "Il tuo nome",
+      "nome_azienda": "Nome azienda",
+      "azienda": "Azienda",
+      "uncino": "Uncino/Hook",
+      "settore": "Settore",
+      "booking_date": "Data appuntamento",
+      "booking_time": "Ora appuntamento",
+      "booking_meet_link": "Link meeting",
+      "booking_client_name": "Nome cliente",
+    };
+    return labels[key] || `Variabile ${key}`;
   };
 
   return (
@@ -307,6 +441,9 @@ export default function WhatsAppOutbound() {
               <Bot className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               Dipendente WhatsApp *
             </Label>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              Scegli quale agente WhatsApp invierà il messaggio
+            </p>
             {loadingAgents ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground p-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -350,6 +487,9 @@ export default function WhatsAppOutbound() {
               <User className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               Destinatario *
             </Label>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              A chi vuoi inviare il messaggio
+            </p>
             <Tabs value={contactMode} onValueChange={(v) => { setContactMode(v as any); handleClearContact(); setManualName(""); setManualPhone(""); }}>
               <TabsList className="grid grid-cols-2 h-9 w-full">
                 <TabsTrigger value="rubrica" className="text-xs gap-1.5">
@@ -494,128 +634,169 @@ export default function WhatsAppOutbound() {
             </Tabs>
           </div>
 
+          {form.agent_config_id && (
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2 text-sm font-medium">
+                <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                Template messaggio
+              </Label>
+              <p className="text-[11px] text-muted-foreground -mt-2">
+                Seleziona un template approvato per il messaggio oppure scrivi istruzioni manuali
+              </p>
+
+              {loadingTemplates ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 rounded-lg bg-muted/30">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Caricamento template...
+                </div>
+              ) : templates.length === 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2.5 border border-amber-200 dark:border-amber-800/50">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-xs">Nessun template assegnato</p>
+                      <p className="text-[11px] mt-0.5 opacity-80">
+                        Questo agente non ha template WhatsApp approvati. Puoi scrivere istruzioni manuali per l'AI.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {!useManualInstruction && (
+                    <Select value={selectedTemplateId} onValueChange={(v) => { setSelectedTemplateId(v); setUseManualInstruction(false); }}>
+                      <SelectTrigger className="border-emerald-200 dark:border-emerald-800/50">
+                        <SelectValue placeholder="Scegli un template..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map((t) => (
+                          <SelectItem key={t.templateId} value={t.templateId}>
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-3.5 w-3.5 text-emerald-500" />
+                              <div className="flex flex-col">
+                                <span className="font-medium">{t.templateName}</span>
+                                {t.body && (
+                                  <span className="text-[10px] text-muted-foreground line-clamp-1 max-w-[300px]">
+                                    {t.body.substring(0, 80)}{t.body.length > 80 ? "..." : ""}
+                                  </span>
+                                )}
+                              </div>
+                              {t.isTwilioTemplate && (
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 border-green-300 text-green-600 dark:border-green-700 dark:text-green-400 ml-auto">
+                                  Twilio
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <button
+                    onClick={() => { setUseManualInstruction(!useManualInstruction); if (!useManualInstruction) setSelectedTemplateId(""); }}
+                    className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                  >
+                    {useManualInstruction ? "← Usa un template" : "Scrivi istruzioni manuali invece"}
+                  </button>
+                </div>
+              )}
+
+              {selectedTemplate && !useManualInstruction && extractedVariables.length > 0 && (
+                <div className="space-y-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Compila le variabili del template
+                  </Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {extractedVariables.map((v) => (
+                      <div key={v} className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">
+                          {/^\d+$/.test(v) ? `{{${v}}}` : `{${v}}`} — {getVariableLabel(v)}
+                        </Label>
+                        <Input
+                          placeholder={getVariableLabel(v)}
+                          value={templateVariables[v] || ""}
+                          onChange={(e) => setTemplateVariables((prev) => ({ ...prev, [v]: e.target.value }))}
+                          className="border-emerald-200 dark:border-emerald-800/50 focus-visible:ring-emerald-500 h-8 text-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedTemplate && !useManualInstruction && previewMessage && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <Eye className="h-3 w-3" />
+                    Anteprima messaggio
+                  </Label>
+                  <div className="bg-[#e7ffdb] dark:bg-[#005c4b] rounded-lg rounded-tr-none p-3 max-w-sm ml-auto shadow-sm border border-green-200 dark:border-green-900/50">
+                    <p className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap leading-relaxed">
+                      {previewMessage}
+                    </p>
+                    <div className="flex justify-end mt-1">
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                        {new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedTemplate && !useManualInstruction && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <Pencil className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    Contesto personalizzato
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground -mt-1">
+                    Aggiungi note sul lead o istruzioni extra per l'AI (opzionale)
+                  </p>
+                  <Textarea
+                    placeholder="Es: Il lead ha già mostrato interesse per il corso avanzato. Conosce già il nostro brand tramite Instagram. Chiamalo per nome, tono informale..."
+                    value={customContext}
+                    onChange={(e) => setCustomContext(e.target.value)}
+                    rows={3}
+                    className="border-emerald-200 dark:border-emerald-800/50 focus-visible:ring-emerald-500 resize-none"
+                  />
+                </div>
+              )}
+
+              {(useManualInstruction || templates.length === 0) && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    Istruzioni per l'AI
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground -mt-1">
+                    Descrivi cosa deve dire il messaggio. L'AI genererà il testo.
+                  </p>
+                  <Textarea
+                    placeholder="Es: Il lead ha già parlato con noi 2 settimane fa ed era interessato al percorso premium. Budget circa 500€/mese. Tono amichevole, chiamalo per nome..."
+                    value={form.ai_instruction}
+                    onChange={(e) => setForm((prev) => ({ ...prev, ai_instruction: e.target.value }))}
+                    rows={3}
+                    className="border-emerald-200 dark:border-emerald-800/50 focus-visible:ring-emerald-500 resize-none"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-sm font-medium">
-              <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              Istruzioni aggiuntive e contesto
+              <Clock className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              Data e ora di invio
             </Label>
             <p className="text-[11px] text-muted-foreground -mt-1">
-              Queste informazioni vengono aggiunte al system prompt dell'agente. Segui attentamente o tieni a memoria.
+              Lascia vuoto per inviare il prima possibile
             </p>
-            <Textarea
-              placeholder="Es: Il lead ha già parlato con noi 2 settimane fa ed era interessato al percorso premium. Budget circa 500€/mese. Tono amichevole, chiamalo per nome..."
-              value={form.ai_instruction}
-              onChange={(e) => setForm((prev) => ({ ...prev, ai_instruction: e.target.value }))}
-              rows={3}
-              className="border-emerald-200 dark:border-emerald-800/50 focus-visible:ring-emerald-500 resize-none"
+            <Input
+              type="datetime-local"
+              value={form.scheduled_datetime}
+              onChange={(e) => setForm((prev) => ({ ...prev, scheduled_datetime: e.target.value }))}
+              className="border-emerald-200 dark:border-emerald-800/50"
             />
-          </div>
-
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2 text-sm font-medium">
-              <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              Suggerimenti rapidi
-            </Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {QUICK_TEMPLATES.map((tpl, i) => (
-                <button
-                  key={i}
-                  onClick={() => setForm((prev) => ({ ...prev, ai_instruction: tpl.text }))}
-                  className={cn(
-                    "flex items-center gap-2.5 p-2.5 rounded-lg border border-border text-left text-sm transition-all",
-                    "hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 group"
-                  )}
-                >
-                  <span className="text-base shrink-0">{tpl.icon}</span>
-                  <div>
-                    <div className="font-medium text-xs group-hover:text-emerald-700 dark:group-hover:text-emerald-400">{tpl.label}</div>
-                    <div className="text-[11px] text-muted-foreground line-clamp-1">{tpl.text}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Urgenza</Label>
-              <div className="flex gap-2">
-                {URGENCY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setForm((prev) => ({ ...prev, urgency: opt.value }))}
-                    className={cn(
-                      "flex-1 py-1.5 px-2 rounded-lg border text-xs font-medium transition-all text-center",
-                      form.urgency === opt.value ? opt.color : "border-border text-muted-foreground hover:border-emerald-300"
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Tono</Label>
-              <Select value={form.tone} onValueChange={(v) => setForm((prev) => ({ ...prev, tone: v }))}>
-                <SelectTrigger className="border-emerald-200 dark:border-emerald-800/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TONE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Categoria</Label>
-              <Select value={form.task_category} onValueChange={(v) => setForm((prev) => ({ ...prev, task_category: v }))}>
-                <SelectTrigger className="border-emerald-200 dark:border-emerald-800/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2 text-sm font-medium">
-                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                Data/Ora programmata
-              </Label>
-              <Input
-                type="datetime-local"
-                value={form.scheduled_datetime}
-                onChange={(e) => setForm((prev) => ({ ...prev, scheduled_datetime: e.target.value }))}
-                className="border-emerald-200 dark:border-emerald-800/50"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Priorità</Label>
-            <div className="flex gap-2">
-              {PRIORITY_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setForm((prev) => ({ ...prev, priority: opt.value }))}
-                  className={cn(
-                    "flex-1 py-2 px-2 rounded-lg border text-xs font-medium transition-all text-center",
-                    form.priority === opt.value
-                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/30"
-                      : "border-border text-muted-foreground hover:border-emerald-300"
-                  )}
-                >
-                  <div className={cn("h-1.5 w-1.5 rounded-full mx-auto mb-1", opt.color)} />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
           </div>
 
           <Button
@@ -626,12 +807,12 @@ export default function WhatsAppOutbound() {
             {submitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Creazione in corso...
+                Programmazione in corso...
               </>
             ) : (
               <>
                 <Send className="h-4 w-4" />
-                Invia Task WhatsApp
+                Programma invio
               </>
             )}
           </Button>

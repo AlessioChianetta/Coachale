@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, User, MessageSquare, Sparkles, Building2, Tag, TrendingUp } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, User, MessageSquare, Sparkles, Building2, Tag, TrendingUp, Pencil, X, CalendarPlus, Phone, Loader2, Trash2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
@@ -11,7 +12,7 @@ import type { AITask } from "../autonomy/types";
 
 const DAY_LABELS = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"];
 const DAY_SHORT = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 8);
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string; badge: string }> = {
   waiting_approval: {
@@ -71,11 +72,213 @@ function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+const EDITABLE_STATUSES = new Set(["waiting_approval", "scheduled", "draft", "paused", "approved"]);
+
+function TaskActionBar({ task, onRefetch, toast }: { task: AITask; onRefetch: () => Promise<void>; toast: any }) {
+  const [editMode, setEditMode] = useState<"time" | "phone" | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  const canEdit = EDITABLE_STATUSES.has(task.status);
+  if (!canEdit) return null;
+
+  const handleReschedule = async () => {
+    if (!editValue) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/reschedule`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduled_at: new Date(editValue).toISOString() }),
+      });
+      if (res.ok) {
+        toast({ title: "Orario aggiornato", description: "Il messaggio verrà inviato al nuovo orario" });
+        setEditMode(null);
+        await onRefetch();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "Errore", description: err.error || "Impossibile riprogrammare", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  const handleEditPhone = async () => {
+    if (!editValue || editValue.trim().length < 8) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/edit`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ contact_phone: editValue.trim() }),
+      });
+      if (res.ok) {
+        toast({ title: "Numero aggiornato", description: `Nuovo numero: ${editValue.trim()}` });
+        setEditMode(null);
+        await onRefetch();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "Errore", description: err.error || "Impossibile aggiornare", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  const handlePostpone = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/postpone`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        toast({ title: "Posticipato", description: "Messaggio posticipato di 24 ore" });
+        await onRefetch();
+      } else {
+        toast({ title: "Errore", description: "Impossibile posticipare", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  const handleCancel = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/cancel`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        toast({ title: "Cancellato", description: "Il messaggio è stato cancellato" });
+        setConfirmCancel(false);
+        await onRefetch();
+      } else {
+        toast({ title: "Errore", description: "Impossibile cancellare", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="border-t border-border/50 p-3 space-y-2 bg-muted/20">
+      {editMode === "time" && (
+        <div className="flex items-center gap-2">
+          <Input
+            type="datetime-local"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className="h-8 text-xs flex-1"
+          />
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={handleReschedule} disabled={saving || !editValue}>
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 text-emerald-600" />}
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setEditMode(null)}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+      {editMode === "phone" && (
+        <div className="flex items-center gap-2">
+          <Input
+            type="tel"
+            placeholder="+39 333 1234567"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className="h-8 text-xs flex-1"
+          />
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={handleEditPhone} disabled={saving || editValue.trim().length < 8}>
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 text-emerald-600" />}
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setEditMode(null)}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+      {confirmCancel && (
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30">
+          <span className="text-xs text-red-700 dark:text-red-400 flex-1">Cancellare questo messaggio?</span>
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30" onClick={handleCancel} disabled={saving}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+            Conferma
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setConfirmCancel(false)}>
+            No
+          </Button>
+        </div>
+      )}
+      {!editMode && !confirmCancel && (
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-[11px] gap-1 flex-1"
+            onClick={() => { setEditMode("time"); setEditValue(task.scheduled_at ? new Date(task.scheduled_at).toISOString().slice(0, 16) : ""); }}
+          >
+            <Clock className="h-3 w-3" />
+            Orario
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-[11px] gap-1 flex-1"
+            onClick={() => { setEditMode("phone"); setEditValue(task.contact_phone || ""); }}
+          >
+            <Phone className="h-3 w-3" />
+            Numero
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-[11px] gap-1 flex-1"
+            onClick={handlePostpone}
+            disabled={saving}
+          >
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarPlus className="h-3 w-3" />}
+            +24h
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-[11px] gap-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-800/30"
+            onClick={() => setConfirmCancel(true)}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function WhatsAppCalendar() {
   const { toast } = useToast();
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [tasks, setTasks] = useState<AITask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+  const hasScrolledRef = useRef(false);
+
+  const refetchTasks = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/ai-autonomy/tasks?limit=100&status=all&include_hunter=true`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Errore");
+      const data = await res.json();
+      const whatsappTasks = data.tasks.filter((t: AITask) => t.preferred_channel === "whatsapp");
+      setTasks(whatsappTasks);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,7 +304,17 @@ export default function WhatsAppCalendar() {
     };
     fetchTasks();
     return () => { cancelled = true; };
-  }, [weekStart]);
+  }, [weekStart, refreshKey]);
+
+  useEffect(() => {
+    if (!loading && gridScrollRef.current && !hasScrolledRef.current) {
+      hasScrolledRef.current = true;
+      const now = new Date();
+      const targetHour = Math.max(0, now.getHours() - 1);
+      const rowHeight = 48;
+      gridScrollRef.current.scrollTop = targetHour * rowHeight;
+    }
+  }, [loading]);
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -119,7 +332,6 @@ export default function WhatsAppCalendar() {
       const dayIdx = weekDays.findIndex((wd) => isSameDay(wd, dt));
       if (dayIdx === -1) return;
       const hour = dt.getHours();
-      if (hour < 8 || hour > 19) return;
       const key = `${dayIdx}-${hour}`;
       if (!map[key]) map[key] = [];
       map[key].push(task);
@@ -197,7 +409,7 @@ export default function WhatsAppCalendar() {
       ) : (
         <div className="overflow-x-auto">
           <div className="min-w-[800px]">
-            <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border">
+            <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border sticky top-0 z-10 bg-card">
               <div className="p-2" />
               {weekDays.map((day, idx) => {
                 const isToday = isSameDay(day, today);
@@ -227,6 +439,7 @@ export default function WhatsAppCalendar() {
               })}
             </div>
 
+            <div ref={gridScrollRef} className="max-h-[600px] overflow-y-auto">
             {HOURS.map((hour) => (
               <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/50" style={{ minHeight: "48px" }}>
                 <div className="p-1 flex items-start justify-end pr-2 border-r border-border/50">
@@ -441,6 +654,7 @@ export default function WhatsAppCalendar() {
                                   );
                                 })()}
                               </div>
+                              <TaskActionBar task={task} onRefetch={refetchTasks} toast={toast} />
                             </PopoverContent>
                           </Popover>
                         );
@@ -450,6 +664,7 @@ export default function WhatsAppCalendar() {
                 })}
               </div>
             ))}
+            </div>
           </div>
         </div>
       )}

@@ -4529,17 +4529,44 @@ router.patch("/tasks/:id/edit", authenticateToken, requireAnyRole(["consultant",
     }
 
     const { id } = req.params;
-    const { ai_instruction, additional_context } = req.body || {};
+    const { ai_instruction, additional_context, contact_phone, contact_name } = req.body || {};
 
-    if (!ai_instruction || typeof ai_instruction !== "string" || !ai_instruction.trim()) {
-      return res.status(400).json({ error: "ai_instruction is required" });
+    if (!ai_instruction && !contact_phone && !contact_name) {
+      return res.status(400).json({ error: "Almeno un campo da modificare è richiesto (ai_instruction, contact_phone, contact_name)" });
     }
+
+    const updates: any = {};
+    if (ai_instruction && typeof ai_instruction === "string" && ai_instruction.trim()) {
+      updates.ai_instruction = ai_instruction.trim();
+    }
+    if (additional_context !== undefined) {
+      updates.additional_context = additional_context?.trim() || null;
+    }
+    if (contact_phone && typeof contact_phone === "string" && contact_phone.trim()) {
+      const phone = contact_phone.trim().replace(/\s+/g, '');
+      if (phone.length < 8) {
+        return res.status(400).json({ error: "Numero di telefono non valido (troppo corto)" });
+      }
+      updates.contact_phone = phone;
+    }
+    if (contact_name && typeof contact_name === "string" && contact_name.trim()) {
+      updates.contact_name = contact_name.trim();
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "Nessun campo valido da modificare" });
+    }
+
+    const sqlParts = [];
+    if (updates.ai_instruction !== undefined) sqlParts.push(sql`ai_instruction = ${updates.ai_instruction}`);
+    if (updates.additional_context !== undefined) sqlParts.push(sql`additional_context = ${updates.additional_context}`);
+    if (updates.contact_phone !== undefined) sqlParts.push(sql`contact_phone = ${updates.contact_phone}`);
+    if (updates.contact_name !== undefined) sqlParts.push(sql`contact_name = ${updates.contact_name}`);
+    sqlParts.push(sql`updated_at = NOW()`);
 
     const result = await db.execute(sql`
       UPDATE ai_scheduled_tasks
-      SET ai_instruction = ${ai_instruction.trim()},
-          additional_context = ${additional_context?.trim() || null},
-          updated_at = NOW()
+      SET ${sql.join(sqlParts, sql`, `)}
       WHERE id = ${id}
         AND consultant_id = ${consultantId}
         AND status IN ('scheduled', 'draft', 'waiting_approval', 'paused', 'approved')
