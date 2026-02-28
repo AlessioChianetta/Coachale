@@ -92,6 +92,8 @@ import {
   Target,
   TrendingUp,
   Filter,
+  MailOpen,
+  Maximize2,
 } from "lucide-react";
 import { Link } from "wouter";
 import Navbar from "@/components/navbar";
@@ -140,7 +142,8 @@ interface Email {
   fromEmail: string;
   fromName?: string;
   toEmail: string;
-  toRecipients?: string[];
+  toRecipients?: any[];
+  ccRecipients?: any[];
   direction?: "inbound" | "outbound";
   folder?: string;
   subject: string;
@@ -1129,6 +1132,42 @@ export default function ConsultantEmailHub() {
     setSelectedEmail(null);
   };
 
+  const currentEmailIndex = selectedEmail ? filteredEmails.findIndex(e => e.id === selectedEmail.id) : -1;
+
+  const handleNavigateEmail = (direction: "prev" | "next") => {
+    if (currentEmailIndex < 0) return;
+    const newIndex = direction === "prev" ? currentEmailIndex - 1 : currentEmailIndex + 1;
+    if (newIndex >= 0 && newIndex < filteredEmails.length) {
+      const nextEmail = filteredEmails[newIndex];
+      setSelectedEmail(nextEmail);
+      if (!nextEmail.isRead) markAsReadMutation.mutate(nextEmail.id);
+      const neededPage = Math.floor(newIndex / ITEMS_PER_PAGE) + 1;
+      if (neededPage !== currentPage) setCurrentPage(neededPage);
+    }
+  };
+
+  const markAsUnreadMutation = useMutation({
+    mutationFn: async (emailId: string) => {
+      const response = await fetch(`/api/email-hub/emails/${emailId}/read`, {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ read: false }),
+      });
+      if (!response.ok) throw new Error("Failed to mark as unread");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
+    },
+  });
+
+  const handleMarkUnreadAndBack = () => {
+    if (selectedEmail) {
+      markAsUnreadMutation.mutate(selectedEmail.id);
+      handleBackToList();
+    }
+  };
+
   const handleFolderClick = (folder: FolderType, accountId?: string | null) => {
     setSelectedFolder(folder);
     setSelectedAccountId(accountId || null);
@@ -1175,16 +1214,34 @@ export default function ConsultantEmailHub() {
     return colors[index];
   };
 
+  const extractRecipient = (r: any): string => {
+    if (!r) return "";
+    if (typeof r === "string") return r;
+    if (typeof r === "object" && r.email) return r.name ? `${r.name} <${r.email}>` : r.email;
+    return String(r);
+  };
+
+  const extractRecipientShort = (r: any): string => {
+    if (!r) return "";
+    if (typeof r === "string") return r;
+    if (typeof r === "object" && r.email) return r.name || r.email;
+    return String(r);
+  };
+
+  const formatRecipientsList = (recipients: any[] | undefined, fallback?: string): string => {
+    if (!recipients || recipients.length === 0) return fallback || "";
+    return recipients.map(r => extractRecipient(r)).filter(Boolean).join(", ");
+  };
+
+  const formatSenderFull = (email: Email): string => {
+    if (email.fromName && email.fromEmail) return `${email.fromName} <${email.fromEmail}>`;
+    return email.fromEmail || email.fromName || "?";
+  };
+
   const getEmailDisplayName = (email: Email) => {
-    const extractRecipient = (r: any): string => {
-      if (!r) return "";
-      if (typeof r === "string") return r;
-      if (typeof r === "object" && r.email) return r.name || r.email;
-      return String(r);
-    };
     if (email.direction === "outbound") {
       if (typeof email.toEmail === "string" && email.toEmail) return email.toEmail;
-      if (Array.isArray(email.toRecipients) && email.toRecipients.length > 0) return extractRecipient(email.toRecipients[0]);
+      if (Array.isArray(email.toRecipients) && email.toRecipients.length > 0) return extractRecipientShort(email.toRecipients[0]);
       return email.fromEmail || "?";
     }
     return email.fromName || email.fromEmail || "?";
@@ -2171,22 +2228,41 @@ export default function ConsultantEmailHub() {
         <>
           <div className="p-4 border-b border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedEmail(null)}>
+              <div className="flex items-center gap-2 min-w-0">
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setSelectedEmail(null)}>
                   <X className="h-4 w-4" />
                 </Button>
                 <h3 className="font-medium text-sm truncate">{selectedEmail.subject || "(Nessun oggetto)"}</h3>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                onClick={() => { handleEmailClick(selectedEmail); }}
+                title="Apri vista completa"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </Button>
             </div>
             
             <div className="flex items-start gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${getAvatarColor(selectedEmail.fromName || selectedEmail.fromEmail)}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shrink-0 ${getAvatarColor(selectedEmail.fromName || selectedEmail.fromEmail)}`}>
                 {(selectedEmail.fromName || selectedEmail.fromEmail).charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm">{selectedEmail.fromName || selectedEmail.fromEmail}</p>
-                <p className="text-xs text-slate-500">A: {typeof selectedEmail.toEmail === "string" ? selectedEmail.toEmail : getEmailDisplayName(selectedEmail)}</p>
-                <p className="text-xs text-slate-400">
+                <p className="font-medium text-sm text-slate-900 dark:text-white">{selectedEmail.fromName || selectedEmail.fromEmail}</p>
+                {selectedEmail.fromName && selectedEmail.fromEmail && selectedEmail.fromName !== selectedEmail.fromEmail && (
+                  <p className="text-[11px] text-slate-400 truncate">{selectedEmail.fromEmail}</p>
+                )}
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                  <span className="text-slate-400">A:</span> {formatRecipientsList(selectedEmail.toRecipients, typeof selectedEmail.toEmail === "string" ? selectedEmail.toEmail : "")}
+                </p>
+                {selectedEmail.ccRecipients && selectedEmail.ccRecipients.length > 0 && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    <span className="text-slate-400">CC:</span> {formatRecipientsList(selectedEmail.ccRecipients)}
+                  </p>
+                )}
+                <p className="text-[11px] text-slate-400 mt-1">
                   {format(new Date(selectedEmail.receivedAt), "dd MMMM yyyy, HH:mm")}
                 </p>
               </div>
@@ -2237,52 +2313,52 @@ export default function ConsultantEmailHub() {
             </div>
           </ScrollArea>
           
-          <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex gap-2 flex-wrap">
+          <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex gap-1.5 flex-wrap">
             <Button 
               size="sm" 
               variant="outline" 
-              className="gap-1"
+              className="gap-1 text-xs h-8"
               onClick={() => {
                 setComposerReplyTo(selectedEmail);
                 setComposerReplyAll(false);
                 setShowComposer(true);
               }}
             >
-              <Reply className="h-4 w-4" />
+              <Reply className="h-3.5 w-3.5" />
               Rispondi
             </Button>
             <Button 
               size="sm" 
               variant="outline" 
-              className="gap-1"
+              className="gap-1 text-xs h-8"
               onClick={() => {
                 setComposerReplyTo(selectedEmail);
                 setComposerReplyAll(true);
                 setShowComposer(true);
               }}
             >
-              <Users className="h-4 w-4" />
-              Rispondi a tutti
+              <Users className="h-3.5 w-3.5" />
+              Tutti
             </Button>
             <Button 
               size="sm" 
-              className="gap-1 bg-violet-600 hover:bg-violet-700"
+              className="gap-1 text-xs h-8 bg-violet-600 hover:bg-violet-700"
               onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)}
               disabled={generateAIResponseMutation.isPending}
             >
               {generateAIResponseMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Sparkles className="h-4 w-4" />
+                <Sparkles className="h-3.5 w-3.5" />
               )}
-              Millie Genera Bozza
+              Millie
             </Button>
-            <Button size="sm" variant="outline" className="gap-1">
-              <Forward className="h-4 w-4" />
+            <Button size="sm" variant="outline" className="gap-1 text-xs h-8">
+              <Forward className="h-3.5 w-3.5" />
               Inoltra
             </Button>
-            <Button size="sm" variant="outline" className="gap-1 text-destructive hover:text-destructive ml-auto">
-              <Trash2 className="h-4 w-4" />
+            <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:text-destructive ml-auto">
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
         </>
@@ -2303,14 +2379,14 @@ export default function ConsultantEmailHub() {
     const isCollapsed = collapsedThreadMessages.has(msg.id);
     const isOutbound = msg.direction === "outbound";
     const senderName = isOutbound ? (selectedAccount?.displayName || selectedAccount?.emailAddress || "Tu") : (msg.fromName || msg.fromEmail);
-    const toDisplay = isOutbound
-      ? (typeof msg.toEmail === "string" ? msg.toEmail : getEmailDisplayName(msg))
-      : (typeof selectedAccount?.emailAddress === "string" ? selectedAccount.emailAddress : "me");
+    const senderEmail = isOutbound ? (selectedAccount?.emailAddress || "") : msg.fromEmail;
+    const toList = formatRecipientsList(msg.toRecipients, typeof msg.toEmail === "string" ? msg.toEmail : "");
+    const ccList = formatRecipientsList(msg.ccRecipients);
 
     return (
       <div key={msg.id} className={`border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden ${isLast ? "shadow-sm" : ""}`}>
         <div
-          className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 ${isCollapsed ? "" : "border-b border-slate-100 dark:border-slate-800"}`}
+          className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 ${isCollapsed ? "" : "border-b border-slate-100 dark:border-slate-800"}`}
           onClick={() => {
             setCollapsedThreadMessages(prev => {
               const next = new Set(prev);
@@ -2320,27 +2396,54 @@ export default function ConsultantEmailHub() {
             });
           }}
         >
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 ${isOutbound ? "bg-violet-500" : getAvatarColor(senderName)}`}>
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 mt-0.5 ${isOutbound ? "bg-violet-500" : getAvatarColor(senderName)}`}>
             {isOutbound ? <Send className="h-3.5 w-3.5" /> : senderName.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm text-slate-900 dark:text-white truncate">{senderName}</span>
-              {isOutbound && <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">Inviata</Badge>}
+              {senderEmail && senderName !== senderEmail && (
+                <span className="text-[11px] text-slate-400 truncate hidden sm:inline">&lt;{senderEmail}&gt;</span>
+              )}
+              {isOutbound && <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 shrink-0">Inviata</Badge>}
             </div>
-            {isCollapsed && (
-              <p className="text-xs text-slate-500 truncate mt-0.5">{msg.snippet || msg.bodyText?.substring(0, 100) || ""}</p>
+            {isCollapsed ? (
+              <p className="text-xs text-slate-500 truncate mt-0.5">{msg.snippet || msg.bodyText?.substring(0, 120) || ""}</p>
+            ) : (
+              <div className="mt-0.5 space-y-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                  <span className="text-slate-400">A:</span> {toList || "me"}
+                </p>
+                {ccList && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    <span className="text-slate-400">CC:</span> {ccList}
+                  </p>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[11px] text-slate-400">{format(new Date(msg.receivedAt), "dd MMM, HH:mm")}</span>
+            <span className="text-[11px] text-slate-400 whitespace-nowrap">{format(new Date(msg.receivedAt), "dd MMM, HH:mm")}</span>
+            {!isCollapsed && (
+              <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-slate-600" onClick={() => { setComposerReplyTo(msg); setComposerReplyAll(false); setShowComposer(true); }}>
+                  <Reply className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-slate-600" onClick={() => { setComposerReplyTo(msg); setComposerReplyAll(true); setShowComposer(true); }}>
+                  <Users className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-slate-600">
+                  <Forward className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
             {isCollapsed ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronUp className="h-3.5 w-3.5 text-slate-400" />}
           </div>
         </div>
         {!isCollapsed && (
           <div className="px-4 py-4 sm:px-6">
-            <div className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-              A: {toDisplay}
+            <div className="text-[11px] text-slate-400 dark:text-slate-500 mb-3">
+              {format(new Date(msg.receivedAt), "dd MMMM yyyy, HH:mm")}
             </div>
             <div 
               className="prose prose-sm dark:prose-invert max-w-none
@@ -2366,36 +2469,51 @@ export default function ConsultantEmailHub() {
     <div className="flex-1 bg-white dark:bg-slate-950 flex flex-col h-full">
       {selectedEmail ? (
         <>
-          <div className="px-4 pt-3 pb-2 border-b border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-3">
+          <div className="px-3 pt-2.5 pb-2 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2">
               <Button 
                 variant="ghost" 
-                size="sm" 
-                className="gap-1.5 shrink-0" 
+                size="icon"
+                className="h-8 w-8 shrink-0" 
                 onClick={handleBackToList}
               >
                 <ChevronLeft className="h-4 w-4" />
-                Indietro
               </Button>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <Button size="icon" variant="ghost" className="h-7 w-7" disabled={currentEmailIndex <= 0} onClick={() => handleNavigateEmail("prev")}>
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" disabled={currentEmailIndex < 0 || currentEmailIndex >= filteredEmails.length - 1} onClick={() => handleNavigateEmail("next")}>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+                {currentEmailIndex >= 0 && (
+                  <span className="text-[11px] text-slate-400 ml-1 whitespace-nowrap">{currentEmailIndex + 1} di {filteredEmails.length}</span>
+                )}
+              </div>
+
               <div className="flex-1" />
-              <div className="flex items-center gap-1.5">
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => { setComposerReplyTo(selectedEmail); setComposerReplyAll(false); setShowComposer(true); }}>
+
+              <div className="flex items-center gap-1">
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => { setComposerReplyTo(selectedEmail); setComposerReplyAll(false); setShowComposer(true); }}>
                   <Reply className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Rispondi</span>
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => { setComposerReplyTo(selectedEmail); setComposerReplyAll(true); setShowComposer(true); }}>
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => { setComposerReplyTo(selectedEmail); setComposerReplyAll(true); setShowComposer(true); }}>
                   <Users className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Tutti</span>
                 </Button>
-                <Button size="sm" className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700" onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)} disabled={generateAIResponseMutation.isPending}>
+                <Button size="sm" className="gap-1.5 text-xs h-8 bg-violet-600 hover:bg-violet-700" onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)} disabled={generateAIResponseMutation.isPending}>
                   {generateAIResponseMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                   <span className="hidden sm:inline">Millie</span>
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs"><Forward className="h-3.5 w-3.5" /><span className="hidden sm:inline">Inoltra</span></Button>
-                <Button size="sm" variant="outline" onClick={() => toggleStarMutation.mutate(selectedEmail.id)}>
+                <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => toggleStarMutation.mutate(selectedEmail.id)}>
                   {selectedEmail.isStarred ? <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /> : <Star className="h-3.5 w-3.5" />}
                 </Button>
-                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleMarkUnreadAndBack} title="Segna come non letto e torna alla lista">
+                  <MailOpen className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
           </div>

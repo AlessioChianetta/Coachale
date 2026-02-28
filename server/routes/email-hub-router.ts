@@ -1182,10 +1182,11 @@ router.put("/emails/:id/read", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
     const emailId = req.params.id;
+    const markAsRead = req.body?.read !== false;
     
     const [updated] = await db
       .update(schema.hubEmails)
-      .set({ isRead: true, updatedAt: new Date() })
+      .set({ isRead: markAsRead, updatedAt: new Date() })
       .where(
         and(
           eq(schema.hubEmails.id, emailId),
