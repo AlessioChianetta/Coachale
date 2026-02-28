@@ -1612,18 +1612,31 @@ export async function classifyAndGenerateDraft(
   const accountEmail = account?.emailAddress || null;
 
   let threadHistory: Array<{ fromEmail: string; bodyText?: string | null }> = [];
-  if (email.threadId) {
+  const contactEmail = email.fromEmail.toLowerCase().trim();
+  {
     const threadEmails = await db
-      .select({ fromEmail: schema.hubEmails.fromEmail, bodyText: schema.hubEmails.bodyText })
+      .select({
+        fromEmail: schema.hubEmails.fromEmail,
+        bodyText: schema.hubEmails.bodyText,
+        direction: schema.hubEmails.direction,
+      })
       .from(schema.hubEmails)
       .where(and(
-        eq(schema.hubEmails.threadId, email.threadId),
         eq(schema.hubEmails.consultantId, consultantId),
-        sql`${schema.hubEmails.id} != ${emailId}`
+        eq(schema.hubEmails.accountId, email.accountId),
+        sql`${schema.hubEmails.id} != ${emailId}`,
+        sql`(
+          LOWER(${schema.hubEmails.fromEmail}) = ${contactEmail}
+          OR (
+            ${schema.hubEmails.direction} = 'outbound'
+            AND ${schema.hubEmails.toRecipients}::text ILIKE ${'%' + contactEmail + '%'}
+          )
+        )`
       ))
       .orderBy(sql`COALESCE(${schema.hubEmails.receivedAt}, ${schema.hubEmails.sentAt}, ${schema.hubEmails.createdAt}) DESC`)
       .limit(5);
     threadHistory = threadEmails;
+    console.log(`[MILLIE-THREAD] Storico per ${contactEmail}: trovate ${threadEmails.length} email bidirezionali (account: ${email.accountId})`);
   }
 
   const smartSkip = detectSmartSkip({

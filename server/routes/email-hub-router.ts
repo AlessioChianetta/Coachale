@@ -1008,7 +1008,7 @@ router.post("/accounts/:id/test", async (req: AuthRequest, res) => {
 router.get("/inbox", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const { accountId, status, starred, unread, folder, direction, limit = "50", offset = "0" } = req.query;
+    const { accountId, status, starred, unread, folder, direction, limit = "200", offset = "0" } = req.query;
     
     const conditions = [eq(schema.hubEmails.consultantId, consultantId)];
     
@@ -1090,7 +1090,12 @@ router.get("/inbox", async (req: AuthRequest, res) => {
       };
     });
     
-    res.json({ success: true, data: emailsWithClientInfo, count: emails.length });
+    const [{ totalCount }] = await db
+      .select({ totalCount: sql<number>`count(*)::int` })
+      .from(schema.hubEmails)
+      .where(and(...conditions));
+
+    res.json({ success: true, data: emailsWithClientInfo, count: emails.length, totalCount });
   } catch (error: any) {
     console.error("[EMAIL-HUB] Error fetching inbox:", error);
     res.status(500).json({ success: false, error: error.message });

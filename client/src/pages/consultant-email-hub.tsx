@@ -386,13 +386,13 @@ export default function ConsultantEmailHub() {
 
   const buildInboxQueryParams = () => {
     const params = new URLSearchParams();
+    params.set("limit", "200");
     if (inboxFilter.accountId) params.set("accountId", inboxFilter.accountId);
     if (inboxFilter.readStatus === "unread") params.set("unread", "true");
     if (inboxFilter.readStatus === "read") params.set("read", "true");
     if (inboxFilter.starred) params.set("starred", "true");
     if (inboxFilter.processingStatus) params.set("status", inboxFilter.processingStatus);
     
-    // Add folder filtering based on selectedFolder
     if (selectedFolder === "inbox") {
       params.set("folder", "inbox");
     } else if (selectedFolder === "sent") {
@@ -404,7 +404,6 @@ export default function ConsultantEmailHub() {
     } else if (selectedFolder === "starred") {
       params.set("starred", "true");
     }
-    // ai-drafts is handled separately by a different query
     
     return params.toString();
   };
@@ -422,6 +421,7 @@ export default function ConsultantEmailHub() {
   });
 
   const emails: Email[] = inboxData?.data || [];
+  const inboxTotalCount: number = inboxData?.totalCount || emails.length;
 
   const { data: pendingDraftsData, isLoading: isLoadingDrafts, refetch: refetchDrafts } = useQuery({
     queryKey: ["/api/email-hub/ai-drafts/pending"],
@@ -1907,7 +1907,7 @@ export default function ConsultantEmailHub() {
           </Select>
           
           <div className="ml-auto flex items-center gap-1 text-xs text-slate-500">
-            <span>{filteredEmails.length > 0 ? `${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, filteredEmails.length)}` : "0"} di {filteredEmails.length}</span>
+            <span>{filteredEmails.length > 0 ? `${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, filteredEmails.length)}` : "0"} di {filteredEmails.length}{inboxTotalCount > filteredEmails.length ? ` (${inboxTotalCount} totali)` : ""}</span>
             <Button
               variant="ghost"
               size="icon"
