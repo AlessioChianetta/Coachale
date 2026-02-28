@@ -1042,7 +1042,7 @@ router.get("/inbox", async (req: AuthRequest, res) => {
       .select()
       .from(schema.hubEmails)
       .where(and(...conditions))
-      .orderBy(desc(schema.hubEmails.receivedAt))
+      .orderBy(desc(sql`COALESCE(${schema.hubEmails.receivedAt}, ${schema.hubEmails.sentAt}, ${schema.hubEmails.createdAt})`))
       .limit(parseInt(limit as string, 10))
       .offset(parseInt(offset as string, 10));
     
@@ -1079,11 +1079,14 @@ router.get("/inbox", async (req: AuthRequest, res) => {
       }
     }
     
-    // Attach client info to each email
-    const emailsWithClientInfo = emails.map(email => ({
-      ...email,
-      senderClient: email.fromEmail ? clientsMap[email.fromEmail.toLowerCase()] || null : null,
-    }));
+    const emailsWithClientInfo = emails.map(email => {
+      const toRecips = (email.toRecipients as string[]) || [];
+      return {
+        ...email,
+        toEmail: toRecips[0] || "",
+        senderClient: email.fromEmail ? clientsMap[email.fromEmail.toLowerCase()] || null : null,
+      };
+    });
     
     res.json({ success: true, data: emailsWithClientInfo, count: emails.length });
   } catch (error: any) {
@@ -1111,7 +1114,8 @@ router.get("/emails/:id", async (req: AuthRequest, res) => {
       return res.status(404).json({ success: false, error: "Email not found" });
     }
     
-    res.json({ success: true, data: email });
+    const toRecips = (email.toRecipients as string[]) || [];
+    res.json({ success: true, data: { ...email, toEmail: toRecips[0] || "" } });
   } catch (error: any) {
     console.error("[EMAIL-HUB] Error fetching email:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -1263,6 +1267,7 @@ router.post("/compose", async (req: AuthRequest, res) => {
         direction: "outbound",
         folder: "sent",
         isRead: true,
+        receivedAt: new Date(),
         sentAt: new Date(),
         processingStatus: "sent",
       })
@@ -1391,6 +1396,7 @@ router.post("/reply", async (req: AuthRequest, res) => {
         direction: "outbound",
         folder: "sent",
         isRead: true,
+        receivedAt: new Date(),
         sentAt: new Date(),
         processingStatus: "sent",
       })

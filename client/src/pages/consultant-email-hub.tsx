@@ -140,6 +140,8 @@ interface Email {
   fromEmail: string;
   fromName?: string;
   toEmail: string;
+  toRecipients?: string[];
+  direction?: "inbound" | "outbound";
   subject: string;
   snippet?: string;
   bodyHtml?: string;
@@ -147,7 +149,7 @@ interface Email {
   receivedAt: string;
   isRead: boolean;
   isStarred: boolean;
-  processingStatus: "new" | "processing" | "classified" | "draft_generated" | "sent" | "needs_review" | "ignored";
+  processingStatus: "new" | "processing" | "classified" | "draft_generated" | "sent" | "needs_review" | "ignored" | "processed";
   urgency?: "low" | "medium" | "high" | "urgent";
   classification?: string;
   hasAttachments?: boolean;
@@ -1962,14 +1964,17 @@ export default function ConsultantEmailHub() {
                   onClick={(e) => e.stopPropagation()}
                 />
                 
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium shrink-0 ${getAvatarColor(email.fromName || email.fromEmail)}`}>
-                  {(email.fromName || email.fromEmail).charAt(0).toUpperCase()}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium shrink-0 ${getAvatarColor(email.direction === "outbound" ? (email.toEmail || email.fromEmail) : (email.fromName || email.fromEmail))}`}>
+                  {(email.direction === "outbound" ? (email.toEmail || email.fromEmail) : (email.fromName || email.fromEmail)).charAt(0).toUpperCase()}
                 </div>
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
+                    {email.direction === "outbound" && (
+                      <span className="text-xs text-slate-400 mr-0.5">A:</span>
+                    )}
                     <span className={`text-sm truncate ${!email.isRead ? "font-semibold text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>
-                      {email.fromName || email.fromEmail}
+                      {email.direction === "outbound" ? (email.toEmail || email.fromEmail) : (email.fromName || email.fromEmail)}
                     </span>
                     {email.processingStatus === "draft_generated" && (
                       <Badge className="h-5 px-1.5 text-xs bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300">
