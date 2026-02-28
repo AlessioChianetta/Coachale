@@ -2367,6 +2367,15 @@ export default function ConsultantLeadScraper() {
                         <h3 className="text-base font-bold text-gray-900 dark:text-white">Coda Outreach</h3>
                         <p className="text-xs text-muted-foreground">{filteredTasks.length} attivi di {allTasks.length} totali{waitingCount > 0 ? ` — ${waitingCount} da approvare` : ""}</p>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg"
+                        onClick={() => refetchPipeline()}
+                        title="Aggiorna coda"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
                     </div>
                     {waitingCount > 0 && (
                       <Button
