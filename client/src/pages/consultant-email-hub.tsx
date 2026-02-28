@@ -827,7 +827,11 @@ export default function ConsultantEmailHub() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-drafts/pending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
-      toast({ title: "Inviato", description: "Email inviata con successo" });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-stats"] });
+      if (selectedEmail) {
+        queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmail.id, "ai-responses"] });
+      }
+      toast({ title: "Inviata!", description: "Email inviata con successo" });
     },
     onError: (error: any) => {
       toast({ title: "Errore invio", description: error.message, variant: "destructive" });
@@ -857,7 +861,7 @@ export default function ConsultantEmailHub() {
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/inbox"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/ai-stats"] });
       if (selectedEmail) {
-        queryClient.invalidateQueries({ queryKey: [`/api/email-hub/emails/${selectedEmail.id}/ai-responses`] });
+        queryClient.invalidateQueries({ queryKey: ["/api/email-hub/emails", selectedEmail.id, "ai-responses"] });
       }
       toast({ title: "Inviata!", description: "Bozza approvata e email inviata con successo" });
     },
@@ -2881,10 +2885,43 @@ export default function ConsultantEmailHub() {
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="space-y-3">
                         <p className="text-sm whitespace-pre-wrap">
                           {resp.draftBodyText || resp.draftBodyHtml}
                         </p>
+                        {resp.status === "draft" && (
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5"
+                              onClick={() => approveAndSendMutation.mutate(resp.id)}
+                              disabled={approveAndSendMutation.isPending}
+                            >
+                              {approveAndSendMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                              Approva e Invia
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => {
+                              setEditingDraft(resp);
+                              setEditedDraftContent(resp.draftBodyText || resp.draftBodyHtml || "");
+                            }}>
+                              <Edit className="h-3.5 w-3.5 mr-1" />
+                              Modifica
+                            </Button>
+                          </div>
+                        )}
+                        {(resp.status === "approved" || resp.status === "edited") && (
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                              onClick={() => sendDraftMutation.mutate(resp.id)}
+                              disabled={sendDraftMutation.isPending}
+                            >
+                              {sendDraftMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                              Invia Ora
+                            </Button>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
