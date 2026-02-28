@@ -17,8 +17,8 @@ export async function ensureProactiveLead(params: EnsureProactiveLeadParams): Pr
   const LOG = '📋 [ENSURE-LEAD]';
   const { consultantId, phoneNumber, contactName, email, source, agentConfigId, leadInfo, consultantNotes, status = 'contacted' } = params;
 
-  if (!phoneNumber || phoneNumber.length < 5) {
-    console.log(`${LOG} Skipping — invalid phone: "${phoneNumber}"`);
+  if (!phoneNumber || phoneNumber.trim().length === 0) {
+    console.log(`${LOG} Skipping — empty phone`);
     return { id: '', created: false };
   }
 

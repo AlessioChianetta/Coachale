@@ -10005,7 +10005,22 @@ ${compactFeedback}
             activeVoiceCalls.delete(voiceCallId);
             
             console.log(`📞 [${connectionId}] Voice call ${voiceCallId} completed - Duration: ${durationSeconds}s`);
-            
+
+            if (phoneCallerId && consultantId) {
+              try {
+                const { ensureProactiveLead } = await import('../utils/ensure-proactive-lead');
+                const callSource = phoneScheduledCallId ? 'voice_outbound' : 'voice_inbound';
+                await ensureProactiveLead({
+                  consultantId,
+                  phoneNumber: phoneCallerId,
+                  source: callSource,
+                  status: 'contacted',
+                });
+              } catch (epErr: any) {
+                console.error(`[${connectionId}] ensureProactiveLead error (non-blocking):`, epErr.message);
+              }
+            }
+
             // 🔗 SYNC: Update scheduled_voice_call if this was a scheduled outbound call
             if (phoneScheduledCallId) {
               try {

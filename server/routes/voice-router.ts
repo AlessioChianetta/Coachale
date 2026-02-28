@@ -2978,6 +2978,18 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
         }
       }
       
+      try {
+        const { ensureProactiveLead } = await import('../utils/ensure-proactive-lead');
+        await ensureProactiveLead({
+          consultantId,
+          phoneNumber: call.target_phone,
+          source: 'voice_outbound',
+          status: 'contacted',
+        });
+      } catch (epErr: any) {
+        console.error(`[Callback] ensureProactiveLead error (non-blocking):`, epErr.message);
+      }
+
       console.log(`✅ [Callback] Call ${callId} completed successfully (duration: ${duration_seconds}s)`);
       return res.json({ success: true, message: 'Call marked as completed' });
     }
