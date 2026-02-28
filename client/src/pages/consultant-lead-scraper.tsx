@@ -2934,21 +2934,27 @@ export default function ConsultantLeadScraper() {
             </Card>
 
             {/* SEZIONE 4 — Configurazione (collapsible) */}
-            <Card className="rounded-2xl border shadow-sm overflow-hidden">
+            <Card className="rounded-2xl border shadow-sm overflow-hidden relative">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 to-purple-600" />
               <button
                 onClick={() => setHunterConfigOpen(!hunterConfigOpen)}
-                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                    <Cog className="h-4.5 w-4.5 text-gray-500 dark:text-gray-400" />
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/40 dark:to-purple-900/40 flex items-center justify-center shadow-sm">
+                    <Cog className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-gray-900 dark:text-white">Configurazione Hunter</h3>
-                    <p className="text-xs text-muted-foreground">Limiti, canali, stile e account</p>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-gray-900 dark:text-white">Configurazione Hunter</h3>
+                      {outreachConfig.enabled && (
+                        <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 text-[10px] px-2 py-0.5 rounded-full">Attivo</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Limiti, orari, canali, stile, follow-up e account</p>
                   </div>
                 </div>
-                <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", hunterConfigOpen && "rotate-180")} />
+                <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform duration-200", hunterConfigOpen && "rotate-180")} />
               </button>
               {hunterConfigOpen && (
                 <motion.div
@@ -2957,724 +2963,876 @@ export default function ConsultantLeadScraper() {
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <CardContent className="pt-0 pb-6 space-y-8 border-t">
-                    <div className="pt-5">
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <div className="h-7 w-7 rounded-lg bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
-                          <Target className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-                        </div>
+                  <CardContent className="pt-0 pb-6 border-t">
+                    <Tabs defaultValue="limiti" className="w-full pt-4">
+                      <TabsList className="bg-muted/40 rounded-full p-0.5 h-auto mb-5 flex-wrap">
+                        <TabsTrigger value="limiti" className="text-xs h-8 rounded-full px-3.5 data-[state=active]:shadow-sm gap-1.5">
+                          <Target className="h-3.5 w-3.5" />
+                          Limiti & Soglie
+                        </TabsTrigger>
+                        <TabsTrigger value="orari" className="text-xs h-8 rounded-full px-3.5 data-[state=active]:shadow-sm gap-1.5">
+                          <Clock className="h-3.5 w-3.5" />
+                          Orari & Canali
+                        </TabsTrigger>
+                        <TabsTrigger value="account" className="text-xs h-8 rounded-full px-3.5 data-[state=active]:shadow-sm gap-1.5">
+                          <Users className="h-3.5 w-3.5" />
+                          Account
+                        </TabsTrigger>
+                        <TabsTrigger value="stile" className="text-xs h-8 rounded-full px-3.5 data-[state=active]:shadow-sm gap-1.5">
+                          <PenLine className="h-3.5 w-3.5" />
+                          Stile & Messaggi
+                        </TabsTrigger>
+                        <TabsTrigger value="followup" className="text-xs h-8 rounded-full px-3.5 data-[state=active]:shadow-sm gap-1.5">
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          Follow-up
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="limiti" className="mt-0 space-y-6">
                         <div>
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Limiti giornalieri</h4>
-                          <p className="text-xs text-muted-foreground">Quanti contatti per canale al giorno</p>
+                          <div className="flex items-center gap-2.5 mb-4">
+                            <div className="h-7 w-7 rounded-lg bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
+                              <Target className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-gray-900 dark:text-white">Limiti giornalieri</h4>
+                              <p className="text-xs text-muted-foreground">Quanti contatti per canale al giorno</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span>Lead per analisi CRM</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.max_leads_per_batch || 15}</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.max_leads_per_batch || 15]} min={5} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("max_leads_per_batch", v)} />
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span>Ricerche Hunter / giorno</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.max_searches_per_day}</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.max_searches_per_day]} min={1} max={20} step={1} onValueChange={([v]) => updateOutreachConfig("max_searches_per_day", v)} />
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-green-50/50 dark:bg-green-950/20 border border-green-200/80 dark:border-green-800/50 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span className="flex items-center gap-1.5"><PhoneCall className="h-3.5 w-3.5 text-green-600" />Chiamate / giorno</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.max_calls_per_day}</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.max_calls_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_calls_per_day", v)} />
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/50 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span className="flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-emerald-600" />WhatsApp / giorno</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.max_whatsapp_per_day}</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.max_whatsapp_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_whatsapp_per_day", v)} />
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-800/50 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span className="flex items-center gap-1.5"><MailIcon className="h-3.5 w-3.5 text-blue-600" />Email / giorno</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.max_emails_per_day}</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.max_emails_per_day]} min={1} max={100} step={1} onValueChange={([v]) => updateOutreachConfig("max_emails_per_day", v)} />
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span className="flex items-center gap-1.5"><Target className="h-3.5 w-3.5 text-amber-600" />Score minimo AI</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.score_threshold}/100</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.score_threshold]} min={30} max={90} step={5} onValueChange={([v]) => updateOutreachConfig("score_threshold", v)} />
+                              <p className="text-xs text-muted-foreground">Solo lead con score superiore verranno contattati</p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium flex items-center justify-between">
-                            <span>Lead per analisi CRM</span>
-                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_leads_per_batch || 15}</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.max_leads_per_batch || 15]} min={5} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("max_leads_per_batch", v)} />
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium flex items-center justify-between">
-                            <span>Ricerche Hunter / giorno</span>
-                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_searches_per_day}</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.max_searches_per_day]} min={1} max={20} step={1} onValueChange={([v]) => updateOutreachConfig("max_searches_per_day", v)} />
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-green-50/50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/50">
-                          <Label className="text-sm font-medium flex items-center justify-between">
-                            <span className="flex items-center gap-1.5"><PhoneCall className="h-3.5 w-3.5 text-green-600" />Chiamate / giorno</span>
-                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_calls_per_day}</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.max_calls_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_calls_per_day", v)} />
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50">
-                          <Label className="text-sm font-medium flex items-center justify-between">
-                            <span className="flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-emerald-600" />WhatsApp / giorno</span>
-                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_whatsapp_per_day}</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.max_whatsapp_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_whatsapp_per_day", v)} />
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50">
-                          <Label className="text-sm font-medium flex items-center justify-between">
-                            <span className="flex items-center gap-1.5"><MailIcon className="h-3.5 w-3.5 text-blue-600" />Email / giorno</span>
-                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_emails_per_day}</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.max_emails_per_day]} min={1} max={100} step={1} onValueChange={([v]) => updateOutreachConfig("max_emails_per_day", v)} />
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
-                          <Label className="text-sm font-medium flex items-center justify-between">
-                            <span className="flex items-center gap-1.5"><Target className="h-3.5 w-3.5 text-amber-600" />Score minimo AI</span>
-                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.score_threshold}/100</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.score_threshold]} min={30} max={90} step={5} onValueChange={([v]) => updateOutreachConfig("score_threshold", v)} />
-                          <p className="text-xs text-muted-foreground">Solo lead con score superiore verranno contattati</p>
-                        </div>
-                      </div>
-                    </div>
 
-                    <Separator />
+                        <Separator />
 
-                    <div>
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <div className="h-7 w-7 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
-                          <Filter className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
-                        </div>
                         <div>
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Tempi e tentativi</h4>
-                          <p className="text-xs text-muted-foreground">Cooldown tra contatti e limiti tentativi</p>
+                          <div className="flex items-center gap-2.5 mb-4">
+                            <div className="h-7 w-7 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
+                              <Filter className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-gray-900 dark:text-white">Tempi e tentativi</h4>
+                              <p className="text-xs text-muted-foreground">Cooldown tra contatti e limiti tentativi</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span>Cooldown tra contatti</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.cooldown_hours}h</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.cooldown_hours]} min={12} max={168} step={12} onValueChange={([v]) => updateOutreachConfig("cooldown_hours", v)} />
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span>Attesa lead nuovo</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.cooldown_new_hours || 24}h</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.cooldown_new_hours || 24]} min={1} max={72} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_new_hours", v)} />
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span>Ricontattare lead contattato</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.cooldown_contacted_days || 5}g</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.cooldown_contacted_days || 5]} min={1} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_contacted_days", v)} />
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span>Ricontattare lead in trattativa</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.cooldown_negotiation_days || 7}g</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.cooldown_negotiation_days || 7]} min={1} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_negotiation_days", v)} />
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span>Max tentativi per lead</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.max_attempts_per_lead || 3}</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.max_attempts_per_lead || 3]} min={1} max={10} step={1} onValueChange={([v]) => updateOutreachConfig("max_attempts_per_lead", v)} />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium flex items-center justify-between">
-                            <span>Cooldown tra contatti</span>
-                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.cooldown_hours}h</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.cooldown_hours]} min={12} max={168} step={12} onValueChange={([v]) => updateOutreachConfig("cooldown_hours", v)} />
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium flex items-center justify-between">
-                            <span>Attesa lead nuovo</span>
-                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.cooldown_new_hours || 24}h</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.cooldown_new_hours || 24]} min={1} max={72} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_new_hours", v)} />
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium flex items-center justify-between">
-                            <span>Ricontattare lead contattato</span>
-                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.cooldown_contacted_days || 5}g</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.cooldown_contacted_days || 5]} min={1} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_contacted_days", v)} />
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium flex items-center justify-between">
-                            <span>Ricontattare lead in trattativa</span>
-                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.cooldown_negotiation_days || 7}g</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.cooldown_negotiation_days || 7]} min={1} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_negotiation_days", v)} />
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium flex items-center justify-between">
-                            <span>Max tentativi per lead</span>
-                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_attempts_per_lead || 3}</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.max_attempts_per_lead || 3]} min={1} max={10} step={1} onValueChange={([v]) => updateOutreachConfig("max_attempts_per_lead", v)} />
-                        </div>
-                      </div>
-                    </div>
+                      </TabsContent>
 
-                    <Separator />
-
-                    <div>
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <div className="h-7 w-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
-                          <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-                        </div>
+                      <TabsContent value="orari" className="mt-0 space-y-6">
                         <div>
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Giorni e orari operativi</h4>
-                          <p className="text-xs text-muted-foreground">Quando Hunter può contattare i lead</p>
-                        </div>
-                      </div>
-
-                      <div className="mb-5 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/30 dark:bg-indigo-950/10">
-                        <Label className="text-sm font-semibold flex items-center gap-2 mb-3">
-                          <Calendar className="h-4 w-4 text-indigo-600" />
-                          Giorni operativi
-                        </Label>
-                        <p className="text-xs text-muted-foreground mb-3">Seleziona i giorni in cui Hunter può effettuare l'outreach</p>
-                        <div className="flex flex-wrap gap-2">
-                          {[
-                            { key: 1, label: 'Lun', full: 'Lunedì' },
-                            { key: 2, label: 'Mar', full: 'Martedì' },
-                            { key: 3, label: 'Mer', full: 'Mercoledì' },
-                            { key: 4, label: 'Gio', full: 'Giovedì' },
-                            { key: 5, label: 'Ven', full: 'Venerdì' },
-                            { key: 6, label: 'Sab', full: 'Sabato' },
-                            { key: 0, label: 'Dom', full: 'Domenica' },
-                          ].map(day => {
-                            const operatingDays: number[] = outreachConfig.operating_days ?? [1, 2, 3, 4, 5];
-                            const isActive = operatingDays.includes(day.key);
-                            const isWeekend = day.key === 0 || day.key === 6;
-                            return (
-                              <button
-                                key={day.key}
-                                type="button"
-                                title={day.full}
-                                onClick={() => {
-                                  const current: number[] = outreachConfig.operating_days ?? [1, 2, 3, 4, 5];
-                                  const updated = isActive
-                                    ? current.filter(d => d !== day.key)
-                                    : [...current, day.key].sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b));
-                                  if (updated.length === 0) return;
-                                  updateOutreachConfig("operating_days", updated);
-                                }}
-                                className={`relative px-3.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 border ${
-                                  isActive
-                                    ? isWeekend
-                                      ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600 text-amber-800 dark:text-amber-300 shadow-sm'
-                                      : 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-600 text-indigo-800 dark:text-indigo-300 shadow-sm'
-                                    : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'
-                                }`}
-                              >
-                                {day.label}
-                                {isActive && (
-                                  <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${isWeekend ? 'bg-amber-500' : 'bg-indigo-500'}`} />
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {(outreachConfig.operating_days ?? [1, 2, 3, 4, 5]).length < 5 && (
-                          <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            Hunter opererà solo nei giorni selezionati ({(outreachConfig.operating_days ?? [1, 2, 3, 4, 5]).length} giorni/settimana)
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <div className="space-y-3 p-4 rounded-xl border border-green-200 dark:border-green-800/50 bg-green-50/30 dark:bg-green-950/10">
-                          <Label className="text-sm font-semibold flex items-center gap-2">
-                            <PhoneCall className="h-4 w-4 text-green-600" />
-                            Chiamate
-                          </Label>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-muted-foreground">Dalle</Label>
-                              <Select value={outreachConfig.voice_start_hour || "09:00"} onValueChange={(v) => updateOutreachConfig("voice_start_hour", v)}>
-                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 15 }, (_, i) => i + 7).map(h => (
-                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                          <div className="flex items-center gap-2.5 mb-4">
+                            <div className="h-7 w-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                              <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                             </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-muted-foreground">Alle</Label>
-                              <Select value={outreachConfig.voice_end_hour || "19:00"} onValueChange={(v) => updateOutreachConfig("voice_end_hour", v)}>
-                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 15 }, (_, i) => i + 8).map(h => (
-                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                            <div>
+                              <h4 className="text-sm font-bold text-gray-900 dark:text-white">Giorni e orari operativi</h4>
+                              <p className="text-xs text-muted-foreground">Quando Hunter può contattare i lead</p>
                             </div>
                           </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Intervallo tra chiamate</Label>
-                            <div className="flex items-center gap-2">
-                              <Slider value={[outreachConfig.voice_interval_minutes || 30]} min={10} max={120} step={5} onValueChange={([v]) => updateOutreachConfig("voice_interval_minutes", v)} className="flex-1" />
-                              <Badge variant="outline" className="text-xs font-bold shrink-0">{outreachConfig.voice_interval_minutes || 30} min</Badge>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="space-y-3 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-950/10">
-                          <Label className="text-sm font-semibold flex items-center gap-2">
-                            <MessageCircle className="h-4 w-4 text-emerald-600" />
-                            WhatsApp
-                          </Label>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-muted-foreground">Dalle</Label>
-                              <Select value={outreachConfig.whatsapp_start_hour || "09:00"} onValueChange={(v) => updateOutreachConfig("whatsapp_start_hour", v)}>
-                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 15 }, (_, i) => i + 7).map(h => (
-                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-muted-foreground">Alle</Label>
-                              <Select value={outreachConfig.whatsapp_end_hour || "20:00"} onValueChange={(v) => updateOutreachConfig("whatsapp_end_hour", v)}>
-                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 15 }, (_, i) => i + 8).map(h => (
-                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Intervallo tra messaggi</Label>
-                            <div className="flex items-center gap-2">
-                              <Slider value={[outreachConfig.whatsapp_interval_minutes || 5]} min={2} max={60} step={1} onValueChange={([v]) => updateOutreachConfig("whatsapp_interval_minutes", v)} className="flex-1" />
-                              <Badge variant="outline" className="text-xs font-bold shrink-0">{outreachConfig.whatsapp_interval_minutes || 5} min</Badge>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="space-y-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800/50 bg-blue-50/30 dark:bg-blue-950/10">
-                          <Label className="text-sm font-semibold flex items-center gap-2">
-                            <MailIcon className="h-4 w-4 text-blue-600" />
-                            Email
-                          </Label>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-muted-foreground">Dalle</Label>
-                              <Select value={outreachConfig.email_start_hour || "08:00"} onValueChange={(v) => updateOutreachConfig("email_start_hour", v)}>
-                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 15 }, (_, i) => i + 7).map(h => (
-                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-muted-foreground">Alle</Label>
-                              <Select value={outreachConfig.email_end_hour || "20:00"} onValueChange={(v) => updateOutreachConfig("email_end_hour", v)}>
-                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 15 }, (_, i) => i + 8).map(h => (
-                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Intervallo tra email</Label>
-                            <div className="flex items-center gap-2">
-                              <Slider value={[outreachConfig.email_interval_minutes || 10]} min={2} max={60} step={1} onValueChange={([v]) => updateOutreachConfig("email_interval_minutes", v)} className="flex-1" />
-                              <Badge variant="outline" className="text-xs font-bold shrink-0">{outreachConfig.email_interval_minutes || 10} min</Badge>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
 
-                    <Separator />
-
-                    <div>
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <div className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
-                          <Route className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Strategia canale</h4>
-                          <p className="text-xs text-muted-foreground">Quale canale usare per primo e per i lead migliori</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium">Canale primo contatto</Label>
-                          <Select value={outreachConfig.first_contact_channel || "auto"} onValueChange={(v) => updateOutreachConfig("first_contact_channel", v)}>
-                            <SelectTrigger className="w-full h-10 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="auto">Automatico (Hunter sceglie)</SelectItem>
-                              <SelectItem value="voice">Chiamata</SelectItem>
-                              <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                              <SelectItem value="email">Email</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-muted-foreground">Per il primo contatto con lead nuovi</p>
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium">Canale per lead ad alto score (&gt;80)</Label>
-                          <Select value={outreachConfig.high_score_channel || "voice"} onValueChange={(v) => updateOutreachConfig("high_score_channel", v)}>
-                            <SelectTrigger className="w-full h-10 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="voice">Chiamata</SelectItem>
-                              <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                              <SelectItem value="email">Email</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-muted-foreground">Hunter preferirà questo canale per i lead migliori</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div>
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <div className="h-7 w-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
-                          <PenLine className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Stile comunicazione</h4>
-                          <p className="text-xs text-muted-foreground">Tono, stile e firma dei messaggi</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium">Stile di comunicazione</Label>
-                          <Select value={outreachConfig.communication_style || "professionale"} onValueChange={(v) => updateOutreachConfig("communication_style", v)}>
-                            <SelectTrigger className="w-full h-10 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="formale">Formale</SelectItem>
-                              <SelectItem value="professionale">Professionale</SelectItem>
-                              <SelectItem value="informale">Informale</SelectItem>
-                              <SelectItem value="amichevole">Amichevole</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium">Opening hook</Label>
-                          <Input
-                            value={outreachConfig.opening_hook || ""}
-                            onChange={(e) => updateOutreachConfig("opening_hook", e.target.value)}
-                            placeholder="Es: Ho notato che la vostra azienda..."
-                            className="h-10 text-sm"
-                          />
-                          <p className="text-xs text-muted-foreground">Frase di apertura personalizzata</p>
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium">Istruzioni personalizzate</Label>
-                          <Textarea
-                            value={outreachConfig.custom_instructions || ""}
-                            onChange={(e) => updateOutreachConfig("custom_instructions", e.target.value)}
-                            placeholder="Es: Non usare 'sinergia', menziona il Sistema Orbitale, sii diretto..."
-                            className="text-sm min-h-[90px] resize-y"
-                          />
-                        </div>
-                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
-                          <Label className="text-sm font-medium">Firma email</Label>
-                          <Textarea
-                            value={outreachConfig.email_signature || ""}
-                            onChange={(e) => updateOutreachConfig("email_signature", e.target.value)}
-                            placeholder={"Nome Cognome\nTitolo | Azienda\nTel: +39...\nwww.sito.it"}
-                            className="text-sm min-h-[90px] resize-y"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div>
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <div className="h-7 w-7 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
-                          <Users className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Account e dipendenti</h4>
-                          <p className="text-xs text-muted-foreground">Strumenti che Hunter usa per contattare i lead</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <div className="space-y-3 p-4 rounded-xl border border-green-200 dark:border-green-800/50 bg-green-50/30 dark:bg-green-950/10">
-                          <Label className="text-sm font-semibold flex items-center gap-2">
-                            <PhoneCall className="h-4 w-4 text-green-600" />
-                            Chiamate
-                          </Label>
-                          <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">Template outbound</Label>
-                            <Select value={outreachConfig.voice_template_id || "none"} onValueChange={(v) => updateOutreachConfig("voice_template_id", v === "none" ? "" : v)}>
-                              <SelectTrigger className="w-full h-10 text-sm">
-                                <SelectValue placeholder="Seleziona template voce" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Predefinito (Hunter sceglie)</SelectItem>
-                                {voiceTemplateOptions.map((t) => (
-                                  <SelectItem key={t.id} value={t.id}>{t.name} — {t.description}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">Istruzione chiamata</Label>
-                            <Textarea
-                              value={outreachConfig.call_instruction_template || ""}
-                              onChange={(e) => updateOutreachConfig("call_instruction_template", e.target.value)}
-                              placeholder="Es: Presentarsi come partner tecnologico..."
-                              className="text-sm min-h-[70px] resize-y"
-                              rows={3}
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-3 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-950/10">
-                          <Label className="text-sm font-semibold flex items-center gap-2">
-                            <MessageCircle className="h-4 w-4 text-emerald-600" />
-                            WhatsApp
-                          </Label>
-                          <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">Dipendente WhatsApp</Label>
-                            <Select value={outreachConfig.whatsapp_config_id || "none"} onValueChange={(v) => updateOutreachConfig("whatsapp_config_id", v === "none" ? "" : v)}>
-                              <SelectTrigger className="w-full h-10 text-sm">
-                                <SelectValue placeholder="Seleziona dipendente WA" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Nessuno (disabilita WA)</SelectItem>
-                                {proactiveWaConfigs.map((c) => (
-                                  <SelectItem key={c.id} value={c.id}>{c.name} ({c.phoneNumber})</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {proactiveWaConfigs.length === 0 && <p className="text-xs text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>}
+                          <div className="mb-5 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/30 dark:bg-indigo-950/10">
+                            <Label className="text-sm font-semibold flex items-center gap-2 mb-3">
+                              <Calendar className="h-4 w-4 text-indigo-600" />
+                              Giorni operativi
+                            </Label>
+                            <p className="text-xs text-muted-foreground mb-3">Seleziona i giorni in cui Hunter può effettuare l'outreach</p>
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                { key: 1, label: 'Lun', full: 'Lunedì' },
+                                { key: 2, label: 'Mar', full: 'Martedì' },
+                                { key: 3, label: 'Mer', full: 'Mercoledì' },
+                                { key: 4, label: 'Gio', full: 'Giovedì' },
+                                { key: 5, label: 'Ven', full: 'Venerdì' },
+                                { key: 6, label: 'Sab', full: 'Sabato' },
+                                { key: 0, label: 'Dom', full: 'Domenica' },
+                              ].map(day => {
+                                const operatingDays: number[] = outreachConfig.operating_days ?? [1, 2, 3, 4, 5];
+                                const isActive = operatingDays.includes(day.key);
+                                const isWeekend = day.key === 0 || day.key === 6;
+                                return (
+                                  <button
+                                    key={day.key}
+                                    type="button"
+                                    title={day.full}
+                                    onClick={() => {
+                                      const current: number[] = outreachConfig.operating_days ?? [1, 2, 3, 4, 5];
+                                      const updated = isActive
+                                        ? current.filter(d => d !== day.key)
+                                        : [...current, day.key].sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b));
+                                      if (updated.length === 0) return;
+                                      updateOutreachConfig("operating_days", updated);
+                                    }}
+                                    className={`relative px-3.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 border ${
+                                      isActive
+                                        ? isWeekend
+                                          ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600 text-amber-800 dark:text-amber-300 shadow-sm'
+                                          : 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-600 text-indigo-800 dark:text-indigo-300 shadow-sm'
+                                        : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'
+                                    }`}
+                                  >
+                                    {day.label}
+                                    {isActive && (
+                                      <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${isWeekend ? 'bg-amber-500' : 'bg-indigo-500'}`} />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {(outreachConfig.operating_days ?? [1, 2, 3, 4, 5]).length < 5 && (
+                              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                Hunter opererà solo nei giorni selezionati ({(outreachConfig.operating_days ?? [1, 2, 3, 4, 5]).length} giorni/settimana)
+                              </p>
+                            )}
                           </div>
 
-                          <div className="space-y-2 pt-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-xs text-muted-foreground font-medium">Template WhatsApp</Label>
-                              {hunterSelectedTemplateIds.length > 0 && (
-                                <Badge className="bg-emerald-500 text-white text-xs px-2.5 py-0.5">
-                                  {hunterSelectedTemplateIds.length} selezionati
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Template che Hunter userà per l'outreach WhatsApp.
-                            </p>
-
-                            {hunterTemplatesLoading ? (
-                              <div className="flex items-center justify-center py-4">
-                                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-3 p-4 rounded-xl border border-green-200 dark:border-green-800/50 bg-green-50/30 dark:bg-green-950/10 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <PhoneCall className="h-4 w-4 text-green-600" />
+                                Chiamate
+                              </Label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Dalle</Label>
+                                  <Select value={outreachConfig.voice_start_hour || "09:00"} onValueChange={(v) => updateOutreachConfig("voice_start_hour", v)}>
+                                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {Array.from({ length: 15 }, (_, i) => i + 7).map(h => (
+                                        <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Alle</Label>
+                                  <Select value={outreachConfig.voice_end_hour || "19:00"} onValueChange={(v) => updateOutreachConfig("voice_end_hour", v)}>
+                                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {Array.from({ length: 15 }, (_, i) => i + 8).map(h => (
+                                        <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
                               </div>
-                            ) : hunterWaTemplates.length === 0 ? (
-                              <div className="text-center py-4 text-gray-500">
-                                <MessageCircle className="h-6 w-6 mx-auto mb-1.5 text-gray-300" />
-                                <p className="text-[10px]">Nessun template WhatsApp approvato trovato</p>
-                                <p className="text-[9px] text-gray-400 mt-0.5">
-                                  Configura i template nella sezione WhatsApp Templates
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Intervallo tra chiamate</Label>
+                                <div className="flex items-center gap-2">
+                                  <Slider value={[outreachConfig.voice_interval_minutes || 30]} min={10} max={120} step={5} onValueChange={([v]) => updateOutreachConfig("voice_interval_minutes", v)} className="flex-1" />
+                                  <Badge variant="outline" className="text-xs font-bold shrink-0">{outreachConfig.voice_interval_minutes || 30} min</Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="space-y-3 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-950/10 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <MessageCircle className="h-4 w-4 text-emerald-600" />
+                                WhatsApp
+                              </Label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Dalle</Label>
+                                  <Select value={outreachConfig.whatsapp_start_hour || "09:00"} onValueChange={(v) => updateOutreachConfig("whatsapp_start_hour", v)}>
+                                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {Array.from({ length: 15 }, (_, i) => i + 7).map(h => (
+                                        <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Alle</Label>
+                                  <Select value={outreachConfig.whatsapp_end_hour || "20:00"} onValueChange={(v) => updateOutreachConfig("whatsapp_end_hour", v)}>
+                                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {Array.from({ length: 15 }, (_, i) => i + 8).map(h => (
+                                        <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Intervallo tra messaggi</Label>
+                                <div className="flex items-center gap-2">
+                                  <Slider value={[outreachConfig.whatsapp_interval_minutes || 5]} min={2} max={60} step={1} onValueChange={([v]) => updateOutreachConfig("whatsapp_interval_minutes", v)} className="flex-1" />
+                                  <Badge variant="outline" className="text-xs font-bold shrink-0">{outreachConfig.whatsapp_interval_minutes || 5} min</Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="space-y-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800/50 bg-blue-50/30 dark:bg-blue-950/10 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <MailIcon className="h-4 w-4 text-blue-600" />
+                                Email
+                              </Label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Dalle</Label>
+                                  <Select value={outreachConfig.email_start_hour || "08:00"} onValueChange={(v) => updateOutreachConfig("email_start_hour", v)}>
+                                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {Array.from({ length: 15 }, (_, i) => i + 7).map(h => (
+                                        <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Alle</Label>
+                                  <Select value={outreachConfig.email_end_hour || "20:00"} onValueChange={(v) => updateOutreachConfig("email_end_hour", v)}>
+                                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {Array.from({ length: 15 }, (_, i) => i + 8).map(h => (
+                                        <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Intervallo tra email</Label>
+                                <div className="flex items-center gap-2">
+                                  <Slider value={[outreachConfig.email_interval_minutes || 10]} min={2} max={60} step={1} onValueChange={([v]) => updateOutreachConfig("email_interval_minutes", v)} className="flex-1" />
+                                  <Badge variant="outline" className="text-xs font-bold shrink-0">{outreachConfig.email_interval_minutes || 10} min</Badge>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        <div>
+                          <div className="flex items-center gap-2.5 mb-4">
+                            <div className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                              <Route className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-gray-900 dark:text-white">Strategia canale</h4>
+                              <p className="text-xs text-muted-foreground">Quale canale usare per primo e per i lead migliori</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium">Canale primo contatto</Label>
+                              <Select value={outreachConfig.first_contact_channel || "auto"} onValueChange={(v) => updateOutreachConfig("first_contact_channel", v)}>
+                                <SelectTrigger className="w-full h-10 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="auto">Automatico (Hunter sceglie)</SelectItem>
+                                  <SelectItem value="voice">Chiamata</SelectItem>
+                                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                  <SelectItem value="email">Email</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground">Per il primo contatto con lead nuovi</p>
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium">Canale per lead ad alto score (&gt;80)</Label>
+                              <Select value={outreachConfig.high_score_channel || "voice"} onValueChange={(v) => updateOutreachConfig("high_score_channel", v)}>
+                                <SelectTrigger className="w-full h-10 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="voice">Chiamata</SelectItem>
+                                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                  <SelectItem value="email">Email</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground">Hunter preferirà questo canale per i lead migliori</p>
+                            </div>
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="stile" className="mt-0 space-y-6">
+                        <div>
+                          <div className="flex items-center gap-2.5 mb-4">
+                            <div className="h-7 w-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                              <PenLine className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-gray-900 dark:text-white">Stile comunicazione</h4>
+                              <p className="text-xs text-muted-foreground">Tono, stile e firma dei messaggi</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium">Stile di comunicazione</Label>
+                              <Select value={outreachConfig.communication_style || "professionale"} onValueChange={(v) => updateOutreachConfig("communication_style", v)}>
+                                <SelectTrigger className="w-full h-10 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="formale">Formale</SelectItem>
+                                  <SelectItem value="professionale">Professionale</SelectItem>
+                                  <SelectItem value="informale">Informale</SelectItem>
+                                  <SelectItem value="amichevole">Amichevole</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium">Opening hook</Label>
+                              <Input
+                                value={outreachConfig.opening_hook || ""}
+                                onChange={(e) => updateOutreachConfig("opening_hook", e.target.value)}
+                                placeholder="Es: Ho notato che la vostra azienda..."
+                                className="h-10 text-sm"
+                              />
+                              <p className="text-xs text-muted-foreground">Frase di apertura personalizzata</p>
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium">Istruzioni personalizzate</Label>
+                              <Textarea
+                                value={outreachConfig.custom_instructions || ""}
+                                onChange={(e) => updateOutreachConfig("custom_instructions", e.target.value)}
+                                placeholder="Es: Non usare 'sinergia', menziona il Sistema Orbitale, sii diretto..."
+                                className="text-sm min-h-[90px] resize-y"
+                              />
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-700/60 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium">Firma email</Label>
+                              <Textarea
+                                value={outreachConfig.email_signature || ""}
+                                onChange={(e) => updateOutreachConfig("email_signature", e.target.value)}
+                                placeholder={"Nome Cognome\nTitolo | Azienda\nTel: +39...\nwww.sito.it"}
+                                className="text-sm min-h-[90px] resize-y"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="account" className="mt-0 space-y-6">
+                        <div>
+                          <div className="flex items-center gap-2.5 mb-4">
+                            <div className="h-7 w-7 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
+                              <Users className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-gray-900 dark:text-white">Account e dipendenti</h4>
+                              <p className="text-xs text-muted-foreground">Strumenti che Hunter usa per contattare i lead</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-3 p-4 rounded-xl border border-green-200 dark:border-green-800/50 bg-green-50/30 dark:bg-green-950/10 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <PhoneCall className="h-4 w-4 text-green-600" />
+                                Chiamate
+                              </Label>
+                              <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground">Template outbound</Label>
+                                <Select value={outreachConfig.voice_template_id || "none"} onValueChange={(v) => updateOutreachConfig("voice_template_id", v === "none" ? "" : v)}>
+                                  <SelectTrigger className="w-full h-10 text-sm">
+                                    <SelectValue placeholder="Seleziona template voce" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Predefinito (Hunter sceglie)</SelectItem>
+                                    {voiceTemplateOptions.map((t) => (
+                                      <SelectItem key={t.id} value={t.id}>{t.name} — {t.description}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground">Istruzione chiamata</Label>
+                                <Textarea
+                                  value={outreachConfig.call_instruction_template || ""}
+                                  onChange={(e) => updateOutreachConfig("call_instruction_template", e.target.value)}
+                                  placeholder="Es: Presentarsi come partner tecnologico..."
+                                  className="text-sm min-h-[70px] resize-y"
+                                  rows={3}
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-3 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-950/10 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <MessageCircle className="h-4 w-4 text-emerald-600" />
+                                WhatsApp
+                              </Label>
+                              <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground">Dipendente WhatsApp</Label>
+                                <Select value={outreachConfig.whatsapp_config_id || "none"} onValueChange={(v) => updateOutreachConfig("whatsapp_config_id", v === "none" ? "" : v)}>
+                                  <SelectTrigger className="w-full h-10 text-sm">
+                                    <SelectValue placeholder="Seleziona dipendente WA" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Nessuno (disabilita WA)</SelectItem>
+                                    {proactiveWaConfigs.map((c) => (
+                                      <SelectItem key={c.id} value={c.id}>{c.name} ({c.phoneNumber})</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {proactiveWaConfigs.length === 0 && <p className="text-xs text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>}
+                              </div>
+                              <div className="space-y-2 pt-2">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-xs text-muted-foreground font-medium">Template WhatsApp</Label>
+                                  {hunterSelectedTemplateIds.length > 0 && (
+                                    <Badge className="bg-emerald-500 text-white text-xs px-2.5 py-0.5">
+                                      {hunterSelectedTemplateIds.length} selezionati
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Template che Hunter userà per l'outreach WhatsApp.
                                 </p>
-                              </div>
-                            ) : (
-                              <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
-                                {Object.entries(hunterTemplatesByCategory).map(([categoryName, categoryTemplates]) => {
-                                  const isOpen = openHunterTemplateCategories.has(categoryName);
-                                  const colors = HUNTER_TEMPLATE_CATEGORY_COLORS[categoryName] || HUNTER_TEMPLATE_CATEGORY_COLORS["Generale"];
-                                  const selectedInCategory = categoryTemplates.filter(t =>
-                                    hunterSelectedTemplateIds.includes(t.id)
-                                  ).length;
-
-                                  return (
-                                    <Collapsible
-                                      key={categoryName}
-                                      open={isOpen}
-                                      onOpenChange={(open) => {
-                                        setOpenHunterTemplateCategories(prev => {
-                                          const newSet = new Set(prev);
-                                          if (open) newSet.add(categoryName);
-                                          else newSet.delete(categoryName);
-                                          return newSet;
-                                        });
-                                      }}
-                                    >
-                                      <CollapsibleTrigger asChild>
-                                        <div className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${colors.bg} ${colors.border} border hover:opacity-90`}>
-                                          <div className="flex items-center gap-2">
-                                            <div className={`w-2.5 h-2.5 rounded-full ${colors.icon}`}></div>
-                                            <span className={`text-xs font-semibold ${colors.text}`}>{categoryName}</span>
-                                            <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${colors.bg} ${colors.text} ${colors.border}`}>
-                                              {categoryTemplates.length} template
-                                            </Badge>
-                                            {selectedInCategory > 0 && (
-                                              <Badge className="bg-emerald-500 text-white text-[9px] px-1.5 py-0">
-                                                {selectedInCategory} sel.
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          <ChevronDown className={`h-3.5 w-3.5 ${colors.text} transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-                                        </div>
-                                      </CollapsibleTrigger>
-                                      <CollapsibleContent className="mt-1.5">
-                                        <div className="space-y-1.5 pl-1">
-                                          {categoryTemplates.map((template) => {
-                                            const isSelected = hunterSelectedTemplateIds.includes(template.id);
-                                            return (
-                                              <label
-                                                key={template.id}
-                                                className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
-                                                  isSelected
-                                                    ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm"
-                                                    : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-200 hover:bg-gray-50"
-                                                }`}
-                                              >
-                                                <Checkbox
-                                                  checked={isSelected}
-                                                  onCheckedChange={(checked) => handleHunterTemplateToggle(template.id, checked as boolean)}
-                                                  className="mt-0.5"
-                                                />
-                                                <div className="flex-1 min-w-0">
-                                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                                    <span className="text-xs font-semibold text-gray-900 dark:text-white">
-                                                      {template.friendlyName}
-                                                    </span>
-                                                    <Badge className="text-[9px] bg-green-100 text-green-700 border-green-300 px-1.5 py-0">
-                                                      Approvato
-                                                    </Badge>
-                                                  </div>
-                                                  <p className="text-[10px] text-gray-600 dark:text-gray-300 mt-1 leading-relaxed line-clamp-2">
-                                                    {template.bodyText || "Template senza corpo visibile"}
-                                                  </p>
-                                                  {isSelected && (template.bodyText || '').includes('{uncino}') && (
-                                                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-                                                      <Input
-                                                        value={(outreachConfig.template_hooks || {})[template.id] || ''}
-                                                        onChange={(e) => {
-                                                          const hooks = { ...(outreachConfig.template_hooks || {}), [template.id]: e.target.value };
-                                                          if (!e.target.value) delete hooks[template.id];
-                                                          updateOutreachConfig("template_hooks", hooks);
-                                                        }}
-                                                        placeholder="Es: aiutiamo chi ha clienti ricorrenti a scalare con l'AI"
-                                                        className="h-7 text-[10px]"
-                                                      />
-                                                      <p className="text-[9px] text-gray-400 mt-0.5">Opening hook per questo template. Se vuoto, Hunter genera un uncino personalizzato per ogni lead.</p>
+                                {hunterTemplatesLoading ? (
+                                  <div className="flex items-center justify-center py-4">
+                                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                                  </div>
+                                ) : hunterWaTemplates.length === 0 ? (
+                                  <div className="text-center py-4 text-gray-500">
+                                    <MessageCircle className="h-6 w-6 mx-auto mb-1.5 text-gray-300" />
+                                    <p className="text-[10px]">Nessun template WhatsApp approvato trovato</p>
+                                    <p className="text-[9px] text-gray-400 mt-0.5">Configura i template nella sezione WhatsApp Templates</p>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                                    {Object.entries(hunterTemplatesByCategory).map(([categoryName, categoryTemplates]) => {
+                                      const isOpen = openHunterTemplateCategories.has(categoryName);
+                                      const colors = HUNTER_TEMPLATE_CATEGORY_COLORS[categoryName] || HUNTER_TEMPLATE_CATEGORY_COLORS["Generale"];
+                                      const selectedInCategory = categoryTemplates.filter(t => hunterSelectedTemplateIds.includes(t.id)).length;
+                                      return (
+                                        <Collapsible
+                                          key={categoryName}
+                                          open={isOpen}
+                                          onOpenChange={(open) => {
+                                            setOpenHunterTemplateCategories(prev => {
+                                              const newSet = new Set(prev);
+                                              if (open) newSet.add(categoryName);
+                                              else newSet.delete(categoryName);
+                                              return newSet;
+                                            });
+                                          }}
+                                        >
+                                          <CollapsibleTrigger asChild>
+                                            <div className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${colors.bg} ${colors.border} border hover:opacity-90`}>
+                                              <div className="flex items-center gap-2">
+                                                <div className={`w-2.5 h-2.5 rounded-full ${colors.icon}`}></div>
+                                                <span className={`text-xs font-semibold ${colors.text}`}>{categoryName}</span>
+                                                <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${colors.bg} ${colors.text} ${colors.border}`}>
+                                                  {categoryTemplates.length} template
+                                                </Badge>
+                                                {selectedInCategory > 0 && (
+                                                  <Badge className="bg-emerald-500 text-white text-[9px] px-1.5 py-0">
+                                                    {selectedInCategory} sel.
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                              <ChevronDown className={`h-3.5 w-3.5 ${colors.text} transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                                            </div>
+                                          </CollapsibleTrigger>
+                                          <CollapsibleContent className="mt-1.5">
+                                            <div className="space-y-1.5 pl-1">
+                                              {categoryTemplates.map((template) => {
+                                                const isSelected = hunterSelectedTemplateIds.includes(template.id);
+                                                return (
+                                                  <label
+                                                    key={template.id}
+                                                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
+                                                      isSelected
+                                                        ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm"
+                                                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-200 hover:bg-gray-50"
+                                                    }`}
+                                                  >
+                                                    <Checkbox
+                                                      checked={isSelected}
+                                                      onCheckedChange={(checked) => handleHunterTemplateToggle(template.id, checked as boolean)}
+                                                      className="mt-0.5"
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="text-xs font-semibold text-gray-900 dark:text-white">{template.friendlyName}</span>
+                                                        <Badge className="text-[9px] bg-green-100 text-green-700 border-green-300 px-1.5 py-0">Approvato</Badge>
+                                                      </div>
+                                                      <p className="text-[10px] text-gray-600 dark:text-gray-300 mt-1 leading-relaxed line-clamp-2">
+                                                        {template.bodyText || "Template senza corpo visibile"}
+                                                      </p>
+                                                      {isSelected && (template.bodyText || '').includes('{uncino}') && (
+                                                        <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                                                          <Input
+                                                            value={(outreachConfig.template_hooks || {})[template.id] || ''}
+                                                            onChange={(e) => {
+                                                              const hooks = { ...(outreachConfig.template_hooks || {}), [template.id]: e.target.value };
+                                                              if (!e.target.value) delete hooks[template.id];
+                                                              updateOutreachConfig("template_hooks", hooks);
+                                                            }}
+                                                            placeholder="Es: aiutiamo chi ha clienti ricorrenti a scalare con l'AI"
+                                                            className="h-7 text-[10px]"
+                                                          />
+                                                          <p className="text-[9px] text-gray-400 mt-0.5">Opening hook per questo template. Se vuoto, Hunter genera un uncino personalizzato per ogni lead.</p>
+                                                        </div>
+                                                      )}
                                                     </div>
-                                                  )}
-                                                </div>
-                                              </label>
-                                            );
-                                          })}
-                                        </div>
-                                      </CollapsibleContent>
-                                    </Collapsible>
-                                  );
-                                })}
-                              </div>
-                            )}
-
-                            {hunterSelectedTemplateIds.length === 0 && hunterWaTemplates.length > 0 && (
-                              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                                <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                                  Nessun template selezionato. WhatsApp outreach disabilitato.
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="space-y-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800/50 bg-blue-50/30 dark:bg-blue-950/10">
-                          <Label className="text-sm font-semibold flex items-center gap-2">
-                            <MailIcon className="h-4 w-4 text-blue-600" />
-                            Email
-                          </Label>
-                          <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">Account di invio</Label>
-                            <Select value={outreachConfig.email_account_id || "none"} onValueChange={(v) => updateOutreachConfig("email_account_id", v === "none" ? "" : v)}>
-                              <SelectTrigger className="w-full h-10 text-sm">
-                                <SelectValue placeholder="Seleziona account email" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Nessuno (disabilita email)</SelectItem>
-                                {emailAccounts.map((a) => (
-                                  <SelectItem key={a.id} value={a.id}>{a.name} ({a.email})</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {emailAccounts.length === 0 && <p className="text-xs text-amber-600 mt-1">Nessun account email configurato</p>}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-bold mb-2 block text-gray-900 dark:text-white">Priorità canali di contatto</Label>
-                      <p className="text-xs text-muted-foreground mb-3">Hunter proverà i canali in questo ordine per ogni lead.</p>
-                      <div className="space-y-2">
-                        {outreachConfig.channel_priority.map((ch: string, idx: number) => {
-                          const info = channelLabelsMap[ch];
-                          if (!info) return null;
-                          return (
-                            <div key={ch} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                              <span className="text-xs font-bold text-gray-400 w-5">{idx + 1}.</span>
-                              <span className={cn("text-sm font-medium", info.color)}>{info.label}</span>
-                              <div className="flex gap-1 ml-auto">
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={idx === 0} onClick={() => moveChannelPriority(idx, "up")}>
-                                  <ChevronUp className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={idx === outreachConfig.channel_priority.length - 1} onClick={() => moveChannelPriority(idx, "down")}>
-                                  <ChevronDown className="h-4 w-4" />
-                                </Button>
+                                                  </label>
+                                                );
+                                              })}
+                                            </div>
+                                          </CollapsibleContent>
+                                        </Collapsible>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                {hunterSelectedTemplateIds.length === 0 && hunterWaTemplates.length > 0 && (
+                                  <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                                    <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                                      Nessun template selezionato. WhatsApp outreach disabilitato.
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div>
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <div className="h-7 w-7 rounded-lg bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
-                          <RefreshCw className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                            <div className="space-y-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800/50 bg-blue-50/30 dark:bg-blue-950/10 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-semibold flex items-center gap-2">
+                                <MailIcon className="h-4 w-4 text-blue-600" />
+                                Email
+                              </Label>
+                              <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground">Account di invio</Label>
+                                <Select value={outreachConfig.email_account_id || "none"} onValueChange={(v) => updateOutreachConfig("email_account_id", v === "none" ? "" : v)}>
+                                  <SelectTrigger className="w-full h-10 text-sm">
+                                    <SelectValue placeholder="Seleziona account email" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Nessuno (disabilita email)</SelectItem>
+                                    {emailAccounts.map((a) => (
+                                      <SelectItem key={a.id} value={a.id}>{a.name} ({a.email})</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {emailAccounts.length === 0 && <p className="text-xs text-amber-600 mt-1">Nessun account email configurato</p>}
+                              </div>
+                            </div>
+                          </div>
                         </div>
+
+                        <Separator />
+
                         <div>
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Sequenza follow-up</h4>
-                          <p className="text-xs text-muted-foreground">Se il lead non risponde, Hunter segue questa sequenza</p>
+                          <Label className="text-sm font-bold mb-2 block text-gray-900 dark:text-white">Priorità canali di contatto</Label>
+                          <p className="text-xs text-muted-foreground mb-3">Hunter proverà i canali in questo ordine per ogni lead.</p>
+                          <div className="space-y-2">
+                            {outreachConfig.channel_priority.map((ch: string, idx: number) => {
+                              const info = channelLabelsMap[ch];
+                              if (!info) return null;
+                              return (
+                                <div key={ch} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:shadow-sm transition-shadow">
+                                  <span className="text-xs font-bold text-gray-400 w-5">{idx + 1}.</span>
+                                  <span className={cn("text-sm font-medium", info.color)}>{info.label}</span>
+                                  <div className="flex gap-1 ml-auto">
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={idx === 0} onClick={() => moveChannelPriority(idx, "up")}>
+                                      <ChevronUp className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={idx === outreachConfig.channel_priority.length - 1} onClick={() => moveChannelPriority(idx, "down")}>
+                                      <ChevronDown className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        {(outreachConfig.follow_up_sequence || []).map((step: { day: number; channel: string }, idx: number) => (
-                          <div key={idx} className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40">
-                            <span className="text-sm font-bold text-gray-400 w-6 shrink-0">{idx + 1}.</span>
-                            <Select
-                              value={step.channel}
-                              onValueChange={(v) => {
-                                const seq = [...(outreachConfig.follow_up_sequence || [])];
-                                seq[idx] = { ...seq[idx], channel: v };
-                                updateOutreachConfig("follow_up_sequence", seq);
-                              }}
-                            >
-                              <SelectTrigger className="w-[150px] h-10 text-sm">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="voice">Chiamata</SelectItem>
-                                <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                                <SelectItem value="email">Email</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <span className="text-sm text-muted-foreground shrink-0">dopo</span>
-                            <Input
-                              type="number"
-                              min={0}
-                              max={30}
-                              value={step.day}
-                              onChange={(e) => {
-                                const seq = [...(outreachConfig.follow_up_sequence || [])];
-                                seq[idx] = { ...seq[idx], day: Math.max(0, Math.min(30, parseInt(e.target.value) || 0)) };
-                                updateOutreachConfig("follow_up_sequence", seq);
-                              }}
-                              className="w-[80px] h-10 text-sm text-center"
-                            />
-                            <span className="text-sm text-muted-foreground shrink-0">giorni</span>
+                      </TabsContent>
+
+                      <TabsContent value="followup" className="mt-0 space-y-6">
+                        <div>
+                          <div className="flex items-center gap-2.5 mb-4">
+                            <div className="h-7 w-7 rounded-lg bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
+                              <RefreshCw className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-gray-900 dark:text-white">Sequenza follow-up</h4>
+                              <p className="text-xs text-muted-foreground">Se il lead non risponde, Hunter segue questa sequenza</p>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            {(outreachConfig.follow_up_sequence || []).map((step: { day: number; channel: string }, idx: number) => (
+                              <div key={idx} className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 hover:shadow-sm transition-shadow">
+                                <span className="text-sm font-bold text-gray-400 w-6 shrink-0">{idx + 1}.</span>
+                                <Select
+                                  value={step.channel}
+                                  onValueChange={(v) => {
+                                    const seq = [...(outreachConfig.follow_up_sequence || [])];
+                                    seq[idx] = { ...seq[idx], channel: v };
+                                    updateOutreachConfig("follow_up_sequence", seq);
+                                  }}
+                                >
+                                  <SelectTrigger className="w-[150px] h-10 text-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="voice">Chiamata</SelectItem>
+                                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                    <SelectItem value="email">Email</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <span className="text-sm text-muted-foreground shrink-0">dopo</span>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={30}
+                                  value={step.day}
+                                  onChange={(e) => {
+                                    const seq = [...(outreachConfig.follow_up_sequence || [])];
+                                    seq[idx] = { ...seq[idx], day: Math.max(0, Math.min(30, parseInt(e.target.value) || 0)) };
+                                    updateOutreachConfig("follow_up_sequence", seq);
+                                  }}
+                                  className="w-[80px] h-10 text-sm text-center"
+                                />
+                                <span className="text-sm text-muted-foreground shrink-0">giorni</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 ml-auto text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                  disabled={(outreachConfig.follow_up_sequence || []).length <= 1}
+                                  onClick={() => {
+                                    const seq = [...(outreachConfig.follow_up_sequence || [])];
+                                    seq.splice(idx, 1);
+                                    updateOutreachConfig("follow_up_sequence", seq);
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                          {(outreachConfig.follow_up_sequence || []).length < 6 && (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              className="h-8 w-8 p-0 ml-auto text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                              disabled={(outreachConfig.follow_up_sequence || []).length <= 1}
+                              className="mt-3 text-sm h-9 px-4"
                               onClick={() => {
                                 const seq = [...(outreachConfig.follow_up_sequence || [])];
-                                seq.splice(idx, 1);
+                                const lastDay = seq.length > 0 ? seq[seq.length - 1].day + 3 : 0;
+                                seq.push({ day: lastDay, channel: "email" });
                                 updateOutreachConfig("follow_up_sequence", seq);
                               }}
                             >
-                              <X className="h-4 w-4" />
+                              + Aggiungi step
                             </Button>
-                          </div>
-                        ))}
-                      </div>
-                      {(outreachConfig.follow_up_sequence || []).length < 6 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3 text-sm h-9 px-4"
-                          onClick={() => {
-                            const seq = [...(outreachConfig.follow_up_sequence || [])];
-                            const lastDay = seq.length > 0 ? seq[seq.length - 1].day + 3 : 0;
-                            seq.push({ day: lastDay, channel: "email" });
-                            updateOutreachConfig("follow_up_sequence", seq);
-                          }}
-                        >
-                          + Aggiungi step
-                        </Button>
-                      )}
-                    </div>
+                          )}
+                        </div>
+
+                        <Separator />
+
+                        {(() => {
+                          const followUpDefaults = {
+                            enabled: true,
+                            followUp1Days: 3,
+                            followUp2Days: 7,
+                            maxFollowUps: 2,
+                            followUp1TemplateId: "template_2",
+                            followUp2TemplateId: "template_3",
+                            autoApprove: false,
+                          };
+                          const emailFollowUp = { ...followUpDefaults, ...(outreachConfig.emailFollowUp || {}) };
+                          const updateFollowUpConfig = (key: string, value: any) => {
+                            const updated = { ...emailFollowUp, [key]: value };
+                            updateOutreachConfig("emailFollowUp", updated);
+                          };
+                          const followUpTemplateOptions = [
+                            { id: "template_1", name: "Template 1 — Primo Contatto Strategico" },
+                            { id: "template_2", name: "Template 2 — Follow-up Elegante" },
+                            { id: "template_3", name: "Template 3 — Break-up Email" },
+                            { id: "template_4", name: "Template 4 — Trigger Event" },
+                            { id: "template_5", name: "Template 5 — Case Study" },
+                            { id: "template_6", name: "Template 6 — Pain Point Diretto" },
+                            { id: "template_7", name: "Template 7 — Valore Gratuito" },
+                            { id: "template_8", name: "Template 8 — Referral Interno" },
+                            { id: "template_9", name: "Template 9 — Complimento Strategico" },
+                            { id: "template_10", name: "Template 10 — Re-engagement" },
+                          ];
+                          return (
+                            <div className="relative rounded-2xl border border-blue-200/80 dark:border-blue-800/50 bg-gradient-to-br from-blue-50/30 to-indigo-50/20 dark:from-blue-950/10 dark:to-indigo-950/10 p-5 overflow-hidden">
+                              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500" />
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                                    <MailIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">Follow-up Email Automatici</h4>
+                                    <p className="text-xs text-muted-foreground">Invia email di follow-up automatiche ai lead che non rispondono</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {emailFollowUp.enabled && (
+                                    <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] px-2 py-0.5 rounded-full">
+                                      Max {emailFollowUp.maxFollowUps} follow-up
+                                    </Badge>
+                                  )}
+                                  <Switch
+                                    checked={emailFollowUp.enabled}
+                                    onCheckedChange={(checked) => updateFollowUpConfig("enabled", checked)}
+                                  />
+                                </div>
+                              </div>
+
+                              {emailFollowUp.enabled && (
+                                <div className="space-y-4">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2 p-4 rounded-xl bg-white/80 dark:bg-gray-800/40 border border-blue-200/60 dark:border-blue-800/40 hover:shadow-sm transition-shadow">
+                                      <Label className="text-sm font-medium flex items-center justify-between">
+                                        <span>Follow-up 1 dopo</span>
+                                        <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{emailFollowUp.followUp1Days} giorni</Badge>
+                                      </Label>
+                                      <Slider value={[emailFollowUp.followUp1Days]} min={1} max={14} step={1} onValueChange={([v]) => updateFollowUpConfig("followUp1Days", v)} />
+                                    </div>
+                                    <div className="space-y-2 p-4 rounded-xl bg-white/80 dark:bg-gray-800/40 border border-blue-200/60 dark:border-blue-800/40 hover:shadow-sm transition-shadow">
+                                      <Label className="text-sm font-medium flex items-center justify-between">
+                                        <span>Follow-up 2 dopo</span>
+                                        <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{emailFollowUp.followUp2Days} giorni</Badge>
+                                      </Label>
+                                      <Slider value={[emailFollowUp.followUp2Days]} min={1} max={21} step={1} onValueChange={([v]) => updateFollowUpConfig("followUp2Days", v)} />
+                                    </div>
+                                    <div className="space-y-2 p-4 rounded-xl bg-white/80 dark:bg-gray-800/40 border border-blue-200/60 dark:border-blue-800/40 hover:shadow-sm transition-shadow">
+                                      <Label className="text-sm font-medium flex items-center justify-between">
+                                        <span>Max follow-up per lead</span>
+                                        <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{emailFollowUp.maxFollowUps}</Badge>
+                                      </Label>
+                                      <Slider value={[emailFollowUp.maxFollowUps]} min={1} max={5} step={1} onValueChange={([v]) => updateFollowUpConfig("maxFollowUps", v)} />
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/80 dark:bg-gray-800/40 border border-blue-200/60 dark:border-blue-800/40 hover:shadow-sm transition-shadow">
+                                      <div>
+                                        <Label className="text-sm font-medium">Auto-approvazione</Label>
+                                        <p className="text-xs text-muted-foreground mt-0.5">Invia follow-up senza approvazione manuale</p>
+                                      </div>
+                                      <Switch
+                                        checked={emailFollowUp.autoApprove}
+                                        onCheckedChange={(checked) => updateFollowUpConfig("autoApprove", checked)}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2 p-4 rounded-xl bg-white/80 dark:bg-gray-800/40 border border-blue-200/60 dark:border-blue-800/40 hover:shadow-sm transition-shadow">
+                                      <Label className="text-sm font-medium">Template Follow-up 1</Label>
+                                      <Select value={emailFollowUp.followUp1TemplateId} onValueChange={(v) => updateFollowUpConfig("followUp1TemplateId", v)}>
+                                        <SelectTrigger className="w-full h-10 text-sm">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {followUpTemplateOptions.map((t) => (
+                                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="space-y-2 p-4 rounded-xl bg-white/80 dark:bg-gray-800/40 border border-blue-200/60 dark:border-blue-800/40 hover:shadow-sm transition-shadow">
+                                      <Label className="text-sm font-medium">Template Follow-up 2</Label>
+                                      <Select value={emailFollowUp.followUp2TemplateId} onValueChange={(v) => updateFollowUpConfig("followUp2TemplateId", v)}>
+                                        <SelectTrigger className="w-full h-10 text-sm">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {followUpTemplateOptions.map((t) => (
+                                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+
+                                  {!emailFollowUp.autoApprove && (
+                                    <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                                      <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                                        I follow-up email verranno creati come bozze e richiederanno la tua approvazione prima dell'invio.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </TabsContent>
+                    </Tabs>
                   </CardContent>
                 </motion.div>
               )}
