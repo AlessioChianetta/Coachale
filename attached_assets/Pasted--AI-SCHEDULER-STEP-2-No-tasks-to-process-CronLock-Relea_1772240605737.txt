@@ -1,0 +1,24 @@
+🤖 [AI-SCHEDULER] STEP 2: No tasks to process
+🔓 [CronLock] Released lock for "ai-task-scheduler"
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+1:02:12 AM [express] GET /api/ai-autonomy/hunter-pipeline 200 in 2043ms :: {"stats":{"foundToday":0,…
+1:02:25 AM [express] GET /api/ai-autonomy/hunter/actions 200 in 878ms :: {"actions":[{"id":"hunt_em_…
+1:02:26 AM [express] GET /api/ai-autonomy/roles/status 304 in 1903ms :: {"alessia":{"effectiveLevel"…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+1:02:29 AM [express] GET /api/ai-autonomy/hunter-pipeline 304 in 2004ms :: {"stats":{"foundToday":0,…
+[HUNTER-APPROVE] Step 1/3: Task hunt_em_1772240496351_5juch approved (type=ai_task, channel=email, contact=Ricercamy Srl)
+[HUNTER-APPROVE] Step 2/3: Attempting immediate email send for "Ricercamy Srl"...
+[HUNTER-APPROVE] Step 3/3: Done — Email sent to chianettaalessio@gmail.com (subject="Da kit di prompt a Setter AI per Ricercamy"), task marked completed
+1:02:38 AM [express] PATCH /api/ai-autonomy/tasks/hunt_em_1772240496351_5juch/approve 200 in 3116ms …
+[HUNTER-APPROVE] Step 1/3: Task hunt_vo_1772240482818_hdw3y approved (type=single_call, channel=voice, contact=Ricercamy Srl)
+[HUNTER-APPROVE] Step 2/3: Voice call activated (1 entries updated, source_task_id=hunt_vo_1772240482818_hdw3y)
+[HUNTER-APPROVE] Step 3/3: Done — voice call for "Ricercamy Srl" now visible in /consultant/voice-calls
+1:02:39 AM [express] PATCH /api/ai-autonomy/tasks/hunt_vo_1772240482818_hdw3y/approve 200 in 688ms :…
+1:02:40 AM [express] GET /api/ai-autonomy/hunter-pipeline 200 in 2005ms :: {"stats":{"foundToday":0,…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+1:02:42 AM [express] GET /api/ai-autonomy/hunter-pipeline 200 in 1933ms :: {"stats":{"foundToday":0,…
+[HUNTER-APPROVE] Step 1/3: Task hunt_wh_1772240486808_wgsea approved (type=single_whatsapp, channel=whatsapp, contact=Ricercamy Srl)
+[HUNTER-APPROVE] Step 2/3: WhatsApp scheduled_at set to NOW for immediate cron pickup (task=hunt_wh_1772240486808_wgsea)
+[HUNTER-APPROVE] Step 3/3: Done — WA message for "Ricercamy Srl" will be sent on next scheduler cycle (~1min)
+1:02:48 AM [express] PATCH /api/ai-autonomy/tasks/hunt_wh_1772240486808_wgsea/approve 200 in 591ms :…
+1:02:50 AM [express] GET /api/ai-autonomy/hunter-pipeline 200 in 1945ms :: {"stats":{"foundToday":0,…
