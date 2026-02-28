@@ -1313,6 +1313,10 @@ function SettingsTab({
 
       <Tabs value={activeTab} onValueChange={onTabChange} className="mt-6">
         <TabsList className="flex flex-wrap w-full h-auto bg-gray-100 dark:bg-gray-800/50 rounded-xl p-1.5 gap-1">
+          <TabsTrigger value="dipendenti" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
+            <Bot className="h-4 w-4" />
+            <span className="hidden sm:inline">Dipendenti AI</span>
+          </TabsTrigger>
           <TabsTrigger value="panoramica" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
             <Activity className="h-4 w-4" />
             <span className="hidden sm:inline">Panoramica</span>
@@ -1328,10 +1332,6 @@ function SettingsTab({
           <TabsTrigger value="canali" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
             <ListTodo className="h-4 w-4" />
             <span className="hidden sm:inline">Canali & Categorie</span>
-          </TabsTrigger>
-          <TabsTrigger value="dipendenti" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
-            <Bot className="h-4 w-4" />
-            <span className="hidden sm:inline">Dipendenti AI</span>
           </TabsTrigger>
           <TabsTrigger value="activity" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
             <Activity className="h-4 w-4" />
@@ -1525,361 +1525,32 @@ function SettingsTab({
             )}
           </div>
 
-          {systemStatus && (
-            <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-              <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-4">
-                <Activity className="h-4 w-4" />
-                Stato Sistema in Tempo Reale
-              </div>
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
-                    <div className="flex items-center justify-center gap-1.5 mb-1">
-                      <div className={cn("h-2 w-2 rounded-full", systemStatus.is_active ? "bg-emerald-500 animate-pulse" : "bg-red-500")} />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stato</p>
-                    </div>
-                    <p className={cn("text-sm font-semibold", systemStatus.is_active ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
-                      {systemStatus.is_active ? "Attivo" : "Disattivo"}
-                    </p>
-                  </div>
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
-                    <div className="flex items-center justify-center gap-1.5 mb-1">
-                      <div className={cn("h-2 w-2 rounded-full", systemStatus.is_in_working_hours ? "bg-emerald-500 animate-pulse" : "bg-amber-500")} />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Orario</p>
-                    </div>
-                    <p className={cn("text-sm font-semibold", systemStatus.is_in_working_hours ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
-                      {systemStatus.is_in_working_hours ? "In orario" : "Fuori orario"}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{systemStatus.current_time_rome} (Roma)</p>
-                  </div>
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Clienti Eleggibili</p>
-                    <p className="text-sm font-semibold">{systemStatus.eligible_clients} <span className="text-muted-foreground font-normal">/ {systemStatus.total_clients}</span></p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">senza task pendenti</p>
-                  </div>
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Task Pendenti</p>
-                    <p className="text-sm font-semibold">{systemStatus.pending_tasks}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">in coda o in esecuzione</p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Limiti Giornalieri Utilizzati Oggi</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="flex items-center gap-2 p-2 rounded-xl border border-border">
-                      <Phone className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                      <div>
-                        <p className="text-xs font-medium">{systemStatus.today_counts.calls}/{systemStatus.limits.max_calls}</p>
-                        <p className="text-xs text-muted-foreground">Chiamate</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-xl border border-border">
-                      <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
-                      <div>
-                        <p className="text-xs font-medium">{systemStatus.today_counts.emails}/{systemStatus.limits.max_emails}</p>
-                        <p className="text-xs text-muted-foreground">Email</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-xl border border-border">
-                      <MessageSquare className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                      <div>
-                        <p className="text-xs font-medium">{systemStatus.today_counts.whatsapp}/{systemStatus.limits.max_whatsapp}</p>
-                        <p className="text-xs text-muted-foreground">WhatsApp</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-xl border border-border">
-                      <BarChart3 className="h-3.5 w-3.5 text-primary shrink-0" />
-                      <div>
-                        <p className="text-xs font-medium">{systemStatus.today_counts.analyses}/{systemStatus.limits.max_analyses}</p>
-                        <p className="text-xs text-muted-foreground">Analisi</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Controllo Autonomo</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs gap-1.5"
-                      onClick={onTriggerAnalysis}
-                      disabled={isTriggering || !systemStatus.is_active || systemStatus.autonomy_level < 2}
-                    >
-                      {isTriggering ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Play className="h-3 w-3" />
-                      )}
-                      {isTriggering ? "Analisi in corso..." : "Avvia Analisi Ora"}
-                    </Button>
-                  </div>
-                  {triggerResult && (
-                    <div className={cn(
-                      "p-2.5 rounded-xl border text-xs",
-                      triggerResult.success
-                        ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300"
-                        : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-300"
-                    )}>
-                      {triggerResult.success
-                        ? `Analisi completata: ${triggerResult.tasks_generated} task generati.`
-                        : `Errore: ${triggerResult.error || "Analisi fallita"}`}
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <div className="p-2.5 rounded-xl border border-border">
-                      <p className="text-xs text-muted-foreground">Ultimo controllo</p>
-                      <p className="text-xs font-medium">
-                        {systemStatus.last_autonomous_check
-                          ? new Date(systemStatus.last_autonomous_check).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
-                          : "Mai eseguito"}
-                      </p>
-                    </div>
-                    <div className="p-2.5 rounded-xl border border-border">
-                      <p className="text-xs text-muted-foreground">Prossimo controllo (stima)</p>
-                      <p className="text-xs font-medium">
-                        {systemStatus.next_check_estimate
-                          ? new Date(systemStatus.next_check_estimate).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
-                          : "Al prossimo ciclo"}
-                      </p>
-                    </div>
-                    <div className="p-2.5 rounded-xl border border-border">
-                      <p className="text-xs text-muted-foreground">Frequenza controllo</p>
-                      <p className="text-xs font-medium">Ogni {systemStatus.check_interval_minutes} minuti</p>
-                    </div>
-                  </div>
-                  {systemStatus.last_check_data && (
-                    <div className="p-2.5 rounded-xl border border-border">
-                      <p className="text-xs text-muted-foreground mb-1">Risultato ultimo controllo</p>
-                      <p className="text-xs">
-                        {systemStatus.last_check_data.eligible_clients !== undefined
-                          ? `${systemStatus.last_check_data.eligible_clients} clienti analizzati, ${systemStatus.last_check_data.tasks_suggested || 0} task suggeriti`
-                          : "Dati non disponibili"}
-                      </p>
-                    </div>
-                  )}
-                  {systemStatus.last_error && (
-                    <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
-                        <div>
-                          <p className="text-xs font-medium text-red-700 dark:text-red-400">Ultimo errore rilevato</p>
-                          <p className="text-xs text-red-600 dark:text-red-300 mt-0.5">{systemStatus.last_error.title}</p>
-                          <p className="text-xs text-red-500/70 dark:text-red-400/70 mt-0.5">{systemStatus.last_error.description}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(systemStatus.last_error.created_at).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {autonomousLogs && (
-            <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-              <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-                <Brain className="h-4 w-4" />
-                Log Ragionamenti AI
-                <Badge variant="secondary" className="text-xs rounded-lg">{autonomousLogs.total}</Badge>
-              </div>
-              <div className="space-y-5 mt-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Select value={autonomousLogTypeFilter} onValueChange={(val) => { setAutonomousLogTypeFilter(val); setAutonomousLogsPage(1); }}>
-                    <SelectTrigger className="h-7 text-xs w-[130px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutti i tipi</SelectItem>
-                      <SelectItem value="autonomous_analysis">Analisi</SelectItem>
-                      <SelectItem value="autonomous_task_created">Task creati</SelectItem>
-                      <SelectItem value="autonomous_error">Errori</SelectItem>
-                      <SelectItem value="system_prompt_log">System Prompt</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={autonomousLogSeverityFilter} onValueChange={(val) => { setAutonomousLogSeverityFilter(val); setAutonomousLogsPage(1); }}>
-                    <SelectTrigger className="h-7 text-xs w-[110px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutti</SelectItem>
-                      <SelectItem value="info">Info</SelectItem>
-                      <SelectItem value="success">Successo</SelectItem>
-                      <SelectItem value="warning">Warning</SelectItem>
-                      <SelectItem value="error">Errore</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={autonomousLogRoleFilter} onValueChange={(val) => { setAutonomousLogRoleFilter(val); setAutonomousLogsPage(1); }}>
-                    <SelectTrigger className="h-7 text-xs w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutti i ruoli</SelectItem>
-                      <SelectItem value="alessia">Alessia</SelectItem>
-                      <SelectItem value="millie">Millie</SelectItem>
-                      <SelectItem value="echo">Echo</SelectItem>
-                      <SelectItem value="nova">Nova</SelectItem>
-                      <SelectItem value="stella">Stella</SelectItem>
-                      <SelectItem value="iris">Iris</SelectItem>
-                      <SelectItem value="marco">Marco</SelectItem>
-                      <SelectItem value="hunter">Hunter</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {autonomousLogs.logs.length === 0 ? (
-                  <div className="flex items-center gap-4 text-muted-foreground py-4">
-                    <Brain className="h-5 w-5" />
-                    <div>
-                      <p className="text-sm font-medium">Nessun log trovato</p>
-                      <p className="text-xs">
-                        {autonomousLogTypeFilter !== "all" || autonomousLogSeverityFilter !== "all"
-                          ? "Prova a cambiare i filtri per vedere altri risultati."
-                          : "Quando l'AI analizzerà i tuoi clienti, qui vedrai ogni decisione, ragionamento e risultato."}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {autonomousLogs.logs.map((log) => (
-                      <motion.div
-                        key={log.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className={cn(
-                          "p-3 rounded-xl border text-xs space-y-2",
-                          log.severity === "error" ? "bg-red-50 dark:bg-red-950/10 border-red-200 dark:border-red-800/30" :
-                          log.event_type === "autonomous_task_created" ? "bg-emerald-50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800/30" :
-                          "border-border"
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-start gap-2 flex-1 min-w-0">
-                            <span className="text-base shrink-0">{log.icon || "🧠"}</span>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <p className="font-medium truncate">{log.title}</p>
-                                {log.ai_role && (
-                                  <Badge variant="outline" className={cn("text-xs px-1 py-0 shrink-0 rounded-lg",
-                                    log.ai_role === "alessia" ? "border-pink-300 text-pink-600 dark:border-pink-700 dark:text-pink-400" :
-                                    log.ai_role === "millie" ? "border-purple-300 text-purple-600 dark:border-purple-700 dark:text-purple-400" :
-                                    log.ai_role === "echo" ? "border-orange-300 text-orange-600 dark:border-orange-700 dark:text-orange-400" :
-                                    log.ai_role === "nova" ? "border-pink-300 text-pink-600 dark:border-pink-700 dark:text-pink-400" :
-                                    log.ai_role === "stella" ? "border-emerald-300 text-emerald-600 dark:border-emerald-700 dark:text-emerald-400" :
-                                    log.ai_role === "iris" ? "border-indigo-300 text-indigo-600 dark:border-indigo-700 dark:text-indigo-400" :
-                                    log.ai_role === "marco" ? "border-gray-300 text-gray-600 dark:border-gray-700 dark:text-gray-400" :
-                                    log.ai_role === "hunter" ? "border-teal-300 text-teal-600 dark:border-teal-700 dark:text-teal-400" :
-                                    "border-muted-foreground/30 text-muted-foreground"
-                                  )}>
-                                    {log.ai_role.charAt(0).toUpperCase() + log.ai_role.slice(1)}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-muted-foreground mt-0.5">{log.description}</p>
-                              {log.event_data?.overall_reasoning && log.event_data.overall_reasoning !== log.description && (
-                                <div className="mt-2 p-2 rounded-xl border border-primary/20 bg-primary/5">
-                                  <p className="text-xs font-medium text-primary mb-1 flex items-center gap-1">
-                                    <Brain className="h-3 w-3" />
-                                    Ragionamento AI:
-                                  </p>
-                                  <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">
-                                    {log.event_data.overall_reasoning}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-                            {new Date(log.created_at).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                        </div>
-
-                        {log.event_data && (
-                          <div className="space-y-1 pl-8">
-                            {log.event_data.total_clients !== undefined && (
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span>Clienti totali: <strong>{log.event_data.total_clients}</strong></span>
-                                <span>Eleggibili: <strong>{log.event_data.eligible_clients}</strong></span>
-                                <span>Con task pendenti: <strong>{log.event_data.clients_with_pending_tasks}</strong></span>
-                                <span>Completati recenti: <strong>{log.event_data.clients_with_recent_completion}</strong></span>
-                              </div>
-                            )}
-                            {log.event_data.tasks_suggested > 0 && (
-                              <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                {log.event_data.tasks_suggested} task suggeriti dall'AI
-                              </p>
-                            )}
-                            {log.event_data.suggestions && Array.isArray(log.event_data.suggestions) && log.event_data.suggestions.length > 0 && (
-                              <div className="space-y-1 mt-1">
-                                {log.event_data.suggestions.map((s: any, i: number) => (
-                                  <div key={i} className="p-2 rounded-xl border border-border">
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline" className="text-xs px-1 py-0 rounded-lg">{s.category}</Badge>
-                                      <span className="font-medium">{s.client_name}</span>
-                                      {s.channel && s.channel !== "none" && (
-                                        <Badge variant="secondary" className="text-xs px-1 py-0 rounded-lg">{s.channel}</Badge>
-                                      )}
-                                    </div>
-                                    <p className="text-muted-foreground mt-0.5">{s.instruction}</p>
-                                    {s.reasoning && (
-                                      <p className="text-muted-foreground/70 mt-0.5 italic">Motivazione: {s.reasoning}</p>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {log.event_data.task_category && (
-                              <div className="flex items-center gap-2 text-xs">
-                                <Badge variant="outline" className="text-xs px-1 py-0 rounded-lg">{log.event_data.task_category}</Badge>
-                                {log.contact_name && <span>Cliente: <strong>{log.contact_name}</strong></span>}
-                                {log.event_data.preferred_channel && log.event_data.preferred_channel !== "none" && (
-                                  <Badge variant="secondary" className="text-xs px-1 py-0 rounded-lg">{log.event_data.preferred_channel}</Badge>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-
-                {autonomousLogs.total > 10 && (
-                  <div className="flex items-center justify-between pt-2">
-                    <p className="text-xs text-muted-foreground">
-                      Pagina {autonomousLogsPage} di {Math.ceil(autonomousLogs.total / 10)}
-                    </p>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs"
-                        disabled={autonomousLogsPage <= 1}
-                        onClick={() => setAutonomousLogsPage(autonomousLogsPage - 1)}
-                      >
-                        <ChevronLeft className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs"
-                        disabled={autonomousLogsPage >= Math.ceil(autonomousLogs.total / 10)}
-                        onClick={() => setAutonomousLogsPage(autonomousLogsPage + 1)}
-                      >
-                        <ChevronRight className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+          <div className="flex items-center justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={onTriggerAnalysis}
+              disabled={isTriggering}
+            >
+              {isTriggering ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              {isTriggering ? "Analisi in corso..." : "Avvia Analisi Ora"}
+            </Button>
+          </div>
+          {triggerResult && (
+            <div className={cn(
+              "p-2.5 rounded-xl border text-xs",
+              triggerResult.success
+                ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300"
+                : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-300"
+            )}>
+              {triggerResult.success
+                ? `Analisi completata: ${triggerResult.tasks_generated} task generati.`
+                : `Errore: ${triggerResult.error || "Analisi fallita"}`}
             </div>
           )}
         </TabsContent>
