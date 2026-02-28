@@ -4571,12 +4571,6 @@ router.patch("/tasks/:id/reschedule", authenticateToken, requireAnyRole(["consul
       return res.status(400).json({ error: "La data deve essere nel futuro" });
     }
 
-    const romeTime = new Date(newDate.toLocaleString('en-US', { timeZone: 'Europe/Rome' }));
-    const romeHour = romeTime.getHours();
-    if (romeHour < 8 || romeHour >= 20) {
-      return res.status(400).json({ error: "L'orario deve essere tra le 08:00 e le 20:00 (ora italiana)" });
-    }
-
     const newStatus = approve ? 'scheduled' : undefined;
     const statusUpdate = newStatus ? sql`, status = ${newStatus}` : sql``;
 
@@ -4599,6 +4593,49 @@ router.patch("/tasks/:id/reschedule", authenticateToken, requireAnyRole(["consul
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error rescheduling task:", error);
     return res.status(500).json({ error: "Failed to reschedule task" });
+  }
+});
+
+router.patch("/tasks/:id/send-now", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id } = req.params;
+    const now = new Date();
+
+    const result = await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET scheduled_at = ${now},
+          status = 'scheduled',
+          scheduled_by = 'consultant',
+          updated_at = NOW(),
+          result_data = COALESCE(result_data, '{}'::jsonb) || '{"manually_approved": true, "skip_guardrails": true, "sent_now": true}'::jsonb
+      WHERE id = ${id}
+        AND consultant_id = ${consultantId}
+        AND status IN ('scheduled', 'draft', 'waiting_approval', 'paused', 'approved')
+      RETURNING id, task_type, preferred_channel
+    `);
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(400).json({ error: "Task non trovato o non modificabile" });
+    }
+
+    const task = result.rows[0] as any;
+
+    if (task.task_type === 'single_call') {
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls
+        SET status = 'scheduled', scheduled_at = ${now}, updated_at = NOW()
+        WHERE source_task_id = ${id} AND status IN ('pending', 'scheduled')
+      `);
+    }
+
+    console.log(`[SEND-NOW] Task ${id} (${task.preferred_channel}) set to send immediately by consultant ${consultantId}`);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error send-now task:", error);
+    return res.status(500).json({ error: "Failed to send task now" });
   }
 });
 

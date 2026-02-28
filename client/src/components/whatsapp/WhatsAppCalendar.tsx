@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, User, MessageSquare, Sparkles, Building2, Tag, TrendingUp, Pencil, X, CalendarPlus, Phone, Loader2, Trash2, Check } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, User, MessageSquare, Sparkles, Building2, Tag, TrendingUp, Pencil, X, CalendarPlus, Phone, Loader2, Trash2, Check, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
@@ -79,6 +79,7 @@ function TaskActionBar({ task, onRefetch, toast }: { task: AITask; onRefetch: ()
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmSendNow, setConfirmSendNow] = useState(false);
 
   const canEdit = EDITABLE_STATUSES.has(task.status);
   if (!canEdit) return null;
@@ -148,6 +149,27 @@ function TaskActionBar({ task, onRefetch, toast }: { task: AITask; onRefetch: ()
     setSaving(false);
   };
 
+  const handleSendNow = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/send-now`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        toast({ title: "Invio immediato", description: "Il messaggio verrà inviato entro 1 minuto" });
+        setConfirmSendNow(false);
+        await onRefetch();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "Errore", description: err.error || "Impossibile inviare subito", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
   const handleCancel = async () => {
     setSaving(true);
     try {
@@ -203,6 +225,18 @@ function TaskActionBar({ task, onRefetch, toast }: { task: AITask; onRefetch: ()
           </Button>
         </div>
       )}
+      {confirmSendNow && (
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30">
+          <span className="text-xs text-emerald-700 dark:text-emerald-400 flex-1">Inviare subito questo messaggio?</span>
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/30" onClick={handleSendNow} disabled={saving}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+            Conferma
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setConfirmSendNow(false)}>
+            No
+          </Button>
+        </div>
+      )}
       {confirmCancel && (
         <div className="flex items-center gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30">
           <span className="text-xs text-red-700 dark:text-red-400 flex-1">Cancellare questo messaggio?</span>
@@ -215,7 +249,7 @@ function TaskActionBar({ task, onRefetch, toast }: { task: AITask; onRefetch: ()
           </Button>
         </div>
       )}
-      {!editMode && !confirmCancel && (
+      {!editMode && !confirmCancel && !confirmSendNow && (
         <div className="flex items-center gap-1">
           <Button
             size="sm"
@@ -244,6 +278,15 @@ function TaskActionBar({ task, onRefetch, toast }: { task: AITask; onRefetch: ()
           >
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarPlus className="h-3 w-3" />}
             +24h
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-[11px] gap-1 flex-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/30"
+            onClick={() => setConfirmSendNow(true)}
+          >
+            <Send className="h-3 w-3" />
+            Invia
           </Button>
           <Button
             size="sm"
