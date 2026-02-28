@@ -1736,11 +1736,7 @@ export async function classifyAndGenerateDraft(
     }),
   ]);
 
-  console.log(`[EMAIL-AI] Contact context: source=${contactContext.source}, summary length=${contactContext.summary.length}`);
-  console.log(`[EMAIL-AI] Knowledge Base search: found=${kbResult.found}, stores=${kbResult.storeNames?.length || 0}, docs=${kbResult.totalDocuments || 0}`);
-
   const emailType = await determineEmailType(email, consultantId, undefined, contactContext);
-  console.log(`[EMAIL-AI] Determined emailType: ${emailType} for email ${emailId}`);
 
   await db
     .update(schema.hubEmails)
@@ -1748,6 +1744,7 @@ export async function classifyAndGenerateDraft(
     .where(eq(schema.hubEmails.id, emailId));
 
   let salesContextBlock = "";
+  let salesFieldCount = 0;
   try {
     const [accountData] = await db
       .select({ salesContext: schema.emailAccounts.salesContext })
@@ -1768,55 +1765,102 @@ export async function classifyAndGenerateDraft(
         ["Contesto aggiuntivo", sc.additionalContext],
       ];
       const filledFields = fields.filter(([, v]) => v && v.trim());
+      salesFieldCount = filledFields.length;
       if (filledFields.length > 0) {
         salesContextBlock = `\n\nPROFILO COMMERCIALE (usa queste info per rispondere in modo informato):\n` +
           filledFields.map(([label, value]) => `- ${label}: ${value}`).join("\n");
-        console.log(`[MILLIE-SALES] Profilo commerciale caricato da account ${email.accountId} (${filledFields.length} campi compilati)`);
-      } else {
-        console.log(`[MILLIE-SALES] Nessun profilo commerciale configurato per account ${email.accountId}`);
       }
-    } else {
-      console.log(`[MILLIE-SALES] Nessun profilo commerciale configurato per account ${email.accountId}`);
     }
   } catch (err: any) {
     console.error(`[MILLIE-SALES] Errore caricamento profilo commerciale:`, err.message);
   }
 
-  let fileSearchStoreNames = kbResult.found ? kbResult.storeNames || [] : [];
+  const EXCLUDED_STORE_PATTERNS = ["knowledge-base-consulente", "store-globale-consulenze"];
+  const filterStores = (stores: string[]) => stores.filter(s => !EXCLUDED_STORE_PATTERNS.some(p => s.includes(p)));
+
+  let fileSearchStoreNames = kbResult.found ? filterStores(kbResult.storeNames || []) : [];
+  const excludedCount = (kbResult.storeNames?.length || 0) - fileSearchStoreNames.length;
   
   const emailAccountStore = await FileSearchSyncService.getEmailAccountStore(email.accountId);
   if (emailAccountStore) {
-    console.log(`[EMAIL-AI] Adding email account store: ${emailAccountStore}`);
     fileSearchStoreNames = [...fileSearchStoreNames, emailAccountStore];
   }
   
+  let clientName = "";
   if (contactContext.source === "client" && contactContext.data?.userId) {
     const clientUserId = contactContext.data.userId;
-    const clientName = `${contactContext.data.firstName || ""} ${contactContext.data.lastName || ""}`.trim();
-    console.log(`[MILLIE-FILESEARCH] Cliente riconosciuto: ${clientName} (ID: ${clientUserId}) — cercando nei suoi documenti...`);
+    clientName = `${contactContext.data.firstName || ""} ${contactContext.data.lastName || ""}`.trim();
     try {
       const clientStores = await fileSearchService.getStoreNamesForGeneration(clientUserId, 'client');
       if (clientStores && clientStores.length > 0) {
-        console.log(`[MILLIE-FILESEARCH] Trovati ${clientStores.length} store per il cliente ${clientName}: [${clientStores.join(", ")}]`);
         fileSearchStoreNames = [...fileSearchStoreNames, ...clientStores];
-      } else {
-        console.log(`[MILLIE-FILESEARCH] Nessun documento privato trovato per il cliente ${clientName}`);
       }
     } catch (err: any) {
       console.error(`[MILLIE-FILESEARCH] Errore ricerca documenti per cliente ${clientName}:`, err.message);
     }
-  } else {
-    console.log(`[MILLIE-FILESEARCH] Contatto non-cliente (${contactContext.source}) — skip FileSearch privato`);
-  }
-
-  if (fileSearchStoreNames.length > 0) {
-    console.log(`[EMAIL-AI] FileSearch RAG enabled with ${kbResult.totalDocuments || 0} documents in ${fileSearchStoreNames.length} stores`);
   }
 
   let contactContextBlock = `\n\nCONTESTO CONTATTO (dal CRM):\n${contactContext.summary}`;
   if (contactContext.crossChannelContext) {
     contactContextBlock += `\n\n${contactContext.crossChannelContext}`;
   }
+
+  const contactLabel = contactContext.source === "client" ? `👤 CLIENTE: ${clientName}` :
+    contactContext.source === "lead_scraper" ? `🎯 LEAD (Hunter/CRM): ${contactContext.data?.business_name || email.fromEmail}` :
+    contactContext.source === "proactive_lead" ? `📋 LEAD PROATTIVO: ${contactContext.data?.firstName || ""} ${contactContext.data?.lastName || ""}`.trim() :
+    `❓ CONTATTO SCONOSCIUTO: ${email.fromEmail}`;
+
+  console.log(`\n📧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`📧 [MILLIE] ELABORAZIONE EMAIL: ${email.subject || "(Nessun oggetto)"}`);
+  console.log(`📧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`📧   Email ID:       ${emailId}`);
+  console.log(`📧   Account ID:     ${email.accountId}`);
+  console.log(`📧   Da:             ${email.fromName || ""} <${email.fromEmail}>`);
+  console.log(`📧   Oggetto:        ${email.subject || "(vuoto)"}`);
+  console.log(`📧   Email Type:     ${emailType}`);
+  console.log(`📧 ──────────────────────────────────────────────────────────────────`);
+  console.log(`📧   CONTATTO:       ${contactLabel}`);
+  console.log(`📧   Source:         ${contactContext.source}`);
+  if (contactContext.source === "lead_scraper" && contactContext.data) {
+    console.log(`📧   Attività:       ${contactContext.data.business_name || "N/A"}`);
+    console.log(`📧   Settore:        ${contactContext.data.category || "N/A"}`);
+    console.log(`📧   Score AI:       ${contactContext.data.ai_compatibility_score || "N/A"}/100`);
+    console.log(`📧   Stato lead:     ${contactContext.data.lead_status || "N/A"}`);
+  }
+  if (contactContext.source === "client" && contactContext.data) {
+    console.log(`📧   User ID:        ${contactContext.data.userId}`);
+    console.log(`📧   Livello:        ${contactContext.data.level || "N/A"}`);
+  }
+  if (contactContext.source === "proactive_lead" && contactContext.data) {
+    console.log(`📧   Stato:          ${contactContext.data.status || "N/A"}`);
+  }
+  console.log(`📧   Cross-channel:  ${contactContext.crossChannelContext ? `✅ (${contactContext.crossChannelContext.length} chars)` : "❌ nessuno"}`);
+  console.log(`📧 ──────────────────────────────────────────────────────────────────`);
+  console.log(`📧   IMPOSTAZIONI ACCOUNT:`);
+  console.log(`📧   Tono:           ${accountSettings.aiTone || "professional"}`);
+  console.log(`📧   Lingua:         ${extendedSettings?.aiLanguage || "it"}`);
+  console.log(`📧   Auto-reply:     ${extendedSettings?.autoReplyMode || "review"}`);
+  console.log(`📧   Soglia conf.:   ${accountSettings.confidenceThreshold ?? 0.8}`);
+  console.log(`📧   Booking link:   ${extendedSettings?.bookingLink ? "✅ " + extendedSettings.bookingLink : "❌ non configurato"}`);
+  console.log(`📧   Istruzioni:     ${extendedSettings?.customInstructions ? `✅ (${extendedSettings.customInstructions.length} chars)` : "❌ nessuna"}`);
+  console.log(`📧   Firma:          ${accountSettings.signature ? `✅ (${accountSettings.signature.length} chars)` : "❌ nessuna"}`);
+  console.log(`📧   Stop on risk:   ${extendedSettings?.stopOnRisk !== false ? "✅" : "❌"}`);
+  console.log(`📧   Escalation kw:  ${(extendedSettings?.escalationKeywords as string[])?.length ? `✅ [${(extendedSettings.escalationKeywords as string[]).join(", ")}]` : "❌ nessuna"}`);
+  console.log(`📧 ──────────────────────────────────────────────────────────────────`);
+  console.log(`📧   PROFILO COMMERCIALE: ${salesFieldCount > 0 ? `✅ ${salesFieldCount}/9 campi compilati` : "❌ non configurato"}`);
+  console.log(`📧 ──────────────────────────────────────────────────────────────────`);
+  console.log(`📧   FILESEARCH:`);
+  console.log(`📧   KB consulente:  ${kbResult.found ? `✅ ${kbResult.totalDocuments || 0} docs, ${kbResult.storeNames?.length || 0} stores` : "❌ nessun store"}`);
+  if (excludedCount > 0) {
+    console.log(`📧   Esclusi:        ⛔ ${excludedCount} store generici (knowledge-base-consulente, store-globale-consulenze)`);
+  }
+  console.log(`📧   Email account:  ${emailAccountStore ? `✅ ${emailAccountStore}` : "❌ nessuno"}`);
+  if (contactContext.source === "client" && contactContext.data?.userId) {
+    const clientStoreCount = fileSearchStoreNames.filter(s => !kbResult.storeNames?.includes(s) && s !== emailAccountStore).length;
+    console.log(`📧   Docs cliente:   ${clientStoreCount > 0 ? `✅ ${clientStoreCount} store privati` : "❌ nessun documento"}`);
+  }
+  console.log(`📧   Totale stores:  ${fileSearchStoreNames.length} → [${fileSearchStoreNames.join(", ")}]`);
+  console.log(`📧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
   const ticketSettings = await getTicketSettings(consultantId);
   let ticketCreated = false;
@@ -1878,7 +1922,6 @@ export async function classifyAndGenerateDraft(
     emailType
   );
   const adaptiveStrategy = getAdaptiveResponseStrategy(responseIntent);
-  console.log(`[EMAIL-AI] Detected response intent: ${responseIntent} for email ${emailId}`);
 
   const enrichedCustomInstructions = [
     extendedSettings?.customInstructions || "",
@@ -1886,6 +1929,29 @@ export async function classifyAndGenerateDraft(
     salesContextBlock,
     `\n\n${adaptiveStrategy}`,
   ].filter(Boolean).join("\n");
+
+  const fullSystemPrompt = buildStructuredResponsePrompt({
+    tone: accountSettings.aiTone || "professional",
+    signature: accountSettings.signature,
+    customInstructions: enrichedCustomInstructions,
+    knowledgeContext: undefined,
+    bookingLink: extendedSettings?.bookingLink,
+  });
+
+  console.log(`📧 ──────────────────────────────────────────────────────────────────`);
+  console.log(`📧 [MILLIE] CLASSIFICAZIONE:`);
+  console.log(`📧   Intent:         ${classification.intent}`);
+  console.log(`📧   Urgenza:        ${classification.urgency}`);
+  console.log(`📧   Sentiment:      ${classification.sentiment}`);
+  console.log(`📧   Categoria:      ${classification.category}`);
+  console.log(`📧   Azione:         ${classification.suggestedAction}`);
+  console.log(`📧   Confidenza:     ${classification.confidence}`);
+  console.log(`📧   Response intent:${responseIntent}`);
+  console.log(`📧 ──────────────────────────────────────────────────────────────────`);
+  console.log(`📧 [MILLIE] SYSTEM PROMPT COMPLETO INVIATO A GEMINI:`);
+  console.log(`📧 ──────────────────────────────────────────────────────────────────`);
+  console.log(fullSystemPrompt);
+  console.log(`📧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
   const aiResponse = await generateStructuredAIResponse(
     emailId,
