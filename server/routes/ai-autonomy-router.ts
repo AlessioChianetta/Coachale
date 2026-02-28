@@ -3080,7 +3080,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
                preferred_channel, tone, objective,
                scheduling_reason, scheduled_by, original_scheduled_at,
                parent_task_id, additional_context,
-               current_attempt, max_attempts,
+               current_attempt, max_attempts, error_message,
                (SELECT COUNT(*)::int FROM ai_activity_log al WHERE al.task_id = ai_scheduled_tasks.id AND (al.title ILIKE '%follow-up%' OR al.title ILIKE '%follow_up%' OR al.title ILIKE '%aggregat%')) as follow_up_count
         FROM ai_scheduled_tasks
         WHERE ${whereClause}
@@ -4636,6 +4636,52 @@ router.patch("/tasks/:id/send-now", authenticateToken, requireAnyRole(["consulta
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error send-now task:", error);
     return res.status(500).json({ error: "Failed to send task now" });
+  }
+});
+
+router.patch("/tasks/:id/retry", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id } = req.params;
+    const now = new Date();
+
+    const result = await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET scheduled_at = ${now},
+          status = 'scheduled',
+          current_attempt = 0,
+          error_message = NULL,
+          result_summary = NULL,
+          completed_at = NULL,
+          updated_at = NOW(),
+          result_data = COALESCE(result_data, '{}'::jsonb) || '{"manually_approved": true, "skip_guardrails": true, "retry": true}'::jsonb
+      WHERE id = ${id}
+        AND consultant_id = ${consultantId}
+        AND status = 'failed'
+      RETURNING id, task_type, preferred_channel
+    `);
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(400).json({ error: "Task non trovato o non in stato fallito" });
+    }
+
+    const task = result.rows[0] as any;
+
+    if (task.task_type === 'single_call') {
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls
+        SET status = 'scheduled', scheduled_at = ${now}, updated_at = NOW()
+        WHERE source_task_id = ${id} AND status IN ('failed', 'error', 'cancelled')
+      `);
+    }
+
+    console.log(`[RETRY] Task ${id} (${task.preferred_channel}) retried by consultant ${consultantId}`);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error retry task:", error);
+    return res.status(500).json({ error: "Failed to retry task" });
   }
 });
 

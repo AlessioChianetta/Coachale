@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, User, MessageSquare, Sparkles, Building2, Tag, TrendingUp, Pencil, X, CalendarPlus, Phone, Loader2, Trash2, Check, Send } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, User, MessageSquare, Sparkles, Building2, Tag, TrendingUp, Pencil, X, CalendarPlus, Phone, Loader2, Trash2, Check, Send, RotateCcw, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
@@ -81,8 +81,54 @@ function TaskActionBar({ task, onRefetch, toast }: { task: AITask; onRefetch: ()
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmSendNow, setConfirmSendNow] = useState(false);
 
+  const isFailed = task.status === "failed";
   const canEdit = EDITABLE_STATUSES.has(task.status);
-  if (!canEdit) return null;
+  if (!canEdit && !isFailed) return null;
+
+  if (isFailed) {
+    const handleRetry = async () => {
+      setSaving(true);
+      try {
+        const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/retry`, {
+          method: "PATCH",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        });
+        if (res.ok) {
+          toast({ title: "Riprova", description: "Il task verrà rieseguito entro 1 minuto" });
+          await onRefetch();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          toast({ title: "Errore", description: err.error || "Impossibile riprovare", variant: "destructive" });
+        }
+      } catch {
+        toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+      }
+      setSaving(false);
+    };
+
+    const errorMsg = task.error_message || task.result_summary || null;
+
+    return (
+      <div className="border-t border-border/50 p-3 space-y-2 bg-red-50/50 dark:bg-red-950/10">
+        {errorMsg && (
+          <div className="flex items-start gap-2 p-2 rounded-lg bg-red-100/70 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40">
+            <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-red-700 dark:text-red-400 leading-relaxed break-all">{errorMsg}</p>
+          </div>
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full h-8 text-xs gap-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-800/30"
+          onClick={handleRetry}
+          disabled={saving}
+        >
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+          Riprova invio
+        </Button>
+      </div>
+    );
+  }
 
   const handleReschedule = async () => {
     if (!editValue) return;

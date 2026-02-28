@@ -171,6 +171,7 @@ export interface AITask {
   current_attempt?: number;
   max_attempts?: number;
   follow_up_count?: number;
+  error_message?: string;
 }
 
 export interface TasksResponse {

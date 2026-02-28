@@ -1,0 +1,46 @@
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:04:00.867Z [ERROR] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772247301360_3e55j13p2 error=FreeSWITCH error: -ERR INVALID_GATEWAY
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:05:49.411Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 607ms
+6|voice-bridge  | 2026-02-28T03:09:49.673Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 869ms
+6|voice-bridge  | 2026-02-28T03:10:01.940Z [INFO ] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772247301360_3e55j13p2 targetPhone=+393519272875 aiMode=assistenza
+6|voice-bridge  | 2026-02-28T03:10:01.950Z [INFO ] [BRIDGE:OUTBOUND] Calling external number via gateway phone=+393519272875 gateway=voip_trunk
+6|voice-bridge  | 2026-02-28T03:10:01.950Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772248201950-36m5hu dialString=sofia/gateway/voip_trunk/+393519272875
+6|voice-bridge  | 2026-02-28T03:10:01.994Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=-ERR INVALID_GATEWAY
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:10:01.995Z [ERROR] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772247301360_3e55j13p2 error=FreeSWITCH error: -ERR INVALID_GATEWAY
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:13:49.416Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 612ms
+6|voice-bridge  | 2026-02-28T03:14:00.125Z [INFO ] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772247301360_3e55j13p2 targetPhone=+393519272875 aiMode=assistenza
+6|voice-bridge  | 2026-02-28T03:14:00.126Z [INFO ] [BRIDGE:OUTBOUND] Calling external number via gateway phone=+393519272875 gateway=voip_trunk
+6|voice-bridge  | 2026-02-28T03:14:00.126Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772248440126-kbfot7 dialString=sofia/gateway/voip_trunk/+393519272875
+6|voice-bridge  | 2026-02-28T03:14:00.170Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=-ERR INVALID_GATEWAY
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:14:00.170Z [ERROR] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772247301360_3e55j13p2 error=FreeSWITCH error: -ERR INVALID_GATEWAY
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:17:49.410Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 605ms
+6|voice-bridge  | 2026-02-28T03:21:49.486Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 682ms
+6|voice-bridge  | 2026-02-28T03:25:02.048Z [INFO ] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772249101268_n7rn6r7pi targetPhone=+393519272875 aiMode=assistenza
+6|voice-bridge  | 2026-02-28T03:25:02.053Z [INFO ] [BRIDGE:OUTBOUND] Calling external number via gateway phone=+393519272875 gateway=voip_trunk
+6|voice-bridge  | 2026-02-28T03:25:02.053Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772249102053-jyhr08 dialString=sofia/gateway/voip_trunk/+393519272875
+6|voice-bridge  | 2026-02-28T03:25:02.095Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=-ERR INVALID_GATEWAY
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:25:02.095Z [ERROR] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772249101268_n7rn6r7pi error=FreeSWITCH error: -ERR INVALID_GATEWAY
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:25:49.418Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 613ms
+6|voice-bridge  | 2026-02-28T03:27:00.169Z [INFO ] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772249101268_n7rn6r7pi targetPhone=+393519272875 aiMode=assistenza
+6|voice-bridge  | 2026-02-28T03:27:00.170Z [INFO ] [BRIDGE:OUTBOUND] Calling external number via gateway phone=+393519272875 gateway=voip_trunk
+6|voice-bridge  | 2026-02-28T03:27:00.170Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772249220170-0am8zi dialString=sofia/gateway/voip_trunk/+393519272875
+6|voice-bridge  | 2026-02-28T03:27:00.214Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=-ERR INVALID_GATEWAY
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:27:00.214Z [ERROR] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772249101268_n7rn6r7pi error=FreeSWITCH error: -ERR INVALID_GATEWAY
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:29:49.413Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 608ms
+6|voice-bridge  | 2026-02-28T03:31:00.096Z [INFO ] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772249101268_n7rn6r7pi targetPhone=+393519272875 aiMode=assistenza
+6|voice-bridge  | 2026-02-28T03:31:00.098Z [INFO ] [BRIDGE:OUTBOUND] Calling external number via gateway phone=+393519272875 gateway=voip_trunk
+6|voice-bridge  | 2026-02-28T03:31:00.098Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772249460098-xzwgc0 dialString=sofia/gateway/voip_trunk/+393519272875
+6|voice-bridge  | 2026-02-28T03:31:00.139Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=-ERR INVALID_GATEWAY
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:31:00.139Z [ERROR] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772249101268_n7rn6r7pi error=FreeSWITCH error: -ERR INVALID_GATEWAY
+6|voice-bridge  | 
+6|voice-bridge  | 2026-02-28T03:33:49.417Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 612ms
