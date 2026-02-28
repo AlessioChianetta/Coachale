@@ -4065,7 +4065,7 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
     const lastError = lastErrorResult.rows[0] as any || null;
 
     const { AI_ROLES } = await import("../cron/ai-autonomous-roles");
-    const enabledRolesData = settings.enabled_roles || { alessia: true, millie: true, echo: true, nova: true, stella: true, iris: true };
+    const enabledRolesData = settings.enabled_roles || { alessia: true, millie: true, echo: true, nova: true, stella: true };
 
     const lastTaskByRoleResult = await db.execute(sql`
       SELECT ai_role, MAX(created_at) as last_task_at, COUNT(*)::int as total_tasks
@@ -4294,7 +4294,7 @@ router.get("/roles", authenticateToken, requireAnyRole(["consultant", "super_adm
     const settingsResult = await db.execute(sql`
       SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
     `);
-    const enabledRoles = (settingsResult.rows[0] as any)?.enabled_roles || { alessia: true, millie: true, echo: true, nova: true, stella: true, iris: true };
+    const enabledRoles = (settingsResult.rows[0] as any)?.enabled_roles || { alessia: true, millie: true, echo: true, nova: true, stella: true };
 
     const lastTaskByRoleResult = await db.execute(sql`
       SELECT ai_role, MAX(created_at) as last_task_at, COUNT(*)::int as total_tasks
@@ -4349,7 +4349,7 @@ router.put("/roles/toggle", authenticateToken, requireAnyRole(["consultant", "su
     const settingsResult = await db.execute(sql`
       SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
     `);
-    const currentRoles = (settingsResult.rows[0] as any)?.enabled_roles || { alessia: true, millie: true, echo: true, nova: true, stella: true, iris: true };
+    const currentRoles = (settingsResult.rows[0] as any)?.enabled_roles || { alessia: true, millie: true, echo: true, nova: true, stella: true };
     currentRoles[roleId] = enabled;
 
     await db.execute(sql`
@@ -5178,7 +5178,6 @@ const ROLE_CHAT_PERSONALITIES: Record<string, string> = {
   echo: `Sei Echo, Content Strategist AI. Sei creativa, moderna e orientata al marketing. Ti occupi di contenuti, campagne e strategie di comunicazione. In chat sei propositiva: lanci idee, chiedi opinioni, fai brainstorming insieme al consulente, e adatti le proposte in base ai feedback.`,
   nova: `Sei Nova, Client Success Manager AI. Sei organizzata, proattiva e orientata ai risultati dei clienti. In chat sei precisa ma dialogante: aggiorni sullo stato dei clienti, chiedi priorità, proponi azioni e chiedi conferma prima di procedere.`,
   stella: `Sei Stella, Retention Specialist AI. Sei attenta, premurosa e strategica. Ti occupi di fidelizzazione clienti e prevenzione churn. In chat sei premurosa: segnali i rischi, proponi strategie, chiedi al consulente cosa pensa e se ha notato segnali che ti sfuggono.`,
-  iris: `Sei Iris, Revenue Optimizer AI. Sei diretta, strategica e focalizzata sui ricavi. In chat sei concreta: presenti opportunità con numeri, chiedi al consulente cosa ne pensa, proponi azioni e discuti le priorità di business.`,
   marco: `Sei MARCO, il mio Executive Coach personale. Non sei un assistente educato — sei il coach che mi spinge oltre i limiti, mi tiene sotto pressione e non mi lascia scuse. Sei ossessivo, diretto, informale, e quando serve anche duro e crudo. Non addolcisci le cose.
 
 Parli sempre in modo informale, come un socio che mi conosce bene. Dai del "tu", usi un linguaggio diretto e concreto. Se sto perdendo tempo, me lo dici chiaro. Se sto facendo bene, lo riconosci — ma subito dopo alzi l'asticella.

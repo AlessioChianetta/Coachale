@@ -91,7 +91,7 @@ async function generateDailySummariesForAllConsultants() {
 
     const AI_ROLE_NAMES: Record<string, string> = {
       alessia: 'Alessia', millie: 'Millie', echo: 'Echo', nova: 'Nova',
-      stella: 'Stella', iris: 'Iris', marco: 'Marco', personalizza: 'Personalizza',
+      stella: 'Stella', marco: 'Marco', personalizza: 'Personalizza',
     };
 
     for (const row of consultantsWithMessages.rows as any[]) {

@@ -2958,7 +2958,7 @@ export default function ConsultantSetupWizard() {
                           </h4>
                           <div className="text-sm text-muted-foreground space-y-3">
                             <p className="font-medium text-foreground">🤖 Cos'è l'AI Autonomo?</p>
-                            <p>È un sistema con 8 dipendenti AI specializzati (Alessia, Millie, Echo, Nova, Stella, Iris, Marco, Personalizza) che analizzano i tuoi clienti e creano task automaticamente.</p>
+                            <p>È un sistema con 8 dipendenti AI specializzati (Alessia, Millie, Echo, Nova, Stella, Hunter, Marco, Personalizza) che analizzano i tuoi clienti e creano task automaticamente.</p>
                             
                             <p className="font-medium text-foreground mt-4">✅ Come completare questo step:</p>
                             <ol className="list-decimal list-inside ml-2 space-y-2">
@@ -2970,12 +2970,12 @@ export default function ConsultantSetupWizard() {
                             
                             <p className="font-medium text-foreground mt-4">👥 I dipendenti AI:</p>
                             <ul className="list-disc list-inside ml-2 space-y-1">
-                              <li><strong>Alessia:</strong> Primo contatto e outreach</li>
-                              <li><strong>Millie:</strong> Follow-up e relazioni</li>
-                              <li><strong>Echo:</strong> Analisi dati e performance</li>
-                              <li><strong>Nova:</strong> Report settimanali</li>
-                              <li><strong>Stella:</strong> Check-in periodici</li>
-                              <li><strong>Iris:</strong> Email intelligenti</li>
+                              <li><strong>Alessia:</strong> Primo contatto e chiamate vocali</li>
+                              <li><strong>Millie:</strong> Email intelligenti e follow-up</li>
+                              <li><strong>Echo:</strong> Riassunti consulenze</li>
+                              <li><strong>Nova:</strong> Contenuti e social media</li>
+                              <li><strong>Stella:</strong> WhatsApp e nurturing</li>
+                              <li><strong>Hunter:</strong> Ricerca lead e outreach</li>
                               <li><strong>Marco:</strong> Coach strategico del consulente</li>
                             </ul>
                             

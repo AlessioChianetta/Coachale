@@ -93,7 +93,6 @@ const AUTONOMOUS_AGENTS_LIST = [
   { id: "engagement_reactivator", name: "Echo (Riattivazione)" },
   { id: "retention_specialist", name: "Nova (Retention)" },
   { id: "review_collector", name: "Stella (Recensioni)" },
-  { id: "informative_advisor", name: "Iris (Informativa)" },
   { id: "custom_agent", name: "Personalizza" },
 ];
 

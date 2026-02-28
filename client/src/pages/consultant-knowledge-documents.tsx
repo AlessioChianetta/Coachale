@@ -1717,7 +1717,7 @@ export default function ConsultantKnowledgeDocuments() {
                     <p>La <strong>memoria dei dipendenti</strong> autonomi. Qui assegni documenti specifici ai tuoi 8 agenti AI, dando a ciascuno le conoscenze di cui ha bisogno.</p>
                     <ul className="space-y-1.5 ml-1">
                       <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />Ogni agente accede solo ai documenti assegnati</li>
-                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />Alessia, Millie, Echo, Nova, Stella, Iris, Marco, Personalizza</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />Alessia, Millie, Echo, Nova, Stella, Hunter, Marco, Personalizza</li>
                       <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />Usano File Search per cercare info rilevanti durante i task</li>
                       <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />Seleziona i documenti dalla tua Knowledge Base esistente</li>
                     </ul>

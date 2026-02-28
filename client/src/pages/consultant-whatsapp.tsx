@@ -146,7 +146,6 @@ import specAvatar from "@assets/generated_images/spec_ai_researcher_avatar.png";
 import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_avatar.png";
 import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png";
 import archieAvatar from "@assets/generated_images/archie_ai_builder_avatar.png";
-import irisAvatar from "@assets/generated_images/iris_ai_email_hub_avatar.png";
 import alessiaAvatar from "@assets/generated_images/alessia_ai_voice_consultant_avatar.png";
 import ceoAvatar from "@assets/generated_images/realistic_ceo_businessman_headshot.png";
 import {
@@ -2339,13 +2338,13 @@ export default function ConsultantWhatsAppPage() {
                 ctaHref="/consultant/whatsapp?tab=ideas"
               />
 
-              {/* Card 7 - Iris */}
+              {/* Card 7 - Millie Email Hub */}
               <TeamMemberCard
-                name="Iris"
+                name="Millie"
                 role="Email Hub Manager"
-                avatar={irisAvatar}
+                avatar={millieAvatar}
                 quote="Gestisco la tua casella email, rispondo con AI e assegno ticket al team quando serve."
-                accentColor="teal"
+                accentColor="purple"
                 features={[
                   { icon: Mail, label: "Risposte AI alle Email" },
                   { icon: Users, label: "Assegnazione Ticket" },

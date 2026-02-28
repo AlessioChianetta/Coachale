@@ -2209,7 +2209,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id::text = ${cId} LIMIT 1
   `);
   const enabledRoles: Record<string, boolean> = (enabledRolesResult.rows[0] as any)?.enabled_roles || 
-    { alessia: true, millie: true, echo: true, nova: true, stella: true, iris: true };
+    { alessia: true, millie: true, echo: true, nova: true, stella: true };
 
   const { getActiveRoles } = await import("./ai-autonomous-roles");
   let activeRoles = getActiveRoles(enabledRoles);

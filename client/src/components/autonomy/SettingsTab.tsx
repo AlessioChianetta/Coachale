@@ -1505,6 +1505,169 @@ function SettingsTab({
 
         {/* Tab 2 - Autonomia & Modalita' */}
         <TabsContent value="autonomia" className="mt-5 space-y-5">
+
+          {(() => {
+            const enabledRolesCount = systemStatus?.roles?.filter(r => r.enabled).length || 0;
+            const hasClients = (systemStatus?.total_clients || 0) > 0;
+            const hasVoice = settings.channels_enabled?.voice;
+            const hasEmail = settings.channels_enabled?.email;
+            const hasWhatsapp = settings.channels_enabled?.whatsapp;
+            const hasAnyChannel = hasVoice || hasEmail || hasWhatsapp;
+            const hasCategories = settings.allowed_task_categories.length > 0;
+
+            const checks = [
+              {
+                label: "Sistema attivo",
+                done: settings.is_active,
+                hint: "Attiva lo switch qui sotto",
+                required: true,
+              },
+              {
+                label: "Livello autonomia \u2265 2",
+                done: settings.autonomy_level >= 2,
+                hint: "Imposta almeno livello 2 per l'analisi clienti",
+                required: true,
+              },
+              {
+                label: `Dipendenti abilitati (${enabledRolesCount})`,
+                done: enabledRolesCount > 0,
+                hint: "Vai alla tab Dipendenti AI e attivane almeno uno",
+                required: true,
+              },
+              {
+                label: "Clienti presenti",
+                done: hasClients,
+                hint: `${systemStatus?.total_clients || 0} clienti assegnati`,
+                required: true,
+              },
+              {
+                label: "Categorie task abilitate",
+                done: hasCategories,
+                hint: "Vai a Canali & Categorie e abilita almeno una categoria",
+                required: true,
+              },
+              {
+                label: "Canale voce",
+                done: !!hasVoice,
+                hint: "Per chiamate vocali con Alessia",
+                required: false,
+              },
+              {
+                label: "Canale email",
+                done: !!hasEmail,
+                hint: "Per email con Millie",
+                required: false,
+              },
+              {
+                label: "Canale WhatsApp",
+                done: !!hasWhatsapp,
+                hint: "Per messaggi con Stella",
+                required: false,
+              },
+            ];
+
+            const requiredChecks = checks.filter(c => c.required);
+            const optionalChecks = checks.filter(c => !c.required);
+            const requiredDone = requiredChecks.filter(c => c.done).length;
+            const allRequiredDone = requiredDone === requiredChecks.length;
+            const optionalDone = optionalChecks.filter(c => c.done).length;
+            const progressPercent = Math.round((requiredDone / requiredChecks.length) * 100);
+
+            return (
+              <div className={cn(
+                "relative rounded-2xl border p-5 overflow-hidden transition-all duration-300",
+                allRequiredDone
+                  ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+                  : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+              )}>
+                <div className={cn(
+                  "absolute top-0 left-0 right-0 h-1",
+                  allRequiredDone ? "bg-emerald-400" : "bg-gradient-to-r from-amber-400 to-orange-400"
+                )} />
+
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "flex items-center justify-center h-10 w-10 rounded-full text-lg font-bold shrink-0",
+                      allRequiredDone
+                        ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
+                        : "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"
+                    )}>
+                      {allRequiredDone ? <CheckCircle className="h-5 w-5" /> : `${progressPercent}%`}
+                    </div>
+                    <div>
+                      <h3 className={cn(
+                        "text-sm font-semibold",
+                        allRequiredDone ? "text-emerald-800 dark:text-emerald-300" : "text-amber-800 dark:text-amber-300"
+                      )}>
+                        {allRequiredDone ? "Pronto per partire!" : "Checklist avvio AI"}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {allRequiredDone
+                          ? `Tutti i requisiti soddisfatti \u2022 ${optionalDone}/${optionalChecks.length} canali configurati`
+                          : `${requiredDone}/${requiredChecks.length} requisiti completati`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-4">
+                  <div
+                    className={cn(
+                      "h-1.5 rounded-full transition-all duration-500",
+                      allRequiredDone ? "bg-emerald-500" : "bg-amber-500"
+                    )}
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+                  {requiredChecks.map((check, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1">
+                      {check.done ? (
+                        <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border-2 border-amber-400 shrink-0" />
+                      )}
+                      <span className={cn(
+                        "text-xs font-medium",
+                        check.done ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
+                      )}>
+                        {check.label}
+                      </span>
+                      {!check.done && (
+                        <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">{check.hint}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {optionalChecks.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Canali (opzionali)</p>
+                    <div className="flex flex-wrap gap-2">
+                      {optionalChecks.map((check, i) => (
+                        <Badge
+                          key={i}
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] gap-1 py-0.5 rounded-lg",
+                            check.done
+                              ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {check.done ? <CheckCircle className="h-3 w-3" /> : <div className="h-3 w-3 rounded-full border border-current" />}
+                          {check.label}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
             <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
               <Zap className="h-5 w-5" />
