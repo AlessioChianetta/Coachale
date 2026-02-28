@@ -2218,15 +2218,15 @@ export default function ConsultantVoiceCallsPage() {
 
               <TabsContent value="calls" className="space-y-6">
 
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-3">
-                    <CardTitle>Storico Chiamate</CardTitle>
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base sm:text-lg">Storico Chiamate</CardTitle>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 text-xs"
                       onClick={() => {
                         if (confirm("Sei sicuro di voler cancellare tutto lo storico chiamate, le chiamate programmate e i task AI?")) {
                           clearHistoryMutation.mutate();
@@ -2235,25 +2235,25 @@ export default function ConsultantVoiceCallsPage() {
                       disabled={clearHistoryMutation.isPending}
                     >
                       {clearHistoryMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
                       ) : (
-                        <Trash2 className="h-4 w-4 mr-1" />
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />
                       )}
-                      Pulisci
+                      <span className="hidden sm:inline">Pulisci</span>
                     </Button>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <div className="relative">
+                    <div className="relative flex-1 min-w-[140px]">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Cerca numero o cliente..."
+                        placeholder="Cerca..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9 w-[180px]"
+                        className="pl-9 h-8 text-sm"
                       />
                     </div>
                     <Select value={clientTypeFilter} onValueChange={(v) => setClientTypeFilter(v as 'all' | 'client' | 'non-client')}>
-                      <SelectTrigger className="w-[140px]">
+                      <SelectTrigger className="w-[110px] sm:w-[140px] h-8 text-xs sm:text-sm">
                         <SelectValue placeholder="Tipo" />
                       </SelectTrigger>
                       <SelectContent>
@@ -2278,7 +2278,7 @@ export default function ConsultantVoiceCallsPage() {
                       </SelectContent>
                     </Select>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-[130px]">
+                      <SelectTrigger className="w-[110px] sm:w-[130px] h-8 text-xs sm:text-sm">
                         <SelectValue placeholder="Stato" />
                       </SelectTrigger>
                       <SelectContent>
@@ -2293,7 +2293,7 @@ export default function ConsultantVoiceCallsPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-0 sm:px-6">
                 {loadingCalls ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin" />
@@ -2308,18 +2308,19 @@ export default function ConsultantVoiceCallsPage() {
                   </div>
                 ) : (
                   <>
-                    <Table>
+                    <div className="overflow-x-auto -mx-0 sm:mx-0">
+                    <Table className="min-w-[900px]">
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Data</TableHead>
-                          <TableHead>Chiamante</TableHead>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Stato</TableHead>
-                          <TableHead>Origine</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Istruzione</TableHead>
-                          <TableHead>Durata</TableHead>
-                          <TableHead>Esito</TableHead>
+                          <TableHead className="whitespace-nowrap">Data</TableHead>
+                          <TableHead className="whitespace-nowrap">Chiamante</TableHead>
+                          <TableHead className="whitespace-nowrap">Cliente</TableHead>
+                          <TableHead className="whitespace-nowrap">Stato</TableHead>
+                          <TableHead className="whitespace-nowrap">Origine</TableHead>
+                          <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                          <TableHead className="whitespace-nowrap">Istruzione</TableHead>
+                          <TableHead className="whitespace-nowrap">Durata</TableHead>
+                          <TableHead className="whitespace-nowrap">Esito</TableHead>
                           <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -2473,8 +2474,9 @@ export default function ConsultantVoiceCallsPage() {
                         })}
                       </TableBody>
                     </Table>
+                    </div>
 
-                    <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center justify-between mt-4 px-2 sm:px-0">
                       <p className="text-sm text-muted-foreground">
                         {pagination.total} chiamate totali
                       </p>
