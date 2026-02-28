@@ -1498,110 +1498,185 @@ export default function ProactiveLeadsPage() {
               ]}
             />
 
-            {/* Unified Header */}
-            <div className={cn(
-              "rounded-xl border p-5 space-y-4",
-              pageView === "hunter"
-                ? "bg-gradient-to-r from-teal-50/80 to-cyan-50/80 dark:from-teal-950/30 dark:to-cyan-950/30 border-teal-200/60 dark:border-teal-800/40"
-                : "bg-gradient-to-r from-blue-50/80 to-purple-50/80 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200/60 dark:border-blue-800/40"
-            )}>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "p-2.5 rounded-xl shadow-md",
-                    pageView === "hunter"
-                      ? "bg-gradient-to-br from-teal-500 to-cyan-600"
-                      : "bg-gradient-to-br from-blue-500 to-purple-600"
-                  )}>
-                    {pageView === "hunter"
-                      ? <Crosshair className="h-6 w-6 text-white" />
-                      : <Users className="h-6 w-6 text-white" />
-                    }
-                  </div>
-                  <div>
-                    <h1 className={cn(
-                      "text-2xl font-bold bg-clip-text text-transparent",
+            {/* Unified Header Panel */}
+            <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-white shadow-xl">
+              <div className="p-5 pb-4 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "p-2.5 rounded-xl",
                       pageView === "hunter"
-                        ? "bg-gradient-to-r from-teal-600 to-cyan-600"
-                        : "bg-gradient-to-r from-blue-600 to-purple-600"
+                        ? "bg-gradient-to-br from-teal-500 to-cyan-600"
+                        : "bg-gradient-to-br from-blue-500 to-purple-600"
                     )}>
-                      {pageView === "hunter" ? "Outbox Hunter" : "Gestione Lead Proattivi"}
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-0.5">
                       {pageView === "hunter"
-                        ? "Tutte le azioni eseguite da Hunter: chiamate, WhatsApp e email inviate ai lead"
-                        : "Gestisci e monitora i tuoi lead proattivi con follow-up automatici via WhatsApp"
+                        ? <Crosshair className="h-6 w-6 text-white" />
+                        : <Users className="h-6 w-6 text-white" />
                       }
-                    </p>
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold text-white">
+                        {pageView === "hunter" ? "Outbox Hunter" : "Gestione Lead Proattivi"}
+                      </h1>
+                      <p className="text-sm text-slate-400 mt-0.5">
+                        {pageView === "hunter"
+                          ? "Azioni eseguite da Hunter: chiamate, WhatsApp e email"
+                          : "Gestisci e monitora i lead con follow-up automatici"
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+                    {pageView === "hunter" ? (
+                      <>
+                        <Button onClick={() => refetchHunterActions()} variant="outline" size="sm" className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white bg-transparent flex-1 sm:flex-none">
+                          <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                          Aggiorna
+                        </Button>
+                        <Button
+                          onClick={() => triggerDirectMutation.mutate()}
+                          size="sm"
+                          className="bg-teal-600 hover:bg-teal-500 text-white flex-1 sm:flex-none"
+                          disabled={triggerDirectMutation.isPending}
+                        >
+                          {triggerDirectMutation.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1.5" />}
+                          Avvia Ora
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button onClick={() => refetchLeads()} variant="outline" size="sm" className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white bg-transparent flex-1 sm:flex-none" disabled={isRefetchingLeads}>
+                          {isRefetchingLeads ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                          Aggiorna
+                        </Button>
+                        <Button onClick={() => triggerCrmImportMutation.mutate()} size="sm" className="bg-purple-600 hover:bg-purple-500 text-white flex-1 sm:flex-none" disabled={triggerCrmImportMutation.isPending}>
+                          {triggerCrmImportMutation.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
+                          Importa Ora
+                        </Button>
+                        <Button onClick={() => setIsBulkImportDialogOpen(true)} size="sm" className="bg-green-600 hover:bg-green-500 text-white flex-1 sm:flex-none">
+                          <Upload className="h-3.5 w-3.5 mr-1.5" />
+                          Import CSV
+                        </Button>
+                        <Button onClick={handleAddNew} size="sm" className="bg-blue-600 hover:bg-blue-500 text-white flex-1 sm:flex-none" disabled={agents.length === 0}>
+                          <Plus className="h-3.5 w-3.5 mr-1.5" />
+                          Aggiungi Lead
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+                <div className="flex gap-1.5 p-1 bg-slate-800/80 rounded-lg w-fit">
+                  <button
+                    onClick={() => setPageView("leads")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      pageView === "leads"
+                        ? "bg-slate-700 text-white shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <Users className="h-4 w-4" />
+                    Lead Proattivi
+                  </button>
+                  <button
+                    onClick={() => setPageView("hunter")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      pageView === "hunter"
+                        ? "bg-slate-700 text-white shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <Crosshair className="h-4 w-4" />
+                    Outbox Hunter
+                    {hunterActions.length > 0 && (
+                      <Badge className="bg-teal-600/30 text-teal-300 border-teal-500/30 text-[10px] px-1.5 py-0 min-w-[20px] h-5">
+                        {hunterActionsData?.total || hunterActions.length}
+                      </Badge>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div className="px-5 pb-5 pt-1">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {pageView === "hunter" ? (
                     <>
-                      <Button onClick={() => refetchHunterActions()} variant="outline" size="sm" className="flex-1 sm:flex-none">
-                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                        Aggiorna
-                      </Button>
-                      <Button
-                        onClick={() => triggerDirectMutation.mutate()}
-                        size="sm"
-                        className="bg-teal-600 hover:bg-teal-700 text-white flex-1 sm:flex-none"
-                        disabled={triggerDirectMutation.isPending}
-                      >
-                        {triggerDirectMutation.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1.5" />}
-                        Avvia Ora
-                      </Button>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                        <div className="p-2 bg-teal-500/20 rounded-lg">
+                          <Crosshair className="h-4 w-4 text-teal-400" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">Totale</p>
+                          <p className="text-xl font-bold text-white">{hunterActionsData?.total || hunterActions.length}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                        <div className="p-2 bg-blue-500/20 rounded-lg">
+                          <Clock className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">Schedulati</p>
+                          <p className="text-xl font-bold text-blue-400">{hunterActions.filter((a: any) => a.status === "scheduled" || a.status === "waiting_approval").length}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                        <div className="p-2 bg-green-500/20 rounded-lg">
+                          <CheckCircle2 className="h-4 w-4 text-green-400" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">Inviati</p>
+                          <p className="text-xl font-bold text-green-400">{hunterActions.filter((a: any) => a.status === "sent").length}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                        <div className="p-2 bg-red-500/20 rounded-lg">
+                          <XCircle className="h-4 w-4 text-red-400" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">Falliti</p>
+                          <p className="text-xl font-bold text-red-400">{hunterActions.filter((a: any) => a.status === "failed").length}</p>
+                        </div>
+                      </div>
                     </>
                   ) : (
                     <>
-                      <Button onClick={() => refetchLeads()} variant="outline" size="sm" disabled={isRefetchingLeads} className="flex-1 sm:flex-none">
-                        {isRefetchingLeads ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-                        Aggiorna
-                      </Button>
-                      <Button onClick={() => triggerCrmImportMutation.mutate()} variant="outline" size="sm" className="bg-purple-600 hover:bg-purple-700 text-white flex-1 sm:flex-none" disabled={triggerCrmImportMutation.isPending}>
-                        {triggerCrmImportMutation.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
-                        Importa Ora
-                      </Button>
-                      <Button onClick={() => setIsBulkImportDialogOpen(true)} variant="outline" size="sm" className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none">
-                        <Upload className="h-3.5 w-3.5 mr-1.5" />
-                        Import CSV
-                      </Button>
-                      <Button onClick={handleAddNew} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none" disabled={agents.length === 0}>
-                        <Plus className="h-3.5 w-3.5 mr-1.5" />
-                        Aggiungi Lead
-                      </Button>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                        <div className="p-2 bg-blue-500/20 rounded-lg">
+                          <Users className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">Totale Lead</p>
+                          <p className="text-xl font-bold text-white">{leads.length}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                        <div className="p-2 bg-amber-500/20 rounded-lg">
+                          <Clock className="h-4 w-4 text-amber-400" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">In Attesa</p>
+                          <p className="text-xl font-bold text-amber-400">{leads.filter((l) => l.status === "pending").length}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                        <div className="p-2 bg-green-500/20 rounded-lg">
+                          <MessageCircle className="h-4 w-4 text-green-400" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">Contattati</p>
+                          <p className="text-xl font-bold text-green-400">{leads.filter((l) => l.status === "contacted").length}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                        <div className="p-2 bg-purple-500/20 rounded-lg">
+                          <Sparkles className="h-4 w-4 text-purple-400" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">Convertiti</p>
+                          <p className="text-xl font-bold text-purple-400">{leads.filter((l) => l.status === "converted").length}</p>
+                        </div>
+                      </div>
                     </>
                   )}
                 </div>
-              </div>
-              <div className="flex gap-1 p-1 bg-white/60 dark:bg-gray-800/60 rounded-lg w-fit backdrop-blur-sm">
-                <button
-                  onClick={() => setPageView("leads")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    pageView === "leads"
-                      ? "bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-400 shadow-sm"
-                      : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                  }`}
-                >
-                  <Users className="h-4 w-4" />
-                  Lead Proattivi
-                </button>
-                <button
-                  onClick={() => setPageView("hunter")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    pageView === "hunter"
-                      ? "bg-white dark:bg-gray-700 text-teal-700 dark:text-teal-400 shadow-sm"
-                      : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                  }`}
-                >
-                  <Crosshair className="h-4 w-4" />
-                  Outbox Hunter
-                  {hunterActions.length > 0 && (
-                    <Badge className="bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400 text-[10px] px-1.5 py-0 min-w-[20px] h-5">
-                      {hunterActionsData?.total || hunterActions.length}
-                    </Badge>
-                  )}
-                </button>
               </div>
             </div>
 
@@ -1653,69 +1728,6 @@ export default function ProactiveLeadsPage() {
                   </div>
                 </div>
 
-                {/* Hunter Stats Cards */}
-                {hunterActions.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg shadow-md">
-                            <Crosshair className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Totale</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{hunterActionsData?.total || hunterActions.length}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md">
-                            <Clock className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Schedulati</p>
-                            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                              {hunterActions.filter((a: any) => a.status === "scheduled" || a.status === "waiting_approval").length}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-md">
-                            <CheckCircle2 className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Inviati</p>
-                            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                              {hunterActions.filter((a: any) => a.status === "sent").length}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-md">
-                            <XCircle className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Falliti</p>
-                            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                              {hunterActions.filter((a: any) => a.status === "failed").length}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
 
                 {/* Hunter Leads CRM View */}
                 {hunterLoading ? (
@@ -2154,70 +2166,6 @@ export default function ProactiveLeadsPage() {
               </Alert>
             )}
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md">
-                      <Users className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Totale Lead</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{leads.length}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-md bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-gradient-to-br from-gray-400 to-gray-500 rounded-lg shadow-md">
-                      <Clock className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">In Attesa</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {leads.filter((l) => l.status === "pending").length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md">
-                      <MessageCircle className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Contattati</p>
-                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        {leads.filter((l) => l.status === "contacted").length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-md">
-                      <Sparkles className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Convertiti</p>
-                      <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                        {leads.filter((l) => l.status === "converted").length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
 
             {/* CRM Import Logs Section */}
             {importLogs && importLogs.length > 0 && (
