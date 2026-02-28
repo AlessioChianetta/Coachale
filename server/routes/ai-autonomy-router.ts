@@ -1164,21 +1164,41 @@ async function findNextAvailableSlot(
   consultantId: string,
   channel: string,
   offsetIndex: number,
-  timezone: string = 'Europe/Rome'
+  timezone: string = 'Europe/Rome',
+  outreachConfig?: any
 ): Promise<Date> {
   const now = new Date();
-  const baseOffset = channel === 'voice' ? 30 : channel === 'whatsapp' ? 5 : 10;
-  const slotDuration = channel === 'voice' ? 30 : channel === 'whatsapp' ? 5 : 10;
+
+  const channelIntervals: Record<string, number> = {
+    voice: outreachConfig?.voice_interval_minutes || 30,
+    whatsapp: outreachConfig?.whatsapp_interval_minutes || 5,
+    email: outreachConfig?.email_interval_minutes || 10,
+  };
+  const channelStartHours: Record<string, number> = {
+    voice: parseInt((outreachConfig?.voice_start_hour || '09:00').split(':')[0]),
+    whatsapp: parseInt((outreachConfig?.whatsapp_start_hour || '09:00').split(':')[0]),
+    email: parseInt((outreachConfig?.email_start_hour || '08:00').split(':')[0]),
+  };
+  const channelEndHours: Record<string, number> = {
+    voice: parseInt((outreachConfig?.voice_end_hour || '19:00').split(':')[0]),
+    whatsapp: parseInt((outreachConfig?.whatsapp_end_hour || '20:00').split(':')[0]),
+    email: parseInt((outreachConfig?.email_end_hour || '20:00').split(':')[0]),
+  };
+
+  const baseOffset = channelIntervals[channel] || 30;
+  const slotDuration = baseOffset;
+  const startHour = channelStartHours[channel] || 9;
+  const endHour = channelEndHours[channel] || 19;
 
   let candidate = new Date(now.getTime() + (5 + offsetIndex * baseOffset) * 60000);
 
   const hour = candidate.getHours();
-  if (hour < 9) { candidate.setHours(9, 0, 0, 0); }
-  else if (hour >= 19) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(9, 0, 0, 0); }
+  if (hour < startHour) { candidate.setHours(startHour, 0, 0, 0); }
+  else if (hour >= endHour) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
 
   const day = candidate.getDay();
-  if (day === 0) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(9, 0, 0, 0); }
-  else if (day === 6) { candidate.setDate(candidate.getDate() + 2); candidate.setHours(9, 0, 0, 0); }
+  if (day === 0) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
+  else if (day === 6) { candidate.setDate(candidate.getDate() + 2); candidate.setHours(startHour, 0, 0, 0); }
 
   if (channel === 'voice') {
     for (let attempt = 0; attempt < 10; attempt++) {
@@ -1196,10 +1216,10 @@ async function findNextAvailableSlot(
       } catch { break; }
       candidate = new Date(candidate.getTime() + slotDuration * 60000);
       const newHour = candidate.getHours();
-      if (newHour >= 19) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(9, 0, 0, 0); }
+      if (newHour >= endHour) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
       const newDay = candidate.getDay();
-      if (newDay === 0) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(9, 0, 0, 0); }
-      else if (newDay === 6) { candidate.setDate(candidate.getDate() + 2); candidate.setHours(9, 0, 0, 0); }
+      if (newDay === 0) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
+      else if (newDay === 6) { candidate.setDate(candidate.getDate() + 2); candidate.setHours(startHour, 0, 0, 0); }
     }
   }
 
@@ -1211,14 +1231,14 @@ async function scheduleIndividualOutreach(
   lead: any,
   channel: string,
   content: any,
-  config: { voiceTemplateId: string | null; whatsappConfigId: string | null; emailAccountId: string | null; timezone: string; voiceTemplateName?: string; callInstructionTemplate?: string },
+  config: { voiceTemplateId: string | null; whatsappConfigId: string | null; emailAccountId: string | null; timezone: string; voiceTemplateName?: string; callInstructionTemplate?: string; outreachConfig?: any },
   mode: 'autonomous' | 'approval',
   slotIndex: number
 ): Promise<{ taskId: string; channel: string; leadName: string; status: string; scheduledAt: string; contentPreview: string }> {
   const leadName = lead.businessName || lead.business_name || 'Lead';
   const taskStatus = mode === 'autonomous' ? 'scheduled' : 'waiting_approval';
   console.log(`[HUNTER] Step 1/6: Finding slot for ${channel} → "${leadName}" (mode=${mode})`);
-  const scheduledAt = await findNextAvailableSlot(consultantId, channel, slotIndex, config.timezone);
+  const scheduledAt = await findNextAvailableSlot(consultantId, channel, slotIndex, config.timezone, config.outreachConfig);
   const scheduledAtIso = scheduledAt.toISOString();
   const taskId = `hunt_${channel.substring(0, 2)}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   console.log(`[HUNTER] Step 1/6: Slot found → ${scheduledAtIso} (taskId=${taskId}, status=${taskStatus})`);

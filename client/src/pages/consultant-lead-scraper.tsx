@@ -2879,6 +2879,133 @@ export default function ConsultantLeadScraper() {
 
                     <div>
                       <div className="flex items-center gap-2.5 mb-4">
+                        <div className="h-7 w-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                          <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Orari operativi</h4>
+                          <p className="text-xs text-muted-foreground">Fasce orarie in cui Hunter può contattare i lead</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div className="space-y-3 p-4 rounded-xl border border-green-200 dark:border-green-800/50 bg-green-50/30 dark:bg-green-950/10">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <PhoneCall className="h-4 w-4 text-green-600" />
+                            Chiamate
+                          </Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Dalle</Label>
+                              <Select value={outreachConfig.voice_start_hour || "09:00"} onValueChange={(v) => updateOutreachConfig("voice_start_hour", v)}>
+                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 15 }, (_, i) => i + 7).map(h => (
+                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Alle</Label>
+                              <Select value={outreachConfig.voice_end_hour || "19:00"} onValueChange={(v) => updateOutreachConfig("voice_end_hour", v)}>
+                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 15 }, (_, i) => i + 8).map(h => (
+                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Intervallo tra chiamate</Label>
+                            <div className="flex items-center gap-2">
+                              <Slider value={[outreachConfig.voice_interval_minutes || 30]} min={10} max={120} step={5} onValueChange={([v]) => updateOutreachConfig("voice_interval_minutes", v)} className="flex-1" />
+                              <Badge variant="outline" className="text-xs font-bold shrink-0">{outreachConfig.voice_interval_minutes || 30} min</Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-3 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-950/10">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <MessageCircle className="h-4 w-4 text-emerald-600" />
+                            WhatsApp
+                          </Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Dalle</Label>
+                              <Select value={outreachConfig.whatsapp_start_hour || "09:00"} onValueChange={(v) => updateOutreachConfig("whatsapp_start_hour", v)}>
+                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 15 }, (_, i) => i + 7).map(h => (
+                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Alle</Label>
+                              <Select value={outreachConfig.whatsapp_end_hour || "20:00"} onValueChange={(v) => updateOutreachConfig("whatsapp_end_hour", v)}>
+                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 15 }, (_, i) => i + 8).map(h => (
+                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Intervallo tra messaggi</Label>
+                            <div className="flex items-center gap-2">
+                              <Slider value={[outreachConfig.whatsapp_interval_minutes || 5]} min={2} max={60} step={1} onValueChange={([v]) => updateOutreachConfig("whatsapp_interval_minutes", v)} className="flex-1" />
+                              <Badge variant="outline" className="text-xs font-bold shrink-0">{outreachConfig.whatsapp_interval_minutes || 5} min</Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800/50 bg-blue-50/30 dark:bg-blue-950/10">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <MailIcon className="h-4 w-4 text-blue-600" />
+                            Email
+                          </Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Dalle</Label>
+                              <Select value={outreachConfig.email_start_hour || "08:00"} onValueChange={(v) => updateOutreachConfig("email_start_hour", v)}>
+                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 15 }, (_, i) => i + 7).map(h => (
+                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Alle</Label>
+                              <Select value={outreachConfig.email_end_hour || "20:00"} onValueChange={(v) => updateOutreachConfig("email_end_hour", v)}>
+                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 15 }, (_, i) => i + 8).map(h => (
+                                    <SelectItem key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Intervallo tra email</Label>
+                            <div className="flex items-center gap-2">
+                              <Slider value={[outreachConfig.email_interval_minutes || 10]} min={2} max={60} step={1} onValueChange={([v]) => updateOutreachConfig("email_interval_minutes", v)} className="flex-1" />
+                              <Badge variant="outline" className="text-xs font-bold shrink-0">{outreachConfig.email_interval_minutes || 10} min</Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <div className="flex items-center gap-2.5 mb-4">
                         <div className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
                           <Route className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                         </div>
