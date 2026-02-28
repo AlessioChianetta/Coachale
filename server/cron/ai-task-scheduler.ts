@@ -1,5 +1,5 @@
 /**
- * AI Task Scheduler CRON Job
+ * AI Task Scheduler CRON Job — BUILD 20260228_0330
  * Processa task AI programmati per chiamate outbound.
  * 
  * CRON: ogni minuto controlla task da eseguire
@@ -3798,7 +3798,7 @@ function computeNextWorkingSlot(settings: { working_hours_start: string; working
  * Initialize the AI Task Scheduler CRON job
  */
 export function initAITaskScheduler(): void {
-  console.log('🤖 [AI-SCHEDULER] Initializing AI Task Scheduler...');
+  console.log('🤖 [AI-SCHEDULER] Initializing AI Task Scheduler... (BUILD 20260228_0330)');
   
   // Run every minute
   cron.schedule('* * * * *', async () => {
