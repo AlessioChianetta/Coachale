@@ -1769,7 +1769,12 @@ export async function classifyAndGenerateDraft(
       if (filledFields.length > 0) {
         salesContextBlock = `\n\nPROFILO COMMERCIALE (usa queste info per rispondere in modo informato):\n` +
           filledFields.map(([label, value]) => `- ${label}: ${value}`).join("\n");
+        console.log(`[MILLIE-SALES] Profilo commerciale caricato da account ${email.accountId} (${filledFields.length}/9 campi compilati)`);
+      } else {
+        console.log(`[MILLIE-SALES] Nessun profilo commerciale configurato per account ${email.accountId}`);
       }
+    } else {
+      console.log(`[MILLIE-SALES] Nessun profilo commerciale configurato per account ${email.accountId}`);
     }
   } catch (err: any) {
     console.error(`[MILLIE-SALES] Errore caricamento profilo commerciale:`, err.message);
@@ -1790,14 +1795,20 @@ export async function classifyAndGenerateDraft(
   if (contactContext.source === "client" && contactContext.data?.userId) {
     const clientUserId = contactContext.data.userId;
     clientName = `${contactContext.data.firstName || ""} ${contactContext.data.lastName || ""}`.trim();
+    console.log(`[MILLIE-FILESEARCH] Cliente riconosciuto: ${clientName} (ID: ${clientUserId}) — cercando nei suoi documenti...`);
     try {
       const clientStores = await fileSearchService.getStoreNamesForGeneration(clientUserId, 'client');
       if (clientStores && clientStores.length > 0) {
         fileSearchStoreNames = [...fileSearchStoreNames, ...clientStores];
+        console.log(`[MILLIE-FILESEARCH] Trovati ${clientStores.length} store per il cliente ${clientName}: [${clientStores.join(", ")}]`);
+      } else {
+        console.log(`[MILLIE-FILESEARCH] Nessun documento privato trovato per il cliente ${clientName}`);
       }
     } catch (err: any) {
       console.error(`[MILLIE-FILESEARCH] Errore ricerca documenti per cliente ${clientName}:`, err.message);
     }
+  } else {
+    console.log(`[MILLIE-FILESEARCH] Contatto non-cliente (${contactContext.source}) — skip FileSearch privato`);
   }
 
   let contactContextBlock = `\n\nCONTESTO CONTATTO (dal CRM):\n${contactContext.summary}`;

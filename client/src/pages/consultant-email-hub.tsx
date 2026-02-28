@@ -136,11 +136,13 @@ interface Email {
   id: string;
   accountId: string;
   messageId: string;
+  threadId?: string;
   fromEmail: string;
   fromName?: string;
   toEmail: string;
   toRecipients?: string[];
   direction?: "inbound" | "outbound";
+  folder?: string;
   subject: string;
   snippet?: string;
   bodyHtml?: string;
@@ -475,6 +477,32 @@ export default function ConsultantEmailHub() {
   });
 
   const emailAIResponses: AIResponse[] = emailAIResponsesData?.data || [];
+
+  const { data: threadData } = useQuery({
+    queryKey: ["/api/email-hub/emails", selectedEmail?.id, "thread"],
+    queryFn: async () => {
+      if (!selectedEmail?.id) return null;
+      const response = await fetch(`/api/email-hub/emails/${selectedEmail.id}/thread`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch thread");
+      return response.json();
+    },
+    enabled: !!selectedEmail?.id,
+  });
+
+  const threadMessages: Email[] = threadData?.data || [];
+  const [collapsedThreadMessages, setCollapsedThreadMessages] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (threadMessages.length > 2) {
+      const toCollapse = new Set<string>();
+      threadMessages.slice(0, -1).forEach(m => toCollapse.add(m.id));
+      setCollapsedThreadMessages(toCollapse);
+    } else {
+      setCollapsedThreadMessages(new Set());
+    }
+  }, [threadMessages.length, selectedEmail?.id]);
 
   const { data: outreachData, isLoading: isLoadingOutreach, refetch: refetchOutreach } = useQuery({
     queryKey: ["/api/email-hub/outreach-pipeline", outreachStatusFilter],
@@ -2260,147 +2288,225 @@ export default function ConsultantEmailHub() {
     </div>
   );
 
-  const renderFullEmailView = () => (
+  const selectedAccount = accounts.find(a => a.id === selectedEmail?.accountId);
+  const accountNeedsSetup = selectedAccount && (!selectedAccount.smtpHost || !selectedAccount.imapHost);
+  const accountNoAI = selectedAccount && selectedAccount.autoReplyMode === "off";
+
+  const renderThreadMessage = (msg: Email, isLast: boolean) => {
+    const isCollapsed = collapsedThreadMessages.has(msg.id);
+    const isOutbound = msg.direction === "outbound";
+    const senderName = isOutbound ? (selectedAccount?.displayName || selectedAccount?.emailAddress || "Tu") : (msg.fromName || msg.fromEmail);
+    const toDisplay = isOutbound
+      ? (typeof msg.toEmail === "string" ? msg.toEmail : getEmailDisplayName(msg))
+      : (typeof selectedAccount?.emailAddress === "string" ? selectedAccount.emailAddress : "me");
+
+    return (
+      <div key={msg.id} className={`border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden ${isLast ? "shadow-sm" : ""}`}>
+        <div
+          className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 ${isCollapsed ? "" : "border-b border-slate-100 dark:border-slate-800"}`}
+          onClick={() => {
+            setCollapsedThreadMessages(prev => {
+              const next = new Set(prev);
+              if (next.has(msg.id)) next.delete(msg.id);
+              else next.add(msg.id);
+              return next;
+            });
+          }}
+        >
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 ${isOutbound ? "bg-violet-500" : getAvatarColor(senderName)}`}>
+            {isOutbound ? <Send className="h-3.5 w-3.5" /> : senderName.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm text-slate-900 dark:text-white truncate">{senderName}</span>
+              {isOutbound && <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">Inviata</Badge>}
+            </div>
+            {isCollapsed && (
+              <p className="text-xs text-slate-500 truncate mt-0.5">{msg.snippet || msg.bodyText?.substring(0, 100) || ""}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[11px] text-slate-400">{format(new Date(msg.receivedAt), "dd MMM, HH:mm")}</span>
+            {isCollapsed ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronUp className="h-3.5 w-3.5 text-slate-400" />}
+          </div>
+        </div>
+        {!isCollapsed && (
+          <div className="px-4 py-4 sm:px-6">
+            <div className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              A: {toDisplay}
+            </div>
+            <div 
+              className="prose prose-sm dark:prose-invert max-w-none
+                prose-p:text-slate-600 dark:prose-p:text-slate-400 prose-p:leading-relaxed
+                prose-a:text-violet-600 dark:prose-a:text-violet-400
+                prose-blockquote:border-l-slate-300 dark:prose-blockquote:border-l-slate-600 prose-blockquote:bg-slate-50 dark:prose-blockquote:bg-slate-800/50 prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:px-3 prose-blockquote:text-slate-500 dark:prose-blockquote:text-slate-400 prose-blockquote:text-sm
+                prose-hr:border-slate-200 dark:prose-hr:border-slate-700
+                prose-li:text-slate-600 dark:prose-li:text-slate-400"
+              dangerouslySetInnerHTML={{ 
+                __html: msg.bodyHtml || msg.bodyText?.replace(/\n/g, '<br>') || msg.snippet || "" 
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderFullEmailView = () => {
+    const messagesToShow = threadMessages.length > 1 ? threadMessages : (emailDetailData?.data ? [emailDetailData.data as Email] : []);
+
+    return (
     <div className="flex-1 bg-white dark:bg-slate-950 flex flex-col h-full">
       {selectedEmail ? (
         <>
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-4 mb-4">
-              <div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="gap-2 transition-all duration-200" 
-                  onClick={handleBackToList}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Indietro
-                </Button>
-              </div>
+          <div className="px-4 pt-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-1.5 shrink-0" 
+                onClick={handleBackToList}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Indietro
+              </Button>
               <div className="flex-1" />
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="gap-1.5 text-xs"
-                  onClick={() => {
-                    setComposerReplyTo(selectedEmail);
-                    setComposerReplyAll(false);
-                    setShowComposer(true);
-                  }}
-                >
+              <div className="flex items-center gap-1.5">
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => { setComposerReplyTo(selectedEmail); setComposerReplyAll(false); setShowComposer(true); }}>
                   <Reply className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Rispondi</span>
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="gap-1.5 text-xs"
-                  onClick={() => {
-                    setComposerReplyTo(selectedEmail);
-                    setComposerReplyAll(true);
-                    setShowComposer(true);
-                  }}
-                >
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => { setComposerReplyTo(selectedEmail); setComposerReplyAll(true); setShowComposer(true); }}>
                   <Users className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Rispondi a tutti</span>
+                  <span className="hidden sm:inline">Tutti</span>
                 </Button>
-                <Button 
-                  size="sm" 
-                  className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 transition-all duration-150"
-                  onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)}
-                  disabled={generateAIResponseMutation.isPending}
-                >
-                  {generateAIResponseMutation.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  )}
-                  <span className="hidden sm:inline">Millie Genera Bozza</span>
-                  <span className="sm:hidden">Millie</span>
+                <Button size="sm" className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700" onClick={() => generateAIResponseMutation.mutate(selectedEmail.id)} disabled={generateAIResponseMutation.isPending}>
+                  {generateAIResponseMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  <span className="hidden sm:inline">Millie</span>
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs">
-                  <Forward className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Inoltra</span>
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs"><Forward className="h-3.5 w-3.5" /><span className="hidden sm:inline">Inoltra</span></Button>
+                <Button size="sm" variant="outline" onClick={() => toggleStarMutation.mutate(selectedEmail.id)}>
+                  {selectedEmail.isStarred ? <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /> : <Star className="h-3.5 w-3.5" />}
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => toggleStarMutation.mutate(selectedEmail.id)}
-                >
-                  {selectedEmail.isStarred ? (
-                    <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                  ) : (
-                    <Star className="h-3.5 w-3.5" />
-                  )}
-                </Button>
-                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive transition-colors duration-150">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-            
-            <h1 className="text-lg sm:text-xl font-semibold mb-4 text-slate-900 dark:text-white leading-tight">
-              {selectedEmail.subject || "(Nessun oggetto)"}
-            </h1>
-            
-            <div className="flex items-start gap-3 sm:gap-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 sm:p-4">
-              <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-white font-semibold text-base shrink-0 shadow-sm ${getAvatarColor(selectedEmail.fromName || selectedEmail.fromEmail)}`}>
-                {(selectedEmail.fromName || selectedEmail.fromEmail).charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="font-semibold text-sm text-slate-900 dark:text-white">{selectedEmail.fromName || selectedEmail.fromEmail}</span>
-                  <span className="text-xs text-slate-400 truncate">&lt;{selectedEmail.fromEmail}&gt;</span>
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                  A: {typeof selectedEmail.toEmail === "string" ? selectedEmail.toEmail : getEmailDisplayName(selectedEmail)}
-                </div>
-              </div>
-              <div className="text-xs text-slate-400 dark:text-slate-500 shrink-0 text-right whitespace-nowrap">
-                {format(new Date(selectedEmail.receivedAt), "dd MMM yyyy")}
-                <br />
-                <span className="text-[11px]">{format(new Date(selectedEmail.receivedAt), "HH:mm")}</span>
+                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
           </div>
+
+          {selectedAccount && (accountNeedsSetup || accountNoAI) && (
+            <div className="mx-4 mt-3 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0">
+                  <img src={millieAvatar} alt="Millie" className="h-5 w-5 rounded-full" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                    {accountNeedsSetup
+                      ? `Configura ${selectedAccount.displayName || selectedAccount.emailAddress} per inviare risposte`
+                      : `Millie non risponde automaticamente su ${selectedAccount.displayName || selectedAccount.emailAddress}`}
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                    {accountNeedsSetup
+                      ? "Collega IMAP e SMTP, imposta la personalita di Millie e la Knowledge Base per risposte intelligenti"
+                      : "Attiva la modalita risposta automatica, configura il Profilo Commerciale e la Knowledge Base"}
+                  </p>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 gap-1"
+                    onClick={() => {
+                      setAISettingsAccountId(selectedAccount.id);
+                      setAISettingsAccountName(selectedAccount.displayName || selectedAccount.emailAddress);
+                      setShowAISettings(true);
+                    }}
+                  >
+                    <Settings className="h-3 w-3" />
+                    Personalita AI
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 gap-1"
+                    onClick={() => {
+                      setKnowledgeAccountId(selectedAccount.id);
+                      setKnowledgeAccountName(selectedAccount.displayName || selectedAccount.emailAddress);
+                      setShowKnowledge(true);
+                    }}
+                  >
+                    <BookOpen className="h-3 w-3" />
+                    Knowledge Base
+                  </Button>
+                  {accountNeedsSetup && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 gap-1"
+                      onClick={() => {
+                        setEditingAccount(selectedAccount as any);
+                        setShowAccountDialog(true);
+                      }}
+                    >
+                      <Mail className="h-3 w-3" />
+                      Configura Account
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           
           <ScrollArea className="flex-1">
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="max-w-4xl mx-auto">
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-                  <div className="p-6 sm:p-8">
-                    <div 
-                      className="prose prose-sm dark:prose-invert max-w-none
-                        prose-headings:font-semibold prose-headings:text-slate-800 dark:prose-headings:text-slate-200
-                        prose-p:text-slate-600 dark:prose-p:text-slate-400 prose-p:leading-relaxed
-                        prose-a:text-violet-600 dark:prose-a:text-violet-400 prose-a:no-underline hover:prose-a:underline
-                        prose-strong:text-slate-800 dark:prose-strong:text-slate-200
-                        prose-img:rounded-lg prose-img:max-w-full
-                        prose-table:border-collapse prose-td:border prose-td:border-slate-200 dark:prose-td:border-slate-700 prose-td:px-3 prose-td:py-2
-                        prose-th:border prose-th:border-slate-200 dark:prose-th:border-slate-700 prose-th:px-3 prose-th:py-2 prose-th:bg-slate-50 dark:prose-th:bg-slate-800
-                        prose-blockquote:border-l-violet-400 prose-blockquote:bg-slate-50 dark:prose-blockquote:bg-slate-800/50 prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:px-4
-                        prose-code:bg-slate-100 dark:prose-code:bg-slate-800 prose-code:rounded prose-code:px-1.5 prose-code:py-0.5 prose-code:text-xs
-                        prose-pre:bg-slate-900 dark:prose-pre:bg-slate-950 prose-pre:rounded-lg
-                        prose-hr:border-slate-200 dark:prose-hr:border-slate-700
-                        prose-li:text-slate-600 dark:prose-li:text-slate-400"
-                      dangerouslySetInnerHTML={{ 
-                        __html: emailDetailData?.data?.bodyHtml || emailDetailData?.data?.bodyText?.replace(/\n/g, '<br>') || selectedEmail.snippet || "Caricamento contenuto..." 
+                <div className="flex items-center gap-3 mb-4">
+                  <h1 className="text-lg font-semibold text-slate-900 dark:text-white leading-tight flex-1">
+                    {selectedEmail.subject || "(Nessun oggetto)"}
+                  </h1>
+                  {threadMessages.length > 1 && (
+                    <Badge variant="secondary" className="shrink-0 text-xs">
+                      {threadMessages.length} messaggi
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {messagesToShow.length > 2 && (
+                    <button
+                      className="w-full py-2 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center justify-center gap-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                      onClick={() => {
+                        const allExpanded = messagesToShow.slice(0, -1).every(m => !collapsedThreadMessages.has(m.id));
+                        setCollapsedThreadMessages(prev => {
+                          const next = new Set(prev);
+                          if (allExpanded) {
+                            messagesToShow.slice(0, -1).forEach(m => next.add(m.id));
+                          } else {
+                            messagesToShow.forEach(m => next.delete(m.id));
+                          }
+                          return next;
+                        });
                       }}
-                    />
-                  </div>
+                    >
+                      {messagesToShow.slice(0, -1).every(m => !collapsedThreadMessages.has(m.id))
+                        ? "Comprimi messaggi precedenti"
+                        : `Espandi ${messagesToShow.length - 1} messaggi precedenti`}
+                    </button>
+                  )}
+
+                  {messagesToShow.map((msg, idx) => renderThreadMessage(msg, idx === messagesToShow.length - 1))}
                 </div>
                 
                 {emailAIResponses.length > 0 && (
-                  <div className="mt-6">
-                    <div className="flex items-center gap-2.5 mb-4">
-                      <img src={millieAvatar} alt="Millie" className="h-7 w-7 rounded-full ring-2 ring-violet-500/30" />
-                      <h4 className="text-base font-semibold text-slate-800 dark:text-slate-200">Risposte generate da Millie</h4>
+                  <div className="mt-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <img src={millieAvatar} alt="Millie" className="h-6 w-6 rounded-full ring-2 ring-violet-500/30" />
+                      <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Risposte di Millie</h4>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {emailAIResponses.map((resp) => (
-                        <div key={resp.id} className="rounded-xl border border-violet-200 dark:border-violet-800/60 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/40 dark:to-slate-900 overflow-hidden shadow-sm">
-                          <div className="px-5 py-3 border-b border-violet-100 dark:border-violet-800/40 flex items-center justify-between">
+                        <div key={resp.id} className="rounded-lg border border-violet-200 dark:border-violet-800/60 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/40 dark:to-slate-900 overflow-hidden">
+                          <div className="px-4 py-2.5 border-b border-violet-100 dark:border-violet-800/40 flex items-center justify-between">
                             <span className="font-medium text-sm text-slate-800 dark:text-slate-200 flex-1 mr-3">{resp.draftSubject}</span>
                             <div className="flex items-center gap-2 shrink-0">
                               {getConfidenceBadge(resp.confidence)}
@@ -2414,48 +2520,27 @@ export default function ConsultantEmailHub() {
                               </Badge>
                             </div>
                           </div>
-                          <div className="px-5 py-4">
+                          <div className="px-4 py-3">
                             <p className="text-sm whitespace-pre-wrap text-slate-600 dark:text-slate-400 leading-relaxed">
                               {resp.draftBodyText || resp.draftBodyHtml}
                             </p>
                           </div>
                           {(resp.status === "draft" || resp.status === "approved" || resp.status === "edited") && resp.status !== "sent" && resp.status !== "auto_sent" && (
-                            <div className="px-5 py-3 border-t border-violet-100 dark:border-violet-800/40 bg-violet-50/50 dark:bg-violet-950/20 flex gap-2">
+                            <div className="px-4 py-2.5 border-t border-violet-100 dark:border-violet-800/40 bg-violet-50/50 dark:bg-violet-950/20 flex gap-2">
                               {resp.status === "draft" && (
-                                <Button
-                                  size="sm"
-                                  className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5"
-                                  onClick={() => approveAndSendMutation.mutate(resp.id)}
-                                  disabled={approveAndSendMutation.isPending}
-                                >
-                                  {approveAndSendMutation.isPending ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Send className="h-3.5 w-3.5" />
-                                  )}
+                                <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5" onClick={() => approveAndSendMutation.mutate(resp.id)} disabled={approveAndSendMutation.isPending}>
+                                  {approveAndSendMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                                   Approva e Invia
                                 </Button>
                               )}
                               {(resp.status === "approved" || resp.status === "edited") && (
-                                <Button
-                                  size="sm"
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-                                  onClick={() => sendDraftMutation.mutate(resp.id)}
-                                  disabled={sendDraftMutation.isPending}
-                                >
-                                  {sendDraftMutation.isPending ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Send className="h-3.5 w-3.5" />
-                                  )}
+                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5" onClick={() => sendDraftMutation.mutate(resp.id)} disabled={sendDraftMutation.isPending}>
+                                  {sendDraftMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                                   Invia Ora
                                 </Button>
                               )}
                               {resp.status === "draft" && (
-                                <Button size="sm" variant="outline" className="gap-1.5 border-violet-300 dark:border-violet-700" onClick={() => {
-                                  setEditingDraft(resp);
-                                  setEditedDraftContent(resp.draftBodyText || resp.draftBodyHtml || "");
-                                }}>
+                                <Button size="sm" variant="outline" className="gap-1.5 border-violet-300 dark:border-violet-700" onClick={() => { setEditingDraft(resp); setEditedDraftContent(resp.draftBodyText || resp.draftBodyHtml || ""); }}>
                                   <Edit className="h-3.5 w-3.5" />
                                   Modifica
                                 </Button>
@@ -2474,6 +2559,7 @@ export default function ConsultantEmailHub() {
       ) : null}
     </div>
   );
+  };
 
   const renderAccountDialog = () => (
     <Dialog open={showAccountDialog} onOpenChange={setShowAccountDialog}>

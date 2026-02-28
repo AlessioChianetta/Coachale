@@ -1126,6 +1126,53 @@ router.get("/emails/:id", async (req: AuthRequest, res) => {
   }
 });
 
+router.get("/emails/:id/thread", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const emailId = req.params.id;
+
+    const [email] = await db
+      .select()
+      .from(schema.hubEmails)
+      .where(
+        and(
+          eq(schema.hubEmails.id, emailId),
+          eq(schema.hubEmails.consultantId, consultantId)
+        )
+      );
+
+    if (!email) {
+      return res.status(404).json({ success: false, error: "Email not found" });
+    }
+
+    const threadId = email.threadId || email.messageId;
+
+    const threadEmails = await db
+      .select()
+      .from(schema.hubEmails)
+      .where(
+        and(
+          eq(schema.hubEmails.consultantId, consultantId),
+          eq(schema.hubEmails.accountId, email.accountId),
+          sql`(${schema.hubEmails.threadId} = ${threadId} OR ${schema.hubEmails.messageId} = ${threadId})`
+        )
+      )
+      .orderBy(schema.hubEmails.receivedAt);
+
+    const enriched = threadEmails.map((e) => {
+      const toRecips = (e.toRecipients as any[]) || [];
+      const firstRecip = toRecips[0];
+      const toEmail = typeof firstRecip === "string" ? firstRecip : (firstRecip?.email || firstRecip?.address || "");
+      return { ...e, toEmail };
+    });
+
+    res.json({ success: true, data: enriched });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching thread:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.put("/emails/:id/read", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
