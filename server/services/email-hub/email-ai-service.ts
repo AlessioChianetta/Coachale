@@ -734,7 +734,7 @@ async function buildCrossChannelContext(
   phoneNumber?: string | null
 ): Promise<string> {
   const sections: string[] = [];
-  const MAX_TOTAL_CHARS = 5000;
+  const MAX_TOTAL_CHARS = 20000;
 
   try {
     if (phoneNumber) {
