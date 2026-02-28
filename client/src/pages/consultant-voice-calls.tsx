@@ -2092,70 +2092,70 @@ export default function ConsultantVoiceCallsPage() {
       <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
         <main className="flex-1 p-4 lg:p-6 overflow-auto">
           <div className="w-full space-y-4">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950 via-teal-950 to-cyan-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950 via-teal-950 to-cyan-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl min-w-0">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
               <div className="absolute top-0 right-0 w-72 h-72 bg-teal-500/5 rounded-full blur-3xl" />
               <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl" />
               
-              <div className="relative z-10 space-y-5">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/30">
-                      <Phone className="h-7 w-7 text-white" />
+              <div className="relative z-10 space-y-4 sm:space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                    <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/30 shrink-0">
+                      <Phone className="h-5 w-5 sm:h-7 sm:w-7 text-white" />
                     </div>
-                    <div>
-                      <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Chiamate Voice</h1>
-                      <p className="text-teal-200/70 text-sm mt-0.5">
+                    <div className="min-w-0">
+                      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight truncate">Chiamate Voice</h1>
+                      <p className="text-teal-200/70 text-xs sm:text-sm mt-0.5 truncate">
                         Monitora e gestisci le chiamate AI in tempo reale
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-sm border ${health?.overall === 'healthy' ? 'bg-white/10 border-white/10' : 'bg-amber-500/20 border-amber-500/30'}`}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full backdrop-blur-sm border ${health?.overall === 'healthy' ? 'bg-white/10 border-white/10' : 'bg-amber-500/20 border-amber-500/30'}`}>
                       <div className={`w-2 h-2 rounded-full ${health?.overall === 'healthy' ? 'bg-green-400 animate-pulse' : 'bg-amber-400'}`} />
-                      <span className={`text-xs font-medium ${health?.overall === 'healthy' ? 'text-green-300' : 'text-amber-300'}`}>
-                        {health?.overall === 'healthy' ? 'Sistema Online' : 'Verifica...'}
+                      <span className={`text-[11px] sm:text-xs font-medium ${health?.overall === 'healthy' ? 'text-green-300' : 'text-amber-300'}`}>
+                        {health?.overall === 'healthy' ? 'Online' : 'Verifica...'}
                       </span>
                     </div>
                     
                     {activeCalls > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 backdrop-blur-sm border border-emerald-500/30">
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-emerald-500/20 backdrop-blur-sm border border-emerald-500/30">
                         <Phone className="h-3 w-3 text-emerald-300" />
-                        <span className="text-xs font-medium text-emerald-300">{activeCalls} attiv{activeCalls === 1 ? 'a' : 'e'}</span>
+                        <span className="text-[11px] sm:text-xs font-medium text-emerald-300">{activeCalls} attiv{activeCalls === 1 ? 'a' : 'e'}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4 hover:bg-white/15 transition-colors">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Phone className={`h-4 w-4 ${activeCalls > 0 ? 'text-emerald-300' : 'text-white/40'}`} />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Attive</span>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
+                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-3 sm:p-4 hover:bg-white/15 transition-colors min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                      <Phone className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${activeCalls > 0 ? 'text-emerald-300' : 'text-white/40'}`} />
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-white/50 truncate">Attive</span>
                     </div>
-                    <p className="text-[28px] md:text-[32px] font-black tracking-tighter leading-none text-white">{activeCalls}</p>
+                    <p className="text-2xl sm:text-[28px] md:text-[32px] font-black tracking-tighter leading-none text-white">{activeCalls}</p>
                   </div>
-                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4 hover:bg-white/15 transition-colors">
-                    <div className="flex items-center gap-2 mb-2">
-                      <BarChart3 className="h-4 w-4 text-blue-300" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Totale Oggi</span>
+                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-3 sm:p-4 hover:bg-white/15 transition-colors min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                      <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-300 shrink-0" />
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-white/50 truncate">Oggi</span>
                     </div>
-                    <p className="text-[28px] md:text-[32px] font-black tracking-tighter leading-none text-white">{stats?.total_calls || 0}</p>
+                    <p className="text-2xl sm:text-[28px] md:text-[32px] font-black tracking-tighter leading-none text-white">{stats?.total_calls || 0}</p>
                   </div>
-                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4 hover:bg-white/15 transition-colors">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="h-4 w-4 text-purple-300" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Durata Media</span>
+                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-3 sm:p-4 hover:bg-white/15 transition-colors min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                      <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-300 shrink-0" />
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-white/50 truncate">Media</span>
                     </div>
-                    <p className="text-[28px] md:text-[32px] font-black tracking-tighter leading-none text-white">{formatDuration(Math.round(parseFloat(stats?.avg_duration_seconds || "0")))}</p>
+                    <p className="text-2xl sm:text-[28px] md:text-[32px] font-black tracking-tighter leading-none text-white">{formatDuration(Math.round(parseFloat(stats?.avg_duration_seconds || "0")))}</p>
                   </div>
-                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4 hover:bg-white/15 transition-colors">
-                    <div className="flex items-center gap-2 mb-2">
-                      {health?.overall === 'healthy' ? <CheckCircle className="h-4 w-4 text-emerald-300" /> : <AlertCircle className="h-4 w-4 text-amber-300" />}
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Sistema</span>
+                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-3 sm:p-4 hover:bg-white/15 transition-colors min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                      {health?.overall === 'healthy' ? <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-300 shrink-0" /> : <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-300 shrink-0" />}
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-white/50 truncate">Sistema</span>
                     </div>
-                    <p className={`text-lg font-bold mt-1 ${health?.overall === 'healthy' ? 'text-emerald-300' : 'text-amber-300'}`}>
+                    <p className={`text-base sm:text-lg font-bold mt-0.5 sm:mt-1 ${health?.overall === 'healthy' ? 'text-emerald-300' : 'text-amber-300'}`}>
                       {health?.overall === 'healthy' ? 'Online' : health?.overall || '...'}
                     </p>
                   </div>
