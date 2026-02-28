@@ -269,6 +269,15 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
   const updatedTask = { ...task, current_attempt: attemptNumber };
   
   try {
+    if (task.task_type === 'ai_task' && task.preferred_channel === 'email' && task.ai_role === 'hunter') {
+      const skipGuardrails = task.result_data && typeof task.result_data === 'object' && (task.result_data as any).skip_guardrails === true;
+      if (skipGuardrails) {
+        console.log(`🤖 [AI-SCHEDULER] STEP 3b: Hunter email (manually approved) → direct send`);
+        await executeSingleEmail(updatedTask);
+        return;
+      }
+    }
+
     if (task.task_type === 'ai_task') {
       console.log(`🤖 [AI-SCHEDULER] STEP 3b: task_type=ai_task → calling executeAutonomousTask`);
       await executeAutonomousTask(updatedTask);
@@ -392,6 +401,130 @@ async function executeSingleWhatsApp(task: AIScheduledTask): Promise<void> {
       });
     } catch (epErr: any) {
       console.error(`${LOG} ensureProactiveLead error (non-blocking):`, epErr.message);
+    }
+  } catch (err: any) {
+    console.error(`${LOG} ✗ Send failed: ${err.message}`);
+    await handleFailure(task, err.message);
+  }
+}
+
+async function executeSingleEmail(task: AIScheduledTask): Promise<void> {
+  const LOG = '📧 [SINGLE-EMAIL]';
+  let additionalContextData: Record<string, any> = {};
+  if (task.additional_context) {
+    try { additionalContextData = JSON.parse(task.additional_context); } catch {}
+  }
+
+  const emailAccountId = additionalContextData.email_account_id;
+  const leadEmail = additionalContextData.lead_email || '';
+  const resolvedName = task.contact_name || additionalContextData.business_name || 'Cliente';
+
+  if (!emailAccountId) {
+    console.error(`${LOG} No email_account_id for task ${task.id}, marking failed`);
+    await handleFailure(task, 'Nessun account email configurato');
+    return;
+  }
+
+  if (!leadEmail) {
+    console.error(`${LOG} No lead email for task ${task.id}, marking failed`);
+    await handleFailure(task, 'Email destinatario mancante');
+    return;
+  }
+
+  console.log(`${LOG} Sending email to ${leadEmail} (${resolvedName})`);
+
+  try {
+    const smtpResult = await db.execute(sql`
+      SELECT id, smtp_host, smtp_port, smtp_user, smtp_password, email_address, display_name
+      FROM email_accounts
+      WHERE id = ${emailAccountId} AND consultant_id = ${task.consultant_id} AND smtp_host IS NOT NULL
+      LIMIT 1
+    `);
+    const smtpConfig = smtpResult.rows[0] as any;
+
+    if (!smtpConfig) {
+      console.error(`${LOG} SMTP config not found for account ${emailAccountId}`);
+      await handleFailure(task, 'Configurazione SMTP non trovata');
+      return;
+    }
+
+    const instructionText = task.ai_instruction || '';
+    const subjectMatch = instructionText.match(/^Oggetto:\s*(.+?)(?:\n|$)/);
+    const emailSubject = subjectMatch ? subjectMatch[1].trim() : `Proposta per ${resolvedName}`;
+    const emailBody = subjectMatch ? instructionText.replace(/^Oggetto:\s*.+?\n\n?/, '').trim() : instructionText;
+
+    const nodemailer = await import('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: smtpConfig.smtp_host,
+      port: smtpConfig.smtp_port || 587,
+      secure: (smtpConfig.smtp_port || 587) === 465,
+      auth: { user: smtpConfig.smtp_user, pass: smtpConfig.smtp_password },
+      tls: { rejectUnauthorized: false },
+    });
+
+    const htmlBody = emailBody.replace(/\n/g, '<br>');
+    const fromField = smtpConfig.display_name ? `"${smtpConfig.display_name}" <${smtpConfig.email_address}>` : smtpConfig.email_address;
+    const sendResult = await transporter.sendMail({ from: fromField, to: leadEmail, subject: emailSubject, html: htmlBody });
+
+    const hubEmailId = `hub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    await db.execute(sql`
+      INSERT INTO hub_emails (
+        id, account_id, consultant_id, message_id, subject, from_name, from_email,
+        to_recipients, body_html, body_text, snippet, direction, folder,
+        is_read, processing_status, sent_at, created_at, updated_at
+      ) VALUES (
+        ${hubEmailId}, ${emailAccountId}, ${task.consultant_id},
+        ${sendResult.messageId || hubEmailId},
+        ${emailSubject}, ${smtpConfig.display_name || ''}, ${smtpConfig.email_address},
+        ${JSON.stringify([{ email: leadEmail, name: resolvedName }])}::jsonb,
+        ${htmlBody}, ${emailBody}, ${emailBody.substring(0, 200)},
+        'outbound', 'sent', true, 'sent', NOW(), NOW(), NOW()
+      )
+      ON CONFLICT (message_id) DO NOTHING
+    `);
+
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'completed', completed_at = NOW(), updated_at = NOW(),
+          result_summary = ${'Email inviata a ' + leadEmail}
+      WHERE id = ${task.id}
+    `);
+
+    console.log(`${LOG} ✅ Email sent to ${leadEmail} (subject="${emailSubject}")`);
+
+    await logActivity(task.consultant_id, {
+      event_type: 'email_sent',
+      title: `Email inviata a ${resolvedName}`,
+      description: `Oggetto: "${emailSubject}" → ${leadEmail}`,
+      icon: '📧',
+      severity: 'info',
+      task_id: task.id,
+    });
+
+    try {
+      const { ensureProactiveLead } = await import('../utils/ensure-proactive-lead');
+      await ensureProactiveLead({
+        consultantId: task.consultant_id,
+        phoneNumber: task.contact_phone || '',
+        contactName: resolvedName !== 'Cliente' ? resolvedName : undefined,
+        email: leadEmail,
+        source: 'hunter',
+        leadInfo: {
+          fonte: 'Email Hunter',
+          companyName: additionalContextData.business_name || undefined,
+        },
+      });
+    } catch (epErr: any) {
+      console.error(`${LOG} ensureProactiveLead error (non-blocking):`, epErr.message);
+    }
+
+    const leadId = additionalContextData.lead_id;
+    if (leadId) {
+      await db.execute(sql`
+        UPDATE lead_scraper_results
+        SET lead_status = 'in_outreach', lead_next_action_date = NOW() + INTERVAL '7 days'
+        WHERE id = ${leadId}
+      `);
     }
   } catch (err: any) {
     console.error(`${LOG} ✗ Send failed: ${err.message}`);
