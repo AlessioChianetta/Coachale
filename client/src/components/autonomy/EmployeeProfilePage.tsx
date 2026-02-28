@@ -21,7 +21,6 @@ const ROLE_COLORS: Record<string, string> = {
   echo: 'orange',
   nova: 'emerald',
   stella: 'teal',
-  iris: 'indigo',
   marco: 'gray',
   personalizza: 'gray',
 };

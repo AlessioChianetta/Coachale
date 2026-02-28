@@ -3,7 +3,6 @@ import millieAvatar from "@assets/generated_images/millie_ai_email_assistant_ava
 import echoAvatar from "@assets/generated_images/echo_ai_summarizer_avatar.png";
 import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_avatar.png";
 import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png";
-import irisAvatar from "@assets/generated_images/iris_ai_email_hub_avatar.png";
 import marcoAvatar from "@assets/generated_images/marco_ai_executive_coach_avatar.png";
 import hunterAvatar from "@assets/generated_images/spec_ai_researcher_avatar.png";
 import type { AutonomySettings, TaskLibraryItem, NewTaskData } from "./types";
@@ -207,7 +206,6 @@ export const AI_ROLE_PROFILES: Record<string, { avatar: string; quote: string; r
   echo: { avatar: echoAvatar, quote: "Trasformo le tue consulenze in riepiloghi strutturati.", role: "Summarizer" },
   nova: { avatar: novaAvatar, quote: "Gestisco i tuoi social e il calendario editoriale.", role: "Social Media Manager" },
   stella: { avatar: stellaAvatar, quote: "Monitoro le conversazioni WhatsApp e suggerisco azioni.", role: "WhatsApp Assistant" },
-  iris: { avatar: irisAvatar, quote: "Gestisco i ticket email e le risposte automatiche.", role: "Email Hub Manager" },
   marco: { avatar: marcoAvatar, quote: "Ti spingo oltre i tuoi limiti. Niente scuse, solo risultati.", role: "Executive Coach" },
   hunter: { avatar: hunterAvatar, quote: "Trovo i lead migliori e li passo al team per il primo contatto.", role: "Lead Prospector" },
   personalizza: { avatar: "", quote: "Configurami come vuoi: definisci tu le mie regole.", role: "Assistente Custom" },
@@ -306,16 +304,6 @@ export const AI_ROLE_EXECUTION_PIPELINES: Record<string, ExecutionPipelineInfo> 
     direction: "Contatta TE (il consulente) — mai i clienti",
     directionIcon: "🎯",
     directionColor: "text-indigo-600 dark:text-indigo-400",
-  },
-  iris: {
-    steps: [
-      { id: "fetch_client_data", icon: "📊", label: "Analisi email", description: "Analizza le email in arrivo e i ticket aperti" },
-      { id: "analyze_patterns", icon: "🧠", label: "Classificazione", description: "Classifica le email per priorita e tipo di risposta necessaria" },
-      { id: "send_email", icon: "✍️", label: "Risposta o escalation", description: "Prepara risposte automatiche o segnala email urgenti" },
-    ],
-    direction: "Contatta il CLIENTE (risposte email)",
-    directionIcon: "👤",
-    directionColor: "text-teal-600 dark:text-teal-400",
   },
   hunter: {
     steps: [
@@ -428,22 +416,6 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "📱", text: "Non può gestire i social media" },
     ],
     workflow: "Ogni 30 minuti → Legge conversazioni WhatsApp → Trova messaggi senza risposta e lead → Crea task messaggio WhatsApp",
-  },
-  iris: {
-    canDo: [
-      { icon: "📥", text: "Monitora tutte le email in arrivo" },
-      { icon: "🎫", text: "Gestisce i ticket email aperti" },
-      { icon: "🔔", text: "Identifica email urgenti senza risposta" },
-      { icon: "📧", text: "Suggerisce risposte appropriate" },
-      { icon: "⚡", text: "Classifica le email per priorità" },
-      { icon: "🧠", text: "Decide quali email richiedono azione immediata" },
-    ],
-    cantDo: [
-      { icon: "📞", text: "Non può fare chiamate vocali" },
-      { icon: "💬", text: "Non può mandare messaggi WhatsApp" },
-      { icon: "📱", text: "Non può gestire i social media" },
-    ],
-    workflow: "Ogni 30 minuti → Legge email non lette e ticket → Identifica urgenze → Crea task risposta email",
   },
   marco: {
     canDo: [

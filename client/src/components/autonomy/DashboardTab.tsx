@@ -574,7 +574,6 @@ function DashboardTab({
       echo: "border-orange-200 text-orange-700 dark:border-orange-800 dark:text-orange-400",
       nova: "border-pink-200 text-pink-700 dark:border-pink-800 dark:text-pink-400",
       stella: "border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400",
-      iris: "border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400",
       marco: "border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-400",
     };
     return colorMap[role] || "border-border text-muted-foreground";
@@ -1819,7 +1818,6 @@ function DashboardTab({
                     echo: "bg-orange-400",
                     nova: "bg-rose-400",
                     stella: "bg-emerald-400",
-                    iris: "bg-teal-400",
                     marco: "bg-indigo-400",
                     personalizza: "bg-violet-400",
                   };
@@ -2297,7 +2295,6 @@ function DashboardTab({
                       echo: "ring-orange-300 dark:ring-orange-700",
                       nova: "ring-pink-300 dark:ring-pink-700",
                       stella: "ring-emerald-300 dark:ring-emerald-700",
-                      iris: "ring-teal-300 dark:ring-teal-700",
                       marco: "ring-indigo-300 dark:ring-indigo-700",
                       hunter: "ring-teal-300 dark:ring-teal-700",
                     };

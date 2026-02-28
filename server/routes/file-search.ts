@@ -1138,7 +1138,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
     `);
     const whatsappAgentIds = (whatsappAgentsList.rows as any[]).map(a => a.id);
 
-    const AUTONOMOUS_AGENT_IDS = ['alessia', 'millie', 'echo', 'nova', 'stella', 'iris', 'marco', 'personalizza'];
+    const AUTONOMOUS_AGENT_IDS = ['alessia', 'millie', 'echo', 'nova', 'stella', 'marco', 'personalizza'];
     const autonomousAgentOwnerIds = AUTONOMOUS_AGENT_IDS.map(agentId => `${agentId}_${consultantId}`);
 
     const allDepartmentsList = await db.select({ id: departments.id }).from(departments).where(eq(departments.consultantId, consultantId));
@@ -1485,7 +1485,6 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       { id: "echo", name: "Echo", displayName: "Echo – Summarizer" },
       { id: "nova", name: "Nova", displayName: "Nova – Content Creator" },
       { id: "stella", name: "Stella", displayName: "Stella – WhatsApp Manager" },
-      { id: "iris", name: "Iris", displayName: "Iris – Email Manager" },
       { id: "marco", name: "Marco", displayName: "Marco – Executive Coach" },
       { id: "personalizza", name: "Personalizza", displayName: "Personalizza – Custom Agent" },
     ];

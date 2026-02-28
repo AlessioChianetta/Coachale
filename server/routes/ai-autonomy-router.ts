@@ -4246,7 +4246,7 @@ router.post("/trigger-role/:roleId", authenticateToken, requireAnyRole(["consult
 
     const { roleId } = req.params;
 
-    const validRoleIds = ['alessia', 'millie', 'echo', 'nova', 'stella', 'iris', 'marco', 'personalizza', 'hunter'];
+    const validRoleIds = ['alessia', 'millie', 'echo', 'nova', 'stella', 'marco', 'personalizza', 'hunter'];
     if (!validRoleIds.includes(roleId)) {
       return res.status(400).json({ error: "Ruolo non valido" });
     }

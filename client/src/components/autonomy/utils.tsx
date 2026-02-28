@@ -203,7 +203,7 @@ export function getPlannedActionsPreview(task: AITask): PlannedActionsResult {
     };
   }
 
-  if (role === 'millie' || (channel === 'email' && role !== 'iris' && role !== 'echo')) {
+  if (role === 'millie' || (channel === 'email' && role !== 'echo')) {
     const contactName = task.contact_name || 'il cliente';
     return {
       humanTitle: `Email personalizzata a ${contactName}`,
@@ -272,17 +272,6 @@ export function getPlannedActionsPreview(task: AITask): PlannedActionsResult {
     };
   }
 
-  if (role === 'iris') {
-    return {
-      humanTitle: 'Gestione email in arrivo',
-      steps: [
-        { icon: "📥", title: "Analisi email", description: "Analizza le email in arrivo e i ticket aperti" },
-        { icon: "🏷️", title: "Classificazione", description: "Classifica le email per priorità e tipo di risposta necessaria" },
-        { icon: "✍️", title: "Risposta o escalation", description: "Prepara risposte automatiche o segnala le email che richiedono il tuo intervento" },
-      ],
-      params: parsed,
-    };
-  }
 
   const contactName = task.contact_name || '';
   let fallbackTitle = category === 'prospecting' ? 'Ricerca e qualifica lead' :
@@ -402,7 +391,6 @@ export function getRoleBadgeClass(role: string): string {
     echo: "border-orange-300 text-orange-600 dark:border-orange-700 dark:text-orange-400",
     nova: "border-pink-300 text-pink-600 dark:border-pink-700 dark:text-pink-400",
     stella: "border-emerald-300 text-emerald-600 dark:border-emerald-700 dark:text-emerald-400",
-    iris: "border-teal-300 text-teal-600 dark:border-teal-700 dark:text-teal-400",
     marco: "border-indigo-300 text-indigo-600 dark:border-indigo-700 dark:text-indigo-400",
   };
   return roleColors[role] || "border-muted-foreground/30 text-muted-foreground";

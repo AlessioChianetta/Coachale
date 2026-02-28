@@ -5902,7 +5902,7 @@ export class FileSearchSyncService {
     const AUDIT_AGENTS = [
       { id: "alessia", name: "Alessia" }, { id: "millie", name: "Millie" },
       { id: "echo", name: "Echo" }, { id: "nova", name: "Nova" },
-      { id: "stella", name: "Stella" }, { id: "iris", name: "Iris" },
+      { id: "stella", name: "Stella" },
       { id: "marco", name: "Marco" }, { id: "personalizza", name: "Personalizza" },
     ];
     const autonomousAgentsAudit = AUDIT_AGENTS.map(agent => {

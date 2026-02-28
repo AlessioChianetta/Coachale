@@ -464,7 +464,6 @@ const REASONING_ROLE_COLORS: Record<string, string> = {
   echo: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800",
   nova: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800",
   stella: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800",
-  iris: "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-300 dark:border-cyan-800",
   marco: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800",
   personalizza: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-950/30 dark:text-gray-300 dark:border-gray-800",
 };
@@ -779,7 +778,7 @@ function TasksCreatedRejected({ tasksData }: { tasksData: any }) {
 
 const ROLE_COLOR_MAP: Record<string, string> = {
   alessia: 'pink', millie: 'purple', echo: 'orange', nova: 'pink',
-  stella: 'emerald', iris: 'teal', marco: 'indigo', personalizza: 'gray'
+  stella: 'emerald', marco: 'indigo', personalizza: 'gray'
 };
 
 const AI_SIM_ROLE_COLORS: Record<string, string> = {
@@ -788,7 +787,6 @@ const AI_SIM_ROLE_COLORS: Record<string, string> = {
   echo: 'border-orange-300 bg-orange-50 dark:bg-orange-950/20',
   nova: 'border-rose-300 bg-rose-50 dark:bg-rose-950/20',
   stella: 'border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20',
-  iris: 'border-teal-300 bg-teal-50 dark:bg-teal-950/20',
   marco: 'border-indigo-300 bg-indigo-50 dark:bg-indigo-950/20',
   personalizza: 'border-gray-300 bg-gray-50 dark:bg-gray-950/20',
 };
@@ -2061,7 +2059,6 @@ function ActivityTab({
                 <SelectItem value="echo">Echo</SelectItem>
                 <SelectItem value="nova">Nova</SelectItem>
                 <SelectItem value="stella">Stella</SelectItem>
-                <SelectItem value="iris">Iris</SelectItem>
                 <SelectItem value="marco">Marco</SelectItem>
                 <SelectItem value="personalizza">Personalizza</SelectItem>
               </SelectContent>

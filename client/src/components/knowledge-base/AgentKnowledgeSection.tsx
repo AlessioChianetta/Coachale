@@ -59,7 +59,6 @@ const AI_AGENTS = [
   { id: "echo", name: "Echo", displayName: "Echo – Client Listener", color: "purple", icon: "Headphones", description: "Monitoraggio sentiment e ascolto attivo" },
   { id: "nova", name: "Nova", displayName: "Nova – Content Creator", color: "orange", icon: "Palette", description: "Creazione contenuti e marketing" },
   { id: "stella", name: "Stella", displayName: "Stella – Engagement Specialist", color: "yellow", icon: "Star", description: "Engagement clienti e nurturing" },
-  { id: "iris", name: "Iris", displayName: "Iris – Data Insights", color: "teal", icon: "BarChart3", description: "Analisi dati e insight strategici" },
   { id: "marco", name: "Marco", displayName: "Marco – Executive Assistant", color: "green", icon: "Briefcase", description: "Assistente esecutivo e organizzazione" },
   { id: "personalizza", name: "Personalizza", displayName: "Personalizza – Custom Agent", color: "indigo", icon: "Settings", description: "Agente personalizzabile" },
 ];

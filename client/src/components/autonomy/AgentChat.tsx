@@ -69,11 +69,6 @@ const ROLE_SUGGESTIONS: Record<string, string[]> = {
     "Strategie anti-churn attive",
     "Report retention mensile",
   ],
-  iris: [
-    "Opportunità di upselling",
-    "Analisi ricavi del mese",
-    "Come ottimizzare i prezzi?",
-  ],
   personalizza: [
     "Qual è il tuo stato attuale?",
     "Cosa hai fatto di recente?",

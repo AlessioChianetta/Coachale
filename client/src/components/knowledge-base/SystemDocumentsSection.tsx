@@ -110,7 +110,6 @@ const AUTONOMOUS_AGENTS = [
   { id: "echo", name: "Echo" },
   { id: "nova", name: "Nova" },
   { id: "stella", name: "Stella" },
-  { id: "iris", name: "Iris" },
   { id: "marco", name: "Marco" },
   { id: "personalizza", name: "Personalizza" },
 ];

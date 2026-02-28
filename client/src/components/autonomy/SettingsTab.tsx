@@ -40,7 +40,7 @@ import type { AgentContext, AgentFocusItem } from "@shared/schema";
 
 const AI_ROLE_NAMES_MAP: Record<string, string> = {
   alessia: 'Alessia', millie: 'Millie', echo: 'Echo', nova: 'Nova',
-  stella: 'Stella', iris: 'Iris', marco: 'Marco', hunter: 'Hunter', personalizza: 'Personalizza',
+  stella: 'Stella', marco: 'Marco', hunter: 'Hunter', personalizza: 'Personalizza',
 };
 
 const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: string[] }[]> = {
@@ -71,11 +71,6 @@ const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: s
   stella: [
     { label: "WhatsApp", icon: "💬", items: ["Conversazioni attive (telefono, ultimo messaggio, non letti)", "Messaggi recenti degli ultimi 7 giorni"] },
     { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Stella"] },
-  ],
-  iris: [
-    { label: "Email Hub", icon: "📥", items: ["Email in arrivo non lette (ultimi 7gg)", "Mittente, oggetto, anteprima"] },
-    { label: "Ticket", icon: "🎫", items: ["Ticket aperti/pendenti con priorità e classificazione AI"] },
-    { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Iris"] },
   ],
   marco: [
     { label: "Agenda", icon: "📅", items: ["Consultazioni prossimi 7 giorni (DB + Google Calendar)", "Stato, durata, note per ogni appuntamento"] },
@@ -2156,8 +2151,8 @@ function SettingsTab({
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {settings.channels_enabled.email 
-                    ? "Usato da: Millie (email personalizzate), Echo (invio riepiloghi), Iris (risposte email), Marco (comunicazioni)" 
-                    : "Se disabilitato: Millie, Echo, Iris e Marco non potranno inviare email."}
+                    ? "Usato da: Millie (email personalizzate), Echo (invio riepiloghi), Marco (comunicazioni)" 
+                    : "Se disabilitato: Millie, Echo e Marco non potranno inviare email."}
                 </p>
               </div>
 
@@ -2339,352 +2334,6 @@ function SettingsTab({
           )}
 
           <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-400 to-cyan-500" />
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
-                <Search className="h-5 w-5 text-teal-600" />
-                Outreach Automatico (Hunter)
-              </div>
-              <Switch
-                checked={outreachConfig.enabled}
-                onCheckedChange={(checked) => updateOutreachConfig("enabled", checked)}
-              />
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Hunter trova lead automaticamente e li assegna ad Alessia, Stella e Millie per il primo contatto
-            </p>
-
-            {(() => {
-              const hasSalesCtx = !!(savedSalesContext?.servicesOffered);
-              const hasWaConfig = proactiveWaConfigs.length > 0;
-              const selectedWa = !!outreachConfig.whatsapp_config_id;
-              const hasTemplates = (settings.whatsapp_template_ids || []).length > 0;
-              const readinessItems = [
-                { ok: hasSalesCtx, label: "Sales Context compilato", desc: "Serve per capire cosa vendere ai lead", action: () => navigate("/consultant/lead-scraper"), actionLabel: "Compila Sales Context" },
-                { ok: hasWaConfig, label: "Dipendente WhatsApp proattivo configurato", desc: "Serve un agente WA proattivo con Twilio configurato", action: () => navigate("/consultant/whatsapp"), actionLabel: "Configura WhatsApp" },
-                { ok: selectedWa || !hasWaConfig, label: "Dipendente WA selezionato per outreach", desc: "Seleziona quale dipendente WA usare qui sotto", action: undefined, actionLabel: "" },
-                { ok: hasTemplates, label: "Template WhatsApp selezionati", desc: "Seleziona almeno un template approvato nella sezione sopra", action: undefined, actionLabel: "" },
-              ];
-              const okCount = readinessItems.filter(c => c.ok).length;
-              const allOk = okCount === readinessItems.length;
-              return (
-                <div className={cn("rounded-xl border p-4 mb-4", allOk ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/10" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/10")}>
-                  <div className="flex items-center gap-2 mb-2">
-                    {allOk ? <CheckCircle className="h-4 w-4 text-emerald-500" /> : <AlertCircle className="h-4 w-4 text-amber-500" />}
-                    <span className="text-sm font-semibold">{allOk ? "Tutto configurato — Hunter è pronto" : `Configurazione: ${okCount}/${readinessItems.length} completata`}</span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {readinessItems.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          {item.ok ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />}
-                          <div>
-                            <span className={cn("text-xs", item.ok ? "text-muted-foreground" : "text-foreground font-medium")}>{item.label}</span>
-                            {!item.ok && <p className="text-[10px] text-muted-foreground">{item.desc}</p>}
-                          </div>
-                        </div>
-                        {!item.ok && item.action && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-teal-600 hover:text-teal-700" onClick={item.action}>
-                            {item.actionLabel} <ArrowRight className="h-3 w-3 ml-1" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {outreachConfig.enabled && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                        <span>Max ricerche Hunter / giorno</span>
-                        <Badge variant="outline" className="text-xs">{outreachConfig.max_searches_per_day}</Badge>
-                      </Label>
-                      <Slider
-                        value={[outreachConfig.max_searches_per_day]}
-                        min={1}
-                        max={20}
-                        step={1}
-                        onValueChange={([v]) => updateOutreachConfig("max_searches_per_day", v)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                        <span>Max chiamate Alessia / giorno</span>
-                        <Badge variant="outline" className="text-xs">{outreachConfig.max_calls_per_day}</Badge>
-                      </Label>
-                      <Slider
-                        value={[outreachConfig.max_calls_per_day]}
-                        min={1}
-                        max={50}
-                        step={1}
-                        onValueChange={([v]) => updateOutreachConfig("max_calls_per_day", v)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                        <span>Max WhatsApp Stella / giorno</span>
-                        <Badge variant="outline" className="text-xs">{outreachConfig.max_whatsapp_per_day}</Badge>
-                      </Label>
-                      <Slider
-                        value={[outreachConfig.max_whatsapp_per_day]}
-                        min={1}
-                        max={50}
-                        step={1}
-                        onValueChange={([v]) => updateOutreachConfig("max_whatsapp_per_day", v)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                        <span>Max email Millie / giorno</span>
-                        <Badge variant="outline" className="text-xs">{outreachConfig.max_emails_per_day}</Badge>
-                      </Label>
-                      <Slider
-                        value={[outreachConfig.max_emails_per_day]}
-                        min={1}
-                        max={100}
-                        step={1}
-                        onValueChange={([v]) => updateOutreachConfig("max_emails_per_day", v)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                        <span>Soglia score AI minimo</span>
-                        <Badge variant="outline" className="text-xs">{outreachConfig.score_threshold}/100</Badge>
-                      </Label>
-                      <Slider
-                        value={[outreachConfig.score_threshold]}
-                        min={30}
-                        max={90}
-                        step={5}
-                        onValueChange={([v]) => updateOutreachConfig("score_threshold", v)}
-                      />
-                      <p className="text-xs text-gray-400 mt-1">Solo lead con score AI &ge; {outreachConfig.score_threshold} verranno contattati</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                        <span>Cooldown tra contatti (ore)</span>
-                        <Badge variant="outline" className="text-xs">{outreachConfig.cooldown_hours}h</Badge>
-                      </Label>
-                      <Slider
-                        value={[outreachConfig.cooldown_hours]}
-                        min={12}
-                        max={168}
-                        step={12}
-                        onValueChange={([v]) => updateOutreachConfig("cooldown_hours", v)}
-                      />
-                      <p className="text-xs text-gray-400 mt-1">Tempo minimo prima di ricontattare lo stesso lead</p>
-                    </div>
-
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Dipendente WhatsApp per outreach</Label>
-                      <Select
-                        value={outreachConfig.whatsapp_config_id || "none"}
-                        onValueChange={(v) => updateOutreachConfig("whatsapp_config_id", v === "none" ? "" : v)}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Seleziona dipendente WA" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nessuno (disabilita WA outreach)</SelectItem>
-                          {proactiveWaConfigs.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name} ({c.phoneNumber})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {proactiveWaConfigs.length === 0 && (
-                        <p className="text-xs text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Template voce per outreach</Label>
-                      <Select
-                        value={outreachConfig.voice_template_id || "none"}
-                        onValueChange={(v) => updateOutreachConfig("voice_template_id", v === "none" ? "" : v)}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Seleziona template voce" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Automatico (Hunter sceglie)</SelectItem>
-                          {voiceTemplateOptions.map((t) => (
-                            <SelectItem key={t.id} value={t.id}>{t.name} — {t.description}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-sm font-medium mb-2 block">Priorità canali di contatto</Label>
-                  <p className="text-xs text-gray-400 mb-3">Trascina per riordinare. Hunter proverà i canali in questo ordine per ogni lead.</p>
-                  <div className="space-y-2">
-                    {outreachConfig.channel_priority.map((ch, idx) => {
-                      const info = channelLabels[ch];
-                      if (!info) return null;
-                      return (
-                        <div key={ch} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                          <span className="text-xs font-bold text-gray-400 w-5">{idx + 1}.</span>
-                          <span className={info.color}>{info.icon}</span>
-                          <span className="flex-1 text-sm font-medium">{info.label}</span>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0"
-                              disabled={idx === 0}
-                              onClick={() => moveChannelPriority(idx, "up")}
-                            >
-                              <ChevronUp className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0"
-                              disabled={idx === outreachConfig.channel_priority.length - 1}
-                              onClick={() => moveChannelPriority(idx, "down")}
-                            >
-                              <ChevronDown className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <Separator className="my-4" />
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-5 w-5 text-indigo-600" />
-                      <div>
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">Follow-up Email Automatici</span>
-                        <p className="text-xs text-gray-400">Hunter ricontatta automaticamente i lead che non rispondono</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={emailFollowUp.enabled}
-                      onCheckedChange={(checked) => updateFollowUpConfig("enabled", checked)}
-                    />
-                  </div>
-
-                  {emailFollowUp.enabled && (
-                    <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-950/10 p-4 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Follow-up 1 dopo (giorni)</span>
-                            <Badge variant="outline" className="text-xs">{emailFollowUp.followUp1Days}gg</Badge>
-                          </Label>
-                          <Slider
-                            value={[emailFollowUp.followUp1Days]}
-                            min={1}
-                            max={14}
-                            step={1}
-                            onValueChange={([v]) => updateFollowUpConfig("followUp1Days", v)}
-                          />
-                          <p className="text-xs text-gray-400 mt-1">Giorni senza risposta prima del primo follow-up</p>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Follow-up 2 dopo (giorni)</span>
-                            <Badge variant="outline" className="text-xs">{emailFollowUp.followUp2Days}gg</Badge>
-                          </Label>
-                          <Slider
-                            value={[emailFollowUp.followUp2Days]}
-                            min={3}
-                            max={30}
-                            step={1}
-                            onValueChange={([v]) => updateFollowUpConfig("followUp2Days", v)}
-                          />
-                          <p className="text-xs text-gray-400 mt-1">Giorni senza risposta prima del secondo follow-up</p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium mb-2 block">Template Follow-up 1</Label>
-                          <Select
-                            value={emailFollowUp.followUp1TemplateId}
-                            onValueChange={(v) => updateFollowUpConfig("followUp1TemplateId", v)}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Seleziona template" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {followUpTemplateOptions.map((t) => (
-                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium mb-2 block">Template Follow-up 2</Label>
-                          <Select
-                            value={emailFollowUp.followUp2TemplateId}
-                            onValueChange={(v) => updateFollowUpConfig("followUp2TemplateId", v)}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Seleziona template" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {followUpTemplateOptions.map((t) => (
-                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Max follow-up per lead</span>
-                            <Badge variant="outline" className="text-xs">{emailFollowUp.maxFollowUps}</Badge>
-                          </Label>
-                          <Slider
-                            value={[emailFollowUp.maxFollowUps]}
-                            min={1}
-                            max={5}
-                            step={1}
-                            onValueChange={([v]) => updateFollowUpConfig("maxFollowUps", v)}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                          <div>
-                            <span className="text-sm font-medium">Auto-approvazione</span>
-                            <p className="text-xs text-gray-400">Se attivo, i follow-up vengono inviati senza approvazione</p>
-                          </div>
-                          <Switch
-                            checked={emailFollowUp.autoApprove}
-                            onCheckedChange={(checked) => updateFollowUpConfig("autoApprove", checked)}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
-                        <Clock className="h-4 w-4 shrink-0" />
-                        <span>Il controllo follow-up avviene alle 09:00, 14:00 e 18:00 (Europe/Rome). Se un lead risponde, la sequenza si interrompe automaticamente.</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
             <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
               <ListTodo className="h-5 w-5" />
               Categorie Task Abilitate
@@ -2732,7 +2381,10 @@ function SettingsTab({
             <div className="space-y-5">
               {systemStatus?.roles && systemStatus.roles.length > 0 ? (
                 <div className="space-y-4">
-                  {systemStatus.roles.map((role) => {
+                  {[...systemStatus.roles].sort((a, b) => {
+                    if (a.enabled === b.enabled) return 0;
+                    return a.enabled ? -1 : 1;
+                  }).map((role) => {
                     const profile = AI_ROLE_PROFILES[role.id];
                     const colors = AI_ROLE_ACCENT_COLORS[role.accentColor] || AI_ROLE_ACCENT_COLORS.purple;
                     const caps = AI_ROLE_CAPABILITIES[role.id];
@@ -2772,36 +2424,62 @@ function SettingsTab({
                               <Badge className={cn("text-xs rounded-full px-2.5", colors.badge)}>
                                 {profile?.role || role.shortDescription}
                               </Badge>
-                            </div>
-                            {profile?.quote && (
-                              <p className="text-xs text-muted-foreground mt-1 italic line-clamp-1">"{profile.quote}"</p>
-                            )}
-                            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                               {roleStatuses?.[role.id] && (
-                                <>
-                                  <Badge variant="outline" className={cn("text-[10px] rounded-full px-2 py-0.5",
-                                    roleStatuses[role.id].status === 'attivo' ? "text-emerald-600 border-emerald-300 bg-emerald-50/50 dark:text-emerald-400 dark:border-emerald-700 dark:bg-emerald-950/20" :
-                                    roleStatuses[role.id].status === 'fuori_orario' ? "text-amber-600 border-amber-300 bg-amber-50/50 dark:text-amber-400 dark:border-amber-700 dark:bg-amber-950/20" :
-                                    roleStatuses[role.id].status === 'disabilitato' || roleStatuses[role.id].status === 'off' ? "text-red-600 border-red-300 bg-red-50/50 dark:text-red-400 dark:border-red-700 dark:bg-red-950/20" :
-                                    "text-muted-foreground border-muted"
-                                  )}>
-                                    {roleStatuses[role.id].status === 'attivo' ? '● Attivo' :
-                                     roleStatuses[role.id].status === 'fuori_orario' ? '◐ Fuori orario' :
-                                     roleStatuses[role.id].status === 'off' ? '○ Off' :
-                                     roleStatuses[role.id].status === 'solo_manuale' ? '◑ Solo manuale' :
-                                     roleStatuses[role.id].status === 'sistema_spento' ? '○ Sistema spento' :
-                                     '○ Disabilitato'}
-                                  </Badge>
-                                  <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0.5">
-                                    Lv. {roleStatuses[role.id].effectiveLevel}{roleStatuses[role.id].hasCustomLevel ? '' : ' (globale)'}
-                                  </Badge>
-                                </>
-                              )}
-                              {role.preferredChannels.map(ch => (
-                                <Badge key={ch} variant="outline" className="text-[10px] rounded-full px-2 py-0.5">
-                                  {channelLabel[ch] || ch}
+                                <Badge variant="outline" className={cn("text-[10px] rounded-full px-2 py-0.5",
+                                  roleStatuses[role.id].status === 'attivo' ? "text-emerald-600 border-emerald-300 bg-emerald-50/50 dark:text-emerald-400 dark:border-emerald-700 dark:bg-emerald-950/20" :
+                                  roleStatuses[role.id].status === 'fuori_orario' ? "text-amber-600 border-amber-300 bg-amber-50/50 dark:text-amber-400 dark:border-amber-700 dark:bg-amber-950/20" :
+                                  roleStatuses[role.id].status === 'disabilitato' || roleStatuses[role.id].status === 'off' ? "text-red-600 border-red-300 bg-red-50/50 dark:text-red-400 dark:border-red-700 dark:bg-red-950/20" :
+                                  "text-muted-foreground border-muted"
+                                )}>
+                                  {roleStatuses[role.id].status === 'attivo' ? '● Attivo' :
+                                   roleStatuses[role.id].status === 'fuori_orario' ? '◐ Fuori orario' :
+                                   roleStatuses[role.id].status === 'off' ? '○ Off' :
+                                   roleStatuses[role.id].status === 'solo_manuale' ? '◑ Solo manuale' :
+                                   roleStatuses[role.id].status === 'sistema_spento' ? '○ Sistema spento' :
+                                   '○ Disabilitato'}
                                 </Badge>
-                              ))}
+                              )}
+                            </div>
+
+                            {profile?.quote && (
+                              <p className="text-sm text-muted-foreground mt-1 leading-snug line-clamp-2">{profile.quote}</p>
+                            )}
+
+                            {caps && (
+                              <p className="text-xs text-muted-foreground/80 mt-1.5 leading-relaxed line-clamp-1">
+                                {caps.workflow}
+                              </p>
+                            )}
+
+                            {AI_ROLE_EXECUTION_PIPELINES[role.id] && (
+                              <div className="inline-flex items-center gap-1.5 mt-2 rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-1 border border-gray-200/60 dark:border-gray-700/60">
+                                <span className="text-xs">{AI_ROLE_EXECUTION_PIPELINES[role.id].directionIcon}</span>
+                                <span className={cn("text-[11px] font-semibold", AI_ROLE_EXECUTION_PIPELINES[role.id].directionColor)}>
+                                  {AI_ROLE_EXECUTION_PIPELINES[role.id].direction}
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                              {role.preferredChannels.map(ch => {
+                                const channelIcons: Record<string, { icon: string; color: string }> = {
+                                  voice: { icon: "📞", color: "text-pink-600 border-pink-200 bg-pink-50 dark:text-pink-400 dark:border-pink-800 dark:bg-pink-950/20" },
+                                  email: { icon: "📧", color: "text-blue-600 border-blue-200 bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/20" },
+                                  whatsapp: { icon: "💬", color: "text-emerald-600 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/20" },
+                                  none: { icon: "🏠", color: "text-gray-600 border-gray-200 bg-gray-50 dark:text-gray-400 dark:border-gray-700 dark:bg-gray-800" },
+                                };
+                                const info = channelIcons[ch] || channelIcons.none;
+                                return (
+                                  <Badge key={ch} variant="outline" className={cn("text-[10px] rounded-full px-2 py-0.5", info.color)}>
+                                    {info.icon} {channelLabel[ch] || ch}
+                                  </Badge>
+                                );
+                              })}
+                              {roleStatuses?.[role.id] && (
+                                <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0.5">
+                                  Lv. {roleStatuses[role.id].effectiveLevel}{roleStatuses[role.id].hasCustomLevel ? '' : ' (globale)'}
+                                </Badge>
+                              )}
                               {role.total_tasks_30d > 0 && (
                                 <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0.5">{role.total_tasks_30d} task (30gg)</Badge>
                               )}

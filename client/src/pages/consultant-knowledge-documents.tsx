@@ -249,7 +249,6 @@ const AGENT_NAMES: Record<string, { name: string; color: string }> = {
   echo: { name: "Echo", color: "text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400" },
   nova: { name: "Nova", color: "text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-400" },
   stella: { name: "Stella", color: "text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400" },
-  iris: { name: "Iris", color: "text-teal-600 bg-teal-50 dark:bg-teal-900/20 dark:text-teal-400" },
   marco: { name: "Marco", color: "text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400" },
   personalizza: { name: "Personalizza", color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400" },
 };
