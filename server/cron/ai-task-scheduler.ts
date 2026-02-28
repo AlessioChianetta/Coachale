@@ -376,6 +376,23 @@ async function executeSingleWhatsApp(task: AIScheduledTask): Promise<void> {
         WHERE id = ${leadId}
       `);
     }
+
+    try {
+      const { ensureProactiveLead } = await import('../utils/ensure-proactive-lead');
+      await ensureProactiveLead({
+        consultantId: task.consultant_id,
+        phoneNumber: resolvedPhone,
+        contactName: resolvedName !== 'Cliente' ? resolvedName : undefined,
+        source: task.ai_role === 'hunter' ? 'hunter' : 'manual',
+        agentConfigId: task.whatsapp_config_id || undefined,
+        leadInfo: {
+          fonte: `WhatsApp ${task.ai_role || 'outbound'}`,
+          companyName: additionalContextData.business_name || undefined,
+        },
+      });
+    } catch (epErr: any) {
+      console.error(`${LOG} ensureProactiveLead error (non-blocking):`, epErr.message);
+    }
   } catch (err: any) {
     console.error(`${LOG} ✗ Send failed: ${err.message}`);
     await handleFailure(task, err.message);
@@ -592,8 +609,6 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
 async function handleSuccess(task: AIScheduledTask, result: { callId?: string }): Promise<void> {
   console.log(`✅ [AI-SCHEDULER] Task ${task.id} call initiated successfully (callId: ${result.callId})`);
   
-  // Keep status as 'in_progress' - the callback will update to 'completed' or 'failed'
-  // Just save the callId reference so we can track it
   await db.execute(sql`
     UPDATE ai_scheduled_tasks 
     SET result_summary = 'Chiamata in corso...',
@@ -602,8 +617,23 @@ async function handleSuccess(task: AIScheduledTask, result: { callId?: string })
     WHERE id = ${task.id}
   `);
   
-  // Note: recurrence scheduling now happens in callback when call actually completes
-  // This prevents creating next occurrence before current call finishes
+  if (task.contact_phone) {
+    try {
+      const { ensureProactiveLead } = await import('../utils/ensure-proactive-lead');
+      await ensureProactiveLead({
+        consultantId: task.consultant_id,
+        phoneNumber: task.contact_phone,
+        contactName: task.contact_name || undefined,
+        source: task.ai_role === 'hunter' ? 'hunter' : 'manual',
+        agentConfigId: task.whatsapp_config_id || undefined,
+        leadInfo: {
+          fonte: `Chiamata vocale ${task.ai_role || 'outbound'}`,
+        },
+      });
+    } catch (epErr: any) {
+      console.error(`[AI-SCHEDULER] ensureProactiveLead error (non-blocking):`, epErr.message);
+    }
+  }
 }
 
 /**

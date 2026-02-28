@@ -2397,13 +2397,24 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
     
     console.log(`📞 [Outbound] Trigger immediate call ${callId} to ${cleanPhone}`);
     
-    // Execute call asynchronously
     executeOutboundCall(callId, consultantId).then(result => {
       if (!result.success) {
         console.error(`[Outbound] Call ${callId} failed:`, result.error);
       }
     });
     
+    try {
+      const { ensureProactiveLead } = await import('../utils/ensure-proactive-lead');
+      await ensureProactiveLead({
+        consultantId,
+        phoneNumber: cleanPhone,
+        source: 'manual',
+        leadInfo: { fonte: 'Chiamata vocale diretta' },
+      });
+    } catch (epErr: any) {
+      console.error(`[Outbound] ensureProactiveLead error (non-blocking):`, epErr.message);
+    }
+
     res.json({
       success: true,
       callId,
@@ -2482,11 +2493,23 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
       )
     `);
     
-    // Schedule timer
     scheduleCallTimer(callId, consultantId, scheduledDate);
     
     console.log(`📅 [Outbound] Scheduled call ${callId} to ${cleanPhone} at ${scheduledDate.toISOString()}`);
     
+    try {
+      const { ensureProactiveLead } = await import('../utils/ensure-proactive-lead');
+      await ensureProactiveLead({
+        consultantId,
+        phoneNumber: cleanPhone,
+        source: 'manual',
+        status: 'pending',
+        leadInfo: { fonte: 'Chiamata vocale programmata' },
+      });
+    } catch (epErr: any) {
+      console.error(`[Outbound] ensureProactiveLead error (non-blocking):`, epErr.message);
+    }
+
     res.json({
       success: true,
       callId,

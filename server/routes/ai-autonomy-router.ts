@@ -2947,6 +2947,31 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
       RETURNING *
     `);
 
+    if (sanitizedPhone) {
+      try {
+        const { ensureProactiveLead } = await import('../utils/ensure-proactive-lead');
+        let additionalCtx: Record<string, any> = {};
+        if (additional_context) {
+          try { additionalCtx = JSON.parse(additional_context); } catch {}
+        }
+        await ensureProactiveLead({
+          consultantId,
+          phoneNumber: sanitizedPhone,
+          contactName: contact_name || undefined,
+          source: 'manual',
+          status: 'pending',
+          agentConfigId: agent_config_id || undefined,
+          leadInfo: {
+            fonte: `Task manuale (${preferred_channel || 'generico'})`,
+            obiettivi: objective || undefined,
+          },
+          consultantNotes: additionalCtx.custom_context || undefined,
+        });
+      } catch (epErr: any) {
+        console.error("[AI-AUTONOMY] ensureProactiveLead error (non-blocking):", epErr.message);
+      }
+    }
+
     return res.status(201).json({ success: true, task: result.rows[0] });
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error creating task:", error);
