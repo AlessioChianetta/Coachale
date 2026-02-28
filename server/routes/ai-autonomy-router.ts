@@ -1190,15 +1190,24 @@ async function findNextAvailableSlot(
   const startHour = channelStartHours[channel] || 9;
   const endHour = channelEndHours[channel] || 19;
 
+  const operatingDays: number[] = outreachConfig?.operating_days ?? [1, 2, 3, 4, 5];
+  const operatingDaysSet = new Set(operatingDays.length > 0 ? operatingDays : [1, 2, 3, 4, 5]);
+
+  const advanceToNextOperatingDay = (d: Date) => {
+    for (let i = 0; i < 8; i++) {
+      if (operatingDaysSet.has(d.getDay())) return;
+      d.setDate(d.getDate() + 1);
+      d.setHours(startHour, 0, 0, 0);
+    }
+  };
+
   let candidate = new Date(now.getTime() + (5 + offsetIndex * baseOffset) * 60000);
 
   const hour = candidate.getHours();
   if (hour < startHour) { candidate.setHours(startHour, 0, 0, 0); }
   else if (hour >= endHour) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
 
-  const day = candidate.getDay();
-  if (day === 0) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
-  else if (day === 6) { candidate.setDate(candidate.getDate() + 2); candidate.setHours(startHour, 0, 0, 0); }
+  advanceToNextOperatingDay(candidate);
 
   for (let attempt = 0; attempt < 20; attempt++) {
     const windowStart = new Date(candidate.getTime() - slotDuration * 60000);
@@ -1235,9 +1244,7 @@ async function findNextAvailableSlot(
     candidate = new Date(candidate.getTime() + slotDuration * 60000);
     const newHour = candidate.getHours();
     if (newHour >= endHour) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
-    const newDay = candidate.getDay();
-    if (newDay === 0) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
-    else if (newDay === 6) { candidate.setDate(candidate.getDate() + 2); candidate.setHours(startHour, 0, 0, 0); }
+    advanceToNextOperatingDay(candidate);
   }
 
   console.log(`[SLOT-FINDER] ${channel} → slot found: ${candidate.toISOString()} (offsetIndex=${offsetIndex})`);

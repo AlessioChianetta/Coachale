@@ -3057,10 +3057,67 @@ export default function ConsultantLeadScraper() {
                           <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Orari operativi</h4>
-                          <p className="text-xs text-muted-foreground">Fasce orarie in cui Hunter può contattare i lead</p>
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Giorni e orari operativi</h4>
+                          <p className="text-xs text-muted-foreground">Quando Hunter può contattare i lead</p>
                         </div>
                       </div>
+
+                      <div className="mb-5 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/30 dark:bg-indigo-950/10">
+                        <Label className="text-sm font-semibold flex items-center gap-2 mb-3">
+                          <Calendar className="h-4 w-4 text-indigo-600" />
+                          Giorni operativi
+                        </Label>
+                        <p className="text-xs text-muted-foreground mb-3">Seleziona i giorni in cui Hunter può effettuare l'outreach</p>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { key: 1, label: 'Lun', full: 'Lunedì' },
+                            { key: 2, label: 'Mar', full: 'Martedì' },
+                            { key: 3, label: 'Mer', full: 'Mercoledì' },
+                            { key: 4, label: 'Gio', full: 'Giovedì' },
+                            { key: 5, label: 'Ven', full: 'Venerdì' },
+                            { key: 6, label: 'Sab', full: 'Sabato' },
+                            { key: 0, label: 'Dom', full: 'Domenica' },
+                          ].map(day => {
+                            const operatingDays: number[] = outreachConfig.operating_days ?? [1, 2, 3, 4, 5];
+                            const isActive = operatingDays.includes(day.key);
+                            const isWeekend = day.key === 0 || day.key === 6;
+                            return (
+                              <button
+                                key={day.key}
+                                type="button"
+                                title={day.full}
+                                onClick={() => {
+                                  const current: number[] = outreachConfig.operating_days ?? [1, 2, 3, 4, 5];
+                                  const updated = isActive
+                                    ? current.filter(d => d !== day.key)
+                                    : [...current, day.key].sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b));
+                                  if (updated.length === 0) return;
+                                  updateOutreachConfig("operating_days", updated);
+                                }}
+                                className={`relative px-3.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 border ${
+                                  isActive
+                                    ? isWeekend
+                                      ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600 text-amber-800 dark:text-amber-300 shadow-sm'
+                                      : 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-600 text-indigo-800 dark:text-indigo-300 shadow-sm'
+                                    : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'
+                                }`}
+                              >
+                                {day.label}
+                                {isActive && (
+                                  <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${isWeekend ? 'bg-amber-500' : 'bg-indigo-500'}`} />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {(outreachConfig.operating_days ?? [1, 2, 3, 4, 5]).length < 5 && (
+                          <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Hunter opererà solo nei giorni selezionati ({(outreachConfig.operating_days ?? [1, 2, 3, 4, 5]).length} giorni/settimana)
+                          </p>
+                        )}
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                         <div className="space-y-3 p-4 rounded-xl border border-green-200 dark:border-green-800/50 bg-green-50/30 dark:bg-green-950/10">
                           <Label className="text-sm font-semibold flex items-center gap-2">
