@@ -1033,6 +1033,15 @@ function SettingsTab({
     { id: "sales-orbitale", name: "Sales Orbitale", description: "Per lead ad alto potenziale" },
   ];
 
+  const followUpDefaults = {
+    enabled: true,
+    followUp1Days: 3,
+    followUp2Days: 7,
+    maxFollowUps: 2,
+    followUp1TemplateId: "template_2",
+    followUp2TemplateId: "template_3",
+    autoApprove: false,
+  };
   const outreachDefaults = {
     enabled: false,
     max_searches_per_day: 5,
@@ -1044,8 +1053,28 @@ function SettingsTab({
     cooldown_hours: 48,
     whatsapp_config_id: "",
     voice_template_id: "",
+    emailFollowUp: followUpDefaults,
   };
   const outreachConfig = { ...outreachDefaults, ...(settings.outreach_config || {}) };
+  const emailFollowUp = { ...followUpDefaults, ...(outreachConfig.emailFollowUp || {}) };
+
+  const updateFollowUpConfig = (key: string, value: any) => {
+    const updated = { ...emailFollowUp, [key]: value };
+    updateOutreachConfig("emailFollowUp", updated);
+  };
+
+  const followUpTemplateOptions = [
+    { id: "template_1", name: "Template 1 — Primo Contatto Strategico" },
+    { id: "template_2", name: "Template 2 — Follow-up Elegante" },
+    { id: "template_3", name: "Template 3 — Break-up Email" },
+    { id: "template_4", name: "Template 4 — Trigger Event" },
+    { id: "template_5", name: "Template 5 — Case Study" },
+    { id: "template_6", name: "Template 6 — Pain Point Diretto" },
+    { id: "template_7", name: "Template 7 — Valore Gratuito" },
+    { id: "template_8", name: "Template 8 — Referral Interno" },
+    { id: "template_9", name: "Template 9 — Complimento Strategico" },
+    { id: "template_10", name: "Template 10 — Re-engagement" },
+  ];
 
   const updateOutreachConfig = (key: string, value: any) => {
     setSettings(prev => ({
@@ -2905,6 +2934,125 @@ function SettingsTab({
                       );
                     })}
                   </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-5 w-5 text-indigo-600" />
+                      <div>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">Follow-up Email Automatici</span>
+                        <p className="text-xs text-gray-400">Hunter ricontatta automaticamente i lead che non rispondono</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={emailFollowUp.enabled}
+                      onCheckedChange={(checked) => updateFollowUpConfig("enabled", checked)}
+                    />
+                  </div>
+
+                  {emailFollowUp.enabled && (
+                    <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-950/10 p-4 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Follow-up 1 dopo (giorni)</span>
+                            <Badge variant="outline" className="text-xs">{emailFollowUp.followUp1Days}gg</Badge>
+                          </Label>
+                          <Slider
+                            value={[emailFollowUp.followUp1Days]}
+                            min={1}
+                            max={14}
+                            step={1}
+                            onValueChange={([v]) => updateFollowUpConfig("followUp1Days", v)}
+                          />
+                          <p className="text-xs text-gray-400 mt-1">Giorni senza risposta prima del primo follow-up</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Follow-up 2 dopo (giorni)</span>
+                            <Badge variant="outline" className="text-xs">{emailFollowUp.followUp2Days}gg</Badge>
+                          </Label>
+                          <Slider
+                            value={[emailFollowUp.followUp2Days]}
+                            min={3}
+                            max={30}
+                            step={1}
+                            onValueChange={([v]) => updateFollowUpConfig("followUp2Days", v)}
+                          />
+                          <p className="text-xs text-gray-400 mt-1">Giorni senza risposta prima del secondo follow-up</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">Template Follow-up 1</Label>
+                          <Select
+                            value={emailFollowUp.followUp1TemplateId}
+                            onValueChange={(v) => updateFollowUpConfig("followUp1TemplateId", v)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Seleziona template" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {followUpTemplateOptions.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">Template Follow-up 2</Label>
+                          <Select
+                            value={emailFollowUp.followUp2TemplateId}
+                            onValueChange={(v) => updateFollowUpConfig("followUp2TemplateId", v)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Seleziona template" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {followUpTemplateOptions.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Max follow-up per lead</span>
+                            <Badge variant="outline" className="text-xs">{emailFollowUp.maxFollowUps}</Badge>
+                          </Label>
+                          <Slider
+                            value={[emailFollowUp.maxFollowUps]}
+                            min={1}
+                            max={5}
+                            step={1}
+                            onValueChange={([v]) => updateFollowUpConfig("maxFollowUps", v)}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div>
+                            <span className="text-sm font-medium">Auto-approvazione</span>
+                            <p className="text-xs text-gray-400">Se attivo, i follow-up vengono inviati senza approvazione</p>
+                          </div>
+                          <Switch
+                            checked={emailFollowUp.autoApprove}
+                            onCheckedChange={(checked) => updateFollowUpConfig("autoApprove", checked)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
+                        <Clock className="h-4 w-4 shrink-0" />
+                        <span>Il controllo follow-up avviene alle 09:00, 14:00 e 18:00 (Europe/Rome). Se un lead risponde, la sequenza si interrompe automaticamente.</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

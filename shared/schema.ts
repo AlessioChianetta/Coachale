@@ -10341,6 +10341,17 @@ export const aiScheduledTasks = pgTable("ai_scheduled_tasks", {
 export type AIScheduledTask = typeof aiScheduledTasks.$inferSelect;
 export type InsertAIScheduledTask = typeof aiScheduledTasks.$inferInsert;
 
+export interface EmailFollowUpConfig {
+  enabled?: boolean;
+  followUp1Days?: number;
+  followUp2Days?: number;
+  maxFollowUps?: number;
+  followUp1TemplateId?: string;
+  followUp2TemplateId?: string;
+  autoApprove?: boolean;
+  cronTimes?: string[];
+}
+
 export interface OutreachConfig {
   enabled?: boolean;
   maxSearchesPerDay?: number;
@@ -10352,6 +10363,7 @@ export interface OutreachConfig {
   cooldownHours?: number;
   whatsappConfigId?: string;
   voiceTemplateId?: string;
+  emailFollowUp?: EmailFollowUpConfig;
 }
 
 export const aiAutonomySettings = pgTable("ai_autonomy_settings", {

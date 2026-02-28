@@ -3794,9 +3794,38 @@ function computeNextWorkingSlot(settings: { working_hours_start: string; working
   return tomorrow;
 }
 
-export async function checkEmailFollowUps(consultantId: string): Promise<{ followUpsCreated: number }> {
+export interface FollowUpConfig {
+  enabled: boolean;
+  followUp1Days: number;
+  followUp2Days: number;
+  maxFollowUps: number;
+  followUp1TemplateId: string;
+  followUp2TemplateId: string;
+  autoApprove: boolean;
+}
+
+const FOLLOWUP_DEFAULTS: FollowUpConfig = {
+  enabled: true,
+  followUp1Days: 3,
+  followUp2Days: 7,
+  maxFollowUps: 2,
+  followUp1TemplateId: 'template_2',
+  followUp2TemplateId: 'template_3',
+  autoApprove: false,
+};
+
+export async function checkEmailFollowUps(consultantId: string, configOverride?: Partial<FollowUpConfig>): Promise<{ followUpsCreated: number }> {
   const LOG = '📧 [EMAIL-FOLLOWUP]';
   let followUpsCreated = 0;
+
+  const cfg: FollowUpConfig = { ...FOLLOWUP_DEFAULTS, ...configOverride };
+
+  if (!cfg.enabled) {
+    console.log(`${LOG} Follow-ups disabled for consultant ${consultantId}`);
+    return { followUpsCreated: 0 };
+  }
+
+  console.log(`${LOG} Config for ${consultantId}: FU1 after ${cfg.followUp1Days}d (tpl: ${cfg.followUp1TemplateId}), FU2 after ${cfg.followUp2Days}d (tpl: ${cfg.followUp2TemplateId}), max: ${cfg.maxFollowUps}, autoApprove: ${cfg.autoApprove}`);
 
   try {
     const outboundEmails = await db.execute(sql`
@@ -3809,7 +3838,7 @@ export async function checkEmailFollowUps(consultantId: string): Promise<{ follo
         AND he.direction = 'outbound'
         AND he.processing_status = 'sent'
         AND he.sent_at IS NOT NULL
-        AND he.sent_at < NOW() - INTERVAL '3 days'
+        AND he.sent_at < NOW() - INTERVAL '1 day' * ${cfg.followUp1Days}
         AND he.sent_at > NOW() - INTERVAL '30 days'
       ORDER BY he.sent_at DESC
       LIMIT 100
@@ -3886,27 +3915,27 @@ export async function checkEmailFollowUps(consultantId: string): Promise<{ follo
         }
 
         if (hasPendingFollowUp) continue;
-        if (followUpCount >= 2) continue;
+        if (followUpCount >= cfg.maxFollowUps) continue;
 
         const sentAt = new Date(outEmail.sent_at);
         const now = new Date();
         const daysSinceSent = (now.getTime() - sentAt.getTime()) / (1000 * 60 * 60 * 24);
 
-        let templateScenario: string | null = null;
         let followUpSequence = 0;
+        let templateId: string | null = null;
 
-        if (followUpCount === 0 && daysSinceSent >= 3) {
-          templateScenario = 'follow_up_1';
+        if (followUpCount === 0 && daysSinceSent >= cfg.followUp1Days) {
           followUpSequence = 1;
-        } else if (followUpCount === 1 && hasCompletedFollowUp1 && daysSinceSent >= 7) {
-          templateScenario = 'follow_up_2';
+          templateId = cfg.followUp1TemplateId;
+        } else if (followUpCount === 1 && hasCompletedFollowUp1 && daysSinceSent >= cfg.followUp2Days) {
           followUpSequence = 2;
+          templateId = cfg.followUp2TemplateId;
         }
 
-        if (!templateScenario) continue;
+        if (!templateId || followUpSequence === 0) continue;
 
-        const { selectTemplateForScenario } = await import('../ai/email-templates-library');
-        const template = selectTemplateForScenario(templateScenario);
+        const { getTemplateById, selectTemplateForScenario } = await import('../ai/email-templates-library');
+        const template = getTemplateById(templateId) || selectTemplateForScenario(followUpSequence === 1 ? 'follow_up_1' : 'follow_up_2');
 
         const recipientName = toRecipients[0]?.name || recipientEmail.split('@')[0];
         const taskId = `followup_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -3954,7 +3983,7 @@ export async function checkEmailFollowUps(consultantId: string): Promise<{ follo
             ${taskId}, ${consultantId}, '', ${recipientName},
             'ai_task', ${instruction},
             NOW() + INTERVAL '30 minutes',
-            'Europe/Rome', 'waiting_approval', 2, 'prospecting', 'hunter',
+            'Europe/Rome', ${cfg.autoApprove ? 'approved' : 'waiting_approval'}, 2, 'prospecting', 'hunter',
             'email', ${additionalCtx}::text, ${resultData}::jsonb,
             1, 0, 5,
             NOW(), NOW()
@@ -3991,13 +4020,13 @@ async function runEmailFollowUpChecks(): Promise<void> {
     console.log('📧 [EMAIL-FOLLOWUP] Starting email follow-up check cycle...');
 
     const consultantsResult = await db.execute(sql`
-      SELECT DISTINCT aas.consultant_id
+      SELECT DISTINCT aas.consultant_id, aas.outreach_config
       FROM ai_autonomy_settings aas
       WHERE aas.is_active = true
         AND (aas.channels_enabled->>'email')::boolean = true
     `);
 
-    const consultants = consultantsResult.rows as { consultant_id: string }[];
+    const consultants = consultantsResult.rows as { consultant_id: string; outreach_config: any }[];
 
     if (consultants.length === 0) {
       console.log('📧 [EMAIL-FOLLOWUP] No consultants with email enabled');
@@ -4006,12 +4035,26 @@ async function runEmailFollowUpChecks(): Promise<void> {
 
     let totalFollowUps = 0;
 
-    for (const { consultant_id } of consultants) {
+    for (const row of consultants) {
       try {
-        const result = await checkEmailFollowUps(consultant_id);
+        let fuConfig: Partial<FollowUpConfig> = {};
+        const oc = typeof row.outreach_config === 'string' ? JSON.parse(row.outreach_config) : (row.outreach_config || {});
+        if (oc.emailFollowUp) {
+          const efu = oc.emailFollowUp;
+          fuConfig = {
+            enabled: efu.enabled ?? undefined,
+            followUp1Days: efu.followUp1Days ?? undefined,
+            followUp2Days: efu.followUp2Days ?? undefined,
+            maxFollowUps: efu.maxFollowUps ?? undefined,
+            followUp1TemplateId: efu.followUp1TemplateId ?? undefined,
+            followUp2TemplateId: efu.followUp2TemplateId ?? undefined,
+            autoApprove: efu.autoApprove ?? undefined,
+          };
+        }
+        const result = await checkEmailFollowUps(row.consultant_id, fuConfig);
         totalFollowUps += result.followUpsCreated;
       } catch (error: any) {
-        console.error(`📧 [EMAIL-FOLLOWUP] Error for consultant ${consultant_id}: ${error.message}`);
+        console.error(`📧 [EMAIL-FOLLOWUP] Error for consultant ${row.consultant_id}: ${error.message}`);
       }
     }
 

@@ -734,43 +734,53 @@ async function buildCrossChannelContext(
   phoneNumber?: string | null
 ): Promise<string> {
   const sections: string[] = [];
-  const MAX_TOTAL_CHARS = 2000;
+  const MAX_TOTAL_CHARS = 3000;
 
   try {
     if (phoneNumber) {
       const cleanPhone = phoneNumber.replace(/\s+/g, "").replace(/^\+/, "");
 
       const waConversations = await db.execute(
-        sql`SELECT id FROM whatsapp_conversations
-            WHERE consultant_id = ${consultantId}
-            AND (phone_number LIKE ${'%' + cleanPhone} OR phone_number LIKE ${'%' + cleanPhone.slice(-10)})
-            ORDER BY last_message_at DESC NULLS LAST
+        sql`SELECT wc.id, wc.phone_number, wc.last_message_at,
+                   COALESCE(pl.first_name || ' ' || pl.last_name, u.first_name || ' ' || u.last_name, '') as resolved_name
+            FROM whatsapp_conversations wc
+            LEFT JOIN proactive_leads pl ON pl.phone_number = wc.phone_number AND pl.consultant_id = wc.consultant_id
+            LEFT JOIN users u ON u.id = wc.user_id
+            WHERE wc.consultant_id = ${consultantId}
+            AND (wc.phone_number LIKE ${'%' + cleanPhone} OR wc.phone_number LIKE ${'%' + cleanPhone.slice(-10)})
+            ORDER BY wc.last_message_at DESC NULLS LAST
             LIMIT 1`
       );
 
       if (waConversations.rows && waConversations.rows.length > 0) {
-        const convId = (waConversations.rows[0] as any).id;
+        const conv = waConversations.rows[0] as any;
+        const convId = conv.id;
+        const contactName = (conv.resolved_name || '').trim();
+        const lastMsgAt = conv.last_message_at ? new Date(conv.last_message_at).toLocaleDateString("it-IT") : '';
+
         const waMessages = await db.execute(
-          sql`SELECT message_text, direction, sender, created_at
+          sql`SELECT message_text, direction, sender, created_at, message_type
               FROM whatsapp_messages
               WHERE conversation_id = ${convId}
               ORDER BY created_at DESC
-              LIMIT 5`
+              LIMIT 8`
         );
 
         if (waMessages.rows && waMessages.rows.length > 0) {
           const msgs = (waMessages.rows as any[]).reverse().map((m: any) => {
-            const date = m.created_at ? new Date(m.created_at).toLocaleDateString("it-IT") : "";
+            const date = m.created_at ? new Date(m.created_at).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : "";
             const dir = m.direction === "inbound" ? "←" : "→";
-            const text = (m.message_text || "").substring(0, 120);
-            return `  ${dir} [${date}] ${text}`;
+            const text = (m.message_text || "").substring(0, 150);
+            const typeTag = m.message_type && m.message_type !== 'text' ? ` [${m.message_type}]` : '';
+            return `  ${dir} [${date}] ${text}${typeTag}`;
           });
-          sections.push(`- WhatsApp (ultimi ${msgs.length} msg):\n${msgs.join("\n")}`);
+          const header = contactName ? `- WhatsApp con ${contactName} (ultimi ${msgs.length} msg, ultimo: ${lastMsgAt}):` : `- WhatsApp (ultimi ${msgs.length} msg):`;
+          sections.push(`${header}\n${msgs.join("\n")}`);
         }
       }
 
       const voiceCalls = await db.execute(
-        sql`SELECT started_at, duration_seconds, outcome, full_transcript
+        sql`SELECT started_at, duration_seconds, outcome, full_transcript, caller_id, called_number
             FROM voice_calls
             WHERE consultant_id = ${consultantId}
             AND (caller_id LIKE ${'%' + cleanPhone} OR called_number LIKE ${'%' + cleanPhone}
@@ -781,11 +791,13 @@ async function buildCrossChannelContext(
 
       if (voiceCalls.rows && voiceCalls.rows.length > 0) {
         const calls = (voiceCalls.rows as any[]).map((c: any) => {
-          const date = c.started_at ? new Date(c.started_at).toLocaleDateString("it-IT") : "N/D";
+          const date = c.started_at ? new Date(c.started_at).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : "N/D";
           const duration = c.duration_seconds ? `${Math.round(c.duration_seconds / 60)} min` : "N/D";
           const outcome = c.outcome || "N/D";
-          const transcript = c.full_transcript ? (c.full_transcript as string).substring(0, 150) + "..." : "";
-          return `  [${date}] Durata: ${duration} - Esito: ${outcome}${transcript ? `\n    Riassunto: ${transcript}` : ""}`;
+          const isOutbound = (c.called_number || '').includes(cleanPhone.slice(-10));
+          const callDir = isOutbound ? '📞→' : '📞←';
+          const transcript = c.full_transcript ? (c.full_transcript as string).substring(0, 200) : '';
+          return `  ${callDir} [${date}] Durata: ${duration} - Esito: ${outcome}${transcript ? `\n    Riassunto: ${transcript}` : ""}`;
         });
         sections.push(`- Chiamate vocali (ultime ${calls.length}):\n${calls.join("\n")}`);
       }
@@ -793,22 +805,73 @@ async function buildCrossChannelContext(
 
     const normalizedEmail = fromEmail.toLowerCase().trim();
     const previousEmails = await db.execute(
-      sql`SELECT subject, direction, received_at, sent_at, snippet
+      sql`SELECT subject, direction, received_at, sent_at, snippet, processing_status, email_type
           FROM hub_emails
           WHERE consultant_id = ${consultantId}
-          AND LOWER(from_email) = ${normalizedEmail}
+          AND (LOWER(from_email) = ${normalizedEmail} OR LOWER(to_recipients::text) LIKE ${'%' + normalizedEmail + '%'})
           ORDER BY COALESCE(received_at, sent_at, created_at) DESC
-          LIMIT 10`
+          LIMIT 15`
     );
 
     if (previousEmails.rows && previousEmails.rows.length > 0) {
       const emails = (previousEmails.rows as any[]).map((e: any) => {
-        const date = (e.received_at || e.sent_at) ? new Date(e.received_at || e.sent_at).toLocaleDateString("it-IT") : "N/D";
+        const date = (e.received_at || e.sent_at) ? new Date(e.received_at || e.sent_at).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : "N/D";
         const dir = e.direction === "inbound" ? "←" : "→";
         const subj = (e.subject || "(Senza oggetto)").substring(0, 80);
-        return `  ${dir} [${date}] ${subj}`;
+        const snippet = e.snippet ? ` — ${(e.snippet as string).substring(0, 80)}` : '';
+        const statusTag = e.processing_status === 'sent' ? '' : e.processing_status === 'ignored' ? ' [ignorata]' : '';
+        return `  ${dir} [${date}] ${subj}${snippet}${statusTag}`;
       });
-      sections.push(`- Email precedenti (${emails.length}):\n${emails.join("\n")}`);
+      sections.push(`- Email precedenti (${emails.length} nel thread bidirezionale):\n${emails.join("\n")}`);
+    }
+
+    const aiTasks = await db.execute(
+      sql`SELECT task_type, ai_instruction, status, scheduled_at, result_data, ai_role, preferred_channel
+          FROM ai_scheduled_tasks
+          WHERE consultant_id = ${consultantId}
+          AND (
+            contact_name ILIKE ${'%' + normalizedEmail.split('@')[0] + '%'}
+            OR additional_context::text ILIKE ${'%' + normalizedEmail + '%'}
+          )
+          AND created_at > NOW() - INTERVAL '60 days'
+          ORDER BY created_at DESC
+          LIMIT 5`
+    );
+
+    if (aiTasks.rows && aiTasks.rows.length > 0) {
+      const tasks = (aiTasks.rows as any[]).map((t: any) => {
+        const date = t.scheduled_at ? new Date(t.scheduled_at).toLocaleDateString("it-IT") : "N/D";
+        const role = t.ai_role || 'ai';
+        const channel = t.preferred_channel || '';
+        const status = t.status || '';
+        const instruction = (t.ai_instruction || "").substring(0, 100);
+        return `  [${date}] ${role}/${channel} — ${status} — ${instruction}`;
+      });
+      sections.push(`- Task AI recenti per questo contatto (${tasks.length}):\n${tasks.join("\n")}`);
+    }
+
+    if (phoneNumber || normalizedEmail) {
+      const hunterActions = await db.execute(
+        sql`SELECT lead_name, channel, status, result_note, created_at
+            FROM hunter_actions
+            WHERE consultant_id = ${consultantId}
+            AND (
+              lead_email ILIKE ${normalizedEmail}
+              OR (lead_phone IS NOT NULL AND lead_phone LIKE ${'%' + (phoneNumber || '___NOMATCH___').replace(/\s+/g, "").replace(/^\+/, "").slice(-10)})
+            )
+            ORDER BY created_at DESC
+            LIMIT 5`
+      );
+
+      if (hunterActions.rows && hunterActions.rows.length > 0) {
+        const actions = (hunterActions.rows as any[]).map((a: any) => {
+          const date = a.created_at ? new Date(a.created_at).toLocaleDateString("it-IT") : "N/D";
+          const note = (a.result_note || "").substring(0, 100);
+          const name = a.lead_name || '';
+          return `  [${date}] ${name} via ${a.channel} — ${a.status}${note ? `: ${note}` : ''}`;
+        });
+        sections.push(`- Azioni Hunter su questo lead (${actions.length}):\n${actions.join("\n")}`);
+      }
     }
 
   } catch (error: any) {

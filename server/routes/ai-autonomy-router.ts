@@ -333,8 +333,19 @@ router.post("/hunter/check-followups", authenticateToken, requireAnyRole(["consu
     const consultantId = (req as AuthRequest).user?.id;
     if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
 
+    const settingsResult = await db.execute(sql`
+      SELECT outreach_config FROM ai_autonomy_settings
+      WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    let fuConfig: Record<string, any> = {};
+    if (settingsResult.rows.length > 0) {
+      const oc = (settingsResult.rows[0] as any).outreach_config || {};
+      const parsed = typeof oc === 'string' ? JSON.parse(oc) : oc;
+      if (parsed.emailFollowUp) fuConfig = parsed.emailFollowUp;
+    }
+
     const { checkEmailFollowUps } = await import("../cron/ai-task-scheduler");
-    const result = await checkEmailFollowUps(consultantId);
+    const result = await checkEmailFollowUps(consultantId, fuConfig);
 
     res.json({ success: true, ...result });
   } catch (error: any) {
