@@ -1980,6 +1980,7 @@ router.post("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
       escalationKeywords: account.escalationKeywords as string[] | null,
       stopOnRisk: account.stopOnRisk,
       bookingLink: account.bookingLink,
+      autoReplyMode,
     };
 
     if (autoReplyMode === "auto") {
@@ -2125,34 +2126,64 @@ router.post("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
       });
     }
     
-    const originalEmail = {
-      subject: email.subject,
-      fromName: email.fromName,
-      fromEmail: email.fromEmail,
-      bodyText: email.bodyText,
-      bodyHtml: email.bodyHtml,
-    };
+    console.log(`[EMAIL-AI-MANUAL] Processing email ${emailId} in review mode (manual trigger)`);
     
-    const draft = await generateEmailDraft(
+    const result = await classifyAndGenerateDraft(
       emailId,
-      originalEmail,
+      consultantId,
       accountSettings,
-      consultantId
+      extendedSettings
     );
     
-    const classification = await classifyEmail(emailId, consultantId);
+    if (result.stoppedByRisk) {
+      console.log(`[EMAIL-AI-MANUAL] Email ${emailId} stopped by risk: ${result.riskReason}`);
+      
+      const [response] = await db
+        .insert(schema.emailHubAiResponses)
+        .values({
+          emailId,
+          draftSubject: null,
+          draftBodyHtml: null,
+          draftBodyText: null,
+          confidence: 0,
+          modelUsed: "gemini-3-flash-preview",
+          reasoning: result.classification as any,
+          status: "draft_needs_review",
+        })
+        .returning();
+      
+      await db
+        .update(schema.hubEmails)
+        .set({ processingStatus: "needs_review", updatedAt: new Date() })
+        .where(eq(schema.hubEmails.id, emailId));
+      
+      return res.status(201).json({ 
+        success: true, 
+        data: response, 
+        classification: result.classification,
+        stoppedByRisk: true,
+        riskReason: result.riskReason,
+      });
+    }
+    
+    if (!result.draft) {
+      return res.status(500).json({ 
+        success: false, 
+        error: "Failed to generate draft" 
+      });
+    }
     
     const [response] = await db
       .insert(schema.emailHubAiResponses)
       .values({
         emailId,
-        draftSubject: draft.subject,
-        draftBodyHtml: draft.bodyHtml,
-        draftBodyText: draft.bodyText,
-        confidence: draft.confidence,
-        modelUsed: draft.modelUsed,
-        tokensUsed: draft.tokensUsed,
-        reasoning: classification as any,
+        draftSubject: result.draft.subject,
+        draftBodyHtml: result.draft.bodyHtml,
+        draftBodyText: result.draft.bodyText,
+        confidence: result.draft.confidence,
+        modelUsed: result.draft.modelUsed,
+        tokensUsed: result.draft.tokensUsed,
+        reasoning: result.classification as any,
         status: "draft",
       })
       .returning();
@@ -2162,7 +2193,12 @@ router.post("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
       .set({ processingStatus: "draft_generated", updatedAt: new Date() })
       .where(eq(schema.hubEmails.id, emailId));
     
-    res.status(201).json({ success: true, data: response, classification });
+    res.status(201).json({ 
+      success: true, 
+      data: response, 
+      classification: result.classification,
+      kbSearchResult: result.kbSearchResult,
+    });
   } catch (error: any) {
     console.error("[EMAIL-HUB] Error generating AI response:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -2462,6 +2498,7 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
       escalationKeywords: account.escalationKeywords as string[] | null,
       stopOnRisk: account.stopOnRisk,
       bookingLink: account.bookingLink,
+      autoReplyMode,
     };
     
     const result = await classifyAndGenerateDraft(
