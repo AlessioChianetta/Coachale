@@ -1252,66 +1252,7 @@ function SettingsTab({
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="space-y-6"
     >
-      {/* 4 Summary Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/30">
-              <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">Livello Autonomia</span>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{settings.autonomy_level}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{autonomyInfo.label}</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30">
-              <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">Modalità</span>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {settings.default_mode === "manual" ? "Manuale" : settings.default_mode === "hybrid" ? "Ibrido" : "Automatico"}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{settings.is_active ? "Sistema attivo" : "Sistema spento"}</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-xl bg-green-50 dark:bg-green-900/30">
-              <Activity className="h-5 w-5 text-green-600 dark:text-green-400" />
-            </div>
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">Canali Attivi</span>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {[settings.channels_enabled.voice, settings.channels_enabled.email, settings.channels_enabled.whatsapp, settings.channels_enabled.lead_scraper !== false].filter(Boolean).length}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">canali abilitati</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/30">
-              <Bot className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">Dipendenti</span>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{systemStatus?.roles?.filter(r => r.enabled).length || 0}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">dipendenti attivi</p>
-          </div>
-        </div>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={onTabChange} className="mt-6">
+      <Tabs value={activeTab} onValueChange={onTabChange}>
         <TabsList className="flex flex-wrap w-full h-auto bg-gray-100 dark:bg-gray-800/50 rounded-xl p-1.5 gap-1">
           <TabsTrigger value="dipendenti" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
             <Bot className="h-4 w-4" />

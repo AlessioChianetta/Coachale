@@ -542,42 +542,46 @@ export default function ConsultantAIAutonomyPage() {
         <div className="flex-1 flex min-h-0">
           <main className={cn("flex-1 p-6 lg:px-8 overflow-auto transition-all duration-300", chatOpenRoleId ? "mr-0" : "")}>
             <div className={cn("mx-auto space-y-8 transition-all duration-300", chatOpenRoleId ? "max-w-6xl" : "max-w-[1600px]")}>
-              <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 lg:p-8 shadow-sm">
-                <div className="space-y-5">
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
+                <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl" />
+
+                <div className="relative z-10 space-y-5">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
                         <Bot className="h-7 w-7 text-white" />
                       </div>
                       <div>
-                        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dipendente AI</h1>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">
+                        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Dipendente AI</h1>
+                        <p className="text-blue-200/70 text-sm mt-0.5">
                           Configura, monitora e controlla il tuo team autonomo
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       <div className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full border",
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-sm border",
                         systemStatus?.is_active
-                          ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
-                          : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                          ? "bg-white/10 border-white/10"
+                          : "bg-red-500/20 border-red-500/30"
                       )}>
                         <div className={cn(
                           "w-2 h-2 rounded-full",
-                          systemStatus?.is_active ? "bg-green-500 animate-pulse" : "bg-red-500"
+                          systemStatus?.is_active ? "bg-green-400 animate-pulse" : "bg-red-400"
                         )} />
                         <span className={cn(
                           "text-xs font-medium",
-                          systemStatus?.is_active ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"
+                          systemStatus?.is_active ? "text-green-300" : "text-red-300"
                         )}>
                           {systemStatus?.is_active ? "Sistema attivo" : "Sistema spento"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">
-                        <Zap className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-                        <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
+                        <Zap className="h-3 w-3 text-amber-400" />
+                        <span className="text-xs text-amber-300 font-medium">
                           Livello {settings.autonomy_level || 0}
                         </span>
                       </div>
@@ -588,35 +592,87 @@ export default function ConsultantAIAutonomyPage() {
                     <div className={cn(
                       "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
                       settings.channels_enabled?.voice
-                        ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
-                        : "bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700 opacity-50"
+                        ? "bg-green-500/15 border-green-500/20"
+                        : "bg-white/5 border-white/10 opacity-40"
                     )}>
-                      <Phone className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                      <span className="text-xs font-medium text-green-700 dark:text-green-300">Voice</span>
+                      <Phone className="h-3.5 w-3.5 text-green-400" />
+                      <span className="text-xs font-medium text-green-300">Voice</span>
                     </div>
                     <div className={cn(
                       "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
                       settings.channels_enabled?.email
-                        ? "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800"
-                        : "bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700 opacity-50"
+                        ? "bg-blue-500/15 border-blue-500/20"
+                        : "bg-white/5 border-white/10 opacity-40"
                     )}>
-                      <Mail className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Email</span>
+                      <Mail className="h-3.5 w-3.5 text-blue-400" />
+                      <span className="text-xs font-medium text-blue-300">Email</span>
                     </div>
                     <div className={cn(
                       "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
                       settings.channels_enabled?.whatsapp
-                        ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
-                        : "bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700 opacity-50"
+                        ? "bg-emerald-500/15 border-emerald-500/20"
+                        : "bg-white/5 border-white/10 opacity-40"
                     )}>
-                      <MessageSquare className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">WhatsApp</span>
+                      <MessageSquare className="h-3.5 w-3.5 text-emerald-400" />
+                      <span className="text-xs font-medium text-emerald-300">WhatsApp</span>
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-200 dark:bg-violet-900/20 dark:border-violet-800">
-                      <Cpu className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-                      <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500/15 border border-violet-500/20">
+                      <Cpu className="h-3.5 w-3.5 text-violet-400" />
+                      <span className="text-xs font-medium text-violet-300">
                         {systemStatus?.roles?.filter((r: any) => r.enabled).length || 0} dipendenti
                       </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-1.5 rounded-lg bg-blue-500/20">
+                          <Zap className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <span className="text-xs font-medium text-blue-200/80">Livello Autonomia</span>
+                      </div>
+                      <p className="text-2xl font-bold text-white">{settings.autonomy_level}</p>
+                      <p className="text-[11px] text-blue-200/50 mt-0.5">
+                        {settings.autonomy_level <= 3 ? "Proposte" : settings.autonomy_level <= 6 ? "Ibrido" : "Autonomo"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-1.5 rounded-lg bg-purple-500/20">
+                          <Bot className="h-4 w-4 text-purple-400" />
+                        </div>
+                        <span className="text-xs font-medium text-purple-200/80">Modalità</span>
+                      </div>
+                      <p className="text-2xl font-bold text-white">
+                        {settings.default_mode === "manual" ? "Manuale" : settings.default_mode === "hybrid" ? "Ibrido" : "Automatico"}
+                      </p>
+                      <p className="text-[11px] text-blue-200/50 mt-0.5">{settings.is_active ? "Sistema attivo" : "Sistema spento"}</p>
+                    </div>
+
+                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-1.5 rounded-lg bg-green-500/20">
+                          <Activity className="h-4 w-4 text-green-400" />
+                        </div>
+                        <span className="text-xs font-medium text-green-200/80">Canali Attivi</span>
+                      </div>
+                      <p className="text-2xl font-bold text-white">
+                        {[settings.channels_enabled?.voice, settings.channels_enabled?.email, settings.channels_enabled?.whatsapp, settings.channels_enabled?.lead_scraper !== false].filter(Boolean).length}
+                      </p>
+                      <p className="text-[11px] text-blue-200/50 mt-0.5">canali abilitati</p>
+                    </div>
+
+                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-1.5 rounded-lg bg-amber-500/20">
+                          <Cpu className="h-4 w-4 text-amber-400" />
+                        </div>
+                        <span className="text-xs font-medium text-amber-200/80">Dipendenti</span>
+                      </div>
+                      <p className="text-2xl font-bold text-white">{systemStatus?.roles?.filter((r: any) => r.enabled).length || 0}</p>
+                      <p className="text-[11px] text-blue-200/50 mt-0.5">dipendenti attivi</p>
                     </div>
                   </div>
                 </div>
