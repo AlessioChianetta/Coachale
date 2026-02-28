@@ -87,7 +87,9 @@ async function createOAuth2ClientForConsultant(consultantId: string): Promise<OA
   }
   
   let baseUrl = 'http://localhost:5000';
-  if (process.env.REPLIT_DOMAINS) {
+  if (process.env.GOOGLE_DRIVE_WEBHOOK_DOMAIN) {
+    baseUrl = `https://${process.env.GOOGLE_DRIVE_WEBHOOK_DOMAIN}`;
+  } else if (process.env.REPLIT_DOMAINS) {
     const domains = process.env.REPLIT_DOMAINS.split(',');
     baseUrl = `https://${domains[0]}`;
   }
@@ -111,6 +113,9 @@ async function getDriveClientForConsultant(consultantId: string) {
 }
 
 function getWebhookUrl(): string {
+  if (process.env.GOOGLE_DRIVE_WEBHOOK_DOMAIN) {
+    return `https://${process.env.GOOGLE_DRIVE_WEBHOOK_DOMAIN}/api/google-drive/webhook`;
+  }
   if (process.env.REPLIT_DOMAINS) {
     const domains = process.env.REPLIT_DOMAINS.split(',');
     return `https://${domains[0]}/api/google-drive/webhook`;

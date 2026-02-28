@@ -1,0 +1,29 @@
+0|coachale-dev  |    Channel ID: kb-bdb45e00-6d3a-4474-9c39-49d0763a4144-1772250652467
+0|coachale-dev  | ❌ [DRIVE SYNC] Failed to register watch: WebHook callback must be HTTPS: http://localhost:5000/api/google-drive/webhook
+0|coachale-dev  | 🔔 [DRIVE SYNC] Registering missing watch for KB doc "Exit 5kk" (6ca35bac-0893-426c-af68-296e7dcce479)
+0|coachale-dev  | 🔔 [DRIVE SYNC] Registering watch for file 1l5n4-0Ix1pxx2I0cB4CapuTy--7GhBa5JKcDiL5Ctvs (type: knowledge)
+0|coachale-dev  |    Webhook URL: http://localhost:5000/api/google-drive/webhook
+0|coachale-dev  |    Channel ID: kb-6ca35bac-0893-426c-af68-296e7dcce479-1772250652681
+0|coachale-dev  | ❌ [DRIVE SYNC] Failed to register watch: WebHook callback must be HTTPS: http://localhost:5000/api/google-drive/webhook
+0|coachale-dev  | 🔔 [DRIVE SYNC] Registering missing watch for system doc "Exit 5kk" (e69beb67-66e7-4f20-9636-1ad0e14c4af8)
+0|coachale-dev  | 🔔 [DRIVE SYNC] Registering watch for file 1l5n4-0Ix1pxx2I0cB4CapuTy--7GhBa5JKcDiL5Ctvs (type: system_prompt)
+0|coachale-dev  |    Webhook URL: http://localhost:5000/api/google-drive/webhook
+0|coachale-dev  |    Channel ID: sd-e69beb67-66e7-4f20-9636-1ad0e14c4af8-1772250652897
+0|coachale-dev  | ❌ [DRIVE SYNC] Failed to register watch: WebHook callback must be HTTPS: http://localhost:5000/api/google-drive/webhook
+0|coachale-dev  | 🔔 [DRIVE SYNC] Registering missing watch for system doc "Accordo di Partnership Strategica: Alessio & Riccardo" (94f037fa-6c66-45b9-8dce-630e34286930)
+0|coachale-dev  | 🔔 [DRIVE SYNC] Registering watch for file 1Cq8ZqbDGF9y7IEf5dOlNMdP5eRhh_oDqVO76mS3O_R4 (type: system_prompt)
+0|coachale-dev  |    Webhook URL: http://localhost:5000/api/google-drive/webhook
+0|coachale-dev  |    Channel ID: sd-94f037fa-6c66-45b9-8dce-630e34286930-1772250653113
+0|coachale-dev  | ❌ [DRIVE SYNC] Failed to register watch: WebHook callback must be HTTPS: http://localhost:5000/api/google-drive/webhook
+0|coachale-dev  | 🔔 [DRIVE SYNC] Registering missing watch for system doc "CODICE DI CONDOTTA MANAGEMENT - ALETHEIA" (afae1360-57c6-4df5-84e2-0cb13d20f246)
+0|coachale-dev  | 🔔 [DRIVE SYNC] Registering watch for file 1cL3C7c8PVTdI_rCGPVUipr5cSZZDyW93fmIY2GY99D8 (type: system_prompt)
+0|coachale-dev  |    Webhook URL: http://localhost:5000/api/google-drive/webhook
+0|coachale-dev  |    Channel ID: sd-afae1360-57c6-4df5-84e2-0cb13d20f246-1772250653337
+0|coachale-dev  | ❌ [DRIVE SYNC] Failed to register watch: WebHook callback must be HTTPS: http://localhost:5000/api/google-drive/webhook
+0|coachale-dev  | 🔔 [DRIVE SYNC] Registering missing watch for system doc ""Check di Idoneità Evolutiva" Aletheia" (bd81d482-8a16-4277-94e3-1ba1bdbd3e3c)
+0|coachale-dev  | 🔔 [DRIVE SYNC] Registering watch for file 1L2_oyFnMRgGJoD_xT9fMQnrKc-4OQt_PE4bmnDdDN5o (type: system_prompt)
+0|coachale-dev  |    Webhook URL: http://localhost:5000/api/google-drive/webhook
+0|coachale-dev  |    Channel ID: sd-bd81d482-8a16-4277-94e3-1ba1bdbd3e3c-1772250653596
+0|coachale-dev  | ❌ [DRIVE SYNC] Failed to register watch: WebHook callback must be HTTPS: http://localhost:5000/api/google-drive/webhook
+0|coachale-dev  | ✅ [DRIVE SYNC] All Google Drive documents have active watch channels
+0|coachale-dev  | [SHEETS POLLING] Starting polling cycle (ExecID: y6o6o6)...
