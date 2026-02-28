@@ -1833,6 +1833,22 @@ export default function ProactiveLeadsPage() {
                                     </TooltipProvider>
                                   )}
                                 </div>
+                                {lead.lead_id && (
+                                  <TooltipProvider delayDuration={200}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <a
+                                          href={`/consultant/lead-scraper/lead/${lead.lead_id}`}
+                                          className="p-1.5 rounded-md bg-indigo-50 text-indigo-500 dark:bg-indigo-900/30 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs">Apri scheda CRM</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
                                 <Badge className={`text-[10px] px-1.5 py-0 hidden sm:inline-flex ${
                                   allSent ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                                   : anyFailed ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
@@ -1878,6 +1894,16 @@ export default function ProactiveLeadsPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5">
+                          {selectedHunterLead?.lead_id && (
+                            <a
+                              href={`/consultant/lead-scraper/lead/${selectedHunterLead.lead_id}`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              Apri CRM
+                            </a>
+                          )}
                           {selectedHunterLead?.actions?.some((a: any) => a.channel === "voice") && (
                             <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30">
                               <Phone className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
