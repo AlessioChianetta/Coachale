@@ -2092,41 +2092,73 @@ export default function ConsultantVoiceCallsPage() {
       <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
         <main className="flex-1 p-4 lg:p-6 overflow-auto">
           <div className="w-full space-y-4">
-            {/* Header moderna */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-6 text-white shadow-xl">
-              <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.5))]" />
-              <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-              <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950 via-teal-950 to-cyan-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
+              <div className="absolute top-0 right-0 w-72 h-72 bg-teal-500/5 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl" />
               
-              <div className="relative flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm shadow-lg">
-                    <Phone className="h-7 w-7" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Chiamate Voice</h1>
-                    <p className="text-white/70 text-sm mt-0.5">
-                      Monitora e gestisci le chiamate AI in tempo reale
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  {/* Status indicator */}
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 backdrop-blur-sm">
-                    <div className={`h-2.5 w-2.5 rounded-full ${health?.overall === 'healthy' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                    <span className="text-sm font-medium">
-                      {health?.overall === 'healthy' ? 'Sistema Online' : 'Verifica...'}
-                    </span>
+              <div className="relative z-10 space-y-5">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/30">
+                      <Phone className="h-7 w-7 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Chiamate Voice</h1>
+                      <p className="text-teal-200/70 text-sm mt-0.5">
+                        Monitora e gestisci le chiamate AI in tempo reale
+                      </p>
+                    </div>
                   </div>
                   
-                  {/* Active calls badge */}
-                  {activeCalls > 0 && (
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/30 backdrop-blur-sm border border-emerald-400/30">
-                      <Phone className="h-4 w-4 text-emerald-300" />
-                      <span className="text-sm font-semibold">{activeCalls} attiv{activeCalls === 1 ? 'a' : 'e'}</span>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-sm border ${health?.overall === 'healthy' ? 'bg-white/10 border-white/10' : 'bg-amber-500/20 border-amber-500/30'}`}>
+                      <div className={`w-2 h-2 rounded-full ${health?.overall === 'healthy' ? 'bg-green-400 animate-pulse' : 'bg-amber-400'}`} />
+                      <span className={`text-xs font-medium ${health?.overall === 'healthy' ? 'text-green-300' : 'text-amber-300'}`}>
+                        {health?.overall === 'healthy' ? 'Sistema Online' : 'Verifica...'}
+                      </span>
                     </div>
-                  )}
+                    
+                    {activeCalls > 0 && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 backdrop-blur-sm border border-emerald-500/30">
+                        <Phone className="h-3 w-3 text-emerald-300" />
+                        <span className="text-xs font-medium text-emerald-300">{activeCalls} attiv{activeCalls === 1 ? 'a' : 'e'}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4 hover:bg-white/15 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Phone className={`h-4 w-4 ${activeCalls > 0 ? 'text-emerald-300' : 'text-white/40'}`} />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Attive</span>
+                    </div>
+                    <p className="text-[28px] md:text-[32px] font-black tracking-tighter leading-none text-white">{activeCalls}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4 hover:bg-white/15 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BarChart3 className="h-4 w-4 text-blue-300" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Totale Oggi</span>
+                    </div>
+                    <p className="text-[28px] md:text-[32px] font-black tracking-tighter leading-none text-white">{stats?.total_calls || 0}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4 hover:bg-white/15 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="h-4 w-4 text-purple-300" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Durata Media</span>
+                    </div>
+                    <p className="text-[28px] md:text-[32px] font-black tracking-tighter leading-none text-white">{formatDuration(Math.round(parseFloat(stats?.avg_duration_seconds || "0")))}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4 hover:bg-white/15 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      {health?.overall === 'healthy' ? <CheckCircle className="h-4 w-4 text-emerald-300" /> : <AlertCircle className="h-4 w-4 text-amber-300" />}
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Sistema</span>
+                    </div>
+                    <p className={`text-lg font-bold mt-1 ${health?.overall === 'healthy' ? 'text-emerald-300' : 'text-amber-300'}`}>
+                      {health?.overall === 'healthy' ? 'Online' : health?.overall || '...'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2185,148 +2217,6 @@ export default function ConsultantVoiceCallsPage() {
               </TabsList>
 
               <TabsContent value="calls" className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Chiamate Attive</p>
-                      <p className="text-3xl font-bold">{activeCalls}</p>
-                    </div>
-                    <div className={`p-3 rounded-full ${activeCalls > 0 ? "bg-green-100" : "bg-gray-100"}`}>
-                      <Phone className={`h-6 w-6 ${activeCalls > 0 ? "text-green-600" : "text-gray-400"}`} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Totale Oggi</p>
-                      <p className="text-3xl font-bold">{stats?.total_calls || 0}</p>
-                    </div>
-                    <div className="p-3 rounded-full bg-blue-100">
-                      <BarChart3 className="h-6 w-6 text-blue-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Durata Media</p>
-                      <p className="text-3xl font-bold">
-                        {formatDuration(Math.round(parseFloat(stats?.avg_duration_seconds || "0")))}
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-full bg-purple-100">
-                      <Clock className="h-6 w-6 text-purple-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Stato Sistema</p>
-                      <p className="text-lg font-medium mt-1">
-                        {health?.overall === "healthy" ? (
-                          <span className="flex items-center gap-1 text-green-600">
-                            <CheckCircle className="h-5 w-5" /> Online
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-yellow-600">
-                            <AlertCircle className="h-5 w-5" /> {health?.overall || "..."}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <div className={`p-3 rounded-full ${health?.overall === "healthy" ? "bg-green-100" : "bg-yellow-100"}`}>
-                      <Settings className={`h-6 w-6 ${health?.overall === "healthy" ? "text-green-600" : "text-yellow-600"}`} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Gemini Connections Tracker */}
-              <Card className={geminiConnectionsData?.count && geminiConnectionsData.count > 0 ? "border-orange-300 bg-orange-50" : ""}>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm text-muted-foreground">Connessioni Gemini</p>
-                        {geminiConnectionsData?.count && geminiConnectionsData.count > 0 && (
-                          <Badge variant="destructive" className="text-xs">
-                            {geminiConnectionsData.count} attive
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-3xl font-bold">{geminiConnectionsData?.count || 0}</p>
-                      {geminiConnectionsData?.connections && geminiConnectionsData.connections.length > 0 && (
-                        <div className="mt-2 text-xs text-muted-foreground space-y-1">
-                          {geminiConnectionsData.connections.slice(0, 3).map((conn) => (
-                            <div key={conn.connectionId} className="flex items-center gap-2">
-                              <span className={`w-2 h-2 rounded-full ${
-                                conn.status === 'active' ? 'bg-green-500' : 
-                                conn.status === 'reconnecting' ? 'bg-yellow-500' : 'bg-gray-400'
-                              }`} />
-                              <span>{conn.mode}</span>
-                              <span className="text-muted-foreground">
-                                {Math.floor(conn.durationSeconds / 60)}m {conn.durationSeconds % 60}s
-                              </span>
-                              {conn.retryCount > 0 && (
-                                <Badge variant="outline" className="text-xs">
-                                  retry: {conn.retryCount}
-                                </Badge>
-                              )}
-                            </div>
-                          ))}
-                          {geminiConnectionsData.connections.length > 3 && (
-                            <div className="text-muted-foreground">
-                              +{geminiConnectionsData.connections.length - 3} altre
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <div className={`p-3 rounded-full ${
-                        geminiConnectionsData?.count && geminiConnectionsData.count > 0 
-                          ? "bg-orange-100" 
-                          : "bg-gray-100"
-                      }`}>
-                        <Plug className={`h-6 w-6 ${
-                          geminiConnectionsData?.count && geminiConnectionsData.count > 0 
-                            ? "text-orange-600" 
-                            : "text-gray-400"
-                        }`} />
-                      </div>
-                      {geminiConnectionsData?.count && geminiConnectionsData.count > 0 && currentRole === 'super_admin' && (
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => killAllGeminiMutation.mutate()}
-                          disabled={killAllGeminiMutation.isPending}
-                        >
-                          {killAllGeminiMutation.isPending ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <Zap className="h-3 w-3 mr-1" />
-                          )}
-                          Kill All
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
 
             <Card>
               <CardHeader>
