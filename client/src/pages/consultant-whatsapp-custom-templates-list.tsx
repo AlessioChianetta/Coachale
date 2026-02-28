@@ -95,6 +95,7 @@ import {
   Star,
   Rocket,
   CalendarCheck,
+  Megaphone,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
@@ -386,6 +387,34 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     onError: (error: any) => {
       toast({
         title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const importOutboundOpeningMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/whatsapp/custom-templates/import-outbound-opening", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to import outbound opening message");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "📣 Messaggio Outbound Importato!",
+        description: data.message || "Il template outbound è pronto per essere esportato su Twilio.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/custom-templates"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
         description: error.message,
         variant: "destructive",
       });
@@ -1404,6 +1433,25 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Aggiungi Template di Benvenuto</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => importOutboundOpeningMutation.mutate()}
+                            size="sm"
+                            variant="outline"
+                            disabled={importOutboundOpeningMutation.isPending}
+                            className="bg-blue-500/20 border-blue-300/50 text-white hover:bg-blue-500/30"
+                          >
+                            {importOutboundOpeningMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Megaphone className="h-4 w-4" />
+                            )}
+                            <span className="hidden xl:inline ml-2">Outbound Benvenuto</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Aggiungi Template Outbound Primo Contatto</TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>

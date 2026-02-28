@@ -747,6 +747,116 @@ router.post(
 );
 
 /**
+ * POST /api/whatsapp/custom-templates/import-outbound-opening
+ * Import the outbound opening message template (for Hunter-found leads)
+ */
+router.post(
+  "/whatsapp/custom-templates/import-outbound-opening",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const OUTBOUND_TEMPLATE = {
+        templateName: "Messaggio Outbound - Primo Contatto",
+        description: "Primo messaggio per lead trovati tramite ricerca attiva (Hunter). Pensato per chi non ci conosce ancora.",
+        body: "Ciao {nome_lead}! 👋\nMi chiamo {nome_consulente} di {nome_azienda}. Ti scrivo perché abbiamo individuato la tua attività e crediamo che {uncino}.\nMi piacerebbe capire insieme se possiamo esserti utili — ti va di scambiare due parole? 😊",
+        useCase: "opening" as const,
+        targetAgentType: "proactive_setter" as const,
+        templateType: "opening" as const,
+        variables: ["nome_lead", "nome_consulente", "nome_azienda", "uncino"],
+      };
+
+      const existingTemplate = await db
+        .select({ id: schema.whatsappCustomTemplates.id })
+        .from(schema.whatsappCustomTemplates)
+        .where(
+          and(
+            eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+            eq(schema.whatsappCustomTemplates.templateName, OUTBOUND_TEMPLATE.templateName)
+          )
+        );
+
+      if (existingTemplate.length > 0) {
+        return res.json({
+          success: true,
+          message: "Il Messaggio Outbound Primo Contatto è già stato importato",
+          created: false,
+        });
+      }
+
+      const catalogVariables = await db
+        .select({
+          id: whatsappVariableCatalog.id,
+          variableKey: whatsappVariableCatalog.variableKey,
+        })
+        .from(whatsappVariableCatalog);
+      
+      const catalogMap = new Map(catalogVariables.map(v => [v.variableKey, v.id]));
+
+      const [newTemplate] = await db
+        .insert(schema.whatsappCustomTemplates)
+        .values({
+          consultantId,
+          templateName: OUTBOUND_TEMPLATE.templateName,
+          description: OUTBOUND_TEMPLATE.description,
+          body: OUTBOUND_TEMPLATE.body,
+          useCase: OUTBOUND_TEMPLATE.useCase,
+          targetAgentType: OUTBOUND_TEMPLATE.targetAgentType,
+          templateType: OUTBOUND_TEMPLATE.templateType,
+          isSystemTemplate: true,
+          isActive: true,
+        })
+        .returning();
+
+      console.log(`✅ [OUTBOUND OPENING] Created template ID: ${newTemplate.id}`);
+
+      const [newVersion] = await db
+        .insert(whatsappTemplateVersions)
+        .values({
+          templateId: newTemplate.id,
+          versionNumber: 1,
+          bodyText: OUTBOUND_TEMPLATE.body,
+          isActive: true,
+          createdBy: consultantId,
+        })
+        .returning();
+
+      for (let i = 0; i < OUTBOUND_TEMPLATE.variables.length; i++) {
+        const variableKey = OUTBOUND_TEMPLATE.variables[i];
+        const catalogId = catalogMap.get(variableKey);
+        if (catalogId) {
+          await db
+            .insert(whatsappTemplateVariables)
+            .values({
+              templateVersionId: newVersion.id,
+              variableCatalogId: catalogId,
+              position: i + 1,
+            });
+          console.log(`  ✅ Mapped variable {${variableKey}} -> position ${i + 1}`);
+        } else {
+          console.log(`  ⚠️ Variable {${variableKey}} not found in catalog`);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: "Messaggio Outbound Primo Contatto importato con successo!",
+        created: true,
+        templateId: newTemplate.id,
+      });
+    } catch (error: any) {
+      console.error("❌ [OUTBOUND OPENING] Error importing:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to import outbound opening message",
+      });
+    }
+  }
+);
+
+/**
  * POST /api/whatsapp/custom-templates/import-booking-notification
  * Import the booking notification template with pre-mapped variables
  */
