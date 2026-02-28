@@ -72,6 +72,7 @@ const reasonLabels: Record<string, string> = {
   negative_sentiment: "Sentiment negativo",
   escalation_keyword: "Parola escalation",
   low_confidence: "Bassa confidenza",
+  ai_low_confidence: "Bassa confidenza AI",
   manual: "Creazione manuale",
 };
 
