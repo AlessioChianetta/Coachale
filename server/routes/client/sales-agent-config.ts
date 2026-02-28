@@ -20,7 +20,7 @@ router.get("/", authenticateToken, async (req: AuthRequest, res) => {
     const userId = req.user!.id;
     const userRole = req.user!.role;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere ai sales agents" });
     }
 
@@ -48,7 +48,7 @@ router.get("/script-structure", authenticateToken, async (req: AuthRequest, res)
     const userId = req.user!.id;
     const userRole = req.user!.role;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere allo script structure" });
     }
 
@@ -133,7 +133,7 @@ router.get("/:agentId", authenticateToken, async (req: AuthRequest, res) => {
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere ai sales agents" });
     }
 
@@ -164,7 +164,7 @@ router.post("/", authenticateToken, async (req: AuthRequest, res) => {
     const userId = req.user!.id;
     const userRole = req.user!.role;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono creare sales agents" });
     }
 
@@ -218,7 +218,7 @@ router.put("/:agentId", authenticateToken, async (req: AuthRequest, res) => {
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono modificare sales agents" });
     }
 
@@ -268,7 +268,7 @@ router.delete("/:agentId", authenticateToken, async (req: AuthRequest, res) => {
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono eliminare sales agents" });
     }
 
@@ -305,7 +305,7 @@ router.post("/:agentId/generate-context", authenticateToken, async (req: AuthReq
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono usare il Magic Button" });
     }
 
@@ -359,7 +359,7 @@ router.get("/:agentId/knowledge", authenticateToken, async (req: AuthRequest, re
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere alla knowledge base" });
     }
 
@@ -390,7 +390,7 @@ router.post("/:agentId/knowledge", authenticateToken, async (req: AuthRequest, r
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono aggiungere knowledge" });
     }
 
@@ -434,7 +434,7 @@ router.delete("/:agentId/knowledge/:knowledgeId", authenticateToken, async (req:
     const userRole = req.user!.role;
     const { agentId, knowledgeId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono eliminare knowledge" });
     }
 
@@ -472,7 +472,7 @@ router.get("/:agentId/conversations", authenticateToken, async (req: AuthRequest
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere alle conversazioni" });
     }
 
@@ -503,7 +503,7 @@ router.get("/:agentId/analytics", authenticateToken, async (req: AuthRequest, re
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere alle analytics" });
     }
 
@@ -596,7 +596,7 @@ router.post("/:agentId/generate-invite", authenticateToken, async (req: AuthRequ
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono generare link invito" });
     }
 
@@ -688,7 +688,7 @@ router.get("/:agentId/conversations/:conversationId/messages", authenticateToken
     const userRole = req.user!.role;
     const { agentId, conversationId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere ai messaggi" });
     }
 
@@ -740,7 +740,7 @@ router.get("/:agentId/invites", authenticateToken, async (req: AuthRequest, res)
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere agli inviti" });
     }
 
@@ -787,7 +787,7 @@ router.delete("/:agentId/invites/:inviteToken", authenticateToken, async (req: A
     const userRole = req.user!.role;
     const { agentId, inviteToken } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono eliminare inviti" });
     }
 
@@ -856,7 +856,7 @@ router.delete("/:agentId/invites", authenticateToken, async (req: AuthRequest, r
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono eliminare inviti" });
     }
 
@@ -933,7 +933,7 @@ router.get("/:agentId/training/conversations", authenticateToken, async (req: Au
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere ai dati training" });
     }
 
@@ -1016,7 +1016,7 @@ router.get("/:agentId/training/conversation/:conversationId", authenticateToken,
     const userRole = req.user!.role;
     const { agentId, conversationId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere ai dati training" });
     }
 
@@ -1113,7 +1113,7 @@ router.post("/:agentId/training/conversation/:conversationId/generate-rec", auth
     const userRole = req.user!.role;
     const { agentId, conversationId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono generare REC" });
     }
 
@@ -1205,7 +1205,7 @@ router.get("/:agentId/training/summary", authenticateToken, async (req: AuthRequ
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere ai dati training" });
     }
 
@@ -1343,7 +1343,7 @@ router.get("/:agentId/training/stats", authenticateToken, async (req: AuthReques
     const userRole = req.user!.role;
     const { agentId } = req.params;
 
-    if (userRole !== "client") {
+    if (userRole !== "client" && userRole !== "consultant") {
       return res.status(403).json({ message: "Solo i clienti possono accedere ai dati training" });
     }
 

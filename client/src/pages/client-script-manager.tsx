@@ -59,7 +59,7 @@ import {
   type ScriptBlockStructure 
 } from '@shared/script-parser';
 import type { Phase, Step, Question, ScriptBlock } from '@shared/script-blocks';
-import { getAuthHeaders } from '@/lib/auth';
+import { getAuthHeaders, getAuthUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -135,6 +135,9 @@ export default function ClientScriptManager() {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const authUser = getAuthUser();
+  const isConsultant = authUser?.role === 'consultant';
+  const sidebarRole = isConsultant ? 'consultant' : 'client';
 
   // State Management
   const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
@@ -736,7 +739,7 @@ export default function ClientScriptManager() {
 
   return (
     <div className="flex h-screen bg-muted/20">
-      <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar role={sidebarRole as "client" | "consultant"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between border-b px-4 py-2 bg-background z-10">
             <div className="flex items-center gap-3">

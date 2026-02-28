@@ -55,6 +55,7 @@ import {
   CreditCard,
   Search,
   MapPin,
+  UserCheck,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -165,6 +166,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "Email Hub", href: "/consultant/email-hub", icon: Mail, color: "sky" },
       { name: "Chiamate Voice", href: "/consultant/voice-calls", icon: Phone, color: "orange" },
       { name: "AI Autonomo", href: "/consultant/ai-autonomy", icon: Bot, color: "purple" },
+      { name: "Venditori Autonomi", href: "/consultant/sales-agents", icon: UserCheck, color: "amber" },
     ]
   },
   {

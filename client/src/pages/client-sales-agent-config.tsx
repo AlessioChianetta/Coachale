@@ -29,7 +29,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getAuthHeaders } from '@/lib/auth';
+import { getAuthHeaders, getAuthUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -95,6 +95,10 @@ export default function ClientSalesAgentConfig() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isNew = agentId === 'new';
+  const authUser = getAuthUser();
+  const isConsultant = authUser?.role === 'consultant';
+  const basePath = isConsultant ? '/consultant/sales-agents' : '/client/sales-agents';
+  const sidebarRole = isConsultant ? 'consultant' : 'client';
 
   const [magicButton, setMagicButton] = useState<MagicButtonState>({
     isLoading: false,
@@ -176,7 +180,7 @@ export default function ClientSalesAgentConfig() {
         description: isNew ? 'L\'agente è stato creato con successo' : 'Le modifiche sono state salvate',
       });
       if (isNew) {
-        setLocation(`/client/sales-agents/${data.id}`);
+        setLocation(`${basePath}/${data.id}`);
       }
     },
     onError: () => {
@@ -292,7 +296,7 @@ export default function ClientSalesAgentConfig() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
       <div className="flex h-screen">
-        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role={sidebarRole as "client" | "consultant"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 overflow-y-auto bg-transparent">
           {/* Header with menu button */}
@@ -309,7 +313,7 @@ export default function ClientSalesAgentConfig() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setLocation('/client/sales-agents')}
+                onClick={() => setLocation(basePath)}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Sales Agents
@@ -1021,7 +1025,7 @@ export default function ClientSalesAgentConfig() {
           <Button
             variant="outline"
             size="lg"
-            onClick={() => setLocation('/client/sales-agents')}
+            onClick={() => setLocation(basePath)}
           >
             <X className="h-4 w-4 mr-2" />
             Annulla

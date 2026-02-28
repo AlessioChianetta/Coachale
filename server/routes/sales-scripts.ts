@@ -9,8 +9,16 @@ import { parseTextToBlocks } from '../../shared/script-parser';
 
 const router = Router();
 
-// Middleware to require client role (clients manage their own sales agents' scripts)
-const requireClient = requireRole('client');
+// Middleware to require client or consultant role
+const requireClient = (req: any, res: any, next: any) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  if (req.user.role !== 'client' && req.user.role !== 'consultant') {
+    return res.status(403).json({ message: 'client or consultant access required' });
+  }
+  next();
+};
 
 // GET /api/sales-scripts - Get all scripts for the client (excluding archived ones)
 router.get('/', requireClient, async (req: AuthRequest, res: Response) => {

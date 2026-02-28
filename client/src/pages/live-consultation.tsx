@@ -23,7 +23,7 @@ function NormalModeWrapper({ children, sidebarOpen, setSidebarOpen }: NormalMode
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
       <div className="flex h-screen">
-        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role={(getAuthUser()?.role as "client" | "consultant") || "client"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 overflow-y-auto bg-transparent">
           <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
@@ -90,11 +90,11 @@ export default function LiveConsultation() {
   // Normal mode: richiede autenticazione client
   const isPublicMode = isSalesAgentMode || isConsultationInviteMode;
 
-  if (!isPublicMode && (!user || user.role !== 'client')) {
+  if (!isPublicMode && (!user || (user.role !== 'client' && user.role !== 'consultant'))) {
     toast({
       variant: 'destructive',
       title: 'Accesso Negato',
-      description: 'Solo i clienti possono accedere alla modalità Live.',
+      description: 'Solo i clienti e i consulenti possono accedere alla modalità Live.',
     });
     setLocation('/');
     return null;

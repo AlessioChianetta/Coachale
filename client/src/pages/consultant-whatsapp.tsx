@@ -119,7 +119,9 @@ import {
   Share2,
   Camera,
   Inbox,
-  HelpCircle
+  HelpCircle,
+  Mic,
+  UserPlus
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -1861,6 +1863,24 @@ export default function ConsultantWhatsAppPage() {
                 >
                   <MessageCircle className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Chat Agenti</span>
+                </Button>
+                <Button 
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-sm"
+                  onClick={() => window.location.href = '/live-consultation'}
+                >
+                  <Mic className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Live Consultation</span>
+                </Button>
+                <Button 
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-sm"
+                  onClick={() => window.location.href = '/consultant/sales-agents/new'}
+                >
+                  <UserPlus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Nuovo Venditore AI</span>
                 </Button>
                 <Button 
                   size="sm"

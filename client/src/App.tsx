@@ -523,6 +523,36 @@ function Router() {
             </AuthGuard>
           </Route>
 
+          <Route path="/consultant/sales-agents/new">
+            <AuthGuard requiredRole={["client", "consultant"]}>
+              <ClientSalesAgentConfig />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/sales-agents/:agentId/analytics">
+            <AuthGuard requiredRole={["client", "consultant"]}>
+              <ClientSalesAgentAnalytics />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/sales-agents/:agentId/scripts">
+            <AuthGuard requiredRole={["client", "consultant"]}>
+              <ClientScriptManager />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/sales-agents/:agentId">
+            <AuthGuard requiredRole={["client", "consultant"]}>
+              <ClientSalesAgentConfig />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/sales-agents">
+            <AuthGuard requiredRole={["client", "consultant"]}>
+              <ClientSalesAgentsList />
+            </AuthGuard>
+          </Route>
+
           <Route path="/consultant/voice-settings">
             <AuthGuard requiredRole="consultant">
               <ConsultantVoiceSettings />

@@ -45,7 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { getAuthHeaders } from '@/lib/auth';
+import { getAuthHeaders, getAuthUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRoleSwitch } from "@/hooks/use-role-switch";
 import Sidebar from '@/components/sidebar';
@@ -70,6 +70,10 @@ export default function ClientSalesAgentsList() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
+  const authUser = getAuthUser();
+  const isConsultant = authUser?.role === 'consultant';
+  const basePath = isConsultant ? '/consultant/sales-agents' : '/client/sales-agents';
+  const sidebarRole = isConsultant ? 'consultant' : 'client';
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -212,7 +216,7 @@ export default function ClientSalesAgentsList() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
       <div className="flex h-screen">
-        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
+        <Sidebar role={sidebarRole as "client" | "consultant"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
         <div className="flex-1 overflow-y-auto bg-transparent">
           {/* Header with menu button */}
@@ -249,7 +253,7 @@ export default function ClientSalesAgentsList() {
                 <Button
                   size="lg"
                   className="bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg"
-                  onClick={() => setLocation('/client/sales-agents/new')}
+                  onClick={() => setLocation(`${basePath}/new`)}
                 >
                   <Plus className="h-5 w-5 mr-2" />
                   Nuovo Agente
@@ -288,7 +292,7 @@ export default function ClientSalesAgentsList() {
                 <Button
                   size="lg"
                   className="bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
-                  onClick={() => setLocation('/client/sales-agents/new')}
+                  onClick={() => setLocation(`${basePath}/new`)}
                 >
                   <Plus className="h-5 w-5 mr-2" />
                   Crea Primo Agente
@@ -382,7 +386,7 @@ export default function ClientSalesAgentsList() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setLocation(`/client/sales-agents/${agent.id}`)}
+                        onClick={() => setLocation(`${basePath}/${agent.id}`)}
                         className="text-xs"
                       >
                         <Edit className="h-3 w-3 mr-1" />
@@ -391,7 +395,7 @@ export default function ClientSalesAgentsList() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setLocation(`/client/sales-agents/${agent.id}/analytics`)}
+                        onClick={() => setLocation(`${basePath}/${agent.id}/analytics`)}
                         className="text-xs"
                       >
                         <BarChart3 className="h-3 w-3 mr-1" />
@@ -400,7 +404,7 @@ export default function ClientSalesAgentsList() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setLocation(`/client/sales-agents/${agent.id}/scripts`)}
+                        onClick={() => setLocation(`${basePath}/${agent.id}/scripts`)}
                         className="text-xs"
                       >
                         <FileText className="h-3 w-3 mr-1" />

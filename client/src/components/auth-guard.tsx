@@ -2,9 +2,11 @@ import { ReactNode, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { isAuthenticated, getAuthUser } from "@/lib/auth";
 
+type RoleType = "consultant" | "client" | "super_admin";
+
 type AuthGuardProps = {
   children: ReactNode;
-  requiredRole?: "consultant" | "client" | "super_admin";
+  requiredRole?: RoleType | RoleType[];
   fallback?: ReactNode;
   blockTiers?: ("bronze" | "silver")[];
 };
@@ -29,8 +31,9 @@ export default function AuthGuard({ children, requiredRole, fallback, blockTiers
     const user = getAuthUser();
 
     if (requiredRole) {
+      const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
       const hasAccess = user && (
-        user.role === requiredRole || 
+        roles.includes(user.role as RoleType) || 
         user.role === 'super_admin'
       );
       if (!hasAccess) {

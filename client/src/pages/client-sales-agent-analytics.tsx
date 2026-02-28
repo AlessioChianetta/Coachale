@@ -54,7 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getAuthHeaders } from '@/lib/auth';
+import { getAuthHeaders, getAuthUser } from '@/lib/auth';
 import { InvitesListTable } from '@/components/InvitesListTable';
 import Sidebar from '@/components/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -173,6 +173,9 @@ export default function ClientSalesAgentAnalytics() {
   const [location, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const authUser = getAuthUser();
+  const isConsultant = authUser?.role === 'consultant';
+  const sidebarRole = isConsultant ? 'consultant' : 'client';
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [showTrainingMap, setShowTrainingMap] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('overview');
@@ -197,7 +200,7 @@ export default function ClientSalesAgentAnalytics() {
       isHumanSeller,
       labels: {
         entityName: isHumanSeller ? 'Venditore' : 'Agente',
-        backLink: isHumanSeller ? '/client/human-sellers' : '/client/sales-agents',
+        backLink: isHumanSeller ? '/client/human-sellers' : (isConsultant ? '/consultant/sales-agents' : '/client/sales-agents'),
         backLabel: isHumanSeller ? 'Venditori' : 'Sales Agents',
       }
     };
@@ -461,7 +464,7 @@ export default function ClientSalesAgentAnalytics() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
       <div className="flex h-screen">
-        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role={sidebarRole as "client" | "consultant"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 overflow-y-auto bg-transparent">
           {/* Header with menu button */}
@@ -492,7 +495,7 @@ export default function ClientSalesAgentAnalytics() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setLocation(`/client/sales-agents/${entityConfig.entityId}/scripts`)}
+                  onClick={() => setLocation(`${isConsultant ? '/consultant' : '/client'}/sales-agents/${entityConfig.entityId}/scripts`)}
                   className="hidden sm:flex"
                 >
                   <FileText className="h-4 w-4 mr-2" />
