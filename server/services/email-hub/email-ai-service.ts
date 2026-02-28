@@ -986,6 +986,7 @@ export async function buildContactContext(fromEmail: string, consultantId: strin
             source: "client",
             summary: parts.join("\n"),
             data: {
+              userId: client.id,
               firstName: client.firstName,
               lastName: client.lastName,
               level: client.level,
@@ -1746,9 +1747,40 @@ export async function classifyAndGenerateDraft(
     .set({ emailType, updatedAt: new Date() })
     .where(eq(schema.hubEmails.id, emailId));
 
-  syncSalesAgentToEmailKB(consultantId, email.accountId).catch(err => {
-    console.error(`[EMAIL-AI] Background Sales Agent sync failed:`, err.message);
-  });
+  let salesContextBlock = "";
+  try {
+    const [accountData] = await db
+      .select({ salesContext: schema.emailAccounts.salesContext })
+      .from(schema.emailAccounts)
+      .where(eq(schema.emailAccounts.id, email.accountId));
+    
+    const sc = accountData?.salesContext as any;
+    if (sc && typeof sc === "object") {
+      const fields: [string, string][] = [
+        ["Servizi", sc.servicesOffered],
+        ["Target", sc.targetAudience],
+        ["Proposta di valore", sc.valueProposition],
+        ["Pricing", sc.pricingInfo],
+        ["Vantaggi competitivi", sc.competitiveAdvantages],
+        ["Cliente ideale", sc.idealClientProfile],
+        ["Approccio vendita", sc.salesApproach],
+        ["Casi di successo", sc.caseStudies],
+        ["Contesto aggiuntivo", sc.additionalContext],
+      ];
+      const filledFields = fields.filter(([, v]) => v && v.trim());
+      if (filledFields.length > 0) {
+        salesContextBlock = `\n\nPROFILO COMMERCIALE (usa queste info per rispondere in modo informato):\n` +
+          filledFields.map(([label, value]) => `- ${label}: ${value}`).join("\n");
+        console.log(`[MILLIE-SALES] Profilo commerciale caricato da account ${email.accountId} (${filledFields.length} campi compilati)`);
+      } else {
+        console.log(`[MILLIE-SALES] Nessun profilo commerciale configurato per account ${email.accountId}`);
+      }
+    } else {
+      console.log(`[MILLIE-SALES] Nessun profilo commerciale configurato per account ${email.accountId}`);
+    }
+  } catch (err: any) {
+    console.error(`[MILLIE-SALES] Errore caricamento profilo commerciale:`, err.message);
+  }
 
   let fileSearchStoreNames = kbResult.found ? kbResult.storeNames || [] : [];
   
@@ -1758,6 +1790,25 @@ export async function classifyAndGenerateDraft(
     fileSearchStoreNames = [...fileSearchStoreNames, emailAccountStore];
   }
   
+  if (contactContext.source === "client" && contactContext.data?.userId) {
+    const clientUserId = contactContext.data.userId;
+    const clientName = `${contactContext.data.firstName || ""} ${contactContext.data.lastName || ""}`.trim();
+    console.log(`[MILLIE-FILESEARCH] Cliente riconosciuto: ${clientName} (ID: ${clientUserId}) — cercando nei suoi documenti...`);
+    try {
+      const clientStores = await fileSearchService.getStoreNamesForGeneration(clientUserId, 'client');
+      if (clientStores && clientStores.length > 0) {
+        console.log(`[MILLIE-FILESEARCH] Trovati ${clientStores.length} store per il cliente ${clientName}: [${clientStores.join(", ")}]`);
+        fileSearchStoreNames = [...fileSearchStoreNames, ...clientStores];
+      } else {
+        console.log(`[MILLIE-FILESEARCH] Nessun documento privato trovato per il cliente ${clientName}`);
+      }
+    } catch (err: any) {
+      console.error(`[MILLIE-FILESEARCH] Errore ricerca documenti per cliente ${clientName}:`, err.message);
+    }
+  } else {
+    console.log(`[MILLIE-FILESEARCH] Contatto non-cliente (${contactContext.source}) — skip FileSearch privato`);
+  }
+
   if (fileSearchStoreNames.length > 0) {
     console.log(`[EMAIL-AI] FileSearch RAG enabled with ${kbResult.totalDocuments || 0} documents in ${fileSearchStoreNames.length} stores`);
   }
@@ -1832,6 +1883,7 @@ export async function classifyAndGenerateDraft(
   const enrichedCustomInstructions = [
     extendedSettings?.customInstructions || "",
     contactContextBlock,
+    salesContextBlock,
     `\n\n${adaptiveStrategy}`,
   ].filter(Boolean).join("\n");
 

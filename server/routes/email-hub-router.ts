@@ -1434,6 +1434,7 @@ router.put("/accounts/:id/ai-settings", async (req: AuthRequest, res) => {
       escalationKeywords,
       stopOnRisk,
       bookingLink,
+      salesContext,
     } = req.body;
 
     const [account] = await db
@@ -1463,6 +1464,7 @@ router.put("/accounts/:id/ai-settings", async (req: AuthRequest, res) => {
     if (escalationKeywords !== undefined) updateData.escalationKeywords = escalationKeywords;
     if (stopOnRisk !== undefined) updateData.stopOnRisk = stopOnRisk;
     if (bookingLink !== undefined) updateData.bookingLink = bookingLink;
+    if (salesContext !== undefined) updateData.salesContext = salesContext;
 
     const [updated] = await db
       .update(schema.emailAccounts)
@@ -1501,6 +1503,7 @@ router.get("/accounts/:id/ai-settings", async (req: AuthRequest, res) => {
         escalationKeywords: schema.emailAccounts.escalationKeywords,
         stopOnRisk: schema.emailAccounts.stopOnRisk,
         bookingLink: schema.emailAccounts.bookingLink,
+        salesContext: schema.emailAccounts.salesContext,
       })
       .from(schema.emailAccounts)
       .where(

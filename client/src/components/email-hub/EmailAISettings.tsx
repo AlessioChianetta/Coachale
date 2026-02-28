@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Shield,
   Languages,
+  Briefcase,
 } from "lucide-react";
 
 interface EmailAISettingsProps {
@@ -31,6 +32,18 @@ interface EmailAISettingsProps {
   onOpenChange: (open: boolean) => void;
   accountId: string;
   accountName: string;
+}
+
+interface SalesContext {
+  servicesOffered?: string;
+  targetAudience?: string;
+  valueProposition?: string;
+  pricingInfo?: string;
+  competitiveAdvantages?: string;
+  idealClientProfile?: string;
+  salesApproach?: string;
+  caseStudies?: string;
+  additionalContext?: string;
 }
 
 interface AISettings {
@@ -44,6 +57,7 @@ interface AISettings {
   escalationKeywords: string[] | null;
   stopOnRisk: boolean | null;
   bookingLink: string | null;
+  salesContext: SalesContext | null;
 }
 
 export function EmailAISettings({
@@ -66,6 +80,7 @@ export function EmailAISettings({
     escalationKeywords: string[];
     stopOnRisk: boolean;
     bookingLink: string;
+    salesContext: SalesContext;
   }>({
     aiTone: "professional",
     confidenceThreshold: 0.8,
@@ -76,6 +91,7 @@ export function EmailAISettings({
     escalationKeywords: [],
     stopOnRisk: true,
     bookingLink: "",
+    salesContext: {},
   });
 
   const { data: settingsData, isLoading } = useQuery({
@@ -103,6 +119,7 @@ export function EmailAISettings({
         escalationKeywords: s.escalationKeywords || [],
         stopOnRisk: s.stopOnRisk ?? true,
         bookingLink: s.bookingLink || "",
+        salesContext: s.salesContext || {},
       });
     }
   }, [settingsData]);
@@ -385,6 +402,140 @@ export function EmailAISettings({
                     onChange={(e) => setFormData(prev => ({ ...prev, signature: e.target.value }))}
                     rows={4}
                     className="resize-none"
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    Profilo Commerciale
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Queste informazioni verranno usate da Millie per generare risposte commercialmente accurate
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Servizi che offri</Label>
+                    <Textarea
+                      placeholder="Es: Consulenza strategica AI, Automazione processi, Formazione team..."
+                      value={formData.salesContext.servicesOffered || ""}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        salesContext: { ...prev.salesContext, servicesOffered: e.target.value }
+                      }))}
+                      rows={3}
+                      className="resize-none text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vantaggi competitivi</Label>
+                    <Textarea
+                      placeholder="Es: 10 anni di esperienza, certificazioni, risultati misurabili..."
+                      value={formData.salesContext.competitiveAdvantages || ""}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        salesContext: { ...prev.salesContext, competitiveAdvantages: e.target.value }
+                      }))}
+                      rows={3}
+                      className="resize-none text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Target ideale</Label>
+                    <Textarea
+                      placeholder="Es: PMI italiane, settore retail e hospitality..."
+                      value={formData.salesContext.targetAudience || ""}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        salesContext: { ...prev.salesContext, targetAudience: e.target.value }
+                      }))}
+                      rows={3}
+                      className="resize-none text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Profilo cliente ideale</Label>
+                    <Textarea
+                      placeholder="Es: Imprenditori con fatturato 500k-5M, aperti all'innovazione..."
+                      value={formData.salesContext.idealClientProfile || ""}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        salesContext: { ...prev.salesContext, idealClientProfile: e.target.value }
+                      }))}
+                      rows={3}
+                      className="resize-none text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Proposta di valore</Label>
+                    <Textarea
+                      placeholder="Es: Aiutiamo le aziende a risparmiare 30% sui costi operativi con l'AI..."
+                      value={formData.salesContext.valueProposition || ""}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        salesContext: { ...prev.salesContext, valueProposition: e.target.value }
+                      }))}
+                      rows={3}
+                      className="resize-none text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Approccio vendita</Label>
+                    <Textarea
+                      placeholder="Es: Consulenza gratuita iniziale, demo personalizzata, POC 30 giorni..."
+                      value={formData.salesContext.salesApproach || ""}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        salesContext: { ...prev.salesContext, salesApproach: e.target.value }
+                      }))}
+                      rows={3}
+                      className="resize-none text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Pricing / Pacchetti</Label>
+                    <Textarea
+                      placeholder="Es: Pacchetto base da 500/mese, Premium da 1500/mese..."
+                      value={formData.salesContext.pricingInfo || ""}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        salesContext: { ...prev.salesContext, pricingInfo: e.target.value }
+                      }))}
+                      rows={3}
+                      className="resize-none text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Casi di successo</Label>
+                    <Textarea
+                      placeholder="Es: Cliente X ha aumentato il fatturato del 40% in 6 mesi..."
+                      value={formData.salesContext.caseStudies || ""}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        salesContext: { ...prev.salesContext, caseStudies: e.target.value }
+                      }))}
+                      rows={3}
+                      className="resize-none text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Contesto aggiuntivo</Label>
+                  <Textarea
+                    placeholder="Qualsiasi altra informazione utile per Millie quando risponde alle email..."
+                    value={formData.salesContext.additionalContext || ""}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      salesContext: { ...prev.salesContext, additionalContext: e.target.value }
+                    }))}
+                    rows={3}
+                    className="resize-none text-sm"
                   />
                 </div>
               </div>

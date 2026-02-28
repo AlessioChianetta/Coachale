@@ -50,9 +50,14 @@ const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: s
     { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati ad Alessia"] },
   ],
   millie: [
-    { label: "Journey Email", icon: "📧", items: ["Progresso journey email per ogni cliente", "Ultime email inviate (oggetto, data, apertura)"] },
-    { label: "Log Email", icon: "📨", items: ["Email automatiche degli ultimi 14 giorni"] },
-    { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Millie"] },
+    { label: "Email Hub (IMAP)", icon: "📨", items: ["Email in arrivo da tutti i contatti (clienti, lead, esterni)", "Storico conversazioni email per thread"] },
+    { label: "CRM Lead Scraper", icon: "🔍", items: ["Dati lead: attività, settore, compatibilità AI, stato", "Analisi AI del lead e sito web"] },
+    { label: "Lead Proattivi", icon: "🎯", items: ["Contatti proattivi: nome, telefono, stato, note"] },
+    { label: "KB Consulente", icon: "📚", items: ["Documenti Knowledge Base assegnati a Millie"] },
+    { label: "Profilo Commerciale", icon: "💼", items: ["Servizi, pricing, vantaggi competitivi dell'account email", "Proposta di valore e approccio vendita"] },
+    { label: "FileSearch Clienti", icon: "📄", items: ["Documenti privati del cliente (solo clienti registrati)"] },
+    { label: "Storico WhatsApp", icon: "💬", items: ["Ultimi messaggi WhatsApp del contatto (se disponibile)"] },
+    { label: "Storico Chiamate", icon: "📞", items: ["Chiamate recenti con il contatto (se disponibile)"] },
   ],
   echo: [
     { label: "Pipeline Riassunti", icon: "📝", items: ["Consultazioni senza riassunto (ultimi 30gg)", "Riassunti recenti e stato invio"] },

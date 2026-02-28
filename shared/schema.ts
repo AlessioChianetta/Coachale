@@ -8179,6 +8179,17 @@ export const emailAccounts = pgTable("email_accounts", {
   escalationKeywords: jsonb("escalation_keywords").default([]).$type<string[]>(),
   stopOnRisk: boolean("stop_on_risk").default(true),
   bookingLink: text("booking_link"),
+  salesContext: jsonb("sales_context").$type<{
+    servicesOffered?: string;
+    targetAudience?: string;
+    valueProposition?: string;
+    pricingInfo?: string;
+    competitiveAdvantages?: string;
+    idealClientProfile?: string;
+    salesApproach?: string;
+    caseStudies?: string;
+    additionalContext?: string;
+  }>(),
   
   // Sync Status
   lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),

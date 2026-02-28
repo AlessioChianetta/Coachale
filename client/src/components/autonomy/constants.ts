@@ -203,7 +203,7 @@ export const TASK_LIBRARY: TaskLibraryItem[] = [
 
 export const AI_ROLE_PROFILES: Record<string, { avatar: string; quote: string; role: string }> = {
   alessia: { avatar: alessiaAvatar, quote: "Analizzo le consultazioni e i follow-up vocali per non perdere mai un cliente.", role: "Voice Consultant" },
-  millie: { avatar: millieAvatar, quote: "Creo email personalizzate per ogni cliente nel momento giusto.", role: "Email Writer" },
+  millie: { avatar: millieAvatar, quote: "Gestisco tutte le email in arrivo — clienti, lead e contatti esterni — con risposte intelligenti e personalizzate.", role: "Email Writer" },
   echo: { avatar: echoAvatar, quote: "Trasformo le tue consulenze in riepiloghi strutturati.", role: "Summarizer" },
   nova: { avatar: novaAvatar, quote: "Gestisco i tuoi social e il calendario editoriale.", role: "Social Media Manager" },
   stella: { avatar: stellaAvatar, quote: "Monitoro le conversazioni WhatsApp e suggerisco azioni.", role: "WhatsApp Assistant" },
@@ -252,14 +252,14 @@ export const AI_ROLE_EXECUTION_PIPELINES: Record<string, ExecutionPipelineInfo> 
   },
   millie: {
     steps: [
-      { id: "fetch_client_data", icon: "📊", label: "Raccolta dati", description: "Recupera storico email, journey e interazioni del cliente" },
-      { id: "search_private_stores", icon: "🔎", label: "Ricerca documenti", description: "Cerca nei documenti privati del cliente" },
-      { id: "analyze_patterns", icon: "🧠", label: "Analisi engagement", description: "Analizza aperture, click e risposte alle email precedenti" },
-      { id: "generate_report", icon: "📄", label: "Composizione", description: "Genera il contenuto dell'email personalizzata con AI" },
-      { id: "send_email", icon: "📧", label: "Invio email", description: "Invia l'email via SMTP con eventuali allegati PDF" },
+      { id: "identify_contact", icon: "🔍", label: "Identifica contatto", description: "Riconosce il mittente: cliente, lead CRM o contatto esterno" },
+      { id: "crm_context", icon: "📊", label: "Contesto CRM e cross-canale", description: "Arricchisce con dati CRM, WhatsApp, chiamate e storico interazioni" },
+      { id: "classify_intent", icon: "🧠", label: "Classifica e analizza intent", description: "Determina tipo email, urgenza, sentiment e intent del messaggio" },
+      { id: "generate_response", icon: "✍️", label: "Genera risposta adattiva", description: "Crea bozza personalizzata usando KB, Profilo Commerciale e contesto" },
+      { id: "auto_actions", icon: "⚡", label: "Azioni automatiche", description: "Invio automatico, creazione ticket o escalation in base alla confidenza" },
     ],
-    direction: "Contatta il CLIENTE",
-    directionIcon: "👤",
+    direction: "Gestisce email in arrivo (clienti, lead, esterni)",
+    directionIcon: "📨",
     directionColor: "text-purple-600 dark:text-purple-400",
   },
   stella: {
@@ -365,19 +365,21 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
   },
   millie: {
     canDo: [
-      { icon: "📧", text: "Crea email personalizzate per ogni cliente" },
-      { icon: "📊", text: "Analizza l'engagement delle email (aperture, click)" },
-      { icon: "🔍", text: "Cerca informazioni nei Private Store dei clienti" },
-      { icon: "🧠", text: "Identifica il momento giusto per ogni email" },
-      { icon: "✍️", text: "Sceglie tono, argomento e struttura dell'email" },
-      { icon: "📈", text: "Monitora il journey email di ogni cliente" },
+      { icon: "📨", text: "Gestisce tutte le email in arrivo: clienti, lead Hunter e contatti esterni" },
+      { icon: "🔍", text: "Identifica il mittente tramite CRM, Lead Scraper e anagrafica clienti" },
+      { icon: "📊", text: "Arricchisce il contesto con storico WhatsApp, chiamate e interazioni cross-canale" },
+      { icon: "🧠", text: "Classifica email per tipo, urgenza, sentiment e intent" },
+      { icon: "✍️", text: "Genera risposte adattive in base al tipo di contatto e alla situazione" },
+      { icon: "📄", text: "Consulta i documenti FileSearch privati dei clienti registrati" },
+      { icon: "💼", text: "Usa il Profilo Commerciale dell'account per risposte accurate" },
+      { icon: "📈", text: "Monitora il journey email e l'engagement dei clienti" },
     ],
     cantDo: [
       { icon: "📞", text: "Non può fare chiamate vocali" },
       { icon: "💬", text: "Non può mandare messaggi WhatsApp" },
       { icon: "📱", text: "Non può gestire i social media" },
     ],
-    workflow: "Ogni 30 minuti → Legge journey email e engagement → Identifica chi ha bisogno di un'email → Crea task email personalizzata",
+    workflow: "Email in arrivo → Identifica contatto (CRM/Lead/Cliente) → Arricchisce contesto cross-canale → Classifica e analizza intent → Genera risposta adattiva → Azioni automatiche",
   },
   echo: {
     canDo: [
