@@ -1,0 +1,58 @@
+Uncaught Error: Objects are not valid as a React child (found: object with keys {name, email}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=acfd96f4:9934:17)
+    at createChild (chunk-RPCDYKBN.js?v=acfd96f4:10110:15)
+    at reconcileChildrenArray (chunk-RPCDYKBN.js?v=acfd96f4:10282:33)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=acfd96f4:10559:24)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=acfd96f4:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=acfd96f4:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=acfd96f4:15935:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=acfd96f4:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=acfd96f4:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=acfd96f4:3733:39)Comprendi l'errore
+injected.js:37 The above error occurred in the <div> component:
+
+    at div
+    at div
+    at div
+    at MotionComponent (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=acfd96f4:945:40)
+    at div
+    at MotionComponent (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=acfd96f4:945:40)
+    at div
+    at div
+    at MotionComponent (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=acfd96f4:945:40)
+    at PresenceChild (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=acfd96f4:121:24)
+    at AnimatePresence (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=acfd96f4:210:26)
+    at div
+    at div
+    at div
+    at ConsultantEmailHub (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/pages/consultant-email-hub.tsx:188:20)
+    at AuthGuard (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/App.tsx?v=pggsq0BVAVtwjHG-WJNpL:341:35)
+    at Provider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://ead5c0ea-ab33-4047-a80c-39c5cf9bdc49-00-unos2sg5l3id.janeway.replit.dev/src/App.tsx?v=pggsq0BVAVtwjHG-WJNpL:2155:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+(anonime) @ injected.js:37Comprendi l'errore
+chunk-RPCDYKBN.js?v=acfd96f4:19413 Uncaught Error: Objects are not valid as a React child (found: object with keys {name, email}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=acfd96f4:9934:17)
+    at createChild (chunk-RPCDYKBN.js?v=acfd96f4:10110:15)
+    at reconcileChildrenArray (chunk-RPCDYKBN.js?v=acfd96f4:10282:33)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=acfd96f4:10559:24)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=acfd96f4:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=acfd96f4:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=acfd96f4:15935:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=acfd96f4:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=acfd96f4:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=acfd96f4:19137:13)

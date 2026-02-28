@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1106,9 +1105,15 @@ export default function ConsultantEmailHub() {
   };
 
   const getEmailDisplayName = (email: Email) => {
+    const extractRecipient = (r: any): string => {
+      if (!r) return "";
+      if (typeof r === "string") return r;
+      if (typeof r === "object" && r.email) return r.name || r.email;
+      return String(r);
+    };
     if (email.direction === "outbound") {
       if (typeof email.toEmail === "string" && email.toEmail) return email.toEmail;
-      if (Array.isArray(email.toRecipients) && email.toRecipients.length > 0) return String(email.toRecipients[0]);
+      if (Array.isArray(email.toRecipients) && email.toRecipients.length > 0) return extractRecipient(email.toRecipients[0]);
       return email.fromEmail || "?";
     }
     return email.fromName || email.fromEmail || "?";
@@ -1938,23 +1943,10 @@ export default function ConsultantEmailHub() {
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {paginatedEmails.map((email, index) => (
-              <motion.div
+              <div
                 key={email.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ 
-                  delay: index * 0.02,
-                  duration: 0.15,
-                  ease: [0.25, 0.46, 0.45, 0.94]
-                }}
-                whileHover={{ 
-                  backgroundColor: "rgba(139, 92, 246, 0.08)",
-                  scale: 1.005,
-                  transition: { duration: 0.1 }
-                }}
-                whileTap={{ scale: 0.995 }}
                 onClick={() => handleEmailClick(email)}
-                className={`px-4 py-3 cursor-pointer flex items-center gap-3 ${
+                className={`px-4 py-3 cursor-pointer flex items-center gap-3 hover:bg-violet-50/80 dark:hover:bg-violet-950/30 transition-colors ${
                   !email.isRead ? "bg-violet-50/50 dark:bg-violet-950/20" : ""
                 } ${selectedEmail?.id === email.id ? "bg-violet-100 dark:bg-violet-900/30" : ""}`}
               >
@@ -2073,7 +2065,7 @@ export default function ConsultantEmailHub() {
                     {format(new Date(email.receivedAt), "dd/MM")}
                   </span>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
@@ -2101,7 +2093,7 @@ export default function ConsultantEmailHub() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm">{selectedEmail.fromName || selectedEmail.fromEmail}</p>
-                <p className="text-xs text-slate-500">A: {selectedEmail.toEmail}</p>
+                <p className="text-xs text-slate-500">A: {typeof selectedEmail.toEmail === "string" ? selectedEmail.toEmail : getEmailDisplayName(selectedEmail)}</p>
                 <p className="text-xs text-slate-400">
                   {format(new Date(selectedEmail.receivedAt), "dd MMMM yyyy, HH:mm")}
                 </p>
@@ -2215,14 +2207,9 @@ export default function ConsultantEmailHub() {
     <div className="flex-1 bg-white dark:bg-slate-950 flex flex-col h-full">
       {selectedEmail ? (
         <>
-          <motion.div 
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="p-4 border-b border-slate-200 dark:border-slate-800"
-          >
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-4 mb-4">
-              <motion.div whileHover={{ x: -3 }} whileTap={{ scale: 0.95 }}>
+              <div>
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -2232,7 +2219,7 @@ export default function ConsultantEmailHub() {
                   <ChevronLeft className="h-4 w-4" />
                   Indietro
                 </Button>
-              </motion.div>
+              </div>
               <div className="flex-1" />
               <div className="flex items-center gap-1.5 flex-wrap">
                 <Button 
@@ -2296,36 +2283,21 @@ export default function ConsultantEmailHub() {
               </div>
             </div>
             
-            <motion.h1 
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05, duration: 0.2 }}
-              className="text-lg sm:text-xl font-semibold mb-4 text-slate-900 dark:text-white leading-tight"
-            >
+            <h1 className="text-lg sm:text-xl font-semibold mb-4 text-slate-900 dark:text-white leading-tight">
               {selectedEmail.subject || "(Nessun oggetto)"}
-            </motion.h1>
+            </h1>
             
-            <motion.div 
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08, duration: 0.2 }}
-              className="flex items-start gap-3 sm:gap-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 sm:p-4"
-            >
-              <motion.div 
-                initial={{ scale: 0.85 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
-                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-white font-semibold text-base shrink-0 shadow-sm ${getAvatarColor(selectedEmail.fromName || selectedEmail.fromEmail)}`}
-              >
+            <div className="flex items-start gap-3 sm:gap-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 sm:p-4">
+              <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-white font-semibold text-base shrink-0 shadow-sm ${getAvatarColor(selectedEmail.fromName || selectedEmail.fromEmail)}`}>
                 {(selectedEmail.fromName || selectedEmail.fromEmail).charAt(0).toUpperCase()}
-              </motion.div>
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <span className="font-semibold text-sm text-slate-900 dark:text-white">{selectedEmail.fromName || selectedEmail.fromEmail}</span>
                   <span className="text-xs text-slate-400 truncate">&lt;{selectedEmail.fromEmail}&gt;</span>
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                  A: {selectedEmail.toEmail}
+                  A: {typeof selectedEmail.toEmail === "string" ? selectedEmail.toEmail : getEmailDisplayName(selectedEmail)}
                 </div>
               </div>
               <div className="text-xs text-slate-400 dark:text-slate-500 shrink-0 text-right whitespace-nowrap">
@@ -2333,17 +2305,12 @@ export default function ConsultantEmailHub() {
                 <br />
                 <span className="text-[11px]">{format(new Date(selectedEmail.receivedAt), "HH:mm")}</span>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
           
           <ScrollArea className="flex-1">
             <div className="p-6">
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.12, duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-                className="max-w-4xl mx-auto"
-              >
+              <div className="max-w-4xl mx-auto">
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
                   <div className="p-6 sm:p-8">
                     <div 
@@ -2415,7 +2382,7 @@ export default function ConsultantEmailHub() {
                     </div>
                   </div>
                 )}
-              </motion.div>
+              </div>
             </div>
           </ScrollArea>
         </>
@@ -2906,16 +2873,9 @@ export default function ConsultantEmailHub() {
 
         <div className="flex-1 flex overflow-hidden">
           {!isMobile && renderLeftSidebar()}
-          <AnimatePresence mode="wait">
+          <>
             {showOutreachPipeline ? (
-              <motion.div
-                key="outreach-pipeline-view"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ type: "spring", stiffness: 400, damping: 35, mass: 0.6 }}
-                className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-6"
-              >
+              <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-6">
                 <div className="max-w-6xl mx-auto">
                   <div className="flex items-center justify-between mb-6">
                     <div>
@@ -3232,37 +3192,13 @@ export default function ConsultantEmailHub() {
                     </Card>
                   )}
                 </div>
-              </motion.div>
+              </div>
             ) : showAiEventsView ? (
-              <motion.div
-                key="ai-events-view"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ 
-                  type: "spring", 
-                  stiffness: 400, 
-                  damping: 35,
-                  mass: 0.6
-                }}
-                className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900"
-              >
+              <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900">
                 <AIEventsPanel accounts={accounts} />
-              </motion.div>
+              </div>
             ) : showTicketView ? (
-              <motion.div
-                key="ticket-view"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ 
-                  type: "spring", 
-                  stiffness: 400, 
-                  damping: 35,
-                  mass: 0.6
-                }}
-                className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-6"
-              >
+              <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-6">
                 <div className="max-w-4xl mx-auto">
                   <div className="flex items-center justify-between mb-6">
                     <div>
@@ -3297,41 +3233,17 @@ export default function ConsultantEmailHub() {
                   </div>
                   {showTicketView === "list" ? <TicketsList /> : <TicketSettingsPanel />}
                 </div>
-              </motion.div>
+              </div>
             ) : showFullEmailView && selectedEmail ? (
-              <motion.div
-                key="email-view"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ 
-                  type: "spring", 
-                  stiffness: 400, 
-                  damping: 35,
-                  mass: 0.6
-                }}
-                className="flex-1 flex"
-              >
+              <div className="flex-1 flex">
                 {renderFullEmailView()}
-              </motion.div>
+              </div>
             ) : (
-              <motion.div
-                key="email-list"
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 30 }}
-                transition={{ 
-                  type: "spring", 
-                  stiffness: 400, 
-                  damping: 35,
-                  mass: 0.6
-                }}
-                className="flex-1 flex"
-              >
+              <div className="flex-1 flex">
                 {renderEmailList()}
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
+          </>
         </div>
       </div>
 

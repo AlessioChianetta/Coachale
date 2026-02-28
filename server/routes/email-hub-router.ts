@@ -1080,10 +1080,12 @@ router.get("/inbox", async (req: AuthRequest, res) => {
     }
     
     const emailsWithClientInfo = emails.map(email => {
-      const toRecips = (email.toRecipients as string[]) || [];
+      const toRecips = (email.toRecipients as any[]) || [];
+      const firstRecip = toRecips[0];
+      const toEmail = typeof firstRecip === "string" ? firstRecip : (firstRecip?.email || firstRecip?.address || "");
       return {
         ...email,
-        toEmail: toRecips[0] || "",
+        toEmail,
         senderClient: email.fromEmail ? clientsMap[email.fromEmail.toLowerCase()] || null : null,
       };
     });
@@ -1114,8 +1116,10 @@ router.get("/emails/:id", async (req: AuthRequest, res) => {
       return res.status(404).json({ success: false, error: "Email not found" });
     }
     
-    const toRecips = (email.toRecipients as string[]) || [];
-    res.json({ success: true, data: { ...email, toEmail: toRecips[0] || "" } });
+    const toRecips = (email.toRecipients as any[]) || [];
+    const firstRecip = toRecips[0];
+    const toEmail = typeof firstRecip === "string" ? firstRecip : (firstRecip?.email || firstRecip?.address || "");
+    res.json({ success: true, data: { ...email, toEmail } });
   } catch (error: any) {
     console.error("[EMAIL-HUB] Error fetching email:", error);
     res.status(500).json({ success: false, error: error.message });
