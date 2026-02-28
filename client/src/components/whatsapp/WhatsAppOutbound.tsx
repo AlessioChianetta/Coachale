@@ -300,6 +300,21 @@ export default function WhatsAppOutbound() {
     setContactSearch("");
   };
 
+  const normalizePhone = (raw: string): string => {
+    let phone = raw.replace(/[\s\-().]/g, "");
+    if (phone.startsWith("00")) {
+      phone = "+" + phone.slice(2);
+    }
+    if (!phone.startsWith("+")) {
+      if (phone.startsWith("3") && phone.length === 10) {
+        phone = "+39" + phone;
+      } else {
+        phone = "+39" + phone;
+      }
+    }
+    return phone;
+  };
+
   const handleSubmit = async () => {
     if (!form.agent_config_id) {
       toast({ title: "Seleziona agente", description: "Scegli quale dipendente WhatsApp invia il messaggio", variant: "destructive" });
@@ -316,7 +331,7 @@ export default function WhatsAppOutbound() {
         return;
       }
       contactName = selectedContact.name;
-      contactPhone = selectedContact.phone;
+      contactPhone = normalizePhone(selectedContact.phone);
       if (selectedContact.id.startsWith("client-")) {
         clientId = selectedContact.id.replace("client-", "");
       }
@@ -326,7 +341,7 @@ export default function WhatsAppOutbound() {
         return;
       }
       contactName = manualName.trim() || manualPhone.trim();
-      contactPhone = manualPhone.trim();
+      contactPhone = normalizePhone(manualPhone.trim());
     }
 
     setSubmitting(true);
@@ -627,7 +642,10 @@ export default function WhatsAppOutbound() {
                   <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg px-3 py-1.5">
                     <Phone className="h-3 w-3" />
                     <span className="font-medium">{manualName || "Contatto"}</span>
-                    <span>• {manualPhone}</span>
+                    <span>• {normalizePhone(manualPhone.trim())}</span>
+                    {!manualPhone.trim().startsWith("+") && (
+                      <span className="text-[10px] text-emerald-600/70 dark:text-emerald-500/70 italic ml-auto">+39 aggiunto</span>
+                    )}
                   </div>
                 )}
               </TabsContent>
