@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
+import { getAuthHeaders } from "@/lib/auth";
 
 interface EmailTicket {
   ticket: {
@@ -94,7 +95,7 @@ export function TicketsList({ onSelectEmail }: TicketsListProps) {
   async function fetchTickets() {
     setLoading(true);
     try {
-      const res = await fetch("/api/email-hub/tickets", { credentials: "include" });
+      const res = await fetch("/api/email-hub/tickets", { headers: getAuthHeaders() });
       const data = await res.json();
       if (data.success) {
         setTickets(data.data);
@@ -116,8 +117,7 @@ export function TicketsList({ onSelectEmail }: TicketsListProps) {
     try {
       const res = await fetch(`/api/email-hub/tickets/${ticketId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ status: newStatus }),
       });
       const data = await res.json();
