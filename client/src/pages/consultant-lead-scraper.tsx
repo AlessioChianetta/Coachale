@@ -91,6 +91,7 @@ import {
   Route,
   PenLine,
   AlertTriangle,
+  Archive,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
@@ -274,6 +275,7 @@ export default function ConsultantLeadScraper() {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [expandedContextIds, setExpandedContextIds] = useState<Set<string>>(new Set());
   const [batchApproving, setBatchApproving] = useState(false);
+  const [outreachHistoryOpen, setOutreachHistoryOpen] = useState(false);
 
   const [hunterSingleLeadDialog, setHunterSingleLeadDialog] = useState<{
     open: boolean;
@@ -2204,10 +2206,12 @@ export default function ConsultantLeadScraper() {
 
               const waitingCount = allTasks.filter(t => t.status === "waiting_approval").length;
 
-              const filteredTasks = allTasks
-                .filter(t => outreachChannelFilter === "tutti" || t.channel === outreachChannelFilter)
+              const isActiveStatus = (s: string) => !["completed", "failed"].includes(s);
+              const channelFiltered = allTasks.filter(t => outreachChannelFilter === "tutti" || t.channel === outreachChannelFilter);
+
+              const filteredTasks = channelFiltered
                 .filter(t => {
-                  if (outreachStatusFilter === "tutti") return true;
+                  if (outreachStatusFilter === "tutti") return isActiveStatus(t.status);
                   if (outreachStatusFilter === "waiting_approval") return t.status === "waiting_approval";
                   if (outreachStatusFilter === "scheduled") return t.status === "scheduled" || t.status === "approved";
                   if (outreachStatusFilter === "completed") return t.status === "completed";
@@ -2220,9 +2224,19 @@ export default function ConsultantLeadScraper() {
                   const ob = order[b.status] ?? 5;
                   if (oa !== ob) return oa - ob;
                   const da = a.scheduledAt || a.completedAt || a.createdAt || "";
-                  const db = b.scheduledAt || b.completedAt || b.createdAt || "";
-                  return db.localeCompare(da);
+                  const db2 = b.scheduledAt || b.completedAt || b.createdAt || "";
+                  return db2.localeCompare(da);
                 });
+
+              const historyTasks = channelFiltered
+                .filter(t => t.status === "completed" || t.status === "failed")
+                .sort((a, b) => {
+                  const da = a.completedAt || a.scheduledAt || a.createdAt || "";
+                  const db2 = b.completedAt || b.scheduledAt || b.createdAt || "";
+                  return db2.localeCompare(da);
+                });
+              const completedCount = historyTasks.filter(t => t.status === "completed").length;
+              const failedCount = historyTasks.filter(t => t.status === "failed").length;
 
               const channelIcon = (ch: string) => {
                 if (ch === "voice") return PhoneCall;
@@ -2283,6 +2297,7 @@ export default function ConsultantLeadScraper() {
               };
 
               return (
+                <>
                 <Card className="rounded-2xl border shadow-sm overflow-hidden">
                   <div className="px-5 py-4 flex items-center justify-between border-b bg-gradient-to-r from-blue-50/80 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20">
                     <div className="flex items-center gap-3">
@@ -2291,7 +2306,7 @@ export default function ConsultantLeadScraper() {
                       </div>
                       <div>
                         <h3 className="text-base font-bold text-gray-900 dark:text-white">Coda Outreach</h3>
-                        <p className="text-xs text-muted-foreground">{allTasks.length} task totali{waitingCount > 0 ? ` — ${waitingCount} da approvare` : ""}</p>
+                        <p className="text-xs text-muted-foreground">{filteredTasks.length} attivi di {allTasks.length} totali{waitingCount > 0 ? ` — ${waitingCount} da approvare` : ""}</p>
                       </div>
                     </div>
                     {waitingCount > 0 && (
@@ -2328,7 +2343,7 @@ export default function ConsultantLeadScraper() {
                     <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-medium text-muted-foreground mr-1">Stato:</span>
-                      {(["tutti", "waiting_approval", "scheduled", "completed", "failed"] as const).map(st => (
+                      {(["tutti", "waiting_approval", "scheduled"] as const).map(st => (
                         <button
                           key={st}
                           onClick={() => setOutreachStatusFilter(st)}
@@ -2339,7 +2354,7 @@ export default function ConsultantLeadScraper() {
                               : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
                           )}
                         >
-                          {st === "tutti" ? "Tutti" : st === "waiting_approval" ? "In attesa" : st === "scheduled" ? "Schedulati" : st === "completed" ? "Completati" : "Falliti"}
+                          {st === "tutti" ? "Attivi" : st === "waiting_approval" ? "In attesa" : "Schedulati"}
                         </button>
                       ))}
                     </div>
@@ -2662,6 +2677,106 @@ export default function ConsultantLeadScraper() {
                     )}
                   </CardContent>
                 </Card>
+
+                {historyTasks.length > 0 && (
+                  <Card className="rounded-2xl border shadow-sm overflow-hidden mt-4">
+                    <button
+                      onClick={() => setOutreachHistoryOpen(!outreachHistoryOpen)}
+                      className="w-full px-5 py-3.5 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                          <Archive className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">Storico Outreach</span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {completedCount > 0 && (
+                              <Badge className="text-[10px] px-1.5 py-0 h-4 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">{completedCount} completati</Badge>
+                            )}
+                            {failedCount > 0 && (
+                              <Badge className="text-[10px] px-1.5 py-0 h-4 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">{failedCount} falliti</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", outreachHistoryOpen && "rotate-180")} />
+                    </button>
+                    {outreachHistoryOpen && (
+                      <div className="border-t">
+                        <div className="max-h-[500px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                          {historyTasks.map(task => {
+                            const ChIcon = channelIcon(task.channel);
+                            const chCol = channelColor(task.channel);
+                            const ts = statusMap[task.status] || { label: task.status, cls: "bg-gray-100 text-gray-600" };
+                            const chBorderLeft = task.channel === 'voice' ? 'border-l-orange-400' : task.channel === 'whatsapp' ? 'border-l-emerald-500' : 'border-l-blue-500';
+                            const isOpen = expandedContextIds.has(task.id);
+
+                            return (
+                              <div key={task.id} className={cn("border-l-[3px]", chBorderLeft)}>
+                                <div
+                                  className={cn("px-5 py-3 flex items-center justify-between gap-2 cursor-pointer hover:bg-gray-50/80 dark:hover:bg-gray-800/30 transition-colors", isOpen && "bg-gray-50 dark:bg-gray-800/20")}
+                                  onClick={() => {
+                                    setExpandedContextIds(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(task.id)) next.delete(task.id);
+                                      else next.add(task.id);
+                                      return next;
+                                    });
+                                  }}
+                                >
+                                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center shrink-0", channelBg(task.channel))}>
+                                      <ChIcon className={cn("h-3.5 w-3.5", chCol)} />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{task.leadName}</span>
+                                        {task.leadScore != null && (
+                                          <Badge variant="outline" className="text-[10px] px-1.5 h-4 shrink-0">{task.leadScore}/100</Badge>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-xs text-muted-foreground">{channelLabel(task.channel)}</span>
+                                        {(task.completedAt || task.scheduledAt) && (
+                                          <span className="text-xs text-muted-foreground">
+                                            {new Date(task.completedAt || task.scheduledAt!).toLocaleString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <Badge className={cn("text-xs px-2 py-0.5", ts.cls)}>{ts.label}</Badge>
+                                    <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", isOpen && "rotate-180")} />
+                                  </div>
+                                </div>
+                                {!isOpen && task.resultSummary && (
+                                  <div className="px-5 pb-2 -mt-1">
+                                    <p className={cn("text-xs truncate", task.status === "completed" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>{task.resultSummary}</p>
+                                  </div>
+                                )}
+                                {isOpen && (
+                                  <div className="px-5 pb-4 space-y-2">
+                                    {task.resultSummary && (
+                                      <p className={cn("text-xs rounded-lg px-3 py-2 border", task.status === "completed" ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50" : "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/50")}>{task.resultSummary}</p>
+                                    )}
+                                    {task.aiInstruction && (
+                                      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-xs whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto text-muted-foreground">
+                                        {task.aiInstruction}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                )}
+                </>
               );
             })()}
             </>
