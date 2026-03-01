@@ -2304,19 +2304,41 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
 }
 
 // Schedule a call timer
+async function isCallApproved(callId: string): Promise<boolean> {
+  try {
+    const result = await db.execute(sql`
+      SELECT ast.status FROM ai_scheduled_tasks ast
+      WHERE ast.id = (
+        SELECT source_task_id FROM scheduled_voice_calls WHERE id = ${callId}
+      )
+      LIMIT 1
+    `);
+    if (result.rows.length === 0) return true;
+    const taskStatus = (result.rows[0] as any).status;
+    return ['approved', 'scheduled', 'in_progress'].includes(taskStatus);
+  } catch {
+    return true;
+  }
+}
+
 function scheduleCallTimer(callId: string, consultantId: string, scheduledAt: Date): void {
   const now = new Date();
   const delayMs = scheduledAt.getTime() - now.getTime();
   
-  if (delayMs <= 0) {
-    // Execute immediately
+  const executeIfApproved = async () => {
+    scheduledCallTimers.delete(callId);
+    const approved = await isCallApproved(callId);
+    if (!approved) {
+      console.log(`🚫 [Outbound] Call ${callId} skipped: linked AI task not yet approved`);
+      return;
+    }
     executeOutboundCall(callId, consultantId);
+  };
+
+  if (delayMs <= 0) {
+    executeIfApproved();
   } else {
-    // Schedule for later
-    const timer = setTimeout(() => {
-      scheduledCallTimers.delete(callId);
-      executeOutboundCall(callId, consultantId);
-    }, delayMs);
+    const timer = setTimeout(() => executeIfApproved(), delayMs);
     scheduledCallTimers.set(callId, timer);
     console.log(`⏰ [Outbound] Scheduled call ${callId} for ${scheduledAt.toISOString()} (in ${Math.round(delayMs / 1000)}s)`);
   }
@@ -2693,7 +2715,13 @@ async function reloadPendingCalls(): Promise<void> {
     const result = await db.execute(sql`
       SELECT sc.id, sc.consultant_id, sc.scheduled_at 
       FROM scheduled_voice_calls sc
-      WHERE sc.status = 'pending' AND sc.scheduled_at IS NOT NULL
+      WHERE sc.status IN ('pending', 'scheduled') AND sc.scheduled_at IS NOT NULL
+        AND (
+          sc.source_task_id IS NULL
+          OR sc.source_task_id IN (
+            SELECT id FROM ai_scheduled_tasks WHERE status IN ('approved', 'scheduled', 'in_progress')
+          )
+        )
     `);
     
     for (const call of result.rows as any[]) {
