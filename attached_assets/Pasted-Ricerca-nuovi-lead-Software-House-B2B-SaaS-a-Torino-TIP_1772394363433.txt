@@ -1,0 +1,165 @@
+Ricerca nuovi lead: "Software House B2B SaaS" a Torino
+TIPO: lead_scraper_search QUERY: Software House B2B SaaS ENGINE: search LOCATION: Torino LIMIT: 10 REASONING: Diversificazione nel Segmento 1 (SaaS). Torino ha un ecosistema tech forte e queste aziende hanno spesso volumi di lead inbound che necessitano di qualifica automatica (Setter AI).
+
+✅ Completato
+prospecting
+Lead Search SaaS Torino
+Hunter
+1h 27m
+90%
+01/03, 16:25
+Processo AI
+lead_scraper_search
+
+lead_qualify_and_assign
+
+Registro Attività
+(30)
+Ho creato un nuovo task per Lead Search SaaS Torino
+
+Necessità di diversificare il target oltre il settore HR per evitare saturazione della pipeline.
+
+5 ore fa
+Sto ragionando su come procedere...
+
+Analizzo il contesto e preparo il piano migliore per "TIPO: lead_scraper_search QUERY: Software House B2B SaaS ENG"
+
+4 ore fa
+Ho preparato il piano! Cerco i lead e poi li qualifico
+
+Hunter pipeline automatica: Step 1 — ricerca "Software House B2B SaaS" su search in Torino (limit 10). Step 2 — qualifica AI dei risultati e assegnazione ai dipendenti (Alessia/Stella/Millie) in base ai canali disponibili.
+
+4 ore fa
+Ci sono! Inizio a lavorare
+
+Ho 2 step da fare — mi metto subito all'opera
+
+4 ore fa
+Passo allo step 1/2: Ricerca lead: "Software House B2B SaaS" su search in Torino
+
+Ora mi occupo di: Ricerca lead: "Software House B2B SaaS" su search in Torino
+
+4 ore fa
+Ho 0 documenti caricati e 0 pronti per la ricerca
+
+Non ho documenti assegnati al momento
+
+4 ore fa
+🔍 Cerco 'Software House B2B SaaS'... vediamo cosa esce
+
+Uso Google Search in zona Torino, cerco fino a 10 risultati
+
+4 ore fa
+📋 Trovate 4 aziende!
+
+La ricerca 'Software House B2B SaaS' in Torino ha dato 4 risultati, li analizzo subito
+
+4 ore fa
+🌐 Adesso analizzo i loro siti...
+
+Sto visitando 4 siti web per raccogliere email, telefoni e info utili
+
+4 ore fa
+✅ Siti analizzati, ho raccolto tutte le info
+
+Ho analizzato 3 siti web, 1 li avevo già in memoria, 0 non raggiungibili
+
+4 ore fa
+🔍 Ricerca completata per 'Software House B2B SaaS'
+
+Ho trovato 4 aziende, analizzato 3 siti web, 1 già in memoria. Tutto pronto!
+
+4 ore fa
+Fatto! 🔍 Ricerca lead completato
+
+Ho cercato 'Software House B2B SaaS' e trovato 4 aziende. Ho analizzato 3 siti web, 1 già in memoria
+
+4 ore fa
+Passo allo step 2/2: Qualifica lead trovati (score >= soglia) e assegna ai dipendenti AI per outreach
+
+Ora mi occupo di: Qualifica lead trovati (score >= soglia) e assegna ai dipendenti AI per outreach
+
+4 ore fa
+🧠 Analizzo le aziende trovate... soglia: 60
+
+Guardo ogni azienda una per una per capire quali sono davvero in target (soglia: 60/100)
+
+4 ore fa
+🔎 Sto guardando BitBoss... (1/4)
+
+Analizzo il profilo e calcolo quanto è in target...
+
+4 ore fa
+🔎 Sto guardando Wezard - Software House... (2/4)
+
+Analizzo il profilo e calcolo quanto è in target...
+
+4 ore fa
+✅ BitBoss: score 88/100, ottimo match!
+
+Score 88/100, sopra la soglia di 60 — lo aggiungo alla lista outreach!
+
+4 ore fa
+🔎 Sto guardando Redergo - Sviluppo Software... (3/4)
+
+Analizzo il profilo e calcolo quanto è in target...
+
+4 ore fa
+✅ Wezard - Software House: score 88/100, ottimo match!
+
+Score 88/100, sopra la soglia di 60 — lo aggiungo alla lista outreach!
+
+4 ore fa
+✅ Redergo - Sviluppo Software: score 88/100, ottimo match!
+
+Score 88/100, sopra la soglia di 60 — lo aggiungo alla lista outreach!
+
+4 ore fa
+🔎 Sto guardando Bluenext - Sede di Torino... (4/4)
+
+Analizzo il profilo e calcolo quanto è in target...
+
+4 ore fa
+✅ Bluenext - Sede di Torino: score 92/100, ottimo match!
+
+Score 92/100, sopra la soglia di 60 — lo aggiungo alla lista outreach!
+
+4 ore fa
+📊 Analisi fatta: 4/4 sono buoni match!
+
+Ho analizzato 4 aziende. 4 superano la soglia di 60/100
+
+4 ore fa
+✍️ Genero contenuto voice per Wezard - Software House...
+
+Score: 88/100 — Preparo il messaggio personalizzato
+
+4 ore fa
+✍️ Genero contenuto voice per Redergo - Sviluppo Software...
+
+Score: 88/100 — Preparo il messaggio personalizzato
+
+4 ore fa
+✍️ Genero contenuto voice per Bluenext - Sede di Torino...
+
+Score: 92/100 — Preparo il messaggio personalizzato
+
+4 ore fa
+🚀 3 task outreach creati per Ricerca lead
+
+📞 3 chiamate — tutti con contenuto personalizzato generato da AI
+
+4 ore fa
+Qualifica completata: 3 task outreach individuali creati
+
+4/4 qualificati (soglia: 60). Task: 📞 3 chiamate. Skippati: 0 cooldown, 1 rate limit.
+
+4 ore fa
+Fatto! 🧠 Qualifica lead completato
+
+Ho analizzato 4 aziende: 4 sono in target (soglia: 60). Ho creato 3 campagne outreach (📞 3)
+
+4 ore fa
+Tutto fatto!
+
+Ho completato tutti i 2 step con successo
