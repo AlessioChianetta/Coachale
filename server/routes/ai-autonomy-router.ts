@@ -897,7 +897,14 @@ async function resolveTemplateVariables(
 
   const stillNeeded = dynamicVars.filter(v => !resolved[v]);
 
-  if (stillNeeded.length > 0 && lead.salesSummary && lead.salesSummary.length > 50) {
+  const salesSummaryStr = lead.salesSummary || '';
+  const websiteDataStr = lead.websiteData ? (typeof lead.websiteData === 'string' ? lead.websiteData : JSON.stringify(lead.websiteData)) : '';
+  const scrapeDataStr = lead.scrapeData ? (typeof lead.scrapeData === 'string' ? lead.scrapeData : JSON.stringify(lead.scrapeData)) : '';
+  const hasAnyContext = salesSummaryStr.length > 20 || websiteDataStr.length > 20 || scrapeDataStr.length > 20 || (lead.website && lead.category);
+
+  console.log(`[HUNTER] 🔍 Template vars context for "${lead.businessName}": salesSummary=${salesSummaryStr.length}chars, websiteData=${websiteDataStr.length}chars, scrapeData=${scrapeDataStr.length}chars, website=${lead.website || 'N/D'}, category=${lead.category || 'N/D'}, hasAnyContext=${hasAnyContext}`);
+
+  if (stillNeeded.length > 0 && hasAnyContext) {
     try {
       const { quickGenerate } = await import("../ai/provider-factory");
 
@@ -907,13 +914,28 @@ async function resolveTemplateVariables(
 
       const varInstructions = stillNeeded.map(v => {
         switch (v) {
-          case 'uncino': return `- {uncino}: una frase breve (max 8-10 parole) specifica per questa azienda, che si inserisca naturalmente nel contesto del template. Deve descrivere cosa fa l'azienda o cosa la rende interessante.`;
-          case 'stato_ideale': return `- {stato_ideale}: una frase breve (max 8 parole) che descriva lo stato ideale/obiettivo che il lead potrebbe voler raggiungere, basato sulla sua attività.`;
-          case 'desideri': return `- {desideri}: una frase breve (max 8 parole) sui probabili desideri/bisogni professionali del lead.`;
-          case 'obiettivi': return `- {obiettivi}: una frase breve (max 8 parole) sugli obiettivi probabili del lead nel suo settore.`;
-          default: return `- {${v}}: genera un valore appropriato per il contesto.`;
+          case 'uncino': return `- {uncino}: un riferimento ULTRA-SPECIFICO a qualcosa di CONCRETO che questa azienda fa, ha pubblicato, o offre. Deve essere un dettaglio REALE trovato nell'analisi (es: "il vostro kit di 50 prompt AI per il recruiting", "i corsi di formazione per PMI che offrite", "le 150 recensioni a 5 stelle su Google"). MAI frasi generiche tipo "l'innovazione nel settore X" o "il vostro interesse per Y". Max 10-12 parole, deve inserirsi naturalmente nel template.`;
+          case 'stato_ideale': return `- {stato_ideale}: un obiettivo CONCRETO e SPECIFICO per questa azienda basato su cosa fanno (es: "automatizzare lo screening dei candidati", "triplicare i lead qualificati", "ridurre i tempi di risposta a 5 minuti"). Max 8 parole, specifico per il loro business.`;
+          case 'desideri': return `- {desideri}: un desiderio/bisogno SPECIFICO di questa azienda basato sul loro settore e attività (es: "gestire più candidati senza assumere", "rispondere ai lead in tempo reale"). Max 8 parole.`;
+          case 'obiettivi': return `- {obiettivi}: un obiettivo MISURABILE e CONCRETO per questa azienda (es: "dimezzare i tempi di primo contatto", "aumentare il tasso di conversione lead"). Max 8 parole.`;
+          default: return `- {${v}}: genera un valore SPECIFICO e contestuale per questa azienda. MAI frasi generiche.`;
         }
       }).join('\n');
+
+      const contextBlocks = [
+        `AZIENDA TARGET: "${lead.businessName}"`,
+        lead.category ? `Settore: ${lead.category}` : '',
+        lead.website ? `Sito web: ${lead.website}` : '',
+        lead.address ? `Zona: ${lead.address}` : '',
+        lead.rating ? `Rating Google: ${lead.rating}/5` : '',
+        lead.reviewCount ? `Recensioni: ${lead.reviewCount}` : '',
+      ].filter(Boolean).join('\n');
+
+      const analysisBlocks = [
+        salesSummaryStr ? `ANALISI COMMERCIALE:\n${salesSummaryStr.substring(0, 800)}` : '',
+        websiteDataStr ? `DATI DAL SITO WEB:\n${websiteDataStr.substring(0, 800)}` : '',
+        scrapeDataStr ? `DATI SCRAPING:\n${scrapeDataStr.substring(0, 500)}` : '',
+      ].filter(Boolean).join('\n\n');
 
       const prompt = [
         `Sei un copywriter esperto. Devi generare i valori delle variabili per un messaggio WhatsApp di outreach commerciale.`,
@@ -921,21 +943,19 @@ async function resolveTemplateVariables(
         `TEMPLATE MESSAGGIO (con variabili già risolte e da risolvere):`,
         `"${prefilledPreview}"`,
         ``,
-        `AZIENDA TARGET: "${lead.businessName}"`,
-        `Settore: ${lead.category || 'N/D'}`,
-        `Sito web: ${lead.website || 'N/D'}`,
+        contextBlocks,
         ``,
-        `ANALISI DELL'AZIENDA:`,
-        `${lead.salesSummary.substring(0, 600)}`,
+        analysisBlocks,
         ``,
         `VARIABILI DA GENERARE:`,
         varInstructions,
         ``,
-        `REGOLE:`,
-        `- Leggi il template e capisci il contesto grammaticale di OGNI variabile`,
-        `- Ogni valore deve inserirsi NATURALMENTE nella frase del template`,
+        `REGOLE FERREE:`,
+        `- OGNI variabile deve contenere un DETTAGLIO REALE e SPECIFICO trovato nell'analisi dell'azienda`,
+        `- MAI frasi generiche tipo "l'innovazione nel settore", "la crescita della tua attività", "i tuoi obiettivi professionali"`,
+        `- Leggi il template e capisci il contesto grammaticale di OGNI variabile — il valore deve inserirsi NATURALMENTE nella frase`,
         `- NON usare virgolette, NON ripetere il nome dell'azienda, NON usare punti finali`,
-        `- Sii specifico e contestuale, basati sull'analisi dell'azienda`,
+        `- Sii ULTRA-SPECIFICO: cita prodotti, servizi, numeri, contenuti, tool, risultati concreti dell'azienda`,
         `- Italiano professionale e naturale`,
         ``,
         `Rispondi SOLO in formato JSON con le chiavi richieste, es:`,
@@ -946,7 +966,7 @@ async function resolveTemplateVariables(
         consultantId: consultantId || 'system',
         feature: 'hunter-template-vars',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 150, temperature: 0.4, responseMimeType: 'application/json' },
+        generationConfig: { maxOutputTokens: 200, temperature: 0.4, responseMimeType: 'application/json' },
       });
 
       const resultText = aiResult?.text;
@@ -978,42 +998,17 @@ async function resolveTemplateVariables(
         }
       }
     } catch (err: any) {
-      console.warn(`[HUNTER] AI template vars generation failed for "${lead.businessName}": ${err.message}`);
+      console.error(`[HUNTER] ❌ AI template vars generation FAILED for "${lead.businessName}": ${err.message}`);
     }
+  } else if (stillNeeded.length > 0) {
+    console.error(`[HUNTER] ⚠️ NESSUN CONTESTO DISPONIBILE per generare variabili AI per "${lead.businessName}" — salesSummary=${salesSummaryStr.length}chars, websiteData=${websiteDataStr.length}chars, scrapeData=${scrapeDataStr.length}chars. Le variabili ${stillNeeded.join(', ')} NON saranno risolte.`);
   }
 
   for (const v of dynamicVars) {
     if (!resolved[v]) {
-      if (v === 'uncino') {
-        if (lead.category) {
-          const cat = lead.category.toLowerCase();
-          const articleMap: Record<string, string> = {
-            'recruiter': "l'innovazione nel recruiting", 'recruitment': "l'innovazione nel recruiting",
-            'marketing': "le strategie di marketing digitale", 'consulting': "la consulenza strategica",
-            'technology': "l'innovazione tecnologica", 'finance': "la gestione finanziaria",
-            'real estate': "il settore immobiliare", 'education': "il mondo della formazione",
-            'healthcare': "il settore sanitario", 'food': "il settore food & beverage",
-            'retail': "il mondo del retail",
-          };
-          resolved[v] = articleMap[cat] || `il settore ${lead.category.toLowerCase()}`;
-          sources[v] = articleMap[cat] ? 'category_mapped' : 'category_generic';
-        } else {
-          resolved[v] = 'la crescita della tua attività';
-          sources[v] = 'fallback';
-        }
-      } else if (v === 'stato_ideale') {
-        resolved[v] = 'i tuoi obiettivi professionali';
-        sources[v] = 'fallback';
-      } else if (v === 'desideri') {
-        resolved[v] = 'migliorare i risultati';
-        sources[v] = 'fallback';
-      } else if (v === 'obiettivi') {
-        resolved[v] = 'far crescere la tua attività';
-        sources[v] = 'fallback';
-      } else {
-        resolved[v] = '';
-        sources[v] = 'empty_fallback';
-      }
+      console.error(`[HUNTER] ⚠️ VARIABILE {${v}} NON RISOLTA per lead "${lead.businessName}" — nessun fallback generico, il messaggio conterrà un placeholder vuoto. Verificare che il lead abbia salesSummary/websiteData.`);
+      resolved[v] = '';
+      sources[v] = 'UNRESOLVED';
     }
   }
 
