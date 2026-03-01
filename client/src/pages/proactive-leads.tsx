@@ -40,7 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -85,6 +85,11 @@ import {
   ExternalLink,
   ChevronRight,
   ArrowUpRight,
+  Search,
+  TrendingUp,
+  BarChart3,
+  Info,
+  Briefcase,
 } from "lucide-react";
 
 import Papa from "papaparse";
@@ -296,6 +301,9 @@ export default function ProactiveLeadsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [advancedDetailsOpen, setAdvancedDetailsOpen] = useState(false);
+  const [dialogTab, setDialogTab] = useState("contatto");
+  const [hunterContext, setHunterContext] = useState<any>(null);
+  const [hunterCtxLoading, setHunterCtxLoading] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -857,6 +865,9 @@ export default function ProactiveLeadsPage() {
     setFormData(emptyFormData);
     setSelectedLead(null);
     setFormErrors({});
+    setDialogTab("contatto");
+    setHunterContext(null);
+    setHunterCtxLoading(false);
     setIsDialogOpen(true);
   };
 
@@ -944,7 +955,20 @@ export default function ProactiveLeadsPage() {
     setSelectedLead(lead);
     setFormErrors({});
     setAdvancedDetailsOpen(false);
+    setDialogTab("contatto");
+    setHunterContext(null);
     setIsDialogOpen(true);
+
+    setHunterCtxLoading(true);
+    fetch(`/api/proactive-leads/${lead.id}/hunter-context`, { headers: getAuthHeaders() })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.hunterContext) {
+          setHunterContext(data.hunterContext);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setHunterCtxLoading(false));
   };
 
   const handleDelete = (lead: ProactiveLead) => {
@@ -2611,22 +2635,38 @@ export default function ProactiveLeadsPage() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-6 py-4">
-              {/* Essential Fields Section */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  <UserPlus className="h-5 w-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Informazioni Essenziali
-                  </h3>
-                  <Badge variant="outline" className="ml-auto text-xs">Campi obbligatori</Badge>
-                </div>
-                
-                {/* Nome e Cognome */}
+            <Tabs value={dialogTab} onValueChange={setDialogTab} className="mt-4">
+              <TabsList className="grid w-full grid-cols-3 h-12 p-1 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl">
+                <TabsTrigger
+                  value="contatto"
+                  className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-700 transition-all text-sm font-medium"
+                >
+                  <User className="h-4 w-4" />
+                  <span className="hidden sm:inline">Contatto</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="dettagli"
+                  className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-700 transition-all text-sm font-medium"
+                >
+                  <Target className="h-4 w-4" />
+                  <span className="hidden sm:inline">Dettagli</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="intelligence"
+                  className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-700 transition-all text-sm font-medium relative"
+                >
+                  <Search className="h-4 w-4" />
+                  <span className="hidden sm:inline">Intelligence</span>
+                  {hunterContext && (
+                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-800" />
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="contatto" className="mt-5 space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="firstName" className="text-sm font-medium flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-500" />
                       Nome <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -2634,138 +2674,126 @@ export default function ProactiveLeadsPage() {
                       value={formData.firstName}
                       onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                       placeholder="Mario"
-                      className={formErrors.firstName ? "border-red-500" : ""}
+                      className={cn("h-10", formErrors.firstName && "border-red-500 focus-visible:ring-red-500")}
                     />
                     {formErrors.firstName && (
-                      <p className="text-sm text-red-500 flex items-center gap-1">
+                      <p className="text-xs text-red-500 flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
                         {formErrors.firstName}
                       </p>
                     )}
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-sm font-medium flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-500" />
-                      Cognome
-                    </Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="lastName" className="text-sm font-medium">Cognome</Label>
                     <Input
                       id="lastName"
                       value={formData.lastName}
                       onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      placeholder="Rossi (opzionale)"
+                      placeholder="Rossi"
+                      className="h-10"
                     />
                   </div>
                 </div>
 
-                {/* Telefono */}
-                <div className="space-y-2">
-                  <Label htmlFor="phoneNumber" className="text-sm font-medium flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-gray-500" />
-                    Numero di Telefono <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={(e) => {
-                      let value = e.target.value;
-                      value = value.replace(/\s/g, "");
-                      if (value === "") {
-                        value = "+39";
-                      }
-                      if (!value.startsWith("+")) {
-                        value = "+" + value;
-                      }
-                      setFormData({ ...formData, phoneNumber: value });
-                    }}
-                    placeholder="+39 333 1234567"
-                    className={formErrors.phoneNumber ? "border-red-500" : ""}
-                  />
-                  {formErrors.phoneNumber && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {formErrors.phoneNumber}
-                    </p>
-                  )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="phoneNumber" className="text-sm font-medium flex items-center gap-2">
+                      <Phone className="h-3.5 w-3.5 text-gray-400" />
+                      Telefono <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="phoneNumber"
+                      value={formData.phoneNumber}
+                      onChange={(e) => {
+                        let value = e.target.value;
+                        value = value.replace(/\s/g, "");
+                        if (value === "") value = "+39";
+                        if (!value.startsWith("+")) value = "+" + value;
+                        setFormData({ ...formData, phoneNumber: value });
+                      }}
+                      placeholder="+39 333 1234567"
+                      className={cn("h-10 font-mono", formErrors.phoneNumber && "border-red-500 focus-visible:ring-red-500")}
+                    />
+                    {formErrors.phoneNumber && (
+                      <p className="text-xs text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {formErrors.phoneNumber}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5 text-gray-400" />
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email || ""}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="mario.rossi@email.com"
+                      className="h-10"
+                    />
+                  </div>
                 </div>
 
-                {/* Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-500" />
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email || ""}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="mario.rossi@email.com"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Opzionale. Necessaria per inviare email di benvenuto e nurturing.
-                  </p>
-                </div>
-
-                {/* Email Options - Solo se email è compilata */}
                 {formData.email && formData.email.trim() !== "" && (
-                  <div className="space-y-4 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-5 w-5 text-emerald-600" />
-                      <h4 className="font-semibold text-emerald-900 dark:text-emerald-100">Opzioni Email</h4>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-3">
+                  <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20 p-4 space-y-3">
+                    <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Opzioni Email
+                    </p>
+                    <div className="space-y-2.5">
+                      <label className="flex items-start gap-3 cursor-pointer group">
                         <Checkbox
                           id="welcomeEmailEnabled"
                           checked={formData.welcomeEmailEnabled}
                           onCheckedChange={(checked) => 
                             setFormData({ ...formData, welcomeEmailEnabled: checked === true })
                           }
+                          className="mt-0.5"
                         />
                         <div className="flex-1">
-                          <Label htmlFor="welcomeEmailEnabled" className="text-sm font-medium cursor-pointer">
+                          <span className="text-sm font-medium group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
                             Invia email di benvenuto
-                          </Label>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Invia una email di benvenuto insieme al primo messaggio WhatsApp
+                          </span>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            Insieme al primo messaggio WhatsApp
                           </p>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-3">
+                      </label>
+                      <label className="flex items-start gap-3 cursor-pointer group">
                         <Checkbox
                           id="nurturingEnabled"
                           checked={formData.nurturingEnabled}
                           onCheckedChange={(checked) => 
                             setFormData({ ...formData, nurturingEnabled: checked === true })
                           }
+                          className="mt-0.5"
                         />
                         <div className="flex-1">
-                          <Label htmlFor="nurturingEnabled" className="text-sm font-medium cursor-pointer">
-                            Attiva email nurturing (365 giorni)
-                          </Label>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Invia automaticamente una email di valore al giorno per un anno
+                          <span className="text-sm font-medium group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+                            Nurturing automatico (365 giorni)
+                          </span>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            Una email di valore al giorno per un anno
                           </p>
                         </div>
-                      </div>
+                      </label>
                     </div>
                   </div>
                 )}
 
-                {/* Agente WhatsApp */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="agentConfigId" className="text-sm font-medium flex items-center gap-2">
-                    <Bot className="h-4 w-4 text-gray-500" />
+                    <Bot className="h-3.5 w-3.5 text-gray-400" />
                     Agente WhatsApp <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={formData.agentConfigId}
                     onValueChange={(value) => setFormData({ ...formData, agentConfigId: value })}
                   >
-                    <SelectTrigger className={formErrors.agentConfigId ? "border-red-500" : ""}>
+                    <SelectTrigger className={cn("h-10", formErrors.agentConfigId && "border-red-500")}>
                       <SelectValue placeholder="Seleziona un agente" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2784,11 +2812,8 @@ export default function ProactiveLeadsPage() {
                               <Bot className="h-4 w-4" />
                               {agent.agentName} - {agent.twilioWhatsappNumber}
                               {(agent.isDryRun ?? true) && (
-                                <Badge 
-                                  variant="outline"
-                                  className="bg-orange-100 text-orange-800 border-orange-300 text-xs ml-auto"
-                                >
-                                  🧪 Test
+                                <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300 text-xs ml-auto">
+                                  Test
                                 </Badge>
                               )}
                             </div>
@@ -2798,80 +2823,57 @@ export default function ProactiveLeadsPage() {
                     </SelectContent>
                   </Select>
                   {formErrors.agentConfigId && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
+                    <p className="text-xs text-red-500 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
                       {formErrors.agentConfigId}
                     </p>
                   )}
                   {formData.agentConfigId && agents.find(a => a.id === formData.agentConfigId)?.isDryRun !== false && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start gap-3 mt-2">
-                      <span className="text-orange-600 text-xl">⚠️</span>
-                      <div className="flex-1 text-sm">
-                        <p className="font-semibold text-orange-800">Modalità Test Attiva</p>
-                        <p className="text-orange-700 mt-1">
-                          I messaggi verranno simulati ma <strong>NON inviati</strong> al contatto.
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-2 mt-1.5 px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 text-sm">
+                      <AlertCircle className="h-4 w-4 text-orange-500 shrink-0" />
+                      <span className="text-orange-700 dark:text-orange-300">
+                        <strong>Test attiva</strong> — messaggi simulati, non inviati
+                      </span>
                     </div>
                   )}
                 </div>
 
-                {/* Data contatto programmato */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <Label htmlFor="contactSchedule" className="text-sm font-medium flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <Calendar className="h-3.5 w-3.5 text-gray-400" />
                     Data e Ora Contatto <span className="text-red-500">*</span>
                   </Label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: "5 min", minutes: 5 },
+                      { label: "30 min", minutes: 30 },
+                      { label: "1 ora", minutes: 60 },
+                    ].map(({ label, minutes }) => (
+                      <Button
+                        key={label}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs px-3 rounded-full hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 dark:hover:bg-blue-950/30 transition-colors"
+                        onClick={() => {
+                          const t = new Date();
+                          t.setMinutes(t.getMinutes() + minutes);
+                          setFormData({ ...formData, contactSchedule: format(t, "yyyy-MM-dd'T'HH:mm") });
+                        }}
+                      >
+                        Tra {label}
+                      </Button>
+                    ))}
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        const targetTime = new Date();
-                        targetTime.setMinutes(targetTime.getMinutes() + 5);
-                        const formatted = format(targetTime, "yyyy-MM-dd'T'HH:mm");
-                        setFormData({ ...formData, contactSchedule: formatted });
-                      }}
-                    >
-                      Tra 5 min
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const targetTime = new Date();
-                        targetTime.setMinutes(targetTime.getMinutes() + 30);
-                        const formatted = format(targetTime, "yyyy-MM-dd'T'HH:mm");
-                        setFormData({ ...formData, contactSchedule: formatted });
-                      }}
-                    >
-                      Tra 30 min
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const targetTime = new Date();
-                        targetTime.setHours(targetTime.getHours() + 1);
-                        const formatted = format(targetTime, "yyyy-MM-dd'T'HH:mm");
-                        setFormData({ ...formData, contactSchedule: formatted });
-                      }}
-                    >
-                      Tra 1 ora
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
+                      className="h-8 text-xs px-3 rounded-full hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 dark:hover:bg-blue-950/30 transition-colors"
                       onClick={() => {
                         const tomorrow = new Date();
                         tomorrow.setDate(tomorrow.getDate() + 1);
                         tomorrow.setHours(9, 0, 0, 0);
-                        const formatted = format(tomorrow, "yyyy-MM-dd'T'HH:mm");
-                        setFormData({ ...formData, contactSchedule: formatted });
+                        setFormData({ ...formData, contactSchedule: format(tomorrow, "yyyy-MM-dd'T'HH:mm") });
                       }}
                     >
                       Domani 9:00
@@ -2882,89 +2884,69 @@ export default function ProactiveLeadsPage() {
                     type="datetime-local"
                     value={formData.contactSchedule}
                     onChange={(e) => setFormData({ ...formData, contactSchedule: e.target.value })}
-                    className={formErrors.contactSchedule ? "border-red-500" : ""}
+                    className={cn("h-10", formErrors.contactSchedule && "border-red-500 focus-visible:ring-red-500")}
                   />
                   {formErrors.contactSchedule && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
+                    <p className="text-xs text-red-500 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
                       {formErrors.contactSchedule}
                     </p>
                   )}
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <p className="text-xs text-gray-400 flex items-center gap-1.5">
                     <Sparkles className="h-3 w-3" />
-                    L'AI decide autonomamente i follow-up successivi in base alle risposte
+                    L'AI decide autonomamente i follow-up successivi
                   </p>
                 </div>
-              </div>
+              </TabsContent>
 
-              {/* Collapsible Advanced Details Section */}
-              <Collapsible open={advancedDetailsOpen} onOpenChange={setAdvancedDetailsOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700"
+              <TabsContent value="dettagli" className="mt-5 space-y-5">
+                <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 p-4 space-y-3">
+                  <Label htmlFor="campaignId" className="text-sm font-medium flex items-center gap-2">
+                    <Megaphone className="h-4 w-4 text-blue-600" />
+                    Campagna Marketing
+                  </Label>
+                  <Select
+                    value={formData.campaignId || undefined}
+                    onValueChange={handleCampaignChange}
                   >
-                    <div className="flex items-center gap-2">
-                      <Target className="h-5 w-5 text-gray-600" />
-                      <span className="font-medium">Dettagli Avanzati</span>
-                      <Badge variant="outline" className="text-xs">Opzionale</Badge>
-                    </div>
-                    {advancedDetailsOpen ? (
-                      <ChevronUp className="h-5 w-5 text-gray-500" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-500" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-4 space-y-4">
-                  {/* Campagna Marketing */}
-                  <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <Label htmlFor="campaignId" className="text-sm font-medium flex items-center gap-2">
-                      <Megaphone className="h-4 w-4 text-blue-600" />
-                      Campagna Marketing
-                    </Label>
-                    <Select
-                      value={formData.campaignId || undefined}
-                      onValueChange={handleCampaignChange}
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Nessuna campagna" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {campaignsLoading ? (
+                        <div className="p-4 text-center">
+                          <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                        </div>
+                      ) : activeCampaigns.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-gray-500">
+                          Nessuna campagna attiva
+                        </div>
+                      ) : (
+                        activeCampaigns.map((campaign: any) => (
+                          <SelectItem key={campaign.id} value={campaign.id}>
+                            {campaign.campaignName}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {formData.campaignId && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCampaignChange("")}
+                      className="text-xs text-gray-500 h-7"
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Nessuna campagna" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {campaignsLoading ? (
-                          <div className="p-4 text-center">
-                            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                          </div>
-                        ) : activeCampaigns.length === 0 ? (
-                          <div className="p-4 text-center text-sm text-gray-500">
-                            Nessuna campagna attiva
-                          </div>
-                        ) : (
-                          activeCampaigns.map((campaign: any) => (
-                            <SelectItem key={campaign.id} value={campaign.id}>
-                              {campaign.campaignName}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {formData.campaignId && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleCampaignChange("")}
-                        className="text-xs text-gray-500"
-                      >
-                        Rimuovi campagna
-                      </Button>
-                    )}
-                  </div>
+                      Rimuovi campagna
+                    </Button>
+                  )}
+                </div>
 
-                  {/* Obiettivi */}
-                  <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
                     <Label htmlFor="obiettivi" className="text-sm font-medium flex items-center gap-2">
-                      <Target className="h-4 w-4 text-gray-500" />
+                      <Target className="h-3.5 w-3.5 text-gray-400" />
                       Obiettivi
                     </Label>
                     <Textarea
@@ -2978,14 +2960,12 @@ export default function ProactiveLeadsPage() {
                       }
                       placeholder="Es: Investire risparmi per pensione"
                       rows={2}
-                      className="resize-none"
+                      className="resize-none text-sm"
                     />
                   </div>
-
-                  {/* Desideri */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="desideri" className="text-sm font-medium flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-gray-500" />
+                      <Sparkles className="h-3.5 w-3.5 text-gray-400" />
                       Desideri
                     </Label>
                     <Textarea
@@ -2997,16 +2977,17 @@ export default function ProactiveLeadsPage() {
                           leadInfo: { ...formData.leadInfo, desideri: e.target.value },
                         })
                       }
-                      placeholder="Es: Rendita passiva 2000€/mese"
+                      placeholder="Es: Rendita passiva 2000/mese"
                       rows={2}
-                      className="resize-none"
+                      className="resize-none text-sm"
                     />
                   </div>
+                </div>
 
-                  {/* Uncino */}
-                  <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
                     <Label htmlFor="uncino" className="text-sm font-medium flex items-center gap-2">
-                      <MessageCircle className="h-4 w-4 text-gray-500" />
+                      <MessageCircle className="h-3.5 w-3.5 text-gray-400" />
                       Uncino (Hook)
                     </Label>
                     <Textarea
@@ -3018,225 +2999,314 @@ export default function ProactiveLeadsPage() {
                           leadInfo: { ...formData.leadInfo, uncino: e.target.value },
                         })
                       }
-                      placeholder="Es: Visto su LinkedIn gruppo investimenti"
+                      placeholder="Es: Visto su LinkedIn"
                       rows={2}
-                      className="resize-none"
+                      className="resize-none text-sm"
                     />
                   </div>
-
-                  {/* Stato Ideale */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="idealState" className="text-sm font-medium flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-gray-500" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-gray-400" />
                       Stato Ideale
                     </Label>
                     <Textarea
                       id="idealState"
                       value={formData.idealState}
                       onChange={(e) => setFormData({ ...formData, idealState: e.target.value })}
-                      placeholder="Es: Libertà finanziaria in 5 anni"
+                      placeholder="Es: Indipendenza finanziaria in 5 anni"
                       rows={2}
-                      className="resize-none"
+                      className="resize-none text-sm"
                     />
                   </div>
+                </div>
 
-                  {/* Note */}
-                  <div className="space-y-2">
-                    <Label htmlFor="notes" className="text-sm font-medium flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-gray-500" />
-                      Note
-                    </Label>
-                    <Textarea
-                      id="notes"
-                      value={formData.notes || ""}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      placeholder="Note interne sul lead..."
-                      rows={2}
-                      className="resize-none"
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+                <div className="space-y-1.5">
+                  <Label htmlFor="notes" className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 text-gray-400" />
+                    Note interne
+                  </Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes || ""}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Note private sul lead..."
+                    rows={3}
+                    className="resize-none text-sm"
+                  />
+                </div>
 
-              {/* Hubdigital.io Imported Data - Read Only Section */}
-              {selectedLead && (formData.leadInfo.email || formData.leadInfo.companyName || formData.leadInfo.address || formData.leadInfo.tags?.length || formData.leadInfo.note || formData.leadInfo.question1 || formData.leadInfo.question2 || formData.leadInfo.question3 || formData.leadInfo.question4) && (
-                <Collapsible defaultOpen={true} className="border rounded-lg p-4 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 border-orange-200 dark:border-orange-800">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" className="w-full flex justify-between items-center p-0 h-auto hover:bg-transparent">
-                      <span className="text-base font-semibold flex items-center gap-2 text-orange-700 dark:text-orange-300">
-                        <Zap className="h-5 w-5 text-orange-600" />
-                        Dati Importati da Hubdigital.io
-                      </span>
-                      <ChevronDown className="h-5 w-5 text-orange-500" />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-4 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                      {/* Email */}
-                      {formData.leadInfo.email && (
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-medium text-gray-500 uppercase">Email</span>
-                          <span className="text-gray-900 dark:text-gray-100">{formData.leadInfo.email}</span>
-                        </div>
-                      )}
-                      {/* Azienda */}
-                      {formData.leadInfo.companyName && (
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-medium text-gray-500 uppercase">Azienda</span>
-                          <span className="text-gray-900 dark:text-gray-100">{formData.leadInfo.companyName}</span>
-                        </div>
-                      )}
-                      {/* Sito Web */}
-                      {formData.leadInfo.website && (
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-medium text-gray-500 uppercase">Sito Web</span>
-                          <a href={formData.leadInfo.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{formData.leadInfo.website}</a>
-                        </div>
-                      )}
-                      {/* Data di Nascita */}
-                      {formData.leadInfo.dateOfBirth && (
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-medium text-gray-500 uppercase">Data di Nascita</span>
-                          <span className="text-gray-900 dark:text-gray-100">{formData.leadInfo.dateOfBirth}</span>
-                        </div>
-                      )}
-                      {/* Fonte */}
-                      {formData.leadInfo.fonte && (
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-medium text-gray-500 uppercase">Fonte</span>
-                          <Badge variant="outline" className="w-fit bg-purple-100 text-purple-800 border-purple-300">{formData.leadInfo.fonte}</Badge>
-                        </div>
-                      )}
-                      {/* Data Aggiunta */}
-                      {formData.leadInfo.dateAdded && (
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-medium text-gray-500 uppercase">Data Aggiunta CRM</span>
-                          <span className="text-gray-900 dark:text-gray-100">{formData.leadInfo.dateAdded}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Indirizzo */}
-                    {(formData.leadInfo.address || formData.leadInfo.city || formData.leadInfo.state || formData.leadInfo.postalCode || formData.leadInfo.country) && (
-                      <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-orange-100 dark:border-orange-900">
-                        <span className="text-xs font-medium text-gray-500 uppercase block mb-2">Indirizzo</span>
-                        <div className="text-sm text-gray-900 dark:text-gray-100 space-y-0.5">
-                          {formData.leadInfo.address && <p>{formData.leadInfo.address}</p>}
-                          <p>
-                            {[formData.leadInfo.postalCode, formData.leadInfo.city, formData.leadInfo.state, formData.leadInfo.country].filter(Boolean).join(", ")}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Tags */}
-                    {formData.leadInfo.tags && formData.leadInfo.tags.length > 0 && (
-                      <div>
-                        <span className="text-xs font-medium text-gray-500 uppercase block mb-2">Tags</span>
-                        <div className="flex flex-wrap gap-2">
-                          {formData.leadInfo.tags.map((tag, idx) => (
-                            <Badge key={idx} className="bg-orange-100 text-orange-800 border-orange-300">{tag}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Note importate */}
-                    {formData.leadInfo.note && (
-                      <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-orange-100 dark:border-orange-900">
-                        <span className="text-xs font-medium text-gray-500 uppercase block mb-2">Note Importate</span>
-                        <p className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{formData.leadInfo.note}</p>
-                      </div>
-                    )}
-
-                    {/* Facebook Lead Ads Questions */}
-                    {(formData.leadInfo.question1 || formData.leadInfo.question2 || formData.leadInfo.question3 || formData.leadInfo.question4) && (
-                      <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                        <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase block mb-3">Risposte Modulo Lead</span>
-                        <div className="space-y-3">
-                          {formData.leadInfo.question1 && (
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs font-medium text-gray-500">Domanda 1</span>
-                              <span className="text-sm text-gray-900 dark:text-gray-100">{formData.leadInfo.question1}</span>
-                            </div>
-                          )}
-                          {formData.leadInfo.question2 && (
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs font-medium text-gray-500">Domanda 2</span>
-                              <span className="text-sm text-gray-900 dark:text-gray-100">{formData.leadInfo.question2}</span>
-                            </div>
-                          )}
-                          {formData.leadInfo.question3 && (
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs font-medium text-gray-500">Domanda 3</span>
-                              <span className="text-sm text-gray-900 dark:text-gray-100">{formData.leadInfo.question3}</span>
-                            </div>
-                          )}
-                          {formData.leadInfo.question4 && (
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs font-medium text-gray-500">Domanda 4</span>
-                              <span className="text-sm text-gray-900 dark:text-gray-100">{formData.leadInfo.question4}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Custom Fields */}
-                    {formData.leadInfo.customFields && (
-                      Array.isArray(formData.leadInfo.customFields) ? formData.leadInfo.customFields.length > 0 : Object.keys(formData.leadInfo.customFields).length > 0
-                    ) && (
-                      <div>
-                        <span className="text-xs font-medium text-gray-500 uppercase block mb-2">Campi Personalizzati</span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                          {Array.isArray(formData.leadInfo.customFields) 
-                            ? formData.leadInfo.customFields.map((cf, idx) => (
-                                <div key={idx} className="flex justify-between p-2 bg-white/60 dark:bg-gray-800/40 rounded border border-orange-100">
-                                  <span className="text-gray-600 font-mono text-xs">{cf.id}</span>
-                                  <span className="text-gray-900 dark:text-gray-100">{String(cf.value)}</span>
-                                </div>
-                              ))
-                            : Object.entries(formData.leadInfo.customFields).map(([key, value], idx) => (
-                                <div key={idx} className="flex justify-between p-2 bg-white/60 dark:bg-gray-800/40 rounded border border-orange-100">
-                                  <span className="text-gray-600 font-mono text-xs">{key}</span>
-                                  <span className="text-gray-900 dark:text-gray-100">{String(value)}</span>
-                                </div>
-                              ))
-                          }
-                        </div>
-                      </div>
-                    )}
-
-                    {/* DND Status */}
-                    {formData.leadInfo.dnd !== undefined && (
-                      <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-orange-100 dark:border-orange-900">
-                        <span className="text-xs font-medium text-gray-500 uppercase block mb-2">Stato DND (Do Not Disturb)</span>
-                        <Badge variant={formData.leadInfo.dnd ? "destructive" : "secondary"} className="mb-2">
-                          {formData.leadInfo.dnd ? "DND Attivo" : "DND Disattivo"}
-                        </Badge>
-                        {formData.leadInfo.dndSettings && (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-xs">
-                            {Object.entries(formData.leadInfo.dndSettings).map(([channel, setting]) => (
-                              <div key={channel} className={`p-1.5 rounded text-center ${setting?.status === 'active' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                <span className="font-medium">{channel}</span>: {setting?.status || 'N/A'}
-                              </div>
-                            ))}
+                {selectedLead && (formData.leadInfo.email || formData.leadInfo.companyName || formData.leadInfo.address || formData.leadInfo.tags?.length || formData.leadInfo.note || formData.leadInfo.question1 || formData.leadInfo.question2 || formData.leadInfo.question3 || formData.leadInfo.question4) && (
+                  <Collapsible defaultOpen={true}>
+                    <CollapsibleTrigger asChild>
+                      <button className="w-full flex justify-between items-center py-2 px-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-950/40 transition-colors">
+                        <span className="text-sm font-medium flex items-center gap-2 text-orange-700 dark:text-orange-300">
+                          <Zap className="h-4 w-4" />
+                          Dati Importati (CRM esterno)
+                        </span>
+                        <ChevronDown className="h-4 w-4 text-orange-400" />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        {formData.leadInfo.email && (
+                          <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700">
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Email</span>
+                            <span className="text-gray-900 dark:text-gray-100 text-sm">{formData.leadInfo.email}</span>
+                          </div>
+                        )}
+                        {formData.leadInfo.companyName && (
+                          <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700">
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Azienda</span>
+                            <span className="text-gray-900 dark:text-gray-100 text-sm">{formData.leadInfo.companyName}</span>
+                          </div>
+                        )}
+                        {formData.leadInfo.website && (
+                          <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700">
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Sito Web</span>
+                            <a href={formData.leadInfo.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm truncate">{formData.leadInfo.website}</a>
+                          </div>
+                        )}
+                        {formData.leadInfo.fonte && (
+                          <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700">
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Fonte</span>
+                            <Badge variant="outline" className="w-fit text-xs bg-purple-50 text-purple-700 border-purple-200">{formData.leadInfo.fonte}</Badge>
+                          </div>
+                        )}
+                        {formData.leadInfo.dateOfBirth && (
+                          <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700">
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Data di Nascita</span>
+                            <span className="text-gray-900 dark:text-gray-100 text-sm">{formData.leadInfo.dateOfBirth}</span>
+                          </div>
+                        )}
+                        {formData.leadInfo.dateAdded && (
+                          <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700">
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Data Aggiunta</span>
+                            <span className="text-gray-900 dark:text-gray-100 text-sm">{formData.leadInfo.dateAdded}</span>
                           </div>
                         )}
                       </div>
-                    )}
 
-                    {/* GHL IDs (for reference) */}
-                    {(formData.leadInfo.ghlContactId || formData.leadInfo.ghlLocationId) && (
-                      <div className="text-xs text-gray-500 pt-2 border-t border-orange-200/50">
-                        {formData.leadInfo.ghlContactId && <span className="mr-4">GHL Contact: <code className="bg-gray-100 px-1 rounded">{formData.leadInfo.ghlContactId}</code></span>}
-                        {formData.leadInfo.ghlLocationId && <span>GHL Location: <code className="bg-gray-100 px-1 rounded">{formData.leadInfo.ghlLocationId}</code></span>}
+                      {(formData.leadInfo.address || formData.leadInfo.city || formData.leadInfo.state || formData.leadInfo.postalCode || formData.leadInfo.country) && (
+                        <div className="p-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700">
+                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">Indirizzo</span>
+                          <div className="text-sm text-gray-900 dark:text-gray-100">
+                            {formData.leadInfo.address && <p>{formData.leadInfo.address}</p>}
+                            <p>{[formData.leadInfo.postalCode, formData.leadInfo.city, formData.leadInfo.state, formData.leadInfo.country].filter(Boolean).join(", ")}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {formData.leadInfo.tags && formData.leadInfo.tags.length > 0 && (
+                        <div>
+                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Tags</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {formData.leadInfo.tags.map((tag, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">{tag}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {formData.leadInfo.note && (
+                        <div className="p-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700">
+                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">Note Importate</span>
+                          <p className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{formData.leadInfo.note}</p>
+                        </div>
+                      )}
+
+                      {(formData.leadInfo.question1 || formData.leadInfo.question2 || formData.leadInfo.question3 || formData.leadInfo.question4) && (
+                        <div className="p-2.5 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800">
+                          <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider block mb-2">Risposte Modulo Lead</span>
+                          <div className="space-y-2">
+                            {[formData.leadInfo.question1, formData.leadInfo.question2, formData.leadInfo.question3, formData.leadInfo.question4]
+                              .map((q, i) => q ? (
+                                <div key={i} className="text-sm">
+                                  <span className="text-xs text-gray-400 mr-1">Q{i + 1}:</span>
+                                  <span className="text-gray-900 dark:text-gray-100">{q}</span>
+                                </div>
+                              ) : null)
+                            }
+                          </div>
+                        </div>
+                      )}
+
+                      {formData.leadInfo.customFields && (
+                        Array.isArray(formData.leadInfo.customFields) ? formData.leadInfo.customFields.length > 0 : Object.keys(formData.leadInfo.customFields).length > 0
+                      ) && (
+                        <div>
+                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Campi Personalizzati</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm">
+                            {Array.isArray(formData.leadInfo.customFields) 
+                              ? formData.leadInfo.customFields.map((cf, idx) => (
+                                  <div key={idx} className="flex justify-between p-2 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-gray-100 dark:border-gray-700">
+                                    <span className="text-gray-500 font-mono text-xs">{cf.id}</span>
+                                    <span className="text-gray-900 dark:text-gray-100">{String(cf.value)}</span>
+                                  </div>
+                                ))
+                              : Object.entries(formData.leadInfo.customFields).map(([key, value], idx) => (
+                                  <div key={idx} className="flex justify-between p-2 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-gray-100 dark:border-gray-700">
+                                    <span className="text-gray-500 font-mono text-xs">{key}</span>
+                                    <span className="text-gray-900 dark:text-gray-100">{String(value)}</span>
+                                  </div>
+                                ))
+                            }
+                          </div>
+                        </div>
+                      )}
+
+                      {formData.leadInfo.dnd !== undefined && (
+                        <div className="p-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700">
+                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">DND (Do Not Disturb)</span>
+                          <Badge variant={formData.leadInfo.dnd ? "destructive" : "secondary"} className="text-xs">
+                            {formData.leadInfo.dnd ? "DND Attivo" : "DND Disattivo"}
+                          </Badge>
+                          {formData.leadInfo.dndSettings && (
+                            <div className="grid grid-cols-3 gap-1.5 mt-2 text-xs">
+                              {Object.entries(formData.leadInfo.dndSettings).map(([channel, setting]) => (
+                                <div key={channel} className={cn("p-1 rounded text-center", setting?.status === 'active' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')}>
+                                  {channel}: {setting?.status || 'N/A'}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {(formData.leadInfo.ghlContactId || formData.leadInfo.ghlLocationId) && (
+                        <div className="text-xs text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
+                          {formData.leadInfo.ghlContactId && <span className="mr-3">GHL: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-[10px]">{formData.leadInfo.ghlContactId}</code></span>}
+                          {formData.leadInfo.ghlLocationId && <span>Loc: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-[10px]">{formData.leadInfo.ghlLocationId}</code></span>}
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+              </TabsContent>
+
+              <TabsContent value="intelligence" className="mt-5 space-y-5">
+                {hunterCtxLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <Loader2 className="h-8 w-8 animate-spin mb-3" />
+                    <p className="text-sm">Caricamento dati Hunter...</p>
+                  </div>
+                ) : hunterContext ? (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/60 to-teal-50/60 dark:from-emerald-950/30 dark:to-teal-950/30 overflow-hidden">
+                      <div className="px-5 py-3.5 bg-emerald-100/50 dark:bg-emerald-900/30 border-b border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-9 w-9 rounded-lg bg-emerald-600 flex items-center justify-center">
+                            <Building2 className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900 dark:text-white text-base">
+                              {hunterContext.businessName || "Azienda"}
+                            </h3>
+                            {hunterContext.sector && (
+                              <p className="text-xs text-emerald-600 dark:text-emerald-400">{hunterContext.sector}</p>
+                            )}
+                          </div>
+                        </div>
+                        {hunterContext.score != null && (
+                          <div className="flex flex-col items-center">
+                            <div className={cn(
+                              "text-2xl font-bold",
+                              hunterContext.score >= 70 ? "text-emerald-600" :
+                              hunterContext.score >= 40 ? "text-amber-500" : "text-red-500"
+                            )}>
+                              {hunterContext.score}
+                            </div>
+                            <span className="text-[10px] text-gray-500 uppercase tracking-wider">/100</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
-            </div>
+
+                      <div className="p-5 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {hunterContext.website && (
+                            <div className="flex items-center gap-2.5 p-3 rounded-lg bg-white/70 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                              <Globe className="h-4 w-4 text-blue-500 shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Sito Web</p>
+                                <a href={hunterContext.website.startsWith('http') ? hunterContext.website : `https://${hunterContext.website}`} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline truncate block">
+                                  {hunterContext.website}
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                          {hunterContext.leadStatus && (
+                            <div className="flex items-center gap-2.5 p-3 rounded-lg bg-white/70 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                              <Info className="h-4 w-4 text-gray-400 shrink-0" />
+                              <div>
+                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Stato Lead</p>
+                                <p className="text-sm text-gray-900 dark:text-gray-100 capitalize">{hunterContext.leadStatus}</p>
+                              </div>
+                            </div>
+                          )}
+                          {hunterContext.score != null && (
+                            <div className="flex items-center gap-2.5 p-3 rounded-lg bg-white/70 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                              <BarChart3 className="h-4 w-4 text-emerald-500 shrink-0" />
+                              <div>
+                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Score</p>
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden" style={{ maxWidth: '80px' }}>
+                                    <div
+                                      className={cn("h-full rounded-full transition-all",
+                                        hunterContext.score >= 70 ? "bg-emerald-500" :
+                                        hunterContext.score >= 40 ? "bg-amber-500" : "bg-red-500"
+                                      )}
+                                      style={{ width: `${hunterContext.score}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{hunterContext.score}/100</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {hunterContext.sector && (
+                            <div className="flex items-center gap-2.5 p-3 rounded-lg bg-white/70 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                              <Briefcase className="h-4 w-4 text-purple-500 shrink-0" />
+                              <div>
+                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Settore</p>
+                                <p className="text-sm text-gray-900 dark:text-gray-100">{hunterContext.sector}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {hunterContext.aiSalesSummary && (
+                          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-800/50 overflow-hidden">
+                            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4 text-blue-500" />
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Analisi AI</span>
+                            </div>
+                            <div className="p-4 text-sm text-gray-700 dark:text-gray-300 leading-relaxed max-h-[300px] overflow-y-auto">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {hunterContext.aiSalesSummary}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="h-16 w-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+                      <Search className="h-7 w-7 text-gray-400" />
+                    </div>
+                    <h4 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Nessun dato Hunter
+                    </h4>
+                    <p className="text-sm text-gray-400 max-w-[280px]">
+                      {selectedLead
+                        ? "Questo lead non ha dati provenienti dal sistema Hunter CRM"
+                        : "I dati Hunter saranno visibili dopo il salvataggio del lead"
+                      }
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
 
             <div className="flex justify-end gap-3 pt-6 border-t">
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>

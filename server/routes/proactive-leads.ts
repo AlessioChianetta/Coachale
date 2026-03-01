@@ -4,6 +4,7 @@ import { storage } from "../storage";
 import { insertProactiveLeadSchema, updateProactiveLeadSchema } from "@shared/schema";
 import { z } from "zod";
 import { processProactiveOutreach } from "../whatsapp/proactive-outreach";
+import { resolveHunterContext } from "../services/hunter-context-resolver";
 
 const router = Router();
 
@@ -1256,6 +1257,33 @@ router.post("/proactive-leads/:leadId/send-welcome-email", authenticateToken, re
       success: false,
       error: error.message || "Errore nell'invio dell'email di benvenuto"
     });
+  }
+});
+
+router.get("/proactive-leads/:id/hunter-context", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const leadId = req.params.id;
+
+    const lead = await storage.getProactiveLead(leadId);
+    if (!lead || lead.consultantId !== consultantId) {
+      return res.status(404).json({ success: false, error: "Lead non trovato" });
+    }
+
+    const hunterContext = await resolveHunterContext({
+      consultantId,
+      proactiveLeadId: leadId,
+      phoneNumber: lead.phoneNumber,
+      email: lead.email || (lead.leadInfo as any)?.email || null,
+    });
+
+    res.json({
+      success: true,
+      hunterContext,
+    });
+  } catch (error: any) {
+    console.error("[HUNTER-CTX] API error:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
