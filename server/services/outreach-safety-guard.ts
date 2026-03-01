@@ -77,6 +77,30 @@ export async function checkOutreachSafety(
       };
     }
 
+    const leadPhoneResult = await db.execute(sql`
+      SELECT phone FROM lead_scraper_results WHERE id::text = ${leadId}::text LIMIT 1
+    `);
+    const leadPhone = (leadPhoneResult.rows[0] as any)?.phone;
+    if (leadPhone) {
+      const normalizedPhone = leadPhone.replace(/[\s\-()\.]/g, '');
+      const proactiveResult = await db.execute(sql`
+        SELECT id, status, phone_number
+        FROM proactive_leads
+        WHERE consultant_id::text = ${consultantId}::text
+          AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone_number, ' ', ''), '-', ''), '(', ''), ')', ''), '.', '') = ${normalizedPhone}
+          AND status NOT IN ('nuovo', 'new')
+        LIMIT 1
+      `);
+      if (proactiveResult.rows.length > 0) {
+        const pl = proactiveResult.rows[0] as any;
+        console.warn(`${LOG} BLOCKED: lead ${leadId} phone ${leadPhone} already in proactive_leads (id=${pl.id}, status=${pl.status})`);
+        return {
+          allowed: false,
+          reason: `Lead già in gestione come proactive lead (status: ${pl.status})`,
+        };
+      }
+    }
+
     return { allowed: true };
   } catch (error: any) {
     console.error(`${LOG} Safety check error for lead ${leadId}: ${error.message}`);

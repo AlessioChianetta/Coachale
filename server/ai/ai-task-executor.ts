@@ -3881,11 +3881,52 @@ async function handleLeadScraperSearch(
   let resultsCount = 0;
 
   try {
+    const existingLeadsResult = await db.execute(sql`
+      SELECT business_name, phone, website, email
+      FROM lead_scraper_results
+      WHERE search_id IN (SELECT id FROM lead_scraper_searches WHERE consultant_id = ${task.consultant_id})
+    `);
+    const existingNames = new Set<string>();
+    const existingPhones = new Set<string>();
+    const existingDomains = new Set<string>();
+    for (const row of existingLeadsResult.rows as any[]) {
+      if (row.business_name) existingNames.add(row.business_name.toLowerCase().trim());
+      if (row.phone) existingPhones.add(row.phone.replace(/[\s\-()\.]/g, ''));
+      if (row.website) {
+        const domain = row.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+        if (domain) existingDomains.add(domain);
+      }
+      if (row.email) {
+        const emailDomain = row.email.split('@')[1]?.toLowerCase();
+        if (emailDomain) existingDomains.add(emailDomain);
+      }
+    }
+
+    const isDuplicate = (name: string | null, phone: string | null, website: string | null): string | null => {
+      if (name && existingNames.has(name.toLowerCase().trim())) return `nome "${name}"`;
+      if (phone) {
+        const normalized = phone.replace(/[\s\-()\.]/g, '');
+        if (existingPhones.has(normalized)) return `telefono "${phone}"`;
+      }
+      if (website) {
+        const domain = website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+        if (domain && existingDomains.has(domain)) return `dominio "${domain}"`;
+      }
+      return null;
+    };
+
+    let duplicatesSkipped = 0;
+
     if (searchEngine === 'google_search') {
       const webResults = await searchGoogleWeb(query, location, limit, keys.serpApiKey);
-      resultsCount = webResults.length;
 
       for (const result of webResults) {
+        const dupReason = isDuplicate(result.title || null, null, result.website || null);
+        if (dupReason) {
+          console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Duplicato skippato: ${dupReason}`);
+          duplicatesSkipped++;
+          continue;
+        }
         await db.insert(leadScraperResults).values({
           searchId,
           businessName: result.title || null,
@@ -3902,12 +3943,23 @@ async function handleLeadScraperSearch(
           scrapeStatus: result.website ? 'pending' : 'no_website',
           source: 'google_search',
         });
+        if (result.title) existingNames.add(result.title.toLowerCase().trim());
+        if (result.website) {
+          const domain = result.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+          if (domain) existingDomains.add(domain);
+        }
       }
+      resultsCount = webResults.length - duplicatesSkipped;
     } else {
       const mapsResults = await searchGoogleMaps(query, location, limit, keys.serpApiKey);
-      resultsCount = mapsResults.length;
 
       for (const result of mapsResults) {
+        const dupReason = isDuplicate(result.title || null, result.phone || null, result.website || null);
+        if (dupReason) {
+          console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Duplicato skippato: ${dupReason}`);
+          duplicatesSkipped++;
+          continue;
+        }
         await db.insert(leadScraperResults).values({
           searchId,
           businessName: result.title || null,
@@ -3923,7 +3975,18 @@ async function handleLeadScraperSearch(
           scrapeStatus: result.website ? 'pending' : 'no_website',
           source: 'google_maps',
         });
+        if (result.title) existingNames.add(result.title.toLowerCase().trim());
+        if (result.phone) existingPhones.add(result.phone.replace(/[\s\-()\.]/g, ''));
+        if (result.website) {
+          const domain = result.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+          if (domain) existingDomains.add(domain);
+        }
       }
+      resultsCount = mapsResults.length - duplicatesSkipped;
+    }
+
+    if (duplicatesSkipped > 0) {
+      console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] ${resultsCount} nuovi lead inseriti, ${duplicatesSkipped} duplicati skippati`);
     }
 
     await db
@@ -4004,6 +4067,38 @@ async function handleLeadScraperSearch(
 
     throw error;
   }
+}
+
+function selectBestPhone(lead: any, websiteData: any, forWhatsApp: boolean): string | null {
+  const mainPhone = lead.phone || null;
+  const wdPhones: string[] = (websiteData.phones || []).filter((p: string) => p && p.trim());
+  const allPhones = [mainPhone, ...wdPhones].filter(Boolean) as string[];
+  if (allPhones.length === 0) return null;
+
+  if (forWhatsApp) {
+    const mobileRegex = /^(\+?39\s?)?3\d{2}/;
+    const mobile = allPhones.find(p => mobileRegex.test(p.replace(/[\s\-().]/g, '')));
+    if (mobile) return mobile;
+    return allPhones[0];
+  }
+  return allPhones[0];
+}
+
+function selectBestEmail(lead: any, websiteData: any): string | null {
+  const genericPrefixes = ['info', 'noreply', 'no-reply', 'admin', 'contatti', 'segreteria', 'postmaster', 'webmaster', 'support', 'help', 'contact', 'sales'];
+  const mainEmail = lead.email || null;
+  const wdEmails: string[] = (websiteData.emails || []).filter((e: string) => e && e.trim());
+  const allEmails = [...new Set([mainEmail, ...wdEmails].filter(Boolean) as string[])];
+  if (allEmails.length === 0) return null;
+
+  const isGeneric = (email: string) => {
+    const prefix = email.split('@')[0].toLowerCase();
+    return genericPrefixes.some(gp => prefix === gp || prefix.startsWith(gp + '.'));
+  };
+
+  const personal = allEmails.find(e => !isGeneric(e));
+  if (personal) return personal;
+  return allEmails[0];
 }
 
 async function handleLeadQualifyAndAssign(
@@ -4142,46 +4237,24 @@ async function handleLeadQualifyAndAssign(
       continue;
     }
 
-    let channelAssigned: string | null = null;
+    const phoneForVoice = selectBestPhone(lead, wd, false) || leadPhone;
+    const phoneForWA = selectBestPhone(lead, wd, true) || leadPhone;
+    const emailForOutreach = selectBestEmail(lead, wd) || leadEmail;
 
-    for (const channel of channelPriority) {
-      if (channel === 'voice' && leadPhone && channelsEnabled.voice && voiceTemplateId && remainingLimits.calls > voiceLeadCount) {
-        channelAssigned = 'voice';
-        break;
-      }
-      if (channel === 'whatsapp' && leadPhone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > whatsappLeadCount) {
-        channelAssigned = 'whatsapp';
-        break;
-      }
-      if (channel === 'email' && leadEmail && channelsEnabled.email && remainingLimits.email > emailLeadCount) {
-        channelAssigned = 'email';
-        break;
-      }
-    }
+    let channelsAssigned = 0;
 
-    if (!channelAssigned) {
-      if (leadPhone && channelsEnabled.voice && remainingLimits.calls > voiceLeadCount) channelAssigned = 'voice';
-      else if (leadPhone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > whatsappLeadCount) channelAssigned = 'whatsapp';
-      else if (leadEmail && channelsEnabled.email && remainingLimits.email > emailLeadCount) channelAssigned = 'email';
-    }
-
-    if (!channelAssigned) {
-      const allLimitsReached = remainingLimits.calls <= voiceLeadCount && remainingLimits.whatsapp <= whatsappLeadCount && remainingLimits.email <= emailLeadCount;
-      if (allLimitsReached) {
-        console.log(`${LOG_PREFIX} [LEAD-QUALIFY] All daily rate limits reached, stopping assignment`);
-        skippedRateLimit += (qualifiedLeads.length - i);
-        break;
-      }
-      console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Skipping lead "${leadName}": no valid channel (phone=${!!leadPhone}, email=${!!leadEmail}) or limits reached`);
-      skippedRateLimit++;
-      continue;
+    const allLimitsReached = remainingLimits.calls <= voiceLeadCount && remainingLimits.whatsapp <= whatsappLeadCount && remainingLimits.email <= emailLeadCount;
+    if (allLimitsReached) {
+      console.log(`${LOG_PREFIX} [LEAD-QUALIFY] All daily rate limits reached, stopping assignment`);
+      skippedRateLimit += (qualifiedLeads.length - i);
+      break;
     }
 
     const leadEntry = {
       leadId: lead.id,
       businessName: leadName,
-      phone: leadPhone,
-      email: leadEmail,
+      phone: phoneForVoice || phoneForWA,
+      email: emailForOutreach,
       score: lead.aiCompatibilityScore,
       category: lead.category || null,
       website: lead.website || null,
@@ -4193,15 +4266,26 @@ async function handleLeadQualifyAndAssign(
       resultNote: null as string | null,
     };
 
-    if (channelAssigned === 'voice') {
-      batchVoice.push(leadEntry);
+    if (phoneForVoice && channelsEnabled.voice && voiceTemplateId && remainingLimits.calls > voiceLeadCount) {
+      batchVoice.push({ ...leadEntry, phone: phoneForVoice });
       voiceLeadCount++;
-    } else if (channelAssigned === 'whatsapp') {
-      batchWhatsapp.push(leadEntry);
+      channelsAssigned++;
+    }
+    if (phoneForWA && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > whatsappLeadCount) {
+      batchWhatsapp.push({ ...leadEntry, phone: phoneForWA });
       whatsappLeadCount++;
-    } else if (channelAssigned === 'email') {
-      batchEmail.push(leadEntry);
+      channelsAssigned++;
+    }
+    if (emailForOutreach && channelsEnabled.email && remainingLimits.email > emailLeadCount) {
+      batchEmail.push({ ...leadEntry, email: emailForOutreach });
       emailLeadCount++;
+      channelsAssigned++;
+    }
+
+    if (channelsAssigned === 0) {
+      console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Skipping lead "${leadName}": no valid channel (phone=${!!phoneForVoice}, mobile=${!!phoneForWA}, email=${!!emailForOutreach}) or limits reached`);
+      skippedRateLimit++;
+      continue;
     }
   }
 
@@ -4320,12 +4404,13 @@ async function handleLeadQualifyAndAssign(
     });
   }
 
-  const totalLeadsAssigned = voiceLeadCount + whatsappLeadCount + emailLeadCount;
+  const totalTasksCreated = voiceLeadCount + whatsappLeadCount + emailLeadCount;
+  const uniqueLeadIds = new Set([...batchVoice.map(l => l.leadId), ...batchWhatsapp.map(l => l.leadId), ...batchEmail.map(l => l.leadId)]);
 
   await logActivity(task.consultant_id, {
     event_type: 'lead_qualify_and_assign_completed',
-    title: `Qualifica completata: ${individualTasksCreated} task outreach individuali creati`,
-    description: `${qualifiedLeads.length}/${allLeads.length} qualificati (soglia: ${scoreThreshold}). Task: ${voiceLeadCount > 0 ? `📞 ${voiceLeadCount} chiamate` : ''}${whatsappLeadCount > 0 ? ` 💬 ${whatsappLeadCount} WhatsApp` : ''}${emailLeadCount > 0 ? ` 📧 ${emailLeadCount} email` : ''}. Skippati: ${skippedCooldown} cooldown, ${skippedRateLimit} rate limit.`,
+    title: `Qualifica completata: ${individualTasksCreated} task outreach creati per ${uniqueLeadIds.size} lead`,
+    description: `${qualifiedLeads.length}/${allLeads.length} qualificati (soglia: ${scoreThreshold}). ${uniqueLeadIds.size} lead → ${individualTasksCreated} task: ${voiceLeadCount > 0 ? `📞 ${voiceLeadCount} chiamate` : ''}${whatsappLeadCount > 0 ? ` 💬 ${whatsappLeadCount} WhatsApp` : ''}${emailLeadCount > 0 ? ` 📧 ${emailLeadCount} email` : ''}. Skippati: ${skippedCooldown} cooldown, ${skippedRateLimit} rate limit.`,
     icon: '🎯',
     severity: 'info',
     task_id: task.id,
@@ -4339,7 +4424,9 @@ async function handleLeadQualifyAndAssign(
     summaries_generated: summariesGenerated,
     summaries_failed: summariesFailed,
     batch_tasks_created: individualTasksCreated,
-    leads_assigned: totalLeadsAssigned,
+    tasks_created: totalTasksCreated,
+    leads_assigned: uniqueLeadIds.size,
+    unique_leads_assigned: uniqueLeadIds.size,
     voice_leads: voiceLeadCount,
     whatsapp_leads: whatsappLeadCount,
     email_leads: emailLeadCount,
