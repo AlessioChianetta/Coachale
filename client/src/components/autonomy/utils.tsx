@@ -138,7 +138,7 @@ export function parseStructuredInstruction(instruction: string): Record<string, 
   if (!instruction) return params;
   const lines = instruction.split(/[\n\r]+/);
   for (const line of lines) {
-    const match = line.match(/^\s*(TIPO|QUERY|ENGINE|LOCATION|LIMIT|REASONING)\s*:\s*(.+)$/i);
+    const match = line.match(/^\s*(TIPO|QUERY|ENGINE|LOCATION|LIMIT|REASONING|LEAD_ID)\s*:\s*(.+)$/i);
     if (match) {
       params[match[1].toUpperCase()] = match[2].trim();
     }
@@ -146,6 +146,8 @@ export function parseStructuredInstruction(instruction: string): Record<string, 
   if (Object.keys(params).length === 0) {
     const inlineMatch = instruction.match(/TIPO:\s*(\S+)/i);
     if (inlineMatch) params['TIPO'] = inlineMatch[1];
+    const leadIdMatch = instruction.match(/LEAD_ID:\s*([a-f0-9-]+)/i);
+    if (leadIdMatch) params['LEAD_ID'] = leadIdMatch[1];
     const queryMatch = instruction.match(/QUERY:\s*([^A-Z]+?)(?=\s+(?:ENGINE|LOCATION|LIMIT|REASONING):|$)/i);
     if (queryMatch) params['QUERY'] = queryMatch[1].trim();
     const engineMatch = instruction.match(/ENGINE:\s*(\S+)/i);
@@ -167,6 +169,22 @@ export function getPlannedActionsPreview(task: AITask): PlannedActionsResult {
   const category = task.task_category || '';
   const parsed = parseStructuredInstruction(instruction);
   const tipo = parsed['TIPO'] || '';
+
+  if (tipo === 'crm_lead_outreach') {
+    const leadId = parsed['LEAD_ID'] || '';
+    const reasoning = parsed['REASONING'] || '';
+    const contactName = task.contact_name || 'Lead CRM';
+    return {
+      humanTitle: `Outreach CRM: ${contactName}`,
+      steps: [
+        { icon: "📂", title: "Lettura lead dal CRM", description: `Recupera i dati del lead ${contactName} dal database CRM`, detail: leadId ? `ID: ${leadId.substring(0, 8)}...` : undefined },
+        { icon: "📱", title: "Selezione canali disponibili", description: "Verifica quali canali sono attivi (chiamata, WhatsApp, email) e seleziona il contatto migliore per ciascuno" },
+        { icon: "🛡️", title: "Controllo sicurezza", description: "Verifica cooldown e limiti di outreach per ogni canale" },
+        { icon: "📋", title: "Creazione sub-task per canale", description: "Crea un task separato per ogni canale disponibile (fino a 3) nella Coda Outreach" },
+      ],
+      params: parsed,
+    };
+  }
 
   if (role === 'hunter' || tipo === 'lead_scraper_search') {
     const engine = parsed['ENGINE'] || 'google';

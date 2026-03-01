@@ -1,0 +1,73 @@
+Hunter
+Hunter
+
+Lead Prospector
+
+⚡ Strutturato
+14:58
+
+Executive Summary
+
+13
+
+Clienti analizzati
+
+13
+
+Idonei
+
+3
+
+Task creati
+
+Pensiero Intimo AI
+
+Osservazione
+La pipeline è attualmente satura con 46 lead nuovi su un limite di 50, quasi tutti concentrati nel settore Recruiting/HR tra Milano e Roma. I limiti di outreach giornalieri sono ampiamente disponibili (14 WhatsApp, 19 Email, 9 Chiamate), ma l'attività di contatto è ferma su pochi lead con molti task in attesa o rifiutati per Ricercamy Srl. Ho notato che lead di altissimo profilo come Selèct (score 92) e Page Personnel (score 88) non sono ancora stati processati efficacemente.
+
+Riflessione
+Continuare a scavare nel settore HR a Milano produrrebbe solo duplicati o lead che il consulente non riesce a smaltire. È necessario diversificare il rischio e testare il 'Sistema Orbitale' nel Segmento 1 (SaaS/Software House), dove il Setter AI risolve il problema della qualifica tecnica dei lead. Torino rappresenta un hub tecnologico ideale per questo test, uscendo dalla saturazione geografica di Milano/Roma.
+
+Decisione
+Ho deciso di limitare la ricerca a un singolo task (come da regola Budget Lead per >30 lead) puntando su SaaS B2B a Torino tramite Google Search per trovare aziende meno 'locali' e più 'prodotto'. Contemporaneamente, ho creato due task di outreach diretto per Selèct e Page Personnel, i lead con lo score più alto rimasti fuori dalla coda attuale, per iniziare a svuotare il backlog di lead qualificati.
+
+Auto-Revisione
+I task sono mirati e rispettano i limiti di budget lead. Ho evitato di riproporre Ricercamy Srl vista l'alta frequenza di rifiuti precedenti. Il timing delle attività è scaglionato per permettere al sistema di gestire le code senza sovrapposizioni.
+
+Modello: gemini-3-flash-preview
+Strutturato
+Analisi Strategica
+
+Analisi Executive Coach
+
+La pipeline è attualmente satura con 46 lead nuovi su un limite di 50, quasi tutti concentrati nel settore Recruiting/HR tra Milano e Roma. I limiti di outreach giornalieri sono ampiamente disponibili (14 WhatsApp, 19 Email, 9 Chiamate), ma l'attività di contatto è ferma su pochi lead con molti task in attesa o rifiutati per Ricercamy Srl. Ho notato che lead di altissimo profilo come Selèct (score 92) e Page Personnel (score 88) non sono ancora stati processati efficacemente.
+
+Continuare a scavare nel settore HR a Milano produrrebbe solo duplicati o lead che il consulente non riesce a smaltire. È necessario diversificare il rischio e testare il 'Sistema Orbitale' nel Segmento 1 (SaaS/Software House), dove il Setter AI risolve il problema della qualifica tecnica dei lead. Torino rappresenta un hub tecnologico ideale per questo test, uscendo dalla saturazione geografica di Milano/Roma.
+
+Ho deciso di limitare la ricerca a un singolo task (come da regola Budget Lead per >30 lead) puntando su SaaS B2B a Torino tramite Google Search per trovare aziende meno 'locali' e più 'prodotto'. Contemporaneamente, ho creato due task di outreach diretto per Selèct e Page Personnel, i lead con lo score più alto rimasti fuori dalla coda attuale, per iniziare a svuotare il backlog di lead qualificati.
+
+Azioni Operative
+
+Azioni decise (3)
+
+📌 Task
+lead_scraper
+P3
+Lead Search SaaS Torino
+TIPO: lead_scraper_search QUERY: Software House B2B SaaS ENGINE: search LOCATION: Torino LIMIT: 10 REASONING: Diversificazione nel Segmento 1 (SaaS).
+
+Perché: Necessità di diversificare il target oltre il settore HR per evitare saturazione della pipeline.
+📌 Task
+lead_crm
+P1
+Selèct - Società di Recruiting & Head Hunting
+TIPO: crm_lead_outreach LEAD_ID: 6084f079-a30b-4f85-a064-01835cf5c121 REASONING: Score 92/100. È il lead più qualificato nel CRM. Poiché manca il tele
+
+Perché: Lead con score massimo, priorità assoluta di contatto via email.
+📌 Task
+lead_crm
+P2
+Page Personnel
+TIPO: crm_lead_outreach LEAD_ID: eebbfd9b-2382-4590-ae6c-6ebd6f1566ce REASONING: Score 88/100. Colosso del recruiting. Avendo il telefono disponibile,
+
+Perché: Lead alto potenziale con canali di contatto completi.
