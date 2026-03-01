@@ -2333,9 +2333,14 @@ function DashboardTab({
                               {preview.humanTitle}
                             </h3>
                             <p className="text-sm text-muted-foreground leading-[1.8]">
-                              {(task.ai_instruction || '').length > 200
-                                ? task.ai_instruction!.substring(0, 200) + '...'
-                                : task.ai_instruction}
+                              {(() => {
+                                const instr = task.ai_instruction || '';
+                                const reasoningMatch = instr.match(/REASONING:\s*(.+)$/i);
+                                const displayText = (preview.humanTitle.startsWith('Outreach CRM') && reasoningMatch)
+                                  ? reasoningMatch[1].trim()
+                                  : instr;
+                                return displayText.length > 300 ? displayText.substring(0, 300) + '...' : displayText;
+                              })()}
                             </p>
                           </div>
                           {!roleProfile && ['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
