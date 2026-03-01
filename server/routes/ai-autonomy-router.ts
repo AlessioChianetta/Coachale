@@ -1033,7 +1033,7 @@ async function generateOutreachContent(
   outreachConfig?: any,
   waTemplates?: WaTemplateForOutreach[],
   consultantBusinessName?: string
-): Promise<{ channel: string; callScript?: string; callContext?: string; useTemplate?: boolean; whatsappMessage?: string; whatsappContext?: string; useWaTemplate?: boolean; wa_preview_message?: string; wa_template_name?: string; wa_template_sid?: string; wa_template_body?: string; wa_template_variables?: Record<string, string>; wa_template_filled?: string; emailSubject?: string; emailBody?: string; leadId: string }> {
+): Promise<{ channel: string; callScript?: string; callContext?: string; useTemplate?: boolean; whatsappMessage?: string; whatsappContext?: string; useWaTemplate?: boolean; wa_preview_message?: string; wa_template_name?: string; wa_template_sid?: string; wa_template_body?: string; wa_template_variables?: Record<string, string>; wa_template_filled?: string; emailSubject?: string; emailBody?: string; emailTemplateName?: string; leadId: string }> {
 
   const leadContext = buildLeadContext(lead, consultantName, salesCtx, talkingPoints, outreachConfig);
 
@@ -1137,6 +1137,42 @@ async function generateOutreachContent(
     openingHook ? `APPROCCIO DI APERTURA PREFERITO: Usa un approccio simile a: "${openingHook}"` : '',
   ].filter(Boolean).join('\n');
 
+  const { selectBestTemplate, GOLDEN_RULES } = await import("../ai/email-templates-library");
+
+  let emailTemplateBlock = '';
+  let emailTemplateName: string | undefined;
+
+  if (channel === 'email') {
+    const hasWebsiteData = !!(lead.website || lead.websiteData || lead.scrapeData);
+    const hasSpecificDetail = !!(lead.salesSummary || lead.aiReason || lead.reason || talkingPoints?.length);
+    const scrapeStr = lead.scrapeData || lead.websiteData || lead.salesSummary || '';
+
+    const emailTemplate = selectBestTemplate({
+      stepNumber: 1,
+      hasWebsiteData,
+      hasSpecificDetail,
+      sector: lead.category,
+      scrapeData: scrapeStr,
+      isReEngagement: false,
+    });
+    emailTemplateName = emailTemplate.name;
+
+    emailTemplateBlock = [
+      `\n📋 TEMPLATE DI RIFERIMENTO: "${emailTemplate.name}" (${emailTemplate.scenario})`,
+      `Leva psicologica: ${emailTemplate.psychologicalLever}`,
+      `Quando usarlo: ${emailTemplate.whenToUse}`,
+      `\nOGGETTO DI ESEMPIO:\n${emailTemplate.subject}`,
+      `\nCORPO DI ESEMPIO:\n${emailTemplate.body}`,
+      `\n⚠️ ISTRUZIONI VINCOLANTI:`,
+      `SEGUI ESATTAMENTE la struttura del template sopra.`,
+      `Sostituisci TUTTI i placeholder ({contactName}, {businessName}, {sector}, {specificDetail}, {consultantName}, {consultantBusiness}, {serviceName}, {resultMetric}) con dati REALI del lead.`,
+      `Puoi adattare singole frasi al contesto ma MANTIENI la struttura, il tono e la leva psicologica del template.`,
+      `\n${GOLDEN_RULES}`,
+    ].join('\n');
+
+    console.log(`[HUNTER-CRM] Email template selected: "${emailTemplate.name}" (${emailTemplate.id}) for lead "${lead.businessName}"`);
+  }
+
   const channelPrompts: Record<string, string> = {
     whatsapp: [
       `Genera un messaggio WhatsApp per ${lead.businessName}.`,
@@ -1151,12 +1187,13 @@ async function generateOutreachContent(
     email: [
       `Genera un'email per ${lead.businessName}.`,
       `Rispondi SOLO con un JSON: { "emailSubject": "oggetto email", "emailBody": "corpo email in testo semplice" }`,
-      `REGOLE FONDAMENTALI per l'email:`,
-      `- L'oggetto deve essere SPECIFICO per questo lead, mai generico tipo "Proposta di collaborazione"`,
-      `- Corpo: max 5-6 righe, vai DRITTO al punto`,
-      `- Prima riga: dimostra che conosci la loro attività con un riferimento specifico`,
-      `- Non usare parole come "sinergia", "innovativo", "cutting-edge" — sono spam`,
-      `- CTA: una sola domanda chiara (es: "Ha 15 minuti giovedì per una call veloce?")`,
+      emailTemplateBlock,
+      `REGOLE AGGIUNTIVE:`,
+      `- L'oggetto deve essere SPECIFICO per questo lead con un pattern interrupt (domanda, dato, riferimento specifico)`,
+      `- Corpo: MINIMO 10 righe, MASSIMO 15 righe. Le email troppo corte (3-5 righe) sembrano spam automatizzato e non convertono.`,
+      `- OBBLIGATORIO: includi almeno un NUMERO o PERCENTUALE concreto come social proof (es: "ridotto del 40%", "in 3 mesi", "recuperato il 35%"). Se non hai un dato reale, inventa un risultato plausibile per il settore.`,
+      `- CTA con opzioni temporali concrete: "Preferisci giovedì mattina o venerdì pomeriggio?" — MAI "ti andrebbe una demo?" o CTA vaghi`,
+      `- Prima riga: cita un DETTAGLIO SPECIFICO dell'attività del lead (non generico tipo "ho visto il vostro sito")`,
       `- NON iniziare con "Mi permetto di contattarLa" o frasi simili da telemarketing`,
       emailSignature ? `- FIRMA (aggiungi alla fine del corpo):\n${emailSignature}` : `- Firma: ${consultantName}`,
     ].join('\n'),
@@ -1181,10 +1218,10 @@ async function generateOutreachContent(
     if (channel === 'email' && emailSignature && parsed.emailBody && !parsed.emailBody.includes(emailSignature.split('\n')[0])) {
       parsed.emailBody = parsed.emailBody.trimEnd() + '\n\n' + emailSignature;
     }
-    return { channel, leadId: lead.id || lead.leadId, ...parsed };
+    return { channel, leadId: lead.id || lead.leadId, emailTemplateName, ...parsed };
   } catch {
     if (channel === 'whatsapp') return { channel, leadId: lead.id || lead.leadId, whatsappMessage: `Buongiorno! Sono ${consultantName}. Ho visto la vostra attività ${lead.businessName} e mi piacerebbe capire come posso esservi utile. Le va una breve chiamata?` };
-    return { channel, leadId: lead.id || lead.leadId, emailSubject: `Proposta di collaborazione per ${lead.businessName}`, emailBody: `Buongiorno,\n\nMi chiamo ${consultantName} e mi occupo di consulenza finanziaria. Ho avuto modo di conoscere la vostra attività e credo di poter offrire valore concreto.\n\nLe andrebbe una breve chiamata per approfondire?\n\nCordiali saluti,\n${consultantName}` };
+    return { channel, leadId: lead.id || lead.leadId, emailTemplateName, emailSubject: `Proposta di collaborazione per ${lead.businessName}`, emailBody: `Buongiorno,\n\nMi chiamo ${consultantName} e mi occupo di consulenza finanziaria. Ho avuto modo di conoscere la vostra attività e credo di poter offrire valore concreto.\n\nLe andrebbe una breve chiamata per approfondire?\n\nCordiali saluti,\n${consultantName}` };
   }
 }
 

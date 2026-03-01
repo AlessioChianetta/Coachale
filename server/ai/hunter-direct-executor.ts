@@ -133,7 +133,11 @@ ${emailTemplate.body}
 ${GOLDEN_RULES}
 
 Rispondi in JSON: { "subject": "...", "body": "...", "scheduled_offset_minutes": 0, "template_used": "${emailTemplate.id}" }
-IMPORTANTE: Sostituisci tutti i placeholder ({contactName}, {businessName}, {sector}, ecc.) con i dati reali del lead. Il corpo deve essere in testo piano (no markdown/HTML). Max 6-8 righe effettive.`;
+IMPORTANTE: Sostituisci tutti i placeholder ({contactName}, {businessName}, {sector}, {specificDetail}, {problemOpportunity}, {painStatistic}, {resultMetric}, {timeframe}, {valueProposition}, ecc.) con dati reali del lead.
+Il corpo deve essere in testo piano (no markdown/HTML).
+LUNGHEZZA: MINIMO 10 righe, MASSIMO 15. Le email troppo corte (3-5 righe) sembrano spam automatizzato.
+OBBLIGATORIO: includi almeno un NUMERO o PERCENTUALE concreto come social proof. Se non hai un dato reale, inventa un risultato plausibile per il settore.
+CTA: con opzioni temporali concrete (es: "Preferisci giovedì mattina o venerdì pomeriggio?"), MAI "ti andrebbe una demo?" o CTA vaghi.`;
 
     const aiPrompt = `Sei un assistente commerciale AI esperto di copywriting persuasivo B2B. Devi preparare il primo contatto per un lead trovato automaticamente.
 
@@ -155,7 +159,7 @@ Rispondi SOLO con il JSON, senza markdown.`;
       const aiResult = await trackedGenerateContent(genAI, {
         model: GEMINI_3_MODEL,
         contents: [{ role: "user", parts: [{ text: aiPrompt }] }],
-        config: { temperature: 0.7, maxOutputTokens: 512 },
+        config: { temperature: 0.7, maxOutputTokens: 1024 },
       }, "hunter_direct", consultantId);
 
       const responseText = aiResult?.text || "";

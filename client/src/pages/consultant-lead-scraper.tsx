@@ -2720,23 +2720,32 @@ export default function ConsultantLeadScraper() {
                                                   </div>
                                                 )}
 
-                                                {task.channel === 'email' && (
+                                                {task.channel === 'email' && (() => {
+                                                  const subjectMatch = leadOnlyInstruction?.match(/^Oggetto:\s*(.+)$/m);
+                                                  const emailSubject = subjectMatch?.[1]?.trim();
+                                                  const emailBodyText = leadOnlyInstruction ? leadOnlyInstruction.replace(/^Oggetto:\s*.+\n\n?/m, '').trim() : '';
+                                                  return (
                                                   <div className="space-y-2">
-                                                    {task.emailTemplateName && (
-                                                      <Badge variant="outline" className="text-xs px-2 py-0.5 border-blue-300 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 gap-1">
-                                                        <FileText className="h-3 w-3" />Template: {task.emailTemplateName}
-                                                      </Badge>
+                                                    <Badge variant="outline" className="text-xs px-2 py-0.5 border-blue-300 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 gap-1">
+                                                      <FileText className="h-3 w-3" />{task.emailTemplateName ? `Template: ${task.emailTemplateName}` : 'Generato AI'}
+                                                    </Badge>
+                                                    {emailSubject && (
+                                                      <div className="flex items-start gap-2">
+                                                        <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">Oggetto:</span>
+                                                        <span className="text-sm font-medium text-gray-900 dark:text-white">{emailSubject}</span>
+                                                      </div>
                                                     )}
-                                                    {leadOnlyInstruction && (
+                                                    {(emailBodyText || leadOnlyInstruction) && (
                                                       <div>
-                                                        <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1.5">Contenuto email:</p>
+                                                        <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1.5">Corpo email:</p>
                                                         <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/50">
-                                                          {leadOnlyInstruction}
+                                                          {emailBodyText || leadOnlyInstruction}
                                                         </div>
                                                       </div>
                                                     )}
                                                   </div>
-                                                )}
+                                                  );
+                                                })()}
 
                                                 {task.status === "completed" && task.resultSummary && (
                                                   <p className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-800/50">{task.resultSummary}</p>

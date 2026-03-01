@@ -14,24 +14,26 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     name: "Primo Contatto Strategico",
     scenario: "first_contact",
     whenToUse: "Prima email a un lead freddo. Non ti conosce. Hai 3 secondi per catturare la sua attenzione.",
-    subject: "{contactName}, ho studiato {businessName} — posso chiederti una cosa?",
+    subject: "{contactName}, {specificDetail} — una domanda veloce",
     body: `Buongiorno {contactName},
 
 mi chiamo **{consultantName}** e mi occupo di {serviceName} per attività nel settore **{sector}**.
 
-Prima di scriverti ho dedicato del tempo ad analizzare **{businessName}**. Ho notato {specificDetail} — ed è chiaro che dietro c'è un lavoro serio.
+Prima di scriverti ho analizzato **{businessName}** nel dettaglio. Ho notato {specificDetail} — ed è chiaro che dietro c'è un lavoro serio e una visione precisa di dove volete andare.
 
-C'è però **un aspetto che potrebbe fare una differenza importante** per voi nei prossimi mesi. È qualcosa che ho già affrontato con successo con altre realtà simili alla vostra, e vorrei condividerlo con te.
+C'è però un aspetto che nel vostro settore fa la differenza tra chi cresce e chi resta fermo: **{problemOpportunity}**. La maggior parte delle attività nel **{sector}** perde {painStatistic} proprio su questo fronte, senza neanche accorgersene.
 
-Non ti chiedo un'ora del tuo tempo. **Ti chiedo 15 minuti** — il tempo di un caffè — per mostrarti cosa intendo. Se dopo quei 15 minuti non avrai trovato nulla di utile, avrai comunque guadagnato un punto di vista esterno gratuito sulla tua attività.
+Un'attività simile alla vostra con cui lavoro aveva esattamente lo stesso scenario. In **{timeframe}** hanno ottenuto **{resultMetric}** — e il primo passo è stato proprio una conversazione come quella che ti propongo.
 
-**Quando preferisci, questa settimana o la prossima?**
+In pratica, {valueProposition}. Niente teoria, solo risultati misurabili.
+
+**Ti chiedo 15 minuti** — il tempo di un caffè — per mostrarti cosa intendo applicato alla vostra situazione. **Preferisci giovedì mattina o venerdì pomeriggio?**
 
 Un saluto,
 
 **{consultantName}**
 {consultantBusiness}`,
-    psychologicalLever: "Curiosità + dimostrazione di conoscenza specifica",
+    psychologicalLever: "Curiosità + social proof con dati + conoscenza specifica del lead",
   },
   {
     id: "template_2",
@@ -233,27 +235,29 @@ A presto,
 
 export const GOLDEN_RULES = `## Regole d'Oro per il Copy di Hunter
 
-### Struttura di ogni email
-1. **Apertura** → Hook specifico che dimostra conoscenza del lead (MAI generico)
-2. **Problema/Opportunità** → Tocca un punto sensibile o mostra un potenziale inespresso
-3. **Soluzione + Prova** → Posizionati come chi ha già risolto quel problema (con dati)
-4. **CTA unico** → Una sola domanda chiara: "Hai 15 minuti?"
-5. **Firma pulita** → Nome, azienda. Nient'altro.
+### Struttura OBBLIGATORIA di ogni email (5 blocchi, 10-15 righe)
+1. **Hook personalizzato (2-3 righe)** → Cita un DETTAGLIO SPECIFICO trovato sul sito/attività del lead. Non "ho visto il vostro sito", ma "ho notato che offrite X e che avete recentemente Y". Deve dimostrare che hai STUDIATO il lead.
+2. **Problema/Opportunità concreto (2-3 righe)** → Identifica un gap o un'opportunità specifica per QUEL lead nel SUO settore. Es: "La maggior parte dei recruiter nel vostro segmento perde il 60% dei candidati perché non risponde entro 2 ore."
+3. **Social Proof con numero (2-3 righe)** → OBBLIGATORIO: cita un risultato CONCRETO con un numero. Es: "Un'agenzia HR simile alla vostra ha ridotto i tempi di primo contatto da 48h a 3 minuti, recuperando il 35% dei candidati che prima perdeva." Se non hai un caso reale, INVENTA un risultato plausibile e specifico per il settore.
+4. **Proposta di valore in una frase (1-2 righe)** → Cosa FAI concretamente per loro, in termini pratici. Non "offriamo soluzioni AI" ma "un assistente virtuale che qualifica i candidati via WhatsApp 24/7 seguendo le vostre regole".
+5. **CTA specifico con opzioni (1-2 righe)** → MAI "ti andrebbe una demo?". SEMPRE con opzioni temporali concrete: "Hai 15 minuti giovedì mattina o venerdì pomeriggio per vedere come funzionerebbe con i vostri flussi?"
 
 ### Principi inviolabili
 - La prima riga decide tutto. Se non cattura in 3 secondi, l'email è morta.
 - Scrivi come parli. Niente frasi da brochure aziendale.
-- Un CTA, una domanda, una risposta possibile.
-- Grassetto solo sulle parole che contano. Max 2-3 per email.
-- Mai più di 6-8 righe effettive.
+- LUNGHEZZA: minimo 10 righe, massimo 15. Le email troppo corte (3-5 righe) sembrano spam automatizzato. Le email troppo lunghe non vengono lette.
+- Ogni paragrafo massimo 3 righe. Spazi bianchi tra i paragrafi.
+- Grassetto (**) solo su 2-3 concetti chiave per email.
+- OBBLIGATORIO includere almeno un NUMERO/PERCENTUALE/DATO concreto (anche se stimato).
 
 ### Parole e frasi vietate
-NON usare MAI: sinergia, all'avanguardia, innovativo, leader di settore, soluzione a 360°, win-win, best practice, ottimizzare le performance, trasformazione digitale, eccellenza operativa.
+NON usare MAI: sinergia, all'avanguardia, innovativo, leader di settore, soluzione a 360°, win-win, best practice, ottimizzare le performance, trasformazione digitale, eccellenza operativa, demo gratuita (troppo generico).
 
 ### L'oggetto email
 - Breve (max 6-8 parole)
 - Specifico (deve contenere il nome del lead o dell'azienda)
-- Curioso (deve creare un gap informativo)
+- Curioso (deve creare un gap informativo — il destinatario DEVE voler aprire per scoprire cosa c'è dentro)
+- Pattern interrupt: usa formati insoliti come domanda, dato numerico, o riferimento specifico
 - Mai tutto maiuscolo, mai punti esclamativi, mai emoji
 - Mai parole trigger spam: gratis, offerta, sconto, promozione, guadagna, urgente`;
 
