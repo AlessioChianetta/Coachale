@@ -2,7 +2,7 @@
 
 ## Guida Operativa Completa per Consulenti e Clienti
 
-**Versione 3.0 - Febbraio 2026**
+**Versione 3.1 - Marzo 2026**
 
 ---
 
@@ -42,8 +42,9 @@
 ## PARTE QUINTA: FUNZIONALITÀ AVANZATE
 - Capitolo 20: Weekly Check-in – Sistema Automatico di Contatto Settimanale via WhatsApp
 - Capitolo 21: Chiamate Vocali AI – Alessia AI Phone
-- Capitolo 22: AI Autonomy – Sistema di Dipendenti AI Autonomi
-- Capitolo 23: Integrazione tra i Tre Sistemi
+- Capitolo 22: AI Autonomy – Sistema di Dipendenti AI Autonomi (9 dipendenti, incluso Hunter)
+- Capitolo 23: Ricerca Lead e Outreach – Lead Scraper (5 tab: Ricerca, CRM Lead, Sales Agent, Hunter, Nuovo Lead)
+- Capitolo 24: Integrazione tra i Quattro Sistemi
 
 ---
 
@@ -225,7 +226,9 @@ La sidebar è la barra laterale sinistra presente in ogni pagina. È il tuo menu
 | I tuoi dipendenti | `/consultant/whatsapp` | Gestire agenti AI WhatsApp |
 | Email Hub | `/consultant/email-hub` | Gestire email con risposte AI |
 | Chiamate Voice | `/consultant/voice-calls` | Gestire chiamate vocali AI (Alessia) |
-| AI Autonomo | `/consultant/ai-autonomy` | Configurare dipendenti AI autonomi |
+| AI Autonomo | `/consultant/ai-autonomy` | Configurare i 9 dipendenti AI autonomi (incluso Hunter) |
+| Lead Scraper | `/consultant/lead-scraper` | Cercare lead su Google Maps/Search, CRM, Hunter outreach |
+| Venditori Autonomi | `/consultant/sales-agents` | Agenti AI per conversazioni di vendita su landing page pubblica |
 
 **FORMAZIONE**
 | Voce | Dove Porta | Quando Usarla |
@@ -2655,7 +2658,115 @@ Configura pagamenti ricorrenti e abbonamenti per i clienti.
 3. Crea il tuo primo piano abbonamento
 4. Assegna il piano ai clienti
 
-### 13.3 Centro Guide
+### 13.3 Venditori Autonomi AI
+
+**Dove trovarlo:** `Sidebar → COMUNICAZIONE → Venditori Autonomi`  
+**URL:** `/consultant/sales-agents`
+
+I Venditori Autonomi AI sono agenti conversazionali configurabili che possono condurre autonomamente conversazioni di vendita con potenziali clienti attraverso una **landing page pubblica personalizzata**. Ogni agente rappresenta il tuo business, conosce i tuoi servizi, e dialoga con i visitatori per qualificarli e guidarli verso la prenotazione di una consulenza.
+
+---
+
+#### 13.3.1 Lista Agenti
+
+La pagina principale mostra una **card per ogni agente** con:
+- Nome agente + nome business
+- Badge stato: **Attivo** (verde) / **Inattivo** (grigio)
+- Numero di conversazioni avvenute
+- Data di creazione
+
+**Azioni disponibili per ogni agente:**
+
+| Azione | Icona | Funzione |
+|---|---|---|
+| Attiva/Disattiva | Toggle | Abilita o sospende l'agente senza eliminarlo |
+| Configura | Matita | Apre il wizard di configurazione completa |
+| Analytics | Grafico | Vedi tutte le conversazioni e le metriche |
+| Copia Link | Catena | Copia l'URL pubblico da condividere |
+| QR Code | QR | Genera e scarica il QR code per materiale fisico |
+| Invita | Email | Invia il link direttamente via email a un contatto |
+| Elimina | Cestino | Elimina l'agente (con conferma) |
+
+---
+
+#### 13.3.2 Creare un Nuovo Agente
+
+Clicca **"Nuovo Dipendente AI"** e segui il wizard di configurazione:
+
+**Dati base:**
+- **Nome agente**: il nome con cui si presenta il tuo AI (es. "Alex", "Sofia")
+- **Nome business**: il nome della tua attività che l'agente rappresenta
+- **Nome visualizzato**: nome mostrato sulla landing page
+
+**Personalità e script:**
+- Personalità dell'agente (tono: professionale, amichevole, consulenziale)
+- Script di apertura: il primo messaggio che l'AI invia al visitatore
+- Obiettivo della conversazione: qualificazione lead, prenotazione consulenza, raccolta info
+
+**Configurazione avanzata:**
+- Informazioni sui servizi (cosa offre il tuo business)
+- Domande di qualificazione (l'AI le porrà durante la conversazione)
+- CTA finale (cosa deve fare il lead dopo la conversazione)
+
+---
+
+#### 13.3.3 La Landing Page Pubblica
+
+Ogni agente ha un URL del tipo:
+```
+https://[tua-piattaforma]/public/sales-agent/[token-univoco]
+```
+
+Questa pagina è:
+- **Accessibile senza login** da chiunque abbia il link
+- **Responsive** (funziona su mobile e desktop)
+- **Brandizzata** con il nome del tuo business
+- **Interattiva**: il visitatore può iniziare una conversazione direttamente
+
+**Come condividere la landing page:**
+1. **Link diretto**: copia l'URL e incollalo su social, email, sito web
+2. **QR Code**: scarica il QR da stampare su biglietti da visita, volantini, stand fiera
+3. **Pulsante Invita**: invia il link direttamente via email a un contatto specifico
+
+---
+
+#### 13.3.4 Analytics e Conversazioni
+
+**Dove:** clicca "Analytics" sulla card dell'agente → URL `/consultant/sales-agents/[id]/analytics`
+
+La dashboard analytics mostra:
+- **Totale conversazioni** avvenute
+- **Messaggi scambiati** (media per conversazione)
+- **Durata media** delle sessioni
+- **Storico conversazioni**: lista di tutte le sessioni con timestamp, numero messaggi, durata
+- **Dettaglio conversazione**: clicca su una sessione per vedere la trascrizione completa
+
+---
+
+#### 13.3.5 Script Manager
+
+**Dove:** `/consultant/sales-agents/[id]/scripts`
+
+Crea e gestisci script di vendita strutturati che l'agente può seguire durante le conversazioni:
+- Script per diverse situazioni (primo contatto, follow-up, obiezioni)
+- Frasi di apertura, sviluppo e chiusura
+- Integrazione con il Cervello AI per risposte contestuali
+
+---
+
+#### 13.3.6 Differenza tra Venditori Autonomi e Agenti WhatsApp
+
+| Aspetto | Venditori Autonomi AI | Agenti WhatsApp |
+|---|---|---|
+| **Canale** | Landing page web (browser) | WhatsApp |
+| **Chi lo avvia** | Il visitatore entra nella landing page | Messaggio WhatsApp in arrivo o proattivo |
+| **Accesso** | Pubblico, senza login | Richiede numero WhatsApp del lead |
+| **Uso tipico** | Sito web, QR code, campagne | Nurturing, follow-up, supporto |
+| **Configurazione** | Wizard specifico per vendita | Configurazione agente WhatsApp |
+
+---
+
+### 13.4 Centro Guide
 
 **Dove:** `Sidebar → GUIDE → Centro Guide`
 
@@ -2907,22 +3018,26 @@ Carica documenti che solo tu e l'AI potete vedere.
 | **Agente AI** | Bot intelligente che gestisce conversazioni WhatsApp automaticamente |
 | **AI Assistant** | Interfaccia chat per interagire con l'intelligenza artificiale |
 | **Campagna** | Raggruppamento di lead con obiettivo comune |
+| **Cervello AI** | Archivio documenti e memorie usato dall'AI per rispondere (precedentemente "Knowledge Base") |
 | **Dry Run** | Modalità test che simula invii senza mandare messaggi reali |
 | **Email Journey** | Sistema di email automatiche su 31 giorni |
 | **Escalation** | Passaggio di una conversazione da AI a umano |
 | **File Search** | Tecnologia di ricerca semantica nei documenti |
+| **Hunter** | Dipendente AI (il 9°) specializzato nel contatto proattivo di nuovi lead commerciali raccolti dal Lead Scraper. Supporta 4 modalità: Diretto, Automatico Batch, Piano+Chat, Approvazione Manuale. Gestisce chiamate voice, WhatsApp ed email. |
 | **Inbound** | Agente che risponde a messaggi in arrivo |
-| **Cervello AI** | Archivio documenti e memorie usato dall'AI per rispondere (precedentemente "Knowledge Base") |
 | **Lead** | Potenziale cliente da convertire |
-| **Lead Scoring** | Sistema automatico di punteggio per prioritizzare i lead |
+| **Lead Scraper** | Strumento integrato nella piattaforma che raccoglie aziende da Google Maps e Google Search, le salva in un CRM interno, le qualifica con uno score AI e le passa a Hunter per l'outreach multicanale. Accessibile da `/consultant/lead-scraper`. |
+| **Lead Scoring** | Sistema automatico di punteggio per prioritizzare i lead. Nel Lead Scraper, l'AI calcola uno score da 0 a 100 basandosi sulla configurazione del Sales Agent. |
 | **Modulo** | Raggruppamento di lezioni all'interno di un corso |
 | **Outbound** | Agente che contatta proattivamente |
+| **Outreach Pipeline** | Il flusso di contatto proattivo di un lead: da `found` (raccolto dallo scraper) → `scored` (qualificato con AI) → `in_outreach` (Hunter ha avviato il contatto) → `contacted` → `qualified_waiting` o `not_interested` → `converted` (diventato cliente). |
 | **RAG** | Retrieval Augmented Generation - tecnologia che permette all'AI di cercare informazioni prima di rispondere |
 | **SMTP** | Protocollo per l'invio di email |
 | **Streak** | Giorni consecutivi di attività |
 | **Template WhatsApp** | Messaggio pre-approvato da Meta per contatti a freddo |
 | **Twilio** | Servizio per inviare/ricevere messaggi WhatsApp |
 | **Uncino** | Frase di apertura che cattura l'attenzione |
+| **Venditore Autonomo** | Agente AI configurabile che conduce autonomamente conversazioni di vendita tramite una landing page pubblica (URL `/public/sales-agent/[token]`). Il visitatore interagisce direttamente con l'AI senza login. Gestito da `/consultant/sales-agents`. |
 | **Vertex AI** | Servizio AI di Google che alimenta la piattaforma |
 | **Webhook** | Meccanismo per ricevere notifiche automatiche |
 | **WebRTC** | Tecnologia per videochiamate nel browser |
@@ -3556,7 +3671,7 @@ Il sistema monitora in tempo reale:
 
 ### 22.1 Panoramica del Sistema
 
-Il sistema AI Autonomy è un team di **8 dipendenti AI specializzati** che lavorano autonomamente per il consulente. Ogni dipendente ha un ruolo specifico, analizza dati reali della piattaforma, e genera task (azioni) che possono essere eseguiti automaticamente o previa approvazione del consulente.
+Il sistema AI Autonomy è un team di **9 dipendenti AI specializzati** che lavorano autonomamente per il consulente. Ogni dipendente ha un ruolo specifico, analizza dati reali della piattaforma, e genera task (azioni) che possono essere eseguiti automaticamente o previa approvazione del consulente.
 
 **Concetto chiave:** Non è un singolo bot generico, ma un **team coordinato** dove ogni membro ha competenze diverse e accede a dati diversi.
 
@@ -3574,7 +3689,7 @@ Ogni 30 minuti → Il sistema valuta ogni dipendente attivo
 
 ---
 
-### 22.2 Gli 8 Dipendenti AI
+### 22.2 I 9 Dipendenti AI
 
 | Dipendente | Ruolo | Canale Preferito | Max Task/Ciclo | Cosa Analizza |
 |---|---|---|---|---|
@@ -3585,6 +3700,7 @@ Ogni 30 minuti → Il sistema valuta ogni dipendente attivo
 | **Stella** | WhatsApp Assistant | 💬 WhatsApp | 2 | Conversazioni WhatsApp → identifica lead da qualificare e clienti in attesa di risposta |
 | **Iris** | Email Hub Manager | 📧 Email | 2 | Email in arrivo e ticket → identifica comunicazioni che richiedono risposta o escalation |
 | **Marco** | Executive Coach | 📞/– Voce o Nessuno | 2 | Agenda e carico lavoro del consulente → coaching operativo e preparazione consulenze |
+| **Hunter** | Lead Hunter | 📞💬📧 Multicanale | 5 | Lead del CRM scraper (Google Maps/Search) → li contatta con voice, WhatsApp ed email in modalità automatica o supervisionata |
 | **Personalizza** | Assistente Custom | 📞📧💬 Tutti | 3 | Completamente configurabile dal consulente: dati, istruzioni, canali, categorie |
 
 ---
@@ -3900,6 +4016,56 @@ Il sistema implementa più livelli di protezione per evitare comportamenti indes
 - **Crea**: Task di preparazione briefing, monitoraggio, report, scheduling
 - **Extra**: Obiettivi strategici come bussola, rispetta stile report preferito (sintetico/dettagliato/bilanciato)
 
+#### Hunter – Lead Hunter 🎯
+
+**Dove si gestisce:** `Sidebar → COMUNICAZIONE → I Tuoi Dipendenti → Lead Scraper → Tab "Hunter"`
+
+Hunter è il dipendente AI dedicato esclusivamente alla **ricerca e al contatto proattivo di nuovi lead commerciali**. Non lavora sui clienti esistenti, ma sui lead raccolti dallo scraper (Google Maps / Google Search) salvati nel CRM Lead Scraper.
+
+**Cosa analizza:**
+- Lead nel CRM con status `found`, `scored`, `qualifiedWaiting`
+- Contatti disponibili per ogni lead (telefono per voice/WhatsApp, email)
+- Score AI di ogni lead (calcolato dall'AI Sales Agent)
+- Storico dei contatti precedenti (evita di ricontattare chi è già stato contattato di recente)
+
+**4 Modalità Operative:**
+
+| Modalità | Colore | Comportamento |
+|---|---|---|
+| **Diretto** | 🟢 Teal | Ogni 30 min Hunter seleziona 1 lead e lo contatta immediatamente su tutti i canali disponibili (voice, WhatsApp, email). Zero code, zero attesa. Ideale per iniziare subito. |
+| **Automatico Batch** | 🟢 Emerald | Analizza tutti i lead del CRM in blocco e schedula in automatico chiamate + WhatsApp + email. Il consulente non deve fare nulla. Ideale per grandi volumi. |
+| **Piano + Chat** | 🔵 Blue | Hunter prepara un piano dettagliato con tutti i lead da contattare, canali e messaggi suggeriti. Lo presenta in una chat AI dove il consulente può discuterlo, modificarlo e poi avviare l'esecuzione. Ideale per il controllo editoriale. |
+| **Approvazione Manuale** | 🟡 Amber | Hunter prepara tutti i task ma non parte nessun contatto finché il consulente non approva singolarmente ogni messaggio/chiamata dalla coda. Massimo controllo. |
+
+**Pipeline Statistics (dashboard in tempo reale):**
+- Trovati oggi / Qualificati (con score AI) / In outreach attivo / Contattati / In attesa di risposta / % Tasso di conversione
+
+**Azioni rapide dalla tab Hunter:**
+- **"Avvia Hunter"**: forza l'esecuzione immediata (senza aspettare i 30 minuti del CRON)
+- **"Analizza CRM"**: trigger dell'analisi batch su tutti i lead del CRM
+- **Hunter singolo lead**: dalla Tab Ricerca, ogni risultato ha un pulsante Hunter → seleziona i canali (voice/WhatsApp/email) e il telefono target → crea i task immediatamente
+
+**Coda Outreach (per modalità non-Diretto):**
+Quando Hunter opera in modalità Batch, Piano o Approvazione, tutti i task vengono mostrati in una coda raggruppata per lead. Per ogni lead si vede:
+- Badge canali attivi (📞💬📧) con colore bordo (arancio=voice, verde=WA, blu=email)
+- Status task: `waiting_approval` → `scheduled` → `in_progress` → `completed`
+- Preview del messaggio (testo WA, soggetto email, istruzione chiamata)
+- Pulsanti Approva/Rifiuta (per singolo task o per tutto il gruppo)
+- Storico azioni completate (toggle mostra/nascondi)
+
+**Configurazione Hunter (nel pannello impostazioni della tab Hunter):**
+- Abilita/Disabilita Hunter globalmente
+- Modalità operativa (Diretto / Batch / Piano / Approvazione)
+- Max ricerche al giorno / Max chiamate al giorno / Max WhatsApp al giorno
+- Template WhatsApp da usare (selezione multipla dai template approvati)
+- Priorità canali (ordine: voice → WhatsApp → email, modificabile)
+- Account email da usare per l'outreach
+
+**Integrazione con Lead Scraper:**
+Hunter è strettamente integrato con il Lead Scraper (Capitolo 23). I lead raccolti dallo scraper finiscono nel CRM, e Hunter li prende da lì per il contatto. È il collegamento tra la raccolta passiva di lead e il contatto attivo.
+
+---
+
 #### Personalizza – Assistente Custom ⚙️
 - **Completamente configurabile**: Il consulente definisce istruzioni, canali e categorie
 - **Analizza**: Consulenze recenti + task recenti + dati configurati
@@ -3961,24 +4127,230 @@ Questo è utilissimo per:
 
 ---
 
-## Capitolo 23: Integrazione tra i Tre Sistemi
+## Capitolo 23: Ricerca Lead e Outreach – Lead Scraper
 
-### 23.1 Come Weekly Check-in, Chiamate Vocali e AI Autonomy Collaborano
+**Dove trovarlo:** `Sidebar → COMUNICAZIONE → I Tuoi Dipendenti (Lead Scraper)`  
+**URL:** `/consultant/lead-scraper`
 
-I tre sistemi non operano in modo isolato ma sono interconnessi:
+Il Lead Scraper è lo strumento di **acquisizione automatica di nuovi lead commerciali**. Permette di cercare aziende su Google Maps e Google Search, salvarle in un CRM integrato, farle qualificare dall'AI con uno score di compatibilità, e avviare un outreach multicanale (chiamata + WhatsApp + email) tramite il dipendente AI Hunter.
+
+---
+
+### 23.1 Panoramica e Flusso Completo
 
 ```
-                    ┌──────────────────┐
-                    │  AI AUTONOMY     │
-                    │  (8 dipendenti)  │
-                    └───────┬──────────┘
-                            │
-              ┌─────────────┼─────────────┐
-              ▼             ▼             ▼
-     ┌────────────┐  ┌───────────┐  ┌──────────┐
-     │ Chiamate   │  │  Email    │  │ WhatsApp │
-     │ Vocali     │  │  (SMTP)   │  │ (Twilio) │
-     └──────┬─────┘  └───────────┘  └─────┬────┘
+Google Maps / Google Search
+          ↓
+   Tab Ricerca (scraping)
+          ↓
+   Risultati con score AI
+          ↓
+   "Salva nel CRM" → Tab CRM Lead
+          ↓
+   Hunter analizza il CRM
+          ↓
+   Outreach multicanale (voice + WA + email)
+          ↓
+   Lead aggiornato: contacted → qualified → converted
+```
+
+La pagina è organizzata in **5 tab** navigabili dalla barra superiore.
+
+---
+
+### 23.2 Tab Ricerca
+
+La tab predefinita all'apertura della pagina. Permette di fare scraping di aziende da Google.
+
+**Motori di ricerca disponibili:**
+
+| Motore | Icona | Tipo di risultati |
+|---|---|---|
+| **Google Maps** | 🗺️ | Aziende geolocalizzate con indirizzo, telefono, rating, orari |
+| **Google Search** | 🔍 | Aziende/siti web trovati tramite ricerca web standard |
+
+**Campi di ricerca:**
+- **Query**: cosa cercare (es. "commercialista Milano", "avvocato Roma centro", "officina meccanica")
+- **Location** (solo Maps): città o zona geografica
+- **Limite risultati**: quante aziende recuperare (10-50 per ricerca)
+
+**Risultati della ricerca:**
+
+Ogni risultato è una card con:
+- Nome azienda + categoria/settore
+- Rating Google (stelle) + numero recensioni
+- Indirizzo e sito web (se disponibili)
+- Telefono ed email (se disponibili)
+- **Score AI di compatibilità**: calcolato in base al contesto di vendita configurato nella Tab Sales Agent (da 0 a 100, con badge colorato: verde ≥70, giallo 40-70, rosso <40)
+- **Stato nel CRM**: badge "Salvato" se il lead è già nel CRM
+
+**Azioni per ogni risultato:**
+
+| Azione | Funzione |
+|---|---|
+| **Salva nel CRM** | Aggiunge il lead alla Tab CRM Lead per gestione e outreach |
+| **Hunter 🎯** | Apre un dialogo per contattare immediatamente quel lead con Hunter (seleziona canali e telefono target) |
+| **Apri sito** | Apre il sito web dell'azienda in una nuova scheda |
+
+**Filtri e ordinamento:**
+- **Ordina per**: Predefinito / Score AI (decrescente) / Rating Google / Nome A-Z
+- **Filtra per status**: Tutti / Solo nuovi / Solo con telefono / Solo con email / Già contattati
+- **Filtra per canale**: WA / Voice / Email / Multi-canale
+
+**Storico ricerche:**
+Un pannello mostra le ultime ricerche effettuate, con query, motore e numero di risultati trovati. Cliccando su una ricerca precedente si ricaricano i risultati senza ripetere lo scraping.
+
+---
+
+### 23.3 Tab CRM Lead
+
+Il CRM interno dove vengono salvati tutti i lead raccolti dallo scraper.
+
+**Visualizzazioni disponibili:**
+- **Filtro sorgente**: Tutti / Google Maps / Google Search
+- **Filtro canale**: Tutti / Nuovi / Con telefono / Con email / WA / Voice / Email / Multi
+- **Filtro status**: Tutti / found / scored / in_outreach / contacted / qualified_waiting / not_interested / converted
+- **Ricerca testuale**: filtra per nome azienda o email
+
+**Stati dei lead:**
+
+| Status | Colore | Significato |
+|---|---|---|
+| `found` | Grigio | Salvato dallo scraper, non ancora analizzato dall'AI |
+| `scored` | Blu | L'AI ha calcolato lo score di compatibilità |
+| `in_outreach` | Viola | Hunter ha avviato il contatto (task in coda) |
+| `contacted` | Arancio | Almeno un contatto è stato effettuato |
+| `qualified_waiting` | Giallo | Il lead ha risposto positivamente, aspetta follow-up |
+| `not_interested` | Rosso | Il lead ha rifiutato o non è compatibile |
+| `converted` | Verde | Il lead è diventato cliente |
+
+**Azioni dalla lista CRM:**
+- **Analizza CRM con Hunter AI**: avvia un'analisi AI di tutti i lead e genera un piano di outreach (chat interattiva in modalità "Piano + Chat")
+- **Click su riga**: apre il pannello dettaglio del lead
+- **Cambio status manuale**: dall'icona di modifica sulla riga
+
+**Pannello dettaglio lead:**
+- Informazioni complete (nome, settore, sito, telefono, email, indirizzo, rating)
+- Score AI con dettaglio motivazione
+- Storico contatti effettuati (timestamp, canale, risultato)
+- Note manuali del consulente
+
+---
+
+### 23.4 Tab Sales Agent (Configurazione AI Scoring)
+
+Questa tab non è un agente di vendita in senso stretto, ma è la **configurazione del contesto di business** usato dall'AI per calcolare lo score di compatibilità di ogni lead con la tua offerta.
+
+**Campi di configurazione:**
+
+| Campo | Scopo |
+|---|---|
+| **Servizi che offri** | Descrivi i servizi/prodotti che vendi — l'AI li usa per capire se il lead potrebbe essere interessato |
+| **Target ideale** | A chi vendi? (es. PMI, startup, liberi professionisti, settori specifici) |
+| **Proposta di valore** | Cosa ti rende unico rispetto ai competitor |
+| **Pricing / Pacchetti** | Range prezzi e struttura dell'offerta |
+| **Vantaggi competitivi** | Perché un cliente dovrebbe scegliere te |
+| **Profilo cliente ideale** | Caratteristiche (fatturato, dimensione, settore, problemi comuni) |
+| **Approccio vendita** | Come approcci il primo contatto (informale, diretto, consulenziale) |
+| **Casi di successo** | Brief case study che l'AI usa come riferimento per la qualificazione |
+| **Contesto aggiuntivo** | Qualsiasi altra info utile per l'AI |
+
+Dopo aver salvato la configurazione, tutti i nuovi lead trovati dallo scraper vengono valutati automaticamente rispetto a questi criteri. Più è dettagliata la configurazione, più accurato sarà lo score.
+
+**Stato di configurazione:** Badge verde "Configurato" / Badge ambra "Non configurato" visibile nell'header della tab.
+
+---
+
+### 23.5 Tab Hunter
+
+Questa tab è il **centro di controllo del dipendente AI Hunter**. Per la documentazione completa di Hunter e le sue 4 modalità operative, vedi la sezione **22.8 – Hunter – Lead Hunter 🎯** nel Capitolo 22.
+
+**Riepilogo rapido di questa tab:**
+- **Interruttore globale**: abilita/disabilita Hunter
+- **Selezione modalità**: Diretto / Automatico Batch / Piano + Chat / Approvazione Manuale
+- **Pipeline stats**: contatori in tempo reale (aggiornati ogni 15 secondi)
+- **Coda outreach**: lista dei task generati da Hunter con stato e preview messaggio
+- **Pulsanti**: "Avvia Hunter" e "Analizza CRM"
+- **Configurazione**: pannello impostazioni (limiti, template WA, canali, account email)
+
+---
+
+### 23.6 Tab Nuovo Lead
+
+Form manuale per aggiungere un lead che non è stato trovato dallo scraper automatico (es. lead da referral, fiera, cold call).
+
+**Campi:**
+- Nome azienda (obbligatorio)
+- Telefono
+- Email
+- Sito web
+- Indirizzo
+- Note
+
+Dopo la creazione, il lead appare nel CRM con status `found` e può essere gestito esattamente come un lead trovato dallo scraper.
+
+---
+
+### 23.7 Flusso Operativo Consigliato
+
+**Setup iniziale (una tantum):**
+1. Vai alla Tab **Sales Agent** e configura il contesto di business
+2. Vai alla Tab **Hunter** → configura i limiti giornalieri e i template WhatsApp
+3. Scegli la modalità operativa di Hunter
+
+**Routine di acquisizione (periodica):**
+1. Vai alla Tab **Ricerca**
+2. Cerca aziende nella tua zona/settore target su Google Maps o Google Search
+3. Scorri i risultati e salva nel CRM quelli con score ≥ 60
+4. Vai alla Tab **Hunter** → clicca "Avvia Hunter" o lascia che parta automaticamente ogni 30 minuti
+5. Se modalità "Approvazione": vai nella coda e approva i task che ti sembrano corretti
+6. Monitora i risultati nella Tab **CRM Lead** aggiornando gli status man mano che i lead rispondono
+
+**Per lead singoli urgenti:**
+1. Dalla Tab **Ricerca**, clicca "Hunter 🎯" sul risultato
+2. Seleziona i canali da usare e il numero telefono
+3. Conferma → i task vengono creati immediatamente
+
+---
+
+### 23.8 Limiti e Best Practices
+
+**Limiti configurabili (raccomandati):**
+
+| Canale | Limite giornaliero raccomandato |
+|---|---|
+| Chiamate voice | 5-10 al giorno |
+| Messaggi WhatsApp | 10-15 al giorno |
+| Email | 20-30 al giorno |
+| Ricerche scraper | 3-5 al giorno |
+
+**Best practices:**
+- **Diversifica le query**: non cercare sempre la stessa cosa. Varia settore, zona, dimensione azienda.
+- **Score come filtro**: salva nel CRM solo i lead con score ≥ 50. Eviti di sprecare outreach su lead incompatibili.
+- **Aggiorna gli status**: tieni il CRM aggiornato (qualified_waiting, not_interested, converted). Hunter usa gli status per decidere chi contattare.
+- **Inizia con "Approvazione Manuale"**: le prime settimane, approva ogni task per capire la qualità dei messaggi generati dall'AI. Poi passa ad "Automatico Batch".
+- **GDPR**: assicurati di avere una base giuridica valida per il contatto. I dati devono essere trattati in conformità con la normativa sulla privacy.
+
+---
+
+## Capitolo 24: Integrazione tra i Quattro Sistemi
+
+### 24.1 Come Weekly Check-in, Chiamate Vocali, AI Autonomy e Lead Scraper Collaborano
+
+I quattro sistemi non operano in modo isolato ma sono interconnessi:
+
+```
+                    ┌──────────────────┐      ┌──────────────────┐
+                    │  AI AUTONOMY     │      │  LEAD SCRAPER    │
+                    │  (9 dipendenti)  │◄────►│  (Google Maps /  │
+                    └───────┬──────────┘      │   Google Search) │
+                            │                 └────────┬─────────┘
+              ┌─────────────┼─────────────┐           │ Hunter outreach
+              ▼             ▼             ▼           ▼
+     ┌────────────┐  ┌───────────┐  ┌──────────┐  ┌──────────┐
+     │ Chiamate   │  │  Email    │  │ WhatsApp │  │ Lead CRM │
+     │ Vocali     │  │  (SMTP)   │  │ (Twilio) │  │ Pipeline │
+     └──────┬─────┘  └───────────┘  └─────┬────┘  └──────────┘
             │                              │
             │              ┌───────────────┘
             ▼              ▼
@@ -4007,30 +4379,32 @@ I tre sistemi non operano in modo isolato ma sono interconnessi:
 - Tuttavia, l'AI Autonomy (tramite Stella) può creare task WhatsApp aggiuntivi al di fuori del ciclo settimanale
 - Il sistema anti-duplicazione dell'autonomia è consapevole dei check-in già inviati
 
-### 23.2 Tabella CRON Riepilogativa
+### 24.2 Tabella CRON Riepilogativa
 
 | CRON | Frequenza | Orario | Fuso | Funzione |
 |---|---|---|---|---|
 | Weekly Check-in Scheduling | Giornaliero | 08:00 | Europa/Roma | Pianifica quali clienti contattare oggi |
 | Weekly Check-in Processing | Ogni minuto | Sempre | Europa/Roma | Invia i messaggi in coda |
 | AI Task Processing | Ogni minuto | Sempre | Europa/Roma | Esegue task e chiamate in coda + cleanup stuck calls |
-| Autonomous Generation | Ogni 30 minuti | Sempre (ma verifica orario lavoro) | Europa/Roma | Genera nuovi task con gli 8 dipendenti AI |
+| Autonomous Generation | Ogni 30 minuti | Sempre (ma verifica orario lavoro) | Europa/Roma | Genera nuovi task con i 9 dipendenti AI (incluso Hunter) |
+| Hunter Diretto | Ogni 30 minuti | Sempre (in modalità Diretto) | Europa/Roma | Hunter seleziona 1 lead dal CRM Scraper e avvia il contatto |
 
-### 23.3 File Search Condiviso
+### 24.3 File Search Condiviso
 
-Tutti e tre i sistemi possono accedere allo stesso Cervello AI del consulente via File Search:
+Tutti e quattro i sistemi possono accedere allo stesso Cervello AI del consulente via File Search:
 - **Weekly Check-in**: usa File Search per personalizzare i messaggi con contesto dal Cervello AI
 - **Chiamate Vocali**: il prompt della chiamata può essere arricchito con info dal Cervello AI
-- **AI Autonomy**: ogni dipendente può cercare nel Cervello AI durante l'analisi e l'esecuzione dei task
+- **AI Autonomy**: ogni dipendente (incluso Hunter) può cercare nel Cervello AI durante l'analisi e l'esecuzione dei task
+- **Lead Scraper**: il Sales Agent AI usa il Cervello AI per contestualizzare lo score dei lead
 
-Questo garantisce che ogni comunicazione – sia un messaggio WhatsApp, una chiamata o un'email – sia **contestualizzata** con le informazioni più aggiornate del consulente.
+Questo garantisce che ogni comunicazione – sia un messaggio WhatsApp, una chiamata, un'email o un outreach Hunter – sia **contestualizzata** con le informazioni più aggiornate del consulente.
 
 ---
 
 # FINE DEL MANUALE
 
-**Versione:** 3.0 Espansa – Funzionalità Avanzate
-**Data:** Febbraio 2026
+**Versione:** 3.1 Espansa – Funzionalità Avanzate (Hunter, Lead Scraper, Venditori Autonomi)
+**Data:** Marzo 2026
 **Autore:** Sistema AI + Team Piattaforma
 
 ---
