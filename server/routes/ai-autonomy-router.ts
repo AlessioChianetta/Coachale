@@ -1455,7 +1455,7 @@ async function scheduleIndividualOutreach(
         ${scheduledAtIso}, ${config.timezone},
         ${emailTaskStatus},
         2, 'prospecting', 'hunter', 'email',
-        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis', email_account_id: config.emailAccountId, lead_email: lead.email || '' })}::text,
+        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis', email_account_id: config.emailAccountId, lead_email: lead.email || '', email_template_name: content.emailTemplateName || null })}::text,
         1, 0, 5, NOW(), NOW()
       )
     `);

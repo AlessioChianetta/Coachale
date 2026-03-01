@@ -2585,7 +2585,7 @@ export default function ConsultantLeadScraper() {
                                           return text;
                                         };
                                         const leadOnlyInstruction = task.aiInstruction ? stripConsultantContext(task.aiInstruction) : '';
-                                        const hasDetail = task.channel === 'whatsapp' ? !!(task.waTemplateFilled || task.waPreviewMessage || task.aiInstruction || task.waTemplateName) : task.channel === 'voice' ? !!(task.voiceTemplateName || task.callInstruction || task.aiInstruction) : !!(task.aiInstruction);
+                                        const hasDetail = task.channel === 'whatsapp' ? !!(task.waTemplateFilled || task.waPreviewMessage || task.aiInstruction || task.waTemplateName) : task.channel === 'voice' ? !!(task.voiceTemplateName || task.callInstruction || task.aiInstruction) : !!(task.aiInstruction || task.emailTemplateName);
 
                                         return (
                                           <div key={task.id} className={cn("border-l-[3px]", chBorderLeft)}>
