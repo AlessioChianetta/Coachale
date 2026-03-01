@@ -3260,7 +3260,7 @@ Non utilizzare altri tipi di documento da quel store privato.
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.3,
-              maxOutputTokens: 8192,
+              maxOutputTokens: 16384,
               ...(useFileSearch ? {} : { responseMimeType: 'application/json' }),
             },
             ...(useFileSearch ? { tools: [agentFileSearchTool] } : {}),
@@ -3338,7 +3338,7 @@ Non utilizzare altri tipi di documento da quel store privato.
             contents: [{ role: 'user', parts: [{ text: enrichedPrompt + '\n\nRispondi ESCLUSIVAMENTE con JSON valido nel formato: {"tasks": [...], "overall_reasoning": "..."}. NON usare tool_code.' }] }],
             generationConfig: {
               temperature: 0.3,
-              maxOutputTokens: 8192,
+              maxOutputTokens: 16384,
               ...(!hasGroundedResults ? {} : { responseMimeType: 'application/json' }),
             },
             ...(!hasGroundedResults ? { tools: [agentFileSearchTool] } : {}),
@@ -3366,6 +3366,64 @@ Non utilizzare altri tipi di documento da quel store privato.
       else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
       if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
       cleaned = cleaned.trim();
+
+      const repairTruncatedJson = (text: string): any | null => {
+        try { return JSON.parse(text); } catch {}
+        let tasksArr: any[] | null = null;
+        let reasoning = '';
+        const tasksMatch = text.match(/"tasks"\s*:\s*\[/);
+        if (tasksMatch) {
+          const startIdx = tasksMatch.index! + tasksMatch[0].length;
+          let depth = 1;
+          let i = startIdx;
+          let lastCompleteObj = startIdx;
+          for (; i < text.length && depth > 0; i++) {
+            const ch = text[i];
+            if (ch === '"') {
+              i++;
+              while (i < text.length && text[i] !== '"') { if (text[i] === '\\') i++; i++; }
+            } else if (ch === '{' || ch === '[') {
+              depth++;
+            } else if (ch === '}' || ch === ']') {
+              depth--;
+              if (depth === 1 && ch === '}') lastCompleteObj = i + 1;
+              if (depth === 0 && ch === ']') lastCompleteObj = i + 1;
+            }
+          }
+          const arrContent = text.substring(startIdx, depth > 0 ? lastCompleteObj : i - 1);
+          try {
+            tasksArr = JSON.parse(`[${arrContent}]`);
+          } catch {
+            const trimmed = arrContent.replace(/,\s*$/, '');
+            try { tasksArr = JSON.parse(`[${trimmed}]`); } catch {}
+          }
+        }
+        const reasoningMatch = text.match(/"reasoning"\s*:\s*\{/);
+        if (reasoningMatch) {
+          const rStart = reasoningMatch.index! + reasoningMatch[0].length;
+          let depth = 1;
+          let i = rStart;
+          for (; i < text.length && depth > 0; i++) {
+            const ch = text[i];
+            if (ch === '"') { i++; while (i < text.length && text[i] !== '"') { if (text[i] === '\\') i++; i++; } }
+            else if (ch === '{') depth++;
+            else if (ch === '}') depth--;
+          }
+          if (depth === 0) {
+            try {
+              const rObj = JSON.parse(`{${text.substring(rStart, i - 1)}}`);
+              reasoning = [rObj.observation, rObj.reflection, rObj.decision].filter(Boolean).join('\n\n');
+            } catch {}
+          }
+        }
+        const overallMatch = text.match(/"overall_reasoning"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+        if (overallMatch) reasoning = overallMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') || reasoning;
+        if (tasksArr !== null) {
+          console.log(`🔧 [JSON-REPAIR] Recovered ${tasksArr.length} tasks from truncated JSON (original ${text.length} chars)`);
+          return { tasks: tasksArr, overall_reasoning: reasoning || 'Reasoning troncato dal modello', _repaired: true };
+        }
+        return null;
+      };
 
       const escapeNewlinesInStrings = (text: string): string => {
         return text.replace(/"(?:[^"\\]|\\.)*"/g, (match) => {
@@ -3419,7 +3477,7 @@ Non utilizzare altri tipi di documento da quel store privato.
                     const retryResp = await aiClient!.generateContent({
                       model: providerModel,
                       contents: [{ role: 'user', parts: [{ text: retryPrompt + '\n\nRispondi SOLO con JSON valido: {"tasks": [...], "overall_reasoning": "..."}. NON usare tool_code.' }] }],
-                      generationConfig: { temperature: 0.3, maxOutputTokens: 8192, responseMimeType: 'application/json' },
+                      generationConfig: { temperature: 0.3, maxOutputTokens: 16384, responseMimeType: 'application/json' },
                     });
                     let retryText = '';
                     try { retryText = retryResp.response.text(); } catch { retryText = (retryResp.response.candidates?.[0]?.content?.parts || []).filter((p: any) => p.text).map((p: any) => p.text).join(''); }
@@ -3436,11 +3494,17 @@ Non utilizzare altri tipi di documento da quel store privato.
                     continue;
                   }
                 } else {
-                  console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini JSON response`);
-                  console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
-                  console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw last 200 chars: ${responseText.substring(responseText.length - 200)}`);
-                  console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] First char code: ${responseText.charCodeAt(0)}, length: ${responseText.length}, hasFileSearch: ${useFileSearch}`);
-                  continue;
+                  const repaired = repairTruncatedJson(escapeNewlinesInStrings(cleaned));
+                  if (repaired) {
+                    parsed = repaired;
+                    console.log(`🔧 [AUTONOMOUS-GEN] [${role.name}] Recovered truncated JSON: ${parsed.tasks?.length || 0} tasks`);
+                  } else {
+                    console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini JSON response`);
+                    console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
+                    console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw last 200 chars: ${responseText.substring(responseText.length - 200)}`);
+                    console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] First char code: ${responseText.charCodeAt(0)}, length: ${responseText.length}, hasFileSearch: ${useFileSearch}`);
+                    continue;
+                  }
                 }
               }
             }
@@ -3456,10 +3520,16 @@ Non utilizzare altri tipi di documento da quel store privato.
                 continue;
               }
             } else {
-              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] No JSON found in response (length: ${responseText.length}, firstCharCode: ${responseText.charCodeAt(0)})`);
-              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
-              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw last 200 chars: ${responseText.substring(responseText.length - 200)}`);
-              continue;
+              const repaired2 = repairTruncatedJson(escapeNewlinesInStrings(cleaned));
+              if (repaired2) {
+                parsed = repaired2;
+                console.log(`🔧 [AUTONOMOUS-GEN] [${role.name}] Recovered truncated JSON (no-match path): ${parsed.tasks?.length || 0} tasks`);
+              } else {
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] No JSON found in response (length: ${responseText.length}, firstCharCode: ${responseText.charCodeAt(0)})`);
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw last 200 chars: ${responseText.substring(responseText.length - 200)}`);
+                continue;
+              }
             }
           }
         }
