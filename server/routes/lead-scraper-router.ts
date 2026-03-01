@@ -406,6 +406,8 @@ router.post("/results/:id/scrape-website", authenticateToken, requireAnyRole(["c
       return res.status(400).json({ error: "FIRECRAWL_API_KEY non configurata. Vai nelle Impostazioni Admin > Lead Scraper per configurarla." });
     }
 
+    const forceRescrape = req.query.force === "true" || req.body?.force === true;
+
     const [result] = await db
       .select()
       .from(leadScraperResults)
@@ -413,6 +415,13 @@ router.post("/results/:id/scrape-website", authenticateToken, requireAnyRole(["c
 
     if (!result) return res.status(404).json({ error: "Result not found" });
     if (!result.website) return res.status(400).json({ error: "No website to scrape" });
+
+    if (forceRescrape) {
+      await db.update(leadScraperResults)
+        .set({ websiteData: null, scrapeStatus: "pending", salesSummary: null })
+        .where(eq(leadScraperResults.id, req.params.id));
+      console.log(`[LEAD-SCRAPER] Force rescrape: reset websiteData for ${req.params.id}`);
+    }
 
     let websiteUrl = result.website;
     if (!websiteUrl.startsWith("http")) websiteUrl = `https://${websiteUrl}`;

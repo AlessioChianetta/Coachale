@@ -377,6 +377,21 @@ export default function ConsultantLeadDetail() {
     },
   });
 
+  const rescrapeWebsiteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/lead-scraper/results/${leadId}/scrape-website?force=true`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Errore ri-analisi");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/results", leadId] });
+      toast({ title: "Sito ri-analizzato", description: "I dati del sito sono stati aggiornati" });
+    },
+  });
+
   const createActivityMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await fetch(`/api/lead-scraper/leads/${leadId}/activities`, {
@@ -729,6 +744,16 @@ export default function ConsultantLeadDetail() {
                   <Button variant="outline" size="sm" className="w-full text-xs mt-2" onClick={() => scrapeWebsiteMutation.mutate()} disabled={scrapeWebsiteMutation.isPending}>
                     {scrapeWebsiteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
                     Analizza sito web
+                  </Button>
+                )}
+                {lead.website && (lead.scrapeStatus === "scraped" || lead.scrapeStatus === "scraped_cached") && (
+                  <Button variant="outline" size="sm" className="w-full text-xs mt-2 border-teal-200 hover:border-teal-400 hover:bg-teal-50 text-teal-700" onClick={() => {
+                    if (confirm("Vuoi ri-analizzare il sito web? I dati esistenti verranno aggiornati con una nuova scansione.")) {
+                      rescrapeWebsiteMutation.mutate();
+                    }
+                  }} disabled={rescrapeWebsiteMutation.isPending}>
+                    {rescrapeWebsiteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                    Ri-analizza sito web
                   </Button>
                 )}
               </CardContent>
