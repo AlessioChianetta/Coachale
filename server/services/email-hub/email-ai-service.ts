@@ -607,6 +607,7 @@ export interface ExtendedAccountSettings extends AccountSettings {
   stopOnRisk?: boolean | null;
   bookingLink?: string | null;
   autoSendEnabled?: boolean;
+  skipTicketCreation?: boolean;
 }
 
 export interface SkipAutoResponseResult {
@@ -1716,17 +1717,20 @@ export async function classifyAndGenerateDraft(
     if (escalationCheck.found && extendedSettings.stopOnRisk) {
       console.log(`[EMAIL-AI] Escalation keyword detected: "${escalationCheck.matchedKeyword}". Stopping AI processing.`);
       
-      const ticket = await createTicketFromEmail(
-        emailId,
-        consultantId,
-        email.accountId,
-        "escalation_keyword",
-        {
-          reasonDetails: `Parola chiave rilevata: "${escalationCheck.matchedKeyword}"`,
-          aiClassification: classification,
-          priority: "high",
-        }
-      );
+      let ticket = null;
+      if (!extendedSettings.skipTicketCreation) {
+        ticket = await createTicketFromEmail(
+          emailId,
+          consultantId,
+          email.accountId,
+          "escalation_keyword",
+          {
+            reasonDetails: `Parola chiave rilevata: "${escalationCheck.matchedKeyword}"`,
+            aiClassification: classification,
+            priority: "high",
+          }
+        );
+      }
       
       return {
         classification,
@@ -1917,7 +1921,7 @@ export async function classifyAndGenerateDraft(
   let ticketCreated = false;
   let ticketId: string | undefined;
 
-  if (!kbResult.found && ticketSettings?.autoCreateTicketOnNoAnswer) {
+  if (!kbResult.found && ticketSettings?.autoCreateTicketOnNoAnswer && !extendedSettings?.skipTicketCreation) {
     console.log(`[EMAIL-AI] No KB answer found, creating ticket...`);
     const ticket = await createTicketFromEmail(
       emailId,
@@ -1933,7 +1937,7 @@ export async function classifyAndGenerateDraft(
     ticketId = ticket?.id;
   }
 
-  if (classification.urgency === "high" && ticketSettings?.autoCreateTicketOnHighUrgency && !ticketCreated) {
+  if (classification.urgency === "high" && ticketSettings?.autoCreateTicketOnHighUrgency && !ticketCreated && !extendedSettings?.skipTicketCreation) {
     console.log(`[EMAIL-AI] High urgency detected, creating ticket...`);
     const ticket = await createTicketFromEmail(
       emailId,
@@ -1950,7 +1954,7 @@ export async function classifyAndGenerateDraft(
     ticketId = ticket?.id;
   }
 
-  if (classification.sentiment === "negative" && ticketSettings?.autoCreateTicketOnNegativeSentiment && !ticketCreated) {
+  if (classification.sentiment === "negative" && ticketSettings?.autoCreateTicketOnNegativeSentiment && !ticketCreated && !extendedSettings?.skipTicketCreation) {
     console.log(`[EMAIL-AI] Negative sentiment detected, creating ticket...`);
     const ticket = await createTicketFromEmail(
       emailId,
@@ -2022,7 +2026,7 @@ export async function classifyAndGenerateDraft(
     autoSendEnabled,
   });
 
-  if (decisionResult.shouldCreateTicket && !ticketCreated) {
+  if (decisionResult.shouldCreateTicket && !ticketCreated && !extendedSettings?.skipTicketCreation) {
     console.log(`[EMAIL-AI] Decision engine requests ticket creation: ${aiResponse.ticketReason}`);
     const ticket = await createTicketFromEmail(
       emailId,

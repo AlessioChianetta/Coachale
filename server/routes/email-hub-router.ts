@@ -2444,6 +2444,34 @@ async function saveEmailToDatabase(email: ParsedEmail, accountId: string, consul
   return inserted.id;
 }
 
+async function findExistingThreadTicket(
+  email: { threadId: string | null; inReplyTo: string | null; messageId: string },
+  consultantId: string
+): Promise<{ ticket: any; linkedEmail: any } | null> {
+  if (!email.threadId && !email.inReplyTo) return null;
+
+  const result = await pool.query(
+    `SELECT et.*, he.from_email, he.thread_id
+     FROM email_tickets et
+     JOIN hub_emails he ON he.id = et.email_id
+     WHERE et.consultant_id = $1
+       AND (
+         ($2::text IS NOT NULL AND he.thread_id = $2)
+         OR ($3::text IS NOT NULL AND he.message_id = $3)
+       )
+     ORDER BY et.created_at DESC
+     LIMIT 1`,
+    [consultantId, email.threadId, email.inReplyTo]
+  );
+
+  if (result.rows.length === 0) return null;
+  const row = result.rows[0];
+  return {
+    ticket: row,
+    linkedEmail: { fromEmail: row.from_email, threadId: row.thread_id },
+  };
+}
+
 async function processNewEmailAI(emailId: string, accountId: string, consultantId: string): Promise<void> {
   const startTime = Date.now();
   
@@ -2498,6 +2526,58 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
       confidenceThreshold,
     };
     
+    let existingTicketId: string | undefined;
+    let wasReopened = false;
+
+    const threadMatch = await findExistingThreadTicket(
+      { threadId: email.threadId, inReplyTo: email.inReplyTo, messageId: email.messageId },
+      consultantId
+    );
+
+    if (threadMatch) {
+      const existingTicket = threadMatch.ticket;
+      existingTicketId = existingTicket.id;
+
+      if (existingTicket.status === "closed" || existingTicket.status === "resolved") {
+        wasReopened = true;
+        await pool.query(
+          `UPDATE email_tickets SET status = 'open', resolved_at = NULL, updated_at = NOW() WHERE id = $1`,
+          [existingTicketId]
+        );
+        await logAiEvent({
+          emailId,
+          accountId,
+          consultantId,
+          eventType: "ticket_created",
+          decision: "create_ticket",
+          decisionReason: `Ticket riaperto: nuova risposta ricevuta da ${email.fromEmail}`,
+          ticketId: existingTicketId,
+          emailSubject: email.subject || undefined,
+          emailFrom: email.fromEmail,
+          processingTimeMs: 0,
+        });
+        console.log(`[EMAIL-AI-AUTO] Ticket ${existingTicketId} riaperto (thread reply da ${email.fromEmail})`);
+      } else {
+        await pool.query(
+          `UPDATE email_tickets SET status = 'in_progress', updated_at = NOW() WHERE id = $1`,
+          [existingTicketId]
+        );
+        await logAiEvent({
+          emailId,
+          accountId,
+          consultantId,
+          eventType: "draft_generated",
+          decision: "create_draft",
+          decisionReason: `Nuova risposta nel thread — bozza aggiornata (da ${email.fromEmail})`,
+          ticketId: existingTicketId,
+          emailSubject: email.subject || undefined,
+          emailFrom: email.fromEmail,
+          processingTimeMs: 0,
+        });
+        console.log(`[EMAIL-AI-AUTO] Ticket ${existingTicketId} aggiornato a in_progress (thread reply da ${email.fromEmail})`);
+      }
+    }
+
     const extendedSettings = {
       customInstructions: account.customInstructions,
       aiLanguage: account.aiLanguage,
@@ -2505,6 +2585,7 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
       stopOnRisk: account.stopOnRisk,
       bookingLink: account.bookingLink,
       autoReplyMode,
+      skipTicketCreation: !!existingTicketId,
     };
     
     const result = await classifyAndGenerateDraft(
@@ -2562,6 +2643,24 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
           : result.kbSearchResult?.storeNamesUsed,
         emailSubject: email.subject || undefined,
         emailFrom: email.fromEmail,
+      });
+    }
+
+    if (existingTicketId && result.draft) {
+      const draftBodyText = result.draft.draftBodyText || null;
+      await pool.query(
+        `UPDATE email_tickets SET suggested_response = $1, updated_at = NOW() WHERE id = $2`,
+        [draftBodyText, existingTicketId]
+      );
+      console.log(`[EMAIL-AI-AUTO] Bozza AI aggiornata nel ticket ${existingTicketId}`);
+      broadcastToConsultant(consultantId, "ticket_updated", {
+        ticketId: existingTicketId,
+        reopened: wasReopened,
+      });
+    } else if (existingTicketId) {
+      broadcastToConsultant(consultantId, "ticket_updated", {
+        ticketId: existingTicketId,
+        reopened: wasReopened,
       });
     }
     
@@ -3859,9 +3958,32 @@ router.get("/tickets", async (req: AuthRequest, res) => {
       }
     }
 
+    const ticketIds = filtered.map(t => t.ticket.id).filter(Boolean) as string[];
+    let timelineEventsMap: Record<string, Array<{ type: string; reason: string; at: string }>> = {};
+    if (ticketIds.length > 0) {
+      const ticketPlaceholders = ticketIds.map((_, i) => `$${i + 1}`).join(", ");
+      const eventsResult = await pool.query(
+        `SELECT ticket_id, event_type, decision_reason, created_at
+         FROM hub_email_ai_events
+         WHERE ticket_id IN (${ticketPlaceholders})
+           AND event_type IN ('ticket_created', 'draft_generated')
+         ORDER BY created_at ASC`,
+        ticketIds
+      );
+      for (const row of eventsResult.rows) {
+        if (!timelineEventsMap[row.ticket_id]) timelineEventsMap[row.ticket_id] = [];
+        timelineEventsMap[row.ticket_id].push({
+          type: row.event_type,
+          reason: row.decision_reason || "",
+          at: row.created_at,
+        });
+      }
+    }
+
     const enriched = filtered.map(t => ({
       ...t,
       sentReply: t.email.id ? (sentRepliesMap[t.email.id] || null) : null,
+      timelineEvents: timelineEventsMap[t.ticket.id] || [],
     }));
 
     res.json({ success: true, data: enriched });

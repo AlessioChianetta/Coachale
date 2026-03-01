@@ -46,6 +46,7 @@ interface EmailTicket {
     processingStatus?: string;
   };
   sentReply?: SentReply | null;
+  timelineEvents?: Array<{ type: string; reason: string; at: string }>;
 }
 
 const statusLabels: Record<string, string> = {
@@ -339,6 +340,11 @@ export function TicketsList({ onSelectEmail, onOpenComposer }: TicketsListProps)
                         <span className="text-[10px] text-muted-foreground">
                           {formatDistanceToNow(new Date(item.ticket.createdAt), { addSuffix: true, locale: it })}
                         </span>
+                        {item.timelineEvents?.some(e => e.type === "ticket_created" && e.reason.toLowerCase().includes("riaperto")) && (
+                          <span className="text-[10px] font-medium text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/50">
+                            Riaperto
+                          </span>
+                        )}
                         {item.sentReply && (
                           <span className="flex items-center gap-0.5 text-[10px] font-medium text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50">
                             <CheckCheck className="h-2.5 w-2.5" />
@@ -553,6 +559,25 @@ export function TicketsList({ onSelectEmail, onOpenComposer }: TicketsListProps)
                       <p className="text-[10px] text-muted-foreground">{format(new Date(selected.ticket.createdAt), "d MMM yyyy HH:mm", { locale: it })}</p>
                     </div>
                   </div>
+                  {(selected.timelineEvents || []).map((ev, idx) => {
+                    const isReopen = ev.type === "ticket_created" && ev.reason.toLowerCase().includes("riaperto");
+                    const isNewReply = ev.type === "draft_generated" && ev.reason.toLowerCase().includes("nuova risposta");
+                    if (!isReopen && !isNewReply) return null;
+                    return (
+                      <div key={idx} className="relative flex items-start gap-2">
+                        <div className={`absolute -left-5 top-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-slate-950 z-10 ${isReopen ? "bg-orange-400" : "bg-sky-400"}`} />
+                        <div>
+                          <p className={`text-xs font-medium ${isReopen ? "text-orange-700 dark:text-orange-400" : "text-sky-700 dark:text-sky-400"}`}>
+                            {isReopen ? "Ticket riaperto" : "Nuova risposta ricevuta"}
+                          </p>
+                          {ev.reason && (
+                            <p className="text-[10px] text-muted-foreground">{ev.reason.slice(0, 60)}{ev.reason.length > 60 ? "…" : ""}</p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground">{format(new Date(ev.at), "d MMM yyyy HH:mm", { locale: it })}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                   {(selected.ticket.status === "in_progress" || selected.ticket.status === "resolved" || selected.ticket.status === "closed") && (
                     <div className="relative flex items-start gap-2">
                       <div className="absolute -left-5 top-0.5 w-3 h-3 rounded-full bg-blue-400 border-2 border-white dark:border-slate-950 z-10" />
