@@ -57,64 +57,154 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
 
     (async () => {
       try {
-        if (searchEngine === "google_search") {
-          const webResults = await searchGoogleWeb(query, location, limit, serpApiKey);
-
-          for (const result of webResults) {
-            await db.insert(leadScraperResults).values({
-              searchId: search.id,
-              businessName: result.title || null,
-              address: null,
-              phone: null,
-              website: result.website || null,
-              rating: null,
-              reviewsCount: null,
-              category: null,
-              latitude: null,
-              longitude: null,
-              hours: null,
-              websiteData: result.snippet ? { description: result.snippet, emails: [], phones: [], socialLinks: {}, services: [] } : null,
-              scrapeStatus: result.website ? "pending" : "no_website",
-              source: "google_search",
-            });
+        const existingLeadsResult = await db.execute(sql`
+          SELECT business_name, phone, website, email, google_place_id
+          FROM lead_scraper_results
+          WHERE search_id IN (SELECT id FROM lead_scraper_searches WHERE consultant_id = ${consultantId})
+        `);
+        const existingNames = new Set<string>();
+        const existingPhones = new Set<string>();
+        const existingDomains = new Set<string>();
+        const existingPlaceIds = new Set<string>();
+        for (const row of existingLeadsResult.rows as any[]) {
+          if (row.business_name) existingNames.add(row.business_name.toLowerCase().trim());
+          if (row.phone) existingPhones.add(row.phone.replace(/[\s\-()\.]/g, ''));
+          if (row.website) {
+            const domain = row.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+            if (domain) existingDomains.add(domain);
           }
-
-          await db
-            .update(leadScraperSearches)
-            .set({
-              status: autoScrapeWebsites ? "enriching" : "completed",
-              resultsCount: webResults.length,
-            })
-            .where(eq(leadScraperSearches.id, search.id));
-        } else {
-          const results = await searchGoogleMaps(query, location, limit, serpApiKey);
-
-          for (const result of results) {
-            await db.insert(leadScraperResults).values({
-              searchId: search.id,
-              businessName: result.title || null,
-              address: result.address || null,
-              phone: result.phone || null,
-              website: result.website || null,
-              rating: result.rating || null,
-              reviewsCount: result.reviews || null,
-              category: result.type || null,
-              latitude: result.gps_coordinates?.latitude || null,
-              longitude: result.gps_coordinates?.longitude || null,
-              hours: result.operating_hours || null,
-              scrapeStatus: result.website ? "pending" : "no_website",
-              source: "google_maps",
-            });
+          if (row.email) {
+            const emailDomain = row.email.split('@')[1]?.toLowerCase();
+            if (emailDomain) existingDomains.add(emailDomain);
           }
-
-          await db
-            .update(leadScraperSearches)
-            .set({
-              status: autoScrapeWebsites ? "enriching" : "completed",
-              resultsCount: results.length,
-            })
-            .where(eq(leadScraperSearches.id, search.id));
+          if (row.google_place_id) existingPlaceIds.add(row.google_place_id);
         }
+        console.log(`[LEAD-SCRAPER] Dedup sets: ${existingNames.size} names, ${existingPhones.size} phones, ${existingDomains.size} domains, ${existingPlaceIds.size} place_ids`);
+
+        const isDuplicate = (name: string | null, phone: string | null, website: string | null, placeId?: string | null): boolean => {
+          if (placeId && existingPlaceIds.has(placeId)) return true;
+          if (name && existingNames.has(name.toLowerCase().trim())) return true;
+          if (phone) {
+            const normalized = phone.replace(/[\s\-()\.]/g, '');
+            if (existingPhones.has(normalized)) return true;
+          }
+          if (website) {
+            const domain = website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+            if (domain && existingDomains.has(domain)) return true;
+          }
+          return false;
+        };
+
+        let newCount = 0;
+        let duplicatesSkipped = 0;
+        const MAX_EXTRA_PAGES = 3;
+
+        const WEB_PAGE_SIZE = 10;
+        const MAPS_PAGE_SIZE = 20;
+
+        if (searchEngine === "google_search") {
+          let offset = 0;
+          let pagesUsed = 0;
+          let noMoreResults = false;
+          while (newCount < limit && pagesUsed <= MAX_EXTRA_PAGES && !noMoreResults) {
+            const webResults = await searchGoogleWeb(query, location, WEB_PAGE_SIZE, serpApiKey, offset);
+            if (webResults.length === 0) { noMoreResults = true; break; }
+
+            for (const result of webResults) {
+              if (newCount >= limit) break;
+              if (isDuplicate(result.title || null, null, result.website || null)) {
+                duplicatesSkipped++;
+                continue;
+              }
+              await db.insert(leadScraperResults).values({
+                searchId: search.id,
+                businessName: result.title || null,
+                address: null,
+                phone: null,
+                website: result.website || null,
+                rating: null,
+                reviewsCount: null,
+                category: null,
+                latitude: null,
+                longitude: null,
+                hours: null,
+                websiteData: result.snippet ? { description: result.snippet, emails: [], phones: [], socialLinks: {}, services: [] } : null,
+                scrapeStatus: result.website ? "pending" : "no_website",
+                source: "google_search",
+              });
+              newCount++;
+              if (result.title) existingNames.add(result.title.toLowerCase().trim());
+              if (result.website) {
+                const domain = result.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+                if (domain) existingDomains.add(domain);
+              }
+            }
+
+            if (webResults.length < WEB_PAGE_SIZE) noMoreResults = true;
+            offset += WEB_PAGE_SIZE;
+            pagesUsed++;
+            console.log(`[LEAD-SCRAPER] Page ${pagesUsed}: ${newCount} new, ${duplicatesSkipped} dups, offset=${offset}`);
+          }
+        } else {
+          let offset = 0;
+          let pagesUsed = 0;
+          let noMoreResults = false;
+          while (newCount < limit && pagesUsed <= MAX_EXTRA_PAGES && !noMoreResults) {
+            const mapsResults = await searchGoogleMaps(query, location, MAPS_PAGE_SIZE, serpApiKey, offset);
+            if (mapsResults.length === 0) { noMoreResults = true; break; }
+
+            for (const result of mapsResults) {
+              if (newCount >= limit) break;
+              if (isDuplicate(result.title || null, result.phone || null, result.website || null, result.place_id || null)) {
+                duplicatesSkipped++;
+                continue;
+              }
+              await db.insert(leadScraperResults).values({
+                searchId: search.id,
+                businessName: result.title || null,
+                address: result.address || null,
+                phone: result.phone || null,
+                website: result.website || null,
+                rating: result.rating || null,
+                reviewsCount: result.reviews || null,
+                category: result.type || null,
+                latitude: result.gps_coordinates?.latitude || null,
+                longitude: result.gps_coordinates?.longitude || null,
+                hours: result.operating_hours || null,
+                googlePlaceId: result.place_id || null,
+                businessTypes: result.types || null,
+                priceRange: result.price || null,
+                openState: result.open_state || null,
+                mapsDescription: result.description || null,
+                scrapeStatus: result.website ? "pending" : "no_website",
+                source: "google_maps",
+              });
+              newCount++;
+              if (result.title) existingNames.add(result.title.toLowerCase().trim());
+              if (result.phone) existingPhones.add(result.phone.replace(/[\s\-()\.]/g, ''));
+              if (result.place_id) existingPlaceIds.add(result.place_id);
+              if (result.website) {
+                const domain = result.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+                if (domain) existingDomains.add(domain);
+              }
+            }
+
+            if (mapsResults.length < MAPS_PAGE_SIZE) noMoreResults = true;
+            offset += MAPS_PAGE_SIZE;
+            pagesUsed++;
+            console.log(`[LEAD-SCRAPER] Page ${pagesUsed}: ${newCount} new, ${duplicatesSkipped} dups, offset=${offset}`);
+          }
+        }
+
+        console.log(`[LEAD-SCRAPER] Search complete: ${newCount} new leads inserted, ${duplicatesSkipped} duplicates skipped`);
+
+        await db
+          .update(leadScraperSearches)
+          .set({
+            status: autoScrapeWebsites ? "enriching" : "completed",
+            resultsCount: newCount,
+          })
+          .where(eq(leadScraperSearches.id, search.id));
 
         if (autoScrapeWebsites) {
           const bgKeys = await getLeadScraperKeys();
@@ -153,6 +243,83 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
     })();
   } catch (error: any) {
     console.error("Error starting search:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/rescrape", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { searchId } = req.body;
+    const consultantId = req.user?.id;
+
+    const keys = await getLeadScraperKeys();
+    const firecrawlKey = keys.firecrawlKey;
+    if (!firecrawlKey) {
+      return res.status(400).json({ error: "FIRECRAWL_API_KEY non configurata." });
+    }
+
+    let searchIds: string[] = [];
+    if (searchId) {
+      const [search] = await db.select().from(leadScraperSearches)
+        .where(and(eq(leadScraperSearches.id, searchId), eq(leadScraperSearches.consultantId, consultantId!)));
+      if (!search) return res.status(404).json({ error: "Ricerca non trovata" });
+      searchIds = [searchId];
+    } else {
+      const searches = await db.select({ id: leadScraperSearches.id }).from(leadScraperSearches)
+        .where(eq(leadScraperSearches.consultantId, consultantId!));
+      searchIds = searches.map(s => s.id);
+    }
+
+    if (searchIds.length === 0) {
+      return res.json({ message: "Nessuna ricerca trovata" });
+    }
+
+    res.json({ message: `Ri-analisi avviata per ${searchIds.length} ricerche`, searchIds });
+
+    (async () => {
+      try {
+        for (const sid of searchIds) {
+          console.log(`[LEAD-SCRAPER] Rescrape: resetting leads for search ${sid}`);
+
+          await db.execute(sql`
+            UPDATE lead_scraper_results
+            SET scrape_status = 'pending', website_data = NULL, sales_summary = NULL
+            WHERE search_id = ${sid} AND website IS NOT NULL AND website != ''
+          `);
+
+          await db.update(leadScraperSearches)
+            .set({ status: "enriching" })
+            .where(eq(leadScraperSearches.id, sid));
+
+          await enrichSearchResults(sid, firecrawlKey);
+
+          await db.update(leadScraperSearches)
+            .set({ status: "analyzing" })
+            .where(eq(leadScraperSearches.id, sid));
+
+          try {
+            await generateBatchSalesSummaries(sid, consultantId!);
+            console.log(`[LEAD-SCRAPER] Rescrape: AI analysis completed for search ${sid}`);
+          } catch (aiErr: any) {
+            console.error(`[LEAD-SCRAPER] Rescrape: AI analysis error (non-blocking):`, aiErr?.message || aiErr);
+          }
+
+          await db.update(leadScraperSearches)
+            .set({ status: "completed" })
+            .where(eq(leadScraperSearches.id, sid));
+        }
+        console.log(`[LEAD-SCRAPER] Rescrape: all ${searchIds.length} searches completed`);
+      } catch (error: any) {
+        console.error("[LEAD-SCRAPER] Rescrape error:", error);
+        for (const sid of searchIds) {
+          await db.update(leadScraperSearches)
+            .set({ status: "completed" })
+            .where(eq(leadScraperSearches.id, sid)).catch(() => {});
+        }
+      }
+    })();
+  } catch (error: any) {
+    console.error("Error starting rescrape:", error);
     res.status(500).json({ error: error.message });
   }
 });

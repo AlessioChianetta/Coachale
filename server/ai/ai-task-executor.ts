@@ -3976,9 +3976,14 @@ async function handleLeadScraperSearch(
     let duplicatesSkipped = 0;
     let retryQuery: string | null = null;
 
+    const MAX_EXTRA_PAGES = 3;
+
     const executeSearch = async (activeQuery: string, isRetry: boolean = false) => {
       let searchDuplicates = 0;
       let searchNew = 0;
+
+      const WEB_PAGE_SIZE = 10;
+      const MAPS_PAGE_SIZE = 20;
 
       if (searchEngine === 'google_search') {
         const domainExclusions = Array.from(existingDomains).slice(0, 30);
@@ -3989,77 +3994,102 @@ async function handleLeadScraperSearch(
           console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Excluded ${domainExclusions.length} domains from Search query`);
         }
 
-        const webResults = await searchGoogleWeb(effectiveQuery, location, limit, keys.serpApiKey!);
+        let offset = 0;
+        let pagesUsed = 0;
+        let noMoreResults = false;
+        while (searchNew < limit && pagesUsed <= MAX_EXTRA_PAGES && !noMoreResults) {
+          const webResults = await searchGoogleWeb(effectiveQuery, location, WEB_PAGE_SIZE, keys.serpApiKey!, offset);
+          if (webResults.length === 0) { noMoreResults = true; break; }
 
-        for (const result of webResults) {
-          const dupReason = isDuplicate(result.title || null, null, result.website || null);
-          if (dupReason) {
-            console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Duplicato skippato: ${dupReason}`);
-            searchDuplicates++;
-            continue;
+          for (const result of webResults) {
+            if (searchNew >= limit) break;
+            const dupReason = isDuplicate(result.title || null, null, result.website || null);
+            if (dupReason) {
+              console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Duplicato skippato: ${dupReason}`);
+              searchDuplicates++;
+              continue;
+            }
+            await db.insert(leadScraperResults).values({
+              searchId,
+              businessName: result.title || null,
+              address: null,
+              phone: null,
+              website: result.website || null,
+              rating: null,
+              reviewsCount: null,
+              category: null,
+              latitude: null,
+              longitude: null,
+              hours: null,
+              websiteData: result.snippet ? { description: result.snippet, emails: [], phones: [], socialLinks: {}, services: [] } : null,
+              scrapeStatus: result.website ? 'pending' : 'no_website',
+              source: 'google_search',
+            });
+            searchNew++;
+            if (result.title) existingNames.add(result.title.toLowerCase().trim());
+            if (result.website) {
+              const domain = result.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+              if (domain) existingDomains.add(domain);
+            }
           }
-          await db.insert(leadScraperResults).values({
-            searchId,
-            businessName: result.title || null,
-            address: null,
-            phone: null,
-            website: result.website || null,
-            rating: null,
-            reviewsCount: null,
-            category: null,
-            latitude: null,
-            longitude: null,
-            hours: null,
-            websiteData: result.snippet ? { description: result.snippet, emails: [], phones: [], socialLinks: {}, services: [] } : null,
-            scrapeStatus: result.website ? 'pending' : 'no_website',
-            source: 'google_search',
-          });
-          searchNew++;
-          if (result.title) existingNames.add(result.title.toLowerCase().trim());
-          if (result.website) {
-            const domain = result.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
-            if (domain) existingDomains.add(domain);
-          }
+
+          if (webResults.length < WEB_PAGE_SIZE) noMoreResults = true;
+          offset += WEB_PAGE_SIZE;
+          pagesUsed++;
+          console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Page ${pagesUsed}: ${searchNew} new, ${searchDuplicates} dups, offset=${offset}`);
         }
       } else {
         console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Maps dedup: ${existingPlaceIds.size} place_ids noti`);
-        const mapsResults = await searchGoogleMaps(activeQuery, location, limit, keys.serpApiKey!);
 
-        for (const result of mapsResults) {
-          const dupReason = isDuplicate(result.title || null, result.phone || null, result.website || null, result.place_id || null);
-          if (dupReason) {
-            console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Duplicato skippato: ${dupReason}`);
-            searchDuplicates++;
-            continue;
+        let offset = 0;
+        let pagesUsed = 0;
+        let noMoreResults = false;
+        while (searchNew < limit && pagesUsed <= MAX_EXTRA_PAGES && !noMoreResults) {
+          const mapsResults = await searchGoogleMaps(activeQuery, location, MAPS_PAGE_SIZE, keys.serpApiKey!, offset);
+          if (mapsResults.length === 0) { noMoreResults = true; break; }
+
+          for (const result of mapsResults) {
+            if (searchNew >= limit) break;
+            const dupReason = isDuplicate(result.title || null, result.phone || null, result.website || null, result.place_id || null);
+            if (dupReason) {
+              console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Duplicato skippato: ${dupReason}`);
+              searchDuplicates++;
+              continue;
+            }
+            await db.insert(leadScraperResults).values({
+              searchId,
+              businessName: result.title || null,
+              address: result.address || null,
+              phone: result.phone || null,
+              website: result.website || null,
+              rating: result.rating || null,
+              reviewsCount: result.reviews || null,
+              category: result.type || null,
+              latitude: result.gps_coordinates?.latitude || null,
+              longitude: result.gps_coordinates?.longitude || null,
+              hours: result.operating_hours || null,
+              googlePlaceId: result.place_id || null,
+              businessTypes: result.types || null,
+              priceRange: result.price || null,
+              openState: result.open_state || null,
+              mapsDescription: result.description || null,
+              scrapeStatus: result.website ? 'pending' : 'no_website',
+              source: 'google_maps',
+            });
+            searchNew++;
+            if (result.title) existingNames.add(result.title.toLowerCase().trim());
+            if (result.phone) existingPhones.add(result.phone.replace(/[\s\-()\.]/g, ''));
+            if (result.place_id) existingPlaceIds.add(result.place_id);
+            if (result.website) {
+              const domain = result.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+              if (domain) existingDomains.add(domain);
+            }
           }
-          await db.insert(leadScraperResults).values({
-            searchId,
-            businessName: result.title || null,
-            address: result.address || null,
-            phone: result.phone || null,
-            website: result.website || null,
-            rating: result.rating || null,
-            reviewsCount: result.reviews || null,
-            category: result.type || null,
-            latitude: result.gps_coordinates?.latitude || null,
-            longitude: result.gps_coordinates?.longitude || null,
-            hours: result.operating_hours || null,
-            googlePlaceId: result.place_id || null,
-            businessTypes: result.types || null,
-            priceRange: result.price || null,
-            openState: result.open_state || null,
-            mapsDescription: result.description || null,
-            scrapeStatus: result.website ? 'pending' : 'no_website',
-            source: 'google_maps',
-          });
-          searchNew++;
-          if (result.title) existingNames.add(result.title.toLowerCase().trim());
-          if (result.phone) existingPhones.add(result.phone.replace(/[\s\-()\.]/g, ''));
-          if (result.place_id) existingPlaceIds.add(result.place_id);
-          if (result.website) {
-            const domain = result.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
-            if (domain) existingDomains.add(domain);
-          }
+
+          if (mapsResults.length < MAPS_PAGE_SIZE) noMoreResults = true;
+          offset += MAPS_PAGE_SIZE;
+          pagesUsed++;
+          console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Page ${pagesUsed}: ${searchNew} new, ${searchDuplicates} dups, offset=${offset}`);
         }
       }
 

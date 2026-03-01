@@ -1063,6 +1063,22 @@ export default function ConsultantLeadScraper() {
     },
   });
 
+  const rescrapeMutation = useMutation({
+    mutationFn: async (searchId: string) => {
+      const res = await fetch(`/api/lead-scraper/rescrape`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ searchId }),
+      });
+      if (!res.ok) throw new Error("Errore");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Ri-analisi avviata", description: "I siti web verranno ri-analizzati in background" });
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/searches"] });
+    },
+  });
+
   const handleExport = () => {
     if (!selectedSearchId) return;
     fetch(`/api/lead-scraper/searches/${selectedSearchId}/export`, { headers: getAuthHeaders() })
@@ -1564,10 +1580,20 @@ export default function ConsultantLeadScraper() {
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                           {selectedSearch.status === "completed" && (
-                            <Button variant="outline" size="sm" onClick={() => generateBatchSummariesMutation.mutate(selectedSearchId!)} disabled={generateBatchSummariesMutation.isPending} className="border-amber-200 hover:border-amber-400 hover:bg-amber-50 text-amber-700">
-                              {generateBatchSummariesMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
-                              Analisi AI
-                            </Button>
+                            <>
+                              <Button variant="outline" size="sm" onClick={() => {
+                                if (confirm("Vuoi ri-analizzare tutti i siti web di questa ricerca? I dati esistenti verranno aggiornati.")) {
+                                  rescrapeMutation.mutate(selectedSearchId!);
+                                }
+                              }} disabled={rescrapeMutation.isPending} className="border-teal-200 hover:border-teal-400 hover:bg-teal-50 text-teal-700">
+                                {rescrapeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                                Ri-analizza siti
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => generateBatchSummariesMutation.mutate(selectedSearchId!)} disabled={generateBatchSummariesMutation.isPending} className="border-amber-200 hover:border-amber-400 hover:bg-amber-50 text-amber-700">
+                                {generateBatchSummariesMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                                Analisi AI
+                              </Button>
+                            </>
                           )}
                           <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="relative">
                             <Filter className="h-4 w-4 mr-1" />Filtri

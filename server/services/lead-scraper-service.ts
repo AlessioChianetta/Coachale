@@ -102,10 +102,11 @@ export async function searchGoogleMaps(
   query: string,
   location: string,
   limit: number = 20,
-  serpApiKey: string
+  serpApiKey: string,
+  startOffset: number = 0
 ): Promise<SerpApiResult[]> {
   const allResults: SerpApiResult[] = [];
-  let start = 0;
+  let start = startOffset;
 
   const gpsCoords = getGPSCoordinatesForLocation(location);
   if (gpsCoords) {
@@ -171,10 +172,11 @@ export async function searchGoogleWeb(
   query: string,
   location: string,
   limit: number = 20,
-  serpApiKey: string
+  serpApiKey: string,
+  startOffset: number = 0
 ): Promise<GoogleWebResult[]> {
   const allResults: GoogleWebResult[] = [];
-  let start = 0;
+  let start = startOffset;
 
   while (allResults.length < limit) {
     const searchQuery = location ? `${query} ${location}` : query;
