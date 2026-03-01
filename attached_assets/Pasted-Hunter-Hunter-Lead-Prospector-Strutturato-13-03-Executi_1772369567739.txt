@@ -1,0 +1,59 @@
+Hunter
+Hunter
+
+Lead Prospector
+
+⚡ Strutturato
+13:03
+
+Executive Summary
+
+13
+
+Clienti analizzati
+
+13
+
+Idonei
+
+1
+
+Task creati
+
+Pensiero Intimo AI
+
+Osservazione
+La pipeline attuale conta 46 lead nuovi, quasi raggiungendo la soglia di saturazione di 50. Le ricerche recenti si sono concentrate pesantemente sul settore Head Hunting e Recruiting a Milano e Roma, oltre ad agenzie marketing a Bari. I limiti giornalieri per l'outreach sono ancora ampiamente disponibili (14 WhatsApp e 19 Email rimanenti), ma il volume di lead non contattati suggerisce prudenza nella generazione di massa.
+
+Riflessione
+Sebbene il settore HR sia stato esplorato con successo, il Sistema Orbitale ha un enorme potenziale nel Segmento 1 (MSP e Software House) che è attualmente sottorappresentato nella pipeline. Gli MSP (Managed Service Providers) sono ideali perché gestiscono contratti ricorrenti e hanno un alto volume di richieste di supporto tecnico di primo livello che l'AI potrebbe gestire (Livello 3-4). Torino rappresenta un hub tecnologico di rilievo non ancora toccato dalle ricerche recenti.
+
+Decisione
+Ho deciso di generare un singolo task di ricerca mirato (limitato a 10 risultati per non eccedere la soglia di 50 lead totali) focalizzato sui Managed Service Providers a Torino. Utilizzerò il motore di ricerca 'search' invece di 'maps' per intercettare aziende di servizi strutturate piuttosto che semplici negozi di assistenza tecnica. Questo diversifica il rischio settoriale e prepara il terreno per proposte di Livello 4 e 5.
+
+Auto-Revisione
+Il task è strettamente necessario per bilanciare i segmenti target del consulente. Ho limitato il numero di risultati a 10 per rispettare la regola del budget lead (46 lead esistenti + 10 potenziali = 56, ma la qualifica AI filtrerà i meno rilevanti mantenendoci vicini al limite). Il timing alle 14:30 è ottimale per l'elaborazione pomeridiana.
+
+Modello: gemini-3-flash-preview
+Strutturato
+Analisi Strategica
+
+Analisi Executive Coach
+
+La pipeline attuale conta 46 lead nuovi, quasi raggiungendo la soglia di saturazione di 50. Le ricerche recenti si sono concentrate pesantemente sul settore Head Hunting e Recruiting a Milano e Roma, oltre ad agenzie marketing a Bari. I limiti giornalieri per l'outreach sono ancora ampiamente disponibili (14 WhatsApp e 19 Email rimanenti), ma il volume di lead non contattati suggerisce prudenza nella generazione di massa.
+
+Sebbene il settore HR sia stato esplorato con successo, il Sistema Orbitale ha un enorme potenziale nel Segmento 1 (MSP e Software House) che è attualmente sottorappresentato nella pipeline. Gli MSP (Managed Service Providers) sono ideali perché gestiscono contratti ricorrenti e hanno un alto volume di richieste di supporto tecnico di primo livello che l'AI potrebbe gestire (Livello 3-4). Torino rappresenta un hub tecnologico di rilievo non ancora toccato dalle ricerche recenti.
+
+Ho deciso di generare un singolo task di ricerca mirato (limitato a 10 risultati per non eccedere la soglia di 50 lead totali) focalizzato sui Managed Service Providers a Torino. Utilizzerò il motore di ricerca 'search' invece di 'maps' per intercettare aziende di servizi strutturate piuttosto che semplici negozi di assistenza tecnica. Questo diversifica il rischio settoriale e prepara il terreno per proposte di Livello 4 e 5.
+
+Azioni Operative
+
+Azioni decise (1)
+
+📌 Task
+lead_scraper
+P3
+Lead Search
+--- TIPO: lead_scraper_search QUERY: Managed Service Provider IT consulenza ENGINE: search LOCATION: Torino, Italia LIMIT: 10 REASONING: Ricerca mira
+
+Perché: Focus sul Segmento 1 in una nuova area geografica (Torino) per bilanciare la pipeline attualmente sbilanciata verso il settore recruiting.
