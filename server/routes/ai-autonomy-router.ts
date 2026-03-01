@@ -3760,6 +3760,20 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
       WHERE id = ${id}
     `);
 
+    const isCrmOutreach = task.preferred_channel === 'lead_crm' || (task.ai_instruction || '').includes('TIPO: crm_lead_outreach');
+    if (isCrmOutreach) {
+      console.log(`🎯 [CRM-OUTREACH-ROUTE] Task ${task.id} is crm_lead_outreach — delegating to scheduler executeTask (not Decision Engine)`);
+      await db.execute(sql`
+        UPDATE ai_scheduled_tasks
+        SET status = 'scheduled',
+            scheduled_at = NOW(),
+            result_data = COALESCE(result_data, '{}'::jsonb) || '{"from_approval": true, "skip_guardrails": true}'::jsonb,
+            updated_at = NOW()
+        WHERE id = ${id}
+      `);
+      return res.json({ success: true, status: 'delegated_to_scheduler' });
+    }
+
     res.json({ success: true, status: 'executing' });
 
     const runExecution = async () => {
