@@ -1156,7 +1156,7 @@ async function fetchHunterData(consultantId: string, clientIds: string[]): Promi
   const maxCrmOutreach = outreachConfig.max_crm_outreach_per_cycle ?? 5;
   const leadSourceFilter = outreachConfig.lead_source_filter;
   const sourceConditionUncontacted = leadSourceFilter && leadSourceFilter !== 'both'
-    ? sql`AND ls.search_engine = ${leadSourceFilter}`
+    ? sql`AND ls.origin_role = ${leadSourceFilter}`
     : sql``;
 
   const uncontactedLeadsResult = await db.execute(sql`

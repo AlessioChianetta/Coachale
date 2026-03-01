@@ -403,7 +403,7 @@ function selectBestEmail(lead: any, websiteData: any): string | null {
   return nonGeneric.length > 0 ? nonGeneric[0] : allEmails[0];
 }
 
-async function handleCrmLeadOutreach(task: AIScheduledTask): Promise<void> {
+export async function handleCrmLeadOutreach(task: AIScheduledTask): Promise<void> {
   const LOG = '🎯 [CRM-LEAD-OUTREACH]';
   const instruction = task.ai_instruction || '';
 

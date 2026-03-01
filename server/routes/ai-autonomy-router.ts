@@ -327,7 +327,7 @@ router.get("/hunter/uncontacted-leads", authenticateToken, requireAnyRole(["cons
     const scoreThreshold = outreachConfig.score_threshold ?? 60;
     const leadSourceFilter = outreachConfig.lead_source_filter;
     const sourceCondition = leadSourceFilter && leadSourceFilter !== 'both'
-      ? sql`AND ls.search_engine = ${leadSourceFilter}`
+      ? sql`AND ls.origin_role = ${leadSourceFilter}`
       : sql``;
 
     const result = await db.execute(sql`
@@ -335,7 +335,7 @@ router.get("/hunter/uncontacted-leads", authenticateToken, requireAnyRole(["cons
         lr.id, lr.business_name, lr.phone, lr.email, lr.category, lr.website,
         lr.ai_compatibility_score, lr.ai_sales_summary, lr.lead_status,
         lr.created_at, lr.lead_notes,
-        ls.search_engine as source,
+        ls.origin_role as source,
         (
           SELECT MAX(la.created_at)
           FROM lead_scraper_activities la
@@ -696,7 +696,7 @@ setInterval(() => {
 async function getActionableCrmLeads(consultantId: string, scoreThreshold: number, outreachConfig?: any) {
   const leadSourceFilter = outreachConfig?.lead_source_filter;
   const sourceCondition = leadSourceFilter && leadSourceFilter !== 'both'
-    ? sql`AND ls.search_engine = ${leadSourceFilter}`
+    ? sql`AND ls.origin_role = ${leadSourceFilter}`
     : sql``;
 
   const leadsResult = await db.execute(sql`
@@ -3762,16 +3762,14 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
 
     const isCrmOutreach = task.preferred_channel === 'lead_crm' || (task.ai_instruction || '').includes('TIPO: crm_lead_outreach');
     if (isCrmOutreach) {
-      console.log(`🎯 [CRM-OUTREACH-ROUTE] Task ${task.id} is crm_lead_outreach — delegating to scheduler executeTask (not Decision Engine)`);
-      await db.execute(sql`
-        UPDATE ai_scheduled_tasks
-        SET status = 'scheduled',
-            scheduled_at = NOW(),
-            result_data = COALESCE(result_data, '{}'::jsonb) || '{"from_approval": true, "skip_guardrails": true}'::jsonb,
-            updated_at = NOW()
-        WHERE id = ${id}
-      `);
-      return res.json({ success: true, status: 'delegated_to_scheduler' });
+      console.log(`🎯 [CRM-OUTREACH-ROUTE] Task ${task.id} is crm_lead_outreach — calling handleCrmLeadOutreach directly`);
+      res.json({ success: true, status: 'executing_crm_outreach' });
+      const { handleCrmLeadOutreach } = await import("../cron/ai-task-scheduler");
+      const freshTaskResult = await db.execute(sql`SELECT * FROM ai_scheduled_tasks WHERE id = ${id}`);
+      if (freshTaskResult.rows.length > 0) {
+        await handleCrmLeadOutreach(freshTaskResult.rows[0] as any);
+      }
+      return;
     }
 
     res.json({ success: true, status: 'executing' });
