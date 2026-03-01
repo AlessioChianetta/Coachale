@@ -1,0 +1,32 @@
+[SLOT-FINDER] voice → slot found: 2026-03-01T10:40:00.000Z (offsetIndex=0)
+[HUNTER] Step 1/6: Slot found → 2026-03-01T10:40:00.000Z (taskId=hunt_vo_1772326023326_nfw04, status=waiting_approval)
+[HUNTER] Step 2/6: Created scheduled_voice_calls (id=svc_1772326023326_bzs8k, status=pending, phone=+393519272875)
+[HUNTER] Step 3/6: Created ai_scheduled_task (id=hunt_vo_1772326023326_nfw04, type=single_call, status=waiting_approval)
+[HUNTER] Step 4/6: Updated lead_scraper_results → in_outreach (leadId=3a21e337-c107-457a-9509-6fc1fb948503)
+[HUNTER] Step 5/6: Logged activity in lead_scraper_activities
+[HUNTER] Step 6/6: Done — voice for "Ricercamy Srl" → waiting_approval at 2026-03-01T10:40:00.000Z
+[HUNTER-SINGLE] ✓ Ricercamy Srl → voice (waiting_approval)
+[HUNTER] WhatsApp: template "Messaggio Apertura Personalizzato" selected for Ricercamy Srl (body: "Ciao {nome_lead}! 👋 
+Sono {nome_consulente} di {nome_azienda}. Ho visto il tuo interesse per {uncino}.
+Cosa ti ha spint...")
+[HUNTER] 🔍 Template vars context for "Ricercamy Srl": salesSummary=3648chars, websiteData=0chars, scrapeData=0chars, website=https://www.ricercamy.com/, category=Recruiter, hasAnyContext=true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+🔒 [Semaphore] Acquired slot (1/3 in use)
+📊 [TokenTracker] Buffered: hunter-template-vars | gemini-3-flash-preview | 878 tokens | $0.0009 | consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b client=self
+🔓 [Semaphore] Released slot (0/3 in use)
+[HUNTER] 🤖 AI vars raw response for "Ricercamy Srl": "Here is the JSON requested:"
+[HUNTER] ⚠️ No JSON match found in AI response for "Ricercamy Srl"
+[HUNTER] ⚠️ VARIABILE {uncino} NON RISOLTA per lead "Ricercamy Srl" — nessun fallback generico, il messaggio conterrà un placeholder vuoto. Verificare che il lead abbia salesSummary/websiteData.
+[HUNTER] Template vars for "Ricercamy Srl": [nome_lead=deterministic, nome_consulente=deterministic, nome_azienda=deterministic, uncino=UNRESOLVED]
+[HUNTER] Resolved values: {"nome_lead":"Ricercamy Srl","nome_consulente":"Alessio Chianetta","nome_azienda":"Orbitale","uncino":""}
+[HUNTER] WA template filled for "Ricercamy Srl": "Ciao Ricercamy Srl! 👋 
+Sono Alessio Chianetta di Orbitale. Ho visto il tuo interesse per .
+Cosa ti ha spinto a iscriverti? Mi aiuta a capire come posso esserti utile! 😊..." | Twilio vars: {"1":"Ricercamy Srl","2":"Alessio Chianetta","3":"Orbitale","4":""} | Sources: {"nome_lead":"deterministic","nome_consulente":"deterministic","nome_azienda":"deterministic","uncino":"UNRESOLVED"}
+[HUNTER] Step 1/6: Finding slot for whatsapp → "Ricercamy Srl" (mode=approval)
+[SLOT-FINDER] whatsapp → slot found: 2026-03-01T09:00:00.000Z (offsetIndex=1)
+[HUNTER] Step 1/6: Slot found → 2026-03-01
