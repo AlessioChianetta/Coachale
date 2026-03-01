@@ -125,6 +125,18 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
 
           await db
             .update(leadScraperSearches)
+            .set({ status: "analyzing" })
+            .where(eq(leadScraperSearches.id, search.id));
+
+          try {
+            await generateBatchSalesSummaries(search.id, consultantId!);
+            console.log(`[LEAD-SCRAPER] Auto AI analysis completed for search ${search.id}`);
+          } catch (aiErr: any) {
+            console.error(`[LEAD-SCRAPER] AI analysis error (non-blocking):`, aiErr?.message || aiErr);
+          }
+
+          await db
+            .update(leadScraperSearches)
             .set({ status: "completed" })
             .where(eq(leadScraperSearches.id, search.id));
         }

@@ -875,7 +875,7 @@ export default function ConsultantLeadScraper() {
   }, [savedSalesContext]);
 
   const selectedSearch = searches.find((s) => s.id === selectedSearchId);
-  const isSearchRunning = selectedSearch?.status === "running" || selectedSearch?.status === "enriching";
+  const isSearchRunning = selectedSearch?.status === "running" || selectedSearch?.status === "enriching" || selectedSearch?.status === "analyzing";
 
   useEffect(() => {
     if (!selectedSearchId && searches.length > 0) {
@@ -1158,6 +1158,8 @@ export default function ConsultantLeadScraper() {
         return <Badge className="bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400"><Loader2 className="h-3 w-3 animate-spin mr-1" />In corso</Badge>;
       case "enriching":
         return <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400"><RefreshCw className="h-3 w-3 animate-spin mr-1" />Arricchimento</Badge>;
+      case "analyzing":
+        return <Badge className="bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400"><Sparkles className="h-3 w-3 animate-pulse mr-1" />Analisi AI...</Badge>;
       case "completed":
         return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"><CheckCircle className="h-3 w-3 mr-1" />Completata</Badge>;
       case "failed":
@@ -1591,7 +1593,7 @@ export default function ConsultantLeadScraper() {
                         <div className="mt-3">
                           <Progress value={undefined} className="h-1.5" />
                           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                            <Loader2 className="h-3 w-3 animate-spin" />{selectedSearch.status === "enriching" ? "Analisi siti web in corso..." : "Ricerca in corso..."}
+                            <Loader2 className="h-3 w-3 animate-spin" />{selectedSearch.status === "analyzing" ? "Generazione analisi AI in corso..." : selectedSearch.status === "enriching" ? "Analisi siti web in corso..." : "Ricerca in corso..."}
                           </p>
                         </div>
                       )}

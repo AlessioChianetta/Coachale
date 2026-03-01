@@ -330,11 +330,14 @@ function extractServices(text: string): string[] {
 
   return serviceMatch[1]
     .split(/\n[-•*]\s*|\n\d+[.)]\s*|\n/)
-    .map((s: string) => s.replace(/\]\([^)]*\)/g, "").replace(/\[[^\]]*\]/g, "").trim())
+    .map((s: string) => s.replace(/\]\([^)]*\)/g, "").replace(/\[[^\]]*\]/g, "").replace(/^#+\s*/, "").replace(/^\*+/, "").replace(/!\[.*$/, "").trim())
     .filter((s: string) => {
-      if (s.length < 4 || s.length > 300) return false;
+      if (s.length < 4 || s.length > 120) return false;
       if (/^https?:\/\//.test(s)) return false;
       if (/^\d+$/.test(s)) return false;
+      if (/^(portfolio|blog|contatti|contact|job|jobs|back to top|cookie|privacy|home|menu|cerca|search|login|iscriviti|newsletter|footer|header|nav|richiedi|abilita javascript|logo|scarica|download|mostra|nascondi|chiudi|apri)$/i.test(s)) return false;
+      if (/^[-*#\[!|>]/.test(s)) return false;
+      if ((s.match(/\(/g) || []).length > 2) return false;
       return true;
     });
 }
@@ -501,10 +504,10 @@ async function scrapeOnePage(
     const finalEmails = [...new Set([...jsonEmails, ...regexEmails])];
     const finalPhones = [...new Set([...jsonPhones, ...regexPhones])];
     const finalSocial = { ...regexSocialLinks, ...jsonSocialLinks };
-    const finalServices = [...new Set([...jsonServices, ...regexServices])];
-    const finalDescription = jsonDescription || cleanedText;
+    const finalServices = jsonServices.length > 0 ? jsonServices : regexServices;
+    const finalDescription = cleanedText || jsonDescription;
 
-    console.log(`[LEAD-SCRAPER] Final merged for ${url}: ${finalEmails.length} emails, ${finalPhones.length} phones, ${Object.keys(finalSocial).length} social, ${finalServices.length} services, ${jsonTeamMembers.length} team, ${finalDescription.length} chars desc`);
+    console.log(`[LEAD-SCRAPER] Final merged for ${url}: ${finalEmails.length} emails, ${finalPhones.length} phones, ${Object.keys(finalSocial).length} social, ${finalServices.length} services (${jsonServices.length > 0 ? 'JSON' : 'regex'}), ${jsonTeamMembers.length} team, ${finalDescription.length} chars desc`);
 
     return {
       emails: finalEmails,
@@ -724,8 +727,8 @@ async function batchScrapeWithFirecrawl(
         emails: [...new Set([...jsonEmails, ...regexEmails])],
         phones: [...new Set([...jsonPhones, ...regexPhones])],
         socialLinks: { ...regexSocialLinks, ...jsonSocialLinks },
-        description: jsonDescription || cleanedText,
-        services: [...new Set([...jsonServices, ...regexServices])],
+        description: cleanedText || jsonDescription,
+        services: jsonServices.length > 0 ? jsonServices : regexServices,
         teamMembers: jsonTeamMembers,
         contactPageUrl: contactPageUrl || undefined,
       };

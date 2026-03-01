@@ -67,6 +67,8 @@ import {
   AlertCircle,
   Crosshair,
   MessageCircle,
+  Users,
+  Tag,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -980,7 +982,7 @@ export default function ConsultantLeadDetail() {
               </div>
             </Tabs>
 
-            {wd && (wd.description || wd.services?.length > 0) && (
+            {wd && (wd.description || wd.services?.length > 0 || wd.teamMembers?.length > 0) && (
               <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -997,6 +999,57 @@ export default function ConsultantLeadDetail() {
                           <Badge key={i} variant="secondary" className="text-[10px] bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">{svc}</Badge>
                         ))}
                       </div>
+                    </div>
+                  )}
+                  {wd.teamMembers?.length > 0 && (
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center gap-1">
+                        <Users className="h-3 w-3" />Team / Persone chiave
+                      </Label>
+                      <div className="space-y-1.5 mt-1.5">
+                        {wd.teamMembers.map((member: any, i: number) => (
+                          <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 dark:bg-gray-800/50 rounded-lg px-2.5 py-1.5">
+                            <div className="h-6 w-6 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-[10px] font-bold text-violet-600 dark:text-violet-400 shrink-0">
+                              {(member.name || "?").charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <span className="font-medium text-gray-900 dark:text-white">{member.name || "N/A"}</span>
+                              {member.role && <span className="text-gray-500 dark:text-gray-400 ml-1.5 text-xs">({member.role})</span>}
+                            </div>
+                            {member.email && (
+                              <button className="text-xs text-blue-600 hover:underline shrink-0" onClick={() => copyToClipboard(member.email)}>
+                                {member.email}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {(lead as any).businessTypes?.length > 0 && (
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center gap-1">
+                        <Tag className="h-3 w-3" />Tipologie Google Maps
+                      </Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(lead as any).businessTypes.map((bt: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-800">{bt}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {(lead as any).priceRange && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <DollarSign className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                      <span className="text-gray-700 dark:text-gray-300">Fascia prezzo: <strong>{(lead as any).priceRange}</strong></span>
+                    </div>
+                  )}
+                  {wd.contactPageUrl && (
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                      <a href={wd.contactPageUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">
+                        Pagina contatti analizzata
+                      </a>
                     </div>
                   )}
                 </CardContent>
