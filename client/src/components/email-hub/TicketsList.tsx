@@ -10,10 +10,16 @@ import {
   Loader2, Ticket, Clock, CheckCircle2, AlertCircle, XCircle,
   RefreshCw, Mail, Search, Copy, ChevronDown, ChevronUp,
   Inbox, CircleDot, Archive, X, Bot, MessageSquare, AlertTriangle,
+  SendHorizonal, CheckCheck,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
 import { getAuthHeaders } from "@/lib/auth";
+
+interface SentReply {
+  bodyText: string | null;
+  sentAt: string | null;
+}
 
 interface EmailTicket {
   ticket: {
@@ -37,7 +43,9 @@ interface EmailTicket {
     fromName?: string;
     snippet?: string;
     receivedAt?: string;
+    processingStatus?: string;
   };
+  sentReply?: SentReply | null;
 }
 
 const statusLabels: Record<string, string> = {
@@ -324,13 +332,19 @@ export function TicketsList({ onSelectEmail, onOpenComposer }: TicketsListProps)
                         {item.email.fromName || item.email.fromEmail}
                         {item.email.fromName ? ` · ${item.email.fromEmail}` : ""}
                       </p>
-                      <div className="flex items-center gap-2 mt-1.5">
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full border", "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400")}>
                           {reasonLabels[item.ticket.reason] || item.ticket.reason}
                         </span>
                         <span className="text-[10px] text-muted-foreground">
                           {formatDistanceToNow(new Date(item.ticket.createdAt), { addSuffix: true, locale: it })}
                         </span>
+                        {item.sentReply && (
+                          <span className="flex items-center gap-0.5 text-[10px] font-medium text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50">
+                            <CheckCheck className="h-2.5 w-2.5" />
+                            Risposta inviata
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -400,6 +414,29 @@ export function TicketsList({ onSelectEmail, onOpenComposer }: TicketsListProps)
                   Ticket aperto: {format(new Date(selected.ticket.createdAt), "d MMM yyyy HH:mm", { locale: it })}
                 </p>
               </div>
+
+              {/* Sent reply banner */}
+              {selected.sentReply && (
+                <div className="rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/50 p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCheck className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                    <span className="text-sm font-semibold text-green-800 dark:text-green-300">Risposta già inviata</span>
+                    {selected.sentReply.sentAt && (
+                      <span className="text-xs text-green-600 dark:text-green-400 ml-auto">
+                        {format(new Date(selected.sentReply.sentAt), "d MMM yyyy HH:mm", { locale: it })}
+                      </span>
+                    )}
+                  </div>
+                  {selected.sentReply.bodyText && (
+                    <p className="text-xs text-green-700 dark:text-green-400 whitespace-pre-wrap leading-relaxed line-clamp-4">
+                      {selected.sentReply.bodyText}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-green-600/70 dark:text-green-500/70 mt-2 italic">
+                    Il ticket può essere chiuso se la risposta è soddisfacente.
+                  </p>
+                </div>
+              )}
 
               {/* Escalation reason */}
               <div>
@@ -522,6 +559,15 @@ export function TicketsList({ onSelectEmail, onOpenComposer }: TicketsListProps)
                       <div>
                         <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Preso in carico</p>
                         <p className="text-[10px] text-muted-foreground">{selected.ticket.updatedAt ? format(new Date(selected.ticket.updatedAt), "d MMM yyyy HH:mm", { locale: it }) : "—"}</p>
+                      </div>
+                    </div>
+                  )}
+                  {selected.sentReply?.sentAt && (
+                    <div className="relative flex items-start gap-2">
+                      <div className="absolute -left-5 top-0.5 w-3 h-3 rounded-full bg-green-400 border-2 border-white dark:border-slate-950 z-10 flex items-center justify-center" />
+                      <div>
+                        <p className="text-xs font-medium text-green-700 dark:text-green-400">Risposta inviata</p>
+                        <p className="text-[10px] text-muted-foreground">{format(new Date(selected.sentReply.sentAt), "d MMM yyyy HH:mm", { locale: it })}</p>
                       </div>
                     </div>
                   )}

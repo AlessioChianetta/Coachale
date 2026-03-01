@@ -3813,15 +3813,17 @@ router.get("/tickets", async (req: AuthRequest, res) => {
     const consultantId = req.user!.id;
     const status = req.query.status as string | undefined;
 
-    let query = db
+    const tickets = await db
       .select({
         ticket: schema.emailTickets,
         email: {
+          id: schema.hubEmails.id,
           subject: schema.hubEmails.subject,
           fromEmail: schema.hubEmails.fromEmail,
           fromName: schema.hubEmails.fromName,
           snippet: schema.hubEmails.snippet,
           receivedAt: schema.hubEmails.receivedAt,
+          processingStatus: schema.hubEmails.processingStatus,
         },
       })
       .from(schema.emailTickets)
@@ -3829,13 +3831,40 @@ router.get("/tickets", async (req: AuthRequest, res) => {
       .where(eq(schema.emailTickets.consultantId, consultantId))
       .orderBy(desc(schema.emailTickets.createdAt));
 
-    const tickets = await query;
-
-    const filtered = status 
+    const filtered = status
       ? tickets.filter(t => t.ticket.status === status)
       : tickets;
 
-    res.json({ success: true, data: filtered });
+    // Fetch sent AI responses for these email IDs in one query
+    const emailIds = filtered
+      .map(t => t.email.id)
+      .filter(Boolean) as string[];
+
+    let sentRepliesMap: Record<string, { bodyText: string | null; sentAt: string | null }> = {};
+    if (emailIds.length > 0) {
+      const placeholders = emailIds.map((_, i) => `$${i + 1}`).join(", ");
+      const sentResult = await pool.query(
+        `SELECT DISTINCT ON (email_id) email_id, draft_body_text, sent_at
+         FROM email_hub_ai_responses
+         WHERE email_id IN (${placeholders})
+           AND status IN ('sent', 'auto_sent')
+         ORDER BY email_id, sent_at DESC NULLS LAST`,
+        emailIds
+      );
+      for (const row of sentResult.rows) {
+        sentRepliesMap[row.email_id] = {
+          bodyText: row.draft_body_text,
+          sentAt: row.sent_at,
+        };
+      }
+    }
+
+    const enriched = filtered.map(t => ({
+      ...t,
+      sentReply: t.email.id ? (sentRepliesMap[t.email.id] || null) : null,
+    }));
+
+    res.json({ success: true, data: enriched });
   } catch (error: any) {
     console.error("[EMAIL-HUB] Error fetching tickets:", error);
     res.status(500).json({ success: false, error: error.message });
