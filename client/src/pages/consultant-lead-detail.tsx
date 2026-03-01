@@ -205,6 +205,7 @@ export default function ConsultantLeadDetail() {
   const [crmNextActionDate, setCrmNextActionDate] = useState("");
   const [crmValue, setCrmValue] = useState("");
   const [showAllPhones, setShowAllPhones] = useState(false);
+  const [showRescrapeDialog, setShowRescrapeDialog] = useState(false);
 
   const [activeActivityTab, setActiveActivityTab] = useState("timeline");
   const [showNewActivity, setShowNewActivity] = useState(false);
@@ -747,11 +748,7 @@ export default function ConsultantLeadDetail() {
                   </Button>
                 )}
                 {lead.website && (lead.scrapeStatus === "scraped" || lead.scrapeStatus === "scraped_cached") && (
-                  <Button variant="outline" size="sm" className="w-full text-xs mt-2 border-teal-200 hover:border-teal-400 hover:bg-teal-50 text-teal-700" onClick={() => {
-                    if (confirm("Vuoi ri-analizzare il sito web? I dati esistenti verranno aggiornati con una nuova scansione.")) {
-                      rescrapeWebsiteMutation.mutate();
-                    }
-                  }} disabled={rescrapeWebsiteMutation.isPending}>
+                  <Button variant="outline" size="sm" className="w-full text-xs mt-2 border-teal-200 hover:border-teal-400 hover:bg-teal-50 text-teal-700" onClick={() => setShowRescrapeDialog(true)} disabled={rescrapeWebsiteMutation.isPending}>
                     {rescrapeWebsiteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
                     Ri-analizza sito web
                   </Button>
@@ -1008,41 +1005,63 @@ export default function ConsultantLeadDetail() {
             </Tabs>
 
             {wd && (wd.description || wd.services?.length > 0 || wd.teamMembers?.length > 0) && (
-              <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-amber-500" />Dati dal sito web
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {wd.description && <ExpandableDescription text={wd.description} threshold={300} />}
+              <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/20 dark:via-orange-950/20 dark:to-yellow-950/20 border-b border-amber-100 dark:border-amber-900/30 px-5 py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-amber-100 dark:bg-amber-900/40 rounded-lg">
+                        <Globe className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white">Profilo sito web</h3>
+                        {lead.website && (
+                          <a href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline">
+                            {lead.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    {wd.contactPageUrl && (
+                      <a href={wd.contactPageUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-400 hover:underline bg-amber-100/60 dark:bg-amber-900/30 px-2 py-1 rounded-md">
+                        <ExternalLink className="h-3 w-3" />Contatti
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                <CardContent className="p-5 space-y-4">
+                  {wd.description && <ExpandableDescription text={wd.description} threshold={400} />}
+
                   {wd.services?.length > 0 && (
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Servizi</Label>
-                      <div className="flex flex-wrap gap-1 mt-1">
+                    <div className="bg-violet-50/50 dark:bg-violet-950/10 rounded-xl p-3.5 border border-violet-100 dark:border-violet-900/30">
+                      <Label className="text-[10px] text-violet-600 dark:text-violet-400 font-semibold uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                        <Zap className="h-3 w-3" />Servizi offerti
+                      </Label>
+                      <div className="flex flex-wrap gap-1.5">
                         {wd.services.map((svc: string, i: number) => (
-                          <Badge key={i} variant="secondary" className="text-[10px] bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">{svc}</Badge>
+                          <Badge key={i} className="text-[10px] bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-700 shadow-sm font-medium">{svc}</Badge>
                         ))}
                       </div>
                     </div>
                   )}
+
                   {wd.teamMembers?.length > 0 && (
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center gap-1">
+                    <div className="bg-blue-50/50 dark:bg-blue-950/10 rounded-xl p-3.5 border border-blue-100 dark:border-blue-900/30">
+                      <Label className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1.5 mb-2">
                         <Users className="h-3 w-3" />Team / Persone chiave
                       </Label>
-                      <div className="space-y-1.5 mt-1.5">
+                      <div className="space-y-2">
                         {wd.teamMembers.map((member: any, i: number) => (
-                          <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 dark:bg-gray-800/50 rounded-lg px-2.5 py-1.5">
-                            <div className="h-6 w-6 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-[10px] font-bold text-violet-600 dark:text-violet-400 shrink-0">
+                          <div key={i} className="flex items-center gap-2.5 text-sm bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-blue-100 dark:border-blue-800/50 shadow-sm">
+                            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center text-[11px] font-bold text-white shrink-0 shadow-sm">
                               {(member.name || "?").charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <span className="font-medium text-gray-900 dark:text-white">{member.name || "N/A"}</span>
-                              {member.role && <span className="text-gray-500 dark:text-gray-400 ml-1.5 text-xs">({member.role})</span>}
+                              <span className="font-semibold text-gray-900 dark:text-white text-sm">{member.name || "N/A"}</span>
+                              {member.role && <span className="text-gray-500 dark:text-gray-400 ml-1.5 text-xs font-medium">· {member.role}</span>}
                             </div>
                             {member.email && (
-                              <button className="text-xs text-blue-600 hover:underline shrink-0" onClick={() => copyToClipboard(member.email)}>
+                              <button className="text-xs text-blue-600 dark:text-blue-400 hover:underline shrink-0 font-medium" onClick={() => copyToClipboard(member.email)}>
                                 {member.email}
                               </button>
                             )}
@@ -1051,30 +1070,25 @@ export default function ConsultantLeadDetail() {
                       </div>
                     </div>
                   )}
-                  {(lead as any).businessTypes?.length > 0 && (
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center gap-1">
-                        <Tag className="h-3 w-3" />Tipologie Google Maps
+
+                  {((lead as any).businessTypes?.length > 0 || (lead as any).priceRange) && (
+                    <div className="bg-rose-50/50 dark:bg-rose-950/10 rounded-xl p-3.5 border border-rose-100 dark:border-rose-900/30">
+                      <Label className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                        <Tag className="h-3 w-3" />Google Maps
                       </Label>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {(lead as any).businessTypes.map((bt: string, i: number) => (
-                          <Badge key={i} variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-800">{bt}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {(lead as any).priceRange && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <DollarSign className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                      <span className="text-gray-700 dark:text-gray-300">Fascia prezzo: <strong>{(lead as any).priceRange}</strong></span>
-                    </div>
-                  )}
-                  {wd.contactPageUrl && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <ExternalLink className="h-3 w-3 shrink-0" />
-                      <a href={wd.contactPageUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">
-                        Pagina contatti analizzata
-                      </a>
+                      {(lead as any).businessTypes?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {(lead as any).businessTypes.map((bt: string, i: number) => (
+                            <Badge key={i} className="text-[10px] bg-white dark:bg-gray-800 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-700 shadow-sm font-medium">{bt}</Badge>
+                          ))}
+                        </div>
+                      )}
+                      {(lead as any).priceRange && (
+                        <div className="flex items-center gap-1.5 mt-2 text-sm text-rose-700 dark:text-rose-300">
+                          <DollarSign className="h-3.5 w-3.5 shrink-0" />
+                          <span className="font-medium">{(lead as any).priceRange}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -1083,6 +1097,40 @@ export default function ConsultantLeadDetail() {
           </div>
         </div>
       </div>
+
+      <Dialog open={showRescrapeDialog} onOpenChange={setShowRescrapeDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-teal-600" />
+              Ri-analizza sito web
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-3">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              I dati del sito web verranno aggiornati con una nuova scansione completa. Questo include:
+            </p>
+            <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1.5 ml-1">
+              <li className="flex items-start gap-2"><Globe className="h-3.5 w-3.5 text-teal-500 mt-0.5 shrink-0" />Descrizione aggiornata del sito</li>
+              <li className="flex items-start gap-2"><Mail className="h-3.5 w-3.5 text-teal-500 mt-0.5 shrink-0" />Email e telefoni riestratti</li>
+              <li className="flex items-start gap-2"><Zap className="h-3.5 w-3.5 text-teal-500 mt-0.5 shrink-0" />Servizi e team aggiornati</li>
+            </ul>
+            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded-lg">
+              L'analisi AI precedente verra rimossa e potra essere rigenerata dopo la scansione.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRescrapeDialog(false)}>Annulla</Button>
+            <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => {
+              setShowRescrapeDialog(false);
+              rescrapeWebsiteMutation.mutate();
+            }}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Ri-analizza
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showNewActivity} onOpenChange={(open) => { if (!open) { setShowNewActivity(false); setEditingActivity(null); resetActivityForm(); } }}>
         <DialogContent className="sm:max-w-[520px]">
@@ -1278,6 +1326,26 @@ function cleanScrapedText(raw: string): string {
   t = t.replace(/^[-*]\s+/gm, "- ");
   t = t.replace(/[ \t]+$/gm, "");
   t = t.replace(/[ \t]{3,}/g, "  ");
+
+  const navPatterns = [
+    /^(mobile\s*menu|toggle\s*(sub)?menu|hamburger|nav(igation)?|skip\s*to\s*content)\s*$/i,
+    /^(cookie\s*(policy|settings|consent)|privacy\s*policy|terms\s*(of\s*use|and\s*conditions))\s*$/i,
+    /^\s*[✕×✖☰]\s*$/,
+    /^(IT|EN|DE|FR|ES)\s*[-–]\s*(IT|EN|DE|FR|ES)\s*$/i,
+    /^\s*(IT|EN)\s*$/i,
+  ];
+
+  const lines = t.split("\n");
+  const filtered = lines.filter(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return true;
+    for (const pattern of navPatterns) {
+      if (pattern.test(trimmed)) return false;
+    }
+    return true;
+  });
+  t = filtered.join("\n");
+
   t = t.replace(/\n{3,}/g, "\n\n");
   t = t.trim();
   return t;
@@ -1371,15 +1439,24 @@ function ExpandableDescription({ text, threshold = 400 }: { text: string; thresh
   const displayText = isLong && !expanded ? cleaned.substring(0, threshold) + "..." : cleaned;
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-      <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Descrizione</Label>
-      <div className="mt-1.5 space-y-0.5 leading-relaxed">
-        {renderFormattedText(displayText)}
+    <div className="relative">
+      <div className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-800/50 dark:to-slate-800/30 rounded-xl p-4 border border-gray-100 dark:border-gray-700/50">
+        <Label className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider flex items-center gap-1.5 mb-2">
+          <FileText className="h-3 w-3" />Descrizione del sito
+        </Label>
+        <div className={cn("space-y-0.5 leading-relaxed", !expanded && isLong && "relative")}>
+          {renderFormattedText(displayText)}
+          {!expanded && isLong && (
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-gray-50 dark:from-gray-800/50 to-transparent pointer-events-none" />
+          )}
+        </div>
       </div>
       {isLong && (
-        <Button variant="ghost" size="sm" className="mt-1.5 h-5 px-2 text-[10px] text-primary hover:text-primary/80" onClick={() => setExpanded(!expanded)}>
-          {expanded ? <><ChevronUp className="h-3 w-3 mr-0.5" />Comprimi</> : <><ChevronDown className="h-3 w-3 mr-0.5" />Mostra tutto</>}
-        </Button>
+        <div className="flex justify-center -mt-3">
+          <Button variant="outline" size="sm" className="h-6 px-3 text-[10px] bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700 hover:bg-gray-50" onClick={() => setExpanded(!expanded)}>
+            {expanded ? <><ChevronUp className="h-3 w-3 mr-0.5" />Comprimi</> : <><ChevronDown className="h-3 w-3 mr-0.5" />Mostra tutto</>}
+          </Button>
+        </div>
       )}
     </div>
   );
