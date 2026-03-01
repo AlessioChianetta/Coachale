@@ -1,0 +1,45 @@
+ PM [express] GET /api/ai-autonomy/tasks/auto_hunter_1772370135566_gckpdz 200 in 589ms :: {"t…
+2:50:10 PM [express] GET /api/ai-autonomy/tasks 200 in 1329ms :: {"tasks":[{"id":"auto_hunter_177237…
+2:50:10 PM [express] GET /api/ai-autonomy/tasks-stats 200 in 1333ms :: {"total":220,"active":1,"comp…
+2:50:10 PM [express] GET /api/ai-autonomy/tasks 200 in 1471ms :: {"tasks":[{"id":"auto_marco_1772373…
+🎯 [CRM-OUTREACH-ROUTE] Task auto_hunter_1772370135566_gckpdz is crm_lead_outreach — calling handleCrmLeadOutreach directly
+2:50:11 PM [express] POST /api/ai-autonomy/tasks/auto_hunter_1772370135566_gckpdz/execute 200 in 580…
+🎯 [CRM-LEAD-OUTREACH] Processing lead a629422a-cbc5-4f06-9990-8dd9d8bdeb82 for task auto_hunter_1772370135566_gckpdz
+2:50:11 PM [express] GET /api/ai-autonomy/tasks-stats 200 in 434ms :: {"total":220,"active":1,"compl…
+2:50:11 PM [express] GET /api/ai-autonomy/tasks 200 in 441ms :: {"tasks":[{"id":"auto_hunter_1772370…
+🎯 [CRM-LEAD-OUTREACH] Available channels for Match People: voice(+39 324.833.4546), whatsapp(+39 324.833.4546), email(info@matchpeople.it)
+2:50:12 PM [express] GET /api/ai-autonomy/tasks/auto_hunter_1772370135566_gckpdz 200 in 587ms :: {"t…
+🛡️ [OUTREACH-SAFETY] Safety check error for lead a629422a-cbc5-4f06-9990-8dd9d8bdeb82: cannot cast type record to text[]
+🎯 [CRM-LEAD-OUTREACH] Created voice sub-task task_1772376612130_udikpym for lead a629422a-cbc5-4f06-9990-8dd9d8bdeb82 (Match People) → +39 324.833.4546
+🛡️ [OUTREACH-SAFETY] Safety check error for lead a629422a-cbc5-4f06-9990-8dd9d8bdeb82: cannot cast type record to text[]
+🎯 [CRM-LEAD-OUTREACH] Created whatsapp sub-task task_1772376612427_k6d03f4 for lead a629422a-cbc5-4f06-9990-8dd9d8bdeb82 (Match People) → +39 324.833.4546
+🛡️ [OUTREACH-SAFETY] Safety check error for lead a629422a-cbc5-4f06-9990-8dd9d8bdeb82: cannot cast type record to text[]
+🎯 [CRM-LEAD-OUTREACH] Created email sub-task task_1772376612719_i96qlhk for lead a629422a-cbc5-4f06-9990-8dd9d8bdeb82 (Match People) → info@matchpeople.it
+[AI-AUTONOMY] Error starting task execution: error: column "updated_at" of relation "lead_scraper_results" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async handleCrmLeadOutreach (/home/runner/workspace/server/cron/ai-task-scheduler.ts:559:3)
+    at async <anonymous> (/home/runner/workspace/server/routes/ai-autonomy-router.ts:3770:9) {
+  length: 146,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '159',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'analyze.c',
+  line: '2528',
+  routine: 'transformUpdateTargetList'
+}
+2:50:14 PM [express] GET /api/ai-autonomy/tasks/auto_hunter_1772370135566_gckpdz 200 in 585ms :: {"t…
+2:50:17 PM [express] GET /api/ai-autonomy/tasks 200 in 441ms :: {"tasks":[{"id":"auto_hunter_1772370…
+2:50:17 PM [express] GET /api/ai-autonomy/tasks/auto_hunter_1772370135566_gckpdz 304 in 579ms :: {"t…
+2:50:18 PM [express] GET /api/ai-autonomy/tasks 304 in 1317ms :: {"tasks":[{"id":"auto_hunter_177237…
+2:50:20 PM [express] GET /api/ai-autonomy/tasks/auto_hunter_1772370135566_gckpdz 304 in 585ms :: {"t…
