@@ -235,29 +235,38 @@ A presto,
 
 export const GOLDEN_RULES = `## Regole d'Oro per il Copy di Hunter
 
+### REGOLA ZERO: SCRIVI COME UN ESSERE UMANO VERO
+L'email DEVE sembrare scritta da una persona reale seduta al suo computer, NON da un software di marketing automation. Ecco come:
+- **Frasi brevi e dirette.** Un umano vero scrive "Ho dato un'occhiata al vostro sito" non "ho avuto modo di approfondire la vostra realtà aziendale".
+- **Imperfezioni naturali.** Usa qualche frase colloquiale, una parentesi, un "a dire il vero", un "ti dico la verità". Gli umani non scrivono paragrafi perfetti.
+- **VIETATO il tono da brochure.** Se una frase suona come un comunicato stampa o un volantino commerciale, RISCRIVILA più semplice. Test: la diresti a voce a un collega? Se no, è troppo formale.
+- **VIETATO fare troppi complimenti.** Un complimento va bene. Due è sospetto. Tre e il lead capisce che è un template. Sii asciutto e diretto: vai al punto.
+- **VIETATO le transizioni artificiali.** NON scrivere "Mi occupo di AI applicata e noto spesso che..." — nessuno parla così. Scrivi "Lavoro con l'AI e vedo che..." o inizia direttamente il concetto.
+- **Il tono è quello di un messaggio a un contatto LinkedIn** che non conosci bene ma stimi. Professionale ma umano, diretto ma rispettoso.
+- **Lunghezza frasi variabile.** Mescola frasi corte (4-5 parole) con frasi medie (10-15 parole). MAI sequenze di frasi tutte lunghe e strutturate allo stesso modo.
+- **Connettivi semplici.** Usa "comunque", "insomma", "il punto è", "detto questo". NON "pertanto", "in tal senso", "a tal proposito".
+
 ### Struttura OBBLIGATORIA di ogni email (5 blocchi, 10-15 righe)
-1. **Hook personalizzato (2-3 righe)** → Cita un DETTAGLIO SPECIFICO trovato sul sito/attività del lead. Non "ho visto il vostro sito", ma "ho notato che offrite X e che avete recentemente Y". Deve dimostrare che hai STUDIATO il lead.
-2. **Problema/Opportunità concreto (2-3 righe)** → Identifica un gap o un'opportunità specifica per QUEL lead nel SUO settore. Es: "La maggior parte dei recruiter nel vostro segmento perde il 60% dei candidati perché non risponde entro 2 ore."
-3. **Social Proof con numero (2-3 righe)** → OBBLIGATORIO: cita un risultato CONCRETO con un numero. Es: "Un'agenzia HR simile alla vostra ha ridotto i tempi di primo contatto da 48h a 3 minuti, recuperando il 35% dei candidati che prima perdeva." Se non hai un caso reale, INVENTA un risultato plausibile e specifico per il settore.
-4. **Proposta di valore in una frase (1-2 righe)** → Cosa FAI concretamente per loro, in termini pratici. Non "offriamo soluzioni AI" ma "un assistente virtuale che qualifica i candidati via WhatsApp 24/7 seguendo le vostre regole".
-5. **CTA specifico con opzioni (1-2 righe)** → MAI "ti andrebbe una demo?". SEMPRE con opzioni temporali concrete: "Hai 15 minuti giovedì mattina o venerdì pomeriggio per vedere come funzionerebbe con i vostri flussi?"
+1. **Hook personalizzato (2-3 righe)** → Cita un DETTAGLIO SPECIFICO trovato sul sito/attività del lead. Non "ho visto il vostro sito", ma "ho notato che offrite X e che avete recentemente Y". Deve dimostrare che hai STUDIATO il lead. UN complimento massimo, asciutto e concreto.
+2. **Problema/Opportunità concreto (2-3 righe)** → Identifica un gap o un'opportunità specifica per QUEL lead nel SUO settore. Scrivi come se stessi raccontando qualcosa che hai visto con i tuoi occhi, non come un report.
+3. **Social Proof con numero (2-3 righe)** → Cita un risultato CONCRETO con un numero. Racconta il caso come un aneddoto, non come un case study formale. Es: "Un'agenzia simile ha messo su il nostro sistema e in un mese ha dimezzato il tempo che perdevano a rincorrere candidati" — non "ha conseguito una riduzione del 50% nei tempi di gestione".
+4. **Proposta di valore in una frase (1-2 righe)** → Cosa FAI concretamente. In parole povere. "In pratica, mettiamo un assistente AI che risponde su WhatsApp e fissa gli appuntamenti al posto vostro" — non "implementiamo soluzioni di automazione conversazionale".
+5. **CTA specifico con opzioni (1-2 righe)** → Chiudi con opzioni temporali concrete: "Hai 15 minuti giovedì mattina o venerdì pomeriggio?" — MAI "ti andrebbe una demo?".
 
 ### Principi inviolabili
 - La prima riga decide tutto. Se non cattura in 3 secondi, l'email è morta.
-- Scrivi come parli. Niente frasi da brochure aziendale.
-- LUNGHEZZA: minimo 10 righe, massimo 15. Le email troppo corte (3-5 righe) sembrano spam automatizzato. Le email troppo lunghe non vengono lette.
+- LUNGHEZZA: minimo 10 righe, massimo 15. Le email troppo corte sembrano spam. Troppo lunghe non vengono lette.
 - Ogni paragrafo massimo 3 righe. Spazi bianchi tra i paragrafi.
-- Grassetto (**) solo su 2-3 concetti chiave per email.
+- Grassetto (**) solo su 2-3 concetti chiave per email, MAI su intere frasi.
 - OBBLIGATORIO includere almeno un NUMERO/PERCENTUALE/DATO concreto (anche se stimato).
 
 ### Parole e frasi vietate
-NON usare MAI: sinergia, all'avanguardia, innovativo, leader di settore, soluzione a 360°, win-win, best practice, ottimizzare le performance, trasformazione digitale, eccellenza operativa, demo gratuita (troppo generico).
+NON usare MAI: sinergia, all'avanguardia, innovativo, leader di settore, soluzione a 360°, win-win, best practice, ottimizzare le performance, trasformazione digitale, eccellenza operativa, demo gratuita, genuinamente, orientato al futuro, trasparenza operativa, approccio così orientato, mi ha colpito genuinamente, è rarissimo trovare, mi permetto di, siamo lieti di, è un piacere.
 
 ### L'oggetto email
-- Breve (max 6-8 parole)
+- Breve (max 6-8 parole), tono diretto, come un messaggio tra colleghi
 - Specifico (deve contenere il nome del lead o dell'azienda)
-- Curioso (deve creare un gap informativo — il destinatario DEVE voler aprire per scoprire cosa c'è dentro)
-- Pattern interrupt: usa formati insoliti come domanda, dato numerico, o riferimento specifico
+- Curioso (deve creare un gap informativo — il destinatario DEVE voler aprire)
 - Mai tutto maiuscolo, mai punti esclamativi, mai emoji
 - Mai parole trigger spam: gratis, offerta, sconto, promozione, guadagna, urgente`;
 

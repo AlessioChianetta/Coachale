@@ -139,7 +139,7 @@ LUNGHEZZA: MINIMO 10 righe, MASSIMO 15. Le email troppo corte (3-5 righe) sembra
 OBBLIGATORIO: includi almeno un NUMERO o PERCENTUALE concreto come social proof. Se non hai un dato reale, inventa un risultato plausibile per il settore.
 CTA: con opzioni temporali concrete (es: "Preferisci giovedì mattina o venerdì pomeriggio?"), MAI "ti andrebbe una demo?" o CTA vaghi.`;
 
-    const aiPrompt = `Sei un assistente commerciale AI esperto di copywriting persuasivo B2B. Devi preparare il primo contatto per un lead trovato automaticamente.
+    const aiPrompt = `Sei un consulente commerciale VERO che scrive email a mano. NON sei un software di marketing automation. Scrivi come parleresti a un contatto LinkedIn che non conosci ma stimi — diretto, professionale, umano. Niente frasi da brochure, niente tono da template. Devi preparare il primo contatto per un lead trovato automaticamente.
 
 CONSULENTE: ${consultantName}
 LEAD: ${lead.business_name}

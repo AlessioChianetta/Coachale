@@ -970,20 +970,29 @@ async function resolveTemplateVariables(
       });
 
       const resultText = aiResult?.text;
+      console.log(`[HUNTER] 🤖 AI vars raw response for "${lead.businessName}": "${resultText?.substring(0, 300) || 'NULL'}"`);
       if (resultText) {
         try {
           const jsonMatch = resultText.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
+            console.log(`[HUNTER] 🤖 AI vars parsed JSON for "${lead.businessName}": ${JSON.stringify(parsed)}`);
             for (const v of stillNeeded) {
               if (parsed[v]) {
                 const cleaned = String(parsed[v]).replace(/^["']|["']$/g, '').replace(/\.$/, '').replace(/\n/g, ' ').trim();
                 if (cleaned.length > 2 && cleaned.length < 120) {
                   resolved[v] = cleaned;
                   sources[v] = 'dynamic_ai';
+                  console.log(`[HUNTER] ✅ AI var {${v}} resolved: "${cleaned}"`);
+                } else {
+                  console.warn(`[HUNTER] ⚠️ AI var {${v}} rejected (length=${cleaned.length}, must be 3-119): "${cleaned}"`);
                 }
+              } else {
+                console.warn(`[HUNTER] ⚠️ AI var {${v}} missing from parsed JSON. Available keys: ${Object.keys(parsed).join(', ')}`);
               }
             }
+          } else {
+            console.warn(`[HUNTER] ⚠️ No JSON match found in AI response for "${lead.businessName}"`);
           }
         } catch (parseErr: any) {
           const singleVar = stillNeeded.length === 1 ? stillNeeded[0] : null;
@@ -994,8 +1003,10 @@ async function resolveTemplateVariables(
               sources[singleVar] = 'dynamic_ai';
             }
           }
-          console.warn(`[HUNTER] AI vars JSON parse failed for "${lead.businessName}": ${parseErr.message}, raw: "${resultText.substring(0, 100)}"`);
+          console.warn(`[HUNTER] AI vars JSON parse failed for "${lead.businessName}": ${parseErr.message}, raw: "${resultText.substring(0, 200)}"`);
         }
+      } else {
+        console.error(`[HUNTER] ❌ AI returned NULL/empty for "${lead.businessName}" template vars`);
       }
     } catch (err: any) {
       console.error(`[HUNTER] ❌ AI template vars generation FAILED for "${lead.businessName}": ${err.message}`);
@@ -1199,7 +1210,7 @@ async function generateOutreachContent(
     feature: `hunter-outreach-${channel}`,
     thinkingLevel: 'low',
     systemInstruction: [
-      `Sei Hunter, il copywriter commerciale di ${consultantName}. Scrivi messaggi che CONVERTONO — brevi, personalizzati, umani.`,
+      `Sei Hunter, il copywriter commerciale di ${consultantName}. Scrivi come una PERSONA VERA — diretto, professionale, umano. NON come un software di marketing automation. Il tono è quello di un messaggio a un contatto LinkedIn che non conosci bene ma stimi. Niente frasi da brochure, niente complimenti esagerati, niente transizioni artificiali. Frasi corte e naturali, come le direbbe un collega a voce.`,
       contextInfo,
       customBlock,
       channelPrompts[channel] || channelPrompts.email,
