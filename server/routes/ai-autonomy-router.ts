@@ -907,9 +907,9 @@ async function resolveTemplateVariables(
     ].filter(Boolean).join('\n');
 
     const analysisBlocks = [
-      salesSummaryStr ? `ANALISI COMMERCIALE (dal CRM di Hunter):\n${salesSummaryStr.substring(0, 1000)}` : '',
-      websiteDataStr ? `DATI ESTRATTI DAL SITO WEB:\n${websiteDataStr.substring(0, 800)}` : '',
-      scrapeDataStr ? `DATI SCRAPING GOOGLE:\n${scrapeDataStr.substring(0, 500)}` : '',
+      salesSummaryStr ? `ANALISI COMMERCIALE (dal CRM di Hunter):\n${salesSummaryStr.substring(0, 500)}` : '',
+      websiteDataStr ? `DATI ESTRATTI DAL SITO WEB:\n${websiteDataStr.substring(0, 400)}` : '',
+      scrapeDataStr ? `DATI SCRAPING GOOGLE:\n${scrapeDataStr.substring(0, 300)}` : '',
     ].filter(Boolean).join('\n\n');
 
     const hookInstructions = outreachConfig?.opening_hook
