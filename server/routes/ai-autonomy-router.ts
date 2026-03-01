@@ -834,8 +834,6 @@ const DETERMINISTIC_VARS: Record<string, (lead: any, consultantName: string, con
   nome_azienda: (_lead, consultantName, consultantBusinessName) => consultantBusinessName || consultantName,
 };
 
-const AI_GENERABLE_VARS = new Set(['uncino', 'stato_ideale', 'desideri', 'obiettivi']);
-
 function extractTemplateVariables(bodyText: string): string[] {
   const vars: string[] = [];
   const regex = /\{([a-z_]+)\}/g;
@@ -867,174 +865,187 @@ async function resolveTemplateVariables(
     }
   }
 
-  const dynamicVars = neededVars.filter(v => !resolved[v] && AI_GENERABLE_VARS.has(v));
+  const dynamicVars = neededVars.filter(v => !resolved[v]);
 
   if (dynamicVars.length === 0) {
     console.log(`[HUNTER] Template vars for "${lead.businessName}": all deterministic — ${JSON.stringify(resolved)}`);
     return { resolved, sources };
   }
 
-  if (dynamicVars.includes('uncino')) {
-    const templateHook = templateSid && outreachConfig?.template_hooks?.[templateSid];
-    if (templateHook) {
-      resolved['uncino'] = templateHook;
-      sources['uncino'] = 'template_hook';
-      const remaining = dynamicVars.filter(v => v !== 'uncino');
-      if (remaining.length === 0) {
-        console.log(`[HUNTER] Template vars for "${lead.businessName}": uncino from template_hook, rest deterministic — ${JSON.stringify(resolved)}`);
-        return { resolved, sources };
-      }
-    } else if (outreachConfig?.opening_hook) {
-      resolved['uncino'] = outreachConfig.opening_hook;
-      sources['uncino'] = 'config_hook';
-      const remaining = dynamicVars.filter(v => v !== 'uncino');
-      if (remaining.length === 0) {
-        console.log(`[HUNTER] Template vars for "${lead.businessName}": uncino from config, rest deterministic — ${JSON.stringify(resolved)}`);
-        return { resolved, sources };
-      }
-    }
-  }
-
-  const stillNeeded = dynamicVars.filter(v => !resolved[v]);
-
   const salesSummaryStr = lead.salesSummary || '';
   const websiteDataStr = lead.websiteData ? (typeof lead.websiteData === 'string' ? lead.websiteData : JSON.stringify(lead.websiteData)) : '';
   const scrapeDataStr = lead.scrapeData ? (typeof lead.scrapeData === 'string' ? lead.scrapeData : JSON.stringify(lead.scrapeData)) : '';
   const hasAnyContext = salesSummaryStr.length > 20 || websiteDataStr.length > 20 || scrapeDataStr.length > 20 || (lead.website && lead.category);
 
-  console.log(`[HUNTER] 🔍 Template vars context for "${lead.businessName}": salesSummary=${salesSummaryStr.length}chars, websiteData=${websiteDataStr.length}chars, scrapeData=${scrapeDataStr.length}chars, website=${lead.website || 'N/D'}, category=${lead.category || 'N/D'}, hasAnyContext=${hasAnyContext}`);
+  console.log(`[HUNTER] 🔍 Template vars agent for "${lead.businessName}": ${dynamicVars.length} vars to resolve [${dynamicVars.join(', ')}] | salesSummary=${salesSummaryStr.length}chars, websiteData=${websiteDataStr.length}chars, scrapeData=${scrapeDataStr.length}chars, website=${lead.website || 'N/D'}, category=${lead.category || 'N/D'}, hasAnyContext=${hasAnyContext}`);
 
-  if (stillNeeded.length > 0 && hasAnyContext) {
-    try {
-      const { quickGenerate } = await import("../ai/provider-factory");
+  if (!hasAnyContext) {
+    console.error(`[HUNTER] ⚠️ NESSUN CONTESTO DISPONIBILE per generare variabili AI per "${lead.businessName}" — le variabili [${dynamicVars.join(', ')}] NON saranno risolte.`);
+    for (const v of dynamicVars) {
+      resolved[v] = '';
+      sources[v] = 'UNRESOLVED_NO_CONTEXT';
+    }
+    return { resolved, sources };
+  }
 
-      const prefilledPreview = templateBodyText.replace(/\{([a-z_]+)\}/g, (match, key) => {
-        return resolved[key] ? resolved[key] : match;
-      });
+  try {
+    const { quickGenerate } = await import("../ai/provider-factory");
 
-      const varInstructions = stillNeeded.map(v => {
-        switch (v) {
-          case 'uncino': return `- {uncino}: un riferimento ULTRA-SPECIFICO a qualcosa di CONCRETO che questa azienda fa, ha pubblicato, o offre. Deve essere un dettaglio REALE trovato nell'analisi (es: "il vostro kit di 50 prompt AI per il recruiting", "i corsi di formazione per PMI che offrite", "le 150 recensioni a 5 stelle su Google"). MAI frasi generiche tipo "l'innovazione nel settore X" o "il vostro interesse per Y". Max 10-12 parole, deve inserirsi naturalmente nel template.`;
-          case 'stato_ideale': return `- {stato_ideale}: un obiettivo CONCRETO e SPECIFICO per questa azienda basato su cosa fanno (es: "automatizzare lo screening dei candidati", "triplicare i lead qualificati", "ridurre i tempi di risposta a 5 minuti"). Max 8 parole, specifico per il loro business.`;
-          case 'desideri': return `- {desideri}: un desiderio/bisogno SPECIFICO di questa azienda basato sul loro settore e attività (es: "gestire più candidati senza assumere", "rispondere ai lead in tempo reale"). Max 8 parole.`;
-          case 'obiettivi': return `- {obiettivi}: un obiettivo MISURABILE e CONCRETO per questa azienda (es: "dimezzare i tempi di primo contatto", "aumentare il tasso di conversione lead"). Max 8 parole.`;
-          default: return `- {${v}}: genera un valore SPECIFICO e contestuale per questa azienda. MAI frasi generiche.`;
-        }
-      }).join('\n');
+    const prefilledPreview = templateBodyText.replace(/\{([a-z_]+)\}/g, (match, key) => {
+      return resolved[key] ? resolved[key] : match;
+    });
 
-      const contextBlocks = [
-        `AZIENDA TARGET: "${lead.businessName}"`,
-        lead.category ? `Settore: ${lead.category}` : '',
-        lead.website ? `Sito web: ${lead.website}` : '',
-        lead.address ? `Zona: ${lead.address}` : '',
-        lead.rating ? `Rating Google: ${lead.rating}/5` : '',
-        lead.reviewCount ? `Recensioni: ${lead.reviewCount}` : '',
-      ].filter(Boolean).join('\n');
+    const contextBlocks = [
+      `AZIENDA TARGET: "${lead.businessName}"`,
+      lead.contactName ? `Referente: ${lead.contactName}` : '',
+      lead.category ? `Settore: ${lead.category}` : '',
+      lead.website ? `Sito web: ${lead.website}` : '',
+      lead.address ? `Zona: ${lead.address}` : '',
+      lead.rating ? `Rating Google: ${lead.rating}/5` : '',
+      lead.reviewCount ? `Recensioni: ${lead.reviewCount}` : '',
+      lead.phone ? `Telefono: ${lead.phone}` : '',
+    ].filter(Boolean).join('\n');
 
-      const analysisBlocks = [
-        salesSummaryStr ? `ANALISI COMMERCIALE:\n${salesSummaryStr.substring(0, 800)}` : '',
-        websiteDataStr ? `DATI DAL SITO WEB:\n${websiteDataStr.substring(0, 800)}` : '',
-        scrapeDataStr ? `DATI SCRAPING:\n${scrapeDataStr.substring(0, 500)}` : '',
-      ].filter(Boolean).join('\n\n');
+    const analysisBlocks = [
+      salesSummaryStr ? `ANALISI COMMERCIALE (dal CRM di Hunter):\n${salesSummaryStr.substring(0, 1000)}` : '',
+      websiteDataStr ? `DATI ESTRATTI DAL SITO WEB:\n${websiteDataStr.substring(0, 800)}` : '',
+      scrapeDataStr ? `DATI SCRAPING GOOGLE:\n${scrapeDataStr.substring(0, 500)}` : '',
+    ].filter(Boolean).join('\n\n');
 
-      const prompt = [
-        `Sei un copywriter esperto. Devi generare i valori delle variabili per un messaggio WhatsApp di outreach commerciale.`,
-        ``,
-        `TEMPLATE MESSAGGIO (con variabili già risolte e da risolvere):`,
-        `"${prefilledPreview}"`,
-        ``,
-        contextBlocks,
-        ``,
-        analysisBlocks,
-        ``,
-        `VARIABILI DA GENERARE:`,
-        varInstructions,
-        ``,
-        `REGOLE FERREE:`,
-        `- OGNI variabile deve contenere un DETTAGLIO REALE e SPECIFICO trovato nell'analisi dell'azienda`,
-        `- MAI frasi generiche tipo "l'innovazione nel settore", "la crescita della tua attività", "i tuoi obiettivi professionali"`,
-        `- Leggi il template e capisci il contesto grammaticale di OGNI variabile — il valore deve inserirsi NATURALMENTE nella frase`,
-        `- NON usare virgolette, NON ripetere il nome dell'azienda, NON usare punti finali`,
-        `- Sii ULTRA-SPECIFICO: cita prodotti, servizi, numeri, contenuti, tool, risultati concreti dell'azienda`,
-        `- Italiano professionale e naturale`,
-        ``,
-        `Rispondi SOLO in formato JSON con le chiavi richieste, es:`,
-        `${JSON.stringify(Object.fromEntries(stillNeeded.map(v => [v, "valore generato"])))}`,
-      ].join('\n');
+    const hookInstructions = outreachConfig?.opening_hook
+      ? `\nNOTA: Il consulente preferisce questo approccio di apertura: "${outreachConfig.opening_hook}". Tienine conto quando generi i valori.`
+      : '';
 
-      const parseAiVarsResponse = (text: string): Record<string, string> | null => {
-        if (!text) return null;
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) return null;
-        try {
-          return JSON.parse(jsonMatch[0]);
-        } catch {
-          return null;
-        }
-      };
+    const templateHookNote = templateSid && outreachConfig?.template_hooks?.[templateSid]
+      ? `\nNOTA: Per questo template specifico il consulente ha suggerito: "${outreachConfig.template_hooks[templateSid]}". Usa questo come ispirazione.`
+      : '';
 
-      let resultText: string | undefined;
-      let parsed: Record<string, string> | null = null;
+    const prompt = [
+      `Sei un agente AI specializzato nella personalizzazione di messaggi WhatsApp commerciali.`,
+      ``,
+      `IL TUO COMPITO: Analizza il template qui sotto, capisci il contesto e il significato di OGNI variabile tra {}, e genera valori SPECIFICI e CONCRETI per questa azienda basandoti sull'analisi disponibile.`,
+      ``,
+      `TEMPLATE MESSAGGIO (le variabili tra {} vanno sostituite):`,
+      `"${prefilledPreview}"`,
+      ``,
+      `VARIABILI DA GENERARE: ${dynamicVars.map(v => `{${v}}`).join(', ')}`,
+      ``,
+      contextBlocks,
+      ``,
+      analysisBlocks,
+      hookInstructions,
+      templateHookNote,
+      ``,
+      `OBIETTIVO DI HUNTER: Questo messaggio è il primo contatto con un lead trovato automaticamente. L'obiettivo è incuriosire il destinatario, dimostrare che conosci la sua attività, e ottenere una risposta.`,
+      ``,
+      `ISTRUZIONI PER L'AGENTE:`,
+      `1. Leggi il template INTERO e capisci il contesto grammaticale e semantico di OGNI variabile`,
+      `2. Per ogni variabile, il valore DEVE inserirsi naturalmente nella frase — rispetta genere, numero, preposizioni`,
+      `3. Usa DETTAGLI REALI e SPECIFICI trovati nell'analisi: nomi di servizi, prodotti, numeri, contenuti pubblicati, tool usati`,
+      `4. MAI frasi generiche tipo "l'innovazione nel settore", "la crescita della tua attività", "i tuoi obiettivi" — queste frasi sono VIETATE`,
+      `5. Ogni valore deve essere breve (max 10-12 parole) e suonare naturale, come scritto da un umano`,
+      `6. NON usare virgolette nei valori, NON ripetere il nome dell'azienda, NON usare punti finali`,
+      `7. Scrivi in italiano naturale e professionale`,
+      ``,
+      `Rispondi SOLO con un JSON valido. Nessun testo prima o dopo. Esempio:`,
+      `${JSON.stringify(Object.fromEntries(dynamicVars.map(v => [v, "valore specifico"])))}`,
+    ].join('\n');
 
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        const aiResult = await quickGenerate({
-          consultantId: consultantId || 'system',
-          feature: 'hunter-template-vars',
-          contents: [{ role: 'user', parts: [{ text: attempt === 1 ? prompt : prompt + '\n\nIMPORTANTE: Rispondi SOLO con il JSON, senza testo aggiuntivo. Esempio: {"uncino": "valore"}' }] }],
-          generationConfig: { maxOutputTokens: 256, temperature: attempt === 1 ? 0.4 : 0.6 },
-        });
-
-        resultText = aiResult?.text;
-        console.log(`[HUNTER] 🤖 AI vars attempt ${attempt} raw response for "${lead.businessName}": "${resultText?.substring(0, 300) || 'NULL'}"`);
-
-        parsed = parseAiVarsResponse(resultText || '');
-        if (parsed) {
-          console.log(`[HUNTER] 🤖 AI vars parsed JSON (attempt ${attempt}) for "${lead.businessName}": ${JSON.stringify(parsed)}`);
-          break;
-        }
-
-        if (attempt === 1) {
-          console.warn(`[HUNTER] ⚠️ Attempt 1 failed to produce valid JSON for "${lead.businessName}", retrying...`);
-        }
+    const parseAiVarsResponse = (text: string): Record<string, string> | null => {
+      if (!text) return null;
+      let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      let jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try { return JSON.parse(jsonMatch[0]); } catch {}
       }
-
-      if (parsed) {
-        for (const v of stillNeeded) {
-          if (parsed[v]) {
-            const cleaned = String(parsed[v]).replace(/^["']|["']$/g, '').replace(/\.$/, '').replace(/\n/g, ' ').trim();
-            if (cleaned.length > 2 && cleaned.length < 120) {
-              resolved[v] = cleaned;
-              sources[v] = 'dynamic_ai';
-              console.log(`[HUNTER] ✅ AI var {${v}} resolved: "${cleaned}"`);
-            } else {
-              console.warn(`[HUNTER] ⚠️ AI var {${v}} rejected (length=${cleaned.length}, must be 3-119): "${cleaned}"`);
-            }
+      const partialMatch = cleaned.match(/\{[\s\S]*/);
+      if (partialMatch) {
+        let partial = partialMatch[0];
+        if (!partial.endsWith('}')) {
+          const lastQuote = partial.lastIndexOf('"');
+          if (lastQuote > 0) {
+            partial = partial.substring(0, lastQuote + 1) + '}';
           } else {
-            console.warn(`[HUNTER] ⚠️ AI var {${v}} missing from parsed JSON. Available keys: ${Object.keys(parsed).join(', ')}`);
+            partial = partial + '"}';
           }
         }
-      } else if (resultText && stillNeeded.length === 1) {
-        const cleaned = resultText.replace(/^["'{}\s]|["'}\s]$/g, '').replace(/\.$/, '').replace(/\n/g, ' ').replace(/^Here is.*?:/i, '').trim();
-        if (cleaned.length > 2 && cleaned.length < 120) {
-          resolved[stillNeeded[0]] = cleaned;
-          sources[stillNeeded[0]] = 'dynamic_ai';
-          console.log(`[HUNTER] ✅ AI var {${stillNeeded[0]}} resolved from raw text: "${cleaned}"`);
-        } else {
-          console.error(`[HUNTER] ❌ Could not parse AI response for "${lead.businessName}" after 2 attempts. Raw: "${resultText.substring(0, 200)}"`);
+        try { return JSON.parse(partial); } catch {}
+        const kvMatch = partial.match(/"([^"]+)"\s*:\s*"([^"]*)"/g);
+        if (kvMatch) {
+          const result: Record<string, string> = {};
+          for (const kv of kvMatch) {
+            const m = kv.match(/"([^"]+)"\s*:\s*"([^"]*)"/);
+            if (m) result[m[1]] = m[2];
+          }
+          if (Object.keys(result).length > 0) return result;
         }
-      } else {
-        console.error(`[HUNTER] ❌ AI returned no usable response for "${lead.businessName}" after 2 attempts. Raw: "${resultText?.substring(0, 200) || 'NULL'}"`);
       }
-    } catch (err: any) {
-      console.error(`[HUNTER] ❌ AI template vars generation FAILED for "${lead.businessName}": ${err.message}`);
+      return null;
+    };
+
+    let resultText: string | undefined;
+    let parsed: Record<string, string> | null = null;
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const shortPrompt = attempt === 2
+        ? [
+          `Genera un JSON con i valori per queste variabili del template WhatsApp.`,
+          `Template: "${prefilledPreview}"`,
+          `Azienda: ${lead.businessName} (${lead.category || 'N/D'})`,
+          salesSummaryStr ? `Analisi: ${salesSummaryStr.substring(0, 400)}` : '',
+          `Variabili: ${dynamicVars.join(', ')}`,
+          `Rispondi SOLO con JSON. Esempio: ${JSON.stringify(Object.fromEntries(dynamicVars.map(v => [v, "valore"])))}`,
+        ].filter(Boolean).join('\n')
+        : prompt;
+
+      const aiResult = await quickGenerate({
+        consultantId: consultantId || 'system',
+        feature: 'hunter-template-vars',
+        contents: [{ role: 'user', parts: [{ text: shortPrompt }] }],
+        generationConfig: { maxOutputTokens: 512, temperature: attempt === 1 ? 0.5 : 0.7 },
+      });
+
+      resultText = aiResult?.text;
+      console.log(`[HUNTER] 🤖 AI agent attempt ${attempt} for "${lead.businessName}": "${resultText?.substring(0, 400) || 'NULL'}"`);
+
+      parsed = parseAiVarsResponse(resultText || '');
+      if (parsed && dynamicVars.some(v => parsed![v])) {
+        console.log(`[HUNTER] ✅ AI agent parsed (attempt ${attempt}): ${JSON.stringify(parsed)}`);
+        break;
+      }
+
+      if (attempt === 1) {
+        console.warn(`[HUNTER] ⚠️ AI agent attempt 1 failed for "${lead.businessName}" — retrying with shorter prompt...`);
+        parsed = null;
+      }
     }
-  } else if (stillNeeded.length > 0) {
-    console.error(`[HUNTER] ⚠️ NESSUN CONTESTO DISPONIBILE per generare variabili AI per "${lead.businessName}" — salesSummary=${salesSummaryStr.length}chars, websiteData=${websiteDataStr.length}chars, scrapeData=${scrapeDataStr.length}chars. Le variabili ${stillNeeded.join(', ')} NON saranno risolte.`);
+
+    if (parsed) {
+      for (const v of dynamicVars) {
+        const rawVal = parsed[v];
+        if (rawVal) {
+          const cleaned = String(rawVal).replace(/^["']|["']$/g, '').replace(/\.$/, '').replace(/\n/g, ' ').trim();
+          if (cleaned.length > 2 && cleaned.length < 150) {
+            resolved[v] = cleaned;
+            sources[v] = 'ai_agent';
+            console.log(`[HUNTER] ✅ {${v}} → "${cleaned}"`);
+          } else {
+            console.warn(`[HUNTER] ⚠️ {${v}} rejected (length=${cleaned.length}): "${cleaned}"`);
+          }
+        } else {
+          console.warn(`[HUNTER] ⚠️ {${v}} not in AI response. Keys: [${Object.keys(parsed).join(', ')}]`);
+        }
+      }
+    } else {
+      console.error(`[HUNTER] ❌ AI agent failed for "${lead.businessName}" after 2 attempts. Raw: "${resultText?.substring(0, 300) || 'NULL'}"`);
+    }
+  } catch (err: any) {
+    console.error(`[HUNTER] ❌ AI agent error for "${lead.businessName}": ${err.message}`);
   }
 
   for (const v of dynamicVars) {
     if (!resolved[v]) {
-      console.error(`[HUNTER] ⚠️ VARIABILE {${v}} NON RISOLTA per lead "${lead.businessName}" — nessun fallback generico, il messaggio conterrà un placeholder vuoto. Verificare che il lead abbia salesSummary/websiteData.`);
+      console.error(`[HUNTER] ⚠️ VARIABILE {${v}} NON RISOLTA per lead "${lead.businessName}" — il messaggio conterrà un placeholder vuoto.`);
       resolved[v] = '';
       sources[v] = 'UNRESOLVED';
     }
