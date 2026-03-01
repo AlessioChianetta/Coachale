@@ -107,6 +107,7 @@ import { EmailAISettings } from "@/components/email-hub/EmailAISettings";
 import { EmailAccountKnowledge } from "@/components/email-hub/EmailAccountKnowledge";
 import { TicketSettingsPanel } from "@/components/email-hub/TicketSettingsPanel";
 import { TicketsList } from "@/components/email-hub/TicketsList";
+import { TicketsHistory } from "@/components/email-hub/TicketsHistory";
 import { AIEventsPanel } from "@/components/email-hub/AIEventsPanel";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -317,7 +318,7 @@ export default function ConsultantEmailHub() {
   const [showKnowledge, setShowKnowledge] = useState(false);
   const [knowledgeAccountId, setKnowledgeAccountId] = useState<string>("");
   const [knowledgeAccountName, setKnowledgeAccountName] = useState<string>("");
-  const [showTicketView, setShowTicketView] = useState<"list" | "settings" | null>(null);
+  const [showTicketView, setShowTicketView] = useState<"list" | "history" | "settings" | null>(null);
   const [showAiEventsView, setShowAiEventsView] = useState(false);
   const [showOutreachPipeline, setShowOutreachPipeline] = useState(false);
   const [outreachStatusFilter, setOutreachStatusFilter] = useState<string>("all");
@@ -1405,7 +1406,23 @@ export default function ConsultantEmailHub() {
             }`}
           >
             <Ticket className="h-4 w-4" />
-            <span className="text-sm flex-1 text-left">Ticket</span>
+            <span className="text-sm flex-1 text-left">Ticket attivi</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setShowTicketView("history");
+              setShowAiEventsView(false);
+              setShowOutreachPipeline(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              showTicketView === "history"
+                ? "bg-orange-600/20 text-orange-300" 
+                : "hover:bg-white/5 text-slate-300"
+            }`}
+          >
+            <Archive className="h-4 w-4" />
+            <span className="text-sm flex-1 text-left">Storico ticket</span>
           </button>
           
           <button
@@ -3527,40 +3544,45 @@ export default function ConsultantEmailHub() {
                 <AIEventsPanel accounts={accounts} />
               </div>
             ) : showTicketView ? (
-              <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-6">
-                <div className="max-w-4xl mx-auto">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {showTicketView === "list" ? "Ticket" : "Configurazione Webhook"}
-                      </h1>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {showTicketView === "list" 
-                          ? "Gestisci i ticket creati per le email che richiedono attenzione"
-                          : "Configura le integrazioni webhook per i ticket"
-                        }
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant={showTicketView === "list" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setShowTicketView("list")}
+              <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
+                <div className="flex-none flex items-center justify-between px-6 py-3 border-b bg-white dark:bg-slate-950">
+                  <h1 className="text-base font-bold text-slate-900 dark:text-white">Gestione Ticket</h1>
+                  <div className="flex rounded-lg border bg-slate-50 dark:bg-slate-900 p-0.5 gap-0.5">
+                    {([
+                      { key: "list", label: "Attivi" },
+                      { key: "history", label: "Storico" },
+                      { key: "settings", label: "Webhook" },
+                    ] as const).map(tab => (
+                      <button
+                        key={tab.key}
+                        onClick={() => setShowTicketView(tab.key)}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${showTicketView === tab.key ? "bg-white dark:bg-slate-800 shadow-sm text-slate-900 dark:text-white" : "text-muted-foreground hover:text-foreground"}`}
                       >
-                        <Ticket className="h-4 w-4 mr-2" />
-                        Ticket
-                      </Button>
-                      <Button
-                        variant={showTicketView === "settings" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setShowTicketView("settings")}
-                      >
-                        <Webhook className="h-4 w-4 mr-2" />
-                        Webhook
-                      </Button>
-                    </div>
+                        {tab.label}
+                      </button>
+                    ))}
                   </div>
-                  {showTicketView === "list" ? <TicketsList /> : <TicketSettingsPanel />}
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  {showTicketView === "list" ? (
+                    <TicketsList
+                      onSelectEmail={(emailId) => {
+                        setShowTicketView(null);
+                      }}
+                      onOpenComposer={({ bodyText, replyTo }) => {
+                        setComposerReplyTo((replyTo as any) || null);
+                        setShowComposer(true);
+                      }}
+                    />
+                  ) : showTicketView === "history" ? (
+                    <TicketsHistory />
+                  ) : (
+                    <div className="overflow-y-auto h-full p-6">
+                      <div className="max-w-2xl mx-auto">
+                        <TicketSettingsPanel />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : showFullEmailView && selectedEmail ? (

@@ -3933,6 +3933,140 @@ router.patch("/tickets/:id", async (req: AuthRequest, res) => {
   }
 });
 
+router.get("/tickets/history/summary", async (req: AuthRequest, res) => {
+  try {
+    const { pool } = await import("../db");
+    const consultantId = req.user!.id;
+    const { search, from, to } = req.query as Record<string, string>;
+
+    let whereClause = `et.consultant_id = $1 AND et.status IN ('resolved', 'closed')`;
+    const params: any[] = [consultantId];
+    let paramIdx = 2;
+
+    if (from) {
+      whereClause += ` AND et.created_at >= $${paramIdx}`;
+      params.push(new Date(from));
+      paramIdx++;
+    }
+    if (to) {
+      whereClause += ` AND et.created_at <= $${paramIdx}`;
+      params.push(new Date(to));
+      paramIdx++;
+    }
+    if (search) {
+      whereClause += ` AND (he.from_email ILIKE $${paramIdx} OR he.from_name ILIKE $${paramIdx})`;
+      params.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    const query = `
+      SELECT
+        he.from_email AS "fromEmail",
+        MAX(he.from_name) AS "fromName",
+        COUNT(et.id)::int AS "totalTickets",
+        COUNT(et.id) FILTER (WHERE et.status = 'resolved')::int AS "resolvedTickets",
+        ROUND(AVG(EXTRACT(EPOCH FROM (et.resolved_at - et.created_at)) / 3600)::numeric, 1)::float AS "avgResolutionHours",
+        MIN(et.created_at) AS "firstTicketAt",
+        MAX(et.created_at) AS "lastTicketAt"
+      FROM email_tickets et
+      LEFT JOIN hub_emails he ON he.id = et.email_id
+      WHERE ${whereClause}
+      GROUP BY he.from_email
+      ORDER BY COUNT(et.id) DESC
+    `;
+
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: result.rows });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching ticket history summary:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/tickets/history/detail", async (req: AuthRequest, res) => {
+  try {
+    const { pool } = await import("../db");
+    const consultantId = req.user!.id;
+    const { fromEmail, search, from, to } = req.query as Record<string, string>;
+    const limit = parseInt((req.query.limit as string) || "50");
+    const offset = parseInt((req.query.offset as string) || "0");
+
+    let whereClause = `et.consultant_id = $1 AND et.status IN ('resolved', 'closed')`;
+    const params: any[] = [consultantId];
+    let paramIdx = 2;
+
+    if (fromEmail) {
+      whereClause += ` AND he.from_email = $${paramIdx}`;
+      params.push(fromEmail);
+      paramIdx++;
+    }
+    if (search) {
+      whereClause += ` AND (he.from_email ILIKE $${paramIdx} OR he.from_name ILIKE $${paramIdx} OR he.subject ILIKE $${paramIdx})`;
+      params.push(`%${search}%`);
+      paramIdx++;
+    }
+    if (from) {
+      whereClause += ` AND et.created_at >= $${paramIdx}`;
+      params.push(new Date(from));
+      paramIdx++;
+    }
+    if (to) {
+      whereClause += ` AND et.created_at <= $${paramIdx}`;
+      params.push(new Date(to));
+      paramIdx++;
+    }
+
+    const countParams = [...params];
+    const countQuery = `
+      SELECT COUNT(et.id)::int AS total
+      FROM email_tickets et
+      LEFT JOIN hub_emails he ON he.id = et.email_id
+      WHERE ${whereClause}
+    `;
+
+    const dataParams = [...params, limit, offset];
+    const dataQuery = `
+      SELECT
+        et.id,
+        et.status,
+        et.priority,
+        et.reason,
+        et.reason_details AS "reasonDetails",
+        et.suggested_response AS "suggestedResponse",
+        et.resolution_notes AS "resolutionNotes",
+        et.ai_classification AS "aiClassification",
+        et.resolved_at AS "resolvedAt",
+        et.resolved_by AS "resolvedBy",
+        et.created_at AS "createdAt",
+        et.updated_at AS "updatedAt",
+        he.subject,
+        he.from_email AS "fromEmail",
+        he.from_name AS "fromName",
+        he.received_at AS "receivedAt",
+        he.id AS "emailId",
+        ROUND(EXTRACT(EPOCH FROM (et.resolved_at - et.created_at)) / 3600, 1) AS "resolutionHours",
+        u.name AS "resolvedByName"
+      FROM email_tickets et
+      LEFT JOIN hub_emails he ON he.id = et.email_id
+      LEFT JOIN users u ON u.id = et.resolved_by
+      WHERE ${whereClause}
+      ORDER BY et.resolved_at DESC NULLS LAST
+      LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
+    `;
+
+    const [countResult, dataResult] = await Promise.all([
+      pool.query(countQuery, countParams),
+      pool.query(dataQuery, dataParams),
+    ]);
+
+    const total = countResult.rows[0]?.total || 0;
+    res.json({ success: true, data: dataResult.rows, total });
+  } catch (error: any) {
+    console.error("[EMAIL-HUB] Error fetching ticket history detail:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post("/test-webhook", async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
