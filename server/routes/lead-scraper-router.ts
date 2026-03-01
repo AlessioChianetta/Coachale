@@ -97,7 +97,7 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
 
         let newCount = 0;
         let duplicatesSkipped = 0;
-        const MAX_EXTRA_PAGES = 3;
+        const MAX_EXTRA_PAGES = 10;
 
         const WEB_PAGE_SIZE = 10;
         const MAPS_PAGE_SIZE = 20;

@@ -3976,7 +3976,7 @@ async function handleLeadScraperSearch(
     let duplicatesSkipped = 0;
     let retryQuery: string | null = null;
 
-    const MAX_EXTRA_PAGES = 3;
+    const MAX_EXTRA_PAGES = 10;
 
     const executeSearch = async (activeQuery: string, isRetry: boolean = false) => {
       let searchDuplicates = 0;
