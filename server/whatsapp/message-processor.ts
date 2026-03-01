@@ -38,6 +38,7 @@ import { getOrCreateProfile, updateClientProfile } from "../client-profiler";
 import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalendarEvent, addAttendeesToGoogleCalendarEvent } from "../google-calendar-service";
 import { decryptJSON } from "../encryption";
 import { resolveInstructionVariables } from "./template-engine";
+import { resolveHunterContext, formatHunterContextForPrompt } from "../services/hunter-context-resolver";
 import {
   getMandatoryBookingBlock,
   CORE_CONVERSATION_RULES_BLOCK,
@@ -1882,6 +1883,23 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
         proactiveLeadData?.phoneNumber,
         phoneNumber
       );
+
+      if (consultantId && phoneNumber) {
+        try {
+          const hunterCtx = await resolveHunterContext({
+            consultantId,
+            phoneNumber,
+            proactiveLeadId: conversation.proactiveLeadId || undefined,
+          });
+          if (hunterCtx) {
+            const hunterBlock = formatHunterContextForPrompt(hunterCtx);
+            systemPrompt += '\n\n' + hunterBlock;
+            console.log(`🔍 [HUNTER-CTX] Injected Hunter context into WhatsApp prompt: ${hunterCtx.businessName} (score: ${hunterCtx.score})`);
+          }
+        } catch (hunterErr: any) {
+          console.warn(`⚠️ [HUNTER-CTX] Error loading Hunter context for WhatsApp: ${hunterErr.message}`);
+        }
+      }
 
       // Decision map logging for lead
       console.log(`\n╔══════════════════════════════════════════════════════════════════╗`);

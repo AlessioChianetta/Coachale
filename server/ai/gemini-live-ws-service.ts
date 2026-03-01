@@ -13,6 +13,7 @@ import { sql } from 'drizzle-orm';
 import { eq, and, gte } from 'drizzle-orm';
 import { storage } from '../storage';
 import { buildUserContext } from '../ai-context-builder';
+import { resolveHunterContext, formatHunterContextForPrompt, type HunterLeadContext } from '../services/hunter-context-resolver';
 import { buildSystemPrompt } from '../ai-prompts';
 import { buildSalesAgentPrompt, buildStaticSalesAgentPrompt, buildSalesAgentDynamicContext, buildMinimalSalesAgentInstruction, buildFullSalesAgentContext, buildFullSalesAgentContextAsync, ScriptPosition } from './sales-agent-prompt-builder';
 import { getOrCreateTracker, removeTracker, SalesScriptTracker } from './sales-script-tracker';
@@ -1793,6 +1794,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     let _earlyStartedSettingsPromise: Promise<any> | null = null;
     let _earlyStartedPreviousConversationsPromise: Promise<any> | null = null;
     let _earlyStartedProactiveLeadPromise: Promise<any> | null = null;
+    let _earlyStartedHunterContextPromise: Promise<HunterLeadContext | null> | null = null;
     // ⚡ O5: EARLY-START booking slots + task queries for ALL phone calls
     let _earlyStartedSlotsPromise: Promise<any> | null = null;
     let _earlyStartedTasksPromise: Promise<any> | null = null;
@@ -1939,6 +1941,14 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         `).catch((err: any) => {
           console.warn(`⚠️ [${connectionId}] [O4] Could not lookup proactive lead:`, err.message);
           return { rows: [] as any[] };
+        });
+
+        _earlyStartedHunterContextPromise = resolveHunterContext({
+          consultantId,
+          phoneNumber: phoneCallerId,
+        }).catch((err: any) => {
+          console.warn(`⚠️ [${connectionId}] [O4] Could not lookup hunter context:`, err.message);
+          return null;
         });
       }
     }
@@ -3436,6 +3446,19 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         }
         
         phoneLeadContactData = leadContactData;
+
+        let hunterContext: HunterLeadContext | null = null;
+        if (_earlyStartedHunterContextPromise) {
+          try {
+            hunterContext = await _earlyStartedHunterContextPromise;
+            if (hunterContext) {
+              console.log(`🔍 [${connectionId}] Hunter context loaded: ${hunterContext.businessName} (score: ${hunterContext.score})`);
+            }
+          } catch (err) {
+            console.warn(`⚠️ [${connectionId}] Hunter context resolution error:`, err);
+          }
+        }
+        const hunterContextBlock = hunterContext ? formatHunterContextForPrompt(hunterContext) : '';
         
         // 🎯 PRIORITY CHECK: If there's a specific call instruction, use ONLY that
         if (phoneCallInstruction) {
@@ -3715,6 +3738,8 @@ ${phoneCallLeadContext ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${phoneCallLeadContext}
+` : hunterContextBlock ? `
+${hunterContextBlock}
 ` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 IL TUO COMPITO PER QUESTA CHIAMATA - VAI DRITTO AL PUNTO!
@@ -4499,7 +4524,7 @@ Quando si parla di prenotare un appuntamento:
           systemInstruction = `${finalVoiceDirectives}
 
 ${directionContext}
-${callerContactSection}
+${hunterContextBlock ? hunterContextBlock + '\n' : ''}${callerContactSection}
 📅 Data e ora attuale: ${italianTime} (fuso orario Italia)`;
 
           const deferredParts: string[] = [];
@@ -4512,7 +4537,7 @@ ${callerContactSection}
           systemInstruction = `${finalVoiceDirectives}
 
 ${directionContext}
-${nonClientBrandVoiceSection ? '\n' + nonClientBrandVoiceSection + '\n' : ''}${consultantDetailedProfileSection ? '\n' + consultantDetailedProfileSection + '\n' : ''}${callerContactSection}
+${nonClientBrandVoiceSection ? '\n' + nonClientBrandVoiceSection + '\n' : ''}${consultantDetailedProfileSection ? '\n' + consultantDetailedProfileSection + '\n' : ''}${hunterContextBlock ? '\n' + hunterContextBlock + '\n' : ''}${callerContactSection}
 📅 Data e ora attuale: ${italianTime} (fuso orario Italia)
 
 ${contentPrompt}`;

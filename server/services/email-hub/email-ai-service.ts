@@ -7,6 +7,7 @@ import { searchKnowledgeBase } from "./email-knowledge-service";
 import { createTicketFromEmail, getTicketSettings } from "./ticket-webhook-service";
 import { FileSearchService, fileSearchService } from "../../ai/file-search-service";
 import { FileSearchSyncService } from "../file-search-sync-service";
+import { resolveHunterContext, formatHunterContextForPrompt } from "../hunter-context-resolver";
 
 
 export interface EmailClassification {
@@ -952,6 +953,22 @@ export async function buildContactContext(fromEmail: string, consultantId: strin
         phoneNumber = lead.phoneNumber || null;
 
         console.log(`[EMAIL-AI] Contact context found in proactive_leads for ${normalizedEmail}`);
+
+        const hunterCtx = await resolveHunterContext({
+          consultantId,
+          email: normalizedEmail,
+          proactiveLeadId: lead.id,
+          phoneNumber: lead.phoneNumber || undefined,
+        });
+        if (hunterCtx) {
+          if (hunterCtx.businessName) parts.push(`Attività: ${hunterCtx.businessName}`);
+          if (hunterCtx.sector) parts.push(`Settore: ${hunterCtx.sector}`);
+          if (hunterCtx.score) parts.push(`Compatibilità AI: ${hunterCtx.score}/100`);
+          if (hunterCtx.website) parts.push(`Sito web: ${hunterCtx.website}`);
+          if (hunterCtx.aiSalesSummary) parts.push(`Analisi AI: ${hunterCtx.aiSalesSummary}`);
+          console.log(`🔍 [EMAIL-AI] Enriched proactive_lead with Hunter context: ${hunterCtx.businessName}`);
+        }
+
         contactResult = {
           source: "proactive_lead",
           summary: parts.join("\n"),
