@@ -831,7 +831,7 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
         rating: lead.rating,
         reviewsCount: lead.reviews_count,
         score: lead.ai_compatibility_score,
-        salesSummary: lead.ai_sales_summary ? lead.ai_sales_summary.substring(0, 500) : null,
+        salesSummary: lead.ai_sales_summary || null,
         consultantNotes: lead.lead_notes || '',
         leadStatus: lead.lead_status,
         daysSinceLastContact: daysSinceActivity !== null ? Math.round(daysSinceActivity) : null,
@@ -1181,7 +1181,7 @@ export async function generateOutreachContent(
   outreachConfig?: any,
   waTemplates?: WaTemplateForOutreach[],
   consultantBusinessName?: string
-): Promise<{ channel: string; callScript?: string; callContext?: string; useTemplate?: boolean; whatsappMessage?: string; whatsappContext?: string; useWaTemplate?: boolean; wa_preview_message?: string; wa_template_name?: string; wa_template_sid?: string; wa_template_body?: string; wa_template_variables?: Record<string, string>; wa_template_filled?: string; emailSubject?: string; emailBody?: string; emailTemplateName?: string; leadId: string }> {
+): Promise<{ channel: string; callScript?: string; callContext?: string; callOperationalInstruction?: string; useTemplate?: boolean; whatsappMessage?: string; whatsappContext?: string; useWaTemplate?: boolean; wa_preview_message?: string; wa_template_name?: string; wa_template_sid?: string; wa_template_body?: string; wa_template_variables?: Record<string, string>; wa_template_filled?: string; emailSubject?: string; emailBody?: string; emailTemplateName?: string; leadId: string }> {
 
   const leadContext = buildLeadContext(lead, consultantName, salesCtx, talkingPoints, outreachConfig);
 
@@ -1191,6 +1191,7 @@ export async function generateOutreachContent(
       channel,
       leadId: lead.id || lead.leadId,
       callContext: leadContext,
+      callOperationalInstruction: outreachConfig?.call_instruction_template || null,
       useTemplate: true,
     };
   }
@@ -1485,6 +1486,7 @@ export async function scheduleIndividualOutreach(
 
   if (channel === 'voice') {
     const callContext = content.callContext || content.callScript || '';
+    const callOperationalInstruction = content.callOperationalInstruction || null;
     const templateName = config.voiceTemplateName || 'Predefinito';
     contentPreview = `${leadName} — Template: ${templateName}`;
     const scheduledCallId = `svc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -1498,7 +1500,7 @@ export async function scheduleIndividualOutreach(
       ) VALUES (
         ${scheduledCallId}, ${consultantId}, ${lead.phone || ''},
         ${scheduledAtIso}, ${voiceStatus}, 'outreach',
-        ${null}, ${callContext},
+        ${callContext}, ${callOperationalInstruction},
         'task', 0, 3,
         2, ${taskId}, '[]'::jsonb, ${!config.voiceTemplateId}, NOW(), NOW()
       )

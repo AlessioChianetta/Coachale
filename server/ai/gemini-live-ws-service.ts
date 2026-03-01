@@ -996,6 +996,8 @@ async function getUserIdFromRequest(req: any): Promise<{
   inviteToken: string | null;
   // Test mode for AI Trainer (discovery | demo | discovery_demo)
   testMode: 'discovery' | 'demo' | 'discovery_demo' | null;
+  // Phone call specific fields
+  phoneCallLeadContext?: string | null;
 } | null> {
   try {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
@@ -1236,6 +1238,7 @@ async function getUserIdFromRequest(req: any): Promise<{
         let userRole = 'anonymous_caller';
         let consultantVoice = 'Achernar';
         let callInstruction: string | null = null;
+        let callLeadContext: string | null = null;
         let instructionType: 'task' | 'reminder' | null = null;
         let scheduledCallId: string | null = null;
         let outboundTargetPhone: string | null = null;
@@ -1260,7 +1263,7 @@ async function getUserIdFromRequest(req: any): Promise<{
             ? Promise.resolve({ rows: [_cachedScheduledCallRow] }).then(r => { console.log(`⏱️ [AUTH] scheduledCall REUSED from early lookup: 0ms`); return r; })
             : scheduledCallIdParam
               ? db.execute(sql`
-                  SELECT id, call_instruction, instruction_type, target_phone 
+                  SELECT id, call_instruction, instruction_type, target_phone, custom_prompt 
                   FROM scheduled_voice_calls 
                   WHERE id = ${scheduledCallIdParam}
                     AND consultant_id = ${resolvedConsultantId}
@@ -1292,6 +1295,7 @@ async function getUserIdFromRequest(req: any): Promise<{
           if (scheduledCallResult && scheduledCallResult.rows.length > 0) {
             const scheduledCall = scheduledCallResult.rows[0] as any;
             callInstruction = scheduledCall.call_instruction;
+            callLeadContext = scheduledCall.custom_prompt || null;
             instructionType = scheduledCall.instruction_type;
             scheduledCallId = scheduledCall.id;
             outboundTargetPhone = scheduledCall.target_phone;
@@ -1301,6 +1305,7 @@ async function getUserIdFromRequest(req: any): Promise<{
             console.log(`🎯   Target Phone: ${outboundTargetPhone}`);
             console.log(`🎯   Type: ${instructionType || 'generic'}`);
             console.log(`🎯   Instruction: ${callInstruction || '(no instruction)'}`);
+            console.log(`🎯   Lead Context: ${callLeadContext ? `${callLeadContext.substring(0, 80)}...` : '(none)'}`);
             console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
             
             if (outboundTargetPhone) {
@@ -1415,6 +1420,7 @@ async function getUserIdFromRequest(req: any): Promise<{
           voiceCallId: voiceCallId,
           // 🎯 Call instruction for outbound calls
           phoneCallInstruction: callInstruction,
+          phoneCallLeadContext: callLeadContext,
           phoneInstructionType: instructionType,
           phoneScheduledCallId: scheduledCallId,
         };
@@ -1778,7 +1784,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     const authDoneTime = Date.now();
     console.log(`⏱️ [LATENCY-E2E] Auth completed: +${authDoneTime - wsArrivalTime}ms from WS arrival`);
 
-    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneInstructionType, phoneScheduledCallId } = authResult;
+    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneCallLeadContext, phoneInstructionType, phoneScheduledCallId } = authResult;
 
     // ⚡ O4: EARLY-START parallel queries immediately after auth
     // These queries start running while 1400+ lines of variable declarations and function definitions execute
@@ -3693,7 +3699,7 @@ Presentati brevemente e poi vai dritto all'istruzione.
             console.log(`⏱️ [NC-LATENCY] brandVoice resolved (instruction path): +${_ncLatency.brandVoiceResolvedTime - _ncParallelStart}ms`);
           }
           
-          // Build prompt with: VOICE DIRECTIVES FIRST + BRAND VOICE + IDENTITY + DETAILED PROFILE + INSTRUCTION + GREETING + CALL HISTORY
+          // Build prompt with: VOICE DIRECTIVES FIRST + BRAND VOICE + IDENTITY + DETAILED PROFILE + LEAD CONTEXT + INSTRUCTION + GREETING + CALL HISTORY
           systemInstruction = `${voiceDirectivesSection}
 ${outboundInstructionBrandVoiceSection ? '\n' + outboundInstructionBrandVoiceSection + '\n' : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3703,7 +3709,13 @@ ${outboundInstructionBrandVoiceSection ? '\n' + outboundInstructionBrandVoiceSec
 Sei Alessia, l'assistente AI di ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}.
 Stai chiamando per conto del consulente.
 ${consultantDetailedProfileSection ? '\n' + consultantDetailedProfileSection : ''}
+${phoneCallLeadContext ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 INFORMAZIONI SUL LEAD CHE STAI CHIAMANDO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+${phoneCallLeadContext}
+` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 IL TUO COMPITO PER QUESTA CHIAMATA - VAI DRITTO AL PUNTO!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

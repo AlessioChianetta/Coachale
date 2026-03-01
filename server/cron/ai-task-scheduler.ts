@@ -943,6 +943,24 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
     } else {
       // FIRST ATTEMPT: Create new scheduled_voice_call
       scheduledCallId = generateScheduledCallId();
+
+      // For Hunter voice tasks, ai_instruction contains the full lead context block.
+      // The short operational instruction is stored in additional_context.call_instruction.
+      // We put the lead context in custom_prompt (system prompt background) and
+      // the operational instruction in call_instruction (what the AI should focus on).
+      let taskAdditionalCtx: Record<string, any> = {};
+      try {
+        if (task.additional_context) {
+          taskAdditionalCtx = typeof task.additional_context === 'string'
+            ? JSON.parse(task.additional_context)
+            : task.additional_context;
+        }
+      } catch { /* ignore parse errors */ }
+      const isHunterVoiceTask = taskAdditionalCtx.source === 'crm_analysis';
+      const voiceLeadContext = isHunterVoiceTask ? task.ai_instruction : task.ai_instruction;
+      const voiceOperationalInstruction = isHunterVoiceTask
+        ? (taskAdditionalCtx.call_instruction || null)
+        : task.ai_instruction;
       
       await db.execute(sql`
         INSERT INTO scheduled_voice_calls (
@@ -952,14 +970,14 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
         ) VALUES (
           ${scheduledCallId}, ${task.consultant_id}, ${task.contact_phone}, 
           NOW(), 'calling', 'assistenza',
-          ${task.ai_instruction}, ${task.ai_instruction}, 
+          ${voiceLeadContext}, ${voiceOperationalInstruction}, 
           ${task.task_type === 'single_call' ? 'task' : 'reminder'},
           1, ${task.max_attempts || 3},
           1, ${task.id}, '[]'::jsonb, true, NOW(), NOW()
         )
       `);
       
-      console.log(`📋 [AI-SCHEDULER] Created scheduled_voice_call ${scheduledCallId} for task ${task.id}`);
+      console.log(`📋 [AI-SCHEDULER] Created scheduled_voice_call ${scheduledCallId} for task ${task.id} (isHunterVoice=${isHunterVoiceTask})`);
     }
     
     // Log this attempt in attempts_log
