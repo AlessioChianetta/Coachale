@@ -31,11 +31,12 @@ export async function checkOutreachSafety(
 
     const windowStart = new Date(Date.now() - windowHours * 60 * 60 * 1000);
 
+    const typePlaceholders = relevantTypes.map(t => sql`${t}`);
     const recentContactResult = await db.execute(sql`
       SELECT type, created_at
       FROM lead_scraper_activities
       WHERE lead_id::text = ${leadId}::text
-        AND type = ANY(${relevantTypes}::text[])
+        AND type IN (${sql.join(typePlaceholders, sql`, `)})
         AND created_at >= ${windowStart.toISOString()}
       ORDER BY created_at DESC
       LIMIT 1

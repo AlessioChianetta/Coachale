@@ -845,18 +845,18 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
   return { totalAnalyzed: leadsResult.rows.length, actionableLeads, skipReasons };
 }
 
-interface WaTemplateForOutreach {
+export interface WaTemplateForOutreach {
   sid: string;
   name: string;
   bodyText: string;
   variables: { position: number; variableKey: string; variableName: string }[];
 }
 
-function titleCaseName(name: string): string {
+export function titleCaseName(name: string): string {
   return name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
 
-async function loadSelectedWaTemplates(consultantId: string, templateSids: string[]): Promise<WaTemplateForOutreach[]> {
+export async function loadSelectedWaTemplates(consultantId: string, templateSids: string[]): Promise<WaTemplateForOutreach[]> {
   if (!templateSids || templateSids.length === 0) return [];
   try {
     const result = await db.execute(sql`
@@ -1171,7 +1171,7 @@ async function resolveTemplateVariables(
   return { resolved, sources };
 }
 
-async function generateOutreachContent(
+export async function generateOutreachContent(
   consultantId: string,
   lead: any,
   channel: string,
@@ -1374,7 +1374,7 @@ async function generateOutreachContent(
   }
 }
 
-async function findNextAvailableSlot(
+export async function findNextAvailableSlot(
   consultantId: string,
   channel: string,
   offsetIndex: number,
@@ -1465,7 +1465,7 @@ async function findNextAvailableSlot(
   return candidate;
 }
 
-async function scheduleIndividualOutreach(
+export async function scheduleIndividualOutreach(
   consultantId: string,
   lead: any,
   channel: string,
