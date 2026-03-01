@@ -1265,9 +1265,9 @@ router.get("/proactive-leads/:id/hunter-context", authenticateToken, requireRole
     const consultantId = req.user!.id;
     const leadId = req.params.id;
 
-    const lead = await storage.getProactiveLead(leadId);
-    if (!lead || lead.consultantId !== consultantId) {
-      console.log(`🔍 [HUNTER-CTX API] Lead not found or wrong consultant: leadId=${leadId} found=${!!lead}`);
+    const lead = await storage.getProactiveLead(leadId, consultantId);
+    if (!lead) {
+      console.log(`🔍 [HUNTER-CTX API] Lead not found: leadId=${leadId} consultantId=${consultantId.substring(0, 8)}...`);
       return res.status(404).json({ success: false, error: "Lead non trovato" });
     }
 
