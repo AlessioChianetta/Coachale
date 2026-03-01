@@ -313,6 +313,65 @@ router.get("/hunter/actions", authenticateToken, requireAnyRole(["consultant", "
   }
 });
 
+router.get("/hunter/uncontacted-leads", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+
+    const settingsResult = await db.execute(sql`
+      SELECT outreach_config FROM ai_autonomy_settings WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+    `);
+    const outreachConfig = (settingsResult.rows[0] as any)?.outreach_config || {};
+    const scoreThreshold = outreachConfig.score_threshold ?? 60;
+    const leadSourceFilter = outreachConfig.lead_source_filter;
+    const sourceCondition = leadSourceFilter && leadSourceFilter !== 'both'
+      ? sql`AND ls.search_engine = ${leadSourceFilter}`
+      : sql``;
+
+    const result = await db.execute(sql`
+      SELECT
+        lr.id, lr.business_name, lr.phone, lr.email, lr.category, lr.website,
+        lr.ai_compatibility_score, lr.ai_sales_summary, lr.lead_status,
+        lr.created_at, lr.lead_notes,
+        ls.search_engine as source,
+        (
+          SELECT MAX(la.created_at)
+          FROM lead_scraper_activities la
+          WHERE la.lead_id::text = lr.id::text
+            AND la.type IN ('voice_call_answered','voice_call_completed','voice_call_no_answer',
+                           'whatsapp_sent','email_sent','chiamata','whatsapp_inviato','email_inviata')
+        ) as last_contact_at,
+        (
+          SELECT json_agg(json_build_object('channel', la2.type, 'date', to_char(la2.created_at AT TIME ZONE 'Europe/Rome', 'DD/MM/YY')))
+          FROM (
+            SELECT DISTINCT ON (la3.type) la3.type, la3.created_at
+            FROM lead_scraper_activities la3
+            WHERE la3.lead_id::text = lr.id::text
+              AND la3.type IN ('voice_call_answered','voice_call_completed','voice_call_no_answer',
+                               'whatsapp_sent','email_sent','chiamata','whatsapp_inviato','email_inviata')
+            ORDER BY la3.type, la3.created_at DESC
+          ) la2
+        ) as last_contacts_by_channel
+      FROM lead_scraper_results lr
+      JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+      WHERE ls.consultant_id = ${consultantId}
+        AND lr.lead_status IN ('nuovo','contattato','in_outreach')
+        AND lr.ai_compatibility_score IS NOT NULL
+        AND lr.ai_compatibility_score >= ${scoreThreshold}
+        ${sourceCondition}
+      ORDER BY lr.ai_compatibility_score DESC
+      LIMIT ${limit}
+    `);
+
+    res.json({ leads: result.rows, total: result.rows.length });
+  } catch (error: any) {
+    console.error("[ai-autonomy] /hunter/uncontacted-leads error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post("/hunter/trigger-direct", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;
@@ -635,6 +694,11 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 async function getActionableCrmLeads(consultantId: string, scoreThreshold: number, outreachConfig?: any) {
+  const leadSourceFilter = outreachConfig?.lead_source_filter;
+  const sourceCondition = leadSourceFilter && leadSourceFilter !== 'both'
+    ? sql`AND ls.search_engine = ${leadSourceFilter}`
+    : sql``;
+
   const leadsResult = await db.execute(sql`
     SELECT
       lr.id, lr.business_name, lr.phone, lr.email, lr.category, lr.website, lr.address,
@@ -649,13 +713,30 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
                          'whatsapp_sent', 'whatsapp_failed', 'email_sent', 'email_failed',
                          'outreach_assigned', 'crm_reanalysis',
                          'chiamata', 'whatsapp_inviato', 'email_inviata')
-      ) as last_activity_at
+      ) as last_activity_at,
+      (
+        SELECT json_agg(
+          json_build_object(
+            'channel', la2.type,
+            'date', to_char(la2.created_at AT TIME ZONE 'Europe/Rome', 'DD/MM/YY HH24:MI')
+          ) ORDER BY la2.created_at DESC
+        )
+        FROM (
+          SELECT DISTINCT ON (la3.type) la3.type, la3.created_at
+          FROM lead_scraper_activities la3
+          WHERE la3.lead_id::text = lr.id::text
+            AND la3.type IN ('voice_call_answered', 'voice_call_completed', 'voice_call_no_answer',
+                             'whatsapp_sent', 'email_sent', 'chiamata', 'whatsapp_inviato', 'email_inviata')
+          ORDER BY la3.type, la3.created_at DESC
+        ) la2
+      ) as last_contacts_by_channel
     FROM lead_scraper_results lr
     JOIN lead_scraper_searches ls ON lr.search_id = ls.id
     WHERE ls.consultant_id = ${consultantId}
       AND lr.lead_status IN ('nuovo', 'contattato', 'in_outreach', 'in_trattativa')
       AND lr.ai_compatibility_score IS NOT NULL
       AND lr.ai_compatibility_score >= ${scoreThreshold}
+      ${sourceCondition}
     ORDER BY lr.ai_compatibility_score DESC
     LIMIT 200
   `);
@@ -722,6 +803,23 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
     }
 
     if (actionable) {
+      const lastContactsByChannel: any[] = lead.last_contacts_by_channel || [];
+      const lastContactsSummary = lastContactsByChannel.length > 0
+        ? lastContactsByChannel.map((c: any) => {
+            const channelLabel: Record<string, string> = {
+              'voice_call_answered': 'chiamata risposta',
+              'voice_call_completed': 'chiamata',
+              'voice_call_no_answer': 'chiamata non risposta',
+              'whatsapp_sent': 'WhatsApp',
+              'email_sent': 'email',
+              'chiamata': 'chiamata',
+              'whatsapp_inviato': 'WhatsApp',
+              'email_inviata': 'email',
+            };
+            return `${channelLabel[c.channel] || c.channel} il ${c.date}`;
+          }).join(', ')
+        : 'mai contattato';
+
       actionableLeads.push({
         id: lead.id,
         businessName: lead.business_name,
@@ -738,6 +836,7 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
         leadStatus: lead.lead_status,
         daysSinceLastContact: daysSinceActivity !== null ? Math.round(daysSinceActivity) : null,
         daysSinceCreated: Math.round(daysSinceCreated),
+        lastContacts: lastContactsSummary,
         reason,
       });
     }

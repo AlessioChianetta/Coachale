@@ -52,6 +52,9 @@ export interface OutreachConfig {
   custom_instructions: string;
   email_signature: string;
   opening_hook: string;
+  max_new_leads_before_pause?: number;
+  lead_source_filter?: "maps" | "search" | "both";
+  max_crm_outreach_per_cycle?: number;
 }
 
 export interface RoleStatus {

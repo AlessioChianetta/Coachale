@@ -124,7 +124,7 @@ interface Message {
   } | null;
 }
 
-type FilterType = "all" | "leads" | "clients" | "unread";
+type FilterType = "all" | "leads" | "clients" | "unread" | "hunter";
 
 const POLLING_INTERVAL = 5000;
 
@@ -808,6 +808,11 @@ export default function ConsultantWhatsAppConversationsPage() {
                 })()}
               </p>
               <div className="flex items-center gap-1 flex-shrink-0">
+                {conv.isProactiveLead && (
+                  <Badge className="text-[10px] py-0 px-1.5 h-5 bg-emerald-500 hover:bg-emerald-500 text-white">
+                    🎯
+                  </Badge>
+                )}
                 <Badge className={`text-[10px] py-0 px-1.5 h-5 ${badgeInfo.className}`}>
                   {badgeInfo.label}
                 </Badge>
@@ -1090,6 +1095,14 @@ export default function ConsultantWhatsAppConversationsPage() {
                 >
                   Non letti
                 </Button>
+                <Button
+                  size="sm"
+                  variant={filter === "hunter" ? "default" : "outline"}
+                  onClick={() => setFilter("hunter")}
+                  className={filter === "hunter" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400"}
+                >
+                  🎯 Hunter
+                </Button>
               </div>
 
               {whatsappAgents.length > 1 && (
@@ -1297,6 +1310,9 @@ export default function ConsultantWhatsAppConversationsPage() {
                         </Button>
                         <Button size="sm" variant={filter === "unread" ? "default" : "outline"} onClick={() => setFilter("unread")} className="h-7 text-xs">
                           Non letti
+                        </Button>
+                        <Button size="sm" variant={filter === "hunter" ? "default" : "outline"} onClick={() => setFilter("hunter")} className={`h-7 text-xs ${filter === "hunter" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400"}`}>
+                          🎯 Hunter
                         </Button>
                       </div>
                       {whatsappAgents.length > 1 && (

@@ -414,6 +414,19 @@ export default function ConsultantLeadScraper() {
     refetchInterval: activeTab === "hunter" ? 30000 : false,
   });
 
+  const { data: uncontactedLeadsData, refetch: refetchUncontacted } = useQuery<{ leads: any[]; total: number } | null>({
+    queryKey: ["/api/ai-autonomy/hunter/uncontacted-leads"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/ai-autonomy/hunter/uncontacted-leads?limit=50", { headers: getAuthHeaders() });
+        if (!res.ok) return null;
+        return res.json();
+      } catch { return null; }
+    },
+    enabled: activeTab === "hunter",
+    refetchInterval: activeTab === "hunter" ? 60000 : false,
+  });
+
   const [directHunterFilter, setDirectHunterFilter] = useState<"tutti" | "voice" | "whatsapp" | "email">("tutti");
   const [directHunterStatusFilter, setDirectHunterStatusFilter] = useState<"tutti" | "scheduled" | "sent" | "failed">("tutti");
   const [triggeringDirect, setTriggeringDirect] = useState(false);
@@ -3068,6 +3081,137 @@ export default function ConsultantLeadScraper() {
                         </div>
 
                         <Separator />
+
+                        <div>
+                          <div className="flex items-center gap-2.5 mb-4">
+                            <div className="h-7 w-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                              <Target className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-gray-900 dark:text-white">Strategia CRM</h4>
+                              <p className="text-xs text-muted-foreground">Controllo intelligente del flusso di lead</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2 p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/50 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span className="flex items-center gap-1.5"><Filter className="h-3.5 w-3.5 text-indigo-600" />Pausa ricerche se lead nuovi ≥</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.max_new_leads_before_pause ?? 50}</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.max_new_leads_before_pause ?? 50]} min={5} max={200} step={5} onValueChange={([v]) => updateOutreachConfig("max_new_leads_before_pause", v)} />
+                              <p className="text-xs text-muted-foreground">Hunter sospende le ricerche quando la pipeline è piena</p>
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-800/50 hover:shadow-sm transition-shadow">
+                              <Label className="text-sm font-medium flex items-center justify-between">
+                                <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-purple-600" />Lead attivati per ciclo (max)</span>
+                                <Badge variant="outline" className="text-xs font-bold bg-white dark:bg-gray-900">{outreachConfig.max_crm_outreach_per_cycle ?? 5}</Badge>
+                              </Label>
+                              <Slider value={[outreachConfig.max_crm_outreach_per_cycle ?? 5]} min={1} max={20} step={1} onValueChange={([v]) => updateOutreachConfig("max_crm_outreach_per_cycle", v)} />
+                              <p className="text-xs text-muted-foreground">Quanti lead del CRM Hunter può contattare per ciclo</p>
+                            </div>
+                            <div className="space-y-2 p-4 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-800/50 hover:shadow-sm transition-shadow md:col-span-2">
+                              <Label className="text-sm font-medium flex items-center gap-1.5">
+                                <Search className="h-3.5 w-3.5 text-teal-600" />Sorgente lead CRM
+                              </Label>
+                              <div className="flex gap-2 mt-1">
+                                {[
+                                  { value: "both", label: "Tutte le sorgenti" },
+                                  { value: "maps", label: "Google Maps" },
+                                  { value: "search", label: "Google Search" },
+                                ].map(opt => (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => updateOutreachConfig("lead_source_filter", opt.value)}
+                                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${
+                                      (outreachConfig.lead_source_filter ?? "both") === opt.value
+                                        ? "bg-teal-600 text-white border-teal-600"
+                                        : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-teal-400"
+                                    }`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-xs text-muted-foreground">Filtra i lead CRM per sorgente durante l'outreach autonomo</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {uncontactedLeadsData && uncontactedLeadsData.leads.length > 0 && (
+                          <>
+                            <div>
+                              <div className="flex items-center gap-2.5 mb-4">
+                                <div className="h-7 w-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                                  <Users className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="text-sm font-bold text-gray-900 dark:text-white">Lead in attesa di contatto</h4>
+                                  <p className="text-xs text-muted-foreground">
+                                    {uncontactedLeadsData.total} lead qualificati pronti per l'outreach Hunter
+                                  </p>
+                                </div>
+                                <button type="button" onClick={() => refetchUncontacted()} className="text-xs text-blue-600 hover:underline">Aggiorna</button>
+                              </div>
+                              <div className="rounded-xl border border-amber-200/60 dark:border-amber-800/40 overflow-hidden">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs">
+                                    <thead className="bg-amber-50/80 dark:bg-amber-950/30">
+                                      <tr>
+                                        <th className="text-left px-3 py-2 font-medium text-amber-900 dark:text-amber-100">Azienda</th>
+                                        <th className="text-center px-3 py-2 font-medium text-amber-900 dark:text-amber-100">Score</th>
+                                        <th className="text-center px-3 py-2 font-medium text-amber-900 dark:text-amber-100">Tel</th>
+                                        <th className="text-center px-3 py-2 font-medium text-amber-900 dark:text-amber-100">Email</th>
+                                        <th className="text-left px-3 py-2 font-medium text-amber-900 dark:text-amber-100">Sorgente</th>
+                                        <th className="text-left px-3 py-2 font-medium text-amber-900 dark:text-amber-100">Contatti</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-amber-100 dark:divide-amber-900/30">
+                                      {uncontactedLeadsData.leads.slice(0, 10).map((lead: any, idx: number) => {
+                                        const contacts = lead.last_contacts_by_channel || [];
+                                        const channelLabel: Record<string, string> = {
+                                          'voice_call_answered': 'chiamata',
+                                          'voice_call_completed': 'chiamata',
+                                          'voice_call_no_answer': 'chiamata nc',
+                                          'whatsapp_sent': 'WA',
+                                          'email_sent': 'email',
+                                          'chiamata': 'chiamata',
+                                          'whatsapp_inviato': 'WA',
+                                          'email_inviata': 'email',
+                                        };
+                                        const contactsText = contacts.length > 0
+                                          ? contacts.map((c: any) => `${channelLabel[c.channel] || c.channel} ${c.date}`).join(', ')
+                                          : 'Mai contattato';
+                                        return (
+                                          <tr key={lead.id} className={idx % 2 === 0 ? 'bg-white dark:bg-gray-900/20' : 'bg-amber-50/30 dark:bg-amber-950/10'}>
+                                            <td className="px-3 py-2 font-medium text-gray-900 dark:text-white max-w-[160px] truncate">{lead.business_name}</td>
+                                            <td className="px-3 py-2 text-center">
+                                              <Badge variant="outline" className={`text-xs font-bold ${lead.ai_compatibility_score >= 80 ? 'border-green-500 text-green-700' : lead.ai_compatibility_score >= 60 ? 'border-yellow-500 text-yellow-700' : 'border-gray-400 text-gray-600'}`}>
+                                                {lead.ai_compatibility_score}
+                                              </Badge>
+                                            </td>
+                                            <td className="px-3 py-2 text-center">{lead.phone ? '✅' : '—'}</td>
+                                            <td className="px-3 py-2 text-center">{lead.email ? '✅' : '—'}</td>
+                                            <td className="px-3 py-2 capitalize text-gray-600 dark:text-gray-400">{lead.source || '—'}</td>
+                                            <td className="px-3 py-2 text-gray-600 dark:text-gray-400 max-w-[180px] truncate" title={contactsText}>{contactsText}</td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                {uncontactedLeadsData.leads.length > 10 && (
+                                  <div className="px-3 py-2 bg-amber-50/50 dark:bg-amber-950/20 text-xs text-center text-muted-foreground border-t border-amber-200/60 dark:border-amber-800/40">
+                                    + altri {uncontactedLeadsData.leads.length - 10} lead pronti — Hunter li vedrà tutti al prossimo ciclo
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <Separator />
+                          </>
+                        )}
 
                         <div>
                           <div className="flex items-center gap-2.5 mb-4">

@@ -19085,7 +19085,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         .filter((c) => {
           if (filter === "leads") return c.isLead;
           if (filter === "clients") return !c.isLead;
-          if (filter === "unread") return c.unreadByConsultant > 0;
+          if (filter === "unread") return (c.unreadByConsultant ?? 0) > 0;
+          if (filter === "hunter") return c.isProactiveLead === true;
           return true; // all
         });
 

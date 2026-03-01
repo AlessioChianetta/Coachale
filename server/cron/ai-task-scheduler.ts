@@ -17,6 +17,7 @@ function safeTextParam(value: string) {
   return sql.raw(`'${sanitized}'`);
 }
 import { withCronLock } from './cron-lock-manager';
+import { checkOutreachSafety } from '../services/outreach-safety-guard';
 import { generateExecutionPlan, canExecuteAutonomously, canExecuteManually, type ExecutionStep, isWithinWorkingHours, isRoleWithinWorkingHours, getTaskStatusForRole, getAutonomySettings, getEffectiveRoleLevel, canRoleAutoCall } from '../ai/autonomous-decision-engine';
 import { executeStep, type AITaskInfo } from '../ai/ai-task-executor';
 import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent, type GeminiClient } from '../ai/provider-factory';
@@ -123,7 +124,9 @@ async function processAITasks(): Promise<void> {
     
     const approvedMoveResult = await db.execute(sql`
       UPDATE ai_scheduled_tasks 
-      SET status = 'scheduled', updated_at = NOW()
+      SET status = 'scheduled',
+          result_data = COALESCE(result_data, '{}'::jsonb) || '{"from_approval": true}'::jsonb,
+          updated_at = NOW()
       WHERE status = 'approved' AND scheduled_at <= NOW()
       RETURNING id, ai_role, task_type
     `);
@@ -274,6 +277,27 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
   const updatedTask = { ...task, current_attempt: attemptNumber };
   
   try {
+    if (aiRole === 'hunter' && ['voice', 'whatsapp', 'email'].includes(channel) && channel !== 'lead_crm') {
+      const fromApproval = task.result_data && typeof task.result_data === 'object' && (task.result_data as any).from_approval === true;
+      const skipGuardrails = task.result_data && typeof task.result_data === 'object' && (task.result_data as any).skip_guardrails === true;
+      if (!fromApproval && !skipGuardrails) {
+        const safetyCfgResult = await db.execute(sql`SELECT outreach_config FROM ai_autonomy_settings WHERE consultant_id::text = ${task.consultant_id}::text LIMIT 1`);
+        const safetyCfg = (safetyCfgResult.rows[0] as any)?.outreach_config || {};
+        const hunterModeSafety = safetyCfg.hunter_mode ?? 'approval';
+        if (hunterModeSafety === 'approval') {
+          console.warn(`🚨 [SAFETY-BLOCK] Hunter outreach task ${task.id} (channel=${channel}) blocked — hunter_mode=approval but no from_approval flag. Re-queuing as waiting_approval.`);
+          await db.execute(sql`UPDATE ai_scheduled_tasks SET status='waiting_approval', result_summary='[SAFETY-BLOCK] Task rimesso in attesa di approvazione (mancava from_approval)', updated_at=NOW() WHERE id=${task.id}`);
+          return;
+        }
+      }
+    }
+
+    if (channel === 'lead_crm' || taskType === 'crm_lead_outreach') {
+      console.log(`🤖 [AI-SCHEDULER] STEP 3b: lead_crm/crm_lead_outreach → handleCrmLeadOutreach`);
+      await handleCrmLeadOutreach(updatedTask);
+      return;
+    }
+
     if (taskType === 'ai_task' && channel === 'email' && aiRole === 'hunter') {
       const skipGuardrails = task.result_data && typeof task.result_data === 'object' && (task.result_data as any).skip_guardrails === true;
       if (skipGuardrails) {
@@ -323,6 +347,148 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
     console.error(`❌ [AI-SCHEDULER] STEP 3 ERROR: ${error.message}`);
     await handleFailure(updatedTask, error.message);
   }
+}
+
+async function handleCrmLeadOutreach(task: AIScheduledTask): Promise<void> {
+  const LOG = '🎯 [CRM-LEAD-OUTREACH]';
+  const instruction = task.ai_instruction || '';
+
+  const leadIdMatch = instruction.match(/LEAD_ID:\s*([^\n]+)/i);
+  const leadId = leadIdMatch ? leadIdMatch[1].trim() : null;
+
+  if (!leadId) {
+    console.error(`${LOG} No LEAD_ID found in instruction for task ${task.id}`);
+    await db.execute(sql`UPDATE ai_scheduled_tasks SET status='failed', result_summary='LEAD_ID mancante nell\'istruzione', updated_at=NOW() WHERE id=${task.id}`);
+    return;
+  }
+
+  console.log(`${LOG} Processing lead ${leadId} for task ${task.id}`);
+
+  const leadResult = await db.execute(sql`
+    SELECT lr.*, ls.consultant_id as ls_consultant_id
+    FROM lead_scraper_results lr
+    JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+    WHERE lr.id = ${leadId} AND ls.consultant_id = ${task.consultant_id}
+    LIMIT 1
+  `);
+
+  if (leadResult.rows.length === 0) {
+    console.error(`${LOG} Lead ${leadId} not found for consultant ${task.consultant_id}`);
+    await db.execute(sql`UPDATE ai_scheduled_tasks SET status='failed', result_summary='Lead non trovato nel CRM', updated_at=NOW() WHERE id=${task.id}`);
+    return;
+  }
+
+  const lead = leadResult.rows[0] as any;
+  const wd = (typeof lead.website_data === 'string' ? JSON.parse(lead.website_data) : lead.website_data) || {};
+  const leadPhone = lead.phone || (wd.phones && wd.phones[0]) || null;
+  const leadEmail = lead.email || (wd.emails && wd.emails[0]) || null;
+  const leadName = lead.business_name || 'Lead sconosciuto';
+
+  const settingsResult = await db.execute(sql`
+    SELECT outreach_config FROM ai_autonomy_settings WHERE consultant_id::text = ${task.consultant_id}::text LIMIT 1
+  `);
+  const outreachConfig = (settingsResult.rows[0] as any)?.outreach_config || {};
+  const channelPriority: string[] = outreachConfig.channel_priority ?? ['voice', 'whatsapp', 'email'];
+  const whatsappConfigId = outreachConfig.whatsapp_config_id ?? outreachConfig.whatsappConfigId ?? null;
+  const voiceTemplateId = outreachConfig.voice_template_id ?? outreachConfig.voiceTemplateId ?? null;
+  const emailAccountId = outreachConfig.email_account_id ?? outreachConfig.emailAccountId ?? null;
+  const hunterMode = outreachConfig.hunter_mode ?? 'approval';
+  const outreachStatus = hunterMode === 'autonomous' ? 'scheduled' : 'waiting_approval';
+
+  let whatsappConfigActive = false;
+  if (whatsappConfigId) {
+    try {
+      const waResult = await db.execute(sql`SELECT id FROM consultant_whatsapp_config WHERE id=${whatsappConfigId} AND is_active=true LIMIT 1`);
+      whatsappConfigActive = waResult.rows.length > 0;
+    } catch {}
+  }
+
+  const autonomySettings = await getAutonomySettings(task.consultant_id);
+  const channelsEnabled = autonomySettings.channels_enabled || {};
+
+  let channelAssigned: string | null = null;
+  for (const ch of channelPriority) {
+    if (ch === 'voice' && leadPhone && channelsEnabled.voice && voiceTemplateId) { channelAssigned = 'voice'; break; }
+    if (ch === 'whatsapp' && leadPhone && channelsEnabled.whatsapp && whatsappConfigActive) { channelAssigned = 'whatsapp'; break; }
+    if (ch === 'email' && leadEmail && channelsEnabled.email) { channelAssigned = 'email'; break; }
+  }
+  if (!channelAssigned) {
+    if (leadPhone && channelsEnabled.voice && voiceTemplateId) channelAssigned = 'voice';
+    else if (leadPhone && channelsEnabled.whatsapp && whatsappConfigActive) channelAssigned = 'whatsapp';
+    else if (leadEmail && channelsEnabled.email) channelAssigned = 'email';
+  }
+
+  if (!channelAssigned) {
+    console.warn(`${LOG} No valid channel for lead ${leadId} (phone=${!!leadPhone}, email=${!!leadEmail})`);
+    await db.execute(sql`UPDATE ai_scheduled_tasks SET status='failed', result_summary='Nessun canale disponibile per questo lead (telefono o email mancante)', updated_at=NOW() WHERE id=${task.id}`);
+    return;
+  }
+
+  const safetyCooldown = (settingsResult.rows[0] as any)?.outreach_config?.cooldown_hours ?? 24;
+  const safetyCheck = await checkOutreachSafety(leadId, channelAssigned, task.consultant_id, safetyCooldown);
+  if (!safetyCheck.allowed) {
+    console.warn(`${LOG} Safety check blocked lead ${leadId} channel=${channelAssigned}: ${safetyCheck.reason}`);
+    await db.execute(sql`UPDATE ai_scheduled_tasks SET status='failed', result_summary=${`[SAFETY-GUARD] ${safetyCheck.reason}`}, updated_at=NOW() WHERE id=${task.id}`);
+    return;
+  }
+
+  const subTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  const subInstruction = `Contatto CRM lead (Hunter autonomo): ${leadName}\nAzienda: ${leadName}\nCanale: ${channelAssigned}\nScore AI: ${lead.ai_compatibility_score || 'N/A'}/100\n${lead.ai_sales_summary ? `Sintesi: ${lead.ai_sales_summary.substring(0, 300)}` : ''}`;
+  const subResultData = {
+    crmLeadOutreach: true,
+    leadId: leadId,
+    businessName: leadName,
+    phone: leadPhone,
+    email: leadEmail,
+    score: lead.ai_compatibility_score,
+    channel: channelAssigned,
+    voiceTemplateId: channelAssigned === 'voice' ? voiceTemplateId : null,
+    whatsappConfigId: channelAssigned === 'whatsapp' ? whatsappConfigId : null,
+    emailAccountId: channelAssigned === 'email' ? emailAccountId : null,
+    assigned_by: 'hunter',
+    parent_crm_outreach_task: task.id,
+  };
+
+  await db.execute(sql`
+    INSERT INTO ai_scheduled_tasks (
+      id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+      scheduled_at, timezone, status, priority, parent_task_id,
+      task_category, ai_role, preferred_channel, result_data,
+      additional_context, max_attempts, current_attempt, retry_delay_minutes,
+      created_at, updated_at
+    ) VALUES (
+      ${subTaskId}, ${task.consultant_id}, ${leadPhone || ''},
+      ${leadName}, 'ai_task', ${subInstruction},
+      NOW() + INTERVAL '2 minutes',
+      ${task.timezone || 'Europe/Rome'}, ${outreachStatus}, 2, ${task.id},
+      'outreach', 'hunter', ${channelAssigned},
+      ${JSON.stringify(subResultData)}::jsonb,
+      ${JSON.stringify({ lead_id: leadId, crm_lead_outreach: true })},
+      1, 0, 5, NOW(), NOW()
+    )
+  `);
+
+  await db.execute(sql`
+    UPDATE lead_scraper_results SET lead_status='in_outreach', outreach_task_id=${subTaskId}, lead_next_action=${`${channelAssigned} outreach da Hunter CRM`}, lead_next_action_date=NOW() + INTERVAL '2 minutes', updated_at=NOW()
+    WHERE id=${leadId}
+  `);
+
+  await db.execute(sql`
+    INSERT INTO lead_scraper_activities (lead_id, consultant_id, type, title, description, metadata, created_at)
+    VALUES (${leadId}, ${task.consultant_id}, 'outreach_assigned', ${`Outreach schedulato da Hunter: ${channelAssigned} (CRM autonomo)`}, ${`Hunter ha selezionato questo lead dal CRM per outreach via ${channelAssigned}. Score: ${lead.ai_compatibility_score || 'N/A'}/100`}, ${JSON.stringify({ taskId: subTaskId, channel: channelAssigned, score: lead.ai_compatibility_score, assigned_by: 'hunter_crm_autonomous' })}::jsonb, NOW())
+  `);
+
+  await logActivity(task.consultant_id, {
+    event_type: 'crm_lead_outreach_scheduled',
+    title: `🎯 Hunter CRM: outreach ${channelAssigned} schedulato per ${leadName}`,
+    description: `Hunter ha selezionato autonomamente questo lead CRM (score ${lead.ai_compatibility_score || 'N/A'}/100) e ha schedulato un contatto via ${channelAssigned}`,
+    icon: '🎯',
+    severity: 'info',
+    task_id: task.id,
+  });
+
+  await db.execute(sql`UPDATE ai_scheduled_tasks SET status='completed', result_summary=${`Outreach ${channelAssigned} schedulato per ${leadName} (sub-task: ${subTaskId})`}, completed_at=NOW(), updated_at=NOW() WHERE id=${task.id}`);
+  console.log(`${LOG} Created ${channelAssigned} sub-task ${subTaskId} for lead ${leadId} (${leadName})`);
 }
 
 async function executeSingleWhatsApp(task: AIScheduledTask): Promise<void> {
@@ -423,10 +589,58 @@ async function executeSingleWhatsApp(task: AIScheduledTask): Promise<void> {
     } catch (epErr: any) {
       console.error(`${LOG} ensureProactiveLead error (non-blocking):`, epErr.message);
     }
+
+    if (task.ai_role === 'hunter') {
+      try {
+        const { findOrCreateConversation } = await import('../whatsapp/webhook-handler');
+        const conversation = await findOrCreateConversation(
+          resolvedPhone,
+          task.consultant_id,
+          task.whatsapp_config_id || undefined,
+          true,
+        );
+        if (conversation && conversation.id) {
+          await db.execute(sql`
+            UPDATE whatsapp_conversations
+            SET is_proactive_lead = true, is_lead = true,
+                last_message_at = NOW(), last_message_from = 'ai',
+                message_count = message_count + 1, updated_at = NOW()
+            WHERE id = ${conversation.id}
+          `);
+          const previewText = additionalContextData.wa_preview_message || messageText;
+          const msgId = `hunter_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          await db.execute(sql`
+            INSERT INTO whatsapp_messages (
+              id, conversation_id, message_text, direction, sender,
+              media_type, twilio_sid, twilio_status, sent_at, created_at, updated_at
+            ) VALUES (
+              ${msgId}, ${conversation.id}, ${previewText}, 'outbound', 'ai',
+              'text', ${messageSid}, 'sent', NOW(), NOW(), NOW()
+            )
+          `);
+          console.log(`${LOG} 📋 Hunter conversation ${conversation.id} marked isProactiveLead=true, message saved`);
+        }
+      } catch (convErr: any) {
+        console.error(`${LOG} Failed to ensure Hunter conversation record (non-blocking):`, convErr.message);
+      }
+    }
   } catch (err: any) {
     console.error(`${LOG} ✗ Send failed: ${err.message}`);
     await handleFailure(task, err.message);
   }
+}
+
+const BLOCKED_EMAIL_DOMAINS = ['example.com', 'test.com', 'placeholder.com', 'fake.com', 'domain.com', 'example.org', 'test.org', 'fakeemail.com'];
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+
+function isValidEmail(email: string): { valid: boolean; reason?: string } {
+  if (!email || !email.includes('@')) return { valid: false, reason: 'Email vuota o formato non valido' };
+  if (!EMAIL_REGEX.test(email)) return { valid: false, reason: `Email con formato non valido: ${email}` };
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (domain && BLOCKED_EMAIL_DOMAINS.includes(domain)) {
+    return { valid: false, reason: `Dominio email bloccato (test/placeholder): ${domain}` };
+  }
+  return { valid: true };
 }
 
 async function executeSingleEmail(task: AIScheduledTask): Promise<void> {
@@ -449,6 +663,13 @@ async function executeSingleEmail(task: AIScheduledTask): Promise<void> {
   if (!leadEmail) {
     console.error(`${LOG} No lead email for task ${task.id}, marking failed`);
     await handleFailure(task, 'Email destinatario mancante');
+    return;
+  }
+
+  const emailValidation = isValidEmail(leadEmail);
+  if (!emailValidation.valid) {
+    console.error(`${LOG} [EMAIL-BLOCKED] Task ${task.id}: ${emailValidation.reason}`);
+    await handleFailure(task, `[EMAIL-BLOCKED] ${emailValidation.reason}`);
     return;
   }
 

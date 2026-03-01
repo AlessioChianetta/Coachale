@@ -1153,6 +1153,47 @@ async function fetchHunterData(consultantId: string, clientIds: string[]): Promi
     getDailyUsage(consultantId),
   ]);
 
+  const maxCrmOutreach = outreachConfig.max_crm_outreach_per_cycle ?? 5;
+  const leadSourceFilter = outreachConfig.lead_source_filter;
+  const sourceConditionUncontacted = leadSourceFilter && leadSourceFilter !== 'both'
+    ? sql`AND ls.search_engine = ${leadSourceFilter}`
+    : sql``;
+
+  const uncontactedLeadsResult = await db.execute(sql`
+    SELECT
+      lr.id, lr.business_name, lr.phone, lr.email, lr.category, lr.website,
+      lr.ai_compatibility_score, lr.ai_sales_summary, lr.lead_status,
+      lr.created_at, lr.lead_notes,
+      (
+        SELECT MAX(la.created_at)
+        FROM lead_scraper_activities la
+        WHERE la.lead_id::text = lr.id::text
+          AND la.type IN ('voice_call_answered', 'voice_call_completed', 'voice_call_no_answer',
+                         'whatsapp_sent', 'email_sent', 'chiamata', 'whatsapp_inviato', 'email_inviata')
+      ) as last_contact_at,
+      (
+        SELECT json_agg(json_build_object('channel', la2.type, 'date', to_char(la2.created_at AT TIME ZONE 'Europe/Rome', 'DD/MM/YY')))
+        FROM (
+          SELECT DISTINCT ON (la3.type) la3.type, la3.created_at
+          FROM lead_scraper_activities la3
+          WHERE la3.lead_id::text = lr.id::text
+            AND la3.type IN ('voice_call_answered', 'voice_call_completed', 'voice_call_no_answer',
+                             'whatsapp_sent', 'email_sent', 'chiamata', 'whatsapp_inviato', 'email_inviata')
+          ORDER BY la3.type, la3.created_at DESC
+        ) la2
+      ) as last_contacts
+    FROM lead_scraper_results lr
+    JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+    WHERE ls.consultant_id = ${consultantId}
+      AND lr.lead_status IN ('nuovo', 'contattato', 'in_outreach')
+      AND lr.ai_compatibility_score IS NOT NULL
+      AND lr.ai_compatibility_score >= ${outreachConfig.score_threshold ?? 60}
+      ${sourceConditionUncontacted}
+    ORDER BY lr.ai_compatibility_score DESC
+    LIMIT ${maxCrmOutreach * 3}
+  `);
+  const uncontactedLeads = (uncontactedLeadsResult.rows as any[]).slice(0, maxCrmOutreach);
+
   return {
     salesContext: {
       servicesOffered: (salesContext as any).services_offered,
@@ -1177,6 +1218,7 @@ async function fetchHunterData(consultantId: string, clientIds: string[]): Promi
     recentOutreachActivities,
     remainingLimits,
     dailyUsage,
+    uncontactedLeads,
   };
 }
 
@@ -2216,6 +2258,26 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       }));
       const remainingLimits = roleData.remainingLimits || {};
       const dailyUsage = roleData.dailyUsage || {};
+      const maxCrmOutreachPerCycle = outreachConfig.max_crm_outreach_per_cycle ?? 5;
+      const uncontactedLeads = (roleData.uncontactedLeads || []).map((l: any) => {
+        const contacts = l.last_contacts || [];
+        const contactsLabel = contacts.length > 0
+          ? contacts.map((c: any) => {
+              const ch: Record<string, string> = { 'voice_call_answered': 'chiamata', 'voice_call_completed': 'chiamata', 'voice_call_no_answer': 'chiamata nc', 'whatsapp_sent': 'WA', 'email_sent': 'email', 'chiamata': 'chiamata', 'whatsapp_inviato': 'WA', 'email_inviata': 'email' };
+              return `${ch[c.channel] || c.channel} ${c.date}`;
+            }).join(', ')
+          : 'mai contattato';
+        return {
+          id: l.id,
+          business: l.business_name,
+          phone: l.phone ? '✅' : '❌',
+          email: l.email ? '✅' : '❌',
+          score: l.ai_compatibility_score,
+          status: l.lead_status,
+          lastContacts: contactsLabel,
+          summary: l.ai_sales_summary ? l.ai_sales_summary.substring(0, 200) : null,
+        };
+      });
 
       const hasSalesContext = salesContext.servicesOffered || salesContext.targetAudience || salesContext.valueProposition;
 
@@ -2306,6 +2368,18 @@ ${voiceTemplates.length > 0 ? JSON.stringify(voiceTemplates, null, 2) : 'Nessun 
 
 ${buildTaskMemorySection(recentAllTasks, 'hunter', permanentBlocks, recentReasoningByRole)}
 
+${uncontactedLeads.length > 0 ? `═══ LEAD CRM DA CONTATTARE (top ${uncontactedLeads.length} per score) ═══
+Questi lead sono già nel CRM, qualificati con score sufficiente, ma NON ancora contattati o da ricontattare.
+Per ognuno puoi creare un task di tipo "crm_lead_outreach" (vedi istruzioni format sotto).
+Limite ciclo: max ${maxCrmOutreachPerCycle} task crm_lead_outreach per sessione.
+
+${uncontactedLeads.map((l: any, i: number) => `${i + 1}. ID: ${l.id} | ${l.business} | Score: ${l.score}/100 | Tel: ${l.phone} | Email: ${l.email} | Status: ${l.status} | Contatti: ${l.lastContacts}${l.summary ? `\n   Sintesi: ${l.summary}` : ''}`).join('\n')}
+
+REGOLA CRM: Preferisci creare task "crm_lead_outreach" per questi lead PRIMA di nuove ricerche se:
+- Ci sono lead con telefono ✅ non ancora chiamati o contattati via WA
+- I limiti di chiamate/WhatsApp sono ancora disponibili
+- Il lead non è già stato contattato su quel canale di recente` : ''}
+
 ═══ PIPELINE HUNTER: 2 STEP END-TO-END (AUTONOMIA COMPLETA) ═══
 Ogni task che crei segue automaticamente una pipeline a 2 step:
   1. lead_scraper_search — Il sistema esegue la ricerca su Google Maps/Search e salva i risultati
@@ -2316,24 +2390,39 @@ Ogni task che crei segue automaticamente una pipeline a 2 step:
 Tu devi SOLO creare il task di ricerca (step 1). Lo step 2 (qualifica + scheduling outreach) viene eseguito AUTOMATICAMENTE dal sistema dopo la ricerca.
 NON deleghi ad altri dipendenti: sei TU, Hunter, che gestisce l'intero ciclo dal prospecting al primo contatto.
 
+TIPO TASK AGGIUNTIVO: crm_lead_outreach
+Puoi anche creare task di tipo "crm_lead_outreach" per contattare lead CRM specifici già presenti nel sistema.
+Questi task vengono eseguiti direttamente: il sistema legge il lead dal CRM e programma la chiamata/WA/email appropriata.
+FORMAT ai_instruction per crm_lead_outreach:
+---
+TIPO: crm_lead_outreach
+LEAD_ID: [id del lead dalla sezione LEAD CRM DA CONTATTARE]
+REASONING: [perché contattare questo lead ora, quale canale preferire]
+---
+Per questo tipo: preferred_channel DEVE essere "lead_crm", task_category DEVE essere "prospecting".
+
 ═══ REGOLE DI HUNTER ═══
-1. Suggerisci MASSIMO 3 task di tipo ricerca lead per ciclo.
+1. Suggerisci MASSIMO 3 task di tipo ricerca lead per ciclo e MASSIMO ${maxCrmOutreachPerCycle} task di tipo crm_lead_outreach.
 
 2. BUDGET LEAD: Se ci sono ${leadStats.nuovo || 0} lead nuovi non contattati:
-   - Se >= 50 lead nuovi → NON fare nuove ricerche, concentrati sulla qualifica. Restituisci tasks vuoto.
-   - Se >= 30 lead nuovi → max 1 ricerca, focus qualità
-   - Se < 30 → ricerche normali (2-3)
+   - Se >= ${outreachConfig.max_new_leads_before_pause ?? 50} lead nuovi → NON fare nuove ricerche, concentrati sulla qualifica. Restituisci tasks vuoto (ma puoi fare crm_lead_outreach).
+   - Se >= ${Math.round((outreachConfig.max_new_leads_before_pause ?? 50) * 0.6)} lead nuovi → max 1 ricerca, focus qualità
+   - Se < ${Math.round((outreachConfig.max_new_leads_before_pause ?? 50) * 0.6)} → ricerche normali (2-3)
 
 3. RATE LIMITS: Controlla i limiti residui sopra.
    - Se ricerche rimanenti = 0 → NON generare nuovi task di ricerca
    - Se chiamate/WhatsApp/email rimanenti = 0 → segnala nel reasoning che l'outreach è saturato
    - Rispetta SEMPRE i limiti dell'outreach_config
 
-4. OGNI TASK deve essere di tipo "lead_scraper_search" con questi parametri nell'ai_instruction:
-   - query: la query di ricerca (es. "ristoranti Milano", "studi dentistici Roma centro")
-   - searchEngine: "maps" o "search" (alterna tra i due)
-   - location: la località target (es. "Milano, Italia")
-   - limit: numero risultati (5-20)
+4. FORMAT ai_instruction per lead_scraper_search (OBBLIGATORIO — il sistema lo parserà):
+   ---
+   TIPO: lead_scraper_search
+   QUERY: [la tua query]
+   ENGINE: maps|search
+   LOCATION: [città/zona]
+   LIMIT: [5-20]
+   REASONING: [perché questa query è strategica per il consulente]
+   ---
 
 5. STRATEGIA DI RICERCA:
    - NON ripetere query degli ultimi 7 giorni (vedi ricerche recenti sopra)
@@ -2344,30 +2433,22 @@ NON deleghi ad altri dipendenti: sei TU, Hunter, che gestisce l'intero ciclo dal
    - Se il feedback mostra molti "non_interessato" per una certa query/zona → cambia strategia
    - Se il feedback mostra molti "in_trattativa" → rallenta le nuove ricerche
 
-6. FORMAT ai_instruction (OBBLIGATORIO — il sistema lo parserà):
-   ---
-   TIPO: lead_scraper_search
-   QUERY: [la tua query]
-   ENGINE: maps|search
-   LOCATION: [città/zona]
-   LIMIT: [5-20]
-   REASONING: [perché questa query è strategica per il consulente]
-   ---
+6. Il campo preferred_channel per ricerche DEVE essere "lead_scraper"
+7. Usa la categoria: "prospecting"
+8. task_category DEVE essere "prospecting"
 
-7. Il campo preferred_channel DEVE essere "lead_scraper"
-8. Usa la categoria: "prospecting"
-9. task_category DEVE essere "prospecting"
-
-10. PROGRAMMAZIONE ORARIO (scheduled_for): Formato "YYYY-MM-DDTHH:MM". Regole:
+9. PROGRAMMAZIONE ORARIO (scheduled_for): Formato "YYYY-MM-DDTHH:MM". Regole:
    - Distribuisci le ricerche nel tempo (almeno 30 min tra una e l'altra)
    - Preferisci fasce 09:00-18:00
    - Non programmare MAI prima delle 08:30 o dopo le 19:00
 
-IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Spiega: cosa hai analizzato del profilo del consulente, quali query hai scelto e perché, quale strategia di ricerca stai seguendo, e come il feedback dei contatti precedenti ha influenzato le tue decisioni.
+10. CONTATTI GIÀ INVIATI: Per i lead CRM, controlla il campo "Contatti" — NON ripetere lo stesso canale se già usato nelle ultime 48 ore.
+
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Spiega: cosa hai analizzato del profilo del consulente, quali query hai scelto e perché, quale strategia di ricerca stai seguendo, e come il feedback dei contatti precedenti ha influenzato le tue decisioni. Se hai scelto lead CRM da contattare, spiega perché.
 
 Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 {
-  "overall_reasoning": "Spiegazione dettagliata: analisi del profilo, strategia di ricerca, query scelte e motivazione, feedback loop analysis",
+  "overall_reasoning": "Spiegazione dettagliata: analisi del profilo, strategia di ricerca, query scelte e motivazione, feedback loop analysis, lead CRM selezionati",
   "tasks": [
     {
       "contact_id": null,
