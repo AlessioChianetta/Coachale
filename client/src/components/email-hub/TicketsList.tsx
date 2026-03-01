@@ -478,8 +478,8 @@ export function TicketsList({ onSelectEmail, onOpenComposer }: TicketsListProps)
                 </div>
               )}
 
-              {/* Suggested response */}
-              {selected.ticket.suggestedResponse && (
+              {/* Suggested response — nascosta se è già stata inviata una risposta */}
+              {selected.ticket.suggestedResponse && !selected.sentReply && (
                 <div>
                   <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">Risposta suggerita AI</p>
                   <div className="rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800/50 p-3">
