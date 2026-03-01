@@ -961,13 +961,17 @@ export default function ProactiveLeadsPage() {
 
     setHunterCtxLoading(true);
     fetch(`/api/proactive-leads/${lead.id}/hunter-context`, { headers: getAuthHeaders() })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) console.warn(`[HUNTER-CTX] API returned ${r.status} for lead ${lead.id}`);
+        return r.json();
+      })
       .then(data => {
+        console.log(`[HUNTER-CTX] Response for lead ${lead.id}:`, data.success, data.hunterContext ? 'has data' : 'null');
         if (data.success && data.hunterContext) {
           setHunterContext(data.hunterContext);
         }
       })
-      .catch(() => {})
+      .catch((err) => console.error('[HUNTER-CTX] Fetch error:', err))
       .finally(() => setHunterCtxLoading(false));
   };
 

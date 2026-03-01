@@ -11,6 +11,10 @@ export interface HunterLeadContext {
   leadId: string | null;
 }
 
+function normalizePhoneDigits(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
+
 export async function resolveHunterContext(params: {
   consultantId: string;
   phoneNumber?: string | null;
@@ -18,6 +22,8 @@ export async function resolveHunterContext(params: {
   proactiveLeadId?: string | null;
 }): Promise<HunterLeadContext | null> {
   const { consultantId, phoneNumber, email, proactiveLeadId } = params;
+
+  console.log(`🔍 [HUNTER-CTX] resolveHunterContext called: consultantId=${consultantId.substring(0, 8)}... phone=${phoneNumber || 'N/A'} email=${email || 'N/A'} proactiveLeadId=${proactiveLeadId || 'N/A'}`);
 
   try {
     let hunterLeadId: string | null = null;
@@ -33,11 +39,16 @@ export async function resolveHunterContext(params: {
       `);
       if (plResult.rows.length > 0) {
         hunterLeadId = (plResult.rows[0] as any).hunter_lead_id;
+        console.log(`🔍 [HUNTER-CTX] Step 1: Found hunter_lead_id=${hunterLeadId} via proactiveLeadId`);
+      } else {
+        console.log(`🔍 [HUNTER-CTX] Step 1: No hunter_lead_id in proactive lead metadata`);
       }
     }
 
     if (!hunterLeadId && phoneNumber) {
       const normalized = phoneNumber.replace(/^\+/, '');
+      const digitsOnly = normalizePhoneDigits(phoneNumber);
+      console.log(`🔍 [HUNTER-CTX] Step 2: Searching proactive_leads by phone ${phoneNumber} / ${normalized} / digits=${digitsOnly}`);
       const plResult = await db.execute(sql`
         SELECT metadata->>'hunter_lead_id' as hunter_lead_id
         FROM proactive_leads
@@ -47,12 +58,16 @@ export async function resolveHunterContext(params: {
             phone_number = ${phoneNumber}
             OR phone_number = ${normalized}
             OR ('+' || phone_number) = ${phoneNumber}
+            OR regexp_replace(phone_number, '[^0-9]', '', 'g') = ${digitsOnly}
           )
         ORDER BY created_at DESC
         LIMIT 1
       `);
       if (plResult.rows.length > 0) {
         hunterLeadId = (plResult.rows[0] as any).hunter_lead_id;
+        console.log(`🔍 [HUNTER-CTX] Step 2: Found hunter_lead_id=${hunterLeadId} via phone in proactive_leads`);
+      } else {
+        console.log(`🔍 [HUNTER-CTX] Step 2: No proactive_lead with hunter_lead_id for this phone`);
       }
     }
 
@@ -73,7 +88,10 @@ export async function resolveHunterContext(params: {
       }
     }
 
+    console.log(`🔍 [HUNTER-CTX] Step 3: hunterLeadId=${hunterLeadId || 'null'}, trying email/phone fallbacks`);
+
     if (email) {
+      console.log(`🔍 [HUNTER-CTX] Step 4: Searching lead_scraper_results by email=${email}`);
       const normalizedEmail = email.toLowerCase().trim();
       const lsr = await db.execute(sql`
         SELECT r.id, r.business_name, r.category, r.ai_compatibility_score,
@@ -94,6 +112,8 @@ export async function resolveHunterContext(params: {
 
     if (phoneNumber) {
       const normalized = phoneNumber.replace(/^\+/, '');
+      const digitsOnly = normalizePhoneDigits(phoneNumber);
+      console.log(`🔍 [HUNTER-CTX] Step 5: Searching lead_scraper_results by phone=${phoneNumber} / normalized=${normalized} / digits=${digitsOnly}`);
       const lsr = await db.execute(sql`
         SELECT r.id, r.business_name, r.category, r.ai_compatibility_score,
                r.ai_sales_summary, r.website, r.lead_status
@@ -104,10 +124,12 @@ export async function resolveHunterContext(params: {
             r.phone = ${phoneNumber}
             OR r.phone = ${normalized}
             OR ('+' || r.phone) = ${phoneNumber}
+            OR regexp_replace(r.phone, '[^0-9]', '', 'g') = ${digitsOnly}
           )
         ORDER BY r.created_at DESC
         LIMIT 1
       `);
+      console.log(`🔍 [HUNTER-CTX] Step 5: Query returned ${lsr.rows.length} rows`);
       if (lsr.rows.length > 0) {
         const row = lsr.rows[0] as any;
         console.log(`🔍 [HUNTER-CTX] Found via direct phone match → ${row.business_name} (score: ${row.ai_compatibility_score})`);
@@ -118,7 +140,7 @@ export async function resolveHunterContext(params: {
     console.log(`🔍 [HUNTER-CTX] No Hunter context found for consultant=${consultantId.substring(0, 8)}... phone=${phoneNumber || 'N/A'} email=${email || 'N/A'}`);
     return null;
   } catch (err: any) {
-    console.warn(`⚠️ [HUNTER-CTX] Error resolving context: ${err.message}`);
+    console.error(`⚠️ [HUNTER-CTX] Error resolving context: ${err.message}`, err.stack);
     return null;
   }
 }

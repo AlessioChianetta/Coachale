@@ -1267,15 +1267,21 @@ router.get("/proactive-leads/:id/hunter-context", authenticateToken, requireRole
 
     const lead = await storage.getProactiveLead(leadId);
     if (!lead || lead.consultantId !== consultantId) {
+      console.log(`🔍 [HUNTER-CTX API] Lead not found or wrong consultant: leadId=${leadId} found=${!!lead}`);
       return res.status(404).json({ success: false, error: "Lead non trovato" });
     }
+
+    const resolvedEmail = lead.email || (lead.leadInfo as any)?.email || null;
+    console.log(`🔍 [HUNTER-CTX API] Calling resolver: leadId=${leadId} phone=${lead.phoneNumber} email=${resolvedEmail}`);
 
     const hunterContext = await resolveHunterContext({
       consultantId,
       proactiveLeadId: leadId,
       phoneNumber: lead.phoneNumber,
-      email: lead.email || (lead.leadInfo as any)?.email || null,
+      email: resolvedEmail,
     });
+
+    console.log(`🔍 [HUNTER-CTX API] Resolver returned: ${hunterContext ? `✅ ${hunterContext.businessName} (score: ${hunterContext.score})` : '❌ null'}`);
 
     res.json({
       success: true,
