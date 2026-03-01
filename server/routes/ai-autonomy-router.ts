@@ -1002,7 +1002,7 @@ async function resolveTemplateVariables(
         consultantId: consultantId || 'system',
         feature: 'hunter-template-vars',
         contents: [{ role: 'user', parts: [{ text: shortPrompt }] }],
-        generationConfig: { maxOutputTokens: 512, temperature: attempt === 1 ? 0.5 : 0.7 },
+        generationConfig: { maxOutputTokens: 5000, temperature: attempt === 1 ? 0.5 : 0.7 },
       });
 
       resultText = aiResult?.text;
