@@ -2686,17 +2686,17 @@ function SettingsTab({
                           >
                             <div className="px-4 sm:px-5 pb-5 pt-4">
                               <Tabs defaultValue="profilo" className="w-full">
-                                <TabsList className="bg-muted/40 rounded-full p-0.5 h-auto mb-5">
-                                  <TabsTrigger value="profilo" className="text-xs h-8 rounded-full px-4 data-[state=active]:shadow-sm">
-                                    <User className="h-3.5 w-3.5 mr-1.5" />
+                                <TabsList className="bg-muted/60 dark:bg-muted/30 border border-border/60 rounded-xl p-1 h-auto mb-5 w-full grid grid-cols-3 gap-1">
+                                  <TabsTrigger value="profilo" className="text-sm font-medium h-10 rounded-lg px-4 gap-2 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/30 transition-all duration-200">
+                                    <User className="h-4 w-4" />
                                     Profilo
                                   </TabsTrigger>
-                                  <TabsTrigger value="autonomia" className="text-xs h-8 rounded-full px-4 data-[state=active]:shadow-sm">
-                                    <Shield className="h-3.5 w-3.5 mr-1.5" />
+                                  <TabsTrigger value="autonomia" className="text-sm font-medium h-10 rounded-lg px-4 gap-2 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/30 transition-all duration-200">
+                                    <Shield className="h-4 w-4" />
                                     Autonomia
                                   </TabsTrigger>
-                                  <TabsTrigger value="integrazioni" className="text-xs h-8 rounded-full px-4 data-[state=active]:shadow-sm">
-                                    <Cog className="h-3.5 w-3.5 mr-1.5" />
+                                  <TabsTrigger value="integrazioni" className="text-sm font-medium h-10 rounded-lg px-4 gap-2 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/30 transition-all duration-200">
+                                    <Cog className="h-4 w-4" />
                                     Integrazioni
                                   </TabsTrigger>
                                 </TabsList>
