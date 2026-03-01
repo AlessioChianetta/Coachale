@@ -14,6 +14,88 @@ interface SerpApiResult {
   gps_coordinates?: { latitude: number; longitude: number };
   operating_hours?: any;
   thumbnail?: string;
+  place_id?: string;
+  types?: string[];
+  type_id?: string;
+  price?: string;
+  description?: string;
+  open_state?: string;
+  extensions?: any;
+}
+
+const ITALIAN_CITY_COORDINATES: Record<string, string> = {
+  "roma": "@41.9028,12.4964,13z",
+  "milano": "@45.4642,9.1900,13z",
+  "napoli": "@40.8518,14.2681,13z",
+  "torino": "@45.0703,7.6869,13z",
+  "palermo": "@38.1157,13.3615,13z",
+  "genova": "@44.4056,8.9463,13z",
+  "bologna": "@44.4949,11.3426,13z",
+  "firenze": "@43.7696,11.2558,13z",
+  "bari": "@41.1171,16.8719,13z",
+  "catania": "@37.5079,15.0830,13z",
+  "venezia": "@45.4408,12.3155,13z",
+  "verona": "@45.4384,10.9916,13z",
+  "messina": "@38.1938,15.5540,13z",
+  "padova": "@45.4064,11.8768,13z",
+  "trieste": "@45.6495,13.7768,13z",
+  "taranto": "@40.4764,17.2295,13z",
+  "brescia": "@45.5416,10.2118,13z",
+  "reggio calabria": "@38.1113,15.6474,13z",
+  "modena": "@44.6471,10.9252,13z",
+  "prato": "@43.8777,11.1020,13z",
+  "reggio emilia": "@44.6989,10.6297,13z",
+  "perugia": "@43.1107,12.3908,13z",
+  "cagliari": "@39.2238,9.1217,13z",
+  "livorno": "@43.5485,10.3106,13z",
+  "ravenna": "@44.4184,12.2035,13z",
+  "rimini": "@44.0594,12.5681,13z",
+  "salerno": "@40.6824,14.7681,13z",
+  "ferrara": "@44.8381,11.6199,13z",
+  "sassari": "@40.7268,8.5600,13z",
+  "siracusa": "@37.0755,15.2866,13z",
+  "pescara": "@42.4618,14.2141,13z",
+  "monza": "@45.5845,9.2744,13z",
+  "bergamo": "@45.6983,9.6773,13z",
+  "lecce": "@40.3516,18.1750,13z",
+  "trento": "@46.0748,11.1217,13z",
+  "bolzano": "@46.4983,11.3548,13z",
+  "vicenza": "@45.5455,11.5354,13z",
+  "terni": "@42.5636,12.6427,13z",
+  "novara": "@45.4467,8.6200,13z",
+  "piacenza": "@45.0526,9.6930,13z",
+  "ancona": "@43.6158,13.5189,13z",
+  "udine": "@46.0711,13.2346,13z",
+  "arezzo": "@43.4634,11.8798,13z",
+  "cesena": "@44.1391,12.2431,13z",
+  "pesaro": "@43.9096,12.9131,13z",
+  "como": "@45.8081,9.0852,13z",
+  "la spezia": "@44.1025,9.8241,13z",
+  "varese": "@45.8206,8.8257,13z",
+  "parma": "@44.8015,10.3279,13z",
+  "lucca": "@43.8429,10.5027,13z",
+  "pisa": "@43.7228,10.4017,13z",
+  "siena": "@43.3188,11.3308,13z",
+  "treviso": "@45.6669,12.2430,13z",
+  "latina": "@41.4676,12.9037,13z",
+  "cosenza": "@39.3004,16.2510,13z",
+  "potenza": "@40.6404,15.8056,13z",
+  "catanzaro": "@38.9100,16.5878,13z",
+  "campobasso": "@41.5614,14.6684,13z",
+  "l'aquila": "@42.3498,13.3995,13z",
+  "aosta": "@45.7370,7.3209,13z",
+  "matera": "@40.6664,16.6043,13z",
+};
+
+function getGPSCoordinatesForLocation(location: string): string | null {
+  if (!location) return null;
+  const normalized = location.toLowerCase().trim();
+  for (const [city, coords] of Object.entries(ITALIAN_CITY_COORDINATES)) {
+    if (normalized.includes(city) || city.includes(normalized)) {
+      return coords;
+    }
+  }
+  return null;
 }
 
 export async function searchGoogleMaps(
@@ -24,6 +106,11 @@ export async function searchGoogleMaps(
 ): Promise<SerpApiResult[]> {
   const allResults: SerpApiResult[] = [];
   let start = 0;
+
+  const gpsCoords = getGPSCoordinatesForLocation(location);
+  if (gpsCoords) {
+    console.log(`[LEAD-SCRAPER] Using GPS coordinates for ${location}: ${gpsCoords}`);
+  }
 
   while (allResults.length < limit) {
     const params = new URLSearchParams({
@@ -38,6 +125,10 @@ export async function searchGoogleMaps(
       params.set("q", `${query} in ${location}`);
     }
 
+    if (gpsCoords) {
+      params.set("ll", gpsCoords);
+    }
+
     const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
     if (!response.ok) {
       const errText = await response.text();
@@ -49,7 +140,18 @@ export async function searchGoogleMaps(
 
     if (localResults.length === 0) break;
 
-    allResults.push(...localResults);
+    for (const r of localResults) {
+      allResults.push({
+        ...r,
+        place_id: r.place_id || null,
+        types: r.types || [],
+        type_id: r.type_id || null,
+        price: r.price || null,
+        description: r.description || null,
+        open_state: r.open_state || null,
+        extensions: r.extensions || null,
+      });
+    }
     start += 20;
 
     if (localResults.length < 20) break;
@@ -237,19 +339,104 @@ function extractServices(text: string): string[] {
     });
 }
 
-export async function scrapeWebsiteWithFirecrawl(
+const CONTACT_PAGE_PATTERNS = [
+  /contatt/i, /contact/i, /chi-siamo/i, /chi_siamo/i, /about/i,
+  /team/i, /staff/i, /persone/i, /dove-siamo/i, /dove_siamo/i,
+  /sede/i, /raggiungici/i, /scrivici/i,
+];
+
+function findContactPageUrl(links: string[], baseUrl: string): string | null {
+  if (!links || links.length === 0) return null;
+
+  const baseDomain = baseUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+
+  const candidates = links.filter(link => {
+    try {
+      const linkDomain = link.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+      if (linkDomain !== baseDomain) return false;
+      const path = link.replace(/^https?:\/\/[^/]+/, '').toLowerCase();
+      if (!path || path === '/' || path === '') return false;
+      return CONTACT_PAGE_PATTERNS.some(pattern => pattern.test(path));
+    } catch { return false; }
+  });
+
+  if (candidates.length === 0) return null;
+
+  const priorityOrder = ['contatt', 'contact', 'chi-siamo', 'about', 'team'];
+  for (const keyword of priorityOrder) {
+    const match = candidates.find(c => c.toLowerCase().includes(keyword));
+    if (match) return match;
+  }
+  return candidates[0];
+}
+
+function mergeScrapedData(
+  homepage: { emails: string[]; phones: string[]; socialLinks: Record<string, string>; description: string; services: string[]; teamMembers: Array<{ name?: string; role?: string; email?: string }> },
+  contactPage: { emails: string[]; phones: string[]; socialLinks: Record<string, string>; description: string; services: string[]; teamMembers: Array<{ name?: string; role?: string; email?: string }> }
+): typeof homepage {
+  const allEmails = [...new Set([...homepage.emails, ...contactPage.emails])];
+  const allPhones = [...new Set([...homepage.phones, ...contactPage.phones])];
+  const mergedSocial = { ...homepage.socialLinks, ...contactPage.socialLinks };
+  const mergedServices = [...new Set([...homepage.services, ...contactPage.services])];
+
+  const teamMap = new Map<string, { name?: string; role?: string; email?: string }>();
+  for (const member of [...homepage.teamMembers, ...contactPage.teamMembers]) {
+    const key = (member.name || member.email || '').toLowerCase();
+    if (key) teamMap.set(key, { ...teamMap.get(key), ...member });
+  }
+
+  return {
+    emails: allEmails,
+    phones: allPhones,
+    socialLinks: mergedSocial,
+    description: homepage.description || contactPage.description,
+    services: mergedServices,
+    teamMembers: Array.from(teamMap.values()),
+  };
+}
+
+const FIRECRAWL_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    company_name: { type: "string" },
+    emails: { type: "array", items: { type: "string" } },
+    phone_numbers: { type: "array", items: { type: "string" } },
+    services: { type: "array", items: { type: "string" } },
+    description: { type: "string" },
+    team_members: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          role: { type: "string" },
+          email: { type: "string" },
+        },
+      },
+    },
+    social_links: { type: "object" },
+  },
+};
+
+async function scrapeOnePage(
   url: string,
-  firecrawlApiKey: string
+  firecrawlApiKey: string,
+  includeLinks: boolean = false
 ): Promise<{
   emails: string[];
   phones: string[];
   socialLinks: Record<string, string>;
   description: string;
   services: string[];
+  teamMembers: Array<{ name?: string; role?: string; email?: string }>;
+  links: string[];
 }> {
-  const defaultResult = { emails: [], phones: [], socialLinks: {}, description: "", services: [] };
+  const defaultResult = { emails: [], phones: [], socialLinks: {}, description: "", services: [], teamMembers: [], links: [] };
 
   try {
+    const formats: string[] = ["markdown", "json"];
+    if (includeLinks) formats.push("links");
+
     const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
       method: "POST",
       headers: {
@@ -258,7 +445,11 @@ export async function scrapeWebsiteWithFirecrawl(
       },
       body: JSON.stringify({
         url,
-        formats: ["markdown"],
+        formats,
+        jsonOptions: {
+          schema: FIRECRAWL_JSON_SCHEMA,
+          prompt: "Extract all contact information, team members with their roles and emails, services offered, and social media links from this business website page. Focus on finding direct/personal emails (not just info@) and mobile phone numbers.",
+        },
         onlyMainContent: false,
         timeout: 30000,
       }),
@@ -272,25 +463,101 @@ export async function scrapeWebsiteWithFirecrawl(
 
     const data = await response.json();
     const rawMarkdown = data.data?.markdown || "";
+    const jsonData = data.data?.json || null;
+    const pageLinks = data.data?.links || [];
 
-    console.log(`[LEAD-SCRAPER] Firecrawl response for ${url}: ${rawMarkdown.length} chars of markdown`);
+    console.log(`[LEAD-SCRAPER] Firecrawl response for ${url}: ${rawMarkdown.length} chars markdown, JSON=${jsonData ? 'yes' : 'no'}, ${pageLinks.length} links`);
 
-    const socialLinks = extractSocialLinks(rawMarkdown);
-    const emails = extractEmails(rawMarkdown);
-
+    const regexSocialLinks = extractSocialLinks(rawMarkdown);
+    const regexEmails = extractEmails(rawMarkdown);
     const cleanedText = cleanMarkdown(rawMarkdown);
+    const regexPhones = extractPhones(cleanedText);
+    const regexServices = extractServices(rawMarkdown);
 
-    const phones = extractPhones(cleanedText);
-    const description = cleanedText;
-    const services = extractServices(rawMarkdown);
+    let jsonEmails: string[] = [];
+    let jsonPhones: string[] = [];
+    let jsonServices: string[] = [];
+    let jsonDescription = "";
+    let jsonTeamMembers: Array<{ name?: string; role?: string; email?: string }> = [];
+    let jsonSocialLinks: Record<string, string> = {};
 
-    console.log(`[LEAD-SCRAPER] Extracted from ${url}: ${emails.length} emails, ${phones.length} phones, ${Object.keys(socialLinks).length} social, ${services.length} services, ${description.length} chars description`);
+    if (jsonData) {
+      jsonEmails = (jsonData.emails || []).filter((e: string) => e && e.includes('@'));
+      jsonPhones = (jsonData.phone_numbers || []).filter((p: string) => p && p.trim());
+      jsonServices = (jsonData.services || []).filter((s: string) => s && s.trim());
+      jsonDescription = jsonData.description || "";
+      jsonTeamMembers = (jsonData.team_members || []).filter((m: any) => m && (m.name || m.email));
+      jsonSocialLinks = jsonData.social_links || {};
 
-    return { emails, phones, socialLinks, description, services };
+      for (const member of jsonTeamMembers) {
+        if (member.email && member.email.includes('@') && !jsonEmails.includes(member.email)) {
+          jsonEmails.push(member.email);
+        }
+      }
+
+      console.log(`[LEAD-SCRAPER] JSON extraction for ${url}: ${jsonEmails.length} emails, ${jsonPhones.length} phones, ${jsonServices.length} services, ${jsonTeamMembers.length} team members`);
+    }
+
+    const finalEmails = [...new Set([...jsonEmails, ...regexEmails])];
+    const finalPhones = [...new Set([...jsonPhones, ...regexPhones])];
+    const finalSocial = { ...regexSocialLinks, ...jsonSocialLinks };
+    const finalServices = [...new Set([...jsonServices, ...regexServices])];
+    const finalDescription = jsonDescription || cleanedText;
+
+    console.log(`[LEAD-SCRAPER] Final merged for ${url}: ${finalEmails.length} emails, ${finalPhones.length} phones, ${Object.keys(finalSocial).length} social, ${finalServices.length} services, ${jsonTeamMembers.length} team, ${finalDescription.length} chars desc`);
+
+    return {
+      emails: finalEmails,
+      phones: finalPhones,
+      socialLinks: finalSocial,
+      description: finalDescription,
+      services: finalServices,
+      teamMembers: jsonTeamMembers,
+      links: pageLinks,
+    };
   } catch (error) {
     console.error(`[LEAD-SCRAPER] Firecrawl scrape error for ${url}:`, error);
     return defaultResult;
   }
+}
+
+export async function scrapeWebsiteWithFirecrawl(
+  url: string,
+  firecrawlApiKey: string
+): Promise<{
+  emails: string[];
+  phones: string[];
+  socialLinks: Record<string, string>;
+  description: string;
+  services: string[];
+  teamMembers?: Array<{ name?: string; role?: string; email?: string }>;
+  contactPageUrl?: string;
+}> {
+  const homepageData = await scrapeOnePage(url, firecrawlApiKey, true);
+
+  if (homepageData.emails.length === 0 && homepageData.phones.length === 0 && homepageData.description === "") {
+    return { ...homepageData, teamMembers: [], contactPageUrl: undefined };
+  }
+
+  const contactPageUrl = findContactPageUrl(homepageData.links, url);
+  let finalData = homepageData;
+
+  if (contactPageUrl) {
+    console.log(`[LEAD-SCRAPER] Found contact page: ${contactPageUrl} — scraping for additional contacts`);
+    const contactPageData = await scrapeOnePage(contactPageUrl, firecrawlApiKey, false);
+    finalData = mergeScrapedData(homepageData, contactPageData);
+    console.log(`[LEAD-SCRAPER] After contact page merge: ${finalData.emails.length} emails (+${finalData.emails.length - homepageData.emails.length}), ${finalData.phones.length} phones (+${finalData.phones.length - homepageData.phones.length}), ${finalData.teamMembers.length} team members`);
+  }
+
+  return {
+    emails: finalData.emails,
+    phones: finalData.phones,
+    socialLinks: finalData.socialLinks,
+    description: finalData.description,
+    services: finalData.services,
+    teamMembers: finalData.teamMembers,
+    contactPageUrl: contactPageUrl || undefined,
+  };
 }
 
 function extractDomain(url: string): string {
@@ -331,6 +598,149 @@ async function findCachedScrape(website: string): Promise<{
   return null;
 }
 
+async function batchScrapeWithFirecrawl(
+  urls: string[],
+  firecrawlApiKey: string,
+  timeoutMs: number = 120000
+): Promise<Map<string, { emails: string[]; phones: string[]; socialLinks: Record<string, string>; description: string; services: string[]; teamMembers: Array<{ name?: string; role?: string; email?: string }>; contactPageUrl?: string }>> {
+  const resultMap = new Map<string, any>();
+
+  if (urls.length === 0) return resultMap;
+
+  console.log(`[LEAD-SCRAPER] Starting batch scrape for ${urls.length} URLs`);
+
+  try {
+    const batchResponse = await fetch("https://api.firecrawl.dev/v1/batch/scrape", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${firecrawlApiKey}`,
+      },
+      body: JSON.stringify({
+        urls,
+        formats: ["markdown", "json", "links"],
+        jsonOptions: {
+          schema: FIRECRAWL_JSON_SCHEMA,
+          prompt: "Extract all contact information, team members with their roles and emails, services offered, and social media links from this business website page. Focus on finding direct/personal emails (not just info@) and mobile phone numbers.",
+        },
+        onlyMainContent: false,
+      }),
+    });
+
+    if (!batchResponse.ok) {
+      const errBody = await batchResponse.text().catch(() => "");
+      console.error(`[LEAD-SCRAPER] Batch scrape init failed: ${batchResponse.status} — ${errBody}`);
+      return resultMap;
+    }
+
+    const batchInit = await batchResponse.json();
+    const batchId = batchInit.id;
+    if (!batchId) {
+      console.error(`[LEAD-SCRAPER] Batch scrape returned no ID:`, batchInit);
+      return resultMap;
+    }
+
+    console.log(`[LEAD-SCRAPER] Batch scrape started: ${batchId}, polling for results...`);
+
+    const startTime = Date.now();
+    let completed = false;
+    let batchData: any = null;
+
+    while (Date.now() - startTime < timeoutMs) {
+      await new Promise(r => setTimeout(r, 3000));
+
+      const pollResponse = await fetch(`https://api.firecrawl.dev/v1/batch/scrape/${batchId}`, {
+        headers: { Authorization: `Bearer ${firecrawlApiKey}` },
+      });
+
+      if (!pollResponse.ok) {
+        console.warn(`[LEAD-SCRAPER] Batch poll error: ${pollResponse.status}`);
+        continue;
+      }
+
+      batchData = await pollResponse.json();
+      const status = batchData.status;
+
+      if (status === "completed") {
+        completed = true;
+        break;
+      } else if (status === "failed") {
+        console.error(`[LEAD-SCRAPER] Batch scrape failed:`, batchData);
+        break;
+      }
+
+      const progress = batchData.completed || 0;
+      const total = batchData.total || urls.length;
+      console.log(`[LEAD-SCRAPER] Batch progress: ${progress}/${total} (${status})`);
+    }
+
+    if (!completed || !batchData?.data) {
+      console.warn(`[LEAD-SCRAPER] Batch scrape ${completed ? 'has no data' : 'timed out after ' + Math.round((Date.now() - startTime) / 1000) + 's'}`);
+      return resultMap;
+    }
+
+    const batchResults = batchData.data || [];
+    console.log(`[LEAD-SCRAPER] Batch scrape completed: ${batchResults.length} results`);
+
+    for (const item of batchResults) {
+      const sourceUrl = item.metadata?.sourceURL || item.metadata?.url || "";
+      if (!sourceUrl) continue;
+
+      const rawMarkdown = item.markdown || "";
+      const jsonData = item.json || null;
+      const pageLinks = item.links || [];
+
+      const regexSocialLinks = extractSocialLinks(rawMarkdown);
+      const regexEmails = extractEmails(rawMarkdown);
+      const cleanedText = cleanMarkdown(rawMarkdown);
+      const regexPhones = extractPhones(cleanedText);
+      const regexServices = extractServices(rawMarkdown);
+
+      let jsonEmails: string[] = [];
+      let jsonPhones: string[] = [];
+      let jsonServices: string[] = [];
+      let jsonDescription = "";
+      let jsonTeamMembers: Array<{ name?: string; role?: string; email?: string }> = [];
+      let jsonSocialLinks: Record<string, string> = {};
+
+      if (jsonData) {
+        jsonEmails = (jsonData.emails || []).filter((e: string) => e && e.includes('@'));
+        jsonPhones = (jsonData.phone_numbers || []).filter((p: string) => p && p.trim());
+        jsonServices = (jsonData.services || []).filter((s: string) => s && s.trim());
+        jsonDescription = jsonData.description || "";
+        jsonTeamMembers = (jsonData.team_members || []).filter((m: any) => m && (m.name || m.email));
+        jsonSocialLinks = jsonData.social_links || {};
+
+        for (const member of jsonTeamMembers) {
+          if (member.email && member.email.includes('@') && !jsonEmails.includes(member.email)) {
+            jsonEmails.push(member.email);
+          }
+        }
+      }
+
+      const contactPageUrl = findContactPageUrl(pageLinks, sourceUrl);
+
+      const finalData = {
+        emails: [...new Set([...jsonEmails, ...regexEmails])],
+        phones: [...new Set([...jsonPhones, ...regexPhones])],
+        socialLinks: { ...regexSocialLinks, ...jsonSocialLinks },
+        description: jsonDescription || cleanedText,
+        services: [...new Set([...jsonServices, ...regexServices])],
+        teamMembers: jsonTeamMembers,
+        contactPageUrl: contactPageUrl || undefined,
+      };
+
+      const normalizedUrl = sourceUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+      resultMap.set(normalizedUrl, finalData);
+    }
+
+    return resultMap;
+  } catch (error) {
+    console.error(`[LEAD-SCRAPER] Batch scrape error:`, error);
+    return resultMap;
+  }
+}
+
 export async function enrichSearchResults(
   searchId: string,
   firecrawlApiKey: string
@@ -345,6 +755,8 @@ export async function enrichSearchResults(
   let enriched = 0;
   let failed = 0;
   let cached = 0;
+
+  const toScrape: Array<{ result: typeof results[0]; url: string }> = [];
 
   for (const result of results) {
     if (!result.website || result.scrapeStatus === "scraped") continue;
@@ -374,11 +786,42 @@ export async function enrichSearchResults(
       if (!websiteUrl.startsWith("http")) {
         websiteUrl = `https://${websiteUrl}`;
       }
+      toScrape.push({ result, url: websiteUrl });
+    } catch (error) {
+      console.error(`Failed to check cache for result ${result.id}:`, error);
+      toScrape.push({ result, url: result.website.startsWith("http") ? result.website : `https://${result.website}` });
+    }
+  }
 
-      const websiteData = await scrapeWebsiteWithFirecrawl(websiteUrl, firecrawlApiKey);
+  if (toScrape.length === 0) {
+    console.log(`[LEAD-SCRAPER] Enrichment complete for search ${searchId}: ${enriched} scraped, ${cached} from cache, ${failed} failed (nothing to scrape)`);
+    return { enriched, failed, cached };
+  }
 
-      const primaryEmail = websiteData.emails.length > 0 ? websiteData.emails[0] : result.email;
-      const primaryPhone = (!result.phone && websiteData.phones.length > 0) ? websiteData.phones[0] : result.phone;
+  console.log(`[LEAD-SCRAPER] ${toScrape.length} URLs to scrape (${cached} from cache already)`);
+
+  const batchResults = await batchScrapeWithFirecrawl(
+    toScrape.map(s => s.url),
+    firecrawlApiKey
+  );
+
+  const useBatch = batchResults.size > 0;
+
+  for (const { result, url } of toScrape) {
+    try {
+      let websiteData: any;
+      const normalizedDomain = url.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+
+      if (useBatch && batchResults.has(normalizedDomain)) {
+        websiteData = batchResults.get(normalizedDomain);
+        console.log(`[LEAD-SCRAPER] Batch result for ${normalizedDomain}: ${websiteData.emails?.length || 0} emails, ${websiteData.phones?.length || 0} phones`);
+      } else {
+        console.log(`[LEAD-SCRAPER] ${useBatch ? 'Batch miss' : 'Batch failed'}, falling back to individual scrape for ${url}`);
+        websiteData = await scrapeWebsiteWithFirecrawl(url, firecrawlApiKey);
+      }
+
+      const primaryEmail = websiteData.emails?.length > 0 ? websiteData.emails[0] : result.email;
+      const primaryPhone = (!result.phone && websiteData.phones?.length > 0) ? websiteData.phones[0] : result.phone;
 
       await db
         .update(leadScraperResults)
@@ -401,7 +844,43 @@ export async function enrichSearchResults(
     }
   }
 
-  console.log(`[LEAD-SCRAPER] Enrichment complete for search ${searchId}: ${enriched} scraped, ${cached} from cache, ${failed} failed`);
+  if (useBatch) {
+    console.log(`[LEAD-SCRAPER] Contact page scraping for batch results...`);
+    let contactPagesScraped = 0;
+    for (const { result, url } of toScrape) {
+      try {
+        const normalizedDomain = url.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+        const batchData = batchResults.get(normalizedDomain);
+        if (!batchData?.contactPageUrl) continue;
+
+        const contactPageData = await scrapeOnePage(batchData.contactPageUrl, firecrawlApiKey, false);
+        if (contactPageData.emails.length === 0 && contactPageData.phones.length === 0 && contactPageData.teamMembers.length === 0) continue;
+
+        const merged = mergeScrapedData(batchData as any, contactPageData);
+        const primaryEmail = merged.emails.length > 0 ? merged.emails[0] : result.email;
+        const primaryPhone = (!result.phone && merged.phones.length > 0) ? merged.phones[0] : result.phone;
+
+        await db
+          .update(leadScraperResults)
+          .set({
+            websiteData: { ...merged, contactPageUrl: batchData.contactPageUrl } as any,
+            email: primaryEmail,
+            phone: primaryPhone,
+          })
+          .where(eq(leadScraperResults.id, result.id));
+
+        contactPagesScraped++;
+        console.log(`[LEAD-SCRAPER] Contact page ${batchData.contactPageUrl}: +${contactPageData.emails.length} emails, +${contactPageData.phones.length} phones, +${contactPageData.teamMembers.length} team`);
+      } catch (err) {
+        console.warn(`[LEAD-SCRAPER] Contact page scrape failed for ${result.businessName}:`, err);
+      }
+    }
+    if (contactPagesScraped > 0) {
+      console.log(`[LEAD-SCRAPER] Scraped ${contactPagesScraped} contact pages for additional data`);
+    }
+  }
+
+  console.log(`[LEAD-SCRAPER] Enrichment complete for search ${searchId}: ${enriched} scraped (${useBatch ? 'batch' : 'sequential'}), ${cached} from cache, ${failed} failed`);
   return { enriched, failed, cached };
 }
 
@@ -446,6 +925,20 @@ export async function generateSalesSummary(resultId: string, consultantId: strin
     dataLines.push(`SOCIAL: ${Object.entries(wd.socialLinks).map(([k, v]) => `${k}: ${v}`).join(", ")}`);
   }
   if (wd.services?.length) dataLines.push(`SERVIZI DELL'AZIENDA: ${wd.services.join(", ")}`);
+  if (wd.teamMembers?.length) {
+    const teamStr = wd.teamMembers.map((m: any) => {
+      const parts = [];
+      if (m.name) parts.push(m.name);
+      if (m.role) parts.push(`(${m.role})`);
+      if (m.email) parts.push(`- ${m.email}`);
+      return parts.join(' ');
+    }).join('; ');
+    dataLines.push(`TEAM/PERSONE CHIAVE: ${teamStr}`);
+  }
+  if (wd.contactPageUrl) dataLines.push(`PAGINA CONTATTI: ${wd.contactPageUrl}`);
+  if ((result as any).mapsDescription) dataLines.push(`DESCRIZIONE GOOGLE MAPS: ${(result as any).mapsDescription}`);
+  if ((result as any).businessTypes?.length) dataLines.push(`TIPOLOGIE MAPS: ${(result as any).businessTypes.join(', ')}`);
+  if ((result as any).priceRange) dataLines.push(`FASCIA PREZZO: ${(result as any).priceRange}`);
   if (wd.description) {
     const descTruncated = wd.description.length > 4000 ? wd.description.substring(0, 4000) + "..." : wd.description;
     dataLines.push(`DESCRIZIONE DAL SITO:\n${descTruncated}`);

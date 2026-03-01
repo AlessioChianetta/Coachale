@@ -2432,6 +2432,31 @@ Per questo tipo: preferred_channel DEVE essere "lead_crm", task_category DEVE es
    - Combina il settore target con la location
    - Se il feedback mostra molti "non_interessato" per una certa query/zona → cambia strategia
    - Se il feedback mostra molti "in_trattativa" → rallenta le nuove ricerche
+   - Se una ricerca precedente ha dato 0 risultati, NON ripetere query simili — cambia completamente approccio
+
+   REGOLE OBBLIGATORIE PER LE QUERY:
+   - Le query DEVONO usare termini COMMERCIALI ITALIANI che le aziende mettono nei propri siti web e schede Google, MAI definizioni accademiche, acronimi in inglese, o gergo tecnico
+   - Preferisci SEMPRE query in ITALIANO (le aziende italiane si descrivono in italiano)
+   - Max 3-5 parole per query, specifiche e direttamente cercabili
+   - Per Maps: usa le categorie come appaiono su Google Maps (es: "agenzia web", "studio dentistico", "commercialista", "ristorante", "palestra")
+   - Per Search: usa keyword commerciali che le aziende usano nei propri siti (es: "agenzia marketing digitale", "software gestionale cloud", "consulenza aziendale")
+
+   ESEMPI QUERY CORRETTE ✅:
+   - "software gestionale cloud Firenze"
+   - "agenzia marketing digitale Milano"
+   - "consulente lavoro Roma"
+   - "studio commercialista Torino"
+   - "azienda automazione industriale Bologna"
+   - "web agency Napoli"
+   - "impresa edile Padova"
+
+   ESEMPI QUERY SBAGLIATE ❌ (NON usare MAI):
+   - "Software as a Service SaaS" → SBAGLIATO: acronimo inglese, nessuna azienda si descrive così
+   - "Business Process Outsourcing" → SBAGLIATO: termine accademico inglese
+   - "Managed Service Provider" → SBAGLIATO: gergo IT inglese
+   - "Digital Transformation Consulting" → SBAGLIATO: troppo generico e in inglese
+   - "Enterprise Resource Planning" → SBAGLIATO: usa "software gestionale" invece
+   - "Customer Relationship Management" → SBAGLIATO: usa "CRM" o "gestione clienti"
 
 6. Il campo preferred_channel per ricerche DEVE essere "lead_scraper"
 7. Usa la categoria: "prospecting"

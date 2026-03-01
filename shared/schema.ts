@@ -10726,12 +10726,19 @@ export const leadScraperResults = pgTable("lead_scraper_results", {
   latitude: real("latitude"),
   longitude: real("longitude"),
   hours: jsonb("hours"),
+  googlePlaceId: text("google_place_id"),
+  businessTypes: text("business_types").array(),
+  priceRange: text("price_range"),
+  openState: text("open_state"),
+  mapsDescription: text("maps_description"),
   websiteData: jsonb("website_data").$type<{
     emails?: string[];
     phones?: string[];
     socialLinks?: Record<string, string>;
     description?: string;
     services?: string[];
+    teamMembers?: Array<{ name?: string; role?: string; email?: string }>;
+    contactPageUrl?: string;
   }>().default(sql`'{}'::jsonb`),
   scrapeStatus: text("scrape_status").default("pending"),
   source: text("source").default("google_maps"),
