@@ -851,7 +851,8 @@ async function resolveTemplateVariables(
   consultantBusinessName?: string,
   outreachConfig?: any,
   templateSid?: string,
-  consultantId?: string
+  consultantId?: string,
+  salesCtx?: any
 ): Promise<{ resolved: Record<string, string>; sources: Record<string, string> }> {
   const neededVars = extractTemplateVariables(templateBodyText);
   const resolved: Record<string, string> = {};
@@ -897,13 +898,20 @@ async function resolveTemplateVariables(
 
     const contextBlocks = [
       `AZIENDA TARGET: "${lead.businessName}"`,
-      lead.contactName ? `Referente: ${lead.contactName}` : '',
+      lead.contactName ? `Referente/Proprietario: ${lead.contactName}` : '',
       lead.category ? `Settore: ${lead.category}` : '',
       lead.website ? `Sito web: ${lead.website}` : '',
       lead.address ? `Zona: ${lead.address}` : '',
       lead.rating ? `Rating Google: ${lead.rating}/5` : '',
       lead.reviewCount ? `Recensioni: ${lead.reviewCount}` : '',
       lead.phone ? `Telefono: ${lead.phone}` : '',
+    ].filter(Boolean).join('\n');
+
+    const consultantBlocks = [
+      salesCtx?.services_offered ? `SERVIZI DEL CONSULENTE: ${salesCtx.services_offered}` : '',
+      salesCtx?.value_proposition ? `PROPOSTA DI VALORE: ${salesCtx.value_proposition}` : '',
+      salesCtx?.target_audience ? `TARGET DEL CONSULENTE: ${salesCtx.target_audience}` : '',
+      salesCtx?.competitive_advantages ? `VANTAGGI COMPETITIVI: ${salesCtx.competitive_advantages}` : '',
     ].filter(Boolean).join('\n');
 
     const analysisBlocks = [
@@ -920,6 +928,10 @@ async function resolveTemplateVariables(
       ? `\nNOTA: Per questo template specifico il consulente ha suggerito: "${outreachConfig.template_hooks[templateSid]}". Usa questo come ispirazione.`
       : '';
 
+    const uncinoInstruction = dynamicVars.includes('uncino')
+      ? `\nREGOLA CRITICA PER {uncino}: L'uncino deve comunicare un BENEFICIO CONCRETO che il consulente può portare al lead — cosa può automatizzare, migliorare o risolvere nella loro operatività. NON deve essere un complimento sul loro modello di business o sulla loro attività. NON scrivere cose come "il vostro modello è rivoluzionario" o "la vostra innovazione". Scrivi invece cosa puoi fare PER LORO: risparmio di tempo, automazione di processi, aumento di efficienza operativa, più velocità. Usa i servizi e la proposta di valore del consulente come riferimento. Esempio corretto: "automatizzare la pre-qualifica dei candidati e la presa appuntamenti, liberando ore operative per ogni recruiter".`
+      : '';
+
     const prompt = [
       `Sei un agente AI specializzato nella personalizzazione di messaggi WhatsApp commerciali.`,
       ``,
@@ -932,9 +944,12 @@ async function resolveTemplateVariables(
       ``,
       contextBlocks,
       ``,
+      consultantBlocks,
+      ``,
       analysisBlocks,
       hookInstructions,
       templateHookNote,
+      uncinoInstruction,
       ``,
       `OBIETTIVO DI HUNTER: Questo messaggio è il primo contatto con un lead trovato automaticamente. L'obiettivo è incuriosire il destinatario, dimostrare che conosci la sua attività, e ottenere una risposta.`,
       ``,
@@ -1097,7 +1112,8 @@ async function generateOutreachContent(
       consultantBusinessName,
       outreachConfig,
       selectedTemplate.sid,
-      consultantId
+      consultantId,
+      salesCtx
     );
 
     let templateFilled = selectedTemplate.bodyText;

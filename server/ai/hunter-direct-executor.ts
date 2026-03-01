@@ -258,7 +258,7 @@ Rispondi SOLO con il JSON, senza markdown.`;
             waTemplateFilled = waTemplateBody;
             for (const v of varsResult.rows as any[]) {
               let val = '';
-              if (v.variable_key === 'nome_lead') val = lead.business_name || '';
+              if (v.variable_key === 'nome_lead') val = lead.contact_name || lead.business_name || '';
               else if (v.variable_key === 'mio_nome') val = consultantName;
               else if (v.variable_key === 'azienda') val = lead.business_name || '';
               else if (v.variable_key === 'settore') val = lead.category || '';
