@@ -9,7 +9,7 @@ import { fileSearchService } from "./file-search-service";
 import { fileSearchSyncService } from "../services/file-search-sync-service";
 import { searchGoogleMaps, searchGoogleWeb, enrichSearchResults, generateBatchSalesSummaries } from "../services/lead-scraper-service";
 import { leadScraperSearches, leadScraperResults, leadScraperActivities, superadminLeadScraperConfig } from "../../shared/schema";
-import { checkDailyLimits, checkLeadCooldown, getRemainingLimits } from "../services/outreach-rate-limiter";
+import { checkDailyLimits, checkLeadCooldown, getRemainingLimits, getOutreachLimits } from "../services/outreach-rate-limiter";
 import { decrypt } from "../encryption";
 import { selectBestTemplate, GOLDEN_RULES, type EmailTemplate } from "./email-templates-library";
 
@@ -4369,30 +4369,140 @@ async function handleLeadQualifyAndAssign(
     task_id: task.id,
   });
 
+  let resolvedWhatsappConfigId = whatsappConfigId;
   let whatsappConfigActive = false;
-  if (whatsappConfigId) {
+  if (resolvedWhatsappConfigId) {
     try {
       const waConfigResult = await db.execute(sql`
         SELECT id, is_active FROM consultant_whatsapp_config
-        WHERE id = ${whatsappConfigId} AND is_active = true LIMIT 1
+        WHERE id = ${resolvedWhatsappConfigId} AND is_active = true LIMIT 1
       `);
       whatsappConfigActive = waConfigResult.rows.length > 0;
+      if (!whatsappConfigActive) {
+        console.warn(`${LOG_PREFIX} [LEAD-QUALIFY] Configured WA config ${resolvedWhatsappConfigId} is inactive/invalid, trying fallback`);
+        const waFallback2 = await db.execute(sql`
+          SELECT id FROM consultant_whatsapp_config
+          WHERE consultant_id = ${task.consultant_id} AND is_active = true LIMIT 1
+        `);
+        if (waFallback2.rows.length > 0) {
+          resolvedWhatsappConfigId = (waFallback2.rows[0] as any).id;
+          whatsappConfigActive = true;
+          console.log(`${LOG_PREFIX} [LEAD-QUALIFY] WhatsApp config: fallback to active config ${resolvedWhatsappConfigId}`);
+          await logActivity(task.consultant_id, {
+            event_type: 'lead_qualify_config_fallback',
+            title: `⚠️ WhatsApp: la config impostata (${whatsappConfigId}) non è attiva, uso fallback`,
+            description: `Config ${whatsappConfigId} inattiva. Uso automaticamente la config attiva ${resolvedWhatsappConfigId}`,
+            icon: '⚠️',
+            severity: 'warning',
+            task_id: task.id,
+          });
+        } else {
+          await logActivity(task.consultant_id, {
+            event_type: 'lead_qualify_config_missing',
+            title: `⚠️ WhatsApp disabilitato: config ${whatsappConfigId} inattiva e nessun fallback`,
+            description: `La config WhatsApp impostata non è attiva e non ci sono altre config attive`,
+            icon: '⚠️',
+            severity: 'warning',
+            task_id: task.id,
+          });
+        }
+      }
     } catch (e) {
       console.warn(`${LOG_PREFIX} [LEAD-QUALIFY] Failed to check WA config: ${(e as Error).message}`);
+    }
+  } else {
+    try {
+      const waFallback = await db.execute(sql`
+        SELECT id FROM consultant_whatsapp_config
+        WHERE consultant_id = ${task.consultant_id} AND is_active = true LIMIT 1
+      `);
+      if (waFallback.rows.length > 0) {
+        resolvedWhatsappConfigId = (waFallback.rows[0] as any).id;
+        whatsappConfigActive = true;
+        console.log(`${LOG_PREFIX} [LEAD-QUALIFY] WhatsApp config: using fallback (auto-detected ${resolvedWhatsappConfigId})`);
+        await logActivity(task.consultant_id, {
+          event_type: 'lead_qualify_config_fallback',
+          title: `⚠️ WhatsApp: config non impostata nell'outreach, uso quella attiva del consultant`,
+          description: `Per evitare questo avviso, imposta 'whatsapp_config_id' nelle impostazioni outreach del Hunter`,
+          icon: '⚠️',
+          severity: 'warning',
+          task_id: task.id,
+        });
+      } else {
+        console.log(`${LOG_PREFIX} [LEAD-QUALIFY] No WhatsApp config found for consultant`);
+        await logActivity(task.consultant_id, {
+          event_type: 'lead_qualify_config_missing',
+          title: `⚠️ WhatsApp disabilitato: nessuna configurazione trovata`,
+          description: `Configura WhatsApp nelle impostazioni per abilitare l'outreach su questo canale`,
+          icon: '⚠️',
+          severity: 'warning',
+          task_id: task.id,
+        });
+      }
+    } catch (e) {
+      console.warn(`${LOG_PREFIX} [LEAD-QUALIFY] Failed to fallback WA config: ${(e as Error).message}`);
+    }
+  }
+
+  let resolvedEmailAccountId = emailAccountId;
+  if (!resolvedEmailAccountId) {
+    try {
+      const emailFallback = await db.execute(sql`
+        SELECT id FROM email_accounts
+        WHERE consultant_id = ${task.consultant_id} LIMIT 1
+      `);
+      if (emailFallback.rows.length > 0) {
+        resolvedEmailAccountId = (emailFallback.rows[0] as any).id;
+        console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Email account: using fallback (auto-detected ${resolvedEmailAccountId})`);
+        await logActivity(task.consultant_id, {
+          event_type: 'lead_qualify_config_fallback',
+          title: `⚠️ Email: account non impostato nell'outreach, uso quello attivo del consultant`,
+          description: `Per evitare questo avviso, imposta 'email_account_id' nelle impostazioni outreach del Hunter`,
+          icon: '⚠️',
+          severity: 'warning',
+          task_id: task.id,
+        });
+      } else {
+        console.log(`${LOG_PREFIX} [LEAD-QUALIFY] No email account found for consultant`);
+        await logActivity(task.consultant_id, {
+          event_type: 'lead_qualify_config_missing',
+          title: `⚠️ Email disabilitato: nessun account email trovato`,
+          description: `Configura un account email nelle impostazioni per abilitare l'outreach su questo canale`,
+          icon: '⚠️',
+          severity: 'warning',
+          task_id: task.id,
+        });
+      }
+    } catch (e) {
+      console.warn(`${LOG_PREFIX} [LEAD-QUALIFY] Failed to fallback email account: ${(e as Error).message}`);
     }
   }
 
   const autonomySettings = await getAutonomySettings(task.consultant_id);
   const channelsEnabled = autonomySettings.channels_enabled || {};
 
-  const remainingLimits = await getRemainingLimits(task.consultant_id);
+  const [remainingLimits, outreachLimits] = await Promise.all([
+    getRemainingLimits(task.consultant_id),
+    getOutreachLimits(task.consultant_id),
+  ]);
   console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Remaining daily limits — calls: ${remainingLimits.calls}, whatsapp: ${remainingLimits.whatsapp}, email: ${remainingLimits.email}`);
+
+  await logActivity(task.consultant_id, {
+    event_type: 'lead_qualify_limits_info',
+    title: `📊 Budget giornaliero disponibile`,
+    description: `📞 ${remainingLimits.calls}/${outreachLimits.maxCallsPerDay} chiamate | 💬 ${remainingLimits.whatsapp}/${outreachLimits.maxWhatsappPerDay} WhatsApp | 📧 ${remainingLimits.email}/${outreachLimits.maxEmailsPerDay} email`,
+    icon: '📊',
+    severity: remainingLimits.calls === 0 && remainingLimits.whatsapp === 0 && remainingLimits.email === 0 ? 'warning' : 'info',
+    task_id: task.id,
+  });
 
   let voiceLeadCount = 0;
   let whatsappLeadCount = 0;
   let emailLeadCount = 0;
   let skippedCooldown = 0;
   let skippedRateLimit = 0;
+  let skippedNoContact = 0;
+  let skippedNoChannel = 0;
 
   const batchVoice: any[] = [];
   const batchWhatsapp: any[] = [];
@@ -4409,6 +4519,14 @@ async function handleLeadQualifyAndAssign(
     if (!cooldownOk) {
       console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Skipping lead "${leadName}": cooldown active or already in pipeline`);
       skippedCooldown++;
+      await logActivity(task.consultant_id, {
+        event_type: 'lead_qualify_skipped',
+        title: `⏸️ ${leadName} saltato: in cooldown`,
+        description: `Contattato di recente o già in pipeline outreach — verrà riprovato dopo il periodo di cooldown`,
+        icon: '⏸️',
+        severity: 'info',
+        task_id: task.id,
+      });
       continue;
     }
 
@@ -4416,12 +4534,35 @@ async function handleLeadQualifyAndAssign(
     const phoneForWA = selectBestPhone(lead, wd, true) || leadPhone;
     const emailForOutreach = selectBestEmail(lead, wd) || leadEmail;
 
+    if (!phoneForVoice && !phoneForWA && !emailForOutreach) {
+      console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Skipping lead "${leadName}": no contact info available`);
+      skippedNoContact++;
+      await logActivity(task.consultant_id, {
+        event_type: 'lead_qualify_skipped',
+        title: `⚠️ ${leadName} saltato: nessun contatto trovato`,
+        description: `Non ho trovato né telefono né email per questo lead — controlla manualmente`,
+        icon: '⚠️',
+        severity: 'warning',
+        task_id: task.id,
+      });
+      continue;
+    }
+
     let channelsAssigned = 0;
 
     const allLimitsReached = remainingLimits.calls <= voiceLeadCount && remainingLimits.whatsapp <= whatsappLeadCount && remainingLimits.email <= emailLeadCount;
     if (allLimitsReached) {
       console.log(`${LOG_PREFIX} [LEAD-QUALIFY] All daily rate limits reached, stopping assignment`);
-      skippedRateLimit += (qualifiedLeads.length - i);
+      const remainingCount = qualifiedLeads.length - i;
+      skippedRateLimit += remainingCount;
+      await logActivity(task.consultant_id, {
+        event_type: 'lead_qualify_skipped',
+        title: `🚫 Limite giornaliero raggiunto su tutti i canali`,
+        description: `${remainingCount} lead rimanenti saltati — aumenta i limiti nelle impostazioni o riprova domani`,
+        icon: '🚫',
+        severity: 'warning',
+        task_id: task.id,
+      });
       break;
     }
 
@@ -4441,26 +4582,67 @@ async function handleLeadQualifyAndAssign(
       resultNote: null as string | null,
     };
 
+    const channelDetails: string[] = [];
+    let voiceAssigned = false;
+    let waAssigned = false;
+    let emailAssigned = false;
+
     if (phoneForVoice && channelsEnabled.voice && voiceTemplateId && remainingLimits.calls > voiceLeadCount) {
       batchVoice.push({ ...leadEntry, phone: phoneForVoice });
       voiceLeadCount++;
       channelsAssigned++;
+      voiceAssigned = true;
+      channelDetails.push('📞 voice ✅');
+    } else if (channelsEnabled.voice) {
+      if (!phoneForVoice) channelDetails.push('📞 voice ❌ no telefono');
+      else if (!voiceTemplateId) channelDetails.push('📞 voice ❌ no template');
+      else if (remainingLimits.calls <= voiceLeadCount) channelDetails.push('📞 voice ❌ limite raggiunto');
     }
+
     if (phoneForWA && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > whatsappLeadCount) {
       batchWhatsapp.push({ ...leadEntry, phone: phoneForWA });
       whatsappLeadCount++;
       channelsAssigned++;
+      waAssigned = true;
+      channelDetails.push('💬 WA ✅');
+    } else if (channelsEnabled.whatsapp) {
+      if (!phoneForWA) channelDetails.push('💬 WA ❌ no telefono');
+      else if (!whatsappConfigActive) channelDetails.push('💬 WA ❌ non configurato');
+      else if (remainingLimits.whatsapp <= whatsappLeadCount) channelDetails.push('💬 WA ❌ limite raggiunto');
     }
+
     if (emailForOutreach && channelsEnabled.email && remainingLimits.email > emailLeadCount) {
       batchEmail.push({ ...leadEntry, email: emailForOutreach });
       emailLeadCount++;
       channelsAssigned++;
+      emailAssigned = true;
+      channelDetails.push('📧 email ✅');
+    } else if (channelsEnabled.email) {
+      if (!emailForOutreach) channelDetails.push('📧 email ❌ no email');
+      else if (remainingLimits.email <= emailLeadCount) channelDetails.push('📧 email ❌ limite raggiunto');
     }
 
     if (channelsAssigned === 0) {
-      console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Skipping lead "${leadName}": no valid channel (phone=${!!phoneForVoice}, mobile=${!!phoneForWA}, email=${!!emailForOutreach}) or limits reached`);
-      skippedRateLimit++;
+      const isRateLimit = channelDetails.some(d => d.includes('limite raggiunto'));
+      if (isRateLimit) {
+        skippedRateLimit++;
+      } else {
+        skippedNoChannel++;
+      }
+      console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Skipping lead "${leadName}": no valid channel assigned — ${channelDetails.join(' | ')}`);
+      await logActivity(task.consultant_id, {
+        event_type: 'lead_qualify_skipped',
+        title: `🚫 ${leadName} saltato: ${isRateLimit ? 'limite raggiunto' : 'nessun canale configurato'}`,
+        description: channelDetails.join(' | '),
+        icon: '🚫',
+        severity: 'warning',
+        task_id: task.id,
+      });
       continue;
+    }
+
+    if (channelDetails.some(d => d.includes('❌'))) {
+      leadEntry.resultNote = channelDetails.join(' | ');
     }
   }
 
@@ -4503,7 +4685,7 @@ async function handleLeadQualifyAndAssign(
     const loadedWaTemplates = await loadSelectedWaTemplates(task.consultant_id, waTemplateSids);
 
     const callInstructionTemplate = outreachConfig.call_instruction_template || null;
-    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: task.timezone || 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate, outreachConfig };
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId: resolvedWhatsappConfigId || whatsappConfigId, emailAccountId: resolvedEmailAccountId || emailAccountId, timezone: task.timezone || 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate, outreachConfig };
 
     let slotIndex = 0;
     for (const { lead, channel } of allAssignedLeads) {
@@ -4585,7 +4767,7 @@ async function handleLeadQualifyAndAssign(
   await logActivity(task.consultant_id, {
     event_type: 'lead_qualify_and_assign_completed',
     title: `Qualifica completata: ${individualTasksCreated} task outreach creati per ${uniqueLeadIds.size} lead`,
-    description: `${qualifiedLeads.length}/${allLeads.length} qualificati (soglia: ${scoreThreshold}). ${uniqueLeadIds.size} lead → ${individualTasksCreated} task: ${voiceLeadCount > 0 ? `📞 ${voiceLeadCount} chiamate` : ''}${whatsappLeadCount > 0 ? ` 💬 ${whatsappLeadCount} WhatsApp` : ''}${emailLeadCount > 0 ? ` 📧 ${emailLeadCount} email` : ''}. Skippati: ${skippedCooldown} cooldown, ${skippedRateLimit} rate limit.`,
+    description: `${qualifiedLeads.length}/${allLeads.length} qualificati (soglia: ${scoreThreshold}). ${uniqueLeadIds.size} lead → ${individualTasksCreated} task: ${voiceLeadCount > 0 ? `📞 ${voiceLeadCount} chiamate` : ''}${whatsappLeadCount > 0 ? ` 💬 ${whatsappLeadCount} WhatsApp` : ''}${emailLeadCount > 0 ? ` 📧 ${emailLeadCount} email` : ''}. Skippati: ${skippedCooldown} cooldown, ${skippedNoContact} senza contatto, ${skippedRateLimit} rate limit, ${skippedNoChannel} config mancante.`,
     icon: '🎯',
     severity: 'info',
     task_id: task.id,
@@ -4606,7 +4788,9 @@ async function handleLeadQualifyAndAssign(
     whatsapp_leads: whatsappLeadCount,
     email_leads: emailLeadCount,
     skipped_cooldown: skippedCooldown,
+    skipped_no_contact: skippedNoContact,
     skipped_rate_limit: skippedRateLimit,
+    skipped_no_channel: skippedNoChannel,
     channel_priority: channelPriority,
     qualified_leads: qualifiedLeads.map(l => ({
       id: l.id,
