@@ -1,7 +1,7 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { type AuthRequest } from "../middleware/auth";
-import { db } from "../db";
+import { db, pool } from "../db";
 import * as schema from "@shared/schema";
 import { eq, and, desc, sql, or } from "drizzle-orm";
 import { z } from "zod";
