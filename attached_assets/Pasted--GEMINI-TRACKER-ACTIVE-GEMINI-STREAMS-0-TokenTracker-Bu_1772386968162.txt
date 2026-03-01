@@ -1,0 +1,25 @@
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+📊 [TokenTracker] Buffered: lead-scraper-sales-analysis | gemini-3-flash-preview | 5422 tokens | $0.0083 | consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b client=self
+🔓 [Semaphore] Released slot (0/3 in use)
+[LEAD-SCRAPER] AI summary generated for NDV Comunicazione: score=88
+5:41:31 PM [express] POST /api/lead-scraper/results/73f04f51-29d0-4c0d-a523-e85a2a787e75/generate-su…
+5:41:32 PM [express] GET /api/lead-scraper/results/73f04f51-29d0-4c0d-a523-e85a2a787e75 200 in 581ms…
+✅ [TokenTracker] Flushed 1 entries to DB
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+5:41:53 PM [express] POST /api/activity/session/heartbeat 200 in 442ms :: {"success":true,"lastActiv…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping... (rowCount=0, rows=0, keys=command,rowCount,oid,rows,fields,_parsers,_types,RowCtor,rowAsArray,_prebuiltEmptyResultObject)
+5:42:01 PM [express] GET /api/auth/my-profiles 304 in 440ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+5:42:02 PM [express] GET /api/auth/my-profiles 304 in 443ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+[LEAD-SCRAPER] Using GPS coordinates for roma: @41.9028,12.4964,13z
+5:42:13 PM [express] POST /api/lead-scraper/search 200 in 686ms :: {"searchId":"57f5ad9a-5cf7-4754-9…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+5:42:14 PM [express] GET /api/lead-scraper/searches 200 in 441ms :: [{"id":"57f5ad9a-5cf7-4754-9399-…
+5:42:14 PM [express] GET /api/lead-scraper/searches/57f5ad9a-5cf7-4754-9399-a99eb4d08735/results 200…
+[LEAD-SCRAPER] Cache hit for purobianco.com — reusing existing scrape data
+[LEAD-SCRAPER] Cache hit for blissagency.it — reusing existing scrape data
+[LEAD-SCRAPER] Cache hit for secretkey.it — reusing existing scrape data
+[LEAD-SCRAPER] Cache hit for coseagency.com — reusing existing scrape data
+[LEAD-SCRAPER] 1 URLs to scrape (4 from cache already)
+[LEAD-SCRAPER] Starting batch scrape for 1 URLs
+[LEAD-SCRAPER] Batch scrape started: 019caa7e-6c29-774a-97de-c2efc00ff427, polling for results..
