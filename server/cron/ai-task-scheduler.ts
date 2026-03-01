@@ -4278,12 +4278,15 @@ export async function checkEmailFollowUps(consultantId: string, configOverride?:
         }
 
         const existingFollowUps = await db.execute(sql`
-          SELECT id, result_data FROM ai_scheduled_tasks
+          SELECT id, result_data, additional_context FROM ai_scheduled_tasks
           WHERE consultant_id = ${consultantId}
             AND ai_role = 'hunter'
             AND preferred_channel = 'email'
             AND status IN ('scheduled', 'waiting_approval', 'approved', 'in_progress', 'completed')
-            AND result_data::text LIKE ${'%' + outEmail.id + '%'}
+            AND (
+              additional_context::text LIKE ${'%' + outEmail.id + '%'}
+              OR result_data::text LIKE ${'%' + outEmail.id + '%'}
+            )
           ORDER BY created_at ASC
         `);
 
@@ -4355,7 +4358,7 @@ export async function checkEmailFollowUps(consultantId: string, configOverride?:
         const resultData = JSON.stringify({
           follow_up_sequence: followUpSequence,
           original_email_id: outEmail.id,
-          template_scenario: templateScenario,
+          template_scenario: followUpSequence === 1 ? 'follow_up_1' : 'follow_up_2',
           skip_guardrails: false,
         });
 

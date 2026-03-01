@@ -1611,14 +1611,14 @@ export async function scheduleIndividualOutreach(
             INSERT INTO hub_emails (
               id, account_id, consultant_id, message_id, subject, from_name, from_email,
               to_recipients, body_html, body_text, snippet, direction, folder,
-              is_read, processing_status, sent_at, created_at, updated_at
+              is_read, processing_status, email_type, sent_at, created_at, updated_at
             ) VALUES (
               ${hubEmailId}, ${config.emailAccountId}, ${consultantId},
               ${sendResult.messageId || hubEmailId},
               ${emailSubject}, ${smtpConfig.display_name || ''}, ${smtpConfig.email_address},
               ${JSON.stringify([{ email: lead.email, name: leadName }])}::jsonb,
               ${htmlBody}, ${emailBody}, ${emailBody.substring(0, 200)},
-              'outbound', 'sent', true, 'sent', NOW(), NOW(), NOW()
+              'outbound', 'sent', true, 'sent', 'hunter_outreach', NOW(), NOW(), NOW()
             )
             ON CONFLICT (message_id) DO NOTHING
           `);

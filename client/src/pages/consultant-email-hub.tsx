@@ -3244,14 +3244,17 @@ export default function ConsultantEmailHub() {
                     </Button>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
                     <Card className="bg-white dark:bg-slate-800">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 mb-1">
                           <Send className="h-4 w-4 text-blue-500" />
-                          <span className="text-xs text-muted-foreground">Totale inviate</span>
+                          <span className="text-xs text-muted-foreground">Lead contattati</span>
                         </div>
                         <p className="text-2xl font-bold">{outreachStats.totalSent}</p>
+                        {outreachStats.avgScore && (
+                          <p className="text-xs text-muted-foreground">Score medio: {outreachStats.avgScore}/100</p>
+                        )}
                       </CardContent>
                     </Card>
                     <Card className="bg-white dark:bg-slate-800">
@@ -3280,6 +3283,15 @@ export default function ConsultantEmailHub() {
                     <Card className="bg-white dark:bg-slate-800">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 mb-1">
+                          <Clock className="h-4 w-4 text-violet-500" />
+                          <span className="text-xs text-muted-foreground">Follow-up in coda</span>
+                        </div>
+                        <p className="text-2xl font-bold text-violet-600">{outreachStats.followUpsInQueue}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-white dark:bg-slate-800">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-1">
                           <CheckCircle className="h-4 w-4 text-slate-500" />
                           <span className="text-xs text-muted-foreground">Completate</span>
                         </div>
@@ -3289,10 +3301,10 @@ export default function ConsultantEmailHub() {
                     <Card className="bg-white dark:bg-slate-800">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 mb-1">
-                          <Clock className="h-4 w-4 text-violet-500" />
-                          <span className="text-xs text-muted-foreground">Follow-up in coda</span>
+                          <XCircle className="h-4 w-4 text-red-400" />
+                          <span className="text-xs text-muted-foreground">Nessuna risposta</span>
                         </div>
-                        <p className="text-2xl font-bold text-violet-600">{outreachStats.followUpsInQueue}</p>
+                        <p className="text-2xl font-bold text-red-500">{outreachStats.totalNoResponse || 0}</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -3338,6 +3350,8 @@ export default function ConsultantEmailHub() {
                           <thead>
                             <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                               <th className="text-left py-3 px-4 font-medium text-muted-foreground">Lead</th>
+                              <th className="text-center py-3 px-2 font-medium text-muted-foreground">Score</th>
+                              <th className="text-center py-3 px-2 font-medium text-muted-foreground">Canali</th>
                               <th className="text-left py-3 px-4 font-medium text-muted-foreground">Primo contatto</th>
                               <th className="text-left py-3 px-4 font-medium text-muted-foreground">Follow-up 1</th>
                               <th className="text-left py-3 px-4 font-medium text-muted-foreground">Follow-up 2</th>
@@ -3357,6 +3371,37 @@ export default function ConsultantEmailHub() {
                                     {lead.category && (
                                       <span className="text-xs text-muted-foreground mt-0.5">{lead.category}</span>
                                     )}
+                                    {lead.phone && (
+                                      <span className="text-xs text-muted-foreground mt-0.5">{lead.phone}</span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                <td className="py-3 px-2 text-center">
+                                  {lead.aiScore ? (
+                                    <span className={`inline-flex items-center justify-center w-10 h-6 rounded-full text-xs font-bold ${
+                                      lead.aiScore >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' :
+                                      lead.aiScore >= 60 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' :
+                                      'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                                    }`}>
+                                      {lead.aiScore}
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </td>
+
+                                <td className="py-3 px-2 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    {(lead.contactedChannels || []).includes('voice') && (
+                                      <span title="Chiamata" className="text-sm">📞</span>
+                                    )}
+                                    {(lead.contactedChannels || []).includes('whatsapp') && (
+                                      <span title="WhatsApp" className="text-sm">💬</span>
+                                    )}
+                                    {(lead.contactedChannels || []).includes('email') || lead.firstContact ? (
+                                      <span title="Email" className="text-sm">📧</span>
+                                    ) : null}
                                   </div>
                                 </td>
 

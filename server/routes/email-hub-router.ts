@@ -4304,6 +4304,23 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
     const dateFrom = req.query.dateFrom as string | undefined;
     const dateTo = req.query.dateTo as string | undefined;
 
+    const hunterTaskEmails = await db.execute(sql`
+      SELECT DISTINCT
+        CASE
+          WHEN additional_context IS NOT NULL
+          THEN additional_context::jsonb ->> 'lead_email'
+          ELSE NULL
+        END as lead_email
+      FROM ai_scheduled_tasks
+      WHERE consultant_id = ${consultantId}
+        AND (ai_role = 'hunter' OR task_category = 'prospecting')
+        AND preferred_channel = 'email'
+        AND created_at > NOW() - INTERVAL '90 days'
+    `);
+    const hunterLeadEmails = (hunterTaskEmails.rows as any[])
+      .map(r => r.lead_email)
+      .filter(Boolean);
+
     const outboundEmails = await db.execute(sql`
       SELECT
         he.id, he.account_id, he.message_id, he.thread_id,
@@ -4316,6 +4333,13 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
         AND he.processing_status IN ('sent', 'processed')
         AND he.sent_at IS NOT NULL
         AND he.sent_at > NOW() - INTERVAL '90 days'
+        AND (
+          he.email_type IN ('hunter_outreach', 'hunter_followup')
+          ${hunterLeadEmails.length > 0 ? sql`OR EXISTS (
+            SELECT 1 FROM jsonb_array_elements(he.to_recipients) elem
+            WHERE elem ->> 'email' = ANY(${hunterLeadEmails})
+          )` : sql``}
+        )
       ORDER BY he.sent_at DESC
       LIMIT 500
     `);
@@ -4430,7 +4454,9 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
     }
 
     const leadSearchResults = await db.execute(sql`
-      SELECT lsr.email, lsr.business_name, lsr.category, lsr.lead_status
+      SELECT lsr.email, lsr.business_name, lsr.category, lsr.lead_status,
+             lsr.ai_compatibility_score, lsr.website, lsr.phone,
+             lsr.contacted_channels, lsr.outreach_task_id
       FROM lead_scraper_results lsr
       INNER JOIN lead_scraper_searches lss ON lsr.search_id = lss.id
       WHERE lss.consultant_id = ${consultantId}
@@ -4443,16 +4469,29 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
         lead.businessName = lr.business_name;
         lead.category = lr.category;
         if (lr.lead_status) lead.leadStatus = lr.lead_status;
+        lead.aiScore = lr.ai_compatibility_score || null;
+        lead.website = lr.website || null;
+        lead.phone = lr.phone || null;
+        lead.contactedChannels = lr.contacted_channels || [];
+        lead.outreachTaskId = lr.outreach_task_id || null;
       }
     }
 
     let totalReplied = 0;
     let totalInSequence = 0;
     let totalCompleted = 0;
+    let totalNoResponse = 0;
     let followUpsInQueue = 0;
+    let scoreSum = 0;
+    let scoreCount = 0;
 
     for (const lead of leadMap.values()) {
       lead.emails.sort((a: any, b: any) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+
+      if (lead.aiScore) {
+        scoreSum += lead.aiScore;
+        scoreCount++;
+      }
 
       const hasReply = lead.replies.length > 0;
       const maxFollowUp = lead.followUps.reduce((max: number, fu: any) => Math.max(max, fu.sequence || 0), 0);
@@ -4471,6 +4510,10 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
         totalInSequence++;
       } else {
         lead.globalStatus = 'no_response';
+      }
+
+      if (!hasReply && !hasPendingFollowUp) {
+        totalNoResponse++;
       }
 
       if (hasPendingFollowUp) followUpsInQueue++;
@@ -4509,7 +4552,9 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
           totalReplied,
           totalInSequence,
           totalCompleted,
+          totalNoResponse,
           followUpsInQueue,
+          avgScore: scoreCount > 0 ? Math.round(scoreSum / scoreCount) : null,
         },
       },
     });

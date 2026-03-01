@@ -2955,18 +2955,21 @@ REGOLE IMPORTANTI:
 
     try {
       const hubEmailId = `hub_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const isHunterEmail = task.ai_role === 'hunter' || task.task_category === 'prospecting';
+      const isFollowUp = (task.additional_context as any)?.follow_up_sequence > 0;
+      const emailTypeTag = isHunterEmail ? (isFollowUp ? 'hunter_followup' : 'hunter_outreach') : null;
       await db.execute(sql`
         INSERT INTO hub_emails (
           id, account_id, consultant_id, message_id, subject, from_name, from_email,
           to_recipients, body_html, body_text, snippet, direction, folder,
-          is_read, processing_status, sent_at, created_at, updated_at
+          is_read, processing_status, email_type, sent_at, created_at, updated_at
         ) VALUES (
           ${hubEmailId}, ${emailAccountId}, ${task.consultant_id},
           ${sendResult.messageId || hubEmailId},
           ${emailSubject}, ${smtpConfig.display_name || ''}, ${smtpConfig.email_address},
           ${JSON.stringify([{ email: contactEmail, name: task.contact_name || '' }])}::jsonb,
           ${htmlBody}, ${emailBody}, ${emailBody.substring(0, 200)},
-          'outbound', 'sent', true, 'sent', NOW(), NOW(), NOW()
+          'outbound', 'sent', true, 'sent', ${emailTypeTag}, NOW(), NOW(), NOW()
         )
         ON CONFLICT (message_id) DO NOTHING
       `);
