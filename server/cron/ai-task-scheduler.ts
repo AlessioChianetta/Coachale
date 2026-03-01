@@ -298,6 +298,28 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
       return;
     }
 
+    if (taskType === 'ai_task' && task.result_data && typeof task.result_data === 'object' && (task.result_data as any).crmLeadOutreach === true && (task.result_data as any).parent_crm_outreach_task) {
+      console.log(`🎯 [CRM-DIRECT-ROUTE] Sub-task CRM outreach → direct ${channel} handler (bypassing Decision Engine)`);
+      if (channel === 'voice') {
+        const callResult = await initiateVoiceCall(updatedTask);
+        if (callResult.success) {
+          await handleSuccess(updatedTask, callResult);
+        } else {
+          await handleFailure(updatedTask, callResult.reason || 'Errore chiamata CRM outreach');
+        }
+        return;
+      }
+      if (channel === 'whatsapp') {
+        await executeSingleWhatsApp(updatedTask);
+        return;
+      }
+      if (channel === 'email') {
+        await executeSingleEmail(updatedTask);
+        return;
+      }
+      console.warn(`🎯 [CRM-DIRECT-ROUTE] Unknown channel "${channel}" for CRM outreach task ${task.id}, falling through`);
+    }
+
     if (taskType === 'ai_task' && channel === 'email' && aiRole === 'hunter') {
       const skipGuardrails = task.result_data && typeof task.result_data === 'object' && (task.result_data as any).skip_guardrails === true;
       if (skipGuardrails) {
@@ -349,6 +371,38 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
   }
 }
 
+function selectBestPhone(lead: any, websiteData: any, forWhatsApp: boolean): string | null {
+  const mainPhone = lead.phone || null;
+  const wdPhones: string[] = (websiteData.phones || []).filter((p: string) => p && p.trim());
+  const allPhones = [mainPhone, ...wdPhones].filter(Boolean) as string[];
+  if (allPhones.length === 0) return null;
+
+  if (forWhatsApp) {
+    const mobileRegex = /^(\+?39\s?)?3\d{2}/;
+    const mobile = allPhones.find(p => mobileRegex.test(p.replace(/[\s\-().]/g, '')));
+    if (mobile) return mobile;
+    return allPhones[0];
+  }
+
+  return mainPhone || allPhones[0];
+}
+
+function selectBestEmail(lead: any, websiteData: any): string | null {
+  const genericPrefixes = ['info', 'noreply', 'no-reply', 'admin', 'contatti', 'segreteria', 'postmaster', 'webmaster', 'support', 'help', 'contact', 'sales'];
+  const mainEmail = lead.email || null;
+  const wdEmails: string[] = (websiteData.emails || []).filter((e: string) => e && e.trim());
+  const allEmails = [...new Set([mainEmail, ...wdEmails].filter(Boolean) as string[])];
+  if (allEmails.length === 0) return null;
+
+  const isGeneric = (email: string) => {
+    const prefix = email.split('@')[0].toLowerCase();
+    return genericPrefixes.some(gp => prefix === gp || prefix.startsWith(gp + '.'));
+  };
+
+  const nonGeneric = allEmails.filter(e => !isGeneric(e));
+  return nonGeneric.length > 0 ? nonGeneric[0] : allEmails[0];
+}
+
 async function handleCrmLeadOutreach(task: AIScheduledTask): Promise<void> {
   const LOG = '🎯 [CRM-LEAD-OUTREACH]';
   const instruction = task.ai_instruction || '';
@@ -380,20 +434,18 @@ async function handleCrmLeadOutreach(task: AIScheduledTask): Promise<void> {
 
   const lead = leadResult.rows[0] as any;
   const wd = (typeof lead.website_data === 'string' ? JSON.parse(lead.website_data) : lead.website_data) || {};
-  const leadPhone = lead.phone || (wd.phones && wd.phones[0]) || null;
-  const leadEmail = lead.email || (wd.emails && wd.emails[0]) || null;
   const leadName = lead.business_name || 'Lead sconosciuto';
 
   const settingsResult = await db.execute(sql`
     SELECT outreach_config FROM ai_autonomy_settings WHERE consultant_id::text = ${task.consultant_id}::text LIMIT 1
   `);
   const outreachConfig = (settingsResult.rows[0] as any)?.outreach_config || {};
-  const channelPriority: string[] = outreachConfig.channel_priority ?? ['voice', 'whatsapp', 'email'];
   const whatsappConfigId = outreachConfig.whatsapp_config_id ?? outreachConfig.whatsappConfigId ?? null;
   const voiceTemplateId = outreachConfig.voice_template_id ?? outreachConfig.voiceTemplateId ?? null;
   const emailAccountId = outreachConfig.email_account_id ?? outreachConfig.emailAccountId ?? null;
   const hunterMode = outreachConfig.hunter_mode ?? 'approval';
   const outreachStatus = hunterMode === 'autonomous' ? 'scheduled' : 'waiting_approval';
+  const safetyCooldown = outreachConfig.cooldown_hours ?? 24;
 
   let whatsappConfigActive = false;
   if (whatsappConfigId) {
@@ -406,89 +458,125 @@ async function handleCrmLeadOutreach(task: AIScheduledTask): Promise<void> {
   const autonomySettings = await getAutonomySettings(task.consultant_id);
   const channelsEnabled = autonomySettings.channels_enabled || {};
 
-  let channelAssigned: string | null = null;
-  for (const ch of channelPriority) {
-    if (ch === 'voice' && leadPhone && channelsEnabled.voice && voiceTemplateId) { channelAssigned = 'voice'; break; }
-    if (ch === 'whatsapp' && leadPhone && channelsEnabled.whatsapp && whatsappConfigActive) { channelAssigned = 'whatsapp'; break; }
-    if (ch === 'email' && leadEmail && channelsEnabled.email) { channelAssigned = 'email'; break; }
+  const phoneForVoice = selectBestPhone(lead, wd, false);
+  const phoneForWA = selectBestPhone(lead, wd, true);
+  const emailForOutreach = selectBestEmail(lead, wd);
+
+  const availableChannels: { channel: string; contactValue: string; configId: string | null }[] = [];
+
+  if (phoneForVoice && channelsEnabled.voice && voiceTemplateId) {
+    availableChannels.push({ channel: 'voice', contactValue: phoneForVoice, configId: voiceTemplateId });
   }
-  if (!channelAssigned) {
-    if (leadPhone && channelsEnabled.voice && voiceTemplateId) channelAssigned = 'voice';
-    else if (leadPhone && channelsEnabled.whatsapp && whatsappConfigActive) channelAssigned = 'whatsapp';
-    else if (leadEmail && channelsEnabled.email) channelAssigned = 'email';
+  if (phoneForWA && channelsEnabled.whatsapp && whatsappConfigActive) {
+    availableChannels.push({ channel: 'whatsapp', contactValue: phoneForWA, configId: whatsappConfigId });
+  }
+  if (emailForOutreach && channelsEnabled.email) {
+    availableChannels.push({ channel: 'email', contactValue: emailForOutreach, configId: emailAccountId });
   }
 
-  if (!channelAssigned) {
-    console.warn(`${LOG} No valid channel for lead ${leadId} (phone=${!!leadPhone}, email=${!!leadEmail})`);
-    await db.execute(sql`UPDATE ai_scheduled_tasks SET status='failed', result_summary='Nessun canale disponibile per questo lead (telefono o email mancante)', updated_at=NOW() WHERE id=${task.id}`);
+  if (availableChannels.length === 0) {
+    console.warn(`${LOG} No valid channels for lead ${leadId} (voicePhone=${!!phoneForVoice}, waPhone=${!!phoneForWA}, email=${!!emailForOutreach})`);
+    await db.execute(sql`UPDATE ai_scheduled_tasks SET status='failed', result_summary='Nessun canale disponibile per questo lead (telefono o email mancante, o canali disabilitati)', updated_at=NOW() WHERE id=${task.id}`);
     return;
   }
 
-  const safetyCooldown = (settingsResult.rows[0] as any)?.outreach_config?.cooldown_hours ?? 24;
-  const safetyCheck = await checkOutreachSafety(leadId, channelAssigned, task.consultant_id, safetyCooldown);
-  if (!safetyCheck.allowed) {
-    console.warn(`${LOG} Safety check blocked lead ${leadId} channel=${channelAssigned}: ${safetyCheck.reason}`);
-    await db.execute(sql`UPDATE ai_scheduled_tasks SET status='failed', result_summary=${`[SAFETY-GUARD] ${safetyCheck.reason}`}, updated_at=NOW() WHERE id=${task.id}`);
+  console.log(`${LOG} Available channels for ${leadName}: ${availableChannels.map(c => `${c.channel}(${c.contactValue})`).join(', ')}`);
+
+  const createdSubTasks: string[] = [];
+  const blockedChannels: string[] = [];
+
+  for (const ch of availableChannels) {
+    const safetyCheck = await checkOutreachSafety(leadId, ch.channel, task.consultant_id, safetyCooldown);
+    if (!safetyCheck.allowed) {
+      console.warn(`${LOG} Safety check blocked lead ${leadId} channel=${ch.channel}: ${safetyCheck.reason}`);
+      blockedChannels.push(`${ch.channel}: ${safetyCheck.reason}`);
+      continue;
+    }
+
+    const subTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const channelLabel = ch.channel === 'voice' ? 'Chiamata' : ch.channel === 'whatsapp' ? 'WhatsApp' : 'Email';
+    const subInstruction = `Contatto CRM lead (Hunter autonomo): ${leadName}\nAzienda: ${leadName}\nCanale: ${channelLabel}\nContatto: ${ch.contactValue}\nScore AI: ${lead.ai_compatibility_score || 'N/A'}/100\n${lead.ai_sales_summary ? `Sintesi: ${lead.ai_sales_summary.substring(0, 300)}` : ''}`;
+    const subResultData = {
+      crmLeadOutreach: true,
+      leadId: leadId,
+      businessName: leadName,
+      phone: ch.channel === 'voice' ? phoneForVoice : ch.channel === 'whatsapp' ? phoneForWA : null,
+      email: ch.channel === 'email' ? emailForOutreach : null,
+      score: lead.ai_compatibility_score,
+      channel: ch.channel,
+      voiceTemplateId: ch.channel === 'voice' ? voiceTemplateId : null,
+      whatsappConfigId: ch.channel === 'whatsapp' ? whatsappConfigId : null,
+      emailAccountId: ch.channel === 'email' ? emailAccountId : null,
+      assigned_by: 'hunter',
+      parent_crm_outreach_task: task.id,
+    };
+
+    const contactPhone = ch.channel === 'email' ? '' : ch.contactValue;
+    const subAdditionalContext: Record<string, any> = {
+      lead_id: leadId,
+      crm_lead_outreach: true,
+      contact_value: ch.contactValue,
+      business_name: leadName,
+    };
+    if (ch.channel === 'email') {
+      subAdditionalContext.email_account_id = emailAccountId;
+      subAdditionalContext.lead_email = emailForOutreach;
+    }
+    const resolvedWaConfigId = ch.channel === 'whatsapp' ? whatsappConfigId : null;
+
+    await db.execute(sql`
+      INSERT INTO ai_scheduled_tasks (
+        id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+        scheduled_at, timezone, status, priority, parent_task_id,
+        task_category, ai_role, preferred_channel, result_data,
+        additional_context, max_attempts, current_attempt, retry_delay_minutes,
+        whatsapp_config_id,
+        created_at, updated_at
+      ) VALUES (
+        ${subTaskId}, ${task.consultant_id}, ${contactPhone},
+        ${leadName}, 'ai_task', ${subInstruction},
+        NOW() + INTERVAL '2 minutes',
+        ${task.timezone || 'Europe/Rome'}, ${outreachStatus}, 2, ${task.id},
+        'prospecting', 'hunter', ${ch.channel},
+        ${JSON.stringify(subResultData)}::jsonb,
+        ${JSON.stringify(subAdditionalContext)},
+        1, 0, 5,
+        ${resolvedWaConfigId},
+        NOW(), NOW()
+      )
+    `);
+
+    createdSubTasks.push(`${ch.channel}:${subTaskId}`);
+    console.log(`${LOG} Created ${ch.channel} sub-task ${subTaskId} for lead ${leadId} (${leadName}) → ${ch.contactValue}`);
+  }
+
+  if (createdSubTasks.length === 0) {
+    const reasons = blockedChannels.join('; ');
+    await db.execute(sql`UPDATE ai_scheduled_tasks SET status='failed', result_summary=${`[SAFETY-GUARD] Tutti i canali bloccati: ${reasons}`}, updated_at=NOW() WHERE id=${task.id}`);
     return;
   }
 
-  const subTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-  const subInstruction = `Contatto CRM lead (Hunter autonomo): ${leadName}\nAzienda: ${leadName}\nCanale: ${channelAssigned}\nScore AI: ${lead.ai_compatibility_score || 'N/A'}/100\n${lead.ai_sales_summary ? `Sintesi: ${lead.ai_sales_summary.substring(0, 300)}` : ''}`;
-  const subResultData = {
-    crmLeadOutreach: true,
-    leadId: leadId,
-    businessName: leadName,
-    phone: leadPhone,
-    email: leadEmail,
-    score: lead.ai_compatibility_score,
-    channel: channelAssigned,
-    voiceTemplateId: channelAssigned === 'voice' ? voiceTemplateId : null,
-    whatsappConfigId: channelAssigned === 'whatsapp' ? whatsappConfigId : null,
-    emailAccountId: channelAssigned === 'email' ? emailAccountId : null,
-    assigned_by: 'hunter',
-    parent_crm_outreach_task: task.id,
-  };
-
   await db.execute(sql`
-    INSERT INTO ai_scheduled_tasks (
-      id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
-      scheduled_at, timezone, status, priority, parent_task_id,
-      task_category, ai_role, preferred_channel, result_data,
-      additional_context, max_attempts, current_attempt, retry_delay_minutes,
-      created_at, updated_at
-    ) VALUES (
-      ${subTaskId}, ${task.consultant_id}, ${leadPhone || ''},
-      ${leadName}, 'ai_task', ${subInstruction},
-      NOW() + INTERVAL '2 minutes',
-      ${task.timezone || 'Europe/Rome'}, ${outreachStatus}, 2, ${task.id},
-      'outreach', 'hunter', ${channelAssigned},
-      ${JSON.stringify(subResultData)}::jsonb,
-      ${JSON.stringify({ lead_id: leadId, crm_lead_outreach: true })},
-      1, 0, 5, NOW(), NOW()
-    )
-  `);
-
-  await db.execute(sql`
-    UPDATE lead_scraper_results SET lead_status='in_outreach', outreach_task_id=${subTaskId}, lead_next_action=${`${channelAssigned} outreach da Hunter CRM`}, lead_next_action_date=NOW() + INTERVAL '2 minutes', updated_at=NOW()
+    UPDATE lead_scraper_results SET lead_status='in_outreach', outreach_task_id=${createdSubTasks[0].split(':')[1]}, lead_next_action=${`Outreach multi-canale da Hunter CRM (${createdSubTasks.map(s => s.split(':')[0]).join(', ')})`}, lead_next_action_date=NOW() + INTERVAL '2 minutes', updated_at=NOW()
     WHERE id=${leadId}
   `);
 
+  const channelsSummary = createdSubTasks.map(s => s.split(':')[0]).join(', ');
   await db.execute(sql`
     INSERT INTO lead_scraper_activities (lead_id, consultant_id, type, title, description, metadata, created_at)
-    VALUES (${leadId}, ${task.consultant_id}, 'outreach_assigned', ${`Outreach schedulato da Hunter: ${channelAssigned} (CRM autonomo)`}, ${`Hunter ha selezionato questo lead dal CRM per outreach via ${channelAssigned}. Score: ${lead.ai_compatibility_score || 'N/A'}/100`}, ${JSON.stringify({ taskId: subTaskId, channel: channelAssigned, score: lead.ai_compatibility_score, assigned_by: 'hunter_crm_autonomous' })}::jsonb, NOW())
+    VALUES (${leadId}, ${task.consultant_id}, 'outreach_assigned', ${`Outreach multi-canale schedulato da Hunter: ${channelsSummary}`}, ${`Hunter ha selezionato questo lead dal CRM per outreach su ${createdSubTasks.length} canali (${channelsSummary}). Score: ${lead.ai_compatibility_score || 'N/A'}/100`}, ${JSON.stringify({ taskIds: createdSubTasks, channels: createdSubTasks.map(s => s.split(':')[0]), score: lead.ai_compatibility_score, assigned_by: 'hunter_crm_autonomous' })}::jsonb, NOW())
   `);
 
   await logActivity(task.consultant_id, {
     event_type: 'crm_lead_outreach_scheduled',
-    title: `🎯 Hunter CRM: outreach ${channelAssigned} schedulato per ${leadName}`,
-    description: `Hunter ha selezionato autonomamente questo lead CRM (score ${lead.ai_compatibility_score || 'N/A'}/100) e ha schedulato un contatto via ${channelAssigned}`,
+    title: `🎯 Hunter CRM: ${createdSubTasks.length} canali schedulati per ${leadName}`,
+    description: `Hunter ha selezionato autonomamente questo lead CRM (score ${lead.ai_compatibility_score || 'N/A'}/100) e ha schedulato outreach su: ${channelsSummary}${blockedChannels.length > 0 ? `. Bloccati: ${blockedChannels.join(', ')}` : ''}`,
     icon: '🎯',
     severity: 'info',
     task_id: task.id,
   });
 
-  await db.execute(sql`UPDATE ai_scheduled_tasks SET status='completed', result_summary=${`Outreach ${channelAssigned} schedulato per ${leadName} (sub-task: ${subTaskId})`}, completed_at=NOW(), updated_at=NOW() WHERE id=${task.id}`);
-  console.log(`${LOG} Created ${channelAssigned} sub-task ${subTaskId} for lead ${leadId} (${leadName})`);
+  await db.execute(sql`UPDATE ai_scheduled_tasks SET status='completed', result_summary=${`${createdSubTasks.length} canali outreach schedulati per ${leadName} (${channelsSummary})`}, completed_at=NOW(), updated_at=NOW() WHERE id=${task.id}`);
 }
 
 async function executeSingleWhatsApp(task: AIScheduledTask): Promise<void> {
