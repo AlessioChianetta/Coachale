@@ -2231,4 +2231,145 @@ router.delete(
   }
 );
 
+import * as telnyxProvisioning from '../services/telnyx-provisioning';
+
+router.get(
+  "/admin/settings/telnyx",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [apiKeySetting] = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.key, "telnyx_api_key"))
+        .limit(1);
+
+      const [connectionIdSetting] = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.key, "telnyx_ip_connection_id"))
+        .limit(1);
+
+      const hasApiKey = !!(apiKeySetting?.value);
+      const apiKeyPreview = hasApiKey
+        ? `KEY_...${String(apiKeySetting.value).slice(-6)}`
+        : "";
+
+      res.json({
+        success: true,
+        configured: hasApiKey && !!(connectionIdSetting?.value),
+        hasApiKey,
+        apiKeyPreview,
+        connectionId: connectionIdSetting?.value || "",
+      });
+    } catch (error: any) {
+      console.error("Get Telnyx settings error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/admin/settings/telnyx",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { apiKey, connectionId } = req.body;
+
+      if (!apiKey && !connectionId) {
+        return res.status(400).json({
+          success: false,
+          error: "Almeno un campo (API Key o Connection ID) è richiesto"
+        });
+      }
+
+      const upsertSetting = async (key: string, value: any, description: string) => {
+        const [existing] = await db
+          .select()
+          .from(systemSettings)
+          .where(eq(systemSettings.key, key))
+          .limit(1);
+
+        if (existing) {
+          await db
+            .update(systemSettings)
+            .set({
+              value,
+              updatedBy: req.user!.id,
+              updatedAt: new Date()
+            })
+            .where(eq(systemSettings.key, key));
+        } else {
+          await db.insert(systemSettings).values({
+            key,
+            value,
+            category: "integrations" as any,
+            description,
+            updatedBy: req.user!.id
+          });
+        }
+      };
+
+      if (apiKey) {
+        await upsertSetting(
+          "telnyx_api_key",
+          apiKey,
+          "Telnyx API Key per provisioning numeri VoIP"
+        );
+      }
+
+      if (connectionId) {
+        await upsertSetting(
+          "telnyx_ip_connection_id",
+          connectionId,
+          "Telnyx IP Connection ID per trunk SIP FreeSWITCH"
+        );
+      }
+
+      telnyxProvisioning.clearTelnyxConfigCache();
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "update_telnyx_config",
+        targetType: "setting",
+        targetId: "telnyx",
+        details: {
+          apiKeyUpdated: !!apiKey,
+          connectionIdUpdated: !!connectionId,
+          connectionId: connectionId || undefined,
+        }
+      });
+
+      console.log(`[ADMIN] Telnyx config updated by ${req.user!.id}`);
+      res.json({ success: true, message: "Configurazione Telnyx aggiornata" });
+    } catch (error: any) {
+      console.error("Save Telnyx settings error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/admin/settings/telnyx/test",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      telnyxProvisioning.clearTelnyxConfigCache();
+      const result = await telnyxProvisioning.testConnection();
+      res.json({
+        success: result.success,
+        balance: result.balance,
+        currency: result.currency,
+        error: result.error,
+      });
+    } catch (error: any) {
+      console.error("Test Telnyx connection error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
 export default router;

@@ -9,9 +9,10 @@ const LOG_PREFIX = "🎯 [HUNTER-DIRECT]";
 export async function runDirectHunterForConsultant(consultantId: string): Promise<{ success: boolean; action?: any; reason?: string }> {
   try {
     const settingsResult = await db.execute(sql`
-      SELECT outreach_config, consultant_name
-      FROM ai_autonomy_settings
-      WHERE consultant_id::text = ${consultantId}::text
+      SELECT a.outreach_config, CONCAT(u.first_name, ' ', u.last_name) as consultant_name
+      FROM ai_autonomy_settings a
+      JOIN users u ON a.consultant_id::text = u.id::text
+      WHERE a.consultant_id::text = ${consultantId}::text
       LIMIT 1
     `);
     const settings = settingsResult.rows[0] as any;

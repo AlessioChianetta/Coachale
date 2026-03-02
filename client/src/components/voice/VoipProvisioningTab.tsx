@@ -259,6 +259,7 @@ export default function VoipProvisioningTab() {
   const request: ProvisioningRequest | null = provisioning || null;
   const documents: ProvisioningDocument[] = (provisioning?.documents && Array.isArray(provisioning.documents)) ? provisioning.documents : [];
   const hasActiveRequest = request && !["completed", "rejected"].includes(request.status);
+  const telnyxConfigured = statusData?.telnyxConfigured ?? false;
 
   const handleFileUpload = (documentType: string, file: File) => {
     if (!request?.id) return;
@@ -625,6 +626,13 @@ export default function VoipProvisioningTab() {
                 <Info className="h-4 w-4 text-blue-500 flex-shrink-0" />
                 <span>Le tariffe Telnyx sono certificate dal supporto ufficiale. Con un DDI italiano, la tariffa mobile e di $0.0365/min per <strong>tutti</strong> gli operatori (TIM, Vodafone, Wind Tre, Iliad, ecc.).</span>
               </div>
+
+              {!telnyxConfigured && (
+                <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm">
+                  <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                  <span>Provisioning automatico Telnyx non ancora configurato. Contatta l'amministratore per abilitarlo. Puoi comunque procedere con Messagenet.</span>
+                </div>
+              )}
 
               <Button onClick={() => setWizardStep(1)} className="w-full sm:w-auto">
                 Inizia Attivazione

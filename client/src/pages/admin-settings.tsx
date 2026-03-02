@@ -303,6 +303,12 @@ export default function AdminSettings() {
   const [tokenCopied, setTokenCopied] = useState(false);
   const [vpsBridgeUrl, setVpsBridgeUrl] = useState<string>("");
 
+  const [telnyxApiKey, setTelnyxApiKey] = useState("");
+  const [telnyxConnectionId, setTelnyxConnectionId] = useState("");
+  const [showTelnyxApiKey, setShowTelnyxApiKey] = useState(false);
+  const [isSavingTelnyx, setIsSavingTelnyx] = useState(false);
+  const [isTestingTelnyx, setIsTestingTelnyx] = useState(false);
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -539,6 +545,27 @@ export default function AdminSettings() {
   });
 
   const tokenStatus: VoiceTokenStatus | undefined = tokenStatusData;
+
+  const { data: telnyxConfig, refetch: refetchTelnyxConfig } = useQuery<{
+    success: boolean;
+    configured: boolean;
+    hasApiKey: boolean;
+    apiKeyPreview: string;
+    connectionId: string;
+  }>({
+    queryKey: ["/api/admin/settings/telnyx"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/settings/telnyx", { headers: getAuthHeaders() });
+      if (!res.ok) return { success: false, configured: false, hasApiKey: false, apiKeyPreview: "", connectionId: "" };
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (telnyxConfig?.connectionId) {
+      setTelnyxConnectionId(telnyxConfig.connectionId);
+    }
+  }, [telnyxConfig]);
 
   const { data: sipSettingsData } = useQuery<{ sipCallerId: string; sipGateway: string }>({
     queryKey: ["/api/voice/sip-settings"],
@@ -3961,6 +3988,153 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                       }}
                     >
                       <Copy className="h-3 w-3 mr-1" /> Copia Comandi
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Phone className="h-5 w-5" />
+                    Configurazione Telnyx API
+                  </CardTitle>
+                  <CardDescription>
+                    API Key e Connection ID per il provisioning automatico numeri VoIP
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center gap-4 p-4 rounded-lg border bg-muted/50">
+                    <div className={`p-2 rounded-full ${telnyxConfig?.configured ? 'bg-green-100' : 'bg-red-100'}`}>
+                      {telnyxConfig?.configured
+                        ? <CheckCircle className="h-5 w-5 text-green-600" />
+                        : <XCircle className="h-5 w-5 text-red-600" />
+                      }
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">
+                        {telnyxConfig?.configured ? 'Telnyx Configurato' : 'Telnyx Non Configurato'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {telnyxConfig?.configured
+                          ? `API Key: ${telnyxConfig.apiKeyPreview}`
+                          : 'Inserisci API Key e Connection ID per abilitare il provisioning automatico'
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="telnyx-api-key">API Key Telnyx</Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            id="telnyx-api-key"
+                            type={showTelnyxApiKey ? "text" : "password"}
+                            value={telnyxApiKey}
+                            onChange={(e) => setTelnyxApiKey(e.target.value)}
+                            placeholder={telnyxConfig?.hasApiKey ? telnyxConfig.apiKeyPreview : "KEY0123456789..."}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3"
+                            onClick={() => setShowTelnyxApiKey(!showTelnyxApiKey)}
+                          >
+                            {showTelnyxApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Trovi l'API Key su <strong>portal.telnyx.com</strong> &rarr; API Keys
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="telnyx-connection-id">IP Connection ID</Label>
+                      <Input
+                        id="telnyx-connection-id"
+                        value={telnyxConnectionId}
+                        onChange={(e) => setTelnyxConnectionId(e.target.value)}
+                        placeholder="1234567890123456789"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Mission Control &rarr; Networking &rarr; SIP Connections &rarr; la tua connessione IP. Tutti i numeri ordinati verranno associati a questa connessione.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={async () => {
+                        if (!telnyxApiKey && !telnyxConnectionId) {
+                          toast({ title: "Errore", description: "Inserisci almeno un valore", variant: "destructive" });
+                          return;
+                        }
+                        setIsSavingTelnyx(true);
+                        try {
+                          const res = await fetch("/api/admin/settings/telnyx", {
+                            method: "POST",
+                            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              apiKey: telnyxApiKey || undefined,
+                              connectionId: telnyxConnectionId || undefined,
+                            }),
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            toast({ title: "Salvato", description: "Configurazione Telnyx aggiornata" });
+                            setTelnyxApiKey("");
+                            refetchTelnyxConfig();
+                          } else {
+                            toast({ title: "Errore", description: data.error, variant: "destructive" });
+                          }
+                        } catch (err: any) {
+                          toast({ title: "Errore", description: err.message, variant: "destructive" });
+                        } finally {
+                          setIsSavingTelnyx(false);
+                        }
+                      }}
+                      disabled={isSavingTelnyx || (!telnyxApiKey && !telnyxConnectionId)}
+                    >
+                      {isSavingTelnyx ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                      Salva Configurazione
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        setIsTestingTelnyx(true);
+                        try {
+                          const res = await fetch("/api/admin/settings/telnyx/test", {
+                            method: "POST",
+                            headers: getAuthHeaders(),
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            toast({
+                              title: "Connessione OK",
+                              description: `Saldo: ${data.balance} ${data.currency}`,
+                            });
+                          } else {
+                            toast({
+                              title: "Connessione Fallita",
+                              description: data.error || "Verifica l'API Key",
+                              variant: "destructive",
+                            });
+                          }
+                        } catch (err: any) {
+                          toast({ title: "Errore", description: err.message, variant: "destructive" });
+                        } finally {
+                          setIsTestingTelnyx(false);
+                        }
+                      }}
+                      disabled={isTestingTelnyx || !telnyxConfig?.hasApiKey}
+                    >
+                      {isTestingTelnyx ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Activity className="h-4 w-4 mr-2" />}
+                      Test Connessione
                     </Button>
                   </div>
                 </CardContent>

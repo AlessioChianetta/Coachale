@@ -1,18 +1,63 @@
 import { db } from "../db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
+import { systemSettings } from "@shared/schema";
 import fs from "fs";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
-const TELNYX_API_KEY = process.env.TELNYX_API_KEY || "";
 
-function telnyxHeaders(apiKey?: string) {
+let cachedConfig: { apiKey: string; connectionId: string } | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 60000;
+
+export async function getTelnyxConfig(): Promise<{ apiKey: string; connectionId: string }> {
+  const now = Date.now();
+  if (cachedConfig && (now - cacheTimestamp) < CACHE_TTL_MS) {
+    return cachedConfig;
+  }
+
+  const [apiKeySetting] = await db
+    .select()
+    .from(systemSettings)
+    .where(eq(systemSettings.key, "telnyx_api_key"))
+    .limit(1);
+
+  const [connectionIdSetting] = await db
+    .select()
+    .from(systemSettings)
+    .where(eq(systemSettings.key, "telnyx_ip_connection_id"))
+    .limit(1);
+
+  cachedConfig = {
+    apiKey: (apiKeySetting?.value as string) || "",
+    connectionId: (connectionIdSetting?.value as string) || "",
+  };
+  cacheTimestamp = now;
+  return cachedConfig;
+}
+
+export function clearTelnyxConfigCache() {
+  cachedConfig = null;
+  cacheTimestamp = 0;
+}
+
+export async function isTelnyxConfigured(): Promise<boolean> {
+  const config = await getTelnyxConfig();
+  return !!(config.apiKey && config.connectionId);
+}
+
+function telnyxHeaders(apiKey: string) {
   return {
-    "Authorization": `Bearer ${apiKey || TELNYX_API_KEY}`,
+    "Authorization": `Bearer ${apiKey}`,
     "Content-Type": "application/json",
   };
 }
 
-async function telnyxRequest(endpoint: string, options: any = {}, apiKey?: string) {
+async function telnyxRequest(endpoint: string, options: any = {}, overrideApiKey?: string) {
+  const config = await getTelnyxConfig();
+  const apiKey = overrideApiKey || config.apiKey;
+  if (!apiKey) {
+    throw new Error("Telnyx API key non configurata. Configurala dal pannello Super Admin → Impostazioni → VPS/Voice.");
+  }
   const url = `${TELNYX_API_BASE}${endpoint}`;
   const headers = telnyxHeaders(apiKey);
   const response = await fetch(url, {
@@ -48,6 +93,19 @@ async function appendErrorLog(requestId: number, error: string) {
         updated_at = NOW()
     WHERE id = ${requestId}
   `);
+}
+
+export async function testConnection(): Promise<{ success: boolean; balance?: string; currency?: string; error?: string }> {
+  try {
+    const data = await telnyxRequest("/balance");
+    return {
+      success: true,
+      balance: data.data?.balance || "0.00",
+      currency: data.data?.currency || "USD",
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 }
 
 export async function createManagedAccount(businessName: string, email: string): Promise<{ id: string; apiKey: string }> {
@@ -127,8 +185,13 @@ export async function searchAvailableNumbers(prefix: string, countryCode: string
   }));
 }
 
-export async function orderNumber(phoneNumber: string, connectionId: string, requirementGroupId?: string): Promise<string> {
+export async function orderNumber(phoneNumber: string, connectionIdOverride?: string, requirementGroupId?: string): Promise<string> {
   console.log(`[TELNYX] Ordering number: ${phoneNumber}`);
+  const config = await getTelnyxConfig();
+  const connectionId = connectionIdOverride || config.connectionId;
+  if (!connectionId) {
+    throw new Error("Telnyx IP Connection ID non configurato. Configuralo dal pannello Super Admin → Impostazioni → VPS/Voice.");
+  }
   const body: any = {
     phone_numbers: [{ phone_number: phoneNumber }],
     connection_id: connectionId,
@@ -139,36 +202,6 @@ export async function orderNumber(phoneNumber: string, connectionId: string, req
   const data = await telnyxRequest("/number_orders", {
     method: "POST",
     body: JSON.stringify(body),
-  });
-  return data.data.id;
-}
-
-export async function createSipConnection(name: string): Promise<{ id: string; sipUsername: string; sipPassword: string }> {
-  console.log(`[TELNYX] Creating SIP connection: ${name}`);
-  const data = await telnyxRequest("/credential_connections", {
-    method: "POST",
-    body: JSON.stringify({
-      connection_name: name,
-      active: true,
-    }),
-  });
-  const conn = data.data;
-  return {
-    id: conn.id,
-    sipUsername: conn.user_name || conn.sip_uri_calling_preference || "",
-    sipPassword: conn.password || "",
-  };
-}
-
-export async function createOutboundProfile(name: string, connectionId: string): Promise<string> {
-  console.log(`[TELNYX] Creating outbound voice profile: ${name}`);
-  const data = await telnyxRequest("/outbound_voice_profiles", {
-    method: "POST",
-    body: JSON.stringify({
-      name: name,
-      traffic_type: "conversational",
-      connections: [{ connection_id: connectionId }],
-    }),
   });
   return data.data.id;
 }
@@ -201,6 +234,10 @@ export async function allocateOutboundChannels(accountId: string, channels: numb
 
 export async function uploadDocumentToTelnyx(filePath: string, fileName: string): Promise<string> {
   console.log(`[TELNYX] Uploading document: ${fileName}`);
+  const config = await getTelnyxConfig();
+  if (!config.apiKey) {
+    throw new Error("Telnyx API key non configurata.");
+  }
   const fileBuffer = fs.readFileSync(filePath);
   const blob = new Blob([fileBuffer]);
   const formData = new FormData();
@@ -209,7 +246,7 @@ export async function uploadDocumentToTelnyx(filePath: string, fileName: string)
   const response = await fetch(`${TELNYX_API_BASE}/documents`, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${TELNYX_API_KEY}`,
+      "Authorization": `Bearer ${config.apiKey}`,
     },
     body: formData,
   });
@@ -222,6 +259,11 @@ export async function uploadDocumentToTelnyx(filePath: string, fileName: string)
 
 export async function runFullProvisioningFlow(requestId: number): Promise<void> {
   try {
+    const configured = await isTelnyxConfigured();
+    if (!configured) {
+      throw new Error("Telnyx non configurato. API Key e Connection ID devono essere impostati nel pannello Super Admin.");
+    }
+
     const reqResult = await db.execute(sql`
       SELECT * FROM voip_provisioning_requests WHERE id = ${requestId}
     `);

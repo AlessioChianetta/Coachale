@@ -885,7 +885,7 @@ router.get("/contact/:phone", authenticateToken, requireAnyRole(["consultant", "
       db.execute(sql`
         SELECT 
           vc.id, vc.caller_id, vc.called_number, vc.status, vc.started_at,
-          vc.answered_at, vc.ended_at, vc.duration_seconds, vc.hangup_cause,
+          vc.answered_at, vc.ended_at, vc.duration_seconds,
           vc.ai_mode, vc.call_direction, vc.full_transcript,
           vc.ai_conversation_id, vc.client_id, vc.freeswitch_uuid,
           vc.outcome, vc.recording_url,
@@ -4268,7 +4268,8 @@ router.get("/voip-provisioning/status", authenticateToken, requireAnyRole(["cons
     if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
 
     const status = await telnyxProvisioning.getProvisioningStatus(consultantId);
-    res.json({ success: true, provisioning: status });
+    const telnyxConfigured = await telnyxProvisioning.isTelnyxConfigured();
+    res.json({ success: true, provisioning: status, telnyxConfigured });
   } catch (error: any) {
     console.error("[VOIP] Error fetching provisioning status:", error);
     res.status(500).json({ error: "Errore nel recupero dello stato" });
@@ -4407,33 +4408,18 @@ router.post("/voip-provisioning/order-number", authenticateToken, requireAnyRole
     }
     const provRequest = reqResult.rows[0] as any;
 
-    let connectionId = provRequest.telnyx_connection_id;
-    if (!connectionId) {
-      const conn = await telnyxProvisioning.createSipConnection(`sip-${consultantId.substring(0, 8)}`);
-      connectionId = conn.id;
-      await db.execute(sql`
-        UPDATE voip_provisioning_requests
-        SET telnyx_connection_id = ${conn.id},
-            sip_username = ${conn.sipUsername},
-            sip_password = ${conn.sipPassword},
-            sip_gateway = 'sip.telnyx.com',
-            updated_at = NOW()
-        WHERE id = ${provRequest.id}
-      `);
+    const configured = await telnyxProvisioning.isTelnyxConfigured();
+    if (!configured) {
+      return res.status(503).json({ error: "Telnyx non configurato. Contattare l'amministratore." });
     }
 
     const orderId = await telnyxProvisioning.orderNumber(
-      phone_number, connectionId, provRequest.telnyx_requirement_group_id
-    );
-
-    const profileId = await telnyxProvisioning.createOutboundProfile(
-      `outbound-${consultantId.substring(0, 8)}`, connectionId
+      phone_number, undefined, provRequest.telnyx_requirement_group_id
     );
 
     await db.execute(sql`
       UPDATE voip_provisioning_requests
       SET telnyx_number_order_id = ${orderId},
-          telnyx_outbound_profile_id = ${profileId},
           desired_number = ${phone_number},
           status = 'number_ordered',
           updated_at = NOW()
@@ -4450,7 +4436,7 @@ router.post("/voip-provisioning/order-number", authenticateToken, requireAnyRole
 
 router.post("/voip-provisioning/activate", authenticateToken, requireAnyRole(["super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const { request_id, assigned_number, sip_username, sip_password, sip_gateway } = req.body;
+    const { request_id, assigned_number } = req.body;
     if (!request_id) return res.status(400).json({ error: "request_id richiesto" });
 
     const reqResult = await db.execute(sql`
@@ -4462,16 +4448,12 @@ router.post("/voip-provisioning/activate", authenticateToken, requireAnyRole(["s
     const provRequest = reqResult.rows[0] as any;
 
     const finalNumber = assigned_number || provRequest.desired_number || provRequest.assigned_number;
-    const finalSipUser = sip_username || provRequest.sip_username;
-    const finalSipPass = sip_password || provRequest.sip_password;
-    const finalGateway = sip_gateway || provRequest.sip_gateway || "sip.telnyx.com";
+    const finalGateway = provRequest.provider === 'telnyx' ? 'telnyx-ip' : 'messagenet-credentials';
 
     await db.execute(sql`
       UPDATE voip_provisioning_requests
       SET status = 'completed',
           assigned_number = ${finalNumber},
-          sip_username = ${finalSipUser},
-          sip_password = ${finalSipPass},
           sip_gateway = ${finalGateway},
           activated_at = NOW(),
           updated_at = NOW()
@@ -4486,7 +4468,15 @@ router.post("/voip-provisioning/activate", authenticateToken, requireAnyRole(["s
       `);
     }
 
-    console.log(`✅ [VOIP] Provisioning completed for request ${request_id}, number: ${finalNumber}`);
+    if (finalGateway) {
+      await db.execute(sql`
+        UPDATE users
+        SET sip_gateway = ${finalGateway}
+        WHERE id = ${provRequest.consultant_id}
+      `);
+    }
+
+    console.log(`[VOIP] Provisioning completed for request ${request_id}, number: ${finalNumber}, gateway: ${finalGateway}`);
     res.json({ success: true, message: "Numero attivato con successo", assignedNumber: finalNumber });
   } catch (error: any) {
     console.error("[VOIP] Error activating number:", error);
