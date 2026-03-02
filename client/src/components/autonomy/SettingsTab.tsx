@@ -1512,7 +1512,7 @@ function SettingsTab({
 
                     <div className="space-y-2.5">
                       <button
-                        onClick={() => setSettings(prev => ({ ...prev, default_mode: "manual", autonomy_level: Math.max(prev.autonomy_level, 2), is_active: true }))}
+                        onClick={() => setSettings(prev => ({ ...prev, default_mode: "manual", autonomy_level: 2, is_active: true }))}
                         className={cn(
                           "group relative flex items-center gap-3 w-full p-3 rounded-xl border-2 text-left transition-all duration-300",
                           settings.default_mode === "manual"
@@ -1538,7 +1538,7 @@ function SettingsTab({
                       </button>
 
                       <button
-                        onClick={() => setSettings(prev => ({ ...prev, default_mode: "hybrid", autonomy_level: Math.max(prev.autonomy_level, 4), is_active: true }))}
+                        onClick={() => setSettings(prev => ({ ...prev, default_mode: "hybrid", autonomy_level: 4, is_active: true }))}
                         className={cn(
                           "group relative flex items-center gap-3 w-full p-3 rounded-xl border-2 text-left transition-all duration-300",
                           settings.default_mode === "hybrid"
@@ -1564,7 +1564,7 @@ function SettingsTab({
                       </button>
 
                       <button
-                        onClick={() => setSettings(prev => ({ ...prev, default_mode: "automatic", autonomy_level: Math.max(prev.autonomy_level, 7), is_active: true }))}
+                        onClick={() => setSettings(prev => ({ ...prev, default_mode: "automatic", autonomy_level: 7, is_active: true }))}
                         className={cn(
                           "group relative flex items-center gap-3 w-full p-3 rounded-xl border-2 text-left transition-all duration-300",
                           settings.default_mode === "automatic"
