@@ -334,12 +334,16 @@ async function sendTelegramChatAction(botToken: string, chatId: number | string,
   } catch {}
 }
 
-async function sendTelegramMessageDraft(botToken: string, chatId: number | string, text: string): Promise<boolean> {
+async function sendTelegramMessageDraft(botToken: string, chatId: number | string, text: string, randomId?: bigint): Promise<boolean> {
   try {
+    const body: any = { chat_id: chatId, text };
+    if (randomId !== undefined) {
+      body.random_id = randomId.toString();
+    }
     const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessageDraft`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     if (!data.ok) {
@@ -1136,6 +1140,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     let draftSupported = true;
     let draftChecked = false;
     let chunkCount = 0;
+    const draftRandomId = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
 
     const streamCallback = (chunk: string) => {
       accumulatedText += chunk;
@@ -1145,7 +1150,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
         lastDraftTime = now;
         if (draftSupported) {
           const displayText = accumulatedText.length > 4096 ? accumulatedText.substring(0, 4093) + '...' : accumulatedText;
-          sendTelegramMessageDraft(botToken, chatId, displayText + ' ▌').then(ok => {
+          sendTelegramMessageDraft(botToken, chatId, displayText + ' ▌', draftRandomId).then(ok => {
             if (!ok && !draftChecked) {
               draftChecked = true;
               console.warn(`[TELEGRAM] sendMessageDraft not supported for chat ${chatId}, using typing fallback only`);
