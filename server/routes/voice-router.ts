@@ -4276,6 +4276,40 @@ router.get("/voip-provisioning/status", authenticateToken, requireAnyRole(["cons
   }
 });
 
+router.delete("/voip-provisioning/cancel", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const reqResult = await db.execute(sql`
+      SELECT id, status FROM voip_provisioning_requests
+      WHERE consultant_id = ${consultantId}
+      AND status NOT IN ('completed', 'rejected')
+      ORDER BY created_at DESC
+      LIMIT 1
+    `);
+
+    if (reqResult.rows.length === 0) {
+      return res.status(404).json({ error: "Nessuna richiesta attiva trovata" });
+    }
+
+    const request = reqResult.rows[0] as any;
+
+    await db.execute(sql`
+      DELETE FROM voip_provisioning_documents WHERE request_id = ${request.id}
+    `);
+    await db.execute(sql`
+      DELETE FROM voip_provisioning_requests WHERE id = ${request.id}
+    `);
+
+    console.log(`[VOIP] Provisioning request ${request.id} cancelled by consultant ${consultantId}`);
+    res.json({ success: true, message: "Richiesta annullata" });
+  } catch (error: any) {
+    console.error("[VOIP] Error cancelling provisioning request:", error);
+    res.status(500).json({ error: "Errore nell'annullamento della richiesta" });
+  }
+});
+
 function matchDocumentToRequirement(reqName: string, reqDesc: string, uploadedDocs: Map<string, string>, usedDocIds: Set<string>): string | null {
   const combined = `${reqName} ${reqDesc}`.toLowerCase();
 

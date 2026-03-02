@@ -393,6 +393,27 @@ export default function VoipProvisioningTab() {
     },
   });
 
+  // Cancel provisioning request
+  const cancelProvRequestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/voice/voip-provisioning/cancel", {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Errore annullamento");
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "Richiesta annullata", description: "Puoi ora richiedere un nuovo numero." });
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/voip-provisioning/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/voip-provisioning/my-number"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
   // Existing number KYC upload/delete/submit mutations
   const uploadDocMutation = useMutation({
     mutationFn: async ({ file, documentType }: { file: File; documentType: string }) => {
@@ -717,10 +738,26 @@ export default function VoipProvisioningTab() {
                 <Phone className="h-5 w-5" />
                 Richiesta Attivazione in Corso
               </CardTitle>
-              <Button variant="outline" size="sm" onClick={() => refetchProvStatus()}>
-                <RefreshCw className="h-4 w-4 mr-1.5" />
-                Aggiorna
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => refetchProvStatus()}>
+                  <RefreshCw className="h-4 w-4 mr-1.5" />
+                  Aggiorna
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:border-red-300"
+                  onClick={() => {
+                    if (window.confirm("Sei sicuro di voler annullare questa richiesta? L'operazione non e reversibile.")) {
+                      cancelProvRequestMutation.mutate();
+                    }
+                  }}
+                  disabled={cancelProvRequestMutation.isPending}
+                >
+                  {cancelProvRequestMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1.5" />}
+                  Annulla Richiesta
+                </Button>
+              </div>
             </div>
             <CardDescription>
               Provider: {provRequest.provider === "telnyx" ? "Telnyx" : "Messagenet"} | Creata il {new Date(provRequest.created_at).toLocaleDateString("it-IT")}
