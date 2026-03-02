@@ -2462,10 +2462,7 @@ router.post(
           groupId: group.id,
           requirementsCount: group.requirements.length,
           requirements: group.requirements.map((r: any) => ({
-            requirement_type_id: r.requirement_type_id,
-            field_type: r.field_type || r.record_type,
-            name: r.name,
-            description: r.description,
+            ...r,
           })),
         },
       };
