@@ -60,6 +60,27 @@ export async function ensureProactiveLead(params: EnsureProactiveLeadParams): Pr
     const row = result.rows[0] as any;
     const created = row.is_new === true;
     console.log(`${LOG} ${created ? '✅ Created' : '↩ Existing'} proactive lead ${row.id} for ${normalizedPhone} (${contactName || 'N/A'}, source: ${resolvedSource})`);
+
+    if (created && normalizedPhone) {
+      try {
+        const { scheduleAutoCall } = await import('../services/auto-call-scheduler');
+        const autoResult = await scheduleAutoCall({
+          consultantId,
+          phoneNumber: normalizedPhone,
+          leadName: contactName || 'Contatto',
+          leadInfo: leadInfo || undefined,
+          source: `ensure-lead-${resolvedSource}`,
+        });
+        if (autoResult.success) {
+          console.log(`${LOG} 📞 Auto-call scheduled: ${autoResult.callId}`);
+        } else if (autoResult.skipped) {
+          console.log(`${LOG} 📞 Auto-call skipped: ${autoResult.skipReason}`);
+        }
+      } catch (acErr: any) {
+        console.error(`${LOG} Auto-call error (non-blocking):`, acErr.message);
+      }
+    }
+
     return { id: row.id, created };
   } catch (err: any) {
     console.error(`${LOG} Error for ${normalizedPhone}:`, err.message);

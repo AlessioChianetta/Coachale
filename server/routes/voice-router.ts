@@ -18,6 +18,7 @@ import { getActiveVoiceCallsForConsultant, getActiveGeminiConnections, getActive
 import { getTemplateOptions, getTemplateById, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
 import { scheduleNextRecurrence } from '../cron/ai-task-scheduler';
 import { quickGenerate } from '../ai/provider-factory';
+import { initCallTimerManager, scheduleTimer as _scheduleTimerFromManager, cancelTimer as _cancelTimerFromManager, registerCallFunctions, getTimerCount } from '../services/call-timer-manager';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -2100,10 +2101,8 @@ router.delete("/non-client-history", authenticateToken, requireAnyRole(["consult
 // OUTBOUND CALLS - Chiamate in uscita programmate
 // ═══════════════════════════════════════════════════════════════════
 
-// In-memory timer map for scheduled calls (scalable: replace with Redis/Bull later)
-const scheduledCallTimers = new Map<string, NodeJS.Timeout>();
+const callTimerManager = initCallTimerManager();
 
-// Generate unique ID for scheduled calls
 function generateScheduledCallId(): string {
   return `sc_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
@@ -2125,6 +2124,43 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     if (call.status === 'cancelled' || call.status === 'completed') {
       return { success: false, error: `Call already ${call.status}` };
     }
+    
+    // ═══ CONCURRENCY CHECK: verify line availability before calling ═══
+    const activeCallsResult = await db.execute(sql`
+      SELECT COUNT(*)::int as active_count FROM scheduled_voice_calls
+      WHERE consultant_id = ${consultantId}
+        AND status IN ('calling', 'talking')
+        AND id != ${callId}
+    `);
+    const activeVoiceResult = await db.execute(sql`
+      SELECT COUNT(*)::int as active_count FROM voice_calls
+      WHERE consultant_id = ${consultantId}
+        AND status = 'active'
+    `);
+    const activeScheduled = (activeCallsResult.rows[0] as any)?.active_count || 0;
+    const activeLive = (activeVoiceResult.rows[0] as any)?.active_count || 0;
+    const totalActive = Math.max(activeScheduled, activeLive);
+    
+    const concurrencyResult = await db.execute(sql`
+      SELECT max_concurrent_calls FROM consultant_availability_settings
+      WHERE consultant_id = ${consultantId}
+    `);
+    const maxConcurrent = (concurrencyResult.rows[0] as any)?.max_concurrent_calls || 2;
+    
+    if (totalActive >= maxConcurrent) {
+      const requeueAt = new Date(Date.now() + 3 * 60 * 1000);
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls
+        SET status = 'pending',
+            scheduled_at = ${requeueAt.toISOString()},
+            updated_at = NOW()
+        WHERE id = ${callId}
+      `);
+      _scheduleTimerFromManager(callId, consultantId, requeueAt);
+      console.log(`⏳ [Outbound] Call ${callId} re-queued: line busy (${totalActive}/${maxConcurrent} active). Next try at ${requeueAt.toISOString()}`);
+      return { success: false, error: 'line_busy_requeued' };
+    }
+    // ═══ END CONCURRENCY CHECK ═══
     
     // Update status to 'calling'
     await db.execute(sql`
@@ -2286,9 +2322,9 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
         WHERE id = ${callId}
       `);
       
-      // Set timer for retry
-      const timer = setTimeout(() => executeOutboundCall(callId, consultantId), retryDelayMs);
-      scheduledCallTimers.set(callId, timer);
+      // Set timer for retry via shared manager
+      const retryAt = new Date(Date.now() + retryDelayMs);
+      _scheduleTimerFromManager(callId, consultantId, retryAt);
       
       return { success: false, error: `Retry scheduled in ${retryDelayMs / 1000}s` };
     } else {
@@ -2303,7 +2339,7 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
   }
 }
 
-// Schedule a call timer
+// Approval check for AI-task-linked calls
 async function isCallApproved(callId: string): Promise<boolean> {
   try {
     const result = await db.execute(sql`
@@ -2321,37 +2357,16 @@ async function isCallApproved(callId: string): Promise<boolean> {
   }
 }
 
-function scheduleCallTimer(callId: string, consultantId: string, scheduledAt: Date): void {
-  const now = new Date();
-  const delayMs = scheduledAt.getTime() - now.getTime();
-  
-  const executeIfApproved = async () => {
-    scheduledCallTimers.delete(callId);
-    const approved = await isCallApproved(callId);
-    if (!approved) {
-      console.log(`🚫 [Outbound] Call ${callId} skipped: linked AI task not yet approved`);
-      return;
-    }
-    executeOutboundCall(callId, consultantId);
-  };
+// Register functions with the shared timer manager
+registerCallFunctions(executeOutboundCall, isCallApproved);
 
-  if (delayMs <= 0) {
-    executeIfApproved();
-  } else {
-    const timer = setTimeout(() => executeIfApproved(), delayMs);
-    scheduledCallTimers.set(callId, timer);
-    console.log(`⏰ [Outbound] Scheduled call ${callId} for ${scheduledAt.toISOString()} (in ${Math.round(delayMs / 1000)}s)`);
-  }
+// Wrappers that delegate to the shared timer manager
+function scheduleCallTimer(callId: string, consultantId: string, scheduledAt: Date): void {
+  _scheduleTimerFromManager(callId, consultantId, scheduledAt);
 }
 
-// Cancel a scheduled timer
 function cancelCallTimer(callId: string): void {
-  const timer = scheduledCallTimers.get(callId);
-  if (timer) {
-    clearTimeout(timer);
-    scheduledCallTimers.delete(callId);
-    console.log(`🚫 [Outbound] Cancelled timer for ${callId}`);
-  }
+  _cancelTimerFromManager(callId);
 }
 
 // POST /api/voice/outbound/trigger - Chiamata immediata
@@ -2657,7 +2672,7 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
     res.json({
       calls: result.rows,
       count: result.rows.length,
-      activeTimers: scheduledCallTimers.size
+      activeTimers: getTimerCount()
     });
   } catch (error: any) {
     console.error("[Outbound] List error:", error);
@@ -2855,6 +2870,26 @@ router.get("/number-lookup", async (req: Request, res: Response) => {
 // OUTBOUND CALLBACK - VPS reports call result
 // ═══════════════════════════════════════════════════════════════════
 
+async function drainCallQueue(consultantId: string): Promise<void> {
+  try {
+    const queuedResult = await db.execute(sql`
+      SELECT id, consultant_id, scheduled_at FROM scheduled_voice_calls
+      WHERE consultant_id = ${consultantId}
+        AND status = 'pending'
+        AND scheduled_at <= NOW()
+      ORDER BY scheduled_at ASC
+      LIMIT 1
+    `);
+    if (queuedResult.rows.length > 0) {
+      const next = queuedResult.rows[0] as any;
+      console.log(`🔄 [Queue Drain] Triggering queued call ${next.id} for consultant ${consultantId.substring(0, 8)}...`);
+      executeOutboundCall(next.id, next.consultant_id);
+    }
+  } catch (err: any) {
+    console.error(`[Queue Drain] Error:`, err.message);
+  }
+}
+
 // POST /api/voice/outbound/callback - VPS reports call result
 router.post("/outbound/callback", async (req: Request, res: Response) => {
   try {
@@ -3019,6 +3054,7 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
       }
 
       console.log(`✅ [Callback] Call ${callId} completed successfully (duration: ${duration_seconds}s)`);
+      drainCallQueue(consultantId).catch(err => console.error(`[Callback] Queue drain error:`, err.message));
       return res.json({ success: true, message: 'Call marked as completed' });
     }
     
@@ -3051,6 +3087,7 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
       }
       
       console.log(`❌ [Callback] Call ${callId} failed permanently: ${hangup_cause}`);
+      drainCallQueue(consultantId).catch(err => console.error(`[Callback] Queue drain error:`, err.message));
       return res.json({ success: true, message: 'Call marked as failed' });
     }
     
@@ -3098,13 +3135,9 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
           console.log(`🔗 [Callback] Synced AI Task ${resolvedTaskId} -> retry_pending`);
         }
         
-        // Schedule timer for retry (use dbCallId for proper mapping)
-        const timer = setTimeout(() => {
-          scheduledCallTimers.delete(dbCallId);
-          console.log(`🔄 [Callback] Executing retry for call ${dbCallId}`);
-          executeOutboundCall(dbCallId, consultantId);
-        }, retryDelayMs);
-        scheduledCallTimers.set(dbCallId, timer);
+        // Schedule timer for retry via shared manager
+        const retryAt = new Date(Date.now() + retryDelayMs);
+        _scheduleTimerFromManager(dbCallId, consultantId, retryAt);
         
         console.log(`🔄 [Callback] Call ${callId} scheduled for retry in ${retryDelaySeconds}s (attempt ${currentAttempts + 1}/${maxAttempts})`);
         return res.json({ 

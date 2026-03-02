@@ -5,6 +5,8 @@ import { insertProactiveLeadSchema, updateProactiveLeadSchema } from "@shared/sc
 import { z } from "zod";
 import { processProactiveOutreach } from "../whatsapp/proactive-outreach";
 import { resolveHunterContext } from "../services/hunter-context-resolver";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -248,6 +250,26 @@ router.post("/proactive-leads", authenticateToken, requireRole("consultant"), as
       immediateOutreachResult = await processSingleLeadImmediately(lead.id);
     }
     
+    let autoCallResult: any = null;
+    try {
+      const { scheduleAutoCall } = await import('../services/auto-call-scheduler');
+      autoCallResult = await scheduleAutoCall({
+        consultantId,
+        phoneNumber: req.body.phoneNumber,
+        leadName: `${req.body.firstName} ${req.body.lastName || ''}`.trim(),
+        callInstruction: req.body.autoCallInstruction || null,
+        leadInfo: finalLeadInfo || undefined,
+        source: 'proactive-lead-create',
+      });
+      if (autoCallResult.success) {
+        console.log(`📞 [PROACTIVE LEADS] Auto-call scheduled: ${autoCallResult.callId} for ${req.body.phoneNumber}`);
+      } else if (autoCallResult.skipped) {
+        console.log(`📞 [PROACTIVE LEADS] Auto-call skipped: ${autoCallResult.skipReason}`);
+      }
+    } catch (autoCallErr: any) {
+      console.error(`📞 [PROACTIVE LEADS] Auto-call error (non-blocking):`, autoCallErr.message);
+    }
+    
     res.status(201).json({
       success: true,
       data: lead,
@@ -256,7 +278,9 @@ router.post("/proactive-leads", authenticateToken, requireRole("consultant"), as
             ? "Lead creato e primo messaggio inviato immediatamente" 
             : `Lead creato. Outreach immediato fallito: ${immediateOutreachResult?.message}`)
         : "Proactive lead created successfully",
-      immediateOutreach: immediateOutreachResult
+      immediateOutreach: immediateOutreachResult,
+      autoCallScheduled: autoCallResult?.success || false,
+      autoCallId: autoCallResult?.callId || null,
     });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -1289,6 +1313,43 @@ router.get("/proactive-leads/:id/hunter-context", authenticateToken, requireRole
     });
   } catch (error: any) {
     console.error("[HUNTER-CTX] API error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/proactive-leads/call-status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const phones = (req.query.phones as string || '').split(',').filter(Boolean);
+    
+    if (phones.length === 0) {
+      return res.json({ success: true, callStatuses: {} });
+    }
+
+    const result = await db.execute(sql`
+      SELECT DISTINCT ON (target_phone) 
+        target_phone, status, scheduled_at, completed_at, duration_seconds, hangup_cause, id
+      FROM scheduled_voice_calls
+      WHERE consultant_id = ${consultantId}
+        AND target_phone = ANY(${phones})
+      ORDER BY target_phone, created_at DESC
+    `);
+
+    const callStatuses: Record<string, any> = {};
+    for (const row of result.rows as any[]) {
+      callStatuses[row.target_phone] = {
+        callId: row.id,
+        status: row.status,
+        scheduledAt: row.scheduled_at,
+        completedAt: row.completed_at,
+        durationSeconds: row.duration_seconds,
+        hangupCause: row.hangup_cause,
+      };
+    }
+
+    res.json({ success: true, callStatuses });
+  } catch (error: any) {
+    console.error("[CALL-STATUS] Error:", error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });

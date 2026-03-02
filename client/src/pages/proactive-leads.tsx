@@ -485,6 +485,22 @@ export default function ProactiveLeadsPage() {
 
   const leads: ProactiveLead[] = leadsData?.leads || [];
 
+  const phoneNumbers = useMemo(() => leads.map(l => l.phoneNumber).filter(Boolean), [leads]);
+  const { data: callStatusData } = useQuery({
+    queryKey: ["proactive-leads-call-status", phoneNumbers.join(',')],
+    queryFn: async () => {
+      if (phoneNumbers.length === 0) return { callStatuses: {} };
+      const response = await fetch(`/api/proactive-leads/call-status?phones=${encodeURIComponent(phoneNumbers.join(','))}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { callStatuses: {} };
+      return response.json();
+    },
+    enabled: phoneNumbers.length > 0,
+    refetchInterval: 30000,
+  });
+  const callStatuses: Record<string, any> = callStatusData?.callStatuses || {};
+
   // Fetch proactive WhatsApp agents for dropdown (only agents with isProactiveAgent=true AND Twilio configured)
   const { data: agentsData, isLoading: agentsLoading } = useQuery({
     queryKey: ["/api/whatsapp/config/proactive"],
@@ -1135,6 +1151,10 @@ export default function ProactiveLeadsPage() {
     // If empty, backend will apply default from agent config
     if (formData.idealState?.trim()) {
       dataToSend.idealState = formData.idealState.trim();
+    }
+    
+    if ((formData as any).autoCallInstruction?.trim()) {
+      dataToSend.autoCallInstruction = (formData as any).autoCallInstruction.trim();
     }
     
     // Debug log - show what we're sending vs what user sees
@@ -2424,6 +2444,38 @@ export default function ProactiveLeadsPage() {
                                 <div className="flex items-center gap-2">
                                   <Phone className="h-4 w-4 text-gray-400" />
                                   <span className="font-mono text-sm">{lead.phoneNumber}</span>
+                                  {(() => {
+                                    const cs = callStatuses[lead.phoneNumber];
+                                    if (!cs) return null;
+                                    const callStatusMap: Record<string, { color: string; label: string }> = {
+                                      pending: { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400', label: 'Schedulata' },
+                                      scheduled: { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400', label: 'Programmata' },
+                                      calling: { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400', label: 'In corso' },
+                                      talking: { color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400', label: 'In linea' },
+                                      completed: { color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400', label: 'Completata' },
+                                      failed: { color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400', label: 'Fallita' },
+                                      retry_scheduled: { color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400', label: 'Retry' },
+                                    };
+                                    const cfg = callStatusMap[cs.status] || { color: 'bg-gray-100 text-gray-600', label: cs.status };
+                                    return (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${cfg.color}`}>
+                                              <Phone className="h-2.5 w-2.5" />
+                                              {cfg.label}
+                                            </span>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Chiamata: {cfg.label}</p>
+                                            {cs.scheduledAt && <p className="text-xs text-muted-foreground">Schedulata: {new Date(cs.scheduledAt).toLocaleString('it-IT')}</p>}
+                                            {cs.durationSeconds > 0 && <p className="text-xs text-muted-foreground">Durata: {cs.durationSeconds}s</p>}
+                                            {cs.hangupCause && <p className="text-xs text-muted-foreground">Motivo: {cs.hangupCause}</p>}
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    );
+                                  })()}
                                 </div>
                               </TableCell>
                               <TableCell className="max-w-xs truncate">
@@ -3038,6 +3090,24 @@ export default function ProactiveLeadsPage() {
                     className="resize-none text-sm"
                   />
                 </div>
+
+                {!selectedLead && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="autoCallInstruction" className="text-sm font-medium flex items-center gap-2">
+                      <Phone className="h-3.5 w-3.5 text-gray-400" />
+                      Istruzioni chiamata (opzionale)
+                    </Label>
+                    <Textarea
+                      id="autoCallInstruction"
+                      value={(formData as any).autoCallInstruction || ""}
+                      onChange={(e) => setFormData({ ...formData, autoCallInstruction: e.target.value } as any)}
+                      placeholder="Istruzioni specifiche per la chiamata automatica (es: chiedere disponibilità per demo giovedì)..."
+                      rows={2}
+                      className="resize-none text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">Se vuoto, verrà generato automaticamente dai dati del lead.</p>
+                  </div>
+                )}
 
                 {selectedLead && (formData.leadInfo.email || formData.leadInfo.companyName || formData.leadInfo.address || formData.leadInfo.tags?.length || formData.leadInfo.note || formData.leadInfo.question1 || formData.leadInfo.question2 || formData.leadInfo.question3 || formData.leadInfo.question4) && (
                   <Collapsible defaultOpen={true}>
@@ -4033,6 +4103,54 @@ export default function ProactiveLeadsPage() {
                   </p>
                 </div>
               </div>
+
+              {(() => {
+                const cs = callStatuses[selectedViewLead.phoneNumber];
+                if (!cs) return null;
+                const callStatusLabels: Record<string, string> = {
+                  pending: 'Schedulata', scheduled: 'Programmata', calling: 'In corso',
+                  talking: 'In linea', completed: 'Completata', failed: 'Fallita',
+                  retry_scheduled: 'Retry programmato',
+                };
+                return (
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-teal-500" />
+                      Chiamata Voice
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <Label className="text-xs text-gray-500">Stato</Label>
+                        <p className="font-medium">{callStatusLabels[cs.status] || cs.status}</p>
+                      </div>
+                      {cs.scheduledAt && (
+                        <div>
+                          <Label className="text-xs text-gray-500">Schedulata</Label>
+                          <p className="font-medium">{format(new Date(cs.scheduledAt), "d MMM yyyy, HH:mm", { locale: it })}</p>
+                        </div>
+                      )}
+                      {cs.completedAt && (
+                        <div>
+                          <Label className="text-xs text-gray-500">Completata</Label>
+                          <p className="font-medium">{format(new Date(cs.completedAt), "d MMM yyyy, HH:mm", { locale: it })}</p>
+                        </div>
+                      )}
+                      {cs.durationSeconds > 0 && (
+                        <div>
+                          <Label className="text-xs text-gray-500">Durata</Label>
+                          <p className="font-medium">{cs.durationSeconds}s</p>
+                        </div>
+                      )}
+                      {cs.hangupCause && (
+                        <div className="col-span-2">
+                          <Label className="text-xs text-gray-500">Motivo chiusura</Label>
+                          <p className="font-medium text-gray-600">{cs.hangupCause}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Sezione Qualificazione - mostra solo se ci sono dati */}
               {selectedViewLead.leadInfo && Object.keys(selectedViewLead.leadInfo).some(k => 

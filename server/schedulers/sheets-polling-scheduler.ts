@@ -287,6 +287,7 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob, options?
     }).returning();
     
     const errorDetails: Array<{ row: number; field?: string; message: string }> = [];
+    const sheetsAutoCallLeads: Array<{ consultantId: string; phoneNumber: string; leadName: string; leadInfo?: any; source: string }> = [];
     
     for (let i = 0; i < newRows.length; i++) {
       const row = newRows[i];
@@ -424,10 +425,28 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob, options?
         await storage.createProactiveLead(leadData);
         result.imported++;
         
+        sheetsAutoCallLeads.push({
+          consultantId: job.consultantId,
+          phoneNumber,
+          leadName: `${firstName || 'Lead'} ${lastName || ''}`.trim(),
+          leadInfo: leadInfo.obiettivi || leadInfo.desideri ? leadInfo : undefined,
+          source: 'sheets-import',
+        });
+        
       } catch (error: any) {
         result.errors++;
         errorDetails.push({ row: absoluteRowNumber, message: error.message || 'Errore sconosciuto' });
         console.error(`[SHEETS POLLING] Error processing row ${absoluteRowNumber}:`, error.message);
+      }
+    }
+    
+    if (sheetsAutoCallLeads.length > 0) {
+      try {
+        const { scheduleAutoCallBatch } = await import('../services/auto-call-scheduler');
+        const batchResult = await scheduleAutoCallBatch(sheetsAutoCallLeads, 5);
+        console.log(`📞 [SHEETS POLLING] Auto-call batch: ${batchResult.scheduled} scheduled, ${batchResult.skipped} skipped`);
+      } catch (acErr: any) {
+        console.error(`📞 [SHEETS POLLING] Auto-call batch error (non-blocking):`, acErr.message);
       }
     }
     

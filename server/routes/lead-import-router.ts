@@ -644,6 +644,8 @@ router.post(
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(10, 0, 0, 0);
       
+      const autoCallLeads: Array<{ consultantId: string; phoneNumber: string; leadName: string; leadInfo?: any; source: string }> = [];
+      
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNumber = i + 1;
@@ -780,10 +782,28 @@ router.post(
           await storage.createProactiveLead(leadData);
           stats.imported++;
           
+          autoCallLeads.push({
+            consultantId,
+            phoneNumber,
+            leadName: `${firstName || 'Lead'} ${lastName || ''}`.trim(),
+            leadInfo: leadInfo.obiettivi || leadInfo.desideri ? leadInfo : undefined,
+            source: 'csv-import',
+          });
+          
         } catch (error: any) {
           stats.errors++;
           errorDetails.push({ row: rowNumber, message: error.message || 'Errore sconosciuto' });
           console.error(`❌ [LEAD IMPORT] Error processing row ${rowNumber}:`, error);
+        }
+      }
+      
+      if (autoCallLeads.length > 0) {
+        try {
+          const { scheduleAutoCallBatch } = await import('../services/auto-call-scheduler');
+          const batchResult = await scheduleAutoCallBatch(autoCallLeads, 5);
+          console.log(`📞 [LEAD IMPORT] Auto-call batch: ${batchResult.scheduled} scheduled, ${batchResult.skipped} skipped`);
+        } catch (acErr: any) {
+          console.error(`📞 [LEAD IMPORT] Auto-call batch error (non-blocking):`, acErr.message);
         }
       }
       
