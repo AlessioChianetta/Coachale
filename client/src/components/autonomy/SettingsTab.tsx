@@ -1303,19 +1303,14 @@ function SettingsTab({
         {/* Tab: Autonomia & Modalita' */}
         <TabsContent value="autonomia" className="mt-5 space-y-5">
 
-          <div className="flex items-center justify-center gap-0 mb-8">
+          <div className="flex items-center justify-center gap-0 mb-6">
             {[
-              { label: "Autonomia & Modalità", icon: <Zap className="h-4 w-4" /> },
-              { label: "Configurazione Avanzata", icon: <Brain className="h-4 w-4" /> },
+              { label: "Autonomia & Modalit\u00e0", icon: <Zap className="h-4 w-4" /> },
+              { label: "Configurazione", icon: <Brain className="h-4 w-4" /> },
             ].map((step, i) => (
               <React.Fragment key={i}>
                 {i > 0 && (
-                  <div className={cn(
-                    "h-[2px] w-12 sm:w-24 transition-all duration-500",
-                    i <= autonomiaStep
-                      ? "bg-gradient-to-r from-indigo-500 to-violet-500"
-                      : "bg-gray-200 dark:bg-gray-700"
-                  )} />
+                  <div className={cn("h-[2px] w-12 sm:w-24 transition-all duration-500", i <= autonomiaStep ? "bg-gradient-to-r from-indigo-500 to-violet-500" : "bg-gray-200 dark:bg-gray-700")} />
                 )}
                 <button
                   onClick={() => setAutonomiaStep(i)}
@@ -1328,10 +1323,7 @@ function SettingsTab({
                         : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
                   )}
                 >
-                  <span className={cn(
-                    "flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold",
-                    i === autonomiaStep ? "bg-white/20" : i < autonomiaStep ? "bg-indigo-100 dark:bg-indigo-900/40" : "bg-gray-200 dark:bg-gray-700"
-                  )}>{i + 1}</span>
+                  <span className={cn("flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold", i === autonomiaStep ? "bg-white/20" : i < autonomiaStep ? "bg-indigo-100 dark:bg-indigo-900/40" : "bg-gray-200 dark:bg-gray-700")}>{i + 1}</span>
                   <span className="hidden sm:inline">{step.label}</span>
                   {step.icon}
                 </button>
@@ -1341,10 +1333,10 @@ function SettingsTab({
 
           {autonomiaStep === 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className="space-y-6"
+              transition={{ duration: 0.35 }}
+              className="space-y-4"
             >
               {(() => {
                 const enabledRolesCount = systemStatus?.roles?.filter(r => r.enabled).length || 0;
@@ -1353,395 +1345,252 @@ function SettingsTab({
                 const hasEmail = settings.channels_enabled?.email;
                 const hasWhatsapp = settings.channels_enabled?.whatsapp;
                 const hasCategories = settings.allowed_task_categories.length > 0;
-
                 const checks = [
-                  { label: "Sistema attivo", done: settings.is_active, hint: "Attiva lo switch qui sotto", required: true },
-                  { label: "Livello autonomia \u2265 2", done: settings.autonomy_level >= 2, hint: "Imposta almeno livello 2", required: true },
-                  { label: `Dipendenti abilitati (${enabledRolesCount})`, done: enabledRolesCount > 0, hint: "Vai alla tab Dipendenti AI", required: true },
-                  { label: "Clienti presenti", done: hasClients, hint: `${systemStatus?.total_clients || 0} clienti`, required: true },
-                  { label: "Categorie task abilitate", done: hasCategories, hint: "Vai a Canali & Categorie", required: true },
-                  { label: "Canale voce", done: !!hasVoice, hint: "Per chiamate con Alessia", required: false },
-                  { label: "Canale email", done: !!hasEmail, hint: "Per email con Millie", required: false },
-                  { label: "Canale WhatsApp", done: !!hasWhatsapp, hint: "Per messaggi con Stella", required: false },
+                  { label: "Sistema attivo", done: settings.is_active, hint: "Switch qui sotto", required: true },
+                  { label: "Autonomia \u2265 2", done: settings.autonomy_level >= 2, hint: "Slider livello", required: true },
+                  { label: `${enabledRolesCount} dipendenti`, done: enabledRolesCount > 0, hint: "Tab Dipendenti", required: true },
+                  { label: "Clienti", done: hasClients, hint: `${systemStatus?.total_clients || 0}`, required: true },
+                  { label: "Categorie", done: hasCategories, hint: "Tab Canali", required: true },
                 ];
-
-                const requiredChecks = checks.filter(c => c.required);
-                const optionalChecks = checks.filter(c => !c.required);
-                const requiredDone = requiredChecks.filter(c => c.done).length;
-                const allRequiredDone = requiredDone === requiredChecks.length;
-                const optionalDone = optionalChecks.filter(c => c.done).length;
-                const progressPercent = Math.round((requiredDone / requiredChecks.length) * 100);
-
+                const optChecks = [
+                  { label: "Voce", done: !!hasVoice },
+                  { label: "Email", done: !!hasEmail },
+                  { label: "WhatsApp", done: !!hasWhatsapp },
+                ];
+                const reqDone = checks.filter(c => c.done).length;
+                const allDone = reqDone === checks.length;
+                const optDone = optChecks.filter(c => c.done).length;
+                const pct = Math.round((reqDone / checks.length) * 100);
                 return (
-                  <div className={cn(
-                    "relative rounded-2xl border p-5 overflow-hidden transition-all duration-500",
-                    allRequiredDone
-                      ? "bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border-emerald-200/60 dark:border-emerald-800/40 shadow-sm shadow-emerald-100 dark:shadow-emerald-900/20"
-                      : "bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border-amber-200/60 dark:border-amber-800/40 shadow-sm shadow-amber-100 dark:shadow-amber-900/20"
-                  )}>
-                    <div className={cn("absolute top-0 left-0 right-0 h-1", allRequiredDone ? "bg-gradient-to-r from-emerald-400 to-teal-400" : "bg-gradient-to-r from-amber-400 to-orange-400")} />
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "flex items-center justify-center h-10 w-10 rounded-full text-lg font-bold shrink-0",
-                          allRequiredDone ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600" : "bg-amber-100 dark:bg-amber-900/40 text-amber-600"
-                        )}>
-                          {allRequiredDone ? <CheckCircle className="h-5 w-5" /> : `${progressPercent}%`}
+                  <Collapsible defaultOpen={!allDone}>
+                    <div className={cn(
+                      "rounded-xl border px-4 py-3 transition-all duration-300",
+                      allDone ? "bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-800/40" : "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40"
+                    )}>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn("flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold shrink-0", allDone ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600" : "bg-amber-100 dark:bg-amber-900/40 text-amber-600")}>
+                            {allDone ? <CheckCircle className="h-4 w-4" /> : `${pct}%`}
+                          </div>
+                          <span className={cn("text-xs font-semibold", allDone ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400")}>
+                            {allDone ? `Pronto \u2022 ${optDone}/3 canali` : `${reqDone}/${checks.length} requisiti`}
+                          </span>
+                          <div className="w-20 bg-gray-200/60 dark:bg-gray-700/40 rounded-full h-1 ml-1">
+                            <div className={cn("h-1 rounded-full transition-all duration-500", allDone ? "bg-emerald-500" : "bg-amber-500")} style={{ width: `${pct}%` }} />
+                          </div>
                         </div>
-                        <div>
-                          <h3 className={cn("text-sm font-semibold", allRequiredDone ? "text-emerald-800 dark:text-emerald-300" : "text-amber-800 dark:text-amber-300")}>
-                            {allRequiredDone ? "Pronto per partire!" : "Checklist avvio AI"}
-                          </h3>
-                          <p className="text-xs text-muted-foreground">
-                            {allRequiredDone ? `Tutti i requisiti soddisfatti \u2022 ${optionalDone}/${optionalChecks.length} canali` : `${requiredDone}/${requiredChecks.length} requisiti completati`}
-                          </p>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-200/40 dark:border-gray-700/40">
+                          {checks.map((c, i) => (
+                            <div key={i} className="flex items-center gap-1.5 py-0.5">
+                              {c.done ? <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" /> : <div className="h-3 w-3 rounded-full border-[1.5px] border-amber-400 shrink-0" />}
+                              <span className={cn("text-[11px]", c.done ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>{c.label}</span>
+                            </div>
+                          ))}
+                          {optChecks.map((c, i) => (
+                            <div key={`o${i}`} className="flex items-center gap-1.5 py-0.5">
+                              {c.done ? <CheckCircle className="h-3 w-3 text-emerald-500/60 shrink-0" /> : <div className="h-3 w-3 rounded-full border border-gray-300 dark:border-gray-600 shrink-0" />}
+                              <span className="text-[11px] text-muted-foreground">{c.label}</span>
+                            </div>
+                          ))}
                         </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                );
+              })()}
+
+              <div className="relative rounded-2xl border border-gray-200/60 dark:border-gray-800/60 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500" />
+
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr,1px,1fr]">
+                  <div className="p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white">
+                          <Zap className="h-3.5 w-3.5" />
+                        </div>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">Livello Autonomia</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={cn("text-[10px] font-semibold uppercase tracking-wider", settings.is_active ? "text-emerald-600" : "text-gray-400")}>
+                          {settings.is_active ? "ON" : "OFF"}
+                        </span>
+                        <Switch
+                          checked={settings.is_active}
+                          onCheckedChange={(checked) => setSettings(prev => ({ ...prev, is_active: checked }))}
+                        />
                       </div>
                     </div>
-                    <div className="w-full bg-gray-200/60 dark:bg-gray-700/40 rounded-full h-1.5 mb-4">
-                      <div className={cn("h-1.5 rounded-full transition-all duration-700", allRequiredDone ? "bg-gradient-to-r from-emerald-500 to-teal-400" : "bg-gradient-to-r from-amber-500 to-orange-400")} style={{ width: `${progressPercent}%` }} />
+
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className={cn(
+                        "relative flex items-center justify-center h-20 w-20 rounded-full border-[3px] text-3xl font-black transition-all duration-500 shrink-0",
+                        settings.autonomy_level === 0 ? "border-gray-300/50 text-gray-300 dark:border-gray-600/50 dark:text-gray-600" :
+                        settings.autonomy_level <= 3 ? "border-emerald-400/60 text-emerald-500" :
+                        settings.autonomy_level <= 6 ? "border-amber-400/60 text-amber-500" :
+                        settings.autonomy_level <= 9 ? "border-orange-400/60 text-orange-500" :
+                        "border-red-400/60 text-red-500"
+                      )}>
+                        <div className={cn(
+                          "absolute inset-0 rounded-full opacity-[0.07]",
+                          settings.autonomy_level === 0 ? "bg-gray-400" :
+                          settings.autonomy_level <= 3 ? "bg-emerald-400" :
+                          settings.autonomy_level <= 6 ? "bg-amber-400" :
+                          settings.autonomy_level <= 9 ? "bg-orange-400" : "bg-red-400"
+                        )} />
+                        {settings.autonomy_level}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-sm font-bold tracking-tight", autonomyInfo.color)}>{autonomyInfo.label}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{autonomyInfo.description}</p>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
-                      {requiredChecks.map((check, i) => (
-                        <div key={i} className="flex items-center gap-2 py-1">
-                          {check.done ? <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" /> : <div className="h-4 w-4 rounded-full border-2 border-amber-400 shrink-0" />}
-                          <span className={cn("text-xs font-medium", check.done ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400")}>{check.label}</span>
-                          {!check.done && <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">{check.hint}</span>}
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Livello</span>
+                        <Badge className={cn("rounded-md text-[10px] px-1.5 py-0 h-5 font-bold", getAutonomyBadgeColor(settings.autonomy_level))}>
+                          {settings.autonomy_level}/10
+                        </Badge>
+                      </div>
+                      <Slider
+                        value={[settings.autonomy_level]}
+                        onValueChange={(val) => setSettings(prev => ({ ...prev, autonomy_level: val[0] }))}
+                        max={10}
+                        min={0}
+                        step={1}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between">
+                        <span className="text-[9px] text-muted-foreground">Off</span>
+                        <span className="text-[9px] text-emerald-500">Basso</span>
+                        <span className="text-[9px] text-amber-500">Medio</span>
+                        <span className="text-[9px] text-orange-500">Alto</span>
+                        <span className="text-[9px] text-red-500">Max</span>
+                      </div>
+                    </div>
+
+                    {settings.autonomy_level > 0 && (
+                      <div className="grid grid-cols-2 gap-2 mt-4">
+                        <div className="rounded-lg bg-emerald-50/70 dark:bg-emerald-950/15 border border-emerald-200/40 dark:border-emerald-800/25 p-2.5">
+                          <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1.5">Pu\u00f2 fare</p>
+                          <ul className="space-y-1">
+                            {settings.autonomy_level >= 1 && <li className="text-[11px] text-muted-foreground flex items-start gap-1"><CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />Task manuali</li>}
+                            {settings.autonomy_level >= 2 && <li className="text-[11px] text-muted-foreground flex items-start gap-1"><CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />Analisi clienti proattiva</li>}
+                            {settings.autonomy_level >= 3 && <li className="text-[11px] text-muted-foreground flex items-start gap-1"><CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />Report automatici</li>}
+                            {settings.autonomy_level >= 4 && <li className="text-[11px] text-muted-foreground flex items-start gap-1"><CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />Email/WhatsApp autonomi</li>}
+                            {settings.autonomy_level >= 7 && <li className="text-[11px] text-muted-foreground flex items-start gap-1"><CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />Chiamate vocali</li>}
+                            {settings.autonomy_level >= 10 && <li className="text-[11px] text-muted-foreground flex items-start gap-1"><CheckCircle className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />Autonomia totale</li>}
+                          </ul>
                         </div>
-                      ))}
-                    </div>
-                    {optionalChecks.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-gray-200/50 dark:border-gray-700/50">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Canali (opzionali)</p>
-                        <div className="flex flex-wrap gap-2">
-                          {optionalChecks.map((check, i) => (
-                            <Badge key={i} variant="outline" className={cn("text-[10px] gap-1 py-0.5 rounded-lg", check.done ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200" : "text-muted-foreground")}>
-                              {check.done ? <CheckCircle className="h-3 w-3" /> : <div className="h-3 w-3 rounded-full border border-current" />}
-                              {check.label}
-                            </Badge>
-                          ))}
+                        <div className="rounded-lg bg-red-50/70 dark:bg-red-950/15 border border-red-200/40 dark:border-red-800/25 p-2.5">
+                          <p className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider mb-1.5">Bloccato</p>
+                          <ul className="space-y-1">
+                            {settings.autonomy_level < 2 && <li className="text-[11px] text-muted-foreground flex items-start gap-1"><XCircle className="h-3 w-3 text-red-400 mt-0.5 shrink-0" />Analisi proattiva</li>}
+                            {settings.autonomy_level < 4 && <li className="text-[11px] text-muted-foreground flex items-start gap-1"><XCircle className="h-3 w-3 text-red-400 mt-0.5 shrink-0" />Azioni senza approvazione</li>}
+                            {settings.autonomy_level < 7 && <li className="text-[11px] text-muted-foreground flex items-start gap-1"><XCircle className="h-3 w-3 text-red-400 mt-0.5 shrink-0" />Chiamate vocali</li>}
+                            {settings.autonomy_level < 10 && <li className="text-[11px] text-muted-foreground flex items-start gap-1"><XCircle className="h-3 w-3 text-red-400 mt-0.5 shrink-0" />Fuori orario</li>}
+                            <li className="text-[11px] text-muted-foreground flex items-start gap-1"><XCircle className="h-3 w-3 text-red-400 mt-0.5 shrink-0" />Oltre limiti giornalieri</li>
+                          </ul>
                         </div>
                       </div>
                     )}
                   </div>
-                );
-              })()}
 
-              <div className="relative rounded-2xl border border-gray-200/60 dark:border-gray-800/60 overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-900/80 dark:to-gray-900 shadow-sm hover:shadow-lg transition-all duration-500">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500" />
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <div className="flex items-center gap-2.5 text-base font-bold text-gray-900 dark:text-white mb-1">
-                        <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white">
-                          <Zap className="h-4 w-4" />
-                        </div>
-                        Stato e Livello di Autonomia
+                  <div className="hidden lg:block bg-gray-200/50 dark:bg-gray-700/30" />
+
+                  <div className="p-5 border-t lg:border-t-0 border-gray-200/50 dark:border-gray-700/30">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+                        <Cog className="h-3.5 w-3.5" />
                       </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Definisci quanto il tuo dipendente AI pu\u00f2 operare in modo indipendente
-                      </p>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">Modalit\u00e0 Operativa</span>
                     </div>
-                    <div className="flex items-center gap-3 pl-4">
-                      <span className={cn("text-xs font-semibold", settings.is_active ? "text-emerald-600" : "text-gray-400")}>
-                        {settings.is_active ? "Attivo" : "Spento"}
-                      </span>
-                      <Switch
-                        checked={settings.is_active}
-                        onCheckedChange={(checked) => setSettings(prev => ({ ...prev, is_active: checked }))}
-                      />
-                    </div>
-                  </div>
 
-                  <div className="flex flex-col items-center justify-center py-6 mb-6">
-                    <div className={cn(
-                      "relative flex items-center justify-center h-28 w-28 rounded-full border-4 text-5xl font-black transition-all duration-500",
-                      settings.autonomy_level === 0 ? "border-gray-300/50 text-gray-300 dark:border-gray-600/50 dark:text-gray-600" :
-                      settings.autonomy_level <= 3 ? "border-emerald-400/60 text-emerald-500 shadow-lg shadow-emerald-500/10" :
-                      settings.autonomy_level <= 6 ? "border-amber-400/60 text-amber-500 shadow-lg shadow-amber-500/10" :
-                      settings.autonomy_level <= 9 ? "border-orange-400/60 text-orange-500 shadow-lg shadow-orange-500/10" :
-                      "border-red-400/60 text-red-500 shadow-lg shadow-red-500/10"
-                    )}>
-                      <div className={cn(
-                        "absolute inset-0 rounded-full opacity-10",
-                        settings.autonomy_level === 0 ? "bg-gray-400" :
-                        settings.autonomy_level <= 3 ? "bg-emerald-400" :
-                        settings.autonomy_level <= 6 ? "bg-amber-400" :
-                        settings.autonomy_level <= 9 ? "bg-orange-400" : "bg-red-400"
-                      )} />
-                      {settings.autonomy_level}
-                    </div>
-                    <p className={cn("text-lg font-bold mt-3 tracking-tight", autonomyInfo.color)}>
-                      {autonomyInfo.label}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">su 10</p>
-                  </div>
+                    <div className="space-y-2.5">
+                      <button
+                        onClick={() => setSettings(prev => ({ ...prev, default_mode: "manual", autonomy_level: Math.max(prev.autonomy_level, 2), is_active: true }))}
+                        className={cn(
+                          "group relative flex items-center gap-3 w-full p-3 rounded-xl border-2 text-left transition-all duration-300",
+                          settings.default_mode === "manual"
+                            ? "border-emerald-400 bg-gradient-to-r from-emerald-50 to-teal-50/50 dark:from-emerald-950/25 dark:to-teal-950/15 shadow-sm"
+                            : "border-gray-200/80 dark:border-gray-700/60 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10"
+                        )}
+                      >
+                        <div className={cn(
+                          "flex items-center justify-center h-10 w-10 rounded-xl shrink-0 transition-all duration-300",
+                          settings.default_mode === "manual"
+                            ? "bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-md shadow-emerald-400/20"
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:text-emerald-500"
+                        )}>
+                          <Shield className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-bold">Manuale</h4>
+                            {settings.default_mode === "manual" && <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">L'AI propone, tu approvi ogni azione</p>
+                        </div>
+                      </button>
 
-                  <div className="rounded-xl bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200/50 dark:border-gray-700/40 p-5 space-y-4 mb-6">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-semibold">Livello di Autonomia</Label>
-                      <Badge className={cn("rounded-lg font-bold px-2.5", getAutonomyBadgeColor(settings.autonomy_level))}>
-                        {settings.autonomy_level}/10
-                      </Badge>
-                    </div>
-                    <Slider
-                      value={[settings.autonomy_level]}
-                      onValueChange={(val) => setSettings(prev => ({ ...prev, autonomy_level: val[0] }))}
-                      max={10}
-                      min={0}
-                      step={1}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between gap-1">
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-muted-foreground rounded-lg border-gray-300 dark:border-gray-600">0 Off</Badge>
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700 rounded-lg">1-3</Badge>
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700 rounded-lg">4-6</Badge>
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-orange-600 border-orange-300 dark:text-orange-400 dark:border-orange-700 rounded-lg">7-9</Badge>
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-red-600 border-red-300 dark:text-red-400 dark:border-red-700 rounded-lg">10</Badge>
-                    </div>
-                  </div>
+                      <button
+                        onClick={() => setSettings(prev => ({ ...prev, default_mode: "hybrid", autonomy_level: Math.max(prev.autonomy_level, 4), is_active: true }))}
+                        className={cn(
+                          "group relative flex items-center gap-3 w-full p-3 rounded-xl border-2 text-left transition-all duration-300",
+                          settings.default_mode === "hybrid"
+                            ? "border-amber-400 bg-gradient-to-r from-amber-50 to-yellow-50/50 dark:from-amber-950/25 dark:to-yellow-950/15 shadow-sm"
+                            : "border-gray-200/80 dark:border-gray-700/60 hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/30 dark:hover:bg-amber-950/10"
+                        )}
+                      >
+                        <div className={cn(
+                          "flex items-center justify-center h-10 w-10 rounded-xl shrink-0 transition-all duration-300",
+                          settings.default_mode === "hybrid"
+                            ? "bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-md shadow-amber-400/20"
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:text-amber-500"
+                        )}>
+                          <Zap className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-bold">Ibrido</h4>
+                            {settings.default_mode === "hybrid" && <CheckCircle className="h-3.5 w-3.5 text-amber-500" />}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">Autonomo su task a basso rischio, chiede per il resto</p>
+                        </div>
+                      </button>
 
-                  <div className={cn(
-                    "p-4 rounded-xl border transition-all duration-500",
-                    autonomyInfo.color === "text-muted-foreground" ? "bg-gray-50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700" :
-                    settings.autonomy_level <= 3 ? "bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-800/40" :
-                    settings.autonomy_level <= 6 ? "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40" :
-                    settings.autonomy_level <= 9 ? "bg-orange-50/80 dark:bg-orange-950/20 border-orange-200/60 dark:border-orange-800/40" :
-                    "bg-red-50/80 dark:bg-red-950/20 border-red-200/60 dark:border-red-800/40"
-                  )}>
-                    <p className={cn("text-sm flex items-start gap-2 font-medium", autonomyInfo.color)}>
-                      <Info className="h-4 w-4 mt-0.5 shrink-0" />
-                      {autonomyInfo.description}
-                    </p>
+                      <button
+                        onClick={() => setSettings(prev => ({ ...prev, default_mode: "automatic", autonomy_level: Math.max(prev.autonomy_level, 7), is_active: true }))}
+                        className={cn(
+                          "group relative flex items-center gap-3 w-full p-3 rounded-xl border-2 text-left transition-all duration-300",
+                          settings.default_mode === "automatic"
+                            ? "border-red-400 bg-gradient-to-r from-red-50 to-rose-50/50 dark:from-red-950/25 dark:to-rose-950/15 shadow-sm"
+                            : "border-gray-200/80 dark:border-gray-700/60 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-50/30 dark:hover:bg-red-950/10"
+                        )}
+                      >
+                        <div className={cn(
+                          "flex items-center justify-center h-10 w-10 rounded-xl shrink-0 transition-all duration-300",
+                          settings.default_mode === "automatic"
+                            ? "bg-gradient-to-br from-red-400 to-rose-500 text-white shadow-md shadow-red-400/20"
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:text-red-500"
+                        )}>
+                          <Bot className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-bold">Automatico</h4>
+                            {settings.default_mode === "automatic" && <CheckCircle className="h-3.5 w-3.5 text-red-500" />}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">Gestione completa entro i limiti configurati</p>
+                        </div>
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <Separator />
-
-                <div className="p-6">
-                  <div className="flex items-center gap-2.5 text-base font-bold text-gray-900 dark:text-white mb-1">
-                    <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-                      <Cog className="h-4 w-4" />
-                    </div>
-                    Modalit\u00e0 Operativa
-                  </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-                    Scegli come il tuo dipendente AI gestisce i task
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button
-                      onClick={() => setSettings(prev => ({ ...prev, default_mode: "manual" }))}
-                      className={cn(
-                        "group relative flex flex-col items-start p-5 rounded-2xl border-2 text-left transition-all duration-300",
-                        settings.default_mode === "manual"
-                          ? "border-emerald-400 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-200/50 dark:ring-emerald-700/30"
-                          : "border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10"
-                      )}
-                    >
-                      {settings.default_mode === "manual" && (
-                        <div className="absolute top-3 right-3">
-                          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-emerald-500 text-white shadow-sm">
-                            <CheckCircle className="h-4 w-4" />
-                          </div>
-                        </div>
-                      )}
-                      <div className={cn(
-                        "flex items-center justify-center h-12 w-12 rounded-xl mb-3 transition-all duration-300",
-                        settings.default_mode === "manual"
-                          ? "bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-md shadow-emerald-400/20"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:bg-emerald-100 group-hover:text-emerald-500"
-                      )}>
-                        <Shield className="h-6 w-6" />
-                      </div>
-                      <h4 className="text-sm font-bold mb-1">Manuale</h4>
-                      <p className="text-xs text-muted-foreground mb-3">L'AI propone, tu approvi. Massimo controllo.</p>
-                      <ul className="space-y-1.5 w-full">
-                        <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Propone task proattivamente</li>
-                        <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Attende approvazione</li>
-                        <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Nessuna azione autonoma</li>
-                      </ul>
-                    </button>
-
-                    <button
-                      onClick={() => setSettings(prev => ({ ...prev, default_mode: "hybrid" }))}
-                      className={cn(
-                        "group relative flex flex-col items-start p-5 rounded-2xl border-2 text-left transition-all duration-300",
-                        settings.default_mode === "hybrid"
-                          ? "border-amber-400 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/20 shadow-lg shadow-amber-500/10 ring-1 ring-amber-200/50 dark:ring-amber-700/30"
-                          : "border-gray-200 dark:border-gray-700 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md hover:bg-amber-50/30 dark:hover:bg-amber-950/10"
-                      )}
-                    >
-                      {settings.default_mode === "hybrid" && (
-                        <div className="absolute top-3 right-3">
-                          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-amber-500 text-white shadow-sm">
-                            <CheckCircle className="h-4 w-4" />
-                          </div>
-                        </div>
-                      )}
-                      <div className={cn(
-                        "flex items-center justify-center h-12 w-12 rounded-xl mb-3 transition-all duration-300",
-                        settings.default_mode === "hybrid"
-                          ? "bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-md shadow-amber-400/20"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:bg-amber-100 group-hover:text-amber-500"
-                      )}>
-                        <Zap className="h-6 w-6" />
-                      </div>
-                      <h4 className="text-sm font-bold mb-1">Ibrido</h4>
-                      <p className="text-xs text-muted-foreground mb-3">Task a basso rischio autonomi, chiede per quelli importanti.</p>
-                      <ul className="space-y-1.5 w-full">
-                        <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Analisi e report autonomi</li>
-                        <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Chiede per email/chiamate</li>
-                        <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Bilanciato e sicuro</li>
-                      </ul>
-                    </button>
-
-                    <button
-                      onClick={() => setSettings(prev => ({ ...prev, default_mode: "automatic" }))}
-                      className={cn(
-                        "group relative flex flex-col items-start p-5 rounded-2xl border-2 text-left transition-all duration-300",
-                        settings.default_mode === "automatic"
-                          ? "border-red-400 bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/20 shadow-lg shadow-red-500/10 ring-1 ring-red-200/50 dark:ring-red-700/30"
-                          : "border-gray-200 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-700 hover:shadow-md hover:bg-red-50/30 dark:hover:bg-red-950/10"
-                      )}
-                    >
-                      {settings.default_mode === "automatic" && (
-                        <div className="absolute top-3 right-3">
-                          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-red-500 text-white shadow-sm">
-                            <CheckCircle className="h-4 w-4" />
-                          </div>
-                        </div>
-                      )}
-                      <div className={cn(
-                        "flex items-center justify-center h-12 w-12 rounded-xl mb-3 transition-all duration-300",
-                        settings.default_mode === "automatic"
-                          ? "bg-gradient-to-br from-red-400 to-rose-500 text-white shadow-md shadow-red-400/20"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-400 group-hover:bg-red-100 group-hover:text-red-500"
-                      )}>
-                        <Bot className="h-6 w-6" />
-                      </div>
-                      <h4 className="text-sm font-bold mb-1">Automatico</h4>
-                      <p className="text-xs text-muted-foreground mb-3">Gestione completa entro i limiti configurati.</p>
-                      <ul className="space-y-1.5 w-full">
-                        <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Esecuzione completa</li>
-                        <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Email e chiamate autonome</li>
-                        <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Solo limiti giornalieri</li>
-                      </ul>
-                    </button>
-                  </div>
-                </div>
-
-                {settings.autonomy_level > 0 && (
-                  <>
-                    <Separator />
-                    <div className="p-6">
-                      <div className="flex items-center gap-2.5 text-base font-bold text-gray-900 dark:text-white mb-4">
-                        <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 text-white">
-                          <BookOpen className="h-4 w-4" />
-                        </div>
-                        Capacit\u00e0 a livello {settings.autonomy_level}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="rounded-xl bg-emerald-50/60 dark:bg-emerald-950/15 border border-emerald-200/50 dark:border-emerald-800/30 p-4 space-y-2">
-                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <CheckCircle className="h-3.5 w-3.5" /> Cosa PU\u00d2 fare
-                          </p>
-                          <ul className="space-y-1.5">
-                            {settings.autonomy_level >= 1 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                Eseguire task che crei tu manualmente
-                              </li>
-                            )}
-                            {settings.autonomy_level >= 2 && (
-                              <>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                  Analizzare clienti e proporre task proattivamente
-                                </li>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                  Cercare nei documenti privati (consulenze, KB)
-                                </li>
-                              </>
-                            )}
-                            {settings.autonomy_level >= 3 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                Generare report e analisi in automatico
-                              </li>
-                            )}
-                            {settings.autonomy_level >= 4 && (
-                              <>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                  Eseguire task senza approvazione
-                                </li>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                  Inviare email e WhatsApp ai clienti
-                                </li>
-                              </>
-                            )}
-                            {settings.autonomy_level >= 7 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                Effettuare chiamate vocali autonomamente
-                              </li>
-                            )}
-                            {settings.autonomy_level >= 10 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                Gestire tutto senza supervisione
-                              </li>
-                            )}
-                          </ul>
-                        </div>
-                        <div className="rounded-xl bg-red-50/60 dark:bg-red-950/15 border border-red-200/50 dark:border-red-800/30 p-4 space-y-2">
-                          <p className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <XCircle className="h-3.5 w-3.5" /> Cosa NON PU\u00d2 fare
-                          </p>
-                          <ul className="space-y-1.5">
-                            {settings.autonomy_level < 2 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                Analizzare clienti e proporre task
-                              </li>
-                            )}
-                            {settings.autonomy_level < 4 && (
-                              <>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                  Eseguire task senza approvazione
-                                </li>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                  Inviare email/WhatsApp senza approvazione
-                                </li>
-                              </>
-                            )}
-                            {settings.autonomy_level < 7 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                Chiamate vocali senza approvazione
-                              </li>
-                            )}
-                            {settings.autonomy_level < 10 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                Operare fuori dall'orario configurato
-                              </li>
-                            )}
-                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                              <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                              Superare i limiti giornalieri
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
 
               <div className="flex justify-end">
@@ -1754,275 +1603,154 @@ function SettingsTab({
 
           {autonomiaStep === 1 && (
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className="space-y-6"
+              transition={{ duration: 0.35 }}
+              className="space-y-4"
             >
-              <div className="relative rounded-2xl border border-gray-200/60 dark:border-gray-800/60 overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-900/80 dark:to-gray-900 shadow-sm hover:shadow-lg transition-all duration-500">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500" />
-                <div className="p-6">
-                  <div className="flex items-center gap-2.5 text-base font-bold text-gray-900 dark:text-white mb-1">
-                    <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 text-white">
-                      <Brain className="h-4 w-4" />
+              <div className="relative rounded-2xl border border-gray-200/60 dark:border-gray-800/60 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500" />
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 text-white">
+                      <Brain className="h-3.5 w-3.5" />
                     </div>
-                    Modello AI e Ragionamento
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">Modello AI e Ragionamento</span>
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-                    Configura il modello e il livello di ragionamento
-                  </p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Modello AI</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Modello</Label>
                       <Select
                         value={settings.autonomy_model || 'gemini-3-flash-preview'}
                         onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_model: value }))}
                       >
-                        <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="rounded-xl h-9 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="gemini-3-flash-preview">
-                            <div className="flex flex-col">
-                              <span className="font-medium">Gemini 3 Flash</span>
-                              <span className="text-xs text-gray-400">Veloce ed economico</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="gemini-3.1-pro-preview">
-                            <div className="flex flex-col">
-                              <span className="font-medium">Gemini 3.1 Pro</span>
-                              <span className="text-xs text-gray-400">Ragionamento avanzato</span>
-                            </div>
-                          </SelectItem>
+                          <SelectItem value="gemini-3-flash-preview"><span className="font-medium">Gemini 3 Flash</span></SelectItem>
+                          <SelectItem value="gemini-3.1-pro-preview"><span className="font-medium">Gemini 3.1 Pro</span></SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Livello di Ragionamento</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Thinking</Label>
                       <Select
                         value={settings.autonomy_thinking_level || 'low'}
                         onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_thinking_level: value }))}
                       >
-                        <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="rounded-xl h-9 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="low"><span className="font-medium">Basso</span></SelectItem>
-                          <SelectItem value="medium"><span className="font-medium">Medio</span></SelectItem>
-                          <SelectItem value="high"><span className="font-medium">Alto</span></SelectItem>
+                          <SelectItem value="low">Basso</SelectItem>
+                          <SelectItem value="medium">Medio</SelectItem>
+                          <SelectItem value="high">Alto</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-1.5">
-                        <Brain className="h-4 w-4" /> Ragionamento
-                      </Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Ragionamento</Label>
                       <Select
                         value={settings.reasoning_mode || "structured"}
                         onValueChange={(val) => setSettings(prev => ({ ...prev, reasoning_mode: val }))}
                       >
-                        <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="rounded-xl h-9 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="structured">Strutturato</SelectItem>
                           <SelectItem value="deep_think">Deep Think</SelectItem>
                         </SelectContent>
                       </Select>
-                      <p className="text-[10px] text-muted-foreground">
-                        {(settings.reasoning_mode || "structured") === "structured"
-                          ? "Analisi: osservazione, riflessione, decisione"
-                          : "Loop agentico multi-step iterativo"}
-                      </p>
                     </div>
                   </div>
 
-                  <Separator className="mb-5" />
+                  <Separator className="my-4" />
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-sm font-semibold flex items-center gap-1.5">
-                        <Thermometer className="h-4 w-4" />
-                        Temperatura per Dipendente
-                      </Label>
-                      <Badge variant="outline" className="text-[10px] rounded-lg">Default: 0.3</Badge>
+                      <span className="text-xs font-semibold flex items-center gap-1.5"><Thermometer className="h-3.5 w-3.5" /> Temperatura</span>
+                      <Badge variant="outline" className="text-[9px] rounded-md h-4 px-1.5">default 0.3</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Bassi (0.1-0.3) = precisione. Alti (0.6-0.9) = creativit\u00e0.
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {systemStatus?.roles?.filter(r => r.enabled).map((role) => {
                         const profile = AI_ROLE_PROFILES[role.id];
                         const temp = (settings.role_temperatures || {})[role.id] ?? 0.3;
                         return (
-                          <div key={role.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200/60 dark:border-gray-700/40 bg-gray-50/80 dark:bg-gray-800/30">
-                            {profile?.avatar && (
-                              <img src={profile.avatar} alt={role.displayName} className="h-8 w-8 rounded-full object-cover shrink-0 ring-2 ring-white dark:ring-gray-700 shadow-sm" />
-                            )}
+                          <div key={role.id} className="flex items-center gap-2 p-2 rounded-lg border border-gray-200/50 dark:border-gray-700/30 bg-gray-50/50 dark:bg-gray-800/20">
+                            {profile?.avatar && <img src={profile.avatar} alt={role.displayName} className="h-6 w-6 rounded-full object-cover shrink-0" />}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-semibold truncate">{role.displayName}</span>
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 ml-1 shrink-0 rounded-lg font-bold">{temp.toFixed(1)}</Badge>
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="text-[11px] font-semibold truncate">{role.displayName}</span>
+                                <span className="text-[10px] font-bold text-muted-foreground ml-1">{temp.toFixed(1)}</span>
                               </div>
-                              <Slider
-                                value={[temp * 10]}
-                                min={1}
-                                max={10}
-                                step={1}
-                                onValueChange={([v]) => {
-                                  const newTemp = v / 10;
-                                  setSettings(prev => ({
-                                    ...prev,
-                                    role_temperatures: { ...(prev.role_temperatures || {}), [role.id]: newTemp },
-                                  }));
-                                }}
-                                className="w-full"
-                              />
+                              <Slider value={[temp * 10]} min={1} max={10} step={1} onValueChange={([v]) => setSettings(prev => ({ ...prev, role_temperatures: { ...(prev.role_temperatures || {}), [role.id]: v / 10 } }))} className="w-full" />
                             </div>
                           </div>
                         );
                       })}
                       {(!systemStatus?.roles || systemStatus.roles.filter(r => r.enabled).length === 0) && (
-                        <p className="text-xs text-muted-foreground col-span-2 text-center py-4">
-                          Nessun dipendente attivo. Attivali nel tab "Dipendenti AI".
-                        </p>
+                        <p className="text-[11px] text-muted-foreground col-span-2 text-center py-3">Nessun dipendente attivo</p>
                       )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="relative rounded-2xl border border-gray-200/60 dark:border-gray-800/60 overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-900/80 dark:to-gray-900 shadow-sm hover:shadow-lg transition-all duration-500">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500" />
-                <div className="p-6">
-                  <div className="flex items-center gap-2.5 text-base font-bold text-gray-900 dark:text-white mb-1">
-                    <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 text-white">
-                      <Clock className="h-4 w-4" />
+              <div className="relative rounded-2xl border border-gray-200/60 dark:border-gray-800/60 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500" />
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 text-white">
+                      <Clock className="h-3.5 w-3.5" />
                     </div>
-                    Orari di Lavoro e Limiti
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">Orari e Limiti</span>
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-                    Imposta quando e quanto il dipendente AI pu\u00f2 operare
-                  </p>
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold">Ora Inizio</Label>
-                        <Input
-                          type="time"
-                          className="rounded-xl"
-                          value={settings.working_hours_start}
-                          onChange={(e) => setSettings(prev => ({ ...prev, working_hours_start: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold">Ora Fine</Label>
-                        <Input
-                          type="time"
-                          className="rounded-xl"
-                          value={settings.working_hours_end}
-                          onChange={(e) => setSettings(prev => ({ ...prev, working_hours_end: e.target.value }))}
-                        />
-                      </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Giorni Lavorativi</Label>
-                      <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-1 lg:grid-cols-[1fr,1px,1fr] gap-4">
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-semibold">Inizio</Label>
+                          <Input type="time" className="rounded-xl h-9 text-xs" value={settings.working_hours_start} onChange={(e) => setSettings(prev => ({ ...prev, working_hours_start: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-semibold">Fine</Label>
+                          <Input type="time" className="rounded-xl h-9 text-xs" value={settings.working_hours_end} onChange={(e) => setSettings(prev => ({ ...prev, working_hours_end: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
                         {DAYS_OF_WEEK.map((day) => (
-                          <Button
-                            key={day.value}
-                            variant={settings.working_days.includes(day.value) ? "default" : "outline"}
-                            size="sm"
-                            className={cn("rounded-xl transition-all duration-200", settings.working_days.includes(day.value) && "shadow-md")}
-                            onClick={() => toggleWorkingDay(day.value)}
-                          >
+                          <Button key={day.value} variant={settings.working_days.includes(day.value) ? "default" : "outline"} size="sm" className={cn("rounded-lg h-7 text-[11px] px-2", settings.working_days.includes(day.value) && "shadow-sm")} onClick={() => toggleWorkingDay(day.value)}>
                             {day.label}
                           </Button>
                         ))}
                       </div>
                     </div>
 
-                    <Separator />
+                    <div className="hidden lg:block bg-gray-200/50 dark:bg-gray-700/30" />
 
-                    <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <Shield className="h-4 w-4 text-indigo-500" />
-                        <Label className="text-sm font-semibold">Limiti Giornalieri</Label>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div className="space-y-2">
-                          <Label className="flex items-center gap-1 text-xs font-medium">
-                            <Phone className="h-3.5 w-3.5 text-blue-500" /> Chiamate
-                          </Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            className="rounded-xl"
-                            value={settings.max_daily_calls}
-                            onChange={(e) => setSettings(prev => ({ ...prev, max_daily_calls: parseInt(e.target.value) || 0 }))}
-                          />
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="space-y-1">
+                          <Label className="flex items-center gap-1 text-[11px] font-semibold"><Phone className="h-3 w-3 text-blue-500" />Chiamate</Label>
+                          <Input type="number" min={0} className="rounded-xl h-9 text-xs" value={settings.max_daily_calls} onChange={(e) => setSettings(prev => ({ ...prev, max_daily_calls: parseInt(e.target.value) || 0 }))} />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="flex items-center gap-1 text-xs font-medium">
-                            <Mail className="h-3.5 w-3.5 text-violet-500" /> Email
-                          </Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            className="rounded-xl"
-                            value={settings.max_daily_emails}
-                            onChange={(e) => setSettings(prev => ({ ...prev, max_daily_emails: parseInt(e.target.value) || 0 }))}
-                          />
+                        <div className="space-y-1">
+                          <Label className="flex items-center gap-1 text-[11px] font-semibold"><Mail className="h-3 w-3 text-violet-500" />Email</Label>
+                          <Input type="number" min={0} className="rounded-xl h-9 text-xs" value={settings.max_daily_emails} onChange={(e) => setSettings(prev => ({ ...prev, max_daily_emails: parseInt(e.target.value) || 0 }))} />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="flex items-center gap-1 text-xs font-medium">
-                            <MessageSquare className="h-3.5 w-3.5 text-green-500" /> WhatsApp
-                          </Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            className="rounded-xl"
-                            value={settings.max_daily_whatsapp}
-                            onChange={(e) => setSettings(prev => ({ ...prev, max_daily_whatsapp: parseInt(e.target.value) || 0 }))}
-                          />
+                        <div className="space-y-1">
+                          <Label className="flex items-center gap-1 text-[11px] font-semibold"><MessageSquare className="h-3 w-3 text-green-500" />WA</Label>
+                          <Input type="number" min={0} className="rounded-xl h-9 text-xs" value={settings.max_daily_whatsapp} onChange={(e) => setSettings(prev => ({ ...prev, max_daily_whatsapp: parseInt(e.target.value) || 0 }))} />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="flex items-center gap-1 text-xs font-medium">
-                            <BarChart3 className="h-3.5 w-3.5 text-amber-500" /> Analisi
-                          </Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            className="rounded-xl"
-                            value={settings.max_daily_analyses}
-                            onChange={(e) => setSettings(prev => ({ ...prev, max_daily_analyses: parseInt(e.target.value) || 0 }))}
-                          />
+                        <div className="space-y-1">
+                          <Label className="flex items-center gap-1 text-[11px] font-semibold"><BarChart3 className="h-3 w-3 text-amber-500" />Analisi</Label>
+                          <Input type="number" min={0} className="rounded-xl h-9 text-xs" value={settings.max_daily_analyses} onChange={(e) => setSettings(prev => ({ ...prev, max_daily_analyses: parseInt(e.target.value) || 0 }))} />
                         </div>
                       </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2 font-semibold">
-                        <RefreshCw className="h-4 w-4 text-indigo-500" />
-                        Frequenza Analisi Autonoma (minuti)
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Ogni quanti minuti l'AI analizza i clienti e propone nuovi task.
-                      </p>
-                      <div className="flex items-center gap-4">
-                        <Input
-                          type="number"
-                          min={30}
-                          max={1440}
-                          className="w-32 rounded-xl"
-                          value={settings.proactive_check_interval_minutes}
-                          onChange={(e) => setSettings(prev => ({ ...prev, proactive_check_interval_minutes: Math.max(30, parseInt(e.target.value) || 60) }))}
-                        />
-                        <span className="text-xs text-muted-foreground font-medium">
-                          {settings.proactive_check_interval_minutes < 60
-                            ? `ogni ${settings.proactive_check_interval_minutes} minuti`
-                            : settings.proactive_check_interval_minutes === 60
-                              ? "ogni ora"
-                              : `ogni ${Math.floor(settings.proactive_check_interval_minutes / 60)}h ${settings.proactive_check_interval_minutes % 60 > 0 ? `${settings.proactive_check_interval_minutes % 60}m` : ""}`
-                          }
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="h-3 w-3 text-indigo-500 shrink-0" />
+                        <span className="text-[11px] font-semibold shrink-0">Frequenza analisi</span>
+                        <Input type="number" min={30} max={1440} className="rounded-xl h-7 text-[11px] w-16" value={settings.proactive_check_interval_minutes} onChange={(e) => setSettings(prev => ({ ...prev, proactive_check_interval_minutes: Math.max(30, parseInt(e.target.value) || 60) }))} />
+                        <span className="text-[10px] text-muted-foreground">
+                          {settings.proactive_check_interval_minutes < 60 ? `${settings.proactive_check_interval_minutes}min` : settings.proactive_check_interval_minutes === 60 ? "1h" : `${Math.floor(settings.proactive_check_interval_minutes / 60)}h${settings.proactive_check_interval_minutes % 60 > 0 ? `${settings.proactive_check_interval_minutes % 60}m` : ""}`}
                         </span>
                       </div>
                     </div>
@@ -2030,24 +1758,21 @@ function SettingsTab({
                 </div>
               </div>
 
-              <div className="relative rounded-2xl border border-gray-200/60 dark:border-gray-800/60 overflow-hidden bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-900/80 dark:to-gray-900 shadow-sm hover:shadow-lg transition-all duration-500">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400" />
-                <div className="p-6">
-                  <div className="flex items-center gap-2.5 text-base font-bold text-gray-900 dark:text-white mb-1">
-                    <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 text-white">
-                      <Brain className="h-4 w-4" />
+              <div className="relative rounded-2xl border border-gray-200/60 dark:border-gray-800/60 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400" />
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 text-white">
+                      <Brain className="h-3.5 w-3.5" />
                     </div>
-                    Istruzioni Personalizzate
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">Istruzioni Personalizzate</span>
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Fornisci istruzioni specifiche per guidare il comportamento dell'AI
-                  </p>
                   <Textarea
                     value={settings.custom_instructions}
                     onChange={(e) => setSettings(prev => ({ ...prev, custom_instructions: e.target.value }))}
                     placeholder="Es: Non chiamare mai i clienti prima delle 10. Prioritizza i lead caldi."
-                    rows={4}
-                    className="rounded-xl"
+                    rows={3}
+                    className="rounded-xl text-xs"
                   />
                 </div>
               </div>
