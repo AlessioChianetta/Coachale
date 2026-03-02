@@ -1,0 +1,296 @@
+{
+  "success": true,
+  "dryRun": true,
+  "steps": [
+    {
+      "step": "1. Creazione requirement group",
+      "status": "ok",
+      "data": {
+        "groupId": "b41cd0c6-cb8b-41a3-ae06-ee0d323231fa",
+        "requirementsCount": 16,
+        "requirements": [
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "document",
+            "updated_at": "2026-03-02T03:52:53.222305Z",
+            "created_at": "2026-03-02T03:52:53.222303Z",
+            "field_value": "",
+            "requirement_id": "0ba49bfa-8a0b-4e38-95ba-f1291507fad4"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "address",
+            "updated_at": "2026-03-02T03:52:53.339978Z",
+            "created_at": "2026-03-02T03:52:53.339975Z",
+            "field_value": "",
+            "requirement_id": "0e84f7f9-d195-4d02-9873-9ac4b99c276d"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "textual",
+            "updated_at": "2026-03-02T03:52:53.450030Z",
+            "created_at": "2026-03-02T03:52:53.450028Z",
+            "field_value": "",
+            "requirement_id": "240451b2-d3ef-4b73-b2aa-93265678a48e"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "textual",
+            "updated_at": "2026-03-02T03:52:53.552774Z",
+            "created_at": "2026-03-02T03:52:53.552772Z",
+            "field_value": "",
+            "requirement_id": "2836da67-5912-4bae-9740-d55844fcaf7c"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "textual",
+            "updated_at": "2026-03-02T03:52:53.652584Z",
+            "created_at": "2026-03-02T03:52:53.652582Z",
+            "field_value": "",
+            "requirement_id": "2d0e8476-e927-479d-9406-c19bb11f18db"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "textual",
+            "updated_at": "2026-03-02T03:52:53.758494Z",
+            "created_at": "2026-03-02T03:52:53.758492Z",
+            "field_value": "",
+            "requirement_id": "3164f2ae-5cdc-49d6-8790-215015f91c41"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "textual",
+            "updated_at": "2026-03-02T03:52:53.859207Z",
+            "created_at": "2026-03-02T03:52:53.859205Z",
+            "field_value": "",
+            "requirement_id": "413ad281-5b37-4de9-9f02-51ae91bccaa2"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "document",
+            "updated_at": "2026-03-02T03:52:53.963667Z",
+            "created_at": "2026-03-02T03:52:53.963665Z",
+            "field_value": "",
+            "requirement_id": "540425c2-78b7-4f24-9eef-108af9a7ad34"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "textual",
+            "updated_at": "2026-03-02T03:52:54.074525Z",
+            "created_at": "2026-03-02T03:52:54.074523Z",
+            "field_value": "",
+            "requirement_id": "6bac4095-ca03-4d63-b229-f92d1286e6a0"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "textual",
+            "updated_at": "2026-03-02T03:52:54.171714Z",
+            "created_at": "2026-03-02T03:52:54.171712Z",
+            "field_value": "",
+            "requirement_id": "6c65df6f-28a8-4c72-8b87-b52864915c4a"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "textual",
+            "updated_at": "2026-03-02T03:52:54.280974Z",
+            "created_at": "2026-03-02T03:52:54.280972Z",
+            "field_value": "",
+            "requirement_id": "7dcc2229-8ddc-4c10-a8df-ff133abc00f1"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "document",
+            "updated_at": "2026-03-02T03:52:54.383042Z",
+            "created_at": "2026-03-02T03:52:54.383040Z",
+            "field_value": "",
+            "requirement_id": "8b54a9b2-62c1-41c2-93d9-00c72f057e43"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "textual",
+            "updated_at": "2026-03-02T03:52:54.485843Z",
+            "created_at": "2026-03-02T03:52:54.485841Z",
+            "field_value": "",
+            "requirement_id": "a3c2682d-9c5e-45b6-84a5-9f7d1f4fc1c5"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "address",
+            "updated_at": "2026-03-02T03:52:54.592128Z",
+            "created_at": "2026-03-02T03:52:54.592125Z",
+            "field_value": "",
+            "requirement_id": "ad56ca91-a671-4c07-bc62-ada0c266e45c"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "textual",
+            "updated_at": "2026-03-02T03:52:54.699908Z",
+            "created_at": "2026-03-02T03:52:54.699906Z",
+            "field_value": "",
+            "requirement_id": "c4cb7670-8263-4f59-a9cd-b5705e7360ba"
+          },
+          {
+            "status": "unapproved",
+            "expires_at": null,
+            "field_type": "textual",
+            "updated_at": "2026-03-02T03:52:54.794376Z",
+            "created_at": "2026-03-02T03:52:54.794373Z",
+            "field_value": "",
+            "requirement_id": "d341dbfb-ef9d-41d8-bb40-247a1347c6f7"
+          }
+        ]
+      }
+    },
+    {
+      "step": "2. Fetch requirement types",
+      "status": "ok",
+      "data": {
+        "count": 20,
+        "types": [
+          {
+            "id": "bcb7927e-7a8b-483e-812e-ff80efb4bd6f",
+            "name": "abctest",
+            "record_type": "requirement_type",
+            "description": "Testing"
+          },
+          {
+            "id": "6763dde8-1f1c-479d-9cde-cb09ee2adffa",
+            "name": "CHILE - Power of Attorney",
+            "record_type": "requirement_type",
+            "description": "available at https://www.conservador.cl/portal/certificado_vigencia_poder"
+          },
+          {
+            "id": "ab64acec-53ba-4b56-953b-54c139d8a61c",
+            "name": "CHILE - Certificate of Incorporation",
+            "record_type": "requirement_type",
+            "description": "Document can be obtained through this link https://www.conservador.cl/portal/certificado_vigencia_sociedad"
+          },
+          {
+            "id": "3ef435e8-1093-4020-abf3-b87ad63ec905",
+            "name": "E-RUT",
+            "record_type": "requirement_type",
+            "description": "this document is available at https://www.sii.cl/destacados/erut/"
+          },
+          {
+            "id": "ad4b6976-8342-44df-afa6-5c8af1ee8428",
+            "name": "RUT of the individual requesting portability",
+            "record_type": "requirement_type",
+            "description": "a copy of the Legal Representative’s ID"
+          },
+          {
+            "id": "69b10ae8-fd42-44c9-b89d-f6a839dec9a9",
+            "name": "Proof of ownership signed by the underlying carrier ",
+            "record_type": "requirement_type",
+            "description": "This is a document that displays the end-user has full ownership of the number(s) and is signed by the underlying carrier "
+          },
+          {
+            "id": "34f9dd0c-6628-4a31-bf91-bb8bbac7bdac",
+            "name": "Service Agreement Form",
+            "record_type": "requirement_type",
+            "description": "Service Agreement Form"
+          },
+          {
+            "id": "9caaab84-068d-4a48-8893-9b3c07ecac93",
+            "name": "Recently Signed Japan LOI (Signed Within 1 Month)",
+            "record_type": "requirement_type",
+            "description": "A specific LOI needs to be signed by the end user or authorized representative within 1 month of order"
+          },
+          {
+            "id": "40345539-6a33-4bcf-b254-6de348eb1b99",
+            "name": "Bahrain Company registration certificate",
+            "record_type": "requirement_type",
+            "description": "Bahrain Company registration certificate in PDF format"
+          },
+          {
+            "id": "37fa06d1-fbac-4ab0-93c1-29bc68710367",
+            "name": "Local Business Registration Certificate (Business Use Only)",
+            "record_type": "requirement_type",
+            "description": "A local copy of the company registration (local company) must be provided."
+          },
+          {
+            "id": "540425c2-78b7-4f24-9eef-108af9a7ad34",
+            "name": "Local ID/Passport Copy",
+            "record_type": "requirement_type",
+            "description": "A local copy of ID/Passport must be provided."
+          },
+          {
+            "id": "6f9a47f5-da93-4e7b-91ab-02e38b596d70",
+            "name": "Local ID/Passport Copy or Local Company Registration Certificate",
+            "record_type": "requirement_type",
+            "description": "A local copy of ID/Passport or a copy of the company registration (local company) must be provided."
+          },
+          {
+            "id": "600af732-6741-4984-a6e7-bbef648f5565",
+            "name": "Proof of Address matching the address in the Business Registration Certificate",
+            "record_type": "requirement_type",
+            "description": "Proof of Address matching the address in the Business Registration Certificate (dated within 3 months) "
+          },
+          {
+            "id": "a7470117-0e40-45ad-8b50-fc094471a143",
+            "name": "Address worldwide outside of United Arab Emirates",
+            "record_type": "requirement_type",
+            "description": "The end user must not be based in the UAE"
+          },
+          {
+            "id": "73e04fa0-738a-430d-abe4-6156963ae0a7",
+            "name": "Company registration certificate (must be a non-UAE entity)",
+            "record_type": "requirement_type",
+            "description": "UAE entities are not allowed"
+          },
+          {
+            "id": "61bbaf94-b076-493d-b29f-b5a4558e0c41",
+            "name": "Local NPWP Card (Tax ID)",
+            "record_type": "requirement_type",
+            "description": "Local NPWP Card (Tax ID)"
+          },
+          {
+            "id": "4cf19b95-d12a-48e7-bcbb-aab2d4b20ad1",
+            "name": "TAX/RUT number",
+            "record_type": "requirement_type",
+            "description": "TAX/RUT number"
+          },
+          {
+            "id": "fc94889c-578c-481c-a005-08c556e51f8e",
+            "name": "Kuwaiti ID Copy",
+            "record_type": "requirement_type",
+            "description": "Kuwaiti ID Copy"
+          },
+          {
+            "id": "4b3b22dc-bdf0-4866-a216-f87135d9f828",
+            "name": "Local Application Form",
+            "record_type": "requirement_type",
+            "description": "Local Application Form provided by NumberOps"
+          },
+          {
+            "id": "c4cb7670-8263-4f59-a9cd-b5705e7360ba",
+            "name": "VAT number (For legal entities and sole proprietorships only)",
+            "record_type": "requirement_type",
+            "description": "VAT number"
+          }
+        ]
+      }
+    },
+    {
+      "step": "3-7. Steps rimanenti",
+      "status": "skipped_dry_run",
+      "data": {
+        "message": "Dry run attivo — imposta dryRun=false per eseguire upload documento, compilazione requirements e submit per approvazione"
+      }
+    }
+  ]
+}
