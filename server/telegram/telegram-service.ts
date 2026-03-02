@@ -1124,32 +1124,45 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       `);
     }
 
+    sendTelegramChatAction(botToken, chatId, "typing");
+    typingInterval = setInterval(() => {
+      if (!abortController.signal.aborted) {
+        sendTelegramChatAction(botToken, chatId, "typing");
+      }
+    }, 4000);
+
     let accumulatedText = '';
     let lastDraftTime = 0;
     let draftSupported = true;
+    let draftChecked = false;
+    let chunkCount = 0;
 
     const streamCallback = (chunk: string) => {
       accumulatedText += chunk;
+      chunkCount++;
       const now = Date.now();
-      if (draftSupported && now - lastDraftTime >= STREAM_DRAFT_INTERVAL_MS) {
+      if (now - lastDraftTime >= STREAM_DRAFT_INTERVAL_MS) {
         lastDraftTime = now;
-        const displayText = accumulatedText.length > 4096 ? accumulatedText.substring(0, 4093) + '...' : accumulatedText;
-        sendTelegramMessageDraft(botToken, chatId, displayText + ' ▌').then(ok => {
-          if (!ok && accumulatedText.length < 50) {
-            console.warn(`[TELEGRAM] sendMessageDraft not supported, falling back to typing action`);
-            draftSupported = false;
-            sendTelegramChatAction(botToken, chatId, "typing");
-            typingInterval = setInterval(() => {
-              if (!abortController.signal.aborted) {
-                sendTelegramChatAction(botToken, chatId, "typing");
-              }
-            }, 4000);
-          }
-        }).catch(() => {});
+        if (draftSupported) {
+          const displayText = accumulatedText.length > 4096 ? accumulatedText.substring(0, 4093) + '...' : accumulatedText;
+          sendTelegramMessageDraft(botToken, chatId, displayText + ' ▌').then(ok => {
+            if (!ok && !draftChecked) {
+              draftChecked = true;
+              console.warn(`[TELEGRAM] sendMessageDraft not supported for chat ${chatId}, using typing fallback only`);
+              draftSupported = false;
+            }
+          }).catch(() => {
+            if (!draftChecked) {
+              draftChecked = true;
+              draftSupported = false;
+            }
+          });
+        }
       }
     };
 
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
+    console.log(`[TELEGRAM] Starting AI generation for chat ${chatId}, role ${aiRole} (streaming enabled)`);
     const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
       skipUserMessageInsert: true,
       metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, chat_title: chatTitle, sender_id: senderId, sender_name: firstName, sender_username: username },
@@ -1161,7 +1174,11 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     });
 
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
+    if (draftSupported && chunkCount > 0) {
+      sendTelegramMessageDraft(botToken, chatId, "").catch(() => {});
+    }
 
+    console.log(`[TELEGRAM] AI generation complete for chat ${chatId}: ${aiResponse.length} chars, ${chunkCount} stream chunks received, draftSupported=${draftSupported}`);
     await sendTelegramMessage(botToken, chatId, aiResponse, "Markdown");
     console.log(`[TELEGRAM] Streaming response sent to chat ${chatId} for role ${aiRole}`);
   } catch (err: any) {

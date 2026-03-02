@@ -6667,11 +6667,12 @@ REGOLE ANTI-ALLUCINAZIONE:
     if (options?.signal?.aborted) throw new Error('AbortError');
 
     let response: any;
-    if (options?.streamCallback && aiClient.models?.generateContentStream) {
-      const streamResult = await aiClient.models.generateContentStream({
+    if (options?.streamCallback && (aiClient as any).generateContentStream) {
+      const streamResult = await (aiClient as any).generateContentStream({
         model: providerModel,
         contents: chatContents,
-        config: chatConfig,
+        generationConfig: chatConfig,
+        ...(fileSearchTool && { tools: [fileSearchTool] }),
       });
       let fullText = '';
       for await (const chunk of streamResult) {
