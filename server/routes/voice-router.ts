@@ -4656,6 +4656,25 @@ router.post("/voip-provisioning/activate", authenticateToken, requireAnyRole(["s
   }
 });
 
+// Search Telnyx directly (for classic KYC flow — when number not in inventory)
+router.get("/voip-provisioning/search-telnyx", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const prefix = (req.query.prefix as string) || "";
+    const country = (req.query.country as string) || "IT";
+
+    const configured = await telnyxProvisioning.isTelnyxConfigured();
+    if (!configured) {
+      return res.status(503).json({ error: "Telnyx non configurato. Contattare l'amministratore." });
+    }
+
+    const numbers = await telnyxProvisioning.searchAvailableNumbers(prefix, country, { bestEffort: true });
+    res.json({ success: true, numbers });
+  } catch (error: any) {
+    console.error("[VOIP] Error searching Telnyx numbers:", error);
+    res.status(500).json({ error: `Errore nella ricerca numeri: ${error.message}` });
+  }
+});
+
 // ===== NEW FLOW: Number-first provisioning (inventory-based) =====
 
 router.get("/voip-provisioning/available-numbers", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
