@@ -94,12 +94,12 @@ export async function scheduleAutoCall(params: AutoCallParams): Promise<AutoCall
       INSERT INTO scheduled_voice_calls (
         id, consultant_id, target_phone, scheduled_at, status, ai_mode,
         call_instruction, instruction_type, attempts, max_attempts,
-        priority, notes
+        priority
       ) VALUES (
         ${callId}, ${consultantId}, ${phoneNumber}, ${scheduledAt.toISOString()},
         'pending', 'outreach',
         ${instruction}, 'task', 0, 3,
-        5, ${'Auto-call from ' + source + ' for ' + leadName}
+        5
       )
     `);
 
