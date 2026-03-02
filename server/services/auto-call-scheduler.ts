@@ -30,23 +30,25 @@ function generateAutoCallId(): string {
   return `autocall_${ts}_${rand}`;
 }
 
-function buildDefaultInstruction(leadName: string, leadInfo?: AutoCallParams['leadInfo']): string {
-  const parts: string[] = [`Primo contatto con ${leadName}.`];
+function buildLeadContext(leadName: string, leadInfo?: AutoCallParams['leadInfo']): string | null {
+  const parts: string[] = [];
+
+  parts.push(`Nome: ${leadName}`);
 
   if (leadInfo?.obiettivi) {
-    parts.push(`Obiettivi del lead: ${leadInfo.obiettivi}.`);
+    parts.push(`Obiettivi: ${leadInfo.obiettivi}`);
   }
   if (leadInfo?.desideri) {
-    parts.push(`Desideri: ${leadInfo.desideri}.`);
+    parts.push(`Desideri: ${leadInfo.desideri}`);
   }
   if (leadInfo?.uncino) {
-    parts.push(`Angolo conversazione: ${leadInfo.uncino}.`);
+    parts.push(`Angolo conversazione: ${leadInfo.uncino}`);
   }
   if (leadInfo?.fonte) {
-    parts.push(`Fonte: ${leadInfo.fonte}.`);
+    parts.push(`Fonte: ${leadInfo.fonte}`);
   }
 
-  return parts.join(' ');
+  return parts.length > 1 ? parts.join('\n') : null;
 }
 
 export async function scheduleAutoCall(params: AutoCallParams): Promise<AutoCallResult> {
@@ -85,7 +87,7 @@ export async function scheduleAutoCall(params: AutoCallParams): Promise<AutoCall
     }
 
     const callId = generateAutoCallId();
-    const instruction = callInstruction || buildDefaultInstruction(leadName, leadInfo);
+    const leadContext = buildLeadContext(leadName, leadInfo);
 
     const delaySeconds = Math.max(delayMinutes * 60, 30);
     const scheduledAt = new Date(Date.now() + delaySeconds * 1000);
@@ -93,12 +95,12 @@ export async function scheduleAutoCall(params: AutoCallParams): Promise<AutoCall
     await db.execute(sql`
       INSERT INTO scheduled_voice_calls (
         id, consultant_id, target_phone, scheduled_at, status, ai_mode,
-        call_instruction, instruction_type, attempts, max_attempts,
+        custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
         priority
       ) VALUES (
         ${callId}, ${consultantId}, ${phoneNumber}, ${scheduledAt.toISOString()},
         'pending', 'outreach',
-        ${instruction}, 'task', 0, 3,
+        ${leadContext}, ${callInstruction || null}, ${callInstruction ? 'task' : null}, 0, 3,
         5
       )
     `);
