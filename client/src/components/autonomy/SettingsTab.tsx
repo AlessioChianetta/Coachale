@@ -1303,758 +1303,708 @@ function SettingsTab({
         {/* Tab: Autonomia & Modalita' */}
         <TabsContent value="autonomia" className="mt-5 space-y-5">
 
-          {(() => {
-            const enabledRolesCount = systemStatus?.roles?.filter(r => r.enabled).length || 0;
-            const hasClients = (systemStatus?.total_clients || 0) > 0;
-            const hasVoice = settings.channels_enabled?.voice;
-            const hasEmail = settings.channels_enabled?.email;
-            const hasWhatsapp = settings.channels_enabled?.whatsapp;
-            const hasAnyChannel = hasVoice || hasEmail || hasWhatsapp;
-            const hasCategories = settings.allowed_task_categories.length > 0;
+          <div className="flex items-center justify-center gap-0 mb-6">
+            {[
+              { label: "Attivazione", icon: <Zap className="h-4 w-4" /> },
+              { label: "Modalità", icon: <Cog className="h-4 w-4" /> },
+              { label: "Configurazione", icon: <Brain className="h-4 w-4" /> },
+            ].map((step, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && (
+                  <div className={cn("h-0.5 w-8 sm:w-16 transition-colors", i <= autonomiaStep ? "bg-primary" : "bg-muted")} />
+                )}
+                <button
+                  onClick={() => setAutonomiaStep(i)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium transition-all",
+                    i === autonomiaStep
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : i < autonomiaStep
+                        ? "bg-primary/10 text-primary"
+                        : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  <span className="flex items-center justify-center h-5 w-5 rounded-full bg-background/20 text-[10px] font-bold">{i + 1}</span>
+                  <span className="hidden sm:inline">{step.label}</span>
+                  {step.icon}
+                </button>
+              </React.Fragment>
+            ))}
+          </div>
 
-            const checks = [
-              {
-                label: "Sistema attivo",
-                done: settings.is_active,
-                hint: "Attiva lo switch qui sotto",
-                required: true,
-              },
-              {
-                label: "Livello autonomia \u2265 2",
-                done: settings.autonomy_level >= 2,
-                hint: "Imposta almeno livello 2 per l'analisi clienti",
-                required: true,
-              },
-              {
-                label: `Dipendenti abilitati (${enabledRolesCount})`,
-                done: enabledRolesCount > 0,
-                hint: "Vai alla tab Dipendenti AI e attivane almeno uno",
-                required: true,
-              },
-              {
-                label: "Clienti presenti",
-                done: hasClients,
-                hint: `${systemStatus?.total_clients || 0} clienti assegnati`,
-                required: true,
-              },
-              {
-                label: "Categorie task abilitate",
-                done: hasCategories,
-                hint: "Vai a Canali & Categorie e abilita almeno una categoria",
-                required: true,
-              },
-              {
-                label: "Canale voce",
-                done: !!hasVoice,
-                hint: "Per chiamate vocali con Alessia",
-                required: false,
-              },
-              {
-                label: "Canale email",
-                done: !!hasEmail,
-                hint: "Per email con Millie",
-                required: false,
-              },
-              {
-                label: "Canale WhatsApp",
-                done: !!hasWhatsapp,
-                hint: "Per messaggi con Stella",
-                required: false,
-              },
-            ];
+          {autonomiaStep === 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-5"
+            >
+              {(() => {
+                const enabledRolesCount = systemStatus?.roles?.filter(r => r.enabled).length || 0;
+                const hasClients = (systemStatus?.total_clients || 0) > 0;
+                const hasVoice = settings.channels_enabled?.voice;
+                const hasEmail = settings.channels_enabled?.email;
+                const hasWhatsapp = settings.channels_enabled?.whatsapp;
+                const hasCategories = settings.allowed_task_categories.length > 0;
 
-            const requiredChecks = checks.filter(c => c.required);
-            const optionalChecks = checks.filter(c => !c.required);
-            const requiredDone = requiredChecks.filter(c => c.done).length;
-            const allRequiredDone = requiredDone === requiredChecks.length;
-            const optionalDone = optionalChecks.filter(c => c.done).length;
-            const progressPercent = Math.round((requiredDone / requiredChecks.length) * 100);
+                const checks = [
+                  { label: "Sistema attivo", done: settings.is_active, hint: "Attiva lo switch qui sotto", required: true },
+                  { label: "Livello autonomia \u2265 2", done: settings.autonomy_level >= 2, hint: "Imposta almeno livello 2", required: true },
+                  { label: `Dipendenti abilitati (${enabledRolesCount})`, done: enabledRolesCount > 0, hint: "Vai alla tab Dipendenti AI", required: true },
+                  { label: "Clienti presenti", done: hasClients, hint: `${systemStatus?.total_clients || 0} clienti`, required: true },
+                  { label: "Categorie task abilitate", done: hasCategories, hint: "Vai a Canali & Categorie", required: true },
+                  { label: "Canale voce", done: !!hasVoice, hint: "Per chiamate con Alessia", required: false },
+                  { label: "Canale email", done: !!hasEmail, hint: "Per email con Millie", required: false },
+                  { label: "Canale WhatsApp", done: !!hasWhatsapp, hint: "Per messaggi con Stella", required: false },
+                ];
 
-            return (
-              <div className={cn(
-                "relative rounded-2xl border p-5 overflow-hidden transition-all duration-300",
-                allRequiredDone
-                  ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
-                  : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
-              )}>
-                <div className={cn(
-                  "absolute top-0 left-0 right-0 h-1",
-                  allRequiredDone ? "bg-emerald-400" : "bg-gradient-to-r from-amber-400 to-orange-400"
-                )} />
+                const requiredChecks = checks.filter(c => c.required);
+                const optionalChecks = checks.filter(c => !c.required);
+                const requiredDone = requiredChecks.filter(c => c.done).length;
+                const allRequiredDone = requiredDone === requiredChecks.length;
+                const optionalDone = optionalChecks.filter(c => c.done).length;
+                const progressPercent = Math.round((requiredDone / requiredChecks.length) * 100);
 
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "flex items-center justify-center h-10 w-10 rounded-full text-lg font-bold shrink-0",
-                      allRequiredDone
-                        ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
-                        : "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"
-                    )}>
-                      {allRequiredDone ? <CheckCircle className="h-5 w-5" /> : `${progressPercent}%`}
+                return (
+                  <div className={cn(
+                    "relative rounded-2xl border p-5 overflow-hidden transition-all duration-300",
+                    allRequiredDone
+                      ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+                      : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+                  )}>
+                    <div className={cn("absolute top-0 left-0 right-0 h-1", allRequiredDone ? "bg-emerald-400" : "bg-gradient-to-r from-amber-400 to-orange-400")} />
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "flex items-center justify-center h-10 w-10 rounded-full text-lg font-bold shrink-0",
+                          allRequiredDone ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600" : "bg-amber-100 dark:bg-amber-900/40 text-amber-600"
+                        )}>
+                          {allRequiredDone ? <CheckCircle className="h-5 w-5" /> : `${progressPercent}%`}
+                        </div>
+                        <div>
+                          <h3 className={cn("text-sm font-semibold", allRequiredDone ? "text-emerald-800 dark:text-emerald-300" : "text-amber-800 dark:text-amber-300")}>
+                            {allRequiredDone ? "Pronto per partire!" : "Checklist avvio AI"}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {allRequiredDone ? `Tutti i requisiti soddisfatti \u2022 ${optionalDone}/${optionalChecks.length} canali` : `${requiredDone}/${requiredChecks.length} requisiti completati`}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className={cn(
-                        "text-sm font-semibold",
-                        allRequiredDone ? "text-emerald-800 dark:text-emerald-300" : "text-amber-800 dark:text-amber-300"
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-4">
+                      <div className={cn("h-1.5 rounded-full transition-all duration-500", allRequiredDone ? "bg-emerald-500" : "bg-amber-500")} style={{ width: `${progressPercent}%` }} />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+                      {requiredChecks.map((check, i) => (
+                        <div key={i} className="flex items-center gap-2 py-1">
+                          {check.done ? <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" /> : <div className="h-4 w-4 rounded-full border-2 border-amber-400 shrink-0" />}
+                          <span className={cn("text-xs font-medium", check.done ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400")}>{check.label}</span>
+                          {!check.done && <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">{check.hint}</span>}
+                        </div>
+                      ))}
+                    </div>
+                    {optionalChecks.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Canali (opzionali)</p>
+                        <div className="flex flex-wrap gap-2">
+                          {optionalChecks.map((check, i) => (
+                            <Badge key={i} variant="outline" className={cn("text-[10px] gap-1 py-0.5 rounded-lg", check.done ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200" : "text-muted-foreground")}>
+                              {check.done ? <CheckCircle className="h-3 w-3" /> : <div className="h-3 w-3 rounded-full border border-current" />}
+                              {check.label}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
+                <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
+                  <Zap className="h-5 w-5" />
+                  Stato e Livello di Autonomia
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Definisci quanto il tuo dipendente AI pu\u00f2 operare in modo indipendente
+                </p>
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Abilita Dipendente AI</Label>
+                      <p className="text-xs text-muted-foreground">Attiva o disattiva il dipendente AI</p>
+                    </div>
+                    <Switch
+                      checked={settings.is_active}
+                      onCheckedChange={(checked) => setSettings(prev => ({ ...prev, is_active: checked }))}
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <div className="flex flex-col items-center justify-center py-4">
+                      <div className={cn(
+                        "flex items-center justify-center h-24 w-24 rounded-full border-4 text-4xl font-bold",
+                        settings.autonomy_level === 0 ? "border-muted-foreground/30 text-muted-foreground" :
+                        settings.autonomy_level <= 3 ? "border-emerald-500/40 text-emerald-500" :
+                        settings.autonomy_level <= 6 ? "border-amber-500/40 text-amber-500" :
+                        settings.autonomy_level <= 9 ? "border-orange-500/40 text-orange-500" : "border-red-500/40 text-red-500"
                       )}>
-                        {allRequiredDone ? "Pronto per partire!" : "Checklist avvio AI"}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        {allRequiredDone
-                          ? `Tutti i requisiti soddisfatti \u2022 ${optionalDone}/${optionalChecks.length} canali configurati`
-                          : `${requiredDone}/${requiredChecks.length} requisiti completati`}
+                        {settings.autonomy_level}
+                      </div>
+                      <p className={cn("text-lg font-semibold mt-2", autonomyInfo.color)}>
+                        {autonomyInfo.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground">su 10</p>
+                    </div>
+
+                    <div className="rounded-xl border border-border p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Livello di Autonomia</Label>
+                        <Badge className={cn("rounded-lg", getAutonomyBadgeColor(settings.autonomy_level))}>
+                          {settings.autonomy_level}/10
+                        </Badge>
+                      </div>
+                      <Slider
+                        value={[settings.autonomy_level]}
+                        onValueChange={(val) => setSettings(prev => ({ ...prev, autonomy_level: val[0] }))}
+                        max={10}
+                        min={0}
+                        step={1}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between gap-1">
+                        <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-muted-foreground rounded-lg">0 Off</Badge>
+                        <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-emerald-600 border-emerald-200 dark:text-emerald-400 dark:border-emerald-800 rounded-lg">1-3</Badge>
+                        <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-amber-600 border-amber-200 dark:text-amber-400 dark:border-amber-800 rounded-lg">4-6</Badge>
+                        <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-orange-600 border-orange-200 dark:text-orange-400 dark:border-orange-800 rounded-lg">7-9</Badge>
+                        <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-red-600 border-red-200 dark:text-red-400 dark:border-red-800 rounded-lg">10</Badge>
+                      </div>
+                    </div>
+
+                    <div className={cn(
+                      "p-4 rounded-xl border",
+                      autonomyInfo.color === "text-muted-foreground" ? "bg-muted/50 border-muted" :
+                      settings.autonomy_level <= 3 ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40" :
+                      settings.autonomy_level <= 6 ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40" :
+                      settings.autonomy_level <= 9 ? "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40" :
+                      "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40"
+                    )}>
+                      <p className={cn("text-sm flex items-start gap-2", autonomyInfo.color)}>
+                        <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                        {autonomyInfo.description}
                       </p>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-4">
-                  <div
+              <div className="flex justify-end">
+                <Button onClick={() => setAutonomiaStep(1)} className="rounded-xl gap-2">
+                  Avanti <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {autonomiaStep === 1 && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-5"
+            >
+              <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
+                <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
+                  <Cog className="h-5 w-5" />
+                  Modalit\u00e0 Operativa
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+                  Scegli come il tuo dipendente AI gestisce i task
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <button
+                    onClick={() => setSettings(prev => ({ ...prev, default_mode: "manual" }))}
                     className={cn(
-                      "h-1.5 rounded-full transition-all duration-500",
-                      allRequiredDone ? "bg-emerald-500" : "bg-amber-500"
+                      "relative flex flex-col items-start p-5 rounded-2xl border-2 text-left transition-all duration-200 hover:shadow-lg",
+                      settings.default_mode === "manual"
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 shadow-md"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                     )}
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
-                  {requiredChecks.map((check, i) => (
-                    <div key={i} className="flex items-center gap-2 py-1">
-                      {check.done ? (
-                        <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
-                      ) : (
-                        <div className="h-4 w-4 rounded-full border-2 border-amber-400 shrink-0" />
-                      )}
-                      <span className={cn(
-                        "text-xs font-medium",
-                        check.done ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
-                      )}>
-                        {check.label}
-                      </span>
-                      {!check.done && (
-                        <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">{check.hint}</span>
-                      )}
+                  >
+                    {settings.default_mode === "manual" && (
+                      <div className="absolute top-3 right-3"><CheckCircle className="h-5 w-5 text-emerald-500" /></div>
+                    )}
+                    <div className={cn("flex items-center justify-center h-12 w-12 rounded-xl mb-3", settings.default_mode === "manual" ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500")}>
+                      <Shield className="h-6 w-6" />
                     </div>
-                  ))}
+                    <h4 className="text-sm font-bold mb-1">Manuale</h4>
+                    <p className="text-xs text-muted-foreground mb-3">L'AI propone, tu approvi. Massimo controllo su ogni azione.</p>
+                    <ul className="space-y-1.5 w-full">
+                      <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Propone task proattivamente</li>
+                      <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Attende approvazione</li>
+                      <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Nessuna azione autonoma</li>
+                    </ul>
+                  </button>
+
+                  <button
+                    onClick={() => setSettings(prev => ({ ...prev, default_mode: "hybrid" }))}
+                    className={cn(
+                      "relative flex flex-col items-start p-5 rounded-2xl border-2 text-left transition-all duration-200 hover:shadow-lg",
+                      settings.default_mode === "hybrid"
+                        ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20 shadow-md"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    )}
+                  >
+                    {settings.default_mode === "hybrid" && (
+                      <div className="absolute top-3 right-3"><CheckCircle className="h-5 w-5 text-amber-500" /></div>
+                    )}
+                    <div className={cn("flex items-center justify-center h-12 w-12 rounded-xl mb-3", settings.default_mode === "hybrid" ? "bg-amber-100 dark:bg-amber-900/40 text-amber-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500")}>
+                      <Zap className="h-6 w-6" />
+                    </div>
+                    <h4 className="text-sm font-bold mb-1">Ibrido</h4>
+                    <p className="text-xs text-muted-foreground mb-3">L'AI esegue task a basso rischio, chiede per quelli importanti.</p>
+                    <ul className="space-y-1.5 w-full">
+                      <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Analisi e report autonomi</li>
+                      <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Chiede per email/chiamate</li>
+                      <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Bilanciato e sicuro</li>
+                    </ul>
+                  </button>
+
+                  <button
+                    onClick={() => setSettings(prev => ({ ...prev, default_mode: "automatic" }))}
+                    className={cn(
+                      "relative flex flex-col items-start p-5 rounded-2xl border-2 text-left transition-all duration-200 hover:shadow-lg",
+                      settings.default_mode === "automatic"
+                        ? "border-red-500 bg-red-50 dark:bg-red-950/20 shadow-md"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    )}
+                  >
+                    {settings.default_mode === "automatic" && (
+                      <div className="absolute top-3 right-3"><CheckCircle className="h-5 w-5 text-red-500" /></div>
+                    )}
+                    <div className={cn("flex items-center justify-center h-12 w-12 rounded-xl mb-3", settings.default_mode === "automatic" ? "bg-red-100 dark:bg-red-900/40 text-red-600" : "bg-gray-100 dark:bg-gray-800 text-gray-500")}>
+                      <Bot className="h-6 w-6" />
+                    </div>
+                    <h4 className="text-sm font-bold mb-1">Automatico</h4>
+                    <p className="text-xs text-muted-foreground mb-3">L'AI gestisce tutto in autonomia entro i limiti configurati.</p>
+                    <ul className="space-y-1.5 w-full">
+                      <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Esecuzione completa</li>
+                      <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Email e chiamate autonome</li>
+                      <li className="text-xs text-muted-foreground flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />Solo limiti giornalieri</li>
+                    </ul>
+                  </button>
+                </div>
+              </div>
+
+              {settings.autonomy_level > 0 && (
+                <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 overflow-hidden">
+                  <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-4">
+                    <BookOpen className="h-5 w-5" />
+                    Cosa fa l'AI a livello {settings.autonomy_level}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Cosa PU\u00d2 fare</p>
+                      <ul className="space-y-1.5">
+                        {settings.autonomy_level >= 1 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                            Eseguire task che crei tu manualmente
+                          </li>
+                        )}
+                        {settings.autonomy_level >= 2 && (
+                          <>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                              Analizzare i tuoi clienti e proporre task proattivamente
+                            </li>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                              Cercare nei documenti privati (consulenze, esercizi, KB)
+                            </li>
+                          </>
+                        )}
+                        {settings.autonomy_level >= 3 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                            Generare report, analisi e ricerche in automatico
+                          </li>
+                        )}
+                        {settings.autonomy_level >= 4 && (
+                          <>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                              Eseguire task autonomi senza la tua approvazione
+                            </li>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                              Inviare email e messaggi WhatsApp ai clienti
+                            </li>
+                          </>
+                        )}
+                        {settings.autonomy_level >= 7 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                            Effettuare chiamate vocali autonomamente
+                          </li>
+                        )}
+                        {settings.autonomy_level >= 10 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                            Gestire tutto senza alcuna supervisione
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">Cosa NON PU\u00d2 fare</p>
+                      <ul className="space-y-1.5">
+                        {settings.autonomy_level < 2 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                            Analizzare clienti e proporre task
+                          </li>
+                        )}
+                        {settings.autonomy_level < 4 && (
+                          <>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                              Eseguire task senza la tua approvazione
+                            </li>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                              Inviare email o WhatsApp senza approvazione
+                            </li>
+                          </>
+                        )}
+                        {settings.autonomy_level < 7 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                            Effettuare chiamate vocali senza approvazione
+                          </li>
+                        )}
+                        {settings.autonomy_level < 10 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                            Operare fuori dall'orario configurato
+                          </li>
+                        )}
+                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                          <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                          Superare i limiti giornalieri
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setAutonomiaStep(0)} className="rounded-xl gap-2">
+                  <ChevronLeft className="h-4 w-4" /> Indietro
+                </Button>
+                <Button onClick={() => setAutonomiaStep(2)} className="rounded-xl gap-2">
+                  Avanti <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {autonomiaStep === 2 && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-5"
+            >
+              <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-violet-500" />
+                <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
+                  <Brain className="h-5 w-5 text-purple-600" />
+                  Modello AI e Ragionamento
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Configura il modello e il livello di ragionamento
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Modello AI</Label>
+                    <Select
+                      value={settings.autonomy_model || 'gemini-3-flash-preview'}
+                      onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_model: value }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gemini-3-flash-preview">
+                          <div className="flex flex-col">
+                            <span className="font-medium">Gemini 3 Flash</span>
+                            <span className="text-xs text-gray-400">Veloce ed economico</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="gemini-3.1-pro-preview">
+                          <div className="flex flex-col">
+                            <span className="font-medium">Gemini 3.1 Pro</span>
+                            <span className="text-xs text-gray-400">Ragionamento avanzato</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Livello di Ragionamento</Label>
+                    <Select
+                      value={settings.autonomy_thinking_level || 'low'}
+                      onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_thinking_level: value }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low"><span className="font-medium">Basso</span></SelectItem>
+                        <SelectItem value="medium"><span className="font-medium">Medio</span></SelectItem>
+                        <SelectItem value="high"><span className="font-medium">Alto</span></SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      <Brain className="h-4 w-4" />
+                      Ragionamento
+                    </Label>
+                    <Select
+                      value={settings.reasoning_mode || "structured"}
+                      onValueChange={(val) => setSettings(prev => ({ ...prev, reasoning_mode: val }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="structured">Strutturato</SelectItem>
+                        <SelectItem value="deep_think">Deep Think</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground">
+                      {(settings.reasoning_mode || "structured") === "structured"
+                        ? "Analisi con sezioni: osservazione, riflessione, decisione"
+                        : "Loop agentico multi-step con analisi iterativa"}
+                    </p>
+                  </div>
                 </div>
 
-                {optionalChecks.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Canali (opzionali)</p>
-                    <div className="flex flex-wrap gap-2">
-                      {optionalChecks.map((check, i) => (
-                        <Badge
-                          key={i}
-                          variant="outline"
-                          className={cn(
-                            "text-[10px] gap-1 py-0.5 rounded-lg",
-                            check.done
-                              ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800"
-                              : "text-muted-foreground"
+                <Separator className="mb-4" />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      <Thermometer className="h-4 w-4" />
+                      Temperatura per Dipendente
+                    </Label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Default: 0.3</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Valori bassi (0.1-0.3) = risposte precise. Valori alti (0.6-0.9) = risposte pi\u00f9 creative.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {systemStatus?.roles?.filter(r => r.enabled).map((role) => {
+                      const profile = AI_ROLE_PROFILES[role.id];
+                      const temp = (settings.role_temperatures || {})[role.id] ?? 0.3;
+                      return (
+                        <div key={role.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                          {profile?.avatar && (
+                            <img src={profile.avatar} alt={role.displayName} className="h-8 w-8 rounded-full object-cover shrink-0" />
                           )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-semibold truncate">{role.displayName}</span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 ml-1 shrink-0">{temp.toFixed(1)}</Badge>
+                            </div>
+                            <Slider
+                              value={[temp * 10]}
+                              min={1}
+                              max={10}
+                              step={1}
+                              onValueChange={([v]) => {
+                                const newTemp = v / 10;
+                                setSettings(prev => ({
+                                  ...prev,
+                                  role_temperatures: { ...(prev.role_temperatures || {}), [role.id]: newTemp },
+                                }));
+                              }}
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {(!systemStatus?.roles || systemStatus.roles.filter(r => r.enabled).length === 0) && (
+                      <p className="text-xs text-muted-foreground col-span-2 text-center py-4">
+                        Nessun dipendente attivo. Attivali nel tab "Dipendenti AI".
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
+                <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
+                  <Clock className="h-5 w-5" />
+                  Orari di Lavoro e Limiti
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Imposta quando e quanto il dipendente AI pu\u00f2 operare
+                </p>
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Ora Inizio</Label>
+                      <Input
+                        type="time"
+                        value={settings.working_hours_start}
+                        onChange={(e) => setSettings(prev => ({ ...prev, working_hours_start: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Ora Fine</Label>
+                      <Input
+                        type="time"
+                        value={settings.working_hours_end}
+                        onChange={(e) => setSettings(prev => ({ ...prev, working_hours_end: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Giorni Lavorativi</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {DAYS_OF_WEEK.map((day) => (
+                        <Button
+                          key={day.value}
+                          variant={settings.working_days.includes(day.value) ? "default" : "outline"}
+                          size="sm"
+                          className="rounded-xl"
+                          onClick={() => toggleWorkingDay(day.value)}
                         >
-                          {check.done ? <CheckCircle className="h-3 w-3" /> : <div className="h-3 w-3 rounded-full border border-current" />}
-                          {check.label}
-                        </Badge>
+                          {day.label}
+                        </Button>
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
-            );
-          })()}
 
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-              <Zap className="h-5 w-5" />
-              Stato e Livello di Autonomia
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Definisci quanto il tuo dipendente AI può operare in modo indipendente
-            </p>
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-medium">Abilita Dipendente AI</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Attiva o disattiva il dipendente AI
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.is_active}
-                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, is_active: checked }))}
-                />
-              </div>
+                  <Separator />
 
-              <Separator />
-
-              <div className="space-y-4">
-                <div className="flex flex-col items-center justify-center py-4">
-                  <div className={cn(
-                    "flex items-center justify-center h-24 w-24 rounded-full border-4 text-4xl font-bold",
-                    settings.autonomy_level === 0 ? "border-muted-foreground/30 text-muted-foreground" :
-                    settings.autonomy_level <= 3 ? "border-emerald-500/40 text-emerald-500" :
-                    settings.autonomy_level <= 6 ? "border-amber-500/40 text-amber-500" :
-                    settings.autonomy_level <= 9 ? "border-orange-500/40 text-orange-500" : "border-red-500/40 text-red-500"
-                  )}>
-                    {settings.autonomy_level}
-                  </div>
-                  <p className={cn("text-lg font-semibold mt-2", autonomyInfo.color)}>
-                    {autonomyInfo.label}
-                  </p>
-                  <p className="text-xs text-muted-foreground">su 10</p>
-                </div>
-
-                <div className="rounded-xl border border-border p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">Livello di Autonomia</Label>
-                    <Badge className={cn("rounded-lg", getAutonomyBadgeColor(settings.autonomy_level))}>
-                      {settings.autonomy_level}/10
-                    </Badge>
-                  </div>
-
-                  <Slider
-                    value={[settings.autonomy_level]}
-                    onValueChange={(val) => setSettings(prev => ({ ...prev, autonomy_level: val[0] }))}
-                    max={10}
-                    min={0}
-                    step={1}
-                    className="w-full"
-                  />
-
-                  <div className="flex justify-between gap-1">
-                    <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-muted-foreground rounded-lg">0 Off</Badge>
-                    <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-emerald-600 border-emerald-200 dark:text-emerald-400 dark:border-emerald-800 rounded-lg">1-3</Badge>
-                    <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-amber-600 border-amber-200 dark:text-amber-400 dark:border-amber-800 rounded-lg">4-6</Badge>
-                    <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-orange-600 border-orange-200 dark:text-orange-400 dark:border-orange-800 rounded-lg">7-9</Badge>
-                    <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-red-600 border-red-200 dark:text-red-400 dark:border-red-800 rounded-lg">10</Badge>
-                  </div>
-                </div>
-
-                <div className={cn(
-                  "p-4 rounded-xl border",
-                  autonomyInfo.color === "text-muted-foreground" ? "bg-muted/50 border-muted" :
-                  settings.autonomy_level <= 3 ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40" :
-                  settings.autonomy_level <= 6 ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40" :
-                  settings.autonomy_level <= 9 ? "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40" :
-                  "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40"
-                )}>
-                  <p className={cn("text-sm flex items-start gap-2", autonomyInfo.color)}>
-                    <Info className="h-4 w-4 mt-0.5 shrink-0" />
-                    {autonomyInfo.description}
-                  </p>
-                </div>
-
-                {settings.autonomy_level > 0 && (
-                  <div className="space-y-4 mt-4">
-                    <div className="rounded-xl border border-border p-4 space-y-4">
-                      <h4 className="text-sm font-semibold flex items-center gap-2">
-                        <BookOpen className="h-4 w-4" />
-                        Cosa fa l'AI a livello {settings.autonomy_level}
-                      </h4>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Cosa PUO' fare</p>
-                          <ul className="space-y-1.5">
-                            {settings.autonomy_level >= 1 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                Eseguire task che crei tu manualmente
-                              </li>
-                            )}
-                            {settings.autonomy_level >= 2 && (
-                              <>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                  Analizzare i tuoi clienti e proporre task proattivamente
-                                </li>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                  Cercare nei documenti privati (consulenze, esercizi, knowledge base)
-                                </li>
-                              </>
-                            )}
-                            {settings.autonomy_level >= 3 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                Generare report, analisi e ricerche in automatico
-                              </li>
-                            )}
-                            {settings.autonomy_level >= 4 && (
-                              <>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                  Eseguire task autonomi senza la tua approvazione
-                                </li>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                  Inviare email e messaggi WhatsApp ai clienti
-                                </li>
-                              </>
-                            )}
-                            {settings.autonomy_level >= 7 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                Effettuare chiamate vocali autonomamente
-                              </li>
-                            )}
-                            {settings.autonomy_level >= 10 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                                Gestire tutto senza alcuna supervisione
-                              </li>
-                            )}
-                          </ul>
-                        </div>
-
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">Cosa NON PUO' fare</p>
-                          <ul className="space-y-1.5">
-                            {settings.autonomy_level < 2 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                Analizzare clienti e proporre task proattivamente
-                              </li>
-                            )}
-                            {settings.autonomy_level < 4 && (
-                              <>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                  Eseguire task senza la tua approvazione
-                                </li>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                  Inviare email o WhatsApp senza approvazione
-                                </li>
-                                <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                  <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                  Effettuare chiamate vocali autonomamente
-                                </li>
-                              </>
-                            )}
-                            {settings.autonomy_level >= 4 && settings.autonomy_level < 7 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                Effettuare chiamate vocali senza approvazione
-                              </li>
-                            )}
-                            {settings.autonomy_level < 10 && (
-                              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                Operare fuori dall'orario di lavoro configurato
-                              </li>
-                            )}
-                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                              <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                              Superare i limiti giornalieri (chiamate, email, ecc.)
-                            </li>
-                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                              <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                              Operare su categorie di task non abilitate
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Shield className="h-4 w-4" />
+                      <Label className="text-sm font-medium">Limiti Giornalieri</Label>
                     </div>
-
-                    <div className="flex justify-center py-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => window.open('/ai-autonomy-flowchart.html', '_blank')}
-                      >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Vedi Diagramma di Flusso Completo
-                      </Button>
-                    </div>
-
-                    <div className="rounded-xl border border-border p-4 space-y-4">
-                      <h4 className="text-sm font-semibold flex items-center gap-2">
-                        <Cog className="h-4 w-4" />
-                        Come funziona il sistema
-                      </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <div className="space-y-2">
-                        <div className="flex items-start gap-4 p-3 rounded-xl border border-border">
-                          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">1</div>
-                          <div>
-                            <p className="text-xs font-medium">Analisi Clienti (ogni {settings.autonomy_level >= 2 ? "30 minuti" : "—"})</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {settings.autonomy_level >= 2
-                                ? "L'AI analizza i tuoi clienti attivi, esclude chi ha già task pendenti o completati nelle ultime 24h, e identifica chi ha bisogno di attenzione (es: nessuna consulenza da oltre 2 settimane)."
-                                : "Disattivato a questo livello. Serve almeno livello 2."}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-4 p-3 rounded-xl border border-border">
-                          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">2</div>
-                          <div>
-                            <p className="text-xs font-medium">Creazione Task (max 3 per ciclo)</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {settings.autonomy_level >= 2
-                                ? `L'AI usa Gemini per valutare ogni cliente e suggerire azioni concrete. Considera: ultima consulenza, task completati di recente, categorie abilitate (${settings.allowed_task_categories.join(", ")}), e le tue istruzioni personalizzate.`
-                                : "Disattivato a questo livello. Serve almeno livello 2."}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-4 p-3 rounded-xl border border-border">
-                          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">3</div>
-                          <div>
-                            <p className="text-xs font-medium">Esecuzione Task (controllo ogni minuto)</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {settings.autonomy_level >= 4
-                                ? "I task creati vengono eseguiti automaticamente. L'AI genera un piano multi-step (recupero dati, ricerca documenti, analisi, report, comunicazione) e lo esegue passo dopo passo."
-                                : settings.autonomy_level >= 2
-                                  ? "I task vengono messi in attesa di approvazione. Devi approvarli manualmente prima che vengano eseguiti."
-                                  : "Solo i task che crei manualmente vengono eseguiti."}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-4 p-3 rounded-xl border border-border">
-                          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">4</div>
-                          <div>
-                            <p className="text-xs font-medium">Notifiche e Log</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              Ogni azione viene registrata nel Feed Attività. Puoi vedere ogni step: quali dati ha recuperato, quali documenti ha consultato, quale analisi ha fatto, e il risultato finale.
-                            </p>
-                          </div>
-                        </div>
+                        <Label className="flex items-center gap-1 text-xs">
+                          <Phone className="h-3.5 w-3.5" /> Chiamate
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={settings.max_daily_calls}
+                          onChange={(e) => setSettings(prev => ({ ...prev, max_daily_calls: parseInt(e.target.value) || 0 }))}
+                        />
                       </div>
-                    </div>
-                  </div>
-                )}
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Modalità Predefinita</Label>
-                  <Select
-                    value={settings.default_mode}
-                    onValueChange={(val) => setSettings(prev => ({ ...prev, default_mode: val }))}
-                  >
-                    <SelectTrigger className="w-full max-w-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">Manuale</SelectItem>
-                      <SelectItem value="hybrid">Ibrido</SelectItem>
-                      <SelectItem value="automatic">Automatico</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-1.5">
-                    <Brain className="h-4 w-4" />
-                    Modalità ragionamento predefinita
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Come gli agenti AI strutturano il loro processo di analisi e decisione
-                  </p>
-                  <Select
-                    value={settings.reasoning_mode || "structured"}
-                    onValueChange={(val) => setSettings(prev => ({ ...prev, reasoning_mode: val }))}
-                  >
-                    <SelectTrigger className="w-full max-w-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="structured">
-                        <div className="flex flex-col">
-                          <span>Strutturato</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="deep_think">
-                        <div className="flex flex-col">
-                          <span>Deep Think</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[10px] text-muted-foreground">
-                    {(settings.reasoning_mode || "structured") === "structured"
-                      ? "Analisi con sezioni obbligatorie: osservazione, riflessione, decisione, auto-revisione"
-                      : "Loop agentico multi-step con analisi approfondita iterativa"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-violet-500" />
-            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-              <Brain className="h-5 w-5 text-purple-600" />
-              Modello AI e Temperatura
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Configura il modello, il livello di ragionamento e la temperatura per ogni dipendente AI
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Modello AI</Label>
-                <Select
-                  value={settings.autonomy_model || 'gemini-3-flash-preview'}
-                  onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_model: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gemini-3-flash-preview">
-                      <div className="flex flex-col">
-                        <span className="font-medium">Gemini 3 Flash</span>
-                        <span className="text-xs text-gray-400">Veloce ed economico</span>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1 text-xs">
+                          <Mail className="h-3.5 w-3.5" /> Email
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={settings.max_daily_emails}
+                          onChange={(e) => setSettings(prev => ({ ...prev, max_daily_emails: parseInt(e.target.value) || 0 }))}
+                        />
                       </div>
-                    </SelectItem>
-                    <SelectItem value="gemini-3.1-pro-preview">
-                      <div className="flex flex-col">
-                        <span className="font-medium">Gemini 3.1 Pro</span>
-                        <span className="text-xs text-gray-400">Ragionamento avanzato</span>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1 text-xs">
+                          <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={settings.max_daily_whatsapp}
+                          onChange={(e) => setSettings(prev => ({ ...prev, max_daily_whatsapp: parseInt(e.target.value) || 0 }))}
+                        />
                       </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {(settings.autonomy_model || 'gemini-3-flash-preview') === 'gemini-3-flash-preview'
-                    ? "Flash è più rapido e consuma meno token. Consigliato per operazioni ad alto volume."
-                    : "Pro 3.1 offre ragionamento superiore. Ideale per qualificazione lead e decisioni strategiche."}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Livello di Ragionamento</Label>
-                <Select
-                  value={settings.autonomy_thinking_level || 'low'}
-                  onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_thinking_level: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low"><span className="font-medium">Basso</span></SelectItem>
-                    <SelectItem value="medium"><span className="font-medium">Medio</span></SelectItem>
-                    <SelectItem value="high"><span className="font-medium">Alto</span></SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {(settings.autonomy_thinking_level || 'low') === 'low'
-                    ? "Risposte rapide con ragionamento minimo. Più veloce e economico."
-                    : (settings.autonomy_thinking_level || 'low') === 'medium'
-                      ? "Buon equilibrio tra velocità e profondità di analisi."
-                      : "Ragionamento approfondito per ogni decisione. Più lento ma più accurato."}
-                </p>
-              </div>
-            </div>
-
-            <Separator className="mb-4" />
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium flex items-center gap-1.5">
-                  <Thermometer className="h-4 w-4" />
-                  Temperatura per Dipendente
-                </Label>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Default: 0.3 (se non configurata)
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Valori bassi (0.1-0.3) = risposte precise e prevedibili. Valori alti (0.6-0.9) = risposte più creative e naturali.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {systemStatus?.roles?.filter(r => r.enabled).map((role) => {
-                  const profile = AI_ROLE_PROFILES[role.id];
-                  const temp = (settings.role_temperatures || {})[role.id] ?? 0.3;
-                  return (
-                    <div key={role.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                      {profile?.avatar && (
-                        <img src={profile.avatar} alt={role.displayName} className="h-8 w-8 rounded-full object-cover shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-semibold truncate">{role.displayName}</span>
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 ml-1 shrink-0">{temp.toFixed(1)}</Badge>
-                        </div>
-                        <Slider
-                          value={[temp * 10]}
-                          min={1}
-                          max={10}
-                          step={1}
-                          onValueChange={([v]) => {
-                            const newTemp = v / 10;
-                            setSettings(prev => ({
-                              ...prev,
-                              role_temperatures: { ...(prev.role_temperatures || {}), [role.id]: newTemp },
-                            }));
-                          }}
-                          className="w-full"
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1 text-xs">
+                          <BarChart3 className="h-3.5 w-3.5" /> Analisi
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={settings.max_daily_analyses}
+                          onChange={(e) => setSettings(prev => ({ ...prev, max_daily_analyses: parseInt(e.target.value) || 0 }))}
                         />
                       </div>
                     </div>
-                  );
-                })}
-                {(!systemStatus?.roles || systemStatus.roles.filter(r => r.enabled).length === 0) && (
-                  <p className="text-xs text-muted-foreground col-span-2 text-center py-4">
-                    Nessun dipendente attivo. Attivali nel tab "Dipendenti AI" per configurare la temperatura.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+                  </div>
 
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-              <Brain className="h-5 w-5" />
-              Istruzioni Personalizzate
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Fornisci istruzioni specifiche per guidare il comportamento dell'AI
-            </p>
-            <Textarea
-              value={settings.custom_instructions}
-              onChange={(e) => setSettings(prev => ({ ...prev, custom_instructions: e.target.value }))}
-              placeholder="Es: Non chiamare mai i clienti prima delle 10. Prioritizza i lead caldi."
-              rows={4}
-            />
-          </div>
+                  <Separator />
 
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-              <Clock className="h-5 w-5" />
-              Orari di Lavoro
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Imposta quando il dipendente AI può operare
-            </p>
-            <div className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Ora Inizio</Label>
-                  <Input
-                    type="time"
-                    value={settings.working_hours_start}
-                    onChange={(e) => setSettings(prev => ({ ...prev, working_hours_start: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Ora Fine</Label>
-                  <Input
-                    type="time"
-                    value={settings.working_hours_end}
-                    onChange={(e) => setSettings(prev => ({ ...prev, working_hours_end: e.target.value }))}
-                  />
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Frequenza Analisi Autonoma (minuti)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Ogni quanti minuti l'AI analizza i clienti e propone nuovi task.
+                    </p>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        type="number"
+                        min={30}
+                        max={1440}
+                        className="w-32"
+                        value={settings.proactive_check_interval_minutes}
+                        onChange={(e) => setSettings(prev => ({ ...prev, proactive_check_interval_minutes: Math.max(30, parseInt(e.target.value) || 60) }))}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {settings.proactive_check_interval_minutes < 60
+                          ? `ogni ${settings.proactive_check_interval_minutes} minuti`
+                          : settings.proactive_check_interval_minutes === 60
+                            ? "ogni ora"
+                            : `ogni ${Math.floor(settings.proactive_check_interval_minutes / 60)}h ${settings.proactive_check_interval_minutes % 60 > 0 ? `${settings.proactive_check_interval_minutes % 60}m` : ""}`
+                        }
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Giorni Lavorativi</Label>
-                <div className="flex flex-wrap gap-2">
-                  {DAYS_OF_WEEK.map((day) => (
-                    <Button
-                      key={day.value}
-                      variant={settings.working_days.includes(day.value) ? "default" : "outline"}
-                      size="sm"
-                      className="rounded-xl"
-                      onClick={() => toggleWorkingDay(day.value)}
-                    >
-                      {day.label}
-                    </Button>
-                  ))}
+              <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
+                <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
+                  <Brain className="h-5 w-5" />
+                  Istruzioni Personalizzate
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-              <Shield className="h-5 w-5" />
-              Limiti Giornalieri
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Imposta i limiti massimi di azioni giornaliere
-            </p>
-            <div className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <Phone className="h-4 w-4" /> Chiamate
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={settings.max_daily_calls}
-                    onChange={(e) => setSettings(prev => ({ ...prev, max_daily_calls: parseInt(e.target.value) || 0 }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <Mail className="h-4 w-4" /> Email
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={settings.max_daily_emails}
-                    onChange={(e) => setSettings(prev => ({ ...prev, max_daily_emails: parseInt(e.target.value) || 0 }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <MessageSquare className="h-4 w-4" /> WhatsApp
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={settings.max_daily_whatsapp}
-                    onChange={(e) => setSettings(prev => ({ ...prev, max_daily_whatsapp: parseInt(e.target.value) || 0 }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <BarChart3 className="h-4 w-4" /> Analisi
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={settings.max_daily_analyses}
-                    onChange={(e) => setSettings(prev => ({ ...prev, max_daily_analyses: parseInt(e.target.value) || 0 }))}
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Frequenza Analisi Autonoma (minuti)
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Ogni quanti minuti l'AI deve analizzare i tuoi clienti e proporre nuovi task. Il cron controlla ogni 30 minuti, ma rispetta questo intervallo tra un'analisi e l'altra.
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Fornisci istruzioni specifiche per guidare il comportamento dell'AI
                 </p>
-                <div className="flex items-center gap-4">
-                  <Input
-                    type="number"
-                    min={30}
-                    max={1440}
-                    className="w-32"
-                    value={settings.proactive_check_interval_minutes}
-                    onChange={(e) => setSettings(prev => ({ ...prev, proactive_check_interval_minutes: Math.max(30, parseInt(e.target.value) || 60) }))}
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    {settings.proactive_check_interval_minutes < 60
-                      ? `ogni ${settings.proactive_check_interval_minutes} minuti`
-                      : settings.proactive_check_interval_minutes === 60
-                        ? "ogni ora"
-                        : `ogni ${Math.floor(settings.proactive_check_interval_minutes / 60)}h ${settings.proactive_check_interval_minutes % 60 > 0 ? `${settings.proactive_check_interval_minutes % 60}m` : ""}`
-                    }
-                  </span>
-                </div>
+                <Textarea
+                  value={settings.custom_instructions}
+                  onChange={(e) => setSettings(prev => ({ ...prev, custom_instructions: e.target.value }))}
+                  placeholder="Es: Non chiamare mai i clienti prima delle 10. Prioritizza i lead caldi."
+                  rows={4}
+                />
               </div>
-            </div>
-          </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setAutonomiaStep(1)} className="rounded-xl gap-2">
+                  <ChevronLeft className="h-4 w-4" /> Indietro
+                </Button>
+                <Button onClick={onSave} disabled={isSaving} className="rounded-xl gap-2">
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Salva Impostazioni
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
         </TabsContent>
 
         {/* Tab 4 - Canali & Categorie */}
