@@ -130,11 +130,11 @@ export default function VoipProvisioningTab() {
       }
       return res.json();
     },
-    refetchInterval: (() => {
-      const st = statusData?.provisioning?.status;
+    refetchInterval: (query) => {
+      const st = query.state.data?.provisioning?.status;
       if (st === "kyc_submitted" || st === "number_ordered") return 30000;
       return false;
-    })(),
+    },
   });
 
   useEffect(() => {

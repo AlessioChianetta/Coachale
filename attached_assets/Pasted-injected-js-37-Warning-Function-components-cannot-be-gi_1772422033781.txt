@@ -1,0 +1,97 @@
+injected.js:37 Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?
+
+Check the render method of `Primitive.button.SlotClone`.
+    at Badge (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/components/ui/badge.tsx:35:18)
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-HKTOTDRV.js?v=acfd96f4:50:13
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-HKTOTDRV.js?v=acfd96f4:27:13
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…nner/workspace/node_modules/.vite/deps/chunk-HKTOTDRV.js?v=acfd96f4:140:13
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-HKTOTDRV.js?v=acfd96f4:50:13
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-HKTOTDRV.js?v=acfd96f4:27:13
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…nner/workspace/node_modules/.vite/deps/chunk-HKTOTDRV.js?v=acfd96f4:140:13
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…ner/workspace/node_modules/.vite/deps/chunk-YTTCYZ27.js?v=acfd96f4:1963:13
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…space/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:296:13
+    at Provider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at Provider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at Popper (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…ner/workspace/node_modules/.vite/deps/chunk-YTTCYZ27.js?v=acfd96f4:1955:11)
+    at Tooltip (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:204:5)
+    at Provider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at div
+    at div
+    at div
+    at div
+    at div
+    at div
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…nner/workspace/node_modules/.vite/deps/chunk-HKTOTDRV.js?v=acfd96f4:140:13
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…e/node_modules/.vite/deps/@radix-ui_react-scroll-area.js?v=acfd96f4:116:13
+    at div
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…nner/workspace/node_modules/.vite/deps/chunk-HKTOTDRV.js?v=acfd96f4:140:13
+    at Provider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…ace/node_modules/.vite/deps/@radix-ui_react-scroll-area.js?v=acfd96f4:54:7
+    at _c (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/components/ui/scroll-area.tsx:21:11)
+    at div
+    at div
+    at div
+    at div
+    at div
+    at ConsultantEmailHub (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/pages/consultant-email-hub.tsx:192:20)
+    at AuthGuard (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/App.tsx?v=7D-p6cRHJaqJKMA_SNGLM:343:35)
+    at Provider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/App.tsx?v=7D-p6cRHJaqJKMA_SNGLM:2235:22)
+
+injected.js:37 🔄 Reset limite token: 
+Object
+2
+VoipProvisioningTab.tsx:134 Uncaught ReferenceError: Cannot access 'statusData' before initialization
+    at VoipProvisioningTab.tsx:134:18
+    at VoipProvisioningTab (VoipProvisioningTab.tsx:137:5)
+injected.js:37 The above error occurred in the <VoipProvisioningTab> component:
+
+    at VoipProvisioningTab (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/components/voice/VoipProvisioningTab.tsx:96:21)
+    at div
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…nner/workspace/node_modules/.vite/deps/chunk-HKTOTDRV.js?v=acfd96f4:140:13
+    at Presence (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-7QGJQHFX.js?v=acfd96f4:24:11)
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…orkspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=acfd96f4:176:13
+    at _c5 (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/components/ui/tabs.tsx:72:12)
+    at div
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…nner/workspace/node_modules/.vite/deps/chunk-HKTOTDRV.js?v=acfd96f4:140:13
+    at Provider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=acfd96f4:53:7
+    at div
+    at main
+    at div
+    at div
+    at ConsultantVoiceCallsPage (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/pages/consultant-voice-calls.tsx:1017:20)
+    at AuthGuard (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/App.tsx?v=7D-p6cRHJaqJKMA_SNGLM:343:35)
+    at Provider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://a280c474-64e8-48e8-8109-b9a4a42aa862-00-2e6ywed9349hk.kirk.replit.dev/src/App.tsx?v=7D-p6cRHJaqJKMA_SNGLM:2235:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=acfd96f4:9129 Uncaught ReferenceError: Cannot access 'statusData' before initialization
+    at VoipProvisioningTab.tsx:134:18
+    at VoipProvisioningTab (VoipProvisioningTab.tsx:137:5)
