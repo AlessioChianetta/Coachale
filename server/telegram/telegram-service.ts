@@ -334,11 +334,11 @@ async function sendTelegramChatAction(botToken: string, chatId: number | string,
   } catch {}
 }
 
-async function sendTelegramMessageDraft(botToken: string, chatId: number | string, text: string, randomId?: bigint): Promise<boolean> {
+async function sendTelegramMessageDraft(botToken: string, chatId: number | string, text: string, randomId?: number): Promise<boolean> {
   try {
     const body: any = { chat_id: chatId, text };
     if (randomId !== undefined) {
-      body.random_id = randomId.toString();
+      body.random_id = randomId;
     }
     const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessageDraft`, {
       method: "POST",
@@ -347,7 +347,7 @@ async function sendTelegramMessageDraft(botToken: string, chatId: number | strin
     });
     const data = await res.json();
     if (!data.ok) {
-      console.warn(`[TELEGRAM] sendMessageDraft failed: ${data.description || 'unknown'}`);
+      console.warn(`[TELEGRAM] sendMessageDraft failed (random_id=${randomId}): ${JSON.stringify(data)}`);
     }
     return data.ok === true;
   } catch (err: any) {
@@ -1140,7 +1140,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     let draftSupported = true;
     let draftChecked = false;
     let chunkCount = 0;
-    const draftRandomId = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
+    const draftRandomId = Math.floor(Math.random() * 2147483647);
 
     const streamCallback = (chunk: string) => {
       accumulatedText += chunk;
