@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
 import {
   Phone, Upload, FileCheck, Search, CheckCircle, Clock,
-  ArrowLeft, Loader2, AlertCircle, Trash2,
-  Shield, AlertTriangle, Timer, Package, FileText,
+  ArrowLeft, ArrowRight, Loader2, AlertCircle, Trash2,
+  Shield, AlertTriangle, Timer, Package, FileText, RefreshCw,
 } from "lucide-react";
 
 interface ConsultantNumber {
@@ -57,7 +57,40 @@ interface ClassicDocument {
   rejection_reason: string | null;
 }
 
+interface ProvisioningRequest {
+  id: number;
+  provider: string;
+  status: string;
+  assigned_number: string | null;
+  business_name: string | null;
+  desired_prefix: string | null;
+  created_at: string;
+  activated_at: string | null;
+  error_log: string | null;
+}
+
+interface ProvisioningDocument {
+  id: number;
+  document_type: string;
+  file_name: string;
+  status: string;
+  rejection_reason: string | null;
+  uploaded_at: string;
+}
+
 type FlowMode = "choose" | "inventory" | "kyc-classic";
+
+const STATUS_STEPS = [
+  { key: "pending",            label: "Richiesta" },
+  { key: "documents_uploaded", label: "Documenti" },
+  { key: "kyc_submitted",      label: "KYC Inviato" },
+  { key: "kyc_approved",       label: "KYC Approvato" },
+  { key: "number_ordered",     label: "Numero Ordinato" },
+  { key: "number_active",      label: "Numero Attivo" },
+  { key: "sip_configured",     label: "SIP Configurato" },
+  { key: "completed",          label: "Completato" },
+];
+
 type KycClassicStep = "search" | "form" | "documents" | "done";
 
 const ITALIAN_PREFIXES = [
@@ -149,6 +182,8 @@ export default function VoipProvisioningTab() {
   // Refs for existing number KYC upload
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  const prevProvStatusRef = useRef<string | null>(null);
+
   const { data: myNumberData, isLoading } = useQuery({
     queryKey: ["/api/voice/voip-provisioning/my-number"],
     queryFn: async () => {
@@ -162,6 +197,41 @@ export default function VoipProvisioningTab() {
       return false;
     },
   });
+
+  const { data: provStatusData, refetch: refetchProvStatus } = useQuery({
+    queryKey: ["/api/voice/voip-provisioning/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/voip-provisioning/status", { headers: getAuthHeaders() });
+      if (!res.ok) {
+        if (res.status === 404) return null;
+        throw new Error("Errore");
+      }
+      return res.json();
+    },
+    refetchInterval: (query) => {
+      const st = query.state.data?.provisioning?.status;
+      if (st === "kyc_submitted" || st === "number_ordered") return 30000;
+      return false;
+    },
+  });
+
+  useEffect(() => {
+    const currentStatus = provStatusData?.provisioning?.status;
+    if (!currentStatus) {
+      prevProvStatusRef.current = currentStatus || null;
+      return;
+    }
+    if (prevProvStatusRef.current && currentStatus !== prevProvStatusRef.current) {
+      if (currentStatus === "kyc_approved") {
+        toast({ title: "KYC Approvato!", description: "Il tuo KYC e stato approvato. Ora puoi ordinare il numero." });
+      } else if (currentStatus === "number_active" || currentStatus === "completed") {
+        toast({ title: "Numero Attivato!", description: "Il tuo numero di telefono e stato attivato con successo." });
+      } else if (currentStatus === "rejected") {
+        toast({ title: "Richiesta Rifiutata", description: "La tua richiesta e stata rifiutata. Controlla i dettagli.", variant: "destructive" });
+      }
+    }
+    prevProvStatusRef.current = currentStatus;
+  }, [provStatusData?.provisioning?.status]);
 
   // Load all inventory numbers when entering inventory mode
   useEffect(() => {
@@ -314,9 +384,9 @@ export default function VoipProvisioningTab() {
     },
     onSuccess: () => {
       toast({ title: "KYC Inviato", description: "La tua richiesta e in fase di approvazione (1-5 giorni lavorativi)." });
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/voip-provisioning/status"] });
       queryClient.invalidateQueries({ queryKey: ["/api/voice/voip-provisioning/my-number"] });
       resetKycClassic();
-      setFlowMode("choose");
     },
     onError: (err: Error) => {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
@@ -439,6 +509,10 @@ export default function VoipProvisioningTab() {
 
   const hasNumber = myNumberData?.hasNumber;
   const number: ConsultantNumber | null = myNumberData?.number || null;
+
+  const provRequest: ProvisioningRequest | null = provStatusData?.provisioning || null;
+  const provDocs: ProvisioningDocument[] = Array.isArray(provStatusData?.provisioning?.documents) ? provStatusData.provisioning.documents : [];
+  const hasActiveProvRequest = provRequest && !["completed", "rejected"].includes(provRequest.status);
 
   if (isLoading) {
     return (
@@ -583,6 +657,138 @@ export default function VoipProvisioningTab() {
               </div>
             </div>
             {renderKycForm(number)}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ─── Provisioning Request Tracker (kyc-classic after submission) ──────────
+
+  if (!hasNumber && provRequest && provRequest.status === "completed") {
+    return (
+      <div className="space-y-6">
+        <Card className="border-green-200 dark:border-green-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
+              <CheckCircle className="h-5 w-5" />
+              Numero VoIP Attivo
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label className="text-muted-foreground">Numero</Label>
+                <p className="text-xl font-mono font-bold">{provRequest.assigned_number || "N/D"}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Provider</Label>
+                <p className="font-medium capitalize">{provRequest.provider}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Stato</Label>
+                <Badge className="bg-green-600">Attivo</Badge>
+              </div>
+              {provRequest.activated_at && (
+                <div>
+                  <Label className="text-muted-foreground">Attivato il</Label>
+                  <p className="text-sm">{new Date(provRequest.activated_at).toLocaleDateString("it-IT")}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!hasNumber && hasActiveProvRequest && provRequest) {
+    const currentStepIndex = STATUS_STEPS.findIndex(s => s.key === provRequest.status);
+    const stepsToShow = provRequest.provider === "messagenet"
+      ? [STATUS_STEPS[0], STATUS_STEPS[1], STATUS_STEPS[7]]
+      : STATUS_STEPS;
+
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <Phone className="h-5 w-5" />
+                Richiesta Attivazione in Corso
+              </CardTitle>
+              <Button variant="outline" size="sm" onClick={() => refetchProvStatus()}>
+                <RefreshCw className="h-4 w-4 mr-1.5" />
+                Aggiorna
+              </Button>
+            </div>
+            <CardDescription>
+              Provider: {provRequest.provider === "telnyx" ? "Telnyx" : "Messagenet"} | Creata il {new Date(provRequest.created_at).toLocaleDateString("it-IT")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Progress bar */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-2">
+              {stepsToShow.map((step, i, arr) => {
+                const isActive = STATUS_STEPS.findIndex(s => s.key === step.key) <= currentStepIndex;
+                const isCurrent = step.key === provRequest.status;
+                return (
+                  <div key={step.key} className="flex items-center gap-1 flex-shrink-0">
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                      isCurrent ? "bg-primary text-primary-foreground" :
+                      isActive ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" :
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      {isActive && !isCurrent && <CheckCircle className="h-3 w-3" />}
+                      {isCurrent && <Clock className="h-3 w-3" />}
+                      {step.label}
+                    </div>
+                    {i < arr.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
+                  </div>
+                );
+              })}
+            </div>
+
+            {provRequest.status === "rejected" && provRequest.error_log && (
+              <Card className="border-red-200 dark:border-red-800">
+                <CardContent className="pt-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-red-700 dark:text-red-400">Richiesta Rifiutata</p>
+                      <p className="text-sm text-muted-foreground mt-1">{provRequest.error_log}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {provDocs.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium mb-2">Documenti caricati</h4>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {provDocs.map((doc) => (
+                    <div key={doc.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded text-sm">
+                      <FileCheck className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      <span className="truncate flex-1">{doc.file_name}</span>
+                      <Badge className={`${DOC_STATUS_COLORS[doc.status] || "bg-gray-500"} text-[10px] ml-auto`}>
+                        {doc.status === "uploaded" ? "Caricato" :
+                         doc.status === "submitted_to_provider" ? "Inviato" :
+                         doc.status === "verified" ? "Verificato" :
+                         doc.status === "rejected" ? "Rifiutato" : doc.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm">
+              <Loader2 className="h-4 w-4 animate-spin text-amber-600 flex-shrink-0" />
+              <p className="text-amber-800 dark:text-amber-200">
+                La pagina si aggiorna automaticamente ogni 30 secondi. L'approvazione KYC richiede 1-5 giorni lavorativi.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
