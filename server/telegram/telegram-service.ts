@@ -28,7 +28,7 @@ const onboardingBuffer = new Map<string, {
   isGroupChat: boolean;
 }>();
 
-const ONBOARDING_BUFFER_DELAY_MS = 5000;
+const ONBOARDING_BUFFER_DELAY_MS = 1000;
 
 const privateMessageBuffer = new Map<string, {
   messages: Array<{ text: string; date: number }>;
@@ -48,7 +48,9 @@ const privateMessageBuffer = new Map<string, {
   configId: string;
 }>();
 
-const PRIVATE_BUFFER_DELAY_MS = 3000;
+const PRIVATE_BUFFER_DELAY_MS = 500;
+
+const activeGenerations = new Map<string, { abortController: AbortController; previousMessages: string[]; streamMsgId?: number }>();
 
 async function getGroupInfo(botToken: string, chatId: number): Promise<{ title?: string; description?: string }> {
   try {
@@ -245,6 +247,94 @@ export async function sendTelegramMessage(botToken: string, chatId: number | str
     return false;
   }
 }
+
+async function sendTelegramMessageWithId(botToken: string, chatId: number | string, text: string, parseMode?: string): Promise<number | null> {
+  try {
+    const body: any = { chat_id: chatId, text };
+    if (parseMode) body.parse_mode = parseMode;
+    const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.ok && data.result?.message_id) {
+      return data.result.message_id;
+    }
+    if (parseMode) {
+      const retryRes = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text }),
+      });
+      const retryData = await retryRes.json();
+      if (retryData.ok && retryData.result?.message_id) {
+        return retryData.result.message_id;
+      }
+    }
+    console.error(`[TELEGRAM] sendMessageWithId failed:`, data.description);
+    return null;
+  } catch (err: any) {
+    console.error(`[TELEGRAM] sendMessageWithId error:`, err.message);
+    return null;
+  }
+}
+
+async function editTelegramMessage(botToken: string, chatId: number | string, messageId: number, text: string, parseMode?: string): Promise<boolean> {
+  try {
+    const body: any = { chat_id: chatId, message_id: messageId, text };
+    if (parseMode) body.parse_mode = parseMode;
+    const res = await fetch(`${TELEGRAM_API}${botToken}/editMessageText`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      if (parseMode) {
+        const retryRes = await fetch(`${TELEGRAM_API}${botToken}/editMessageText`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, message_id: messageId, text }),
+        });
+        const retryData = await retryRes.json();
+        return retryData.ok === true;
+      }
+      return false;
+    }
+    return true;
+  } catch (err: any) {
+    console.error(`[TELEGRAM] editMessageText error:`, err.message);
+    return false;
+  }
+}
+
+async function deleteTelegramMessage(botToken: string, chatId: number | string, messageId: number): Promise<boolean> {
+  try {
+    const res = await fetch(`${TELEGRAM_API}${botToken}/deleteMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
+    });
+    const data = await res.json();
+    return data.ok === true;
+  } catch (err: any) {
+    console.error(`[TELEGRAM] deleteMessage error:`, err.message);
+    return false;
+  }
+}
+
+async function sendTelegramChatAction(botToken: string, chatId: number | string, action: string = "typing"): Promise<void> {
+  try {
+    await fetch(`${TELEGRAM_API}${botToken}/sendChatAction`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, action }),
+    });
+  } catch {}
+}
+
+const STREAM_EDIT_INTERVAL_MS = 1000;
 
 const MAX_ONBOARDING_STEPS = 15;
 
@@ -995,6 +1085,11 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
   console.log(`[TELEGRAM-PROMPT] Buffered ${senderStatus} message for ${aiRole} from chat ${chatId}:`);
   console.log(`[TELEGRAM-PROMPT] Combined ${messages.length} messages: ${combinedText.substring(0, 200)}`);
 
+  const abortController = new AbortController();
+  const allMessages = messages.map(m => m.text);
+  const genEntry = { abortController, previousMessages: allMessages, streamMsgId: undefined as number | undefined };
+  activeGenerations.set(bufferKey, genEntry);
+
   try {
     if (isOpenMode) {
       await db.execute(sql`
@@ -1009,6 +1104,33 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       `);
     }
 
+    sendTelegramChatAction(botToken, chatId, "typing");
+
+    const streamMsgId = await sendTelegramMessageWithId(botToken, chatId, "⏳", undefined);
+    if (streamMsgId) {
+      genEntry.streamMsgId = streamMsgId;
+    }
+
+    let accumulatedText = '';
+    let lastEditTime = 0;
+    let typingInterval: NodeJS.Timeout | null = null;
+
+    typingInterval = setInterval(() => {
+      if (!abortController.signal.aborted) {
+        sendTelegramChatAction(botToken, chatId, "typing");
+      }
+    }, 4000);
+
+    const streamCallback = (chunk: string) => {
+      accumulatedText += chunk;
+      const now = Date.now();
+      if (streamMsgId && now - lastEditTime >= STREAM_EDIT_INTERVAL_MS) {
+        lastEditTime = now;
+        const displayText = accumulatedText.length > 4096 ? accumulatedText.substring(0, 4093) + '...' : accumulatedText;
+        editTelegramMessage(botToken, chatId, streamMsgId, displayText + ' ▌').catch(() => {});
+      }
+    };
+
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
     const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
       skipUserMessageInsert: true,
@@ -1016,13 +1138,38 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       source: "telegram",
       isOpenMode: isOpenMode,
       telegramChatId: chatId,
+      signal: abortController.signal,
+      streamCallback,
     });
 
-    await sendTelegramMessage(botToken, chatId, aiResponse, "Markdown");
-    console.log(`[TELEGRAM] Buffered response sent to chat ${chatId} for role ${aiRole}`);
+    if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
+
+    if (streamMsgId) {
+      if (aiResponse.length <= 4096) {
+        await editTelegramMessage(botToken, chatId, streamMsgId, aiResponse, "Markdown");
+      } else {
+        await deleteTelegramMessage(botToken, chatId, streamMsgId);
+        await sendTelegramMessage(botToken, chatId, aiResponse, "Markdown");
+      }
+    } else {
+      await sendTelegramMessage(botToken, chatId, aiResponse, "Markdown");
+    }
+    console.log(`[TELEGRAM] Streaming response sent to chat ${chatId} for role ${aiRole}`);
   } catch (err: any) {
-    console.error(`[TELEGRAM] Error processing buffered message:`, err.message);
-    await sendTelegramMessage(botToken, chatId, "⚠️ Mi dispiace, c'è stato un errore. Riprova tra poco.");
+    if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
+    if (err.message === 'AbortError' || abortController.signal.aborted) {
+      console.log(`[TELEGRAM] Generation aborted for ${bufferKey}, will re-generate with new messages`);
+    } else {
+      console.error(`[TELEGRAM] Error processing buffered message:`, err.message);
+      if (genEntry.streamMsgId) {
+        await editTelegramMessage(botToken, chatId, genEntry.streamMsgId, "⚠️ Mi dispiace, c'è stato un errore. Riprova tra poco.");
+      } else {
+        await sendTelegramMessage(botToken, chatId, "⚠️ Mi dispiace, c'è stato un errore. Riprova tra poco.");
+      }
+    }
+  } finally {
+    if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
+    activeGenerations.delete(bufferKey);
   }
 }
 
@@ -1469,8 +1616,26 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
 
       if (!isGroupChat) {
         const bufferKey = `open_${consultantId}_${aiRole}_${chatId}`;
+        const activeGen = activeGenerations.get(bufferKey);
+        if (activeGen) {
+          console.log(`[TELEGRAM] Open mode message arrived during active generation for ${bufferKey}, aborting and re-queuing`);
+          activeGen.abortController.abort();
+          activeGen.previousMessages.push(processedText);
+          if (activeGen.streamMsgId) {
+            deleteTelegramMessage(botToken, chatId, activeGen.streamMsgId).catch(() => {});
+          }
+          const buf = {
+            messages: activeGen.previousMessages.map(t => ({ text: t, date: Math.floor(Date.now() / 1000) })),
+            timer: null as NodeJS.Timeout | null,
+            consultantId, aiRole, chatId, chatType, botToken, botUsername,
+            firstName, username, chatTitle, isGroupChat,
+            isOwner: false, isOpenMode: true, configId,
+          };
+          buf.timer = setTimeout(() => flushPrivateBuffer(bufferKey), PRIVATE_BUFFER_DELAY_MS);
+          privateMessageBuffer.set(bufferKey, buf);
+          return;
+        }
         const existing = privateMessageBuffer.get(bufferKey);
-        
         if (existing) {
           existing.messages.push({ text: processedText, date: msg.date || Math.floor(Date.now() / 1000) });
           if (existing.timer) clearTimeout(existing.timer);
@@ -1615,8 +1780,26 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
 
   if (!isGroupChat) {
     const bufferKey = `owner_${consultantId}_${aiRole}_${chatId}`;
+    const activeGen = activeGenerations.get(bufferKey);
+    if (activeGen) {
+      console.log(`[TELEGRAM] Owner message arrived during active generation for ${bufferKey}, aborting and re-queuing`);
+      activeGen.abortController.abort();
+      activeGen.previousMessages.push(processedText);
+      if (activeGen.streamMsgId) {
+        deleteTelegramMessage(botToken, chatId, activeGen.streamMsgId).catch(() => {});
+      }
+      const buf = {
+        messages: activeGen.previousMessages.map(t => ({ text: t, date: Math.floor(Date.now() / 1000) })),
+        timer: null as NodeJS.Timeout | null,
+        consultantId, aiRole, chatId, chatType, botToken, botUsername,
+        firstName, username, chatTitle, isGroupChat,
+        isOwner: true, isOpenMode: false, configId,
+      };
+      buf.timer = setTimeout(() => flushPrivateBuffer(bufferKey), PRIVATE_BUFFER_DELAY_MS);
+      privateMessageBuffer.set(bufferKey, buf);
+      return;
+    }
     const existing = privateMessageBuffer.get(bufferKey);
-    
     if (existing) {
       existing.messages.push({ text: processedText, date: msg.date || Math.floor(Date.now() / 1000) });
       if (existing.timer) clearTimeout(existing.timer);

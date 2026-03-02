@@ -135,6 +135,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const autonomyModel = body.autonomy_model ?? 'gemini-3-flash-preview';
     const autonomyThinkingLevel = body.autonomy_thinking_level ?? 'low';
     const roleTemperatures = JSON.stringify(body.role_temperatures ?? {});
+    const telegramSpontaneousEnabled = body.telegram_spontaneous_enabled !== false;
 
     const result = await db.execute(sql`
       INSERT INTO ai_autonomy_settings (
@@ -143,14 +144,16 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         max_daily_calls, max_daily_emails, max_daily_whatsapp, max_daily_analyses,
         proactive_check_interval_minutes, is_active, custom_instructions, channels_enabled,
         role_frequencies, role_autonomy_modes, role_working_hours, whatsapp_template_ids,
-        reasoning_mode, role_reasoning_modes, outreach_config, autonomy_model, autonomy_thinking_level, role_temperatures
+        reasoning_mode, role_reasoning_modes, outreach_config, autonomy_model, autonomy_thinking_level, role_temperatures,
+        telegram_spontaneous_enabled
       ) VALUES (
         ${consultantId}, ${autonomyLevel}, ${defaultMode}, ${allowedCategories}::jsonb,
         ${alwaysApprove}::jsonb, ${hoursStart}::time, ${hoursEnd}::time, ARRAY[${sql.raw(days.join(','))}]::integer[],
         ${maxCalls}, ${maxEmails}, ${maxWhatsapp}, ${maxAnalyses},
         ${proactiveInterval}, ${isActive}, ${customInstructions}, ${channelsEnabled}::jsonb,
         ${roleFrequencies}::jsonb, ${roleAutonomyModes}::jsonb, ${roleWorkingHours}::jsonb, ${whatsappTemplateIds}::jsonb,
-        ${reasoningMode}, ${roleReasoningModes}::jsonb, COALESCE(${outreachConfig}::jsonb, '{}'::jsonb), ${autonomyModel}, ${autonomyThinkingLevel}, ${roleTemperatures}::jsonb
+        ${reasoningMode}, ${roleReasoningModes}::jsonb, COALESCE(${outreachConfig}::jsonb, '{}'::jsonb), ${autonomyModel}, ${autonomyThinkingLevel}, ${roleTemperatures}::jsonb,
+        ${telegramSpontaneousEnabled}
       )
       ON CONFLICT (consultant_id) DO UPDATE SET
         autonomy_level = EXCLUDED.autonomy_level,
@@ -178,6 +181,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         autonomy_model = EXCLUDED.autonomy_model,
         autonomy_thinking_level = EXCLUDED.autonomy_thinking_level,
         role_temperatures = EXCLUDED.role_temperatures,
+        telegram_spontaneous_enabled = EXCLUDED.telegram_spontaneous_enabled,
         updated_at = now()
       RETURNING *
     `);
@@ -6256,7 +6260,7 @@ router.delete("/agent-chat/:roleId/clear", authenticateToken, requireAnyRole(["c
   }
 });
 
-export async function processAgentChatInternal(consultantId: string, roleId: string, message: string, options?: { skipUserMessageInsert?: boolean; metadata?: Record<string, any>; source?: string; telegramContext?: string; isOpenMode?: boolean; telegramChatId?: number }): Promise<string> {
+export async function processAgentChatInternal(consultantId: string, roleId: string, message: string, options?: { skipUserMessageInsert?: boolean; metadata?: Record<string, any>; source?: string; telegramContext?: string; isOpenMode?: boolean; telegramChatId?: number; signal?: AbortSignal; streamCallback?: (chunk: string) => void }): Promise<string> {
   if (!AI_ROLES[roleId]) {
     throw new Error(`Invalid role ID: ${roleId}`);
   }
@@ -6660,13 +6664,32 @@ REGOLE ANTI-ALLUCINAZIONE:
       chatConfig.tools = [fileSearchTool];
     }
 
+    if (options?.signal?.aborted) throw new Error('AbortError');
+
     let response: any;
-    if (aiClient.models?.generateContent) {
+    if (options?.streamCallback && aiClient.models?.generateContentStream) {
+      const streamResult = await aiClient.models.generateContentStream({
+        model: providerModel,
+        contents: chatContents,
+        config: chatConfig,
+      });
+      let fullText = '';
+      for await (const chunk of streamResult) {
+        if (options?.signal?.aborted) throw new Error('AbortError');
+        const chunkText = typeof chunk.text === 'function' ? chunk.text() : (typeof chunk.text === 'string' ? chunk.text : chunk.candidates?.[0]?.content?.parts?.[0]?.text || '');
+        if (chunkText) {
+          fullText += chunkText;
+          options.streamCallback(chunkText);
+        }
+      }
+      aiResponse = fullText || 'Mi dispiace, non sono riuscito a generare una risposta.';
+    } else if (aiClient.models?.generateContent) {
       response = await trackedGenerateContent(aiClient, {
         model: providerModel,
         contents: chatContents,
         config: chatConfig,
       }, { consultantId, feature: `agent-chat:${roleId}` });
+      aiResponse = response.text?.() || response.text || response.response?.text?.() || 'Mi dispiace, non sono riuscito a generare una risposta.';
     } else {
       const genConfig: any = { temperature: chatTemp, maxOutputTokens: chatMaxTokens };
       const callParams: any = {
@@ -6678,10 +6701,12 @@ REGOLE ANTI-ALLUCINAZIONE:
         callParams.tools = [fileSearchTool];
       }
       response = await aiClient.generateContent(callParams);
+      aiResponse = response.text?.() || response.text || response.response?.text?.() || 'Mi dispiace, non sono riuscito a generare una risposta.';
     }
-
-    aiResponse = response.text?.() || response.text || response.response?.text?.() || 'Mi dispiace, non sono riuscito a generare una risposta.';
   } catch (err: any) {
+    if (err.message === 'AbortError' || options?.signal?.aborted) {
+      throw new Error('AbortError');
+    }
     console.error(`[AGENT-CHAT-INTERNAL] AI error for ${roleId}:`, err.message);
     aiResponse = `Mi dispiace, c'è stato un problema tecnico. Riprova tra poco.`;
   }

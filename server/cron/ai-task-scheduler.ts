@@ -3197,6 +3197,44 @@ Non utilizzare altri tipi di documento da quel store privato.
         }
       }
 
+      const telegramSpontaneousEnabled = settings.telegram_spontaneous_enabled !== false;
+      if (telegramSpontaneousEnabled) {
+        try {
+          const tgLinkCheck = await db.execute(sql`
+            SELECT tl.telegram_chat_id, tc.bot_token
+            FROM telegram_chat_links tl
+            JOIN telegram_bot_configs tc ON tc.consultant_id = tl.consultant_id AND tc.ai_role = tl.ai_role
+            WHERE tl.consultant_id = ${sql.raw(`'${consultantId}'::uuid`)}
+              AND tl.ai_role = ${role.id} AND tl.active = true AND tc.enabled = true
+            LIMIT 1
+          `);
+          if (tgLinkCheck.rows.length > 0) {
+            prompt += `\n\n--- MESSAGGIO TELEGRAM SPONTANEO ---
+Hai la possibilità di inviare UN messaggio Telegram spontaneo al consulente se hai qualcosa di rilevante, urgente, o interessante da comunicare.
+NON è obbligatorio: invia solo se hai davvero qualcosa di valore da dire. Può essere:
+- Un insight su un cliente o situazione che hai notato
+- Un reminder su qualcosa di importante
+- Una provocazione/spinta motivazionale (se sei Marco)
+- Un aggiornamento su un task completato o una situazione cambiata
+- Un commento su un pattern che hai rilevato
+
+Per inviare, inserisci nella tua risposta:
+[TELEGRAM_MESSAGE]
+Il tuo messaggio qui (scrivi come su WhatsApp, breve e in character)
+[/TELEGRAM_MESSAGE]
+
+REGOLE:
+- Max 1 messaggio per ciclo
+- Scrivi in prima persona, nel TUO stile/personalità
+- Max 3-4 righe, come un messaggio WhatsApp
+- Non ripetere cose già dette nei task o in messaggi precedenti
+--- FINE ISTRUZIONI TELEGRAM ---`;
+          }
+        } catch (tgErr: any) {
+          console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Failed to check Telegram link: ${tgErr.message}`);
+        }
+      }
+
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Calling Gemini (${providerName}, ${providerModel})...`);
 
       const roleFeature = `ai-task-${role.id}`;
@@ -3622,6 +3660,36 @@ Non utilizzare altri tipi di documento da quel store privato.
         timestamp: Date.now(),
       });
       } // end if (!deepThinkUsed)
+
+      if (responseText && telegramSpontaneousEnabled && !dryRun) {
+        const tgMsgMatch = responseText.match(/\[TELEGRAM_MESSAGE\]([\s\S]*?)\[\/TELEGRAM_MESSAGE\]/i);
+        if (tgMsgMatch && tgMsgMatch[1]?.trim()) {
+          const spontaneousMsg = tgMsgMatch[1].trim();
+          console.log(`📱 [AUTONOMOUS-GEN] [${role.name}] Spontaneous Telegram message detected: "${spontaneousMsg.substring(0, 100)}"`);
+          try {
+            const tgLinkResult = await db.execute(sql`
+              SELECT tl.telegram_chat_id, tc.bot_token
+              FROM telegram_chat_links tl
+              JOIN telegram_bot_configs tc ON tc.consultant_id = tl.consultant_id AND tc.ai_role = tl.ai_role
+              WHERE tl.consultant_id = ${sql.raw(`'${consultantId}'::uuid`)}
+                AND tl.ai_role = ${role.id} AND tl.active = true AND tc.enabled = true
+              LIMIT 1
+            `);
+            if (tgLinkResult.rows.length > 0) {
+              const tgRow = tgLinkResult.rows[0] as any;
+              const { sendTelegramMessage } = await import("../telegram/telegram-service");
+              await sendTelegramMessage(tgRow.bot_token, tgRow.telegram_chat_id, spontaneousMsg, "Markdown");
+              await db.execute(sql`
+                INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
+                VALUES (${consultantId}::uuid, ${role.id}, ${role.name}, 'agent', ${spontaneousMsg}, '{"source":"telegram_spontaneous"}'::jsonb)
+              `);
+              console.log(`✅ [AUTONOMOUS-GEN] [${role.name}] Spontaneous Telegram message sent to chat ${tgRow.telegram_chat_id}`);
+            }
+          } catch (tgSendErr: any) {
+            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Failed to send spontaneous Telegram message: ${tgSendErr.message}`);
+          }
+        }
+      }
 
       let totalCreatedForRole = 0;
       let totalRejectedForRole = 0;

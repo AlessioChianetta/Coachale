@@ -1684,6 +1684,22 @@ function SettingsTab({
                       )}
                     </div>
                   </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                        <div>
+                          <span className="text-xs font-semibold">Messaggi Telegram Spontanei</span>
+                          <p className="text-[10px] text-muted-foreground">I dipendenti AI possono inviarti messaggi Telegram di propria iniziativa</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={settings.telegram_spontaneous_enabled !== false}
+                        onCheckedChange={(checked) => setSettings(prev => ({ ...prev, telegram_spontaneous_enabled: checked }))}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1978,8 +1994,13 @@ function SettingsTab({
               {systemStatus?.roles && systemStatus.roles.length > 0 ? (
                 <div className="space-y-4">
                   {[...systemStatus.roles].sort((a, b) => {
-                    if (a.enabled === b.enabled) return 0;
-                    return a.enabled ? -1 : 1;
+                    if (a.enabled && !b.enabled) return -1;
+                    if (!a.enabled && b.enabled) return 1;
+                    if (a.enabled && b.enabled) {
+                      if (a.id === 'marco') return -1;
+                      if (b.id === 'marco') return 1;
+                    }
+                    return 0;
                   }).map((role) => {
                     const profile = AI_ROLE_PROFILES[role.id];
                     const colors = AI_ROLE_ACCENT_COLORS[role.accentColor] || AI_ROLE_ACCENT_COLORS.purple;
