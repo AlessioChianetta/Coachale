@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { getAuthHeaders } from "@/lib/auth";
 import {
   Phone, Upload, FileCheck, Search, CheckCircle, Clock,
   ArrowLeft, Loader2, AlertCircle, Trash2,
-  Shield, RefreshCw, AlertTriangle, Timer, Package, FileText,
+  Shield, AlertTriangle, Timer, Package, FileText,
 } from "lucide-react";
 
 interface ConsultantNumber {
@@ -49,7 +49,16 @@ interface TelnyxNumber {
   features?: any;
 }
 
+interface ClassicDocument {
+  id: number;
+  document_type: string;
+  file_name: string;
+  status: string;
+  rejection_reason: string | null;
+}
+
 type FlowMode = "choose" | "inventory" | "kyc-classic";
+type KycClassicStep = "search" | "form" | "documents" | "done";
 
 const ITALIAN_PREFIXES = [
   { value: "02", label: "02 - Milano" },
@@ -107,11 +116,22 @@ export default function VoipProvisioningTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [flowMode, setFlowMode] = useState<FlowMode>("choose");
-  const [selectedPrefix, setSelectedPrefix] = useState("");
-  const [searchedNumbers, setSearchedNumbers] = useState<AvailableNumber[]>([]);
-  const [telnyxNumbers, setTelnyxNumbers] = useState<TelnyxNumber[]>([]);
+
+  // Inventory flow state
+  const [allInventoryNumbers, setAllInventoryNumbers] = useState<AvailableNumber[]>([]);
+  const [inventoryLoaded, setInventoryLoaded] = useState(false);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryPrefix, setInventoryPrefix] = useState("all");
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  // KYC classic flow state
+  const [kycStep, setKycStep] = useState<KycClassicStep>("search");
+  const [selectedPrefix, setSelectedPrefix] = useState("");
+  const [telnyxNumbers, setTelnyxNumbers] = useState<TelnyxNumber[]>([]);
+  const [classicSelectedNumber, setClassicSelectedNumber] = useState<string | null>(null);
+  const [classicRequestId, setClassicRequestId] = useState<number | null>(null);
+  const [classicDocs, setClassicDocs] = useState<ClassicDocument[]>([]);
+  const classicFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const [formData, setFormData] = useState({
     business_name: "",
@@ -125,6 +145,9 @@ export default function VoipProvisioningTab() {
     contact_phone: "",
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Refs for existing number KYC upload
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const { data: myNumberData, isLoading } = useQuery({
     queryKey: ["/api/voice/voip-provisioning/my-number"],
@@ -140,22 +163,33 @@ export default function VoipProvisioningTab() {
     },
   });
 
-  const searchInventoryMutation = useMutation({
-    mutationFn: async (prefix: string) => {
-      const res = await fetch(`/api/voice/voip-provisioning/available-numbers?prefix=${encodeURIComponent(prefix)}`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error("Errore nel caricamento dei numeri disponibili");
-      return res.json();
-    },
-    onSuccess: (data) => {
-      setSearchedNumbers(data.numbers || []);
-      setSelectedNumber(null);
-    },
-    onError: (err: Error) => {
-      toast({ title: "Errore", description: err.message, variant: "destructive" });
-    },
-  });
+  // Load all inventory numbers when entering inventory mode
+  useEffect(() => {
+    if (flowMode === "inventory" && !inventoryLoaded) {
+      setInventoryLoading(true);
+      fetch("/api/voice/voip-provisioning/available-numbers", { headers: getAuthHeaders() })
+        .then(r => r.json())
+        .then(data => {
+          setAllInventoryNumbers(data.numbers || []);
+          setInventoryLoaded(true);
+          setInventoryLoading(false);
+        })
+        .catch(() => {
+          setInventoryLoading(false);
+          toast({ title: "Errore", description: "Impossibile caricare i numeri disponibili", variant: "destructive" });
+        });
+    }
+  }, [flowMode]);
+
+  // Derived: unique prefixes from inventory
+  const inventoryPrefixes = Array.from(
+    new Set(allInventoryNumbers.map(n => n.prefix).filter(Boolean) as string[])
+  ).sort();
+
+  // Derived: filtered inventory numbers
+  const filteredInventoryNumbers = inventoryPrefix === "all"
+    ? allInventoryNumbers
+    : allInventoryNumbers.filter(n => n.prefix === inventoryPrefix);
 
   const searchTelnyxMutation = useMutation({
     mutationFn: async (prefix: string) => {
@@ -170,7 +204,7 @@ export default function VoipProvisioningTab() {
     },
     onSuccess: (data) => {
       setTelnyxNumbers(data.numbers || []);
-      setSelectedNumber(null);
+      setClassicSelectedNumber(null);
     },
     onError: (err: Error) => {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
@@ -182,7 +216,7 @@ export default function VoipProvisioningTab() {
       const res = await fetch("/api/voice/voip-provisioning/select-number", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ phone_number: phoneNumber, prefix: selectedPrefix }),
+        body: JSON.stringify({ phone_number: phoneNumber, prefix: inventoryPrefix === "all" ? "" : inventoryPrefix }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -193,7 +227,8 @@ export default function VoipProvisioningTab() {
     onSuccess: (data) => {
       toast({ title: "Numero Assegnato!", description: data.message || "Il numero e stato assegnato al tuo account." });
       queryClient.invalidateQueries({ queryKey: ["/api/voice/voip-provisioning/my-number"] });
-      setSearchedNumbers([]);
+      setAllInventoryNumbers([]);
+      setInventoryLoaded(false);
       setSelectedNumber(null);
     },
     onError: (err: Error) => {
@@ -201,6 +236,94 @@ export default function VoipProvisioningTab() {
     },
   });
 
+  // KYC Classic Step 2: create provisioning request
+  const createRequestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/voice/voip-provisioning/request", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "telnyx",
+          ...formData,
+          desired_prefix: selectedPrefix || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Errore nella creazione della richiesta");
+      return data;
+    },
+    onSuccess: (data) => {
+      const requestId = data.request?.id;
+      setClassicRequestId(requestId);
+      setClassicDocs([]);
+      setKycStep("documents");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // KYC Classic Step 3: upload document
+  const uploadClassicDocMutation = useMutation({
+    mutationFn: async ({ file, documentType }: { file: File; documentType: string }) => {
+      if (!classicRequestId) throw new Error("Nessuna richiesta attiva");
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("document_type", documentType);
+      fd.append("request_id", String(classicRequestId));
+      const res = await fetch("/api/voice/voip-provisioning/documents", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: fd,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Errore upload");
+      }
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      setClassicDocs(prev => {
+        const filtered = prev.filter(d => d.document_type !== variables.documentType);
+        return [...filtered, {
+          id: Date.now(),
+          document_type: variables.documentType,
+          file_name: variables.file.name,
+          status: "uploaded",
+          rejection_reason: null,
+        }];
+      });
+      toast({ title: "Documento caricato", description: "File salvato correttamente" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore Upload", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // KYC Classic Step 4: submit KYC
+  const submitClassicKycMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/voice/voip-provisioning/submit-kyc", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Errore invio KYC");
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "KYC Inviato", description: "La tua richiesta e in fase di approvazione (1-5 giorni lavorativi)." });
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/voip-provisioning/my-number"] });
+      resetKycClassic();
+      setFlowMode("choose");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // Existing number KYC upload/delete/submit mutations
   const uploadDocMutation = useMutation({
     mutationFn: async ({ file, documentType }: { file: File; documentType: string }) => {
       const fd = new FormData();
@@ -263,35 +386,6 @@ export default function VoipProvisioningTab() {
     },
   });
 
-  const classicKycMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/voice/voip-provisioning/submit-kyc", {
-        method: "POST",
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          phone_number: selectedNumber,
-          provider: "telnyx",
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Errore invio richiesta KYC");
-      }
-      return data;
-    },
-    onSuccess: () => {
-      toast({ title: "Richiesta Inviata", description: "La tua richiesta KYC e il numero selezionato sono in fase di approvazione." });
-      queryClient.invalidateQueries({ queryKey: ["/api/voice/voip-provisioning/my-number"] });
-      setFlowMode("choose");
-      setSelectedNumber(null);
-      setTelnyxNumbers([]);
-    },
-    onError: (err: Error) => {
-      toast({ title: "Errore", description: err.message, variant: "destructive" });
-    },
-  });
-
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     if (!formData.business_name || formData.business_name.trim().length < 2) errors.business_name = "Min 2 caratteri";
@@ -313,16 +407,34 @@ export default function VoipProvisioningTab() {
     submitKycMutation.mutate();
   };
 
-  const handleClassicKycSubmit = () => {
+  const handleClassicNext = () => {
+    if (!classicSelectedNumber) {
+      toast({ title: "Errore", description: "Seleziona prima un numero", variant: "destructive" });
+      return;
+    }
+    setKycStep("form");
+  };
+
+  const handleClassicCreateRequest = () => {
     if (!validateForm()) {
       toast({ title: "Dati non validi", description: "Controlla i campi evidenziati in rosso", variant: "destructive" });
       return;
     }
-    if (!selectedNumber) {
-      toast({ title: "Errore", description: "Seleziona prima un numero", variant: "destructive" });
-      return;
-    }
-    classicKycMutation.mutate();
+    createRequestMutation.mutate();
+  };
+
+  const resetKycClassic = () => {
+    setKycStep("search");
+    setSelectedPrefix("");
+    setTelnyxNumbers([]);
+    setClassicSelectedNumber(null);
+    setClassicRequestId(null);
+    setClassicDocs([]);
+    setFormData({
+      business_name: "", fiscal_code: "", vat_number: "", legal_address: "",
+      city: "", province: "", postal_code: "", contact_email: "", contact_phone: "",
+    });
+    setFormErrors({});
   };
 
   const hasNumber = myNumberData?.hasNumber;
@@ -335,6 +447,8 @@ export default function VoipProvisioningTab() {
       </div>
     );
   }
+
+  // ─── Existing Number Screens ───────────────────────────────────────────────
 
   if (hasNumber && number) {
     if (number.kyc_status === "approved" && number.status === "active") {
@@ -475,6 +589,8 @@ export default function VoipProvisioningTab() {
     );
   }
 
+  // ─── Choose Screen ─────────────────────────────────────────────────────────
+
   if (flowMode === "choose") {
     return (
       <div className="space-y-6">
@@ -486,7 +602,7 @@ export default function VoipProvisioningTab() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Card
             className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
-            onClick={() => setFlowMode("inventory")}
+            onClick={() => { setFlowMode("inventory"); setInventoryLoaded(false); setInventoryPrefix("all"); setSelectedNumber(null); }}
           >
             <CardHeader className="text-center pb-2">
               <div className="mx-auto p-3 bg-green-100 dark:bg-green-900/30 rounded-full w-fit mb-2">
@@ -521,7 +637,7 @@ export default function VoipProvisioningTab() {
 
           <Card
             className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
-            onClick={() => setFlowMode("kyc-classic")}
+            onClick={() => { setFlowMode("kyc-classic"); resetKycClassic(); }}
           >
             <CardHeader className="text-center pb-2">
               <div className="mx-auto p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full w-fit mb-2">
@@ -558,10 +674,12 @@ export default function VoipProvisioningTab() {
     );
   }
 
+  // ─── Inventory Screen ──────────────────────────────────────────────────────
+
   if (flowMode === "inventory") {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={() => { setFlowMode("choose"); setSearchedNumbers([]); setSelectedNumber(null); }}>
+        <Button variant="ghost" size="sm" onClick={() => { setFlowMode("choose"); setAllInventoryNumbers([]); setInventoryLoaded(false); setSelectedNumber(null); setInventoryPrefix("all"); }}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Indietro
         </Button>
 
@@ -576,84 +694,102 @@ export default function VoipProvisioningTab() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-3 items-end flex-wrap">
-              <div className="flex-1 min-w-[200px]">
-                <Label>Filtra per prefisso</Label>
-                <Select value={selectedPrefix} onValueChange={setSelectedPrefix}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Tutti i prefissi" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ITALIAN_PREFIXES.map(p => (
-                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                onClick={() => searchInventoryMutation.mutate(selectedPrefix)}
-                disabled={searchInventoryMutation.isPending}
-              >
-                {searchInventoryMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
-                Mostra Numeri
-              </Button>
-            </div>
-
-            {searchedNumbers.length > 0 && (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">{searchedNumbers.length} numeri disponibili</p>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 max-h-[400px] overflow-y-auto">
-                  {searchedNumbers.map((num) => {
-                    const phoneNum = num.phone_number;
-                    const isSelected = selectedNumber === phoneNum;
-                    return (
-                      <button
-                        key={phoneNum}
-                        onClick={() => setSelectedNumber(isSelected ? null : phoneNum)}
-                        className={`p-3 rounded-lg border text-left transition-all ${
-                          isSelected
-                            ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                            : "border-border hover:border-primary/50 hover:bg-muted/50"
-                        }`}
-                      >
-                        <p className="font-mono font-medium text-sm">{phoneNum}</p>
-                        {num.prefix && (
-                          <p className="text-xs text-muted-foreground mt-1">Prefisso: {num.prefix}</p>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {selectedNumber && (
-                  <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                    <Phone className="h-5 w-5 text-primary" />
-                    <div className="flex-1">
-                      <p className="font-medium">Numero selezionato: <span className="font-mono">{selectedNumber}</span></p>
-                      <p className="text-xs text-muted-foreground">Verra assegnato immediatamente. Avrai 7 giorni per caricare la documentazione KYC.</p>
-                    </div>
-                    <Button
-                      onClick={() => selectNumberMutation.mutate(selectedNumber)}
-                      disabled={selectNumberMutation.isPending}
-                    >
-                      {selectNumberMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                      Attiva Numero
-                    </Button>
-                  </div>
-                )}
+            {inventoryLoading && (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <span className="text-muted-foreground">Caricamento numeri...</span>
               </div>
             )}
 
-            {searchInventoryMutation.isSuccess && searchedNumbers.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="font-medium">Nessun numero disponibile per questo prefisso</p>
-                <p className="text-sm mt-1">Contatta l'amministratore per richiederne uno, oppure prova il percorso "Richiedi Nuovo Numero".</p>
-                <Button variant="outline" className="mt-3" onClick={() => setFlowMode("kyc-classic")}>
+            {inventoryLoaded && allInventoryNumbers.length === 0 && (
+              <div className="text-center py-10">
+                <AlertCircle className="h-8 w-8 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="font-medium">Nessun numero disponibile in inventario</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Al momento non ci sono numeri preacquistati disponibili.
+                </p>
+                <Button variant="outline" className="mt-4" onClick={() => { setFlowMode("kyc-classic"); resetKycClassic(); }}>
                   <FileText className="h-4 w-4 mr-2" />
-                  Richiedi con KYC
+                  Richiedi un Nuovo Numero con KYC
                 </Button>
               </div>
+            )}
+
+            {inventoryLoaded && allInventoryNumbers.length > 0 && (
+              <>
+                {inventoryPrefixes.length > 0 && (
+                  <div className="flex gap-3 items-end flex-wrap">
+                    <div className="flex-1 min-w-[200px]">
+                      <Label>Filtra per prefisso</Label>
+                      <Select value={inventoryPrefix} onValueChange={(v) => { setInventoryPrefix(v); setSelectedNumber(null); }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Tutti i prefissi" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutti i prefissi</SelectItem>
+                          {inventoryPrefixes.map(p => (
+                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {filteredInventoryNumbers.length} {filteredInventoryNumbers.length === 1 ? "numero disponibile" : "numeri disponibili"}
+                    {inventoryPrefix !== "all" && ` per il prefisso ${inventoryPrefix}`}
+                  </p>
+
+                  {filteredInventoryNumbers.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <AlertCircle className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                      <p>Nessun numero per questo prefisso. Prova a selezionare "Tutti i prefissi".</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 max-h-[400px] overflow-y-auto">
+                      {filteredInventoryNumbers.map((num) => {
+                        const phoneNum = num.phone_number;
+                        const isSelected = selectedNumber === phoneNum;
+                        return (
+                          <button
+                            key={phoneNum}
+                            onClick={() => setSelectedNumber(isSelected ? null : phoneNum)}
+                            className={`p-3 rounded-lg border text-left transition-all ${
+                              isSelected
+                                ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                                : "border-border hover:border-primary/50 hover:bg-muted/50"
+                            }`}
+                          >
+                            <p className="font-mono font-medium text-sm">{phoneNum}</p>
+                            {num.prefix && (
+                              <p className="text-xs text-muted-foreground mt-1">Prefisso: {num.prefix}</p>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {selectedNumber && (
+                    <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                      <Phone className="h-5 w-5 text-primary" />
+                      <div className="flex-1">
+                        <p className="font-medium">Numero selezionato: <span className="font-mono">{selectedNumber}</span></p>
+                        <p className="text-xs text-muted-foreground">Verra assegnato immediatamente. Avrai 7 giorni per caricare la documentazione KYC.</p>
+                      </div>
+                      <Button
+                        onClick={() => selectNumberMutation.mutate(selectedNumber)}
+                        disabled={selectNumberMutation.isPending}
+                      >
+                        {selectNumberMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                        Attiva Numero
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -661,10 +797,12 @@ export default function VoipProvisioningTab() {
     );
   }
 
+  // ─── KYC Classic Screen ────────────────────────────────────────────────────
+
   if (flowMode === "kyc-classic") {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={() => { setFlowMode("choose"); setTelnyxNumbers([]); setSelectedNumber(null); setFormErrors({}); }}>
+        <Button variant="ghost" size="sm" onClick={() => { setFlowMode("choose"); resetKycClassic(); }}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Indietro
         </Button>
 
@@ -679,81 +817,123 @@ export default function VoipProvisioningTab() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div>
-              <h3 className="font-medium mb-3 flex items-center gap-2">
-                <Search className="h-4 w-4" />
-                1. Cerca Numero
-              </h3>
-              <div className="flex gap-3 items-end flex-wrap">
-                <div className="flex-1 min-w-[200px]">
-                  <Label>Prefisso</Label>
-                  <Select value={selectedPrefix} onValueChange={setSelectedPrefix}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona prefisso..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ITALIAN_PREFIXES.map(p => (
-                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  onClick={() => searchTelnyxMutation.mutate(selectedPrefix)}
-                  disabled={!selectedPrefix || searchTelnyxMutation.isPending}
-                >
-                  {searchTelnyxMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
-                  Cerca su Telnyx
-                </Button>
-              </div>
 
-              {telnyxNumbers.length > 0 && (
-                <div className="space-y-3 mt-4">
-                  <p className="text-sm text-muted-foreground">{telnyxNumbers.length} numeri trovati</p>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 max-h-[300px] overflow-y-auto">
-                    {telnyxNumbers.map((num) => {
-                      const phoneNum = num.phoneNumber || (num as any).phone_number;
-                      const isSelected = selectedNumber === phoneNum;
-                      return (
-                        <button
-                          key={phoneNum}
-                          onClick={() => setSelectedNumber(isSelected ? null : phoneNum)}
-                          className={`p-3 rounded-lg border text-left transition-all ${
-                            isSelected
-                              ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                              : "border-border hover:border-primary/50 hover:bg-muted/50"
-                          }`}
-                        >
-                          <p className="font-mono font-medium text-sm">{phoneNum}</p>
-                        </button>
-                      );
-                    })}
+            {/* Step indicators */}
+            <div className="flex items-center gap-2 text-sm">
+              {(["search", "form", "documents"] as KycClassicStep[]).map((s, i) => {
+                const labels = ["1. Cerca Numero", "2. Dati Aziendali", "3. Documenti"];
+                const isDone = (
+                  (s === "search" && (kycStep === "form" || kycStep === "documents")) ||
+                  (s === "form" && kycStep === "documents")
+                );
+                const isActive = kycStep === s;
+                return (
+                  <div key={s} className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      isDone ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                      isActive ? "bg-primary text-primary-foreground" :
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      {isDone ? <CheckCircle className="h-3 w-3 inline mr-1" /> : null}
+                      {labels[i]}
+                    </span>
+                    {i < 2 && <span className="text-muted-foreground">→</span>}
                   </div>
-                </div>
-              )}
-
-              {searchTelnyxMutation.isSuccess && telnyxNumbers.length === 0 && (
-                <div className="text-center py-6 text-muted-foreground mt-4">
-                  <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>Nessun numero disponibile con questo prefisso. Prova un altro prefisso.</p>
-                </div>
-              )}
+                );
+              })}
             </div>
 
-            {selectedNumber && (
-              <>
-                <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                  <Phone className="h-5 w-5 text-primary" />
-                  <div className="flex-1">
-                    <p className="font-medium">Numero selezionato: <span className="font-mono">{selectedNumber}</span></p>
-                    <p className="text-xs text-muted-foreground">Compila i dati sotto e invia la richiesta KYC per attivare questo numero.</p>
+            {/* STEP 1: Search */}
+            {kycStep === "search" && (
+              <div>
+                <h3 className="font-medium mb-3 flex items-center gap-2">
+                  <Search className="h-4 w-4" />
+                  Cerca un numero disponibile su Telnyx
+                </h3>
+                <div className="flex gap-3 items-end flex-wrap">
+                  <div className="flex-1 min-w-[200px]">
+                    <Label>Prefisso</Label>
+                    <Select value={selectedPrefix} onValueChange={setSelectedPrefix}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona prefisso..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ITALIAN_PREFIXES.map(p => (
+                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+                  <Button
+                    onClick={() => searchTelnyxMutation.mutate(selectedPrefix)}
+                    disabled={!selectedPrefix || searchTelnyxMutation.isPending}
+                  >
+                    {searchTelnyxMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                    Cerca su Telnyx
+                  </Button>
+                </div>
+
+                {telnyxNumbers.length > 0 && (
+                  <div className="space-y-3 mt-4">
+                    <p className="text-sm text-muted-foreground">{telnyxNumbers.length} numeri trovati</p>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 max-h-[300px] overflow-y-auto">
+                      {telnyxNumbers.map((num) => {
+                        const phoneNum = num.phoneNumber || (num as any).phone_number;
+                        const isSelected = classicSelectedNumber === phoneNum;
+                        return (
+                          <button
+                            key={phoneNum}
+                            onClick={() => setClassicSelectedNumber(isSelected ? null : phoneNum)}
+                            className={`p-3 rounded-lg border text-left transition-all ${
+                              isSelected
+                                ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                                : "border-border hover:border-primary/50 hover:bg-muted/50"
+                            }`}
+                          >
+                            <p className="font-mono font-medium text-sm">{phoneNum}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {searchTelnyxMutation.isSuccess && telnyxNumbers.length === 0 && (
+                  <div className="text-center py-6 text-muted-foreground mt-4">
+                    <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Nessun numero disponibile con questo prefisso. Prova un altro prefisso.</p>
+                  </div>
+                )}
+
+                {classicSelectedNumber && (
+                  <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg mt-4">
+                    <Phone className="h-5 w-5 text-primary" />
+                    <div className="flex-1">
+                      <p className="font-medium">Selezionato: <span className="font-mono">{classicSelectedNumber}</span></p>
+                    </div>
+                    <Button onClick={handleClassicNext}>
+                      Avanti <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* STEP 2: Form */}
+            {kycStep === "form" && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <Phone className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-medium">Numero: <span className="font-mono">{classicSelectedNumber}</span></p>
+                  <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={() => setKycStep("search")}>
+                    Cambia
+                  </Button>
                 </div>
 
                 <div>
                   <h3 className="font-medium mb-3 flex items-center gap-2">
                     <Shield className="h-4 w-4" />
-                    2. Dati Aziendali
+                    Dati Aziendali
                   </h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <FormField label="Ragione Sociale *" field="business_name" placeholder="Mario Rossi / Rossi SRL" />
@@ -769,20 +949,121 @@ export default function VoipProvisioningTab() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button
-                    onClick={handleClassicKycSubmit}
-                    disabled={classicKycMutation.isPending}
-                    className="flex-1 sm:flex-none"
-                  >
-                    {classicKycMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
-                    Invia Richiesta KYC
+                  <Button variant="outline" onClick={() => setKycStep("search")}>
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Indietro
                   </Button>
-                  <p className="text-xs text-muted-foreground self-center">
-                    Il numero sara attivato dopo l'approvazione (1-5 giorni lavorativi)
-                  </p>
+                  <Button
+                    onClick={handleClassicCreateRequest}
+                    disabled={createRequestMutation.isPending}
+                  >
+                    {createRequestMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+                    Avanti: Carica Documenti
+                  </Button>
                 </div>
-              </>
+              </div>
             )}
+
+            {/* STEP 3: Documents */}
+            {kycStep === "documents" && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <Phone className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-medium">Numero: <span className="font-mono">{classicSelectedNumber}</span></p>
+                </div>
+
+                {(() => {
+                  const requiredDocTypes = DOCUMENT_TYPES.filter(d => d.required);
+                  const uploadedRequiredCount = requiredDocTypes.filter(dt =>
+                    classicDocs.some(d => d.document_type === dt.type && d.status !== "rejected")
+                  ).length;
+                  const allRequiredUploaded = uploadedRequiredCount === requiredDocTypes.length;
+
+                  return (
+                    <>
+                      <div>
+                        <h3 className="font-medium mb-3 flex items-center gap-2">
+                          <Upload className="h-4 w-4" />
+                          Documenti ({uploadedRequiredCount}/{requiredDocTypes.length} obbligatori)
+                        </h3>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {DOCUMENT_TYPES.map((docType) => {
+                            const doc = classicDocs.find(d => d.document_type === docType.type);
+                            return (
+                              <Card key={docType.type} className={doc ? "border-green-200 dark:border-green-800" : ""}>
+                                <CardContent className="pt-4 pb-3">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">{docType.label}</p>
+                                      {doc ? (
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <Badge className={`${DOC_STATUS_COLORS[doc.status] || "bg-gray-500"} text-[10px]`}>
+                                            Caricato
+                                          </Badge>
+                                          <span className="text-xs text-muted-foreground truncate">{doc.file_name}</span>
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {docType.required ? "Richiesto" : "Opzionale"}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      {!doc ? (
+                                        <label className="cursor-pointer">
+                                          <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/jpeg,image/png,application/pdf"
+                                            ref={(el) => { classicFileInputRefs.current[docType.type] = el; }}
+                                            disabled={uploadClassicDocMutation.isPending}
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0];
+                                              if (file) uploadClassicDocMutation.mutate({ file, documentType: docType.type });
+                                              e.target.value = "";
+                                            }}
+                                          />
+                                          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors">
+                                            {uploadClassicDocMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                                            Carica
+                                          </div>
+                                        </label>
+                                      ) : (
+                                        <Button
+                                          variant="ghost" size="icon" className="h-8 w-8 text-red-500"
+                                          onClick={() => setClassicDocs(prev => prev.filter(d => d.document_type !== docType.type))}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3 pt-2 items-center">
+                        <Button
+                          onClick={() => submitClassicKycMutation.mutate()}
+                          disabled={submitClassicKycMutation.isPending || !allRequiredUploaded}
+                        >
+                          {submitClassicKycMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+                          Invia Richiesta KYC
+                        </Button>
+                        {!allRequiredUploaded && (
+                          <p className="text-xs text-muted-foreground">
+                            Carica tutti i documenti obbligatori per procedere
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
           </CardContent>
         </Card>
       </div>
