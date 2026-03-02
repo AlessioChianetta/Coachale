@@ -1090,6 +1090,8 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
   const genEntry = { abortController, previousMessages: allMessages, streamMsgId: undefined as number | undefined };
   activeGenerations.set(bufferKey, genEntry);
 
+  let typingInterval: NodeJS.Timeout | null = null;
+
   try {
     if (isOpenMode) {
       await db.execute(sql`
@@ -1113,7 +1115,6 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
 
     let accumulatedText = '';
     let lastEditTime = 0;
-    let typingInterval: NodeJS.Timeout | null = null;
 
     typingInterval = setInterval(() => {
       if (!abortController.signal.aborted) {
