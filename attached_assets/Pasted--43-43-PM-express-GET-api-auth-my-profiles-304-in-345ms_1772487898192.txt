@@ -1,0 +1,76 @@
+:43:43 PM [express] GET /api/auth/my-profiles 304 in 345ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+9:43:44 PM [express] GET /api/auth/my-profiles 304 in 343ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+[Voice] Error fetching contact profile: error: column pl.lead_name does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Promise.all (index 3)
+    at async <anonymous> (/home/runner/workspace/server/routes/voice-router.ts:872:76) {
+  length: 169,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "pl.last_name".',
+  position: '35',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3723',
+  routine: 'errorMissingColumn'
+}
+9:43:45 PM [express] GET /api/voice/contact/%2B390645504137 500 in 361ms :: {"error":"Errore nel rec…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping... (rowCount=0, rows=0, keys=command,rowCount,oid,rows,fields,_parsers,_types,RowCtor,rowAsArray,_prebuiltEmptyResultObject)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+📡 [SSE] Client disconnected for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (0 remaining)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+📡 [SSE] Client connected for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1 active)
+9:44:24 PM [express] GET /api/consultant/detailed-profile 304 in 343ms :: {"id":"0605ff58-10de-457f-…
+9:44:28 PM [express] GET /api/auth/my-profiles 304 in 342ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+9:44:29 PM [express] GET /api/voice/settings 304 in 341ms :: {"voiceId":"Achernar","vpsBridgeUrl":"h…
+9:44:29 PM [express] GET /api/voice/health 304 in 341ms :: {"overall":"healthy","components":{"datab…
+9:44:29 PM [express] GET /api/voice/stats 304 in 575ms :: {"period":"day","stats":{"total_calls":"0"…
+9:44:29 PM [express] GET /api/voice/calls 304 in 689ms :: {"calls":[{"id":"vc_1772240392911_4byf1u0o…
+9:44:29 PM [express] GET /api/voice/gemini-connections 304 in 229ms :: {"success":true,"connections"…
+9:44:29 PM [express] GET /api/voice/sip-settings 304 in 340ms :: {"sipCallerId":"","sipGateway":"voi…
+9:44:30 PM [express] GET /api/voice/ai-tasks 304 in 456ms :: {"tasks":[],"pagination":{"page":1,"lim…
+9:44:30 PM [express] GET /api/voice/non-client-settings 304 in 792ms :: {"voiceDirectives":"🎙️ MODA…
+9:44:30 PM [express] GET /api/voice/outbound/scheduled 304 in 798ms :: {"calls":[{"id":"sc_177119225…
+9:44:30 PM [express] GET /api/voice/ai-tasks 304 in 1134ms :: {"tasks":[{"id":"auto_marco_1771016708…
+9:44:30 PM [express] GET /api/voice/contacts 304 in 460ms :: {"activeClients":[{"id":"e9c37790-47ea-…
+9:44:30 PM [express] GET /api/voice/calls 304 in 589ms :: {"calls":[],"callAttempts":[{"id":"svc_177…
+9:44:30 PM [express] GET /api/voice/clients-with-phone 304 in 348ms :: {"active":[{"id":"8a7f6b63-b4…
+9:44:30 PM [express] GET /api/voice/ai-tasks 304 in 1259ms :: {"tasks":[{"id":"auto_echo_17710166395…
+9:44:32 PM [express] GET /api/auth/my-profiles 304 in 343ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+9:44:32 PM [express] GET /api/voice/outbound/scheduled 304 in 682ms :: {"calls":[{"id":"sc_177119225…
+9:44:34 PM [express] GET /api/voice/contact-by-call/vc_1772240392911_4byf1u0ow 200 in 343ms :: {"pho…
+[Voice] Error fetching contact profile: error: column pl.lead_name does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Promise.all (index 3)
+    at async <anonymous> (/home/runner/workspace/server/routes/voice-router.ts:872:76) {
+  length: 169,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "pl.last_name".',
+  position: '35',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3723',
+  routine: 'errorMissingColumn'
+}
+9:44:35 PM [express] GET /api/voice/contact/9999 500 in 349ms :: {"error":"Errore nel recupero del p…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0

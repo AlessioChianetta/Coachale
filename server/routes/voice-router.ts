@@ -926,9 +926,9 @@ router.get("/contact/:phone", authenticateToken, requireAnyRole(["consultant", "
 
       db.execute(sql`
         SELECT 
-          pl.id, pl.lead_name, pl.phone_number, pl.email,
-          pl.objectives, pl.desires, pl.hook, pl.source,
-          pl.outreach_status, pl.metadata, pl.created_at
+          pl.id, CONCAT(pl.first_name, ' ', pl.last_name) as lead_name, pl.phone_number, pl.email,
+          pl.lead_info, pl.lead_category, pl.status as outreach_status,
+          pl.source_row_hash, pl.metadata, pl.created_at
         FROM proactive_leads pl
         WHERE pl.consultant_id = ${consultantId}
           AND (
