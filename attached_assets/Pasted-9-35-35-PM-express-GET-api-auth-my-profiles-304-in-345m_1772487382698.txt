@@ -1,0 +1,57 @@
+9:35:35 PM [express] GET /api/auth/my-profiles 304 in 345ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+9:35:36 PM [express] GET /api/voice/outbound/scheduled 304 in 680ms :: {"calls":[{"id":"sc_177119225…
+[Voice] Error fetching contact profile: error: column vc.call_direction does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Promise.all (index 1)
+    at async <anonymous> (/home/runner/workspace/server/routes/voice-router.ts:872:76) {
+  length: 116,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '175',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
+9:35:36 PM [express] GET /api/voice/contact/9999 500 in 346ms :: {"error":"Errore nel recupero del p…
+9:35:41 PM [express] POST /api/activity/session/heartbeat 200 in 349ms :: {"success":true,"lastActiv…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+📡 [SSE] Client disconnected for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (0 remaining)
+📡 [SSE] Client connected for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1 active)
+9:35:57 PM [express] GET /api/consultant/detailed-profile 304 in 348ms :: {"id":"0605ff58-10de-457f-…
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping... (rowCount=0, rows=0, keys=command,rowCount,oid,rows,fields,_parsers,_types,RowCtor,rowAsArray,_prebuiltEmptyResultObject)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+[Voice] Error fetching contact profile: error: column vc.call_direction does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Promise.all (index 1)
+    at async <anonymous> (/home/runner/workspace/server/routes/voice-router.ts:872:76) {
+  length: 116,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '175',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
+9:36:02 PM [express] GET /api/voice/contact/9999 500 in 346ms :: {"error":"Errore nel recupero del p…

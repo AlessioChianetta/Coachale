@@ -157,12 +157,14 @@ export default function ConsultantVoiceCallDetailPage() {
   const { id } = useParams<{ id: string }>();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
   const [expandedCalls, setExpandedCalls] = useState<Set<string>>(new Set());
 
+  const isContactMode = location.includes('/contact/');
+
   const decodedId = decodeURIComponent(id || "");
-  const isPhoneNumber = /^\+?\d[\d\s\-()]{5,}$/.test(decodedId);
+  const isPhoneNumber = /^\+?\d[\d\s\-()]{2,}$/.test(decodedId);
   const phoneFromUrl = isPhoneNumber ? decodedId : null;
 
   const { data: resolvedPhone, isLoading: resolvingPhone } = useQuery({
@@ -225,7 +227,7 @@ export default function ConsultantVoiceCallDetailPage() {
     );
   }
 
-  if (!contactData) {
+  if (!contactData && !isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -242,9 +244,104 @@ export default function ConsultantVoiceCallDetailPage() {
     );
   }
 
+  if (!contactData) return null;
+
   const { contact, calls, scheduledCalls, hunterContext, proactiveLead, nextRetry } = contactData;
   const typeBadge = CONTACT_TYPE_BADGES[contact.type] || CONTACT_TYPE_BADGES.unknown;
   const displayName = contact.name || contact.phone;
+
+  const focusedCall = !isContactMode ? calls.find(c => c.id === decodedId) || calls[0] : null;
+
+  if (!isContactMode && focusedCall) {
+    const st = CALL_STATUS[focusedCall.status] || CALL_STATUS.ended;
+    const StIcon = st.icon;
+    const isInbound = focusedCall.call_direction === "inbound" || (!focusedCall.call_direction && focusedCall.caller_id === contact.phone);
+    return (
+      <div className="flex min-h-screen bg-background">
+        <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} role="consultant" />
+        <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
+          <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          <main className="flex-1 p-4 lg:p-6 lg:px-8 overflow-auto">
+            <div className="max-w-3xl mx-auto space-y-4">
+              <div className="flex items-center gap-3">
+                <Link href="/consultant/voice-calls">
+                  <Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button>
+                </Link>
+                <div>
+                  <h1 className="text-xl font-bold">{isInbound ? "Chiamata in entrata" : "Chiamata in uscita"}</h1>
+                  <p className="text-sm text-muted-foreground font-mono">{contact.phone}</p>
+                </div>
+                <Link href={`/consultant/voice-calls/contact/${encodeURIComponent(contact.phone.replace(/\s+/g, ''))}`} className="ml-auto">
+                  <Button variant="outline" size="sm">
+                    <User className="h-4 w-4 mr-2" />
+                    Profilo contatto
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="rounded-2xl border bg-card p-6 space-y-5">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${st.color}`}>
+                    <StIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Badge variant="outline">{st.label}</Badge>
+                      {focusedCall.outcome && <Badge variant="secondary">{focusedCall.outcome}</Badge>}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {focusedCall.started_at && format(new Date(focusedCall.started_at), "dd/MM/yyyy HH:mm", { locale: it })}
+                      {focusedCall.duration_seconds ? ` · ${formatDuration(focusedCall.duration_seconds)}` : ""}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                  <div><span className="text-muted-foreground block text-xs">Chiamante</span><span className="font-mono">{focusedCall.caller_id}</span></div>
+                  <div><span className="text-muted-foreground block text-xs">Chiamato</span><span className="font-mono">{focusedCall.called_number}</span></div>
+                  {focusedCall.ai_mode && <div><span className="text-muted-foreground block text-xs">Modalità AI</span><span className="capitalize">{focusedCall.ai_mode}</span></div>}
+                  {focusedCall.hangup_cause && <div><span className="text-muted-foreground block text-xs">Causa chiusura</span><span>{focusedCall.hangup_cause}</span></div>}
+                  {focusedCall.client_name && <div><span className="text-muted-foreground block text-xs">Cliente</span><span>{focusedCall.client_name}</span></div>}
+                </div>
+
+                {focusedCall.full_transcript && (
+                  <>
+                    <Separator />
+                    <div>
+                      <div className="text-sm font-medium mb-2 flex items-center gap-1.5"><MessageSquare className="h-4 w-4" />Trascrizione</div>
+                      <ScrollArea className="h-[300px]">
+                        <div className="whitespace-pre-wrap font-mono text-xs bg-muted/50 p-3 rounded-lg">{focusedCall.full_transcript}</div>
+                      </ScrollArea>
+                    </div>
+                  </>
+                )}
+
+                {focusedCall.recording_url && (
+                  <>
+                    <Separator />
+                    <div>
+                      <div className="text-sm font-medium mb-2 flex items-center gap-1.5"><Volume2 className="h-4 w-4" />Registrazione</div>
+                      <audio controls className="w-full"><source src={focusedCall.recording_url} type="audio/wav" /></audio>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="text-center">
+                <Link href={`/consultant/voice-calls/contact/${encodeURIComponent(contact.phone.replace(/\s+/g, ''))}`}>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground">
+                    Vedi tutte le chiamate di {displayName || contact.phone} →
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">

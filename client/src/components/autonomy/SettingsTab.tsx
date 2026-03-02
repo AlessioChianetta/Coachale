@@ -982,6 +982,7 @@ function SettingsTab({
 }: SettingsTabProps) {
   const [, navigate] = useLocation();
   const [showArchDetails, setShowArchDetails] = useState(true);
+  const [autonomiaStep, setAutonomiaStep] = useState(0);
   const [showPromptForRole, setShowPromptForRole] = useState<string | null>(null);
   const [triggeringRoleId, setTriggeringRoleId] = useState<string | null>(null);
   const [triggerRoleResult, setTriggerRoleResult] = useState<Record<string, { success: boolean; tasks: number; error?: string }>>({});
@@ -990,6 +991,12 @@ function SettingsTab({
   const [telegramChatsRoleId, setTelegramChatsRoleId] = useState<string | null>(null);
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (activeTab === 'panoramica') {
+      onTabChange('autonomia');
+    }
+  }, [activeTab]);
   const { toast } = useToast();
 
   const { data: savedSalesContext } = useQuery<{ servicesOffered?: string; targetAudience?: string } | null>({
@@ -1249,20 +1256,13 @@ function SettingsTab({
     >
       <Tabs value={activeTab} onValueChange={onTabChange}>
         <div className="bg-card rounded-2xl border border-border shadow-sm p-1.5 overflow-x-auto no-scrollbar">
-          <TabsList className="flex w-full sm:grid sm:grid-cols-6 gap-1 bg-transparent h-auto p-0 min-w-max sm:min-w-0">
+          <TabsList className="flex w-full sm:grid sm:grid-cols-5 gap-1 bg-transparent h-auto p-0 min-w-max sm:min-w-0">
             <TabsTrigger
               value="dipendenti"
               className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
               <Bot className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Dipendenti AI</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="panoramica"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
-            >
-              <Activity className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Panoramica</span>
             </TabsTrigger>
             <TabsTrigger
               value="autonomia"
@@ -1300,210 +1300,7 @@ function SettingsTab({
           </TabsList>
         </div>
 
-        {/* Tab 1 - Panoramica */}
-        <TabsContent value="panoramica" className="mt-5 space-y-5">
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="flex items-center justify-between cursor-pointer" onClick={() => setShowArchDetails(!showArchDetails)}>
-              <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-                <Bot className="h-5 w-5" />
-                <span>Cosa può fare il tuo Dipendente AI</span>
-              </div>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                {showArchDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Architettura, modalità operative e guardrail di sicurezza
-            </p>
-
-            {showArchDetails && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-5"
-              >
-                <div className="rounded-xl border border-border p-4 space-y-2">
-                  <div className="flex items-start gap-4">
-                    <Brain className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                    <div className="space-y-2 flex-1">
-                      <h4 className="text-sm font-semibold flex items-center gap-2">
-                        Come funziona
-                        <Badge className="bg-primary/10 text-primary border-primary/20 text-xs rounded-lg">Il Cervello</Badge>
-                      </h4>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        Un <span className="font-medium text-foreground">motore decisionale</span> basato su Gemini analizza il contesto di ogni cliente
-                        (storico, dati, scadenze) e crea <span className="font-medium text-foreground">piani di esecuzione multi-step</span>.
-                        Ragiona come un consulente esperto per decidere cosa fare, quando e come.
-                      </p>
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        <Badge variant="outline" className="text-xs gap-1 rounded-lg"><Eye className="h-3 w-3" /> Analisi contesto</Badge>
-                        <Badge variant="outline" className="text-xs gap-1 rounded-lg"><ListTodo className="h-3 w-3" /> Piani multi-step</Badge>
-                        <Badge variant="outline" className="text-xs gap-1 rounded-lg"><Sparkles className="h-3 w-3" /> Reasoning AI</Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <Cog className="h-4 w-4" />
-                    Le 3 Modalità
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className={cn(
-                      "rounded-xl border border-border p-4 space-y-2",
-                      settings.default_mode === "manual" && "ring-2 ring-primary border-primary/30"
-                    )}>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-emerald-500" />
-                        <span className="text-sm font-semibold">Manuale</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        Tu crei i task, l'AI li esegue quando programmati. Controllo totale su ogni azione.
-                      </p>
-                      <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                        Ideale per: chi vuole controllo totale
-                      </p>
-                    </div>
-                    <div className={cn(
-                      "rounded-xl border border-border p-4 space-y-2 relative",
-                      settings.default_mode === "hybrid" && "ring-2 ring-primary border-primary/30"
-                    )}>
-                      <Badge className="absolute -top-2.5 right-3 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-lg">Consigliata</Badge>
-                      <div className="flex items-center gap-2">
-                        <Lightbulb className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-semibold">Ibrida</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        L'AI propone nuove azioni ma chiede approvazione per quelle importanti.
-                      </p>
-                      <p className="text-xs text-primary">
-                        Ideale per: consulenti e team piccoli
-                      </p>
-                    </div>
-                    <div className={cn(
-                      "rounded-xl border border-border p-4 space-y-2",
-                      settings.default_mode === "automatic" && "ring-2 ring-primary border-primary/30"
-                    )}>
-                      <div className="flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-orange-500" />
-                        <span className="text-sm font-semibold">Automatica</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        L'AI opera in piena autonomia entro i limiti configurati.
-                      </p>
-                      <p className="text-xs text-orange-600 dark:text-orange-400">
-                        Ideale per: aziende strutturate
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <RefreshCw className="h-4 w-4" />
-                    Il Ciclo di Lavoro
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[
-                      { step: 1, icon: Timer, title: "CRON Scheduler", desc: "Verifica task ogni minuto" },
-                      { step: 2, icon: Brain, title: "Decision Engine", desc: "Analizza contesto e priorità" },
-                      { step: 3, icon: ListTodo, title: "Piano Esecuzione", desc: "Crea piano multi-step" },
-                      { step: 4, icon: Play, title: "Task Executor", desc: "Esegue azioni su tutti i canali" },
-                    ].map((item) => (
-                      <div key={item.step} className="flex items-start gap-2">
-                        <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-primary/10 text-primary text-sm font-bold shrink-0">
-                          {item.step}
-                        </div>
-                        <div className="space-y-0.5 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <item.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-xs font-semibold truncate">{item.title}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{item.desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { icon: Phone, label: "Chiamate" },
-                      { icon: Mail, label: "Email" },
-                      { icon: MessageSquare, label: "WhatsApp" },
-                      { icon: BarChart3, label: "Analisi" },
-                      { icon: Target, label: "Ricerca" },
-                    ].map((ch) => (
-                      <Badge key={ch.label} variant="outline" className="text-xs gap-1 py-0.5 rounded-lg">
-                        <ch.icon className="h-3 w-3" />
-                        {ch.label}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="rounded-xl border border-amber-200 dark:border-amber-800 p-4 bg-amber-50 dark:bg-amber-950/20">
-                  <h4 className="text-sm font-semibold mb-4 flex items-center gap-2 text-amber-800 dark:text-amber-300">
-                    <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    Guardrail di Sicurezza
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
-                    {[
-                      { icon: Clock, text: "Opera solo nell'orario di lavoro configurato" },
-                      { icon: Shield, text: "Limiti giornalieri per ogni canale" },
-                      { icon: Zap, text: "Solo canali e categorie abilitate" },
-                      { icon: AlertCircle, text: "Livello autonomia richiesto per ogni azione" },
-                      { icon: Activity, text: "Ogni azione registrata nel feed attività" },
-                      { icon: CheckCircle, text: "Nessuna azione duplicata o ridondante" },
-                    ].map((rule, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground py-1.5">
-                        <rule.icon className="h-4 w-4 text-amber-500 shrink-0" />
-                        <span>{rule.text}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </div>
-
-          <div className="flex items-center justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={onTriggerAnalysis}
-              disabled={isTriggering}
-            >
-              {isTriggering ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Play className="h-3.5 w-3.5" />
-              )}
-              {isTriggering ? "Analisi in corso..." : "Avvia Analisi Ora"}
-            </Button>
-          </div>
-          {triggerResult && (
-            <div className={cn(
-              "p-2.5 rounded-xl border text-xs",
-              triggerResult.success
-                ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300"
-                : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-300"
-            )}>
-              {triggerResult.success
-                ? `Analisi completata: ${triggerResult.tasks_generated} task generati.`
-                : `Errore: ${triggerResult.error || "Analisi fallita"}`}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Tab 2 - Autonomia & Modalita' */}
+        {/* Tab: Autonomia & Modalita' */}
         <TabsContent value="autonomia" className="mt-5 space-y-5">
 
           {(() => {

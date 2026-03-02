@@ -2471,11 +2471,18 @@ export default function ConsultantVoiceCallsPage() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <Link href={`/consultant/voice-calls/contact/${encodeURIComponent(call.target_phone || call.caller_id || call.called_number)}`}>
-                                  <Button variant="ghost" size="sm">
-                                    Dettagli
-                                  </Button>
-                                </Link>
+                                <div className="flex items-center gap-1">
+                                  <Link href={`/consultant/voice-calls/${call.id}`}>
+                                    <Button variant="ghost" size="sm">
+                                      Dettagli
+                                    </Button>
+                                  </Link>
+                                  <Link href={`/consultant/voice-calls/contact/${encodeURIComponent((call.target_phone || call.called_number || call.caller_id || '').replace(/\s+/g, ''))}`}>
+                                    <Button variant="ghost" size="sm" title="Profilo contatto">
+                                      <User className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </Link>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );

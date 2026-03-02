@@ -1016,12 +1016,16 @@ router.get("/contact-by-call/:callId", authenticateToken, requireAnyRole(["consu
       phone = (result.rows[0] as any)?.target_phone || null;
     } else {
       const result = await db.execute(sql`
-        SELECT caller_id, called_number FROM voice_calls 
+        SELECT caller_id, called_number, call_direction FROM voice_calls 
         WHERE id = ${callId} AND consultant_id = ${consultantId}
         LIMIT 1
       `);
       const row = result.rows[0] as any;
-      phone = row?.caller_id || row?.called_number || null;
+      if (row?.call_direction === 'outbound') {
+        phone = row?.called_number || row?.caller_id || null;
+      } else {
+        phone = row?.caller_id || row?.called_number || null;
+      }
     }
 
     if (!phone) return res.status(404).json({ error: "Chiamata non trovata" });
