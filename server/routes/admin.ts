@@ -2612,8 +2612,8 @@ router.get(
 
       const result = await db.execute(sql`
         SELECT ni.*, 
-          u_assigned.email as assigned_email, u_assigned."firstName" as assigned_first_name, u_assigned."lastName" as assigned_last_name,
-          u_purchased.email as purchased_email, u_purchased."firstName" as purchased_first_name, u_purchased."lastName" as purchased_last_name
+          u_assigned.email as assigned_email, u_assigned.first_name as assigned_first_name, u_assigned.last_name as assigned_last_name,
+          u_purchased.email as purchased_email, u_purchased.first_name as purchased_first_name, u_purchased.last_name as purchased_last_name
         FROM number_inventory ni
         LEFT JOIN users u_assigned ON ni.assigned_to = u_assigned.id
         LEFT JOIN users u_purchased ON ni.purchased_by = u_purchased.id
