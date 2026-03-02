@@ -37,6 +37,7 @@ async function runPollingCycle() {
 
     await pollKycRequests();
     await pollNumberOrders();
+    await checkKycDeadlines();
 
     console.log('[TELNYX-POLLER] Polling cycle complete');
   }, { lockDurationMs: 120000 });
@@ -68,7 +69,12 @@ async function pollKycRequests() {
               updated_at = NOW()
           WHERE id = ${row.id} AND status = 'kyc_submitted'
         `);
-        console.log(`[TELNYX-POLLER] Request ${row.id} → kyc_approved`);
+        await db.execute(sql`
+          UPDATE consultant_numbers
+          SET kyc_status = 'approved', updated_at = NOW()
+          WHERE kyc_request_id = ${row.id}
+        `);
+        console.log(`[TELNYX-POLLER] Request ${row.id} → kyc_approved (consultant_numbers synced)`);
       } else if (result.status === 'action-required' || result.status === 'rejected' || result.status === 'declined') {
         await db.execute(sql`
           UPDATE voip_provisioning_requests
@@ -77,11 +83,48 @@ async function pollKycRequests() {
               updated_at = NOW()
           WHERE id = ${row.id} AND status = 'kyc_submitted'
         `);
-        console.log(`[TELNYX-POLLER] Request ${row.id} → rejected (${result.status})`);
+        await db.execute(sql`
+          UPDATE consultant_numbers
+          SET kyc_status = 'rejected', updated_at = NOW()
+          WHERE kyc_request_id = ${row.id}
+        `);
+        console.log(`[TELNYX-POLLER] Request ${row.id} → rejected (${result.status}, consultant_numbers synced)`);
       }
     } catch (error: any) {
       console.error(`[TELNYX-POLLER] Error checking KYC for request ${row.id}:`, error.message);
     }
+  }
+}
+
+async function checkKycDeadlines() {
+  try {
+    const expired = await db.execute(sql`
+      SELECT id, consultant_id, phone_number, kyc_deadline
+      FROM consultant_numbers
+      WHERE status = 'active'
+        AND kyc_status IN ('pending', 'submitted')
+        AND kyc_deadline IS NOT NULL
+        AND kyc_deadline < NOW()
+    `);
+
+    if (expired.rows.length === 0) return;
+
+    console.log(`[TELNYX-POLLER] Found ${expired.rows.length} number(s) with expired KYC deadline`);
+
+    for (const row of expired.rows as any[]) {
+      try {
+        await db.execute(sql`
+          UPDATE consultant_numbers
+          SET status = 'suspended', suspended_at = NOW(), updated_at = NOW()
+          WHERE id = ${row.id} AND status = 'active'
+        `);
+        console.log(`[TELNYX-POLLER] Suspended number ${row.phone_number} (consultant ${row.consultant_id}) — KYC deadline expired: ${row.kyc_deadline}`);
+      } catch (err: any) {
+        console.error(`[TELNYX-POLLER] Error suspending number ${row.id}:`, err.message);
+      }
+    }
+  } catch (error: any) {
+    console.error('[TELNYX-POLLER] Error checking KYC deadlines:', error.message);
   }
 }
 
