@@ -136,7 +136,7 @@ export async function getManagedAccountBalance(accountId: string): Promise<{ bal
   };
 }
 
-export async function createRequirementGroup(countryCode: string, phoneNumberType: string, action: string): Promise<string> {
+export async function createRequirementGroup(countryCode: string, phoneNumberType: string, action: string): Promise<{ id: string; requirements: any[] }> {
   console.log(`[TELNYX] Creating requirement group: country=${countryCode}, type=${phoneNumberType}, action=${action}`);
   const data = await telnyxRequest("/requirement_groups", {
     method: "POST",
@@ -146,29 +146,61 @@ export async function createRequirementGroup(countryCode: string, phoneNumberTyp
       action: action,
     }),
   });
+  return {
+    id: data.data.id,
+    requirements: data.data.regulatory_requirements || data.data.requirements || [],
+  };
+}
+
+export async function getRequirementTypes(countryCode: string, phoneNumberType: string, action: string): Promise<any[]> {
+  console.log(`[TELNYX] Getting requirement types for: country=${countryCode}, type=${phoneNumberType}, action=${action}`);
+  const params = new URLSearchParams({
+    "filter[country_code]": countryCode,
+    "filter[phone_number_type]": phoneNumberType,
+    "filter[action]": action,
+  });
+  const data = await telnyxRequest(`/requirement_types?${params.toString()}`);
+  return data.data || [];
+}
+
+export async function createAddress(addressData: {
+  business_name: string;
+  first_name?: string;
+  last_name?: string;
+  street_address: string;
+  locality: string;
+  administrative_area?: string;
+  postal_code: string;
+  country_code: string;
+}): Promise<string> {
+  console.log(`[TELNYX] Creating address for: ${addressData.business_name} in ${addressData.locality}`);
+  const data = await telnyxRequest("/addresses", {
+    method: "POST",
+    body: JSON.stringify(addressData),
+  });
   return data.data.id;
 }
 
-export async function fulfillRequirements(groupId: string, documents: Array<{ documentId: string; requirementTypeId: string }>, businessData: Record<string, any>): Promise<void> {
-  console.log(`[TELNYX] Fulfilling requirements for group: ${groupId}`);
-  const requirementsFulfillment = documents.map(doc => ({
-    requirement_type_id: doc.requirementTypeId,
-    document_id: doc.documentId,
-  }));
+export async function fulfillRequirements(groupId: string, requirements: Array<{ requirement_type_id: string; field_value: string }>): Promise<void> {
+  console.log(`[TELNYX] Fulfilling ${requirements.length} requirements for group: ${groupId}`);
   await telnyxRequest(`/requirement_groups/${groupId}`, {
     method: "PATCH",
     body: JSON.stringify({
-      requirements_fulfillment: requirementsFulfillment,
-      ...businessData,
+      requirements: requirements.map(r => ({
+        requirement_type_id: r.requirement_type_id,
+        field_value: r.field_value,
+      })),
     }),
   });
 }
 
-export async function submitForApproval(groupId: string): Promise<void> {
-  console.log(`[TELNYX] Submitting requirement group for approval: ${groupId}`);
-  await telnyxRequest(`/requirement_groups/${groupId}/submit_for_approval`, {
-    method: "POST",
-  });
+export async function getRequirementGroupDetails(groupId: string): Promise<{ id: string; status: string; requirements: any[] }> {
+  const data = await telnyxRequest(`/requirement_groups/${groupId}`);
+  return {
+    id: data.data.id,
+    status: data.data.status,
+    requirements: data.data.regulatory_requirements || data.data.requirements || [],
+  };
 }
 
 export async function searchAvailableNumbers(prefix: string, countryCode: string = "IT"): Promise<Array<{ phoneNumber: string; features: any }>> {
@@ -287,9 +319,9 @@ export async function runFullProvisioningFlow(requestId: number): Promise<void> 
     }
 
     if (!request.telnyx_requirement_group_id) {
-      const groupId = await createRequirementGroup("IT", "local", "ordering");
+      const group = await createRequirementGroup("IT", "local", "ordering");
       await updateRequestStatus(requestId, "kyc_submitted", {
-        telnyx_requirement_group_id: groupId,
+        telnyx_requirement_group_id: group.id,
       });
     }
 

@@ -4276,6 +4276,37 @@ router.get("/voip-provisioning/status", authenticateToken, requireAnyRole(["cons
   }
 });
 
+function matchDocumentToRequirement(reqName: string, reqDesc: string, uploadedDocs: Map<string, string>, usedDocIds: Set<string>): string | null {
+  const combined = `${reqName} ${reqDesc}`.toLowerCase();
+
+  const mappingRules: Array<{ keywords: string[]; docTypes: string[] }> = [
+    { keywords: ["identity", "identità", "passport", "carta d'identità", "id card", "identification"], docTypes: ["identity_front", "identity_back"] },
+    { keywords: ["proof of address", "prova di residenza", "utility bill", "bolletta", "residenza"], docTypes: ["proof_of_address"] },
+    { keywords: ["vat", "iva", "partita iva", "vat certificate", "certificato iva"], docTypes: ["vat_certificate"] },
+    { keywords: ["codice fiscale", "fiscal code", "tax code", "tax id"], docTypes: ["codice_fiscale"] },
+    { keywords: ["visura", "camera di commercio", "company registration", "business registration", "chamber"], docTypes: ["visura_camerale"] },
+  ];
+
+  for (const rule of mappingRules) {
+    if (rule.keywords.some(kw => combined.includes(kw))) {
+      for (const docType of rule.docTypes) {
+        const docId = uploadedDocs.get(docType);
+        if (docId && !usedDocIds.has(docId)) {
+          return docId;
+        }
+      }
+    }
+  }
+
+  for (const [, docId] of uploadedDocs) {
+    if (!usedDocIds.has(docId)) {
+      return docId;
+    }
+  }
+
+  return null;
+}
+
 router.post("/voip-provisioning/submit-kyc", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user?.id;
@@ -4303,14 +4334,25 @@ router.post("/voip-provisioning/submit-kyc", authenticateToken, requireAnyRole([
 
     const docsResult = await db.execute(sql`
       SELECT * FROM voip_provisioning_documents
-      WHERE request_id = ${provRequest.id} AND status = 'uploaded'
+      WHERE request_id = ${provRequest.id} AND status IN ('uploaded', 'submitted_to_provider')
     `);
     if (docsResult.rows.length === 0) {
       return res.status(400).json({ error: "Nessun documento caricato. Carica almeno i documenti richiesti." });
     }
 
     try {
+      const appendLog = async (msg: string) => {
+        await db.execute(sql`
+          UPDATE voip_provisioning_requests
+          SET error_log = COALESCE(error_log, '') || ${`[${new Date().toISOString()}] ${msg}\n`},
+              updated_at = NOW()
+          WHERE id = ${provRequest.id}
+        `);
+      };
+
+      // Step 1: Create Managed Account (if needed)
       if (!provRequest.telnyx_managed_account_id) {
+        console.log(`[VOIP-KYC] Step 1: Creating managed account...`);
         const account = await telnyxProvisioning.createManagedAccount(
           provRequest.business_name || "Consultant",
           provRequest.contact_email || ""
@@ -4322,45 +4364,158 @@ router.post("/voip-provisioning/submit-kyc", authenticateToken, requireAnyRole([
               updated_at = NOW()
           WHERE id = ${provRequest.id}
         `);
+        await appendLog(`Managed account creato: ${account.id}`);
       }
 
-      if (!provRequest.telnyx_requirement_group_id) {
-        const groupId = await telnyxProvisioning.createRequirementGroup("IT", "local", "ordering");
+      // Step 2: Create Address on Telnyx (if needed)
+      let addressId = provRequest.telnyx_address_id;
+      if (!addressId) {
+        console.log(`[VOIP-KYC] Step 2: Creating address on Telnyx...`);
+        const nameParts = (provRequest.business_name || "Consultant").split(" ");
+        addressId = await telnyxProvisioning.createAddress({
+          business_name: provRequest.business_name || "Consultant",
+          first_name: nameParts[0] || "N/A",
+          last_name: nameParts.slice(1).join(" ") || "N/A",
+          street_address: provRequest.legal_address || "Via non specificata 1",
+          locality: provRequest.city || "Roma",
+          administrative_area: provRequest.province || "RM",
+          postal_code: provRequest.postal_code || "00100",
+          country_code: "IT",
+        });
+        await db.execute(sql`
+          UPDATE voip_provisioning_requests
+          SET telnyx_address_id = ${addressId}, updated_at = NOW()
+          WHERE id = ${provRequest.id}
+        `);
+        await appendLog(`Address creato su Telnyx: ${addressId}`);
+      }
+
+      // Step 3: Create Requirement Group (if needed)
+      let groupId = provRequest.telnyx_requirement_group_id;
+      let groupRequirements: any[] = [];
+      if (!groupId) {
+        console.log(`[VOIP-KYC] Step 3: Creating requirement group...`);
+        const group = await telnyxProvisioning.createRequirementGroup("IT", "local", "ordering");
+        groupId = group.id;
+        groupRequirements = group.requirements;
         await db.execute(sql`
           UPDATE voip_provisioning_requests
           SET telnyx_requirement_group_id = ${groupId}, updated_at = NOW()
           WHERE id = ${provRequest.id}
         `);
+        await appendLog(`Requirement group creato: ${groupId} con ${groupRequirements.length} requirements`);
+      } else {
+        console.log(`[VOIP-KYC] Step 3: Fetching existing requirement group details...`);
+        const details = await telnyxProvisioning.getRequirementGroupDetails(groupId);
+        groupRequirements = details.requirements;
       }
 
+      // Step 4: Upload documents to Telnyx (track document_type → telnyx_doc_id)
+      console.log(`[VOIP-KYC] Step 4: Uploading ${docsResult.rows.length} documents...`);
+      const uploadedDocs: Map<string, string> = new Map();
       for (const doc of docsResult.rows as any[]) {
         try {
-          const telnyxDocId = await telnyxProvisioning.uploadDocumentToTelnyx(doc.file_path, doc.file_name);
-          await db.execute(sql`
-            UPDATE voip_provisioning_documents
-            SET telnyx_document_id = ${telnyxDocId}, status = 'submitted_to_provider'
-            WHERE id = ${doc.id}
-          `);
+          let telnyxDocId = doc.telnyx_document_id;
+          if (!telnyxDocId) {
+            telnyxDocId = await telnyxProvisioning.uploadDocumentToTelnyx(doc.file_path, doc.file_name);
+            await db.execute(sql`
+              UPDATE voip_provisioning_documents
+              SET telnyx_document_id = ${telnyxDocId}, status = 'submitted_to_provider'
+              WHERE id = ${doc.id}
+            `);
+          }
+          uploadedDocs.set(doc.document_type, telnyxDocId);
+          console.log(`[VOIP-KYC]   Uploaded ${doc.document_type} → ${telnyxDocId}`);
         } catch (docError: any) {
-          console.error(`[VOIP] Error uploading doc ${doc.id} to Telnyx:`, docError.message);
+          console.error(`[VOIP-KYC] Error uploading doc ${doc.id}:`, docError.message);
           await db.execute(sql`
             UPDATE voip_provisioning_documents
             SET status = 'rejected', rejection_reason = ${docError.message}
             WHERE id = ${doc.id}
           `);
+          await appendLog(`Errore upload documento ${doc.document_type}: ${docError.message}`);
         }
       }
 
+      // Step 4b: Also fetch requirement types to get canonical type IDs
+      let requirementTypes: any[] = [];
+      try {
+        requirementTypes = await telnyxProvisioning.getRequirementTypes("IT", "local", "ordering");
+        console.log(`[VOIP-KYC] Fetched ${requirementTypes.length} requirement types from Telnyx`);
+        for (const rt of requirementTypes) {
+          console.log(`[VOIP-KYC]   RequirementType: id=${rt.id}, name=${rt.name}, record_type=${rt.record_type}, description=${(rt.description || '').substring(0, 80)}`);
+        }
+      } catch (rtErr: any) {
+        console.warn(`[VOIP-KYC] Could not fetch requirement types: ${rtErr.message}`);
+      }
+
+      // Step 5: Link documents and address to requirement group
+      console.log(`[VOIP-KYC] Step 5: Fulfilling ${groupRequirements.length} requirements...`);
+      console.log(`[VOIP-KYC] Available docs: ${JSON.stringify(Object.fromEntries(uploadedDocs))}`);
+
+      const requirementsFulfillment: Array<{ requirement_type_id: string; field_value: string }> = [];
+      const usedDocIds = new Set<string>();
+
+      for (const req of groupRequirements) {
+        const reqTypeId = req.requirement_type_id;
+        if (!reqTypeId) {
+          console.warn(`[VOIP-KYC]   Skipping requirement with no requirement_type_id: ${JSON.stringify(req)}`);
+          continue;
+        }
+
+        const matchingType = requirementTypes.find((rt: any) => rt.id === reqTypeId);
+        const recordType = (matchingType?.record_type || req.record_type || req.field_type || "").toLowerCase();
+        const reqName = (matchingType?.name || req.name || "").toLowerCase();
+        const reqDesc = (matchingType?.description || req.description || "").toLowerCase();
+
+        console.log(`[VOIP-KYC]   Processing requirement: id=${reqTypeId}, recordType=${recordType}, name=${reqName}`);
+
+        if (recordType === "address" || recordType === "address_id" || reqName.includes("address") || reqName.includes("indirizzo")) {
+          requirementsFulfillment.push({ requirement_type_id: reqTypeId, field_value: addressId });
+          console.log(`[VOIP-KYC]     → Mapped to address: ${addressId}`);
+        } else if (recordType === "document" || recordType === "document_id") {
+          const docId = matchDocumentToRequirement(reqName, reqDesc, uploadedDocs, usedDocIds);
+          if (docId) {
+            requirementsFulfillment.push({ requirement_type_id: reqTypeId, field_value: docId });
+            usedDocIds.add(docId);
+            console.log(`[VOIP-KYC]     → Mapped to document: ${docId}`);
+          } else {
+            console.warn(`[VOIP-KYC]     → No matching document found for: ${reqName}`);
+            await appendLog(`Warning: nessun documento trovato per requirement "${reqName}" (${reqTypeId})`);
+          }
+        } else {
+          console.log(`[VOIP-KYC]     → Unknown record_type "${recordType}", trying fallback...`);
+          const docId = matchDocumentToRequirement(reqName, reqDesc, uploadedDocs, usedDocIds);
+          if (docId) {
+            requirementsFulfillment.push({ requirement_type_id: reqTypeId, field_value: docId });
+            usedDocIds.add(docId);
+            console.log(`[VOIP-KYC]     → Fallback mapped to document: ${docId}`);
+          } else {
+            requirementsFulfillment.push({ requirement_type_id: reqTypeId, field_value: addressId });
+            console.log(`[VOIP-KYC]     → Fallback mapped to address: ${addressId}`);
+          }
+        }
+      }
+
+      if (requirementsFulfillment.length > 0) {
+        await telnyxProvisioning.fulfillRequirements(groupId, requirementsFulfillment);
+        await appendLog(`Requirements compilati: ${requirementsFulfillment.length} su ${groupRequirements.length}`);
+      } else if (groupRequirements.length === 0) {
+        console.log(`[VOIP-KYC] Requirement group returned 0 requirements — may need manual review`);
+        await appendLog(`Nessun requirement restituito dal gruppo Telnyx — verifica manuale necessaria`);
+      }
+
+      // Step 6: Update status to kyc_submitted
       await db.execute(sql`
         UPDATE voip_provisioning_requests
         SET status = 'kyc_submitted', updated_at = NOW()
         WHERE id = ${provRequest.id}
       `);
 
-      console.log(`📋 [VOIP] KYC submitted for request ${provRequest.id}`);
-      res.json({ success: true, message: "KYC inviato a Telnyx per approvazione" });
+      console.log(`[VOIP-KYC] KYC submitted successfully for request ${provRequest.id}`);
+      res.json({ success: true, message: "KYC inviato a Telnyx per approvazione. I documenti e l'indirizzo sono stati collegati." });
     } catch (telnyxError: any) {
-      console.error("[VOIP] Telnyx KYC submission error:", telnyxError.message);
+      console.error("[VOIP-KYC] Telnyx KYC submission error:", telnyxError.message);
       await db.execute(sql`
         UPDATE voip_provisioning_requests
         SET error_log = COALESCE(error_log, '') || ${`[${new Date().toISOString()}] KYC Error: ${telnyxError.message}\n`},
@@ -4370,7 +4525,7 @@ router.post("/voip-provisioning/submit-kyc", authenticateToken, requireAnyRole([
       res.status(500).json({ error: `Errore Telnyx: ${telnyxError.message}` });
     }
   } catch (error: any) {
-    console.error("[VOIP] Error submitting KYC:", error);
+    console.error("[VOIP-KYC] Error submitting KYC:", error);
     res.status(500).json({ error: "Errore nell'invio KYC" });
   }
 });
