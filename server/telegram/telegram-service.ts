@@ -1140,7 +1140,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     let draftSupported = true;
     let draftChecked = false;
     let chunkCount = 0;
-    const draftRandomId = Math.floor(Math.random() * 2147483647);
+    const draftRandomId = Math.floor(Math.random() * 1_000_000_000_000);
 
     const streamCallback = (chunk: string) => {
       accumulatedText += chunk;
