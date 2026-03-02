@@ -4194,10 +4194,121 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                   </div>
                 </CardContent>
               </Card>
+
+              {telnyxConfig?.hasApiKey && (
+                <TelnyxTestCard getAuthHeaders={getAuthHeaders} />
+              )}
             </TabsContent>
           </Tabs>
         </div>
       </div>
     </div>
+  );
+}
+
+function TelnyxTestCard({ getAuthHeaders }: { getAuthHeaders: () => Record<string, string> }) {
+  const { toast } = useToast();
+  const [dryRun, setDryRun] = useState(true);
+  const [isTestingOrder, setIsTestingOrder] = useState(false);
+  const [isTestingKyc, setIsTestingKyc] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+
+  const runTest = async (endpoint: string, setLoading: (v: boolean) => void) => {
+    setLoading(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(`/api/admin/settings/telnyx/${endpoint}`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ dryRun }),
+      });
+      const data = await res.json();
+      setTestResult(data);
+      if (data.success) {
+        toast({ title: "Test completato", description: `${data.steps?.length || 0} step eseguiti` });
+      } else {
+        toast({ title: "Test fallito", description: data.error || "Errore sconosciuto", variant: "destructive" });
+      }
+    } catch (err: any) {
+      setTestResult({ success: false, error: err.message });
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Activity className="h-5 w-5" />
+          Test API Telnyx
+        </CardTitle>
+        <CardDescription>
+          Testa il flusso di provisioning usando numeri US (senza KYC). Con Dry Run attivo, nessun costo viene sostenuto.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="telnyx-dry-run"
+            checked={dryRun}
+            onChange={(e) => setDryRun(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <Label htmlFor="telnyx-dry-run" className="text-sm">
+            Dry Run (nessun costo — solo ricerca e creazione gruppo)
+          </Label>
+        </div>
+
+        {!dryRun && (
+          <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
+              Attenzione: con Dry Run disattivato, il test acquisto ordina un numero US reale (~$1) e il test KYC crea risorse su Telnyx.
+            </p>
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={() => runTest("test-number-order", setIsTestingOrder)}
+            disabled={isTestingOrder || isTestingKyc}
+          >
+            {isTestingOrder ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Phone className="h-4 w-4 mr-2" />}
+            Test Acquisto Numero (US)
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => runTest("test-kyc-lifecycle", setIsTestingKyc)}
+            disabled={isTestingOrder || isTestingKyc}
+          >
+            {isTestingKyc ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Activity className="h-4 w-4 mr-2" />}
+            Test Ciclo KYC
+          </Button>
+        </div>
+
+        {testResult && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full ${testResult.success ? "bg-green-500" : "bg-red-500"}`} />
+              <span className="text-sm font-medium">
+                {testResult.success ? "Test completato con successo" : "Test fallito"}
+                {testResult.dryRun !== undefined && (
+                  <span className="text-muted-foreground ml-1">
+                    ({testResult.dryRun ? "dry run" : "live"})
+                  </span>
+                )}
+              </span>
+            </div>
+            <pre className="p-3 bg-muted rounded-lg text-xs overflow-auto max-h-96 whitespace-pre-wrap font-mono">
+              {JSON.stringify(testResult, null, 2)}
+            </pre>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

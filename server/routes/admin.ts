@@ -2388,4 +2388,217 @@ router.post(
   }
 );
 
+router.post(
+  "/admin/settings/telnyx/test-number-order",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    const dryRun = req.body.dryRun !== false;
+    const steps: Array<{ step: string; status: string; data?: any; error?: string }> = [];
+
+    try {
+      steps.push({ step: "1. Ricerca numeri US disponibili", status: "in_progress" });
+      const numbers = await telnyxProvisioning.searchAvailableNumbers("+1", "US");
+      steps[steps.length - 1] = {
+        step: "1. Ricerca numeri US disponibili",
+        status: "ok",
+        data: { found: numbers.length, first5: numbers.slice(0, 5).map(n => n.phoneNumber) },
+      };
+
+      if (numbers.length === 0) {
+        steps.push({ step: "2. Ordine numero", status: "skipped", error: "Nessun numero trovato" });
+        return res.json({ success: true, dryRun, steps });
+      }
+
+      if (dryRun) {
+        steps.push({ step: "2. Ordine numero", status: "skipped_dry_run", data: { message: "Dry run attivo — imposta dryRun=false per ordinare (costo ~$1)" } });
+        return res.json({ success: true, dryRun, steps });
+      }
+
+      const selectedNumber = numbers[0].phoneNumber;
+      steps.push({ step: `2. Ordine numero ${selectedNumber}`, status: "in_progress" });
+      const orderId = await telnyxProvisioning.orderNumber(selectedNumber);
+      steps[steps.length - 1] = {
+        step: `2. Ordine numero ${selectedNumber}`,
+        status: "ok",
+        data: { orderId },
+      };
+
+      steps.push({ step: "3. Attesa 3 secondi...", status: "ok" });
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      steps.push({ step: "4. Verifica stato ordine", status: "in_progress" });
+      const orderStatus = await telnyxProvisioning.checkOrderStatus(orderId);
+      steps[steps.length - 1] = {
+        step: "4. Verifica stato ordine",
+        status: "ok",
+        data: { orderStatus: orderStatus.status, phoneNumbers: orderStatus.phoneNumbers },
+      };
+
+      res.json({ success: true, dryRun, steps });
+    } catch (error: any) {
+      console.error("[ADMIN] Test number order error:", error.message);
+      steps.push({ step: "ERRORE", status: "failed", error: error.message });
+      res.status(500).json({ success: false, dryRun, steps, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/admin/settings/telnyx/test-kyc-lifecycle",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    const dryRun = req.body.dryRun !== false;
+    const steps: Array<{ step: string; status: string; data?: any; error?: string }> = [];
+
+    try {
+      steps.push({ step: "1. Creazione requirement group (US/local/ordering)", status: "in_progress" });
+      const group = await telnyxProvisioning.createRequirementGroup("US", "local", "ordering");
+      steps[steps.length - 1] = {
+        step: "1. Creazione requirement group",
+        status: "ok",
+        data: {
+          groupId: group.id,
+          requirementsCount: group.requirements.length,
+          requirements: group.requirements.map((r: any) => ({
+            requirement_type_id: r.requirement_type_id,
+            field_type: r.field_type || r.record_type,
+            name: r.name,
+            description: r.description,
+          })),
+        },
+      };
+
+      steps.push({ step: "2. Fetch requirement types (US/local/ordering)", status: "in_progress" });
+      let reqTypes: any[] = [];
+      try {
+        reqTypes = await telnyxProvisioning.getRequirementTypes("US", "local", "ordering");
+        steps[steps.length - 1] = {
+          step: "2. Fetch requirement types",
+          status: "ok",
+          data: {
+            count: reqTypes.length,
+            types: reqTypes.map((rt: any) => ({
+              id: rt.id,
+              name: rt.name,
+              record_type: rt.record_type,
+              description: rt.description,
+            })),
+          },
+        };
+      } catch (rtErr: any) {
+        steps[steps.length - 1] = {
+          step: "2. Fetch requirement types",
+          status: "warning",
+          error: rtErr.message,
+        };
+      }
+
+      if (dryRun) {
+        steps.push({
+          step: "3-7. Steps rimanenti",
+          status: "skipped_dry_run",
+          data: { message: "Dry run attivo — imposta dryRun=false per eseguire upload documento, compilazione requirements e submit per approvazione" },
+        });
+        return res.json({ success: true, dryRun, steps });
+      }
+
+      steps.push({ step: "3. Upload documento dummy da URL", status: "in_progress" });
+      const docId = await telnyxProvisioning.uploadDocumentByUrl(
+        "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        "test-document.pdf"
+      );
+      steps[steps.length - 1] = {
+        step: "3. Upload documento dummy",
+        status: "ok",
+        data: { documentId: docId },
+      };
+
+      steps.push({ step: "4. Creazione address di test (US)", status: "in_progress" });
+      const addressId = await telnyxProvisioning.createAddress({
+        business_name: "Test Company LLC",
+        first_name: "Test",
+        last_name: "User",
+        street_address: "311 W Superior St",
+        locality: "Chicago",
+        administrative_area: "IL",
+        postal_code: "60654",
+        country_code: "US",
+      });
+      steps[steps.length - 1] = {
+        step: "4. Creazione address di test",
+        status: "ok",
+        data: { addressId },
+      };
+
+      const fulfillmentPayload: Array<{ requirement_type_id: string; field_value: string }> = [];
+      const skippedRequirements: string[] = [];
+      for (const req of group.requirements) {
+        const reqTypeId = req.requirement_type_id;
+        if (!reqTypeId) continue;
+        const matchingType = reqTypes.find((rt: any) => rt.id === reqTypeId);
+        const recordType = (matchingType?.record_type || req.record_type || req.field_type || "").toLowerCase();
+        if (recordType.includes("address") || recordType === "address_id") {
+          fulfillmentPayload.push({ requirement_type_id: reqTypeId, field_value: addressId });
+        } else if (recordType.includes("document") || recordType === "document_id") {
+          fulfillmentPayload.push({ requirement_type_id: reqTypeId, field_value: docId });
+        } else if (recordType.includes("string") || recordType.includes("text")) {
+          fulfillmentPayload.push({ requirement_type_id: reqTypeId, field_value: "Test Company LLC" });
+        } else if (recordType) {
+          skippedRequirements.push(`${reqTypeId} (tipo: ${recordType} — non gestito)`);
+        } else {
+          fulfillmentPayload.push({ requirement_type_id: reqTypeId, field_value: docId });
+        }
+      }
+
+      if (fulfillmentPayload.length > 0) {
+        steps.push({ step: `5. Compilazione ${fulfillmentPayload.length} requirements`, status: "in_progress" });
+        await telnyxProvisioning.fulfillRequirements(group.id, fulfillmentPayload);
+        steps[steps.length - 1] = {
+          step: `5. Compilazione ${fulfillmentPayload.length} requirements`,
+          status: "ok",
+          data: { payload: fulfillmentPayload, skippedRequirements: skippedRequirements.length > 0 ? skippedRequirements : undefined },
+        };
+      } else {
+        steps.push({
+          step: "5. Compilazione requirements",
+          status: "skipped",
+          data: { message: "Nessun requirement compilabile nel gruppo (numeri US spesso non richiedono KYC)", skippedRequirements: skippedRequirements.length > 0 ? skippedRequirements : undefined },
+        });
+      }
+
+      steps.push({ step: "6. Submit per approvazione", status: "in_progress" });
+      try {
+        await telnyxProvisioning.submitForApproval(group.id);
+        steps[steps.length - 1] = { step: "6. Submit per approvazione", status: "ok" };
+      } catch (submitErr: any) {
+        steps[steps.length - 1] = {
+          step: "6. Submit per approvazione",
+          status: "warning",
+          error: submitErr.message,
+          data: { note: "Potrebbe fallire se non ci sono requirements da validare (normale per numeri US)" },
+        };
+      }
+
+      steps.push({ step: "7. Verifica stato requirement group", status: "in_progress" });
+      const finalStatus = await telnyxProvisioning.checkRequirementStatus(group.id);
+      steps[steps.length - 1] = {
+        step: "7. Verifica stato requirement group",
+        status: "ok",
+        data: {
+          groupStatus: finalStatus.status,
+          requirements: finalStatus.requirements,
+        },
+      };
+
+      res.json({ success: true, dryRun, steps });
+    } catch (error: any) {
+      console.error("[ADMIN] Test KYC lifecycle error:", error.message);
+      steps.push({ step: "ERRORE", status: "failed", error: error.message });
+      res.status(500).json({ success: false, dryRun, steps, error: error.message });
+    }
+  }
+);
+
 export default router;

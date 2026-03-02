@@ -264,6 +264,37 @@ export async function allocateOutboundChannels(accountId: string, channels: numb
   });
 }
 
+export async function submitForApproval(groupId: string): Promise<void> {
+  console.log(`[TELNYX] Submitting requirement group for approval: ${groupId}`);
+  await telnyxRequest(`/requirement_groups/${groupId}/submit_for_approval`, {
+    method: "POST",
+  });
+}
+
+export async function uploadDocumentByUrl(url: string, fileName: string): Promise<string> {
+  console.log(`[TELNYX] Uploading document by URL: ${fileName}`);
+  const config = await getTelnyxConfig();
+  if (!config.apiKey) {
+    throw new Error("Telnyx API key non configurata.");
+  }
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch file from URL: ${response.status}`);
+  const arrayBuffer = await response.arrayBuffer();
+  const blob = new Blob([arrayBuffer]);
+  const formData = new FormData();
+  formData.append("file", blob, fileName);
+  const uploadResponse = await fetch(`${TELNYX_API_BASE}/documents`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${config.apiKey}` },
+    body: formData,
+  });
+  const data = await uploadResponse.json() as any;
+  if (!uploadResponse.ok) {
+    throw new Error(`Telnyx document upload error: ${data?.errors?.[0]?.detail || JSON.stringify(data)}`);
+  }
+  return data.data.id;
+}
+
 export async function uploadDocumentToTelnyx(filePath: string, fileName: string): Promise<string> {
   console.log(`[TELNYX] Uploading document: ${fileName}`);
   const config = await getTelnyxConfig();

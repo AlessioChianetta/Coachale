@@ -1,0 +1,50 @@
+ci sono test api?
+• 9m
+Sì, Telnyx offre diversi strumenti per testare le API:
+Postman Collections
+Puoi utilizzare le nostre collezioni Postman per testare le API senza scrivere codice. Disponibili su postman.com/telnyx-api con esempi per configurare l'ambiente locale e inviare richieste di test.
+Mock Brands e Campaigns (10DLC)
+Per testare il flusso 10DLC, puoi creare mock brands e campaigns gratuitamente tramite API o Mission Control Portal, impostando il campo "mock" su true.
+WebRTC Test Application
+L'app webrtc.telnyx.com ti permette di testare chiamate usando credenziali SIP o JWT token per verificare la configurazione.
+Web Dialer
+Strumento nel Mission Control Portal per fare chiamate di test senza PBX, utile per debug di problemi vocali.
+Test Messaging
+Puoi acquistare due numeri Telnyx per testare messaggi on-net immediatamente senza requisiti di registrazione.
+Tutti questi strumenti sono accessibili dal tuo account Mission Control Portal.
+Telnyx • AI Agent • 9m
+
+È quello che cercavi?
+Telnyx • AI Agent • 9m
+intendo test per l'acquisto dei numeri
+• 8m
+Per testare l'acquisto di numeri, ti consiglio di iniziare con numeri US o CA che non hanno requisiti normativi per l'attivazione immediata.
+Test con numeri US/CA:
+Cerca numeri disponibili: GET /v2/available_phone_numbers?filter[country_code]=US
+Ordina il numero: POST /v2/number_orders con phone_number e connection_id
+L'ordine sarà pending inizialmente, poi controlla lo stato con polling
+Test messaging:
+Puoi acquistare due numeri Telnyx per testare messaggi on-net immediatamente senza requisiti di registrazione. Vai su Numbers > Search & Buy nel portal, cerca numeri con feature SMS abilitata, e acquistane due per testare sia invio che ricezione.
+Postman Collections:
+Usa le nostre collezioni Postman per testare le API senza scrivere codice. Ogni pagina di riferimento API ha un pulsante "Run in Postman" per importare e testare immediatamente.
+Inizia con numeri US/CA per evitare complicazioni normative durante i test.
+Telnyx • AI Agent • 8m
+quanto costano
+• 8m
+I prezzi per i numeri Telnyx sono:
+Numeri US:
+Numeri locali: da $1 al mese 
+Numeri toll-free: da $1 al mese
+Attivazione una tantum: $1 
+Sconti automatici per volumi:
+51-250 numeri: $0.79/mese
+251-1000 numeri: $0.50/mese
+1001-5000 numeri: $0.39/mese
+5000+ numeri: $0.25/mese
+Funzionalità aggiuntive:
+SMS/MMS: +$0.10/mese per numero
+Costi messaggi:
+Meno di un centesimo per messaggio verso numeri US
+Costo medio per chiropratici: $5-10/mese totali
+Sistema prepagato: Aggiungi fondi prima dell'uso, nessun minimo mensile.
+Per prezzi aggiornati e altri paesi, controlla portal.telnyx.com/#/app/pricing dopo aver creato l'account gratuito.
