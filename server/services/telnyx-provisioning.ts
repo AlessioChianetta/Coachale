@@ -203,13 +203,18 @@ export async function getRequirementGroupDetails(groupId: string): Promise<{ id:
   };
 }
 
-export async function searchAvailableNumbers(prefix: string, countryCode: string = "IT"): Promise<Array<{ phoneNumber: string; features: any }>> {
-  console.log(`[TELNYX] Searching numbers: prefix=${prefix}, country=${countryCode}`);
+export async function searchAvailableNumbers(prefix: string, countryCode: string = "IT", options?: { bestEffort?: boolean }): Promise<Array<{ phoneNumber: string; features: any }>> {
+  console.log(`[TELNYX] Searching numbers: prefix=${prefix}, country=${countryCode}, bestEffort=${options?.bestEffort}`);
   const params = new URLSearchParams({
     "filter[country_code]": countryCode,
-    "filter[phone_number][starts_with]": prefix,
     "filter[limit]": "20",
   });
+  if (prefix) {
+    params.set("filter[phone_number][starts_with]", prefix);
+  }
+  if (options?.bestEffort) {
+    params.set("filter[best_effort]", "true");
+  }
   const data = await telnyxRequest(`/available_phone_numbers?${params.toString()}`);
   return (data.data || []).map((n: any) => ({
     phoneNumber: n.phone_number,

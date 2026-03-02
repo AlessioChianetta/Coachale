@@ -4245,7 +4245,7 @@ function TelnyxTestCard({ getAuthHeaders }: { getAuthHeaders: () => Record<strin
           Test API Telnyx
         </CardTitle>
         <CardDescription>
-          Testa il flusso di provisioning usando numeri US (senza KYC). Con Dry Run attivo, nessun costo viene sostenuto.
+          Testa la connessione API Telnyx: ricerca numeri US e ciclo KYC italiano. Con Dry Run attivo, nessun costo viene sostenuto.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

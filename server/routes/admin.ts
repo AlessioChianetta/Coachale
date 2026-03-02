@@ -2398,7 +2398,7 @@ router.post(
 
     try {
       steps.push({ step: "1. Ricerca numeri US disponibili", status: "in_progress" });
-      const numbers = await telnyxProvisioning.searchAvailableNumbers("+1", "US");
+      const numbers = await telnyxProvisioning.searchAvailableNumbers("", "US", { bestEffort: true });
       steps[steps.length - 1] = {
         step: "1. Ricerca numeri US disponibili",
         status: "ok",
@@ -2453,8 +2453,8 @@ router.post(
     const steps: Array<{ step: string; status: string; data?: any; error?: string }> = [];
 
     try {
-      steps.push({ step: "1. Creazione requirement group (US/local/ordering)", status: "in_progress" });
-      const group = await telnyxProvisioning.createRequirementGroup("US", "local", "ordering");
+      steps.push({ step: "1. Creazione requirement group (IT/local/ordering)", status: "in_progress" });
+      const group = await telnyxProvisioning.createRequirementGroup("IT", "local", "ordering");
       steps[steps.length - 1] = {
         step: "1. Creazione requirement group",
         status: "ok",
@@ -2470,10 +2470,10 @@ router.post(
         },
       };
 
-      steps.push({ step: "2. Fetch requirement types (US/local/ordering)", status: "in_progress" });
+      steps.push({ step: "2. Fetch requirement types (IT/local/ordering)", status: "in_progress" });
       let reqTypes: any[] = [];
       try {
-        reqTypes = await telnyxProvisioning.getRequirementTypes("US", "local", "ordering");
+        reqTypes = await telnyxProvisioning.getRequirementTypes("IT", "local", "ordering");
         steps[steps.length - 1] = {
           step: "2. Fetch requirement types",
           status: "ok",
@@ -2515,16 +2515,16 @@ router.post(
         data: { documentId: docId },
       };
 
-      steps.push({ step: "4. Creazione address di test (US)", status: "in_progress" });
+      steps.push({ step: "4. Creazione address di test (IT)", status: "in_progress" });
       const addressId = await telnyxProvisioning.createAddress({
-        business_name: "Test Company LLC",
+        business_name: "Test SRL",
         first_name: "Test",
-        last_name: "User",
-        street_address: "311 W Superior St",
-        locality: "Chicago",
-        administrative_area: "IL",
-        postal_code: "60654",
-        country_code: "US",
+        last_name: "Utente",
+        street_address: "Via Roma 1",
+        locality: "Roma",
+        administrative_area: "RM",
+        postal_code: "00100",
+        country_code: "IT",
       });
       steps[steps.length - 1] = {
         step: "4. Creazione address di test",
