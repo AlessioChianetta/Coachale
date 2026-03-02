@@ -30,25 +30,8 @@ function generateAutoCallId(): string {
   return `autocall_${ts}_${rand}`;
 }
 
-function buildLeadContext(leadName: string, leadInfo?: AutoCallParams['leadInfo']): string | null {
-  const parts: string[] = [];
-
-  parts.push(`Nome: ${leadName}`);
-
-  if (leadInfo?.obiettivi) {
-    parts.push(`Obiettivi: ${leadInfo.obiettivi}`);
-  }
-  if (leadInfo?.desideri) {
-    parts.push(`Desideri: ${leadInfo.desideri}`);
-  }
-  if (leadInfo?.uncino) {
-    parts.push(`Angolo conversazione: ${leadInfo.uncino}`);
-  }
-  if (leadInfo?.fonte) {
-    parts.push(`Fonte: ${leadInfo.fonte}`);
-  }
-
-  return parts.length > 1 ? parts.join('\n') : null;
+function buildLeadContext(leadName: string): string {
+  return `Nome: ${leadName}`;
 }
 
 export async function scheduleAutoCall(params: AutoCallParams): Promise<AutoCallResult> {
@@ -87,7 +70,7 @@ export async function scheduleAutoCall(params: AutoCallParams): Promise<AutoCall
     }
 
     const callId = generateAutoCallId();
-    const leadContext = buildLeadContext(leadName, leadInfo);
+    const leadContext = buildLeadContext(leadName);
 
     const delaySeconds = Math.max(delayMinutes * 60, 30);
     const scheduledAt = new Date(Date.now() + delaySeconds * 1000);
