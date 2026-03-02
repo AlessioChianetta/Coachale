@@ -14,7 +14,6 @@ interface AutoCallParams {
   };
   source?: string;
   delayMinutes?: number;
-  voiceTemplateId?: string;
 }
 
 interface AutoCallResult {
@@ -59,7 +58,6 @@ export async function scheduleAutoCall(params: AutoCallParams): Promise<AutoCall
     leadInfo,
     source = 'auto',
     delayMinutes = 0,
-    voiceTemplateId,
   } = params;
 
   try {
@@ -96,13 +94,12 @@ export async function scheduleAutoCall(params: AutoCallParams): Promise<AutoCall
       INSERT INTO scheduled_voice_calls (
         id, consultant_id, target_phone, scheduled_at, status, ai_mode,
         call_instruction, instruction_type, attempts, max_attempts,
-        priority, use_default_template, voice_template_id, notes
+        priority, notes
       ) VALUES (
         ${callId}, ${consultantId}, ${phoneNumber}, ${scheduledAt.toISOString()},
         'pending', 'outreach',
         ${instruction}, 'task', 0, 3,
-        5, ${!voiceTemplateId}, ${voiceTemplateId || null},
-        ${'Auto-call from ' + source + ' for ' + leadName}
+        5, ${'Auto-call from ' + source + ' for ' + leadName}
       )
     `);
 

@@ -1328,7 +1328,7 @@ router.get("/proactive-leads/call-status", authenticateToken, requireRole("consu
 
     const result = await db.execute(sql`
       SELECT DISTINCT ON (target_phone) 
-        target_phone, status, scheduled_at, completed_at, duration_seconds, hangup_cause, id
+        target_phone, status, scheduled_at, updated_at, duration_seconds, hangup_cause, id
       FROM scheduled_voice_calls
       WHERE consultant_id = ${consultantId}
         AND target_phone = ANY(${phones})
@@ -1341,7 +1341,7 @@ router.get("/proactive-leads/call-status", authenticateToken, requireRole("consu
         callId: row.id,
         status: row.status,
         scheduledAt: row.scheduled_at,
-        completedAt: row.completed_at,
+        completedAt: row.updated_at,
         durationSeconds: row.duration_seconds,
         hangupCause: row.hangup_cause,
       };
