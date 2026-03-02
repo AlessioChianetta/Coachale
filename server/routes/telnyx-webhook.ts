@@ -16,11 +16,24 @@ async function getWebhookPublicKey(): Promise<string | null> {
   return (setting?.value as string) || null;
 }
 
-function verifyTelnyxSignature(rawBody: Buffer, signature: string, timestamp: string, publicKeyHex: string): boolean {
+function decodePublicKey(publicKeyInput: string): Buffer {
+  const trimmed = publicKeyInput.trim();
+  if (trimmed.endsWith("=") || /^[A-Za-z0-9+/]/.test(trimmed)) {
+    try {
+      const decoded = Buffer.from(trimmed, "base64");
+      if (decoded.length === 32) return decoded;
+    } catch {}
+  }
+  const hexDecoded = Buffer.from(trimmed, "hex");
+  if (hexDecoded.length === 32) return hexDecoded;
+  throw new Error(`Invalid public key format (length=${trimmed.length}). Expected 32-byte key in base64 or hex.`);
+}
+
+function verifyTelnyxSignature(rawBody: Buffer, signature: string, timestamp: string, publicKeyRaw: string): boolean {
   try {
     const signedPayload = `${timestamp}|${rawBody.toString("utf8")}`;
     const signatureBuffer = Buffer.from(signature, "base64");
-    const publicKeyBuffer = Buffer.from(publicKeyHex, "hex");
+    const publicKeyBuffer = decodePublicKey(publicKeyRaw);
 
     const keyObject = crypto.createPublicKey({
       key: Buffer.concat([
