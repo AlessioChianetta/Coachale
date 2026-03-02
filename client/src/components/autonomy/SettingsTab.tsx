@@ -1272,13 +1272,6 @@ function SettingsTab({
               <span className="hidden sm:inline">Autonomia & Modalità</span>
             </TabsTrigger>
             <TabsTrigger
-              value="canali"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
-            >
-              <ListTodo className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Canali & Categorie</span>
-            </TabsTrigger>
-            <TabsTrigger
               value="activity"
               className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
@@ -1307,6 +1300,7 @@ function SettingsTab({
             {[
               { label: "Autonomia & Modalit\u00e0", icon: <Zap className="h-4 w-4" /> },
               { label: "Configurazione", icon: <Brain className="h-4 w-4" /> },
+              { label: "Canali & Categorie", icon: <ListTodo className="h-4 w-4" /> },
             ].map((step, i) => (
               <React.Fragment key={i}>
                 {i > 0 && (
@@ -1350,7 +1344,7 @@ function SettingsTab({
                   { label: "Autonomia \u2265 2", done: settings.autonomy_level >= 2, hint: "Slider livello", required: true },
                   { label: `${enabledRolesCount} dipendenti`, done: enabledRolesCount > 0, hint: "Tab Dipendenti", required: true },
                   { label: "Clienti", done: hasClients, hint: `${systemStatus?.total_clients || 0}`, required: true },
-                  { label: "Categorie", done: hasCategories, hint: "Tab Canali", required: true },
+                  { label: "Categorie", done: hasCategories, hint: "Step 3", required: true },
                 ];
                 const optChecks = [
                   { label: "Voce", done: !!hasVoice },
@@ -1781,6 +1775,184 @@ function SettingsTab({
                 <Button variant="outline" onClick={() => setAutonomiaStep(0)} className="rounded-xl gap-2">
                   <ChevronLeft className="h-4 w-4" /> Indietro
                 </Button>
+                <Button onClick={() => setAutonomiaStep(2)} className="rounded-xl gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-lg shadow-indigo-500/20">
+                  Canali & Categorie <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {autonomiaStep === 2 && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="space-y-4"
+            >
+              <div className="relative rounded-2xl border border-gray-200/60 dark:border-gray-800/60 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500" />
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+                      <Zap className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">Canali Abilitati</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className={cn("flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-300", settings.channels_enabled.voice ? "border-green-400 bg-green-50/50 dark:bg-green-950/15" : "border-gray-200/80 dark:border-gray-700/60")}>
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn("flex items-center justify-center h-8 w-8 rounded-lg", settings.channels_enabled.voice ? "bg-gradient-to-br from-green-400 to-emerald-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-400")}>
+                          <Phone className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">Voice</p>
+                          <p className="text-[10px] text-muted-foreground">Alessia, Marco</p>
+                        </div>
+                      </div>
+                      <Switch checked={settings.channels_enabled.voice} onCheckedChange={(checked) => setSettings(prev => ({ ...prev, channels_enabled: { ...prev.channels_enabled, voice: checked } }))} />
+                    </div>
+                    <div className={cn("flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-300", settings.channels_enabled.email ? "border-blue-400 bg-blue-50/50 dark:bg-blue-950/15" : "border-gray-200/80 dark:border-gray-700/60")}>
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn("flex items-center justify-center h-8 w-8 rounded-lg", settings.channels_enabled.email ? "bg-gradient-to-br from-blue-400 to-indigo-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-400")}>
+                          <Mail className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">Email</p>
+                          <p className="text-[10px] text-muted-foreground">Millie, Echo, Marco</p>
+                        </div>
+                      </div>
+                      <Switch checked={settings.channels_enabled.email} onCheckedChange={(checked) => setSettings(prev => ({ ...prev, channels_enabled: { ...prev.channels_enabled, email: checked } }))} />
+                    </div>
+                    <div className={cn("flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-300", settings.channels_enabled.whatsapp ? "border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/15" : "border-gray-200/80 dark:border-gray-700/60")}>
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn("flex items-center justify-center h-8 w-8 rounded-lg", settings.channels_enabled.whatsapp ? "bg-gradient-to-br from-emerald-400 to-green-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-400")}>
+                          <MessageSquare className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">WhatsApp</p>
+                          <p className="text-[10px] text-muted-foreground">Stella, Marco</p>
+                        </div>
+                      </div>
+                      <Switch checked={settings.channels_enabled.whatsapp} onCheckedChange={(checked) => setSettings(prev => ({ ...prev, channels_enabled: { ...prev.channels_enabled, whatsapp: checked } }))} />
+                    </div>
+                    <div className={cn("flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-300", settings.channels_enabled.lead_scraper !== false ? "border-teal-400 bg-teal-50/50 dark:bg-teal-950/15" : "border-gray-200/80 dark:border-gray-700/60")}>
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn("flex items-center justify-center h-8 w-8 rounded-lg", settings.channels_enabled.lead_scraper !== false ? "bg-gradient-to-br from-teal-400 to-cyan-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-400")}>
+                          <Search className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">Lead Scraper</p>
+                          <p className="text-[10px] text-muted-foreground">Hunter</p>
+                        </div>
+                      </div>
+                      <Switch checked={settings.channels_enabled.lead_scraper !== false} onCheckedChange={(checked) => setSettings(prev => ({ ...prev, channels_enabled: { ...prev.channels_enabled, lead_scraper: checked } }))} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {settings.channels_enabled.whatsapp && (
+                <div className="relative rounded-2xl border border-gray-200/60 dark:border-gray-800/60 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                  <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400" />
+                  <div className="p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 text-white">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        </div>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">Template WhatsApp</span>
+                      </div>
+                      {(settings.whatsapp_template_ids || []).length > 0 && (
+                        <Badge className="bg-emerald-500 text-white text-[10px] px-2 py-0.5">{(settings.whatsapp_template_ids || []).length} selezionati</Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mb-3">Senza template selezionati, i messaggi verranno inviati come testo libero (solo conversazioni attive &lt;24h).</p>
+                    {templatesLoading ? (
+                      <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>
+                    ) : whatsappTemplates.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground text-center py-4">Nessun template approvato trovato</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                        {Object.entries(templatesByCategory).map(([categoryName, categoryTemplates]) => {
+                          const isOpen = openTemplateCategories.has(categoryName);
+                          const colors = TEMPLATE_CATEGORY_COLORS[categoryName] || TEMPLATE_CATEGORY_COLORS["Generale"];
+                          const selectedInCategory = categoryTemplates.filter(t => (settings.whatsapp_template_ids || []).includes(t.id)).length;
+                          return (
+                            <Collapsible key={categoryName} open={isOpen} onOpenChange={(open) => { setOpenTemplateCategories(prev => { const s = new Set(prev); open ? s.add(categoryName) : s.delete(categoryName); return s; }); }}>
+                              <CollapsibleTrigger asChild>
+                                <div className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors ${colors.bg} ${colors.border} border hover:opacity-90`}>
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-2.5 h-2.5 rounded-full ${colors.icon}`} />
+                                    <span className={`text-xs font-semibold ${colors.text}`}>{categoryName}</span>
+                                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${colors.bg} ${colors.text} ${colors.border}`}>{categoryTemplates.length}</Badge>
+                                    {selectedInCategory > 0 && <Badge className="bg-emerald-500 text-white text-[9px] px-1.5 py-0">{selectedInCategory}</Badge>}
+                                  </div>
+                                  <ChevronDown className={`h-3.5 w-3.5 ${colors.text} transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                                </div>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="mt-1.5">
+                                <div className="space-y-1.5 pl-1">
+                                  {categoryTemplates.map((template) => {
+                                    const isSelected = (settings.whatsapp_template_ids || []).includes(template.id);
+                                    return (
+                                      <label key={template.id} className={cn("flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 border", isSelected ? "border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/15" : "border-gray-200/60 dark:border-gray-700/40 hover:border-emerald-200")}>
+                                        <Checkbox checked={isSelected} onCheckedChange={(checked) => handleAutonomyTemplateToggle(template.id, checked as boolean)} className="mt-0.5" />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-xs font-semibold">{template.friendlyName}</span>
+                                            <Badge className="text-[8px] bg-green-100 text-green-700 border-green-300 px-1 py-0">OK</Badge>
+                                          </div>
+                                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{template.bodyText || "Template senza corpo"}</p>
+                                        </div>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {(settings.whatsapp_template_ids || []).length === 0 && whatsappTemplates.length > 0 && (
+                      <div className="mt-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                        <p className="text-[10px] text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                          Nessun template: testo libero (solo conversazioni attive 24h).
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="relative rounded-2xl border border-gray-200/60 dark:border-gray-800/60 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+                      <ListTodo className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">Categorie Task</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {TASK_CATEGORIES.map((cat) => (
+                      <label key={cat.value} className={cn("flex items-start gap-2.5 p-3 rounded-xl cursor-pointer transition-all duration-200 border", settings.allowed_task_categories.includes(cat.value) ? "border-violet-400 bg-violet-50/50 dark:bg-violet-950/15" : "border-gray-200/60 dark:border-gray-700/40 hover:border-violet-200")}>
+                        <Checkbox id={`cat-${cat.value}`} checked={settings.allowed_task_categories.includes(cat.value)} onCheckedChange={() => toggleCategory(cat.value)} className="mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-semibold">{cat.label}</span>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{cat.description}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setAutonomiaStep(1)} className="rounded-xl gap-2">
+                  <ChevronLeft className="h-4 w-4" /> Indietro
+                </Button>
                 <Button onClick={onSave} disabled={isSaving} className="rounded-xl gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-lg shadow-indigo-500/20">
                   {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Salva Impostazioni
@@ -1791,276 +1963,6 @@ function SettingsTab({
 
         </TabsContent>
 
-        {/* Tab 4 - Canali & Categorie */}
-        <TabsContent value="canali" className="mt-5 space-y-5">
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-              <Zap className="h-5 w-5" />
-              Canali Abilitati
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Scegli su quali canali il dipendente AI può operare
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500" />
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-green-50 dark:bg-green-900/30">
-                      <Phone className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Voice (Chiamate)</span>
-                  </div>
-                  <Switch
-                    checked={settings.channels_enabled.voice}
-                    onCheckedChange={(checked) => setSettings(prev => ({
-                      ...prev,
-                      channels_enabled: { ...prev.channels_enabled, voice: checked },
-                    }))}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {settings.channels_enabled.voice 
-                    ? "Usato da: Alessia (chiamate), Marco (coaching vocale), Personalizza (se configurato)" 
-                    : "Se disabilitato: Alessia, Marco e Personalizza non potranno effettuare chiamate vocali."}
-                </p>
-              </div>
-
-              <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-indigo-500" />
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/30">
-                      <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Email</span>
-                  </div>
-                  <Switch
-                    checked={settings.channels_enabled.email}
-                    onCheckedChange={(checked) => setSettings(prev => ({
-                      ...prev,
-                      channels_enabled: { ...prev.channels_enabled, email: checked },
-                    }))}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {settings.channels_enabled.email 
-                    ? "Usato da: Millie (email personalizzate), Echo (invio riepiloghi), Marco (comunicazioni)" 
-                    : "Se disabilitato: Millie, Echo e Marco non potranno inviare email."}
-                </p>
-              </div>
-
-              <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500" />
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30">
-                      <MessageSquare className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">WhatsApp</span>
-                  </div>
-                  <Switch
-                    checked={settings.channels_enabled.whatsapp}
-                    onCheckedChange={(checked) => setSettings(prev => ({
-                      ...prev,
-                      channels_enabled: { ...prev.channels_enabled, whatsapp: checked },
-                    }))}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {settings.channels_enabled.whatsapp 
-                    ? "Usato da: Stella (messaggi WhatsApp), Marco (comunicazioni WhatsApp), Personalizza (se configurato)" 
-                    : "Se disabilitato: Stella, Marco e Personalizza non potranno inviare messaggi WhatsApp."}
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-2 rounded-xl border border-gray-100 dark:border-gray-800 p-4 hover:border-gray-200 dark:hover:border-gray-700 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-teal-50 dark:bg-teal-900/30">
-                      <Search className="h-5 w-5 text-teal-600 dark:text-teal-400" />
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Lead Scraper</span>
-                  </div>
-                  <Switch
-                    checked={settings.channels_enabled.lead_scraper !== false}
-                    onCheckedChange={(checked) => setSettings(prev => ({
-                      ...prev,
-                      channels_enabled: { ...prev.channels_enabled, lead_scraper: checked },
-                    }))}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {settings.channels_enabled.lead_scraper !== false
-                    ? "Usato da: Hunter (ricerca e qualificazione lead autonoma)" 
-                    : "Se disabilitato: Hunter non potrà cercare e qualificare nuovi lead."}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {settings.channels_enabled.whatsapp && (
-            <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-green-500" />
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
-                  <MessageSquare className="h-5 w-5 text-emerald-600" />
-                  Template WhatsApp per Dipendenti AI
-                </div>
-                {(settings.whatsapp_template_ids || []).length > 0 && (
-                  <Badge className="bg-emerald-500 text-white text-xs px-3 py-1">
-                    {(settings.whatsapp_template_ids || []).length} selezionati
-                  </Badge>
-                )}
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Seleziona i template che i dipendenti AI useranno per inviare messaggi WhatsApp. Senza template, i messaggi verranno inviati come testo libero (funziona solo con conversazioni attive nelle ultime 24h).
-              </p>
-
-              {templatesLoading ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                </div>
-              ) : whatsappTemplates.length === 0 ? (
-                <div className="text-center py-6 text-gray-500">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                  <p className="text-sm">Nessun template WhatsApp approvato trovato</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Configura i template nella sezione WhatsApp Templates
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                  {Object.entries(templatesByCategory).map(([categoryName, categoryTemplates]) => {
-                    const isOpen = openTemplateCategories.has(categoryName);
-                    const colors = TEMPLATE_CATEGORY_COLORS[categoryName] || TEMPLATE_CATEGORY_COLORS["Generale"];
-                    const selectedInCategory = categoryTemplates.filter(t =>
-                      (settings.whatsapp_template_ids || []).includes(t.id)
-                    ).length;
-
-                    return (
-                      <Collapsible
-                        key={categoryName}
-                        open={isOpen}
-                        onOpenChange={(open) => {
-                          setOpenTemplateCategories(prev => {
-                            const newSet = new Set(prev);
-                            if (open) {
-                              newSet.add(categoryName);
-                            } else {
-                              newSet.delete(categoryName);
-                            }
-                            return newSet;
-                          });
-                        }}
-                      >
-                        <CollapsibleTrigger asChild>
-                          <div className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${colors.bg} ${colors.border} border hover:opacity-90`}>
-                            <div className="flex items-center gap-3">
-                              <div className={`w-3 h-3 rounded-full ${colors.icon}`}></div>
-                              <span className={`font-semibold ${colors.text}`}>{categoryName}</span>
-                              <Badge variant="outline" className={`text-xs ${colors.bg} ${colors.text} ${colors.border}`}>
-                                {categoryTemplates.length} template
-                              </Badge>
-                              {selectedInCategory > 0 && (
-                                <Badge className="bg-emerald-500 text-white text-xs">
-                                  {selectedInCategory} selezionati
-                                </Badge>
-                              )}
-                            </div>
-                            <ChevronDown className={`h-4 w-4 ${colors.text} transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-                          </div>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="mt-2">
-                          <div className="space-y-2 pl-2">
-                            {categoryTemplates.map((template) => {
-                              const isSelected = (settings.whatsapp_template_ids || []).includes(template.id);
-                              return (
-                                <label
-                                  key={template.id}
-                                  className={`flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 ${
-                                    isSelected
-                                      ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 shadow-md"
-                                      : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-200 hover:bg-gray-50"
-                                  }`}
-                                >
-                                  <Checkbox
-                                    checked={isSelected}
-                                    onCheckedChange={(checked) => handleAutonomyTemplateToggle(template.id, checked as boolean)}
-                                    className="mt-1"
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="font-semibold text-gray-900 dark:text-white">
-                                        {template.friendlyName}
-                                      </span>
-                                      <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
-                                        Approvato
-                                      </Badge>
-                                    </div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">
-                                      {template.bodyText || "Template senza corpo visibile"}
-                                    </p>
-                                    <p className="text-xs text-gray-400 font-mono mt-2">
-                                      {template.id}
-                                    </p>
-                                  </div>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    );
-                  })}
-                </div>
-              )}
-
-              {(settings.whatsapp_template_ids || []).length === 0 && whatsappTemplates.length > 0 && (
-                <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                  <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    Nessun template selezionato. I dipendenti AI invieranno messaggi come testo libero, che funziona solo se la conversazione è attiva nelle ultime 24 ore.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-              <ListTodo className="h-5 w-5" />
-              Categorie Task Abilitate
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Scegli quali categorie di task il dipendente AI può gestire
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {TASK_CATEGORIES.map((cat) => (
-                <div key={cat.value} className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 overflow-hidden hover:shadow-md transition-all duration-300">
-                  <div className="flex items-start gap-4">
-                    <Checkbox
-                      id={`cat-${cat.value}`}
-                      checked={settings.allowed_task_categories.includes(cat.value)}
-                      onCheckedChange={() => toggleCategory(cat.value)}
-                    />
-                    <div className="space-y-0.5">
-                      <Label htmlFor={`cat-${cat.value}`} className="text-sm font-medium cursor-pointer">
-                        {cat.label}
-                      </Label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{cat.description}</p>
-                      {!settings.allowed_task_categories.includes(cat.value) && (
-                        <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
-                          I task di questa categoria verranno scartati automaticamente dalla generazione autonoma
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </TabsContent>
 
         {/* Tab 5 - Dipendenti AI */}
         <TabsContent value="dipendenti" className="mt-5 space-y-5">
