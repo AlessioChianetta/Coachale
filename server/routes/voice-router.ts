@@ -1007,7 +1007,7 @@ router.get("/contact-by-call/:callId", authenticateToken, requireAnyRole(["consu
 
     let phone: string | null = null;
 
-    if (callId.startsWith('sc_')) {
+    if (callId.startsWith('sc_') || callId.startsWith('svc_')) {
       const result = await db.execute(sql`
         SELECT target_phone FROM scheduled_voice_calls 
         WHERE id = ${callId} AND consultant_id = ${consultantId}
