@@ -4656,34 +4656,52 @@ router.post("/voip-provisioning/activate", authenticateToken, requireAnyRole(["s
   }
 });
 
-// ===== NEW FLOW: Number-first provisioning =====
+// ===== NEW FLOW: Number-first provisioning (inventory-based) =====
 
-// T002: Search available numbers for client
 router.get("/voip-provisioning/available-numbers", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
   try {
     const prefix = (req.query.prefix as string) || "";
-    const country = (req.query.country as string) || "IT";
 
-    const configured = await telnyxProvisioning.isTelnyxConfigured();
-    if (!configured) {
-      return res.status(503).json({ error: "Telnyx non configurato. Contattare l'amministratore." });
+    let query;
+    if (prefix) {
+      query = sql`
+        SELECT id, phone_number, country_code, prefix, monthly_cost, purchased_at
+        FROM number_inventory
+        WHERE status = 'available'
+          AND (prefix ILIKE ${'%' + prefix + '%'} OR phone_number ILIKE ${'%' + prefix + '%'})
+        ORDER BY phone_number ASC
+      `;
+    } else {
+      query = sql`
+        SELECT id, phone_number, country_code, prefix, monthly_cost, purchased_at
+        FROM number_inventory
+        WHERE status = 'available'
+        ORDER BY phone_number ASC
+      `;
     }
 
-    const numbers = await telnyxProvisioning.searchAvailableNumbers(prefix, country, { bestEffort: true });
+    const result = await db.execute(query);
+    const numbers = (result.rows as any[]).map(r => ({
+      phone_number: r.phone_number,
+      country_code: r.country_code,
+      prefix: r.prefix,
+      monthly_cost: r.monthly_cost,
+      inventory_id: r.id,
+    }));
+
     res.json({ success: true, numbers });
   } catch (error: any) {
-    console.error("[VOIP] Error searching available numbers:", error);
-    res.status(500).json({ error: `Errore nella ricerca numeri: ${error.message}` });
+    console.error("[VOIP] Error fetching available numbers from inventory:", error);
+    res.status(500).json({ error: `Errore nel recupero numeri disponibili: ${error.message}` });
   }
 });
 
-// T003: Select and purchase number for client (number-first flow)
 router.post("/voip-provisioning/select-number", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user?.id;
     if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
 
-    const { phone_number, prefix } = req.body;
+    const { phone_number } = req.body;
     if (!phone_number) return res.status(400).json({ error: "phone_number richiesto" });
 
     const existing = await db.execute(sql`
@@ -4697,31 +4715,35 @@ router.post("/voip-provisioning/select-number", authenticateToken, requireAnyRol
       return res.status(409).json({ error: `Hai già un numero attivo: ${ex.phone_number}` });
     }
 
-    const configured = await telnyxProvisioning.isTelnyxConfigured();
-    if (!configured) {
-      return res.status(503).json({ error: "Telnyx non configurato. Contattare l'amministratore." });
+    const updateResult = await db.execute(sql`
+      UPDATE number_inventory
+      SET status = 'assigned', assigned_to = ${consultantId}, assigned_at = NOW(), updated_at = NOW()
+      WHERE phone_number = ${phone_number} AND status = 'available'
+      RETURNING id, phone_number, country_code, prefix, telnyx_order_id, connection_id
+    `);
+    if (updateResult.rows.length === 0) {
+      return res.status(409).json({ error: "Numero non disponibile o già assegnato. Riprova con un altro numero." });
     }
 
-    const orderId = await telnyxProvisioning.orderNumber(phone_number);
+    const invNumber = updateResult.rows[0] as any;
 
     const kycDeadline = new Date();
     kycDeadline.setDate(kycDeadline.getDate() + 7);
 
     await db.execute(sql`
-      INSERT INTO consultant_numbers (consultant_id, phone_number, country_code, prefix, telnyx_number_order_id, status, kyc_status, kyc_deadline)
-      VALUES (${consultantId}, ${phone_number}, 'IT', ${prefix || null}, ${orderId}, 'active', 'pending', ${kycDeadline.toISOString()})
+      INSERT INTO consultant_numbers (consultant_id, phone_number, country_code, prefix, telnyx_number_order_id, connection_id, status, kyc_status, kyc_deadline)
+      VALUES (${consultantId}, ${invNumber.phone_number}, ${invNumber.country_code || 'IT'}, ${invNumber.prefix || null}, ${invNumber.telnyx_order_id || null}, ${invNumber.connection_id || null}, 'active', 'pending', ${kycDeadline.toISOString()})
     `);
 
-    console.log(`[VOIP] Number ${phone_number} selected by consultant ${consultantId}, order ${orderId}, KYC deadline: ${kycDeadline.toISOString()}`);
+    console.log(`[VOIP] Number ${phone_number} assigned from inventory to consultant ${consultantId}, KYC deadline: ${kycDeadline.toISOString()}`);
     res.json({
       success: true,
       message: "Numero attivato! Hai 7 giorni per caricare la documentazione KYC.",
-      phone_number,
-      orderId,
+      phone_number: invNumber.phone_number,
       kyc_deadline: kycDeadline.toISOString(),
     });
   } catch (error: any) {
-    console.error("[VOIP] Error selecting number:", error);
+    console.error("[VOIP] Error selecting number from inventory:", error);
     res.status(500).json({ error: `Errore nell'attivazione del numero: ${error.message}` });
   }
 });

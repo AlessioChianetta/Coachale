@@ -311,6 +311,15 @@ export default function AdminSettings() {
   const [isTestingTelnyx, setIsTestingTelnyx] = useState(false);
   const [webhookUrlCopied, setWebhookUrlCopied] = useState(false);
 
+  const [inventorySearchPrefix, setInventorySearchPrefix] = useState("");
+  const [inventorySearchCountry, setInventorySearchCountry] = useState("IT");
+  const [inventorySearchResults, setInventorySearchResults] = useState<Array<{ phone_number: string; monthly_cost?: string; region?: string }>>([]);
+  const [inventorySelectedNumbers, setInventorySelectedNumbers] = useState<Set<string>>(new Set());
+  const [isSearchingInventory, setIsSearchingInventory] = useState(false);
+  const [isPurchasingNumbers, setIsPurchasingNumbers] = useState(false);
+  const [inventoryFilterStatus, setInventoryFilterStatus] = useState<string>("all");
+  const [editingInventoryNote, setEditingInventoryNote] = useState<{ id: number; notes: string } | null>(null);
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -562,6 +571,39 @@ export default function AdminSettings() {
       if (!res.ok) return { success: false, configured: false, hasApiKey: false, apiKeyPreview: "", connectionId: "", webhookPublicKey: "" };
       return res.json();
     },
+  });
+
+  const { data: numberInventoryData, refetch: refetchNumberInventory } = useQuery<{
+    success: boolean;
+    numbers: Array<{
+      id: number;
+      phone_number: string;
+      country_code: string;
+      prefix: string;
+      telnyx_order_id: string;
+      connection_id: string;
+      status: string;
+      assigned_to: string | null;
+      assigned_at: string | null;
+      purchased_at: string;
+      purchased_by: string | null;
+      monthly_cost: string;
+      notes: string | null;
+      assigned_email: string | null;
+      assigned_first_name: string | null;
+      assigned_last_name: string | null;
+      purchased_email: string | null;
+      purchased_first_name: string | null;
+      purchased_last_name: string | null;
+    }>;
+  }>({
+    queryKey: ["/api/admin/number-inventory"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/number-inventory", { headers: getAuthHeaders() });
+      if (!res.ok) return { success: false, numbers: [] };
+      return res.json();
+    },
+    enabled: activeTab === "vps-voice",
   });
 
   useEffect(() => {
@@ -1407,6 +1449,135 @@ export default function AdminSettings() {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     }
   };
+
+  const handleSearchInventoryNumbers = async () => {
+    if (!inventorySearchPrefix) {
+      toast({ title: "Errore", description: "Inserisci un prefisso per la ricerca", variant: "destructive" });
+      return;
+    }
+    setIsSearchingInventory(true);
+    setInventorySearchResults([]);
+    setInventorySelectedNumbers(new Set());
+    try {
+      const res = await fetch("/api/admin/number-inventory/search", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ prefix: inventorySearchPrefix, countryCode: inventorySearchCountry }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setInventorySearchResults(data.numbers || []);
+        if (data.numbers?.length === 0) {
+          toast({ title: "Nessun risultato", description: "Nessun numero trovato con questo prefisso" });
+        }
+      } else {
+        toast({ title: "Errore", description: data.error || "Errore nella ricerca", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setIsSearchingInventory(false);
+    }
+  };
+
+  const handlePurchaseSelectedNumbers = async () => {
+    if (inventorySelectedNumbers.size === 0) {
+      toast({ title: "Errore", description: "Seleziona almeno un numero", variant: "destructive" });
+      return;
+    }
+    setIsPurchasingNumbers(true);
+    try {
+      const res = await fetch("/api/admin/number-inventory/purchase", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumbers: Array.from(inventorySelectedNumbers), countryCode: inventorySearchCountry }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Acquisto completato", description: data.message });
+        setInventorySearchResults([]);
+        setInventorySelectedNumbers(new Set());
+        refetchNumberInventory();
+      } else {
+        toast({ title: "Errore", description: data.error || "Errore nell'acquisto", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setIsPurchasingNumbers(false);
+    }
+  };
+
+  const handleReleaseInventoryNumber = async (id: number) => {
+    try {
+      const res = await fetch(`/api/admin/number-inventory/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Numero rilasciato", description: data.message });
+        refetchNumberInventory();
+      } else {
+        toast({ title: "Errore", description: data.error, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleSaveInventoryNote = async () => {
+    if (!editingInventoryNote) return;
+    try {
+      const res = await fetch(`/api/admin/number-inventory/${editingInventoryNote.id}`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: editingInventoryNote.notes }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Note aggiornate" });
+        setEditingInventoryNote(null);
+        refetchNumberInventory();
+      } else {
+        toast({ title: "Errore", description: data.error, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const toggleInventoryNumberSelection = (phoneNumber: string) => {
+    setInventorySelectedNumbers(prev => {
+      const next = new Set(prev);
+      if (next.has(phoneNumber)) {
+        next.delete(phoneNumber);
+      } else {
+        next.add(phoneNumber);
+      }
+      return next;
+    });
+  };
+
+  const getInventoryStatusBadge = (status: string) => {
+    switch (status) {
+      case "available":
+        return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Disponibile</Badge>;
+      case "assigned":
+        return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Assegnato</Badge>;
+      case "reserved":
+        return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Riservato</Badge>;
+      case "released":
+        return <Badge className="bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">Rilasciato</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const filteredInventoryNumbers = (numberInventoryData?.numbers || []).filter(n => {
+    if (inventoryFilterStatus === "all") return true;
+    return n.status === inventoryFilterStatus;
+  });
 
   const getActionLabel = (action: string) => {
     const labels: Record<string, string> = {
@@ -4191,6 +4362,257 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                       {isTestingTelnyx ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Activity className="h-4 w-4 mr-2" />}
                       Test Connessione
                     </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Globe className="h-5 w-5" />
+                    Inventario Numeri VoIP
+                  </CardTitle>
+                  <CardDescription>
+                    Cerca numeri su Telnyx, acquistali e gestisci l'inventario per i consulenti
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                    <h4 className="font-medium text-sm flex items-center gap-2">
+                      <Search className="h-4 w-4" />
+                      Cerca Numeri su Telnyx
+                    </h4>
+                    <div className="flex gap-3 items-end">
+                      <div className="flex-1 space-y-1">
+                        <Label htmlFor="inv-prefix">Prefisso</Label>
+                        <Input
+                          id="inv-prefix"
+                          value={inventorySearchPrefix}
+                          onChange={(e) => setInventorySearchPrefix(e.target.value)}
+                          placeholder="+3902, +3906, +1212..."
+                        />
+                      </div>
+                      <div className="w-32 space-y-1">
+                        <Label htmlFor="inv-country">Paese</Label>
+                        <Select value={inventorySearchCountry} onValueChange={setInventorySearchCountry}>
+                          <SelectTrigger id="inv-country">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="IT">Italia</SelectItem>
+                            <SelectItem value="US">USA</SelectItem>
+                            <SelectItem value="GB">UK</SelectItem>
+                            <SelectItem value="DE">Germania</SelectItem>
+                            <SelectItem value="FR">Francia</SelectItem>
+                            <SelectItem value="ES">Spagna</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button onClick={handleSearchInventoryNumbers} disabled={isSearchingInventory || !telnyxConfig?.configured}>
+                        {isSearchingInventory ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                        Cerca
+                      </Button>
+                    </div>
+                    {!telnyxConfig?.configured && (
+                      <p className="text-xs text-amber-600">Configura Telnyx API prima di cercare numeri.</p>
+                    )}
+
+                    {inventorySearchResults.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground">
+                            {inventorySearchResults.length} numeri trovati — {inventorySelectedNumbers.size} selezionati
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={handlePurchaseSelectedNumbers}
+                            disabled={isPurchasingNumbers || inventorySelectedNumbers.size === 0}
+                          >
+                            {isPurchasingNumbers ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                            Acquista Selezionati ({inventorySelectedNumbers.size})
+                          </Button>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto border rounded-lg">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-10">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-gray-300"
+                                    checked={inventorySelectedNumbers.size === inventorySearchResults.length && inventorySearchResults.length > 0}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setInventorySelectedNumbers(new Set(inventorySearchResults.map(n => n.phone_number)));
+                                      } else {
+                                        setInventorySelectedNumbers(new Set());
+                                      }
+                                    }}
+                                  />
+                                </TableHead>
+                                <TableHead>Numero</TableHead>
+                                <TableHead>Costo/mese</TableHead>
+                                <TableHead>Regione</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {inventorySearchResults.map((num) => (
+                                <TableRow key={num.phone_number} className="cursor-pointer" onClick={() => toggleInventoryNumberSelection(num.phone_number)}>
+                                  <TableCell>
+                                    <input
+                                      type="checkbox"
+                                      className="h-4 w-4 rounded border-gray-300"
+                                      checked={inventorySelectedNumbers.has(num.phone_number)}
+                                      onChange={() => toggleInventoryNumberSelection(num.phone_number)}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="font-mono text-sm">{num.phone_number}</TableCell>
+                                  <TableCell className="text-sm">{num.monthly_cost || "N/A"}</TableCell>
+                                  <TableCell className="text-sm">{num.region || "—"}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        Numeri in Inventario
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <Select value={inventoryFilterStatus} onValueChange={setInventoryFilterStatus}>
+                          <SelectTrigger className="w-40 h-8">
+                            <SelectValue placeholder="Filtra stato" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutti</SelectItem>
+                            <SelectItem value="available">Disponibili</SelectItem>
+                            <SelectItem value="assigned">Assegnati</SelectItem>
+                            <SelectItem value="reserved">Riservati</SelectItem>
+                            <SelectItem value="released">Rilasciati</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="outline" size="sm" onClick={() => refetchNumberInventory()}>
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Aggiorna
+                        </Button>
+                      </div>
+                    </div>
+
+                    {filteredInventoryNumbers.length === 0 ? (
+                      <div className="text-center py-8 border rounded-lg bg-muted/20">
+                        <Phone className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          {numberInventoryData?.numbers?.length === 0
+                            ? "Nessun numero nell'inventario. Cerca e acquista numeri da Telnyx."
+                            : "Nessun numero corrisponde al filtro selezionato."}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="border rounded-lg overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Numero</TableHead>
+                              <TableHead>Prefisso</TableHead>
+                              <TableHead>Stato</TableHead>
+                              <TableHead>Assegnato a</TableHead>
+                              <TableHead>Data Acquisto</TableHead>
+                              <TableHead>Note</TableHead>
+                              <TableHead className="text-right">Azioni</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredInventoryNumbers.map((num) => (
+                              <TableRow key={num.id}>
+                                <TableCell className="font-mono text-sm">{num.phone_number}</TableCell>
+                                <TableCell className="text-sm">{num.prefix || "—"}</TableCell>
+                                <TableCell>{getInventoryStatusBadge(num.status)}</TableCell>
+                                <TableCell className="text-sm">
+                                  {num.assigned_first_name
+                                    ? `${num.assigned_first_name} ${num.assigned_last_name || ""}`
+                                    : "—"}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {num.purchased_at
+                                    ? format(new Date(num.purchased_at), "dd/MM/yyyy HH:mm", { locale: it })
+                                    : "—"}
+                                </TableCell>
+                                <TableCell className="text-sm max-w-[150px] truncate">
+                                  {editingInventoryNote?.id === num.id ? (
+                                    <div className="flex gap-1">
+                                      <Input
+                                        value={editingInventoryNote.notes}
+                                        onChange={(e) => setEditingInventoryNote({ ...editingInventoryNote, notes: e.target.value })}
+                                        className="h-7 text-xs"
+                                      />
+                                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={handleSaveInventoryNote}>
+                                        <Check className="h-3 w-3" />
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditingInventoryNote(null)}>
+                                        <XCircle className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <span
+                                      className="cursor-pointer hover:underline"
+                                      onClick={() => setEditingInventoryNote({ id: num.id, notes: num.notes || "" })}
+                                      title="Clicca per modificare"
+                                    >
+                                      {num.notes || "—"}
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex gap-1 justify-end">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => setEditingInventoryNote({ id: num.id, notes: num.notes || "" })}
+                                      title="Modifica note"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                    {num.status !== "assigned" && num.status !== "released" && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
+                                        onClick={() => handleReleaseInventoryNumber(num.id)}
+                                        title="Rilascia numero"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+
+                    <div className="flex gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <div className="h-2 w-2 rounded-full bg-green-500" />
+                        Disponibili: {(numberInventoryData?.numbers || []).filter(n => n.status === "available").length}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <div className="h-2 w-2 rounded-full bg-blue-500" />
+                        Assegnati: {(numberInventoryData?.numbers || []).filter(n => n.status === "assigned").length}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <div className="h-2 w-2 rounded-full bg-gray-400" />
+                        Rilasciati: {(numberInventoryData?.numbers || []).filter(n => n.status === "released").length}
+                      </span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

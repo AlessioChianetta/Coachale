@@ -37,8 +37,11 @@ interface ConsultantNumber {
 }
 
 interface AvailableNumber {
-  phoneNumber: string;
-  features?: any;
+  phone_number: string;
+  country_code: string;
+  prefix: string | null;
+  monthly_cost: string | null;
+  inventory_id: number;
 }
 
 const ITALIAN_PREFIXES = [
@@ -130,10 +133,10 @@ export default function VoipProvisioningTab() {
 
   const searchMutation = useMutation({
     mutationFn: async (prefix: string) => {
-      const res = await fetch(`/api/voice/voip-provisioning/available-numbers?prefix=${encodeURIComponent(prefix)}&country=IT`, {
+      const res = await fetch(`/api/voice/voip-provisioning/available-numbers?prefix=${encodeURIComponent(prefix)}`, {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error("Errore nella ricerca");
+      if (!res.ok) throw new Error("Errore nel caricamento dei numeri disponibili");
       return res.json();
     },
     onSuccess: (data) => {
@@ -154,12 +157,12 @@ export default function VoipProvisioningTab() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Errore nell'attivazione");
+        throw new Error(data.error || "Errore nell'assegnazione del numero");
       }
       return res.json();
     },
     onSuccess: (data) => {
-      toast({ title: "Numero Attivato!", description: data.message });
+      toast({ title: "Numero Assegnato!", description: data.message || "Il numero e stato assegnato al tuo account." });
       queryClient.invalidateQueries({ queryKey: ["/api/voice/voip-provisioning/my-number"] });
       setSearchedNumbers([]);
       setSelectedNumber(null);
@@ -408,19 +411,19 @@ export default function VoipProvisioningTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Phone className="h-5 w-5" />
-            Scegli il tuo Numero
+            Numeri Disponibili
           </CardTitle>
           <CardDescription>
-            Seleziona un prefisso e scegli il numero che preferisci. Verra attivato immediatamente.
+            Scegli un numero dall'inventario disponibile. Verra assegnato immediatamente al tuo account.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-3 items-end flex-wrap">
             <div className="flex-1 min-w-[200px]">
-              <Label>Prefisso</Label>
+              <Label>Filtra per prefisso</Label>
               <Select value={selectedPrefix} onValueChange={setSelectedPrefix}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleziona prefisso..." />
+                  <SelectValue placeholder="Tutti i prefissi" />
                 </SelectTrigger>
                 <SelectContent>
                   {ITALIAN_PREFIXES.map(p => (
@@ -431,10 +434,10 @@ export default function VoipProvisioningTab() {
             </div>
             <Button
               onClick={() => searchMutation.mutate(selectedPrefix)}
-              disabled={!selectedPrefix || searchMutation.isPending}
+              disabled={searchMutation.isPending}
             >
               {searchMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
-              Cerca Numeri
+              Mostra Numeri
             </Button>
           </div>
 
@@ -443,7 +446,7 @@ export default function VoipProvisioningTab() {
               <p className="text-sm text-muted-foreground">{searchedNumbers.length} numeri disponibili</p>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 max-h-[400px] overflow-y-auto">
                 {searchedNumbers.map((num) => {
-                  const phoneNum = num.phoneNumber || (num as any).phone_number;
+                  const phoneNum = num.phone_number;
                   const isSelected = selectedNumber === phoneNum;
                   return (
                     <button
@@ -456,6 +459,9 @@ export default function VoipProvisioningTab() {
                       }`}
                     >
                       <p className="font-mono font-medium text-sm">{phoneNum}</p>
+                      {num.prefix && (
+                        <p className="text-xs text-muted-foreground mt-1">Prefisso: {num.prefix}</p>
+                      )}
                     </button>
                   );
                 })}
@@ -466,7 +472,7 @@ export default function VoipProvisioningTab() {
                   <Phone className="h-5 w-5 text-primary" />
                   <div className="flex-1">
                     <p className="font-medium">Numero selezionato: <span className="font-mono">{selectedNumber}</span></p>
-                    <p className="text-xs text-muted-foreground">Verra attivato immediatamente. Avrai 7 giorni per caricare la documentazione KYC.</p>
+                    <p className="text-xs text-muted-foreground">Verra assegnato immediatamente. Avrai 7 giorni per caricare la documentazione KYC.</p>
                   </div>
                   <Button
                     onClick={() => selectNumberMutation.mutate(selectedNumber)}
@@ -482,8 +488,9 @@ export default function VoipProvisioningTab() {
 
           {searchMutation.isSuccess && searchedNumbers.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>Nessun numero disponibile con questo prefisso. Prova un altro prefisso.</p>
+              <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="font-medium">Nessun numero disponibile al momento</p>
+              <p className="text-sm mt-1">Contatta l'amministratore per richiedere un numero.</p>
             </div>
           )}
         </CardContent>

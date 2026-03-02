@@ -2598,4 +2598,230 @@ router.post(
   }
 );
 
+// ============================================
+// Number Inventory Management (Admin)
+// ============================================
+
+router.get(
+  "/admin/number-inventory",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { status, prefix } = req.query;
+
+      const result = await db.execute(sql`
+        SELECT ni.*, 
+          u_assigned.email as assigned_email, u_assigned."firstName" as assigned_first_name, u_assigned."lastName" as assigned_last_name,
+          u_purchased.email as purchased_email, u_purchased."firstName" as purchased_first_name, u_purchased."lastName" as purchased_last_name
+        FROM number_inventory ni
+        LEFT JOIN users u_assigned ON ni.assigned_to = u_assigned.id
+        LEFT JOIN users u_purchased ON ni.purchased_by = u_purchased.id
+        ORDER BY ni.created_at DESC
+      `);
+
+      let filteredRows = result.rows;
+      if (status && typeof status === "string") {
+        filteredRows = filteredRows.filter((r: any) => r.status === status);
+      }
+      if (prefix && typeof prefix === "string") {
+        filteredRows = filteredRows.filter((r: any) => r.prefix && r.prefix.includes(prefix));
+      }
+
+      res.json({ success: true, numbers: filteredRows });
+    } catch (error: any) {
+      console.error("[ADMIN] Number inventory list error:", error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/admin/number-inventory/search",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { prefix, countryCode } = req.body;
+      const telnyxProvisioning = await import("../services/telnyx-provisioning");
+      const configured = await telnyxProvisioning.isTelnyxConfigured();
+      if (!configured) {
+        return res.status(400).json({ success: false, error: "Telnyx non configurato. Configura API Key e Connection ID dal pannello Super Admin." });
+      }
+
+      const numbers = await telnyxProvisioning.searchAvailableNumbers(
+        prefix || "",
+        countryCode || "IT",
+        { bestEffort: true }
+      );
+
+      res.json({ success: true, numbers });
+    } catch (error: any) {
+      console.error("[ADMIN] Number inventory search error:", error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/admin/number-inventory/purchase",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { phoneNumbers, countryCode } = req.body;
+      if (!phoneNumbers || !Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+        return res.status(400).json({ success: false, error: "phoneNumbers array is required" });
+      }
+
+      const telnyxProvisioning = await import("../services/telnyx-provisioning");
+      const configured = await telnyxProvisioning.isTelnyxConfigured();
+      if (!configured) {
+        return res.status(400).json({ success: false, error: "Telnyx non configurato." });
+      }
+
+      const config = await telnyxProvisioning.getTelnyxConfig();
+      const results: Array<{ phoneNumber: string; success: boolean; error?: string; orderId?: string }> = [];
+
+      for (const phoneNumber of phoneNumbers) {
+        try {
+          const orderId = await telnyxProvisioning.orderNumber(phoneNumber);
+
+          const cc = countryCode || 'IT';
+          const digits = phoneNumber.replace(/^\+/, "");
+          const numberPrefix = cc === 'IT' ? digits.substring(2, 5) : digits.substring(0, 5);
+
+          await db.execute(sql`
+            INSERT INTO number_inventory (phone_number, country_code, prefix, telnyx_order_id, connection_id, status, purchased_by, monthly_cost)
+            VALUES (${phoneNumber}, ${cc}, ${numberPrefix}, ${orderId}, ${config.connectionId}, 'available', ${req.user!.id}, 0)
+            ON CONFLICT (phone_number) DO UPDATE SET
+              telnyx_order_id = EXCLUDED.telnyx_order_id,
+              status = CASE WHEN number_inventory.status = 'assigned' THEN number_inventory.status ELSE 'available' END,
+              updated_at = NOW()
+          `);
+
+          results.push({ phoneNumber, success: true, orderId });
+        } catch (err: any) {
+          console.error(`[ADMIN] Failed to purchase ${phoneNumber}:`, err.message);
+          results.push({ phoneNumber, success: false, error: err.message });
+        }
+      }
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "purchase_numbers",
+        targetType: "number_inventory",
+        targetId: "batch",
+        details: { phoneNumbers, results }
+      });
+
+      const purchased = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+
+      res.json({
+        success: true,
+        message: `${purchased} numeri acquistati${failed > 0 ? `, ${failed} falliti` : ""}`,
+        results
+      });
+    } catch (error: any) {
+      console.error("[ADMIN] Number inventory purchase error:", error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.delete(
+  "/admin/number-inventory/:id",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const numId = parseInt(id, 10);
+      if (isNaN(numId)) {
+        return res.status(400).json({ success: false, error: "Invalid ID" });
+      }
+
+      const result = await db.execute(sql`
+        SELECT * FROM number_inventory WHERE id = ${numId}
+      `);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: "Numero non trovato" });
+      }
+
+      const number = result.rows[0] as any;
+      if (number.status === "assigned") {
+        return res.status(400).json({ success: false, error: "Non è possibile rimuovere un numero assegnato. Disassocialo prima." });
+      }
+
+      await db.execute(sql`
+        UPDATE number_inventory SET status = 'released', updated_at = NOW() WHERE id = ${numId}
+      `);
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "release_number",
+        targetType: "number_inventory",
+        targetId: String(numId),
+        details: { phoneNumber: number.phone_number }
+      });
+
+      res.json({ success: true, message: "Numero rilasciato" });
+    } catch (error: any) {
+      console.error("[ADMIN] Number inventory delete error:", error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.patch(
+  "/admin/number-inventory/:id",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const numId = parseInt(id, 10);
+      if (isNaN(numId)) {
+        return res.status(400).json({ success: false, error: "Invalid ID" });
+      }
+
+      const result = await db.execute(sql`
+        SELECT * FROM number_inventory WHERE id = ${numId}
+      `);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: "Numero non trovato" });
+      }
+
+      const { notes, status } = req.body;
+      const updates: string[] = [];
+      
+      if (notes !== undefined) {
+        await db.execute(sql`UPDATE number_inventory SET notes = ${notes}, updated_at = NOW() WHERE id = ${numId}`);
+      }
+      if (status !== undefined) {
+        const allowedStatuses = ["available", "assigned", "reserved", "released"];
+        if (!allowedStatuses.includes(status)) {
+          return res.status(400).json({ success: false, error: `Stato non valido. Valori ammessi: ${allowedStatuses.join(", ")}` });
+        }
+        await db.execute(sql`UPDATE number_inventory SET status = ${status}, updated_at = NOW() WHERE id = ${numId}`);
+      }
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "update_number_inventory",
+        targetType: "number_inventory",
+        targetId: String(numId),
+        details: { notes, status }
+      });
+
+      const updated = await db.execute(sql`SELECT * FROM number_inventory WHERE id = ${numId}`);
+      res.json({ success: true, number: updated.rows[0] });
+    } catch (error: any) {
+      console.error("[ADMIN] Number inventory update error:", error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
 export default router;
