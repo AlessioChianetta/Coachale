@@ -566,6 +566,12 @@ function Router() {
             </AuthGuard>
           </Route>
 
+          <Route path="/consultant/voice-calls/contact/:id">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantVoiceCallDetail />
+            </AuthGuard>
+          </Route>
+
           <Route path="/consultant/voice-calls/:id">
             <AuthGuard requiredRole="consultant">
               <ConsultantVoiceCallDetail />

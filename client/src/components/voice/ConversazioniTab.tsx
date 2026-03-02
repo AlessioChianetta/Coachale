@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ import {
   Mic2,
   ArrowLeft,
   Trash2,
+  ExternalLink,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -485,6 +487,11 @@ export default function ConversazioniTab() {
                     <Clock className="h-3 w-3 mr-1" />
                     {formatDuration(selectedConversation.total_duration)}
                   </Badge>
+                  <Link href={`/consultant/voice-calls/contact/${encodeURIComponent(selectedConversation.phone)}`}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Scheda Contatto">
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </Link>
                   <Button
                     variant="ghost"
                     size="icon"

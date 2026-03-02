@@ -52,6 +52,8 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 *   **System Robustness:** Includes a 4-week calendar, universal PDF support, real-time Google Drive sync, a Dataset Sync API, a Data Sync Observability Dashboard, an Intent Follow-Through System, a Partner Webhook Notification System, and a Database-Based Cron Mutex. An Anti-Zombie Connection System prevents stale Gemini WebSocket connections.
 *   **AI Streaming Architecture:** The system handles streaming responses from Google Gemini API and Vertex AI, mapping SDK chunks to `GeminiStreamChunk` objects and yielding typed SSE events for `code_execution`, `code_execution_result`, `generated_file`, `function_call`, and `thinking`.
 
+*   **Scheda Contatto (Contact Profile):** Unified contact profile page at `/consultant/voice-calls/contact/:phone` aggregating call history, scheduled calls, Hunter data, proactive lead info, and retry status. API endpoint: `GET /api/voice/contact/:phone`. Also accessible via `/consultant/voice-calls/:id` (resolves callId to phone via `/api/voice/contact-by-call/:callId`). Features tabbed call history with accordion expansion, sidebar cards for profile/Hunter/lead/retry data.
+*   **VoIP Number Provisioning:** Self-service VoIP number activation wizard in the Voice Calls page ("Attiva Numero" tab). Supports two providers: **Telnyx** (fully automated via API — managed account creation, KYC submission, number search/order, SIP connection setup) and **Messagenet** (manual workflow with document upload). DB tables: `voip_provisioning_requests`, `voip_provisioning_documents`. Service: `server/services/telnyx-provisioning.ts`. Admin endpoint for final activation: `POST /api/voice/voip-provisioning/activate`.
 *   **Skill Store:** A marketplace for importing and creating AI skills, which are markdown instructions injected into the Gemini AI system prompt. Supports file uploads and code execution.
 *   **Lead Scraper:** A dual-engine search via SerpAPI (Google Maps and Google Search) with website enrichment via Firecrawl. Features smart caching, CSV export, CRM lead management with status tracking, notes, and deal values. Includes an AI Sales Agent for generating structured sales reports and AI Keyword Suggestions for search queries. A slide-in chat panel provides conversational interaction.
 
@@ -74,3 +76,4 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 *   **Publer**: Social media scheduling and publishing.
 *   **SerpAPI**: Google Maps business data extraction for Lead Scraper.
 *   **Firecrawl**: Website scraping for email/contact extraction in Lead Scraper.
+*   **Telnyx API v2**: VoIP number provisioning, SIP connections, managed accounts for multi-tenant telephony.

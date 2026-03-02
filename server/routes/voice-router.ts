@@ -19,6 +19,11 @@ import { getTemplateOptions, getTemplateById, INBOUND_TEMPLATES, OUTBOUND_TEMPLA
 import { scheduleNextRecurrence } from '../cron/ai-task-scheduler';
 import { quickGenerate } from '../ai/provider-factory';
 import { initCallTimerManager, scheduleTimer as _scheduleTimerFromManager, cancelTimer as _cancelTimerFromManager, registerCallFunctions, getTimerCount } from '../services/call-timer-manager';
+import { resolveHunterContext } from '../services/hunter-context-resolver';
+import * as telnyxProvisioning from '../services/telnyx-provisioning';
+import { upload } from '../middleware/upload';
+import fs from 'fs';
+import path from 'path';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -846,6 +851,185 @@ router.get("/calls/:id", authenticateToken, requireAnyRole(["consultant", "super
   } catch (error) {
     console.error("[Voice] Error fetching call detail:", error);
     res.status(500).json({ error: "Errore nel recupero del dettaglio chiamata" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// CONTACT PROFILE — Scheda contatto unificata per numero di telefono
+// ═══════════════════════════════════════════════════════════════════
+
+router.get("/contact/:phone", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = await resolveConsultantId(req.user, req.query.consultant_id as string);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    const phone = decodeURIComponent(req.params.phone);
+    if (!phone) return res.status(400).json({ error: "Numero di telefono richiesto" });
+
+    const phoneDigits = phone.replace(/\D/g, '');
+    const phoneNoPlus = phone.replace(/^\+/, '');
+
+    const [contactResult, callsResult, scheduledResult, proactiveResult] = await Promise.all([
+      db.execute(sql`
+        SELECT u.id, u.first_name, u.last_name, u.email, u.phone_number, u.role
+        FROM users u
+        WHERE u.phone_number IS NOT NULL AND (
+          u.phone_number = ${phone}
+          OR u.phone_number = ${phoneNoPlus}
+          OR ('+' || u.phone_number) = ${phone}
+          OR regexp_replace(u.phone_number, '[^0-9]', '', 'g') = ${phoneDigits}
+        )
+        LIMIT 1
+      `),
+
+      db.execute(sql`
+        SELECT 
+          vc.id, vc.caller_id, vc.called_number, vc.status, vc.started_at,
+          vc.answered_at, vc.ended_at, vc.duration_seconds, vc.hangup_cause,
+          vc.ai_mode, vc.call_direction, vc.full_transcript,
+          vc.ai_conversation_id, vc.client_id, vc.freeswitch_uuid,
+          vc.outcome, vc.recording_url,
+          CONCAT(u.first_name, ' ', u.last_name) as client_name
+        FROM voice_calls vc
+        LEFT JOIN users u ON vc.client_id = u.id
+        WHERE vc.consultant_id = ${consultantId}
+          AND (
+            vc.caller_id = ${phone} OR vc.caller_id = ${phoneNoPlus}
+            OR ('+' || vc.caller_id) = ${phone}
+            OR regexp_replace(vc.caller_id, '[^0-9]', '', 'g') = ${phoneDigits}
+            OR vc.called_number = ${phone} OR vc.called_number = ${phoneNoPlus}
+            OR ('+' || vc.called_number) = ${phone}
+            OR regexp_replace(vc.called_number, '[^0-9]', '', 'g') = ${phoneDigits}
+          )
+        ORDER BY vc.started_at DESC
+        LIMIT 50
+      `),
+
+      db.execute(sql`
+        SELECT 
+          svc.id, svc.target_phone, svc.status, svc.scheduled_at,
+          svc.ai_mode, svc.call_instruction, svc.instruction_type,
+          svc.attempts, svc.max_attempts, svc.duration_seconds,
+          svc.hangup_cause, svc.voice_call_id, svc.source_task_id,
+          svc.retry_reason, svc.next_retry_at, svc.attempts_log,
+          svc.custom_prompt, svc.created_at, svc.updated_at
+        FROM scheduled_voice_calls svc
+        WHERE svc.consultant_id = ${consultantId}
+          AND (
+            svc.target_phone = ${phone} OR svc.target_phone = ${phoneNoPlus}
+            OR ('+' || svc.target_phone) = ${phone}
+            OR regexp_replace(svc.target_phone, '[^0-9]', '', 'g') = ${phoneDigits}
+          )
+        ORDER BY svc.scheduled_at DESC
+        LIMIT 50
+      `),
+
+      db.execute(sql`
+        SELECT 
+          pl.id, pl.lead_name, pl.phone_number, pl.email,
+          pl.objectives, pl.desires, pl.hook, pl.source,
+          pl.outreach_status, pl.metadata, pl.created_at
+        FROM proactive_leads pl
+        WHERE pl.consultant_id = ${consultantId}
+          AND (
+            pl.phone_number = ${phone} OR pl.phone_number = ${phoneNoPlus}
+            OR ('+' || pl.phone_number) = ${phone}
+            OR regexp_replace(pl.phone_number, '[^0-9]', '', 'g') = ${phoneDigits}
+          )
+        ORDER BY pl.created_at DESC
+        LIMIT 1
+      `)
+    ]);
+
+    let hunterContext = null;
+    try {
+      hunterContext = await resolveHunterContext({
+        consultantId,
+        phoneNumber: phone
+      });
+    } catch (e) {
+      console.warn(`[Voice Contact] Hunter context failed for ${phone}:`, e);
+    }
+
+    const contact = contactResult.rows[0] as any || null;
+    const calls = callsResult.rows;
+    const scheduledCalls = scheduledResult.rows;
+    const proactiveLead = proactiveResult.rows[0] as any || null;
+
+    const nextRetry = (scheduledResult.rows as any[]).find(
+      (s: any) => s.status === 'retry_scheduled' || s.status === 'pending'
+    ) || null;
+
+    const contactName = contact
+      ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
+      : proactiveLead?.lead_name || null;
+
+    const contactType = contact?.role === 'client' ? 'client'
+      : proactiveLead ? 'lead'
+      : calls.length > 0 || scheduledCalls.length > 0 ? 'known'
+      : 'unknown';
+
+    res.json({
+      contact: {
+        phone,
+        name: contactName,
+        type: contactType,
+        userId: contact?.id || null,
+        email: contact?.email || proactiveLead?.email || null,
+        role: contact?.role || null
+      },
+      calls,
+      scheduledCalls,
+      hunterContext,
+      proactiveLead,
+      nextRetry: nextRetry ? {
+        id: nextRetry.id,
+        status: nextRetry.status,
+        next_retry_at: nextRetry.next_retry_at,
+        retry_reason: nextRetry.retry_reason,
+        attempts: nextRetry.attempts,
+        max_attempts: nextRetry.max_attempts,
+        scheduled_at: nextRetry.scheduled_at
+      } : null
+    });
+  } catch (error) {
+    console.error("[Voice] Error fetching contact profile:", error);
+    res.status(500).json({ error: "Errore nel recupero del profilo contatto" });
+  }
+});
+
+// GET /api/voice/contact-by-call/:callId - Resolve phone from callId, then redirect to contact profile
+router.get("/contact-by-call/:callId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { callId } = req.params;
+    const consultantId = await resolveConsultantId(req.user, req.query.consultant_id as string);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    let phone: string | null = null;
+
+    if (callId.startsWith('sc_')) {
+      const result = await db.execute(sql`
+        SELECT target_phone FROM scheduled_voice_calls 
+        WHERE id = ${callId} AND consultant_id = ${consultantId}
+        LIMIT 1
+      `);
+      phone = (result.rows[0] as any)?.target_phone || null;
+    } else {
+      const result = await db.execute(sql`
+        SELECT caller_id, called_number FROM voice_calls 
+        WHERE id = ${callId} AND consultant_id = ${consultantId}
+        LIMIT 1
+      `);
+      const row = result.rows[0] as any;
+      phone = row?.caller_id || row?.called_number || null;
+    }
+
+    if (!phone) return res.status(404).json({ error: "Chiamata non trovata" });
+
+    res.json({ phone });
+  } catch (error) {
+    console.error("[Voice] Error resolving call to phone:", error);
+    res.status(500).json({ error: "Errore nella risoluzione del numero" });
   }
 });
 
@@ -3947,6 +4131,366 @@ OUTPUT: Restituisci SOLO l'istruzione migliorata, senza spiegazioni o prefissi. 
   } catch (error: any) {
     console.error("[VOICE] Error improving instruction:", error);
     return res.status(500).json({ error: "Errore durante il miglioramento dell'istruzione" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// VOIP PROVISIONING - Gestione attivazione numeri VoIP
+// ═══════════════════════════════════════════════════════════════════
+
+router.post("/voip-provisioning/request", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const {
+      provider, business_name, business_type, vat_number, fiscal_code,
+      legal_address, city, province, postal_code, contact_email, contact_phone,
+      desired_prefix, notes
+    } = req.body;
+
+    if (!provider || !["telnyx", "messagenet"].includes(provider)) {
+      return res.status(400).json({ error: "Provider must be 'telnyx' or 'messagenet'" });
+    }
+
+    const existing = await db.execute(sql`
+      SELECT id, status FROM voip_provisioning_requests
+      WHERE consultant_id = ${consultantId}
+        AND status NOT IN ('completed', 'rejected')
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({
+        error: "Esiste già una richiesta di provisioning attiva",
+        existingRequest: existing.rows[0],
+      });
+    }
+
+    const result = await db.execute(sql`
+      INSERT INTO voip_provisioning_requests (
+        consultant_id, provider, business_name, business_type, vat_number, fiscal_code,
+        legal_address, city, province, postal_code, contact_email, contact_phone,
+        desired_prefix, notes, status
+      ) VALUES (
+        ${consultantId}, ${provider}, ${business_name || null}, ${business_type || 'sole_proprietorship'},
+        ${vat_number || null}, ${fiscal_code || null}, ${legal_address || null}, ${city || null},
+        ${province || null}, ${postal_code || null}, ${contact_email || null}, ${contact_phone || null},
+        ${desired_prefix || null}, ${notes || null}, 'pending'
+      )
+      RETURNING *
+    `);
+
+    console.log(`📞 [VOIP] New provisioning request created for consultant ${consultantId}, provider: ${provider}`);
+    res.json({ success: true, request: result.rows[0] });
+  } catch (error: any) {
+    console.error("[VOIP] Error creating provisioning request:", error);
+    res.status(500).json({ error: "Errore nella creazione della richiesta" });
+  }
+});
+
+router.post("/voip-provisioning/documents", authenticateToken, requireAnyRole(["consultant"]), upload.single("file"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { request_id, document_type } = req.body;
+    const file = req.file;
+
+    if (!file) return res.status(400).json({ error: "File richiesto" });
+    if (!request_id) return res.status(400).json({ error: "request_id richiesto" });
+    if (!document_type) return res.status(400).json({ error: "document_type richiesto" });
+
+    const validTypes = ["identity_front", "identity_back", "codice_fiscale", "proof_of_address", "visura_camerale", "vat_certificate", "other"];
+    if (!validTypes.includes(document_type)) {
+      return res.status(400).json({ error: `document_type must be one of: ${validTypes.join(", ")}` });
+    }
+
+    const reqCheck = await db.execute(sql`
+      SELECT id FROM voip_provisioning_requests
+      WHERE id = ${parseInt(request_id)} AND consultant_id = ${consultantId}
+    `);
+    if (reqCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Richiesta di provisioning non trovata" });
+    }
+
+    const result = await db.execute(sql`
+      INSERT INTO voip_provisioning_documents (
+        request_id, consultant_id, document_type, file_name, file_path, file_size, mime_type
+      ) VALUES (
+        ${parseInt(request_id)}, ${consultantId}, ${document_type},
+        ${file.originalname}, ${file.path}, ${file.size}, ${file.mimetype}
+      )
+      RETURNING *
+    `);
+
+    console.log(`📄 [VOIP] Document uploaded: ${document_type} for request ${request_id}`);
+    res.json({ success: true, document: result.rows[0] });
+  } catch (error: any) {
+    console.error("[VOIP] Error uploading document:", error);
+    res.status(500).json({ error: "Errore nel caricamento del documento" });
+  }
+});
+
+router.delete("/voip-provisioning/documents/:id", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const docId = parseInt(req.params.id);
+    const docResult = await db.execute(sql`
+      SELECT * FROM voip_provisioning_documents
+      WHERE id = ${docId} AND consultant_id = ${consultantId}
+    `);
+    if (docResult.rows.length === 0) {
+      return res.status(404).json({ error: "Documento non trovato" });
+    }
+
+    const doc = docResult.rows[0] as any;
+    if (doc.file_path && fs.existsSync(doc.file_path)) {
+      fs.unlinkSync(doc.file_path);
+    }
+
+    await db.execute(sql`DELETE FROM voip_provisioning_documents WHERE id = ${docId}`);
+
+    console.log(`🗑️ [VOIP] Document deleted: ${doc.document_type} (id: ${docId})`);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("[VOIP] Error deleting document:", error);
+    res.status(500).json({ error: "Errore nell'eliminazione del documento" });
+  }
+});
+
+router.get("/voip-provisioning/status", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "super_admin" && req.query.consultant_id
+      ? req.query.consultant_id as string
+      : req.user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const status = await telnyxProvisioning.getProvisioningStatus(consultantId);
+    res.json({ success: true, provisioning: status });
+  } catch (error: any) {
+    console.error("[VOIP] Error fetching provisioning status:", error);
+    res.status(500).json({ error: "Errore nel recupero dello stato" });
+  }
+});
+
+router.post("/voip-provisioning/submit-kyc", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const reqResult = await db.execute(sql`
+      SELECT * FROM voip_provisioning_requests
+      WHERE consultant_id = ${consultantId}
+        AND status NOT IN ('completed', 'rejected')
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    if (reqResult.rows.length === 0) {
+      return res.status(404).json({ error: "Nessuna richiesta di provisioning trovata" });
+    }
+    const provRequest = reqResult.rows[0] as any;
+
+    if (provRequest.provider !== "telnyx") {
+      await db.execute(sql`
+        UPDATE voip_provisioning_requests
+        SET status = 'documents_uploaded', updated_at = NOW()
+        WHERE id = ${provRequest.id}
+      `);
+      return res.json({ success: true, message: "Documenti salvati. La configurazione Messagenet verrà completata manualmente." });
+    }
+
+    const docsResult = await db.execute(sql`
+      SELECT * FROM voip_provisioning_documents
+      WHERE request_id = ${provRequest.id} AND status = 'uploaded'
+    `);
+    if (docsResult.rows.length === 0) {
+      return res.status(400).json({ error: "Nessun documento caricato. Carica almeno i documenti richiesti." });
+    }
+
+    try {
+      if (!provRequest.telnyx_managed_account_id) {
+        const account = await telnyxProvisioning.createManagedAccount(
+          provRequest.business_name || "Consultant",
+          provRequest.contact_email || ""
+        );
+        await db.execute(sql`
+          UPDATE voip_provisioning_requests
+          SET telnyx_managed_account_id = ${account.id},
+              telnyx_managed_account_api_key = ${account.apiKey},
+              updated_at = NOW()
+          WHERE id = ${provRequest.id}
+        `);
+      }
+
+      if (!provRequest.telnyx_requirement_group_id) {
+        const groupId = await telnyxProvisioning.createRequirementGroup("IT", "local", "ordering");
+        await db.execute(sql`
+          UPDATE voip_provisioning_requests
+          SET telnyx_requirement_group_id = ${groupId}, updated_at = NOW()
+          WHERE id = ${provRequest.id}
+        `);
+      }
+
+      for (const doc of docsResult.rows as any[]) {
+        try {
+          const telnyxDocId = await telnyxProvisioning.uploadDocumentToTelnyx(doc.file_path, doc.file_name);
+          await db.execute(sql`
+            UPDATE voip_provisioning_documents
+            SET telnyx_document_id = ${telnyxDocId}, status = 'submitted_to_provider'
+            WHERE id = ${doc.id}
+          `);
+        } catch (docError: any) {
+          console.error(`[VOIP] Error uploading doc ${doc.id} to Telnyx:`, docError.message);
+          await db.execute(sql`
+            UPDATE voip_provisioning_documents
+            SET status = 'rejected', rejection_reason = ${docError.message}
+            WHERE id = ${doc.id}
+          `);
+        }
+      }
+
+      await db.execute(sql`
+        UPDATE voip_provisioning_requests
+        SET status = 'kyc_submitted', updated_at = NOW()
+        WHERE id = ${provRequest.id}
+      `);
+
+      console.log(`📋 [VOIP] KYC submitted for request ${provRequest.id}`);
+      res.json({ success: true, message: "KYC inviato a Telnyx per approvazione" });
+    } catch (telnyxError: any) {
+      console.error("[VOIP] Telnyx KYC submission error:", telnyxError.message);
+      await db.execute(sql`
+        UPDATE voip_provisioning_requests
+        SET error_log = COALESCE(error_log, '') || ${`[${new Date().toISOString()}] KYC Error: ${telnyxError.message}\n`},
+            updated_at = NOW()
+        WHERE id = ${provRequest.id}
+      `);
+      res.status(500).json({ error: `Errore Telnyx: ${telnyxError.message}` });
+    }
+  } catch (error: any) {
+    console.error("[VOIP] Error submitting KYC:", error);
+    res.status(500).json({ error: "Errore nell'invio KYC" });
+  }
+});
+
+router.post("/voip-provisioning/search-numbers", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { prefix, country_code } = req.body;
+    if (!prefix) return res.status(400).json({ error: "prefix richiesto" });
+
+    const numbers = await telnyxProvisioning.searchAvailableNumbers(prefix, country_code || "IT");
+    res.json({ success: true, numbers });
+  } catch (error: any) {
+    console.error("[VOIP] Error searching numbers:", error);
+    res.status(500).json({ error: `Errore nella ricerca numeri: ${error.message}` });
+  }
+});
+
+router.post("/voip-provisioning/order-number", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { phone_number } = req.body;
+    if (!phone_number) return res.status(400).json({ error: "phone_number richiesto" });
+
+    const reqResult = await db.execute(sql`
+      SELECT * FROM voip_provisioning_requests
+      WHERE consultant_id = ${consultantId}
+        AND provider = 'telnyx'
+        AND status NOT IN ('completed', 'rejected')
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    if (reqResult.rows.length === 0) {
+      return res.status(404).json({ error: "Nessuna richiesta Telnyx attiva" });
+    }
+    const provRequest = reqResult.rows[0] as any;
+
+    let connectionId = provRequest.telnyx_connection_id;
+    if (!connectionId) {
+      const conn = await telnyxProvisioning.createSipConnection(`sip-${consultantId.substring(0, 8)}`);
+      connectionId = conn.id;
+      await db.execute(sql`
+        UPDATE voip_provisioning_requests
+        SET telnyx_connection_id = ${conn.id},
+            sip_username = ${conn.sipUsername},
+            sip_password = ${conn.sipPassword},
+            sip_gateway = 'sip.telnyx.com',
+            updated_at = NOW()
+        WHERE id = ${provRequest.id}
+      `);
+    }
+
+    const orderId = await telnyxProvisioning.orderNumber(
+      phone_number, connectionId, provRequest.telnyx_requirement_group_id
+    );
+
+    const profileId = await telnyxProvisioning.createOutboundProfile(
+      `outbound-${consultantId.substring(0, 8)}`, connectionId
+    );
+
+    await db.execute(sql`
+      UPDATE voip_provisioning_requests
+      SET telnyx_number_order_id = ${orderId},
+          telnyx_outbound_profile_id = ${profileId},
+          desired_number = ${phone_number},
+          status = 'number_ordered',
+          updated_at = NOW()
+      WHERE id = ${provRequest.id}
+    `);
+
+    console.log(`📞 [VOIP] Number ordered: ${phone_number} for consultant ${consultantId}`);
+    res.json({ success: true, orderId, message: "Numero ordinato con successo" });
+  } catch (error: any) {
+    console.error("[VOIP] Error ordering number:", error);
+    res.status(500).json({ error: `Errore nell'ordine del numero: ${error.message}` });
+  }
+});
+
+router.post("/voip-provisioning/activate", authenticateToken, requireAnyRole(["super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { request_id, assigned_number, sip_username, sip_password, sip_gateway } = req.body;
+    if (!request_id) return res.status(400).json({ error: "request_id richiesto" });
+
+    const reqResult = await db.execute(sql`
+      SELECT * FROM voip_provisioning_requests WHERE id = ${parseInt(request_id)}
+    `);
+    if (reqResult.rows.length === 0) {
+      return res.status(404).json({ error: "Richiesta non trovata" });
+    }
+    const provRequest = reqResult.rows[0] as any;
+
+    const finalNumber = assigned_number || provRequest.desired_number || provRequest.assigned_number;
+    const finalSipUser = sip_username || provRequest.sip_username;
+    const finalSipPass = sip_password || provRequest.sip_password;
+    const finalGateway = sip_gateway || provRequest.sip_gateway || "sip.telnyx.com";
+
+    await db.execute(sql`
+      UPDATE voip_provisioning_requests
+      SET status = 'completed',
+          assigned_number = ${finalNumber},
+          sip_username = ${finalSipUser},
+          sip_password = ${finalSipPass},
+          sip_gateway = ${finalGateway},
+          activated_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ${provRequest.id}
+    `);
+
+    if (finalNumber) {
+      await db.execute(sql`
+        UPDATE consultant_availability_settings
+        SET sip_caller_id = ${finalNumber}
+        WHERE consultant_id = ${provRequest.consultant_id}
+      `);
+    }
+
+    console.log(`✅ [VOIP] Provisioning completed for request ${request_id}, number: ${finalNumber}`);
+    res.json({ success: true, message: "Numero attivato con successo", assignedNumber: finalNumber });
+  } catch (error: any) {
+    console.error("[VOIP] Error activating number:", error);
+    res.status(500).json({ error: "Errore nell'attivazione del numero" });
   }
 });
 

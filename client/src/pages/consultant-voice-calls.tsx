@@ -116,6 +116,7 @@ import {
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import ConversazioniTab from "@/components/voice/ConversazioniTab";
+import VoipProvisioningTab from "@/components/voice/VoipProvisioningTab";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRoleSwitch } from "@/hooks/use-role-switch";
@@ -2214,6 +2215,13 @@ export default function ConsultantVoiceCallsPage() {
                   <MessagesSquare className="h-4 w-4" />
                   <span className="hidden sm:inline">Conversazioni</span>
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="voip-activation" 
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-orange-700 transition-all duration-200 text-xs sm:text-sm"
+                >
+                  <Plug className="h-4 w-4" />
+                  <span className="hidden sm:inline">Attiva Numero</span>
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="calls" className="space-y-6">
@@ -2463,7 +2471,7 @@ export default function ConsultantVoiceCallsPage() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <Link href={`/consultant/voice-calls/${call.id}`}>
+                                <Link href={`/consultant/voice-calls/contact/${encodeURIComponent(call.target_phone || call.caller_id || call.called_number)}`}>
                                   <Button variant="ghost" size="sm">
                                     Dettagli
                                   </Button>
@@ -7163,6 +7171,10 @@ export default function ConsultantVoiceCallsPage() {
 
               <TabsContent value="conversazioni">
                 <ConversazioniTab />
+              </TabsContent>
+
+              <TabsContent value="voip-activation" className="space-y-6">
+                <VoipProvisioningTab />
               </TabsContent>
             </Tabs>
           </div>
