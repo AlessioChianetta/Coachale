@@ -47,8 +47,6 @@ function buildDefaultInstruction(leadName: string, leadInfo?: AutoCallParams['le
     parts.push(`Fonte: ${leadInfo.fonte}.`);
   }
 
-  parts.push('Presentati brevemente, spiega i servizi e chiedi disponibilità per una consulenza.');
-
   return parts.join(' ');
 }
 
