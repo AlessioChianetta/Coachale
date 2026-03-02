@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -118,6 +118,8 @@ export default function VoipProvisioningTab() {
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
   const [searchingNumbers, setSearchingNumbers] = useState(false);
 
+  const prevStatusRef = useRef<string | null>(null);
+
   const { data: statusData, isLoading, refetch } = useQuery({
     queryKey: ["/api/voice/voip-provisioning/status"],
     queryFn: async () => {
@@ -128,7 +130,30 @@ export default function VoipProvisioningTab() {
       }
       return res.json();
     },
+    refetchInterval: (() => {
+      const st = statusData?.provisioning?.status;
+      if (st === "kyc_submitted" || st === "number_ordered") return 30000;
+      return false;
+    })(),
   });
+
+  useEffect(() => {
+    const currentStatus = statusData?.provisioning?.status;
+    if (!currentStatus || !prevStatusRef.current) {
+      prevStatusRef.current = currentStatus || null;
+      return;
+    }
+    if (currentStatus !== prevStatusRef.current) {
+      if (currentStatus === "kyc_approved") {
+        toast({ title: "KYC Approvato!", description: "Ora puoi cercare e ordinare un numero di telefono." });
+      } else if (currentStatus === "number_active") {
+        toast({ title: "Numero Attivato!", description: "Il tuo numero di telefono è stato attivato con successo." });
+      } else if (currentStatus === "rejected") {
+        toast({ title: "Richiesta Rifiutata", description: "La tua richiesta è stata rifiutata. Controlla i dettagli.", variant: "destructive" });
+      }
+      prevStatusRef.current = currentStatus;
+    }
+  }, [statusData?.provisioning?.status]);
 
   const createRequestMutation = useMutation({
     mutationFn: async () => {
@@ -452,6 +477,41 @@ export default function VoipProvisioningTab() {
                 </Button>
               </div>
             ) : null}
+
+            {/* Waiting states with auto-refresh indicator */}
+            {request.provider === "telnyx" && request.status === "kyc_submitted" && (
+              <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
+                <div>
+                  <p className="font-medium text-amber-800 dark:text-amber-200">KYC in fase di revisione</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">I documenti sono stati inviati a Telnyx per la verifica. La pagina si aggiorna automaticamente ogni 30 secondi.</p>
+                </div>
+              </div>
+            )}
+
+            {request.provider === "telnyx" && request.status === "number_ordered" && (
+              <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                <div>
+                  <p className="font-medium text-blue-800 dark:text-blue-200">Numero in fase di attivazione</p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    L'ordine per il numero {request.desired_number || ""} è in elaborazione. La pagina si aggiorna automaticamente ogni 30 secondi.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {request.provider === "telnyx" && request.status === "number_active" && (
+              <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="font-medium text-green-800 dark:text-green-200">Numero Attivo</p>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    Il numero <strong className="font-mono">{request.assigned_number || request.desired_number}</strong> è stato attivato. In attesa di configurazione da parte dell'amministratore.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Number search (after KYC approved, for Telnyx) */}
             {request.provider === "telnyx" && request.status === "kyc_approved" && (

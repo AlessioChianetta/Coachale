@@ -2251,6 +2251,12 @@ router.get(
         .where(eq(systemSettings.key, "telnyx_ip_connection_id"))
         .limit(1);
 
+      const [webhookPublicKeySetting] = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.key, "telnyx_webhook_public_key"))
+        .limit(1);
+
       const hasApiKey = !!(apiKeySetting?.value);
       const apiKeyPreview = hasApiKey
         ? `KEY_...${String(apiKeySetting.value).slice(-6)}`
@@ -2262,6 +2268,7 @@ router.get(
         hasApiKey,
         apiKeyPreview,
         connectionId: connectionIdSetting?.value || "",
+        webhookPublicKey: webhookPublicKeySetting?.value || "",
       });
     } catch (error: any) {
       console.error("Get Telnyx settings error:", error);
@@ -2276,12 +2283,12 @@ router.post(
   requireSuperAdmin,
   async (req: AuthRequest, res) => {
     try {
-      const { apiKey, connectionId } = req.body;
+      const { apiKey, connectionId, webhookPublicKey } = req.body;
 
-      if (!apiKey && !connectionId) {
+      if (!apiKey && !connectionId && webhookPublicKey === undefined) {
         return res.status(400).json({
           success: false,
-          error: "Almeno un campo (API Key o Connection ID) è richiesto"
+          error: "Almeno un campo è richiesto"
         });
       }
 
@@ -2328,6 +2335,14 @@ router.post(
         );
       }
 
+      if (webhookPublicKey !== undefined) {
+        await upsertSetting(
+          "telnyx_webhook_public_key",
+          webhookPublicKey,
+          "Telnyx Ed25519 public key per verifica firma webhook"
+        );
+      }
+
       telnyxProvisioning.clearTelnyxConfigCache();
 
       await db.insert(adminAuditLog).values({
@@ -2338,6 +2353,7 @@ router.post(
         details: {
           apiKeyUpdated: !!apiKey,
           connectionIdUpdated: !!connectionId,
+          webhookPublicKeyUpdated: webhookPublicKey !== undefined,
           connectionId: connectionId || undefined,
         }
       });

@@ -29,6 +29,7 @@ import { initDatasetSyncScheduler } from "./cron/dataset-sync-scheduler";
 import { startPendingBookingExpiryScheduler } from "./cron/pending-booking-expiry";
 import { initAITaskScheduler } from "./cron/ai-task-scheduler";
 import { initAIUsageAggregator } from "./cron/ai-usage-aggregator";
+import { initTelnyxProvisioningPoller } from "./cron/telnyx-provisioning-poller";
 import { warmupPool, warmupVoiceCallTables } from "./db";
 
 function validateEnvironmentVariables() {
@@ -67,7 +68,7 @@ app.use(express.json({
   limit: '50mb',
   verify: (req: express.Request, res, buf) => {
     // Capture raw body for webhook signature verification
-    if (req.path === '/api/instagram/webhook' || req.path === '/api/stripe/webhook' || req.path.startsWith('/api/webhooks/stripe/')) {
+    if (req.path === '/api/instagram/webhook' || req.path === '/api/stripe/webhook' || req.path.startsWith('/api/webhooks/stripe/') || req.path === '/api/webhooks/telnyx') {
       req.rawBody = buf;
     }
   }
@@ -581,5 +582,14 @@ app.use((req, res, next) => {
     log("✅ AI usage aggregator started");
   } else {
     log("📊 AI usage aggregator is disabled (set AI_USAGE_AGGREGATOR_ENABLED=true to enable)");
+  }
+
+  const telnyxPollingEnabled = schedulersMasterEnabled && process.env.TELNYX_POLLING_ENABLED === "true";
+  if (telnyxPollingEnabled) {
+    log("📞 Telnyx provisioning poller enabled - starting (every 15 min)...");
+    initTelnyxProvisioningPoller();
+    log("✅ Telnyx provisioning poller started");
+  } else {
+    log("📞 Telnyx provisioning poller is disabled (set TELNYX_POLLING_ENABLED=true to enable)");
   }
 })();

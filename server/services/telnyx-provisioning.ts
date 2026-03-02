@@ -192,13 +192,13 @@ export async function orderNumber(phoneNumber: string, connectionIdOverride?: st
   if (!connectionId) {
     throw new Error("Telnyx IP Connection ID non configurato. Configuralo dal pannello Super Admin → Impostazioni → VPS/Voice.");
   }
-  const body: any = {
-    phone_numbers: [{ phone_number: phoneNumber }],
-    connection_id: connectionId,
-  };
+  const phoneEntry: any = { phone_number: phoneNumber, connection_id: connectionId };
   if (requirementGroupId) {
-    body.requirement_group_id = requirementGroupId;
+    phoneEntry.requirement_group_id = requirementGroupId;
   }
+  const body: any = {
+    phone_numbers: [phoneEntry],
+  };
   const data = await telnyxRequest("/number_orders", {
     method: "POST",
     body: JSON.stringify(body),

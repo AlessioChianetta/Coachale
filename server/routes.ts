@@ -140,6 +140,7 @@ import stripeAutomationsRouter, { handleStripeWebhook } from "./routes/stripe-au
 import clientDataRouter from "./routes/client-data-router";
 import datasetSyncRouter from "./routes/dataset-sync-router";
 import voiceRouter from "./routes/voice-router";
+import telnyxWebhookRouter from "./routes/telnyx-webhook";
 import aiAutonomyRouter from "./routes/ai-autonomy-router";
 import roundRobinRouter from "./routes/round-robin-router";
 import skillsStoreRouter from "./routes/skills-store-router";
@@ -14001,6 +14002,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // AI Autonomy settings and activity log routes
   app.use("/api/ai-autonomy", aiAutonomyRouter);
+
+  // Telnyx webhook (public, no auth - Telnyx calls this directly)
+  app.use("/api/webhooks/telnyx", telnyxWebhookRouter);
 
   // Telegram webhook (public, no auth - Telegram calls this directly)
   app.post("/api/telegram/webhook/:configId", async (req, res) => {

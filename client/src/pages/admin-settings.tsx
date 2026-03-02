@@ -305,9 +305,11 @@ export default function AdminSettings() {
 
   const [telnyxApiKey, setTelnyxApiKey] = useState("");
   const [telnyxConnectionId, setTelnyxConnectionId] = useState("");
+  const [telnyxWebhookPublicKey, setTelnyxWebhookPublicKey] = useState("");
   const [showTelnyxApiKey, setShowTelnyxApiKey] = useState(false);
   const [isSavingTelnyx, setIsSavingTelnyx] = useState(false);
   const [isTestingTelnyx, setIsTestingTelnyx] = useState(false);
+  const [webhookUrlCopied, setWebhookUrlCopied] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -552,11 +554,12 @@ export default function AdminSettings() {
     hasApiKey: boolean;
     apiKeyPreview: string;
     connectionId: string;
+    webhookPublicKey: string;
   }>({
     queryKey: ["/api/admin/settings/telnyx"],
     queryFn: async () => {
       const res = await fetch("/api/admin/settings/telnyx", { headers: getAuthHeaders() });
-      if (!res.ok) return { success: false, configured: false, hasApiKey: false, apiKeyPreview: "", connectionId: "" };
+      if (!res.ok) return { success: false, configured: false, hasApiKey: false, apiKeyPreview: "", connectionId: "", webhookPublicKey: "" };
       return res.json();
     },
   });
@@ -564,6 +567,9 @@ export default function AdminSettings() {
   useEffect(() => {
     if (telnyxConfig?.connectionId) {
       setTelnyxConnectionId(telnyxConfig.connectionId);
+    }
+    if (telnyxConfig?.webhookPublicKey) {
+      setTelnyxWebhookPublicKey(telnyxConfig.webhookPublicKey);
     }
   }, [telnyxConfig]);
 
@@ -4066,22 +4072,71 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                     </div>
                   </div>
 
+                  <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                    <h4 className="font-medium text-sm">Webhook Telnyx</h4>
+                    
+                    <div className="space-y-2">
+                      <Label>Webhook URL</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={`${window.location.origin}/api/webhooks/telnyx`}
+                          readOnly
+                          className="bg-muted font-mono text-xs"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/api/webhooks/telnyx`);
+                            setWebhookUrlCopied(true);
+                            setTimeout(() => setWebhookUrlCopied(false), 2000);
+                            toast({ title: "Copiato", description: "URL webhook copiato negli appunti" });
+                          }}
+                        >
+                          {webhookUrlCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Incolla questo URL in Mission Control &rarr; Account Settings &rarr; Webhooks URL. 
+                        Seleziona gli eventi: <code className="bg-muted px-1 rounded">number_order.status_updated</code>, <code className="bg-muted px-1 rounded">requirement_group.status_changed</code>
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="telnyx-webhook-public-key">Webhook Public Key (Ed25519)</Label>
+                      <Input
+                        id="telnyx-webhook-public-key"
+                        value={telnyxWebhookPublicKey}
+                        onChange={(e) => setTelnyxWebhookPublicKey(e.target.value)}
+                        placeholder="abc123def456..."
+                        className="font-mono text-xs"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Mission Control &rarr; Account Settings &rarr; Keys &amp; Credentials &rarr; Public Key. Serve per verificare la firma dei webhook ricevuti. Se non inserita, i webhook vengono accettati senza verifica.
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="flex gap-3">
                     <Button
                       onClick={async () => {
-                        if (!telnyxApiKey && !telnyxConnectionId) {
+                        const hasChanges = telnyxApiKey || telnyxConnectionId || telnyxWebhookPublicKey !== (telnyxConfig?.webhookPublicKey || "");
+                        if (!hasChanges) {
                           toast({ title: "Errore", description: "Inserisci almeno un valore", variant: "destructive" });
                           return;
                         }
                         setIsSavingTelnyx(true);
                         try {
+                          const bodyPayload: any = {};
+                          if (telnyxApiKey) bodyPayload.apiKey = telnyxApiKey;
+                          if (telnyxConnectionId) bodyPayload.connectionId = telnyxConnectionId;
+                          if (telnyxWebhookPublicKey !== (telnyxConfig?.webhookPublicKey || "")) {
+                            bodyPayload.webhookPublicKey = telnyxWebhookPublicKey;
+                          }
                           const res = await fetch("/api/admin/settings/telnyx", {
                             method: "POST",
                             headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              apiKey: telnyxApiKey || undefined,
-                              connectionId: telnyxConnectionId || undefined,
-                            }),
+                            body: JSON.stringify(bodyPayload),
                           });
                           const data = await res.json();
                           if (data.success) {
@@ -4097,7 +4152,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                           setIsSavingTelnyx(false);
                         }
                       }}
-                      disabled={isSavingTelnyx || (!telnyxApiKey && !telnyxConnectionId)}
+                      disabled={isSavingTelnyx}
                     >
                       {isSavingTelnyx ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                       Salva Configurazione
