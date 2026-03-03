@@ -1109,6 +1109,8 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
   activeGenerations.set(bufferKey, genEntry);
 
   let typingInterval: NodeJS.Timeout | null = null;
+  let streamEditInterval: NodeJS.Timeout | null = null;
+  let streamingMessageId: number | null = null;
 
   try {
     if (isOpenMode) {
@@ -1133,7 +1135,6 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
 
     let accumulatedText = '';
     let chunkCount = 0;
-    let streamingMessageId: number | null = null;
     let lastSnapshotLen = 0;
     let editInFlight: Promise<void> | null = null;
 
@@ -1144,7 +1145,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       chunkCount++;
     };
 
-    const streamEditInterval = setInterval(async () => {
+    streamEditInterval = setInterval(async () => {
       if (abortController.signal.aborted) return;
       if (accumulatedText.length === lastSnapshotLen) return;
       if (editInFlight) return;
@@ -1200,7 +1201,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       console.log(`[TELEGRAM] Final message sent to chat ${chatId} for role ${aiRole}`);
     }
   } catch (err: any) {
-    clearInterval(streamEditInterval);
+    if (streamEditInterval) { clearInterval(streamEditInterval); streamEditInterval = null; }
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
     if (err.message === 'AbortError' || abortController.signal.aborted) {
       if (streamingMessageId) {
@@ -1216,7 +1217,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       }
     }
   } finally {
-    clearInterval(streamEditInterval);
+    if (streamEditInterval) { clearInterval(streamEditInterval); streamEditInterval = null; }
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
     activeGenerations.delete(bufferKey);
   }
