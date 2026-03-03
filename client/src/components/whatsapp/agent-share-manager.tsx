@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Share2, Copy, Code, Eye, EyeOff, Trash2, BarChart3, Globe, Lock, X, Plus, Check, Users, UserPlus, Search, Edit, Key, Mail, Loader2 } from 'lucide-react';
+import { Share2, Copy, Code, Eye, EyeOff, Trash2, BarChart3, Globe, Lock, X, Plus, Check, Users, UserPlus, Search, Edit, Key, Mail, Loader2, QrCode, ShieldCheck, Unlock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAuthHeaders } from '@/lib/auth';
 
@@ -23,6 +23,7 @@ interface AgentShare {
   agentName: string;
   accessType: 'public' | 'password' | 'token';
   isActive: boolean;
+  isCustomSlug?: boolean;
   allowedDomains: string[];
   expireAt: string | null;
   totalAccessCount: number;
@@ -83,6 +84,9 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
   const [password, setPassword] = useState('');
   const [allowedDomains, setAllowedDomains] = useState('');
   const [expireDays, setExpireDays] = useState('');
+  const [useCustomSlug, setUseCustomSlug] = useState(false);
+  const [customSlug, setCustomSlug] = useState('');
+  const [slugError, setSlugError] = useState('');
   
   const MAX_SHARES_PER_AGENT = 2;
 
@@ -289,6 +293,26 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
         requiresLogin: shareMode === 'manager',
       };
 
+      if (useCustomSlug) {
+        if (!customSlug || customSlug.length < 3) {
+          toast({
+            title: 'Errore',
+            description: 'Lo slug personalizzato deve avere almeno 3 caratteri',
+            variant: 'destructive',
+          });
+          return;
+        }
+        if (slugError) {
+          toast({
+            title: 'Errore',
+            description: slugError,
+            variant: 'destructive',
+          });
+          return;
+        }
+        body.customSlug = customSlug;
+      }
+
       if (accessType === 'password') {
         if (!password) {
           toast({
@@ -337,6 +361,9 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
       setPassword('');
       setAllowedDomains('');
       setExpireDays('');
+      setUseCustomSlug(false);
+      setCustomSlug('');
+      setSlugError('');
       fetchShares();
     } catch (error: any) {
       toast({
@@ -415,11 +442,52 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
         body: JSON.stringify({ reason: 'Revocato manualmente dal consultant' }),
       });
 
-      if (!res.ok) throw new Error('Errore revoca condivisione');
+      if (!res.ok) {
+        const data = await res.json();
+        if (data.isProtected) {
+          toast({
+            title: 'Link Protetto',
+            description: 'Questo link ha uno slug QR code ed è protetto. Sbloccalo prima di eliminarlo.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        throw new Error(data.error || 'Errore revoca condivisione');
+      }
 
       toast({
         title: 'Condivisione revocata',
         description: 'Link pubblico disattivato',
+      });
+
+      fetchShares();
+    } catch (error: any) {
+      toast({
+        title: 'Errore',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const unlockShare = async (shareId: string) => {
+    if (!confirm('Sei sicuro di voler rimuovere la protezione QR? Dopo potrai eliminare il link.')) return;
+
+    try {
+      const res = await fetch(`/api/whatsapp/agent-share/${shareId}/unlock`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        credentials: 'include',
+      });
+
+      if (!res.ok) throw new Error('Errore sblocco');
+
+      toast({
+        title: 'Protezione Rimossa',
+        description: 'Ora puoi eliminare il link.',
       });
 
       fetchShares();
@@ -696,6 +764,63 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                         className="mt-1"
                       />
                     </div>
+
+                    <div className="border-t pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <QrCode className="w-4 h-4 text-purple-500" />
+                          <Label className="text-sm font-medium">Link Permanente per QR Code</Label>
+                        </div>
+                        <Switch
+                          checked={useCustomSlug}
+                          onCheckedChange={(checked) => {
+                            setUseCustomSlug(checked);
+                            if (!checked) {
+                              setCustomSlug('');
+                              setSlugError('');
+                            }
+                          }}
+                        />
+                      </div>
+                      {useCustomSlug && (
+                        <div className="space-y-2">
+                          <div>
+                            <Label className="text-xs">Slug personalizzato</Label>
+                            <Input
+                              value={customSlug}
+                              onChange={(e) => {
+                                const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                                setCustomSlug(val);
+                                if (val.length > 0 && val.length < 3) {
+                                  setSlugError('Minimo 3 caratteri');
+                                } else if (val.length > 50) {
+                                  setSlugError('Massimo 50 caratteri');
+                                } else {
+                                  setSlugError('');
+                                }
+                              }}
+                              placeholder="es. tavolo-1, ristorante-marco"
+                              className="mt-1 font-mono"
+                            />
+                            {slugError && (
+                              <p className="text-xs text-red-500 mt-1">{slugError}</p>
+                            )}
+                          </div>
+                          <div className="p-2 bg-gray-50 rounded border">
+                            <p className="text-xs text-muted-foreground">Anteprima link:</p>
+                            <p className="text-sm font-mono text-purple-600 break-all">
+                              https://conorbitale.it/share/{customSlug || '...'}
+                            </p>
+                          </div>
+                          <div className="p-2 bg-purple-50 border border-purple-200 rounded">
+                            <p className="text-xs text-purple-800">
+                              <ShieldCheck className="w-3 h-3 inline mr-1" />
+                              Il link sarà protetto dalla cancellazione accidentale per i QR code stampati.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <DialogFooter>
@@ -752,6 +877,12 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                           <Badge variant={share.isActive ? 'default' : 'secondary'}>
                             {share.isActive ? 'Attivo' : 'Disattivato'}
                           </Badge>
+                          {share.isCustomSlug && (
+                            <Badge variant="outline" className="border-purple-300 text-purple-700 bg-purple-50">
+                              <ShieldCheck className="w-3 h-3 mr-1" />
+                              QR Protetto
+                            </Badge>
+                          )}
                           {share.accessType === 'password' && (
                             <Badge variant="outline">
                               <Lock className="w-3 h-3 mr-1" />
@@ -773,14 +904,25 @@ export function AgentShareManager({ agentId, agentName, onClose }: AgentShareMan
                         >
                           {share.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => revokeShare(share.id)}
-                          title="Elimina"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
+                        {share.isCustomSlug ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => unlockShare(share.id)}
+                            title="Sblocca protezione QR"
+                          >
+                            <Unlock className="w-4 h-4 text-amber-500" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => revokeShare(share.id)}
+                            title="Elimina"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardHeader>

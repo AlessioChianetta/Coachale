@@ -4871,6 +4871,8 @@ export const whatsappAgentShares = pgTable("whatsapp_agent_shares", {
     maxConversationsPerVisitor?: number;
   }>().default(sql`'{"maxMessagesPerHour": 20, "maxMessagesPerDay": 100}'::jsonb`),
 
+  isCustomSlug: boolean("is_custom_slug").default(false).notNull(),
+
   // Metadata
   createdBy: varchar("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),

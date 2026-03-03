@@ -8,7 +8,7 @@ import { authenticateToken, requireRole, type AuthRequest } from '../../middlewa
 import * as shareService from '../../whatsapp/share-service';
 import { db } from '../../db';
 import * as schema from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 
 const router = express.Router();
 
@@ -22,7 +22,7 @@ router.use(requireRole('consultant'));
  */
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { agentConfigId, accessType, password, allowedDomains, expireAt, requiresLogin } = req.body;
+    const { agentConfigId, accessType, password, allowedDomains, expireAt, requiresLogin, customSlug } = req.body;
     const consultantId = req.user!.id;
     
     // Validate required fields
@@ -49,7 +49,6 @@ router.post('/', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Non autorizzato a condividere questo agente' });
     }
     
-    // Create share
     const share = await shareService.createShare({
       consultantId,
       agentConfigId,
@@ -60,6 +59,7 @@ router.post('/', async (req: AuthRequest, res) => {
       expireAt: expireAt ? new Date(expireAt) : undefined,
       createdBy: consultantId,
       requiresLogin: requiresLogin || false,
+      customSlug: customSlug || undefined,
     });
     
     // Generate public URL
@@ -123,6 +123,7 @@ router.get('/', async (req: AuthRequest, res) => {
         agentName: share.agentName,
         accessType: share.accessType,
         isActive: share.isActive,
+        isCustomSlug: share.isCustomSlug || false,
         allowedDomains: share.allowedDomains,
         expireAt: share.expireAt,
         totalAccessCount: share.totalAccessCount,
@@ -276,12 +277,25 @@ router.put('/:shareId/toggle', async (req: AuthRequest, res) => {
 /**
  * DELETE /api/whatsapp/agent-share/:shareId
  * Revoke (soft delete) a share
+ * Protected: custom slug shares cannot be deleted without unlocking first
  */
 router.delete('/:shareId', async (req: AuthRequest, res) => {
   try {
     const { shareId } = req.params;
     const consultantId = req.user!.id;
     const { reason } = req.body;
+    
+    const share = await shareService.getShareById(shareId);
+    if (!share) {
+      return res.status(404).json({ error: 'Condivisione non trovata' });
+    }
+    
+    if (share.isCustomSlug) {
+      return res.status(403).json({ 
+        error: 'Questo link ha uno slug personalizzato per QR code ed è protetto dalla cancellazione. Sbloccalo prima di eliminarlo.',
+        isProtected: true,
+      });
+    }
     
     const revokedShare = await shareService.revokeShare(shareId, consultantId, reason);
     
@@ -293,6 +307,45 @@ router.delete('/:shareId', async (req: AuthRequest, res) => {
   } catch (error: any) {
     console.error('Error revoking share:', error);
     res.status(400).json({ error: error.message || 'Errore durante la revoca della condivisione' });
+  }
+});
+
+/**
+ * POST /api/whatsapp/agent-share/:shareId/unlock
+ * Remove custom slug protection to allow deletion
+ */
+router.post('/:shareId/unlock', async (req: AuthRequest, res) => {
+  try {
+    const { shareId } = req.params;
+    const consultantId = req.user!.id;
+    
+    const share = await shareService.getShareById(shareId);
+    if (!share) {
+      return res.status(404).json({ error: 'Condivisione non trovata' });
+    }
+    
+    if (share.consultantId !== consultantId) {
+      return res.status(403).json({ error: 'Non autorizzato' });
+    }
+    
+    if (!share.isCustomSlug) {
+      return res.status(400).json({ error: 'Questo link non è protetto' });
+    }
+    
+    const [updated] = await db
+      .update(schema.whatsappAgentShares)
+      .set({ isCustomSlug: false, updatedAt: new Date() })
+      .where(eq(schema.whatsappAgentShares.id, shareId))
+      .returning();
+    
+    res.json({
+      success: true,
+      share: updated,
+      message: 'Protezione rimossa. Ora puoi eliminare il link.',
+    });
+  } catch (error: any) {
+    console.error('Error unlocking share:', error);
+    res.status(400).json({ error: error.message || 'Errore durante lo sblocco' });
   }
 });
 
@@ -314,6 +367,59 @@ router.get('/:shareId/analytics', async (req: AuthRequest, res) => {
   } catch (error: any) {
     console.error('Error fetching analytics:', error);
     res.status(400).json({ error: error.message || 'Errore durante il recupero delle analytics' });
+  }
+});
+
+/**
+ * GET /api/whatsapp/agent-share/:shareId/conversations
+ * Get ALL conversations for a share (no limits)
+ */
+router.get('/:shareId/conversations', async (req: AuthRequest, res) => {
+  try {
+    const { shareId } = req.params;
+    const consultantId = req.user!.id;
+    
+    const share = await shareService.getShareById(shareId);
+    if (!share) {
+      return res.status(404).json({ error: 'Condivisione non trovata' });
+    }
+    
+    if (share.consultantId !== consultantId) {
+      return res.status(403).json({ error: 'Non autorizzato' });
+    }
+    
+    const conversations = await db
+      .select({
+        id: schema.whatsappAgentConsultantConversations.id,
+        title: schema.whatsappAgentConsultantConversations.title,
+        externalVisitorId: schema.whatsappAgentConsultantConversations.externalVisitorId,
+        visitorMetadata: schema.whatsappAgentConsultantConversations.visitorMetadata,
+        messageCount: schema.whatsappAgentConsultantConversations.messageCount,
+        lastMessageAt: schema.whatsappAgentConsultantConversations.lastMessageAt,
+        createdAt: schema.whatsappAgentConsultantConversations.createdAt,
+      })
+      .from(schema.whatsappAgentConsultantConversations)
+      .where(eq(schema.whatsappAgentConsultantConversations.shareId, shareId))
+      .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+    
+    const realCountResults = await Promise.all(
+      conversations.map(async (conv) => {
+        const [result] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(schema.whatsappAgentConsultantMessages)
+          .where(eq(schema.whatsappAgentConsultantMessages.conversationId, conv.id));
+        return { ...conv, realMessageCount: result?.count || 0 };
+      })
+    );
+    
+    res.json({
+      success: true,
+      conversations: realCountResults,
+      total: realCountResults.length,
+    });
+  } catch (error: any) {
+    console.error('Error fetching share conversations:', error);
+    res.status(500).json({ error: error.message || 'Errore durante il recupero delle conversazioni' });
   }
 });
 

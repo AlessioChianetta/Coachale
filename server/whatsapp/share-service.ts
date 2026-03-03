@@ -43,6 +43,25 @@ export async function generateUniqueSlug(agentName: string): Promise<string> {
 }
 
 /**
+ * Validate a custom slug format
+ */
+export function validateCustomSlug(slug: string): { valid: boolean; error?: string } {
+  if (slug.length < 3 || slug.length > 50) {
+    return { valid: false, error: 'Lo slug deve essere tra 3 e 50 caratteri' };
+  }
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    return { valid: false, error: 'Lo slug può contenere solo lettere minuscole, numeri e trattini' };
+  }
+  if (slug.startsWith('-') || slug.endsWith('-')) {
+    return { valid: false, error: 'Lo slug non può iniziare o finire con un trattino' };
+  }
+  if (slug.includes('--')) {
+    return { valid: false, error: 'Lo slug non può contenere trattini doppi' };
+  }
+  return { valid: true };
+}
+
+/**
  * Create a new agent share
  */
 export async function createShare(params: {
@@ -55,12 +74,12 @@ export async function createShare(params: {
   expireAt?: Date;
   createdBy: string;
   requiresLogin?: boolean;
+  customSlug?: string;
 }) {
-  const { consultantId, agentConfigId, agentName, accessType, password, allowedDomains, expireAt, createdBy, requiresLogin } = params;
+  const { consultantId, agentConfigId, agentName, accessType, password, allowedDomains, expireAt, createdBy, requiresLogin, customSlug } = params;
   
   const MAX_SHARES_PER_AGENT = 2;
   
-  // Check if max shares limit is reached for this agent
   const existing = await db
     .select()
     .from(schema.whatsappAgentShares)
@@ -75,10 +94,26 @@ export async function createShare(params: {
     throw new Error(`Limite di ${MAX_SHARES_PER_AGENT} link raggiunto. Elimina un link esistente per crearne uno nuovo.`);
   }
   
-  // Generate unique slug
-  const slug = await generateUniqueSlug(agentName);
+  let slug: string;
+  let isCustomSlug = false;
   
-  // Hash password if provided
+  if (customSlug) {
+    const validation = validateCustomSlug(customSlug);
+    if (!validation.valid) {
+      throw new Error(validation.error!);
+    }
+    
+    const existingSlug = await getShareBySlug(customSlug);
+    if (existingSlug) {
+      throw new Error('Questo slug è già in uso. Scegline un altro.');
+    }
+    
+    slug = customSlug;
+    isCustomSlug = true;
+  } else {
+    slug = await generateUniqueSlug(agentName);
+  }
+  
   let passwordHash: string | null = null;
   if (accessType === 'password') {
     if (!password) {
@@ -87,7 +122,6 @@ export async function createShare(params: {
     passwordHash = await bcrypt.hash(password, 10);
   }
   
-  // Create share
   const [share] = await db
     .insert(schema.whatsappAgentShares)
     .values({
@@ -98,6 +132,7 @@ export async function createShare(params: {
       passwordHash,
       allowedDomains: allowedDomains || [],
       expireAt: expireAt || null,
+      isCustomSlug,
       createdBy,
       isActive: true,
       requiresLogin: requiresLogin || false,

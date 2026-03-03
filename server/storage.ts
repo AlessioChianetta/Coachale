@@ -5885,23 +5885,25 @@ export class DatabaseStorage implements IStorage {
     try {
       const cutoffDate = new Date(Date.now() - hoursOld * 60 * 60 * 1000);
       
-      const conditions = [
-        eq(schema.whatsappAgentConsultantConversations.consultantId, consultantId),
-        eq(schema.whatsappAgentConsultantConversations.messageCount, 0),
-        sql`${schema.whatsappAgentConsultantConversations.createdAt} < ${cutoffDate}`
-      ];
+      const agentFilter = agentConfigId 
+        ? sql`AND c.agent_config_id = ${agentConfigId}` 
+        : sql``;
       
-      if (agentConfigId) {
-        conditions.push(eq(schema.whatsappAgentConsultantConversations.agentConfigId, agentConfigId));
-      }
+      const result = await db.execute(sql`
+        DELETE FROM whatsapp_agent_consultant_conversations c
+        WHERE c.consultant_id = ${consultantId}
+          AND c.created_at < ${cutoffDate}
+          ${agentFilter}
+          AND NOT EXISTS (
+            SELECT 1 FROM whatsapp_agent_consultant_messages m
+            WHERE m.conversation_id = c.id
+          )
+      `);
       
-      const result = await db.delete(schema.whatsappAgentConsultantConversations)
-        .where(and(...conditions));
-      
-      const deletedCount = result.rowCount || 0;
+      const deletedCount = (result as any).rowCount || 0;
       
       if (deletedCount > 0) {
-        console.log(`✅ [CLEANUP] Deleted ${deletedCount} empty conversation(s) for consultant ${consultantId}`);
+        console.log(`✅ [CLEANUP] Deleted ${deletedCount} truly empty conversation(s) for consultant ${consultantId}`);
       } else {
         console.log(`ℹ️  [CLEANUP] No empty conversations to clean up for consultant ${consultantId}`);
       }
