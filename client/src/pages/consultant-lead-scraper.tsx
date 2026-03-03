@@ -1900,14 +1900,34 @@ export default function ConsultantLeadScraper() {
                   </Card>
                 )}
 
-                {selectedSearch?.status === "completed" && (selectedSearch.metadata as any)?.outreachResults && (
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800">
-                    <Crosshair className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                    <p className="text-sm text-teal-700 dark:text-teal-300 font-medium">
-                      {results.length} lead trovati, {results.filter(r => r.aiSalesSummary).length} analizzati dall'AI, {(selectedSearch.metadata as any).outreachResults.tasksCreated} task outreach schedulati
-                    </p>
-                  </div>
-                )}
+                {selectedSearch?.status === "completed" && (selectedSearch.metadata as any)?.outreachResults && (() => {
+                  const or = (selectedSearch.metadata as any).outreachResults;
+                  const cb = or.channelBreakdown || {};
+                  const channelParts: string[] = [];
+                  if (cb.voice) channelParts.push(`${cb.voice} chiamate`);
+                  if (cb.whatsapp) channelParts.push(`${cb.whatsapp} WhatsApp`);
+                  if (cb.email) channelParts.push(`${cb.email} email`);
+                  return (
+                    <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800">
+                      <Crosshair className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm text-teal-700 dark:text-teal-300 font-medium">
+                          {results.length} lead trovati, {results.filter(r => r.aiSalesSummary).length} analizzati dall'AI, {or.tasksCreated || 0} task outreach creati
+                        </p>
+                        {channelParts.length > 0 && (
+                          <p className="text-xs text-teal-600/70 dark:text-teal-400/60 mt-0.5">
+                            Canali: {channelParts.join(", ")}
+                          </p>
+                        )}
+                        {or.errors?.length > 0 && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                            {or.errors.length} errori durante la creazione
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {showFilters && (
                   <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">

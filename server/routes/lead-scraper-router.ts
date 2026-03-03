@@ -5,6 +5,7 @@ import { leadScraperSearches, leadScraperResults, superadminLeadScraperConfig, l
 import { AuthRequest, authenticateToken, requireAnyRole } from "../middleware/auth";
 import { searchGoogleMaps, searchGoogleWeb, scrapeWebsiteWithFirecrawl, enrichSearchResults, generateSalesSummary, generateBatchSalesSummaries } from "../services/lead-scraper-service";
 import { decrypt } from "../encryption";
+import { generateOutreachContent, scheduleIndividualOutreach, loadSelectedWaTemplates, titleCaseName } from "./ai-autonomy-router";
 
 const router = Router();
 
@@ -273,48 +274,107 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
                 .where(eq(leadScraperSearches.id, search.id));
 
               let outreachCount = 0;
+              const channelBreakdown: Record<string, number> = {};
+              const outreachErrors: string[] = [];
               try {
+                const settingsResult = await db.execute(sql`
+                  SELECT outreach_config FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
+                `);
+                const settings = (settingsResult.rows[0] as any);
+                const outreachConfig = settings?.outreach_config || {};
+
+                const voiceTemplateId = outreachConfig.voice_template_id || null;
+                const whatsappConfigId = outreachConfig.whatsapp_config_id || null;
+                const emailAccountId = outreachConfig.email_account_id || null;
+                const callInstructionTemplate = outreachConfig.call_instruction_template || null;
+
+                const [salesCtxResult, consultantResult, waConfigResult2] = await Promise.all([
+                  db.execute(sql`
+                    SELECT services_offered, target_audience, value_proposition, sales_approach,
+                           competitive_advantages, ideal_client_profile, additional_context
+                    FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
+                  `),
+                  db.execute(sql`SELECT first_name, last_name FROM users WHERE id = ${consultantId} LIMIT 1`),
+                  db.execute(sql`SELECT business_name, consultant_display_name FROM consultant_whatsapp_config WHERE consultant_id = ${consultantId} AND is_active = true LIMIT 1`),
+                ]);
+                const salesCtx = (salesCtxResult.rows[0] as any) || {};
+                const cRow = consultantResult.rows[0] as any;
+                const waConfigRow2 = waConfigResult2.rows[0] as any;
+                const consultantName = waConfigRow2?.consultant_display_name || (cRow ? titleCaseName([cRow.first_name, cRow.last_name].filter(Boolean).join(' ')) || 'Consulente' : 'Consulente');
+                const consultantBusinessName = waConfigRow2?.business_name || null;
+
+                let resolvedVoiceTemplateName: string | null = null;
+                if (voiceTemplateId) {
+                  try {
+                    const { getTemplateById } = await import("../voice/voice-templates");
+                    const tmpl = getTemplateById(voiceTemplateId);
+                    if (tmpl) resolvedVoiceTemplateName = tmpl.name;
+                  } catch {}
+                }
+
+                const waTemplateSids: string[] = outreachConfig.whatsapp_template_ids || [];
+                const loadedWaTemplates = await loadSelectedWaTemplates(consultantId, waTemplateSids);
+
+                const scheduleConfig = {
+                  voiceTemplateId, whatsappConfigId, emailAccountId,
+                  timezone: 'Europe/Rome',
+                  voiceTemplateName: resolvedVoiceTemplateName,
+                  callInstructionTemplate, outreachConfig,
+                };
+
                 const searchResults = await db.select().from(leadScraperResults).where(eq(leadScraperResults.searchId, search.id));
                 const leadsWithContact = searchResults.filter(r => r.email || r.phone);
+
+                let slotIndex = 0;
                 for (const lead of leadsWithContact) {
                   try {
+                    const leadObj = {
+                      id: lead.id, leadId: lead.id,
+                      businessName: lead.businessName, phone: lead.phone,
+                      email: lead.email, website: lead.website,
+                      address: lead.address, category: lead.category,
+                      score: lead.aiCompatibilityScore,
+                      salesSummary: lead.aiSalesSummary,
+                      rating: lead.rating, reviewsCount: lead.reviewsCount,
+                      consultantNotes: lead.leadNotes || '',
+                    };
+
                     const channels: string[] = [];
+                    if (lead.phone) channels.push("voice", "whatsapp");
                     if (lead.email) channels.push("email");
-                    if (lead.phone) channels.push("whatsapp", "voice");
-                    const channel = channels[0] || "email";
-                    const taskId = `outreach-${search.id}-${lead.id}-${Date.now()}`;
-                    const scheduledAt = new Date(Date.now() + (outreachCount + 1) * 5 * 60 * 1000);
-                    await db.execute(sql`
-                      INSERT INTO ai_scheduled_tasks (id, consultant_id, contact_name, contact_phone, task_type, ai_instruction, scheduled_at, timezone, status, preferred_channel, additional_context, ai_role, task_category, origin_type, priority, max_attempts, objective)
-                      VALUES (
-                        ${taskId},
-                        ${consultantId},
-                        ${lead.businessName || 'Lead'},
-                        ${lead.phone || ''},
-                        'ai_task',
-                        ${'Contatta questo lead per presentare i servizi del consulente. Informazioni lead: ' + (lead.aiSalesSummary || lead.businessName || '')},
-                        ${scheduledAt.toISOString()},
-                        'Europe/Rome',
-                        'waiting_approval',
-                        ${channel},
-                        ${JSON.stringify({ lead_id: lead.id, search_id: search.id, email: lead.email, phone: lead.phone })},
-                        'hunter',
-                        'outreach',
-                        'lead_scraper',
-                        ${5 - outreachCount},
-                        ${3},
-                        ${'Primo contatto con ' + (lead.businessName || 'lead') + ' per presentazione servizi'}
-                      )
-                    `);
-                    await db.update(leadScraperResults)
-                      .set({ outreachTaskId: taskId, leadStatus: "in_outreach" })
-                      .where(eq(leadScraperResults.id, lead.id));
-                    outreachCount++;
+                    if (channels.length === 0) continue;
+
+                    let firstTaskId: string | null = null;
+                    for (const channel of channels) {
+                      try {
+                        const content = await generateOutreachContent(consultantId, leadObj, channel, salesCtx, consultantName, undefined, outreachConfig, loadedWaTemplates, consultantBusinessName);
+                        const result = await scheduleIndividualOutreach(consultantId, leadObj, channel, content, scheduleConfig, 'approval', slotIndex);
+                        if (!firstTaskId) firstTaskId = result.taskId;
+                        channelBreakdown[channel] = (channelBreakdown[channel] || 0) + 1;
+                        outreachCount++;
+                        slotIndex++;
+                        console.log(`[LEAD-SCRAPER] ✓ Outreach ${lead.businessName} → ${channel} (${result.status})`);
+                      } catch (chErr: any) {
+                        if (chErr?.message?.startsWith('SKIP_CHANNEL:')) {
+                          console.log(`[LEAD-SCRAPER] Skipped ${channel} for ${lead.businessName}: ${chErr.message}`);
+                        } else {
+                          console.error(`[LEAD-SCRAPER] ✗ Outreach ${lead.businessName} → ${channel}: ${chErr?.message}`);
+                          outreachErrors.push(`${lead.businessName}→${channel}: ${chErr?.message?.substring(0, 80)}`);
+                        }
+                      }
+                    }
+
+                    if (firstTaskId) {
+                      await db.update(leadScraperResults)
+                        .set({ outreachTaskId: firstTaskId, leadStatus: "in_outreach" })
+                        .where(eq(leadScraperResults.id, lead.id));
+                    }
                   } catch (taskErr: any) {
                     console.error(`[LEAD-SCRAPER] Outreach task creation error for lead ${lead.id}:`, taskErr?.message || taskErr);
+                    outreachErrors.push(`${lead.businessName || lead.id}: ${taskErr?.message?.substring(0, 80)}`);
                   }
                 }
-                console.log(`[LEAD-SCRAPER] Outreach scheduling complete: ${outreachCount} tasks created`);
+                console.log(`[LEAD-SCRAPER] Outreach scheduling complete: ${outreachCount} tasks created (${JSON.stringify(channelBreakdown)})`);
               } catch (outreachErr: any) {
                 console.error(`[LEAD-SCRAPER] Outreach scheduling error:`, outreachErr?.message || outreachErr);
               }
@@ -323,7 +383,11 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
                 .update(leadScraperSearches)
                 .set({
                   status: "completed",
-                  metadata: sql`jsonb_set(COALESCE(metadata, '{}'::jsonb), '{outreachResults}', ${JSON.stringify({ tasksCreated: outreachCount })}::jsonb)`,
+                  metadata: sql`jsonb_set(COALESCE(metadata, '{}'::jsonb), '{outreachResults}', ${JSON.stringify({
+                    tasksCreated: outreachCount,
+                    channelBreakdown,
+                    errors: outreachErrors.length > 0 ? outreachErrors : undefined,
+                  })}::jsonb)`,
                 })
                 .where(eq(leadScraperSearches.id, search.id));
             } else {
@@ -789,9 +853,9 @@ router.get("/all-results", authenticateToken, requireAnyRole(["consultant", "sup
     let taskStatusMap: Record<string, { status: string; channel: string }> = {};
     if (outreachIds.length > 0) {
       try {
-        const taskRows = await db.execute(sql`SELECT id, status, channel FROM ai_scheduled_tasks WHERE id = ANY(${outreachIds})`);
+        const taskRows = await db.execute(sql`SELECT id, status, preferred_channel FROM ai_scheduled_tasks WHERE id = ANY(${outreachIds})`);
         for (const row of taskRows.rows as any[]) {
-          taskStatusMap[row.id] = { status: row.status, channel: row.channel };
+          taskStatusMap[row.id] = { status: row.status, channel: row.preferred_channel };
         }
       } catch {}
     }
@@ -839,10 +903,14 @@ router.delete("/results/bulk", authenticateToken, requireAnyRole(["consultant", 
     if (outreachTaskIds.length > 0) {
       try {
         await db.execute(sql`
-          DELETE FROM ai_scheduled_tasks
-          WHERE id = ANY(${outreachTaskIds}::varchar[])
+          DELETE FROM scheduled_voice_calls
+          WHERE source_task_id = ANY(${outreachTaskIds}::varchar[]) AND status != 'completed'
         `);
-        console.log(`[LEAD-SCRAPER] Bulk delete: removed ${outreachTaskIds.length} outreach tasks by outreachTaskId`);
+        await db.execute(sql`
+          DELETE FROM ai_scheduled_tasks
+          WHERE id = ANY(${outreachTaskIds}::varchar[]) AND status != 'completed'
+        `);
+        console.log(`[LEAD-SCRAPER] Bulk delete: removed outreach tasks + voice calls for ${outreachTaskIds.length} task IDs`);
       } catch (e: any) {
         console.error(`[LEAD-SCRAPER] Error deleting outreach tasks by id:`, e?.message);
       }
@@ -850,11 +918,20 @@ router.delete("/results/bulk", authenticateToken, requireAnyRole(["consultant", 
 
     try {
       for (const leadId of ownedIds) {
-        await db.execute(sql`
-          DELETE FROM ai_scheduled_tasks
+        const excludeCondition = outreachTaskIds.length > 0
+          ? sql`AND id != ALL(ARRAY[${sql.join(outreachTaskIds.map(id => sql`${id}`), sql`, `)}]::varchar[])`
+          : sql``;
+        const relatedTasks = await db.execute(sql`
+          SELECT id FROM ai_scheduled_tasks
           WHERE additional_context LIKE ${'%' + leadId + '%'}
-            AND id NOT IN (SELECT unnest(${outreachTaskIds.length > 0 ? outreachTaskIds : ['']}::varchar[]))
+            AND status != 'completed'
+            ${excludeCondition}
         `);
+        const relatedIds = (relatedTasks.rows as any[]).map((r: any) => r.id);
+        if (relatedIds.length > 0) {
+          await db.execute(sql`DELETE FROM scheduled_voice_calls WHERE source_task_id = ANY(ARRAY[${sql.join(relatedIds.map((id: string) => sql`${id}`), sql`, `)}]::varchar[]) AND status != 'completed'`);
+          await db.execute(sql`DELETE FROM ai_scheduled_tasks WHERE id = ANY(ARRAY[${sql.join(relatedIds.map((id: string) => sql`${id}`), sql`, `)}]::varchar[])`);
+        }
       }
     } catch (e: any) {
       console.error(`[LEAD-SCRAPER] Error deleting outreach tasks by additional_context:`, e?.message);
@@ -889,7 +966,10 @@ router.delete("/results/:id", authenticateToken, requireAnyRole(["consultant", "
     if (owned.outreachTaskId) {
       try {
         await db.execute(sql`
-          DELETE FROM ai_scheduled_tasks WHERE id = ${owned.outreachTaskId}
+          DELETE FROM scheduled_voice_calls WHERE source_task_id = ${owned.outreachTaskId} AND status != 'completed'
+        `);
+        await db.execute(sql`
+          DELETE FROM ai_scheduled_tasks WHERE id = ${owned.outreachTaskId} AND status != 'completed'
         `);
         console.log(`[LEAD-SCRAPER] Deleted outreach task ${owned.outreachTaskId} for lead ${leadId}`);
       } catch (e: any) {
@@ -898,11 +978,17 @@ router.delete("/results/:id", authenticateToken, requireAnyRole(["consultant", "
     }
 
     try {
-      await db.execute(sql`
-        DELETE FROM ai_scheduled_tasks
+      const relatedTasks = await db.execute(sql`
+        SELECT id FROM ai_scheduled_tasks
         WHERE additional_context LIKE ${'%' + leadId + '%'}
+          AND status != 'completed'
           ${owned.outreachTaskId ? sql`AND id != ${owned.outreachTaskId}` : sql``}
       `);
+      const relatedIds = (relatedTasks.rows as any[]).map(r => r.id);
+      if (relatedIds.length > 0) {
+        await db.execute(sql`DELETE FROM scheduled_voice_calls WHERE source_task_id = ANY(${relatedIds}::varchar[]) AND status != 'completed'`);
+        await db.execute(sql`DELETE FROM ai_scheduled_tasks WHERE id = ANY(${relatedIds}::varchar[])`);
+      }
     } catch (e: any) {
       console.error(`[LEAD-SCRAPER] Error deleting outreach tasks by additional_context:`, e?.message);
     }

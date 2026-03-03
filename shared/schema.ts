@@ -10338,7 +10338,7 @@ export const aiScheduledTasks = pgTable("ai_scheduled_tasks", {
   tone: varchar("tone", { length: 30 }),
   urgency: varchar("urgency", { length: 20 }).default("normal"),
   scheduledDatetime: timestamp("scheduled_datetime", { withTimezone: true }),
-  objective: varchar("objective", { length: 50 }),
+  objective: varchar("objective", { length: 255 }),
   additionalContext: text("additional_context"),
   voiceTemplateSuggestion: varchar("voice_template_suggestion", { length: 50 }),
   language: varchar("language", { length: 10 }).default("it"),
