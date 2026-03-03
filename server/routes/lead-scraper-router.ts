@@ -285,7 +285,7 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
                     const taskId = `outreach-${search.id}-${lead.id}-${Date.now()}`;
                     const scheduledAt = new Date(Date.now() + (outreachCount + 1) * 5 * 60 * 1000);
                     await db.execute(sql`
-                      INSERT INTO ai_scheduled_tasks (id, consultant_id, contact_name, contact_phone, task_type, ai_instruction, scheduled_at, timezone, status, channel, additional_context)
+                      INSERT INTO ai_scheduled_tasks (id, consultant_id, contact_name, contact_phone, task_type, ai_instruction, scheduled_at, timezone, status, preferred_channel, additional_context, ai_role, task_category, origin_type, priority, max_attempts, objective)
                       VALUES (
                         ${taskId},
                         ${consultantId},
@@ -297,7 +297,13 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
                         'Europe/Rome',
                         'waiting_approval',
                         ${channel},
-                        ${JSON.stringify({ lead_id: lead.id, search_id: search.id, email: lead.email, phone: lead.phone })}
+                        ${JSON.stringify({ lead_id: lead.id, search_id: search.id, email: lead.email, phone: lead.phone })},
+                        'hunter',
+                        'outreach',
+                        'lead_scraper',
+                        ${5 - outreachCount},
+                        ${3},
+                        ${'Primo contatto con ' + (lead.businessName || 'lead') + ' per presentazione servizi'}
                       )
                     `);
                     await db.update(leadScraperResults)
