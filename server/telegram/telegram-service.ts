@@ -1138,7 +1138,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       const displayText = visibleText.length > 4096 ? visibleText.substring(0, 4093) + '...' : visibleText;
 
       if (!streamingMessageId && !firstMsgPromise) {
-        firstMsgPromise = sendTelegramMessageWithId(botToken, chatId, displayText + ' ▌');
+        firstMsgPromise = sendTelegramMessageWithId(botToken, chatId, displayText);
         firstMsgPromise.then(msgId => {
           if (msgId) {
             streamingMessageId = msgId;
@@ -1146,7 +1146,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
           }
         }).catch(() => {});
       } else if (streamingMessageId) {
-        lastEditPromise = editTelegramMessage(botToken, chatId, streamingMessageId, displayText + ' ▌').catch(() => {});
+        lastEditPromise = editTelegramMessage(botToken, chatId, streamingMessageId, displayText).catch(() => {});
       }
     };
 
