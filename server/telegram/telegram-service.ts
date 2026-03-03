@@ -692,7 +692,7 @@ async function processOnboardingStep(
     if (!profile) {
       const profileResult = await db.execute(sql`
         SELECT id, onboarding_status, onboarding_step, onboarding_conversation,
-               group_description, group_history
+               group_description, group_history, first_name, username
         FROM telegram_user_profiles
         WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
         LIMIT 1
@@ -813,6 +813,32 @@ async function processOnboardingStep(
         WHERE id = ${profile.id}
       `);
 
+      const senderName = profile.first_name || null;
+      const senderUsername = profile.username || null;
+      try {
+        const existingCount = await db.execute(sql`
+          SELECT COUNT(*) as cnt FROM telegram_open_mode_messages
+          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
+        `);
+        const alreadyInjected = parseInt((existingCount.rows[0] as any)?.cnt || '0', 10) > 0;
+        if (!alreadyInjected) {
+          for (const msg of updatedConversation) {
+            const senderType = msg.role === 'user' ? 'user' : 'agent';
+            const msgSenderName = senderType === 'user' ? senderName : aiRole;
+            const msgSenderUsername = senderType === 'user' ? senderUsername : null;
+            await db.execute(sql`
+              INSERT INTO telegram_open_mode_messages (consultant_id, ai_role, telegram_chat_id, chat_type, chat_title, sender_type, sender_name, sender_username, message)
+              VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, ${chatTitle || null}, ${senderType}, ${msgSenderName}, ${msgSenderUsername}, ${msg.content})
+            `);
+          }
+          console.log(`[TELEGRAM-ONBOARDING] Injected ${updatedConversation.length} onboarding messages into telegram_open_mode_messages for chat ${chatId}`);
+        } else {
+          console.log(`[TELEGRAM-ONBOARDING] Skipped injection — messages already exist for chat ${chatId}`);
+        }
+      } catch (injectErr: any) {
+        console.error(`[TELEGRAM-ONBOARDING] Error injecting onboarding messages into open_mode_messages for chat ${chatId}:`, injectErr.message);
+      }
+
       await sendTelegramMessage(botToken, chatId, cleanResponse);
       console.log(`[TELEGRAM-ONBOARDING] Onboarding completed for chat ${chatId}`);
       return;
@@ -870,7 +896,7 @@ async function handleOpenModeOnboarding(
     const profileResult = await db.execute(sql`
       SELECT id, onboarding_status, onboarding_step, user_name, user_job, user_goals, user_desires,
              group_context, group_members, group_objectives, onboarding_conversation,
-             group_description, group_history
+             group_description, group_history, first_name, username
       FROM telegram_user_profiles
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
       LIMIT 1

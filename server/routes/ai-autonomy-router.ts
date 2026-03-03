@@ -5518,7 +5518,7 @@ ${summaryInput.substring(0, 15000)}`;
           config: { temperature: 0.3, maxOutputTokens: 600 },
         });
 
-        const summaryText = result.text?.() || result.response?.text?.() || '';
+        const summaryText = result.text || '';
         if (summaryText && summaryText.length > 30) {
           await db.execute(sql`
             INSERT INTO agent_chat_daily_summaries (consultant_id, ai_role, summary_date, summary_text, message_count)
@@ -6292,7 +6292,7 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
         SELECT CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender, message, created_at FROM telegram_open_mode_messages
         WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
           AND telegram_chat_id = ${telegramChatId}
-        ORDER BY created_at DESC LIMIT 50
+        ORDER BY created_at DESC
       `);
     } else {
       console.error('[AGENT-CHAT-INTERNAL] isOpenMode without telegramChatId - returning empty history for safety');
@@ -6385,9 +6385,52 @@ ${!isOpenMode && customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructi
 `;
 
   if (isOpenMode) {
+    let openModeProfileSection = '';
+    if (telegramChatId) {
+      try {
+        const profileResult = await db.execute(sql`
+          SELECT user_name, user_job, user_goals, user_desires, onboarding_summary, full_profile_json
+          FROM telegram_user_profiles
+          WHERE consultant_id = ${consultantId}::uuid AND telegram_chat_id = ${telegramChatId}
+          LIMIT 1
+        `);
+        const profile = profileResult.rows[0] as any;
+        if (profile) {
+          const profileParts: string[] = [];
+          if (profile.user_name) profileParts.push(`Nome: ${profile.user_name}`);
+          if (profile.user_job) profileParts.push(`Lavoro/Ruolo: ${profile.user_job}`);
+          if (profile.user_goals) profileParts.push(`Obiettivi: ${profile.user_goals}`);
+          if (profile.user_desires) profileParts.push(`Desideri/Aspirazioni: ${profile.user_desires}`);
+          if (profile.full_profile_json) {
+            let fullProfile: Record<string, any> = {};
+            try {
+              fullProfile = typeof profile.full_profile_json === 'string' ? JSON.parse(profile.full_profile_json) : profile.full_profile_json;
+            } catch (parseErr) {
+              console.error(`[OPEN-MODE] Failed to parse full_profile_json for chat ${telegramChatId}:`, parseErr);
+            }
+            for (const [key, value] of Object.entries(fullProfile)) {
+              if (value && !['user_name', 'user_job', 'user_goals', 'user_desires'].includes(key)) {
+                profileParts.push(`${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`);
+              }
+            }
+          }
+          if (profileParts.length > 0) {
+            openModeProfileSection += `\nPROFILO COMPLETO DELL'UTENTE:\n${profileParts.join('\n')}\n`;
+          }
+          if (profile.onboarding_summary) {
+            openModeProfileSection += `\nRIASSUNTO ONBOARDING:\n${profile.onboarding_summary}\n`;
+          }
+          if (openModeProfileSection) {
+            openModeProfileSection += `\nMantieni continuità con la conversazione di onboarding, ricorda ciò che è stato detto e usa queste informazioni per personalizzare le tue risposte.\n`;
+          }
+        }
+      } catch (profileErr: any) {
+        console.warn(`[AGENT-CHAT-INTERNAL] Error fetching open mode profile for chat ${telegramChatId}:`, profileErr.message);
+      }
+    }
     systemPrompt += `\nStai parlando con un UTENTE ESTERNO che ti ha contattato via Telegram in modalità aperta.
 NON hai accesso ai dati privati del consulente. NON menzionare task, clienti, o informazioni riservate.
-Rispondi in modo utile e professionale basandoti SOLO sulla conversazione con questa persona.\n`;
+Rispondi in modo utile e professionale basandoti sulla conversazione con questa persona.${openModeProfileSection}\n`;
   }
 
   if (!isOpenMode && existingSummary) {
@@ -6400,7 +6443,7 @@ Rispondi in modo utile e professionale basandoti SOLO sulla conversazione con qu
         SELECT summary_date::text as summary_date, summary_text, message_count
         FROM agent_chat_daily_summaries
         WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-        ORDER BY summary_date DESC LIMIT 7
+        ORDER BY summary_date DESC
       `);
       const dailySummaries = dailySummariesResult.rows as any[];
       if (dailySummaries.length > 0) {

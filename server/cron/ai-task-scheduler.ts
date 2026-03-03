@@ -2640,9 +2640,15 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       u.phone_number
     FROM users u
     JOIN user_role_profiles urp ON u.id::text = urp.user_id
+    LEFT JOIN (
+      SELECT contact_id, MAX(created_at) as last_task_at
+      FROM ai_scheduled_tasks
+      WHERE consultant_id::text = ${cId}
+      GROUP BY contact_id
+    ) lt ON lt.contact_id = u.id::text
     WHERE urp.consultant_id = ${cId} AND urp.role = 'client'
       AND u.is_active = true
-    ORDER BY u.first_name ASC
+    ORDER BY COALESCE(lt.last_task_at, '1970-01-01'::timestamp) ASC, u.first_name ASC
     LIMIT 50
   `);
   const clientRows = clientsBaseResult.rows as any[];
@@ -2666,13 +2672,47 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       clients.push({ ...client, last_consultation_date: null, last_task_date: null });
     }
   }
-  console.log(`🧠 [AUTONOMOUS-GEN] Enriched ${clients.length} clients, proceeding to pending tasks...`);
+  console.log(`🧠 [AUTONOMOUS-GEN] Enriched ${clients.length} clients, proceeding to cleanup + pending tasks...`);
+
+  const expiredWaitingResult = await db.execute(sql`
+    UPDATE ai_scheduled_tasks
+    SET status = 'expired',
+        result_summary = 'Task scaduto: in attesa di approvazione per oltre 7 giorni',
+        completed_at = NOW(),
+        updated_at = NOW()
+    WHERE consultant_id::text = ${cId}
+      AND status = 'waiting_approval'
+      AND created_at < NOW() - INTERVAL '7 days'
+    RETURNING id, ai_role
+  `);
+  if (expiredWaitingResult.rows.length > 0) {
+    console.log(`🧹 [AUTONOMOUS-GEN] Expired ${expiredWaitingResult.rows.length} waiting_approval tasks (>7 days old):`,
+      expiredWaitingResult.rows.map((r: any) => `${r.id}(${r.ai_role})`));
+  }
+
+  const stalledInProgressResult = await db.execute(sql`
+    UPDATE ai_scheduled_tasks
+    SET status = 'failed',
+        result_summary = 'Task fallito: bloccato in esecuzione per oltre 2 ore',
+        error_message = 'Stalled in_progress: exceeded 2 hour timeout',
+        completed_at = NOW(),
+        updated_at = NOW()
+    WHERE consultant_id::text = ${cId}
+      AND status = 'in_progress'
+      AND updated_at < NOW() - INTERVAL '2 hours'
+    RETURNING id, ai_role
+  `);
+  if (stalledInProgressResult.rows.length > 0) {
+    console.log(`🧹 [AUTONOMOUS-GEN] Failed ${stalledInProgressResult.rows.length} stalled in_progress tasks (>2 hours):`,
+      stalledInProgressResult.rows.map((r: any) => `${r.id}(${r.ai_role})`));
+  }
 
   const pendingTasksResult = await db.execute(sql`
     SELECT contact_id::text as contact_id, ai_role FROM ai_scheduled_tasks
     WHERE consultant_id::text = ${cId}
       AND status IN ('scheduled', 'in_progress', 'retry_pending', 'waiting_approval', 'approved')
       AND contact_id IS NOT NULL
+      AND NOT (status = 'waiting_approval' AND created_at < NOW() - INTERVAL '72 hours')
   `);
   const pendingTasksByRole: Record<string, Set<string>> = {};
   for (const r of pendingTasksResult.rows as any[]) {
@@ -2682,17 +2722,25 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   }
 
   const recentCompletedResult = await db.execute(sql`
-    SELECT contact_id::text as contact_id, ai_role FROM ai_scheduled_tasks
+    SELECT contact_id::text as contact_id, ai_role, completed_at, execution_log::text as exec_log FROM ai_scheduled_tasks
     WHERE consultant_id::text = ${cId}
       AND status = 'completed'
       AND completed_at > NOW() - INTERVAL '24 hours'
       AND contact_id IS NOT NULL
   `);
+  const failureKeywords = ['no_answer', 'failed', 'error', 'voicemail', 'busy', 'nessuna risposta', 'timeout'];
   const completedTasksByRole: Record<string, Set<string>> = {};
   for (const r of recentCompletedResult.rows as any[]) {
     const role = r.ai_role || '__global__';
-    if (!completedTasksByRole[role]) completedTasksByRole[role] = new Set();
-    completedTasksByRole[role].add(r.contact_id);
+    const execLog = (r.exec_log || '').toLowerCase();
+    const isFailed = failureKeywords.some(kw => execLog.includes(kw));
+    const cooldownHours = isFailed ? 4 : 24;
+    const completedAt = new Date(r.completed_at);
+    const cooldownMs = cooldownHours * 60 * 60 * 1000;
+    if (Date.now() - completedAt.getTime() < cooldownMs) {
+      if (!completedTasksByRole[role]) completedTasksByRole[role] = new Set();
+      completedTasksByRole[role].add(r.contact_id);
+    }
   }
 
   function getEligibleClientsForRole(roleId: string) {
