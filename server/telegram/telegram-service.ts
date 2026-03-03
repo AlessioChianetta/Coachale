@@ -1120,22 +1120,19 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     let firstMsgPromise: Promise<number | null> | null = null;
     let lastEditPromise: Promise<any> = Promise.resolve();
 
-    const REVEAL_INTERVAL_MS = 200;
-    const WORDS_PER_TICK = 3;
+    const REVEAL_INTERVAL_MS = 150;
+    const CHARS_PER_TICK = 12;
 
     const streamCallback = (chunk: string) => {
       targetText += chunk;
       chunkCount++;
     };
 
-    const revealNextWords = () => {
+    const revealNextChars = () => {
       if (abortController.signal.aborted) return;
       if (revealedLen >= targetText.length) return;
 
-      const remaining = targetText.substring(revealedLen);
-      const match = remaining.match(/^(\s*\S+){1,3}/);
-      const revealChunk = match ? match[0] : remaining.substring(0, 30);
-      revealedLen += revealChunk.length;
+      revealedLen = Math.min(revealedLen + CHARS_PER_TICK, targetText.length);
 
       const visibleText = targetText.substring(0, revealedLen);
       const displayText = visibleText.length > 4096 ? visibleText.substring(0, 4093) + '...' : visibleText;
@@ -1153,7 +1150,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       }
     };
 
-    revealInterval = setInterval(revealNextWords, REVEAL_INTERVAL_MS);
+    revealInterval = setInterval(revealNextChars, REVEAL_INTERVAL_MS);
 
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
     console.log(`[TELEGRAM] Starting AI generation for chat ${chatId}, role ${aiRole} (streaming enabled)`);
