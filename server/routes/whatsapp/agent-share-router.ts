@@ -154,6 +154,58 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 /**
+ * GET /api/whatsapp/agent-share/conversations/:conversationId/messages
+ * Get ALL messages for a conversation (consultant auth required)
+ */
+router.get('/conversations/:conversationId/messages', async (req: AuthRequest, res) => {
+  try {
+    const { conversationId } = req.params;
+    const consultantId = req.user!.id;
+
+    const [conv] = await db
+      .select({
+        id: schema.whatsappAgentConsultantConversations.id,
+        shareId: schema.whatsappAgentConsultantConversations.shareId,
+      })
+      .from(schema.whatsappAgentConsultantConversations)
+      .where(eq(schema.whatsappAgentConsultantConversations.id, conversationId));
+
+    if (!conv) {
+      return res.status(404).json({ error: 'Conversazione non trovata' });
+    }
+
+    const share = await shareService.getShareById(conv.shareId!);
+    if (!share || share.consultantId !== consultantId) {
+      return res.status(403).json({ error: 'Non autorizzato' });
+    }
+
+    const messages = await db
+      .select({
+        id: schema.whatsappAgentConsultantMessages.id,
+        role: schema.whatsappAgentConsultantMessages.role,
+        content: schema.whatsappAgentConsultantMessages.content,
+        createdAt: schema.whatsappAgentConsultantMessages.createdAt,
+      })
+      .from(schema.whatsappAgentConsultantMessages)
+      .where(eq(schema.whatsappAgentConsultantMessages.conversationId, conversationId))
+      .orderBy(schema.whatsappAgentConsultantMessages.createdAt);
+
+    res.json({
+      success: true,
+      messages: messages.map(m => ({
+        id: m.id,
+        role: m.role === 'assistant' ? 'agent' : m.role,
+        content: m.content,
+        createdAt: m.createdAt,
+      })),
+    });
+  } catch (error: any) {
+    console.error('Error fetching conversation messages:', error);
+    res.status(500).json({ error: error.message || 'Errore' });
+  }
+});
+
+/**
  * GET /api/whatsapp/agent-share/:shareId
  * Get specific share details
  */

@@ -103,10 +103,10 @@ export default function ConsultantWhatsAppAgentsChat() {
   const conversations: ShareConversation[] = conversationsData?.conversations || [];
 
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
-    queryKey: ["/api/whatsapp/agent-chat/conversations", selectedConversation?.id, "messages"],
+    queryKey: ["/api/whatsapp/agent-share/conversations", selectedConversation?.id, "messages"],
     queryFn: async () => {
       const res = await fetch(
-        `/api/whatsapp/agent-chat/conversations/${selectedConversation!.id}/messages`,
+        `/api/whatsapp/agent-share/conversations/${selectedConversation!.id}/messages`,
         {
           headers: getAuthHeaders(),
           credentials: "include",
