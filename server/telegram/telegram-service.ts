@@ -1120,23 +1120,47 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     let firstMsgPromise: Promise<number | null> | null = null;
     let lastEditPromise: Promise<any> = Promise.resolve();
 
-    const REVEAL_INTERVAL_MS = 600;
-    const CHARS_PER_TICK = 30;
+    const REVEAL_CHECK_MS = 100;
+    let lastEditTime = 0;
+    const MIN_EDIT_GAP_MS = 800;
 
     const streamCallback = (chunk: string) => {
       targetText += chunk;
       chunkCount++;
     };
 
-    const revealNextChars = () => {
+    const findNaturalBreak = (text: string, from: number, minChars: number): number => {
+      const searchEnd = Math.min(text.length, from + minChars + 40);
+      const region = text.substring(from, searchEnd);
+      if (region.length <= minChars) return searchEnd;
+
+      for (let i = minChars; i < region.length; i++) {
+        const ch = region[i];
+        if (ch === '.' || ch === ',' || ch === '!' || ch === '?' || ch === ';' || ch === ':' || ch === '\n') {
+          return from + i + 1;
+        }
+      }
+      const lastSpace = region.lastIndexOf(' ', region.length - 1);
+      if (lastSpace > minChars) return from + lastSpace + 1;
+      return searchEnd;
+    };
+
+    const revealNextChunk = () => {
       if (abortController.signal.aborted) return;
       if (revealedLen >= targetText.length) return;
 
-      revealedLen = Math.min(revealedLen + CHARS_PER_TICK, targetText.length);
+      const now = Date.now();
+      if (now - lastEditTime < MIN_EDIT_GAP_MS) return;
+
+      const available = targetText.length - revealedLen;
+      if (available < 15 && !generationDone) return;
+
+      revealedLen = findNaturalBreak(targetText, revealedLen, 20);
 
       const visibleText = targetText.substring(0, revealedLen);
       const displayText = visibleText.length > 4096 ? visibleText.substring(0, 4093) + '...' : visibleText;
 
+      lastEditTime = now;
       if (!streamingMessageId && !firstMsgPromise) {
         firstMsgPromise = sendTelegramMessageWithId(botToken, chatId, displayText);
         firstMsgPromise.then(msgId => {
@@ -1150,7 +1174,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       }
     };
 
-    revealInterval = setInterval(revealNextChars, REVEAL_INTERVAL_MS);
+    revealInterval = setInterval(revealNextChunk, REVEAL_CHECK_MS);
 
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
     console.log(`[TELEGRAM] Starting AI generation for chat ${chatId}, role ${aiRole} (streaming enabled)`);
@@ -1169,7 +1193,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
 
     while (revealedLen < targetText.length) {
       if (abortController.signal.aborted) break;
-      await new Promise(r => setTimeout(r, REVEAL_INTERVAL_MS));
+      await new Promise(r => setTimeout(r, REVEAL_CHECK_MS));
     }
     if (revealInterval) { clearInterval(revealInterval); revealInterval = null; }
     if (firstMsgPromise) await firstMsgPromise;
