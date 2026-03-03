@@ -5556,7 +5556,15 @@ router.get("/telegram-conversations/:roleId", authenticateToken, requireAnyRole(
         COALESCE(last_msg.sender_username, tcl.username) as sender_username,
         COALESCE(last_msg.message, onb.last_onboarding_message) as last_message,
         COALESCE(last_msg.last_message_at, tcl.linked_at) as last_message_at,
-        COALESCE(last_msg.message_count, 0) + COALESCE(onb.onboarding_msg_count, 0) as message_count
+        COALESCE(last_msg.message_count, 0) + COALESCE(onb.onboarding_msg_count, 0) as message_count,
+        COALESCE(prof.onboarding_status, 'pending') as onboarding_status,
+        prof.user_name,
+        prof.user_job,
+        prof.user_goals,
+        prof.user_desires,
+        prof.onboarding_summary,
+        prof.onboarding_step,
+        tcl.is_owner
       FROM telegram_chat_links tcl
       LEFT JOIN LATERAL (
         SELECT 
@@ -5583,6 +5591,15 @@ router.get("/telegram-conversations/:roleId", authenticateToken, requireAnyRole(
           AND tup.onboarding_conversation IS NOT NULL
         LIMIT 1
       ) onb ON true
+      LEFT JOIN LATERAL (
+        SELECT onboarding_status, user_name, user_job, user_goals, user_desires,
+               onboarding_summary, onboarding_step
+        FROM telegram_user_profiles tup2
+        WHERE tup2.consultant_id = tcl.consultant_id
+          AND tup2.ai_role = tcl.ai_role
+          AND tup2.telegram_chat_id = tcl.telegram_chat_id
+        LIMIT 1
+      ) prof ON true
       WHERE tcl.consultant_id = ${consultantId}::uuid AND tcl.ai_role = ${roleId}
         AND tcl.active = true
       ORDER BY COALESCE(last_msg.last_message_at, tcl.linked_at) DESC
@@ -5684,6 +5701,90 @@ router.delete("/telegram-conversations/:roleId/:chatId/reset", authenticateToken
   } catch (error: any) {
     console.error("[TELEGRAM-RESET] Error:", error.message);
     return res.status(500).json({ error: "Failed to reset conversation" });
+  }
+});
+
+router.get("/telegram-conversations/:roleId/:chatId/profile", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    const { roleId, chatId } = req.params;
+
+    const profileResult = await db.execute(sql`
+      SELECT onboarding_status, onboarding_step, onboarding_summary,
+             user_name, user_job, user_goals, user_desires,
+             full_profile_json, onboarding_conversation,
+             first_name, username, chat_type,
+             group_context, group_members, group_objectives,
+             created_at, updated_at
+      FROM telegram_user_profiles
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND telegram_chat_id = ${chatId}
+      LIMIT 1
+    `);
+
+    if (profileResult.rows.length === 0) {
+      return res.json({ profile: null });
+    }
+
+    const profile = profileResult.rows[0] as any;
+
+    let fullProfileParsed: Record<string, any> | null = null;
+    if (profile.full_profile_json) {
+      try {
+        fullProfileParsed = typeof profile.full_profile_json === 'string'
+          ? JSON.parse(profile.full_profile_json)
+          : profile.full_profile_json;
+      } catch {}
+    }
+
+    let onboardingMessages: Array<{ role: string; content: string }> = [];
+    if (profile.onboarding_conversation) {
+      try {
+        onboardingMessages = typeof profile.onboarding_conversation === 'string'
+          ? JSON.parse(profile.onboarding_conversation)
+          : profile.onboarding_conversation;
+      } catch {}
+    }
+
+    const linkResult = await db.execute(sql`
+      SELECT is_owner FROM telegram_chat_links
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND telegram_chat_id = ${chatId}
+      LIMIT 1
+    `);
+    const isOwner = (linkResult.rows[0] as any)?.is_owner || false;
+
+    const msgCountResult = await db.execute(sql`
+      SELECT COUNT(*)::int as count FROM telegram_open_mode_messages
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND telegram_chat_id = ${chatId}
+    `);
+    const totalMessages = (msgCountResult.rows[0] as any)?.count || 0;
+
+    res.json({
+      profile: {
+        onboarding_status: profile.onboarding_status,
+        onboarding_step: profile.onboarding_step,
+        onboarding_summary: profile.onboarding_summary,
+        user_name: profile.user_name,
+        user_job: profile.user_job,
+        user_goals: profile.user_goals,
+        user_desires: profile.user_desires,
+        full_profile: fullProfileParsed,
+        onboarding_messages: onboardingMessages,
+        first_name: profile.first_name,
+        username: profile.username,
+        chat_type: profile.chat_type,
+        group_context: profile.group_context,
+        group_members: profile.group_members,
+        group_objectives: profile.group_objectives,
+        created_at: profile.created_at,
+        updated_at: profile.updated_at,
+        is_owner: isOwner,
+        total_messages: totalMessages,
+      }
+    });
+  } catch (error: any) {
+    console.error("[TELEGRAM-PROFILE] Error:", error.message);
+    return res.status(500).json({ error: "Failed to fetch profile" });
   }
 });
 
