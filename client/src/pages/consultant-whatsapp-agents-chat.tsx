@@ -191,6 +191,19 @@ export default function ConsultantWhatsAppAgentsChat() {
     return Date.now() - new Date(dateStr).getTime() < 60 * 60 * 1000;
   };
 
+  const formatMessageContent = useCallback((text: string): string => {
+    let html = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+    html = html.replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">$1</code>');
+    html = html.replace(/\n/g, '<br/>');
+    return html;
+  }, []);
+
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "";
     try {
@@ -421,7 +434,7 @@ export default function ConsultantWhatsAppAgentsChat() {
                           : "bg-white text-gray-900 border shadow-sm rounded-bl-md"
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                      <div className="text-sm break-words leading-relaxed" dangerouslySetInnerHTML={{ __html: formatMessageContent(msg.content) }} />
                       {msg.audioUrl && (
                         <audio controls src={msg.audioUrl} className="mt-2 w-full max-w-[240px]" />
                       )}
