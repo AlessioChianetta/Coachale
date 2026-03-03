@@ -1,0 +1,30 @@
+Uncaught TypeError: Cannot read properties of undefined (reading 'map')
+    at NavigationTabs (navigation-tabs.tsx:21:13)
+navigation-tabs.tsx:21 Uncaught TypeError: Cannot read properties of undefined (reading 'map')
+    at NavigationTabs (navigation-tabs.tsx:21:13)
+injected.js:37 The above error occurred in the <NavigationTabs> component:
+
+    at NavigationTabs (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.dev/src/components/ui/navigation-tabs.tsx:20:34)
+    at div
+    at div
+    at ConsultantWhatsAppAgentsChat (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.dev/src/pages/consultant-whatsapp-agents-chat.tsx:32:20)
+    at AuthGuard (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.dev/src/App.tsx?v=rr-Sh1oS6Uj_GpyCmXQjC:343:35)
+    at Provider (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.d…unner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://1d6ccead-48dd-46b3-9f51-24177aaee8fd-00-ko15ord19i1e.riker.replit.dev/src/App.tsx?v=rr-Sh1oS6Uj_GpyCmXQjC:2235:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=acfd96f4:19413 Uncaught TypeError: Cannot read properties of undefined (reading 'map')
+    at NavigationTabs (navigation-tabs.tsx:21:13)

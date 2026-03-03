@@ -7,7 +7,6 @@ import Sidebar from "@/components/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, MessageCircle, ArrowLeft, Globe, Users, Eye, MessageSquare, Clock } from "lucide-react";
-import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { formatDistanceToNow } from "date-fns";
 import it from "date-fns/locale/it";
 
@@ -372,7 +371,6 @@ export default function ConsultantWhatsAppAgentsChat() {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
-        <NavigationTabs />
         <div className="flex-1 overflow-hidden">
           {isMobile ? (
             <div className="h-full">
