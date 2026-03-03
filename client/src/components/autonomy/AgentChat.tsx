@@ -8,7 +8,7 @@ import { getAuthHeaders } from "@/lib/auth";
 import { Message } from "@/components/ai-assistant/Message";
 import { ThinkingBubble } from "@/components/ai-assistant/ThinkingBubble";
 import {
-  Send, Loader2, Trash2, X, ChevronDown, Sparkles, Brain, Calendar, MessageSquare, ChevronRight,
+  Send, Loader2, X, ChevronDown, Sparkles, Brain, Calendar, MessageSquare, ChevronRight,
   Paperclip, Mic, MicOff, FileText, Image as ImageIcon, Music,
 } from "lucide-react";
 
@@ -105,7 +105,6 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [clearing, setClearing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const initialMessageProcessed = useRef(false);
@@ -223,23 +222,6 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
     }
   };
 
-  const clearChat = async () => {
-    if (!confirm(`Vuoi cancellare tutta la chat con ${roleName}?`)) return;
-    setClearing(true);
-    try {
-      const res = await fetch(`/api/ai-autonomy/agent-chat/${roleId}/clear`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        setMessages([]);
-      }
-    } catch (err) {
-      console.error("Failed to clear chat:", err);
-    } finally {
-      setClearing(false);
-    }
-  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -437,16 +419,6 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
               title="Memoria"
             >
               <Brain className="h-4 w-4 text-muted-foreground" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={clearChat}
-              disabled={clearing || messages.length === 0}
-              title="Cancella chat"
-            >
-              <Trash2 className="h-4 w-4 text-muted-foreground" />
             </Button>
             <Button
               variant="ghost"

@@ -944,18 +944,26 @@ function AgentMemoryContent({ roleId }: { roleId: string }) {
       )}
 
       {missingCount === 0 && summaries.length > 0 && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">{summaries.length} riassunti disponibili</p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs gap-1.5 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30"
-            onClick={generateSummaries}
-            disabled={generating}
-          >
-            {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-            {generating ? 'Verifica...' : 'Verifica'}
-          </Button>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <p className="text-xs text-green-700 dark:text-green-400 font-medium">{summaries.length} riassunti aggiornati</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1.5 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+              onClick={generateSummaries}
+              disabled={generating}
+            >
+              {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {generating ? 'Controllo...' : 'Controlla'}
+            </Button>
+          </div>
+          {generateResult && (
+            <p className="text-xs text-center text-purple-600 dark:text-purple-400">{generateResult}</p>
+          )}
         </div>
       )}
 
@@ -963,7 +971,20 @@ function AgentMemoryContent({ roleId }: { roleId: string }) {
         <div className="text-center py-12">
           <Brain className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
           <p className="text-sm font-medium text-muted-foreground">Nessun riassunto disponibile</p>
-          <p className="text-xs text-muted-foreground/70 mt-1">Inizia una conversazione per generare riassunti automatici</p>
+          <p className="text-xs text-muted-foreground/70 mt-1 mb-4">Premi il pulsante per cercare e generare i riassunti mancanti</p>
+          <Button
+            size="sm"
+            variant="default"
+            className="gap-1.5 bg-purple-600 hover:bg-purple-700 text-white"
+            onClick={generateSummaries}
+            disabled={generating}
+          >
+            {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {generating ? 'Generazione in corso...' : 'Genera tutti i riassunti'}
+          </Button>
+          {generateResult && (
+            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">{generateResult}</p>
+          )}
         </div>
       )}
 

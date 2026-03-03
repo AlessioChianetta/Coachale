@@ -6353,40 +6353,8 @@ router.post("/telegram-refresh-webhooks", authenticateToken, requireAnyRole(["co
   }
 });
 
-router.delete("/agent-chat/:roleId/clear", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
-  try {
-    const consultantId = (req as AuthRequest).user?.id;
-    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
-
-    const { roleId } = req.params;
-    if (!AI_ROLES[roleId]) {
-      return res.status(400).json({ error: "Invalid role ID" });
-    }
-    await db.execute(sql`
-      DELETE FROM agent_chat_messages
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-    `);
-
-    try {
-      const currentSettings = await db.execute(sql`
-        SELECT chat_summaries FROM ai_autonomy_settings WHERE consultant_id = ${consultantId}::uuid LIMIT 1
-      `);
-      const summaries = (currentSettings.rows[0] as any)?.chat_summaries || {};
-      if (summaries[roleId]) {
-        delete summaries[roleId];
-        await db.execute(sql`
-          UPDATE ai_autonomy_settings SET chat_summaries = ${JSON.stringify(summaries)}::jsonb WHERE consultant_id = ${consultantId}::uuid
-        `);
-      }
-    } catch (clearErr: any) {
-      console.warn(`[AGENT-CHAT] Error clearing summary for ${roleId}:`, clearErr.message);
-    }
-
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("[AGENT-CHAT] Error clearing chat:", error);
-    return res.status(500).json({ error: "Failed to clear chat" });
-  }
+router.delete("/agent-chat/:roleId/clear", authenticateToken, requireAnyRole(["consultant"]), async (_req: Request, res: Response) => {
+  return res.status(403).json({ error: "La cancellazione dei messaggi è stata disabilitata" });
 });
 
 export async function processAgentChatInternal(consultantId: string, roleId: string, message: string, options?: { skipUserMessageInsert?: boolean; metadata?: Record<string, any>; source?: string; telegramContext?: string; isOpenMode?: boolean; telegramChatId?: number; signal?: AbortSignal; streamCallback?: (chunk: string) => void }): Promise<string> {
@@ -7074,42 +7042,6 @@ REGOLE ANTI-ALLUCINAZIONE:
     } catch (tgErr: any) {
       console.warn("[TELEGRAM] Forward error:", tgErr.message);
     }
-  }
-
-  if (!isOpenMode) {
-    const capturedConsultantId = consultantId;
-    const capturedRoleId = roleId;
-    (async () => {
-      try {
-        const totalCountResult = await db.execute(sql`
-          SELECT COUNT(*)::int as cnt FROM agent_chat_messages
-          WHERE consultant_id = ${capturedConsultantId}::uuid AND ai_role = ${capturedRoleId}
-        `);
-        const totalMessages = (totalCountResult.rows[0] as any)?.cnt || 0;
-        if (totalMessages >= 60) {
-          const allMsgsResult = await db.execute(sql`
-            SELECT id, created_at FROM agent_chat_messages
-            WHERE consultant_id = ${capturedConsultantId}::uuid AND ai_role = ${capturedRoleId}
-            ORDER BY created_at ASC
-          `);
-          const allMsgs = allMsgsResult.rows as any[];
-          const keepCount = 30;
-          if (allMsgs.length > keepCount) {
-            const firstKeptMsg = allMsgs[allMsgs.length - keepCount];
-            if (firstKeptMsg?.created_at) {
-              await db.execute(sql`
-                DELETE FROM agent_chat_messages
-                WHERE consultant_id = ${capturedConsultantId}::uuid AND ai_role = ${capturedRoleId}
-                  AND created_at < ${firstKeptMsg.created_at}::timestamptz
-              `);
-              console.log(`[AGENT-CHAT-CLEANUP] Cleaned up old messages for ${capturedRoleId}, kept ${keepCount}`);
-            }
-          }
-        }
-      } catch (cleanupErr: any) {
-        console.error(`[AGENT-CHAT-CLEANUP] Error:`, cleanupErr.message);
-      }
-    })();
   }
 
   return aiResponse;
