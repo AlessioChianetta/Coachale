@@ -5402,7 +5402,7 @@ router.get("/agent-chat/:roleId/daily-summaries", authenticateToken, requireAnyR
     if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
     
     const { roleId } = req.params;
-    const limit = Math.min(parseInt(req.query.limit as string) || 30, 90);
+    const limit = Math.min(parseInt(req.query.limit as string) || 30, 365);
     
     const result = await db.execute(sql`
       SELECT id, summary_date::text as summary_date, summary_text, message_count, created_at, updated_at
@@ -5411,8 +5411,27 @@ router.get("/agent-chat/:roleId/daily-summaries", authenticateToken, requireAnyR
       ORDER BY summary_date DESC
       LIMIT ${limit}
     `);
+
+    const missingResult = await db.execute(sql`
+      SELECT d.msg_date, d.msg_count FROM (
+        SELECT DATE(created_at AT TIME ZONE 'Europe/Rome')::text as msg_date,
+               COUNT(*)::int as msg_count
+        FROM agent_chat_messages
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        GROUP BY DATE(created_at AT TIME ZONE 'Europe/Rome')
+        HAVING COUNT(*) >= 2
+      ) d
+      LEFT JOIN agent_chat_daily_summaries s
+        ON s.consultant_id = ${consultantId}::uuid AND s.ai_role = ${roleId} AND s.summary_date = d.msg_date::date
+      WHERE s.id IS NULL
+      ORDER BY d.msg_date DESC
+    `);
     
-    return res.json({ summaries: result.rows });
+    return res.json({ 
+      summaries: result.rows,
+      missing_days: missingResult.rows,
+      missing_count: missingResult.rows.length
+    });
   } catch (error: any) {
     console.error("[DAILY-SUMMARY] Error fetching:", error.message);
     return res.status(500).json({ error: "Failed to fetch daily summaries" });

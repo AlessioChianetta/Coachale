@@ -776,21 +776,41 @@ interface SettingsTabProps {
   dataCatalogContent: React.ReactNode;
 }
 
+function formatSummaryHtml(text: string): string {
+  if (!text) return '';
+  let html = text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^[-•]\s+(.+)$/gm, '<li>$1</li>')
+    .replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br/>');
+  html = html.replace(/((?:<li>.*?<\/li>\s*)+)/gs, '<ul class="list-disc pl-4 my-1 space-y-0.5">$1</ul>');
+  html = `<p>${html}</p>`;
+  html = html.replace(/<p>\s*<ul/g, '<ul').replace(/<\/ul>\s*<\/p>/g, '</ul>');
+  return html;
+}
+
 function AgentMemoryContent({ roleId }: { roleId: string }) {
   const [summaries, setSummaries] = useState<any[]>([]);
+  const [missingDays, setMissingDays] = useState<any[]>([]);
+  const [missingCount, setMissingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generateResult, setGenerateResult] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [showMissing, setShowMissing] = useState(false);
 
   const fetchSummaries = () => {
     setLoading(true);
-    fetch(`/api/ai-autonomy/agent-chat/${roleId}/daily-summaries?limit=90`, {
+    fetch(`/api/ai-autonomy/agent-chat/${roleId}/daily-summaries?limit=365`, {
       headers: getAuthHeaders(),
     })
       .then(res => res.json())
       .then(data => {
         setSummaries(data.summaries || []);
+        setMissingDays(data.missing_days || []);
+        setMissingCount(data.missing_count || 0);
         if (data.summaries?.length > 0) {
           setExpandedDays(new Set([data.summaries[0].summary_date]));
         }
@@ -801,8 +821,11 @@ function AgentMemoryContent({ roleId }: { roleId: string }) {
 
   useEffect(() => {
     setSummaries([]);
+    setMissingDays([]);
+    setMissingCount(0);
     setExpandedDays(new Set());
     setGenerateResult(null);
+    setShowMissing(false);
     fetchSummaries();
   }, [roleId]);
 
@@ -871,47 +894,85 @@ function AgentMemoryContent({ roleId }: { roleId: string }) {
     );
   }
 
-  if (summaries.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <Brain className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-        <p className="text-sm font-medium text-muted-foreground">Nessun riassunto disponibile</p>
-        <p className="text-xs text-muted-foreground/70 mt-1 mb-4">Genera retroattivamente tutti i riassunti delle conversazioni passate</p>
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-1.5 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30"
-          onClick={generateSummaries}
-          disabled={generating}
-        >
-          {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-          {generating ? 'Generazione in corso (potrebbe richiedere un minuto)...' : 'Genera tutti i riassunti'}
-        </Button>
-        {generateResult && (
-          <p className="text-xs text-muted-foreground mt-2">{generateResult}</p>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">{summaries.length} riassunti disponibili</p>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs gap-1.5 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30"
-          onClick={generateSummaries}
-          disabled={generating}
-        >
-          {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-          {generating ? 'Generazione...' : 'Genera'}
-        </Button>
-      </div>
-      {generateResult && (
-        <p className="text-xs text-center text-purple-600 dark:text-purple-400">{generateResult}</p>
+      {missingCount > 0 && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                {missingCount} {missingCount === 1 ? 'giorno senza riassunto' : 'giorni senza riassunto'}
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="default"
+              className="h-8 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={generateSummaries}
+              disabled={generating}
+            >
+              {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              {generating ? 'Generazione in corso...' : `Genera tutti (${missingCount})`}
+            </Button>
+          </div>
+          {generating && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Generazione di {missingCount} riassunti in corso, potrebbe richiedere qualche minuto...
+            </p>
+          )}
+          {generateResult && (
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-300">{generateResult}</p>
+          )}
+          <button 
+            className="text-xs text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
+            onClick={() => setShowMissing(!showMissing)}
+          >
+            {showMissing ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {showMissing ? 'Nascondi giorni mancanti' : 'Mostra giorni mancanti'}
+          </button>
+          {showMissing && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {missingDays.map((d: any) => (
+                <Badge key={d.msg_date} variant="outline" className="text-[10px] px-2 py-0.5 bg-amber-100/50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300">
+                  {formatDate(d.msg_date.substring(0, 10))} ({d.msg_count} msg)
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
       )}
+
+      {missingCount === 0 && summaries.length > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">{summaries.length} riassunti disponibili</p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1.5 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+            onClick={generateSummaries}
+            disabled={generating}
+          >
+            {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            {generating ? 'Verifica...' : 'Verifica'}
+          </Button>
+        </div>
+      )}
+
+      {summaries.length === 0 && missingCount === 0 && (
+        <div className="text-center py-12">
+          <Brain className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">Nessun riassunto disponibile</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">Inizia una conversazione per generare riassunti automatici</p>
+        </div>
+      )}
+
+      {summaries.length > 0 && missingCount > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">{summaries.length} riassunti generati</p>
+        </div>
+      )}
+
       {summaries.map((s: any) => {
         const dateKey = s.summary_date?.substring(0, 10);
         const isOpen = expandedDays.has(dateKey);
@@ -932,7 +993,10 @@ function AgentMemoryContent({ roleId }: { roleId: string }) {
             </button>
             {isOpen && (
               <div className="px-3 pb-3 border-t">
-                <p className="text-sm text-foreground/80 leading-relaxed pt-2 whitespace-pre-wrap">{s.summary_text}</p>
+                <div 
+                  className="text-sm text-foreground/80 leading-relaxed pt-2 prose prose-sm dark:prose-invert max-w-none [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground [&_em]:text-foreground/70 [&_p]:my-1"
+                  dangerouslySetInnerHTML={{ __html: formatSummaryHtml(s.summary_text) }}
+                />
               </div>
             )}
           </div>
