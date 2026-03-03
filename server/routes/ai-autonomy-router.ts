@@ -92,6 +92,8 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         autonomy_model: 'gemini-3-flash-preview',
         autonomy_thinking_level: 'low',
         role_temperatures: {},
+        telegram_spontaneous_enabled: true,
+        telegram_send_mode: 'streaming',
       });
     }
 
@@ -136,6 +138,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const autonomyThinkingLevel = body.autonomy_thinking_level ?? 'low';
     const roleTemperatures = JSON.stringify(body.role_temperatures ?? {});
     const telegramSpontaneousEnabled = body.telegram_spontaneous_enabled !== false;
+    const telegramSendMode = body.telegram_send_mode === 'single' ? 'single' : 'streaming';
 
     const result = await db.execute(sql`
       INSERT INTO ai_autonomy_settings (
@@ -145,7 +148,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         proactive_check_interval_minutes, is_active, custom_instructions, channels_enabled,
         role_frequencies, role_autonomy_modes, role_working_hours, whatsapp_template_ids,
         reasoning_mode, role_reasoning_modes, outreach_config, autonomy_model, autonomy_thinking_level, role_temperatures,
-        telegram_spontaneous_enabled
+        telegram_spontaneous_enabled, telegram_send_mode
       ) VALUES (
         ${consultantId}, ${autonomyLevel}, ${defaultMode}, ${allowedCategories}::jsonb,
         ${alwaysApprove}::jsonb, ${hoursStart}::time, ${hoursEnd}::time, ARRAY[${sql.raw(days.join(','))}]::integer[],
@@ -153,7 +156,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         ${proactiveInterval}, ${isActive}, ${customInstructions}, ${channelsEnabled}::jsonb,
         ${roleFrequencies}::jsonb, ${roleAutonomyModes}::jsonb, ${roleWorkingHours}::jsonb, ${whatsappTemplateIds}::jsonb,
         ${reasoningMode}, ${roleReasoningModes}::jsonb, COALESCE(${outreachConfig}::jsonb, '{}'::jsonb), ${autonomyModel}, ${autonomyThinkingLevel}, ${roleTemperatures}::jsonb,
-        ${telegramSpontaneousEnabled}
+        ${telegramSpontaneousEnabled}, ${telegramSendMode}
       )
       ON CONFLICT (consultant_id) DO UPDATE SET
         autonomy_level = EXCLUDED.autonomy_level,
@@ -182,6 +185,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         autonomy_thinking_level = EXCLUDED.autonomy_thinking_level,
         role_temperatures = EXCLUDED.role_temperatures,
         telegram_spontaneous_enabled = EXCLUDED.telegram_spontaneous_enabled,
+        telegram_send_mode = EXCLUDED.telegram_send_mode,
         updated_at = now()
       RETURNING *
     `);

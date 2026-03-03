@@ -1097,6 +1097,15 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
 
   console.log(`[TELEGRAM] Flushing private buffer for chat ${chatId}: ${messages.length} messages combined`);
 
+  let telegramSendMode = 'streaming';
+  try {
+    const settingsResult = await db.execute(sql`SELECT telegram_send_mode FROM ai_autonomy_settings WHERE consultant_id = ${consultantId}::uuid`);
+    if (settingsResult.rows.length > 0 && settingsResult.rows[0].telegram_send_mode) {
+      telegramSendMode = settingsResult.rows[0].telegram_send_mode as string;
+    }
+  } catch (e) {}
+  const useStreaming = telegramSendMode !== 'single';
+
   const profileContext = await getProfileContext(consultantId, aiRole, chatId);
   const senderId = String(chatId);
   const senderStatus = isOwner ? 'owner' : isOpenMode ? 'open_mode' : 'unknown';
@@ -1149,70 +1158,94 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     const TICK_MS = 600;
     const MAX_CHARS_PER_TICK = 20;
 
-    const streamCallback = (chunk: string) => {
+    const streamCallback = useStreaming ? (chunk: string) => {
       targetText += chunk;
       chunkCount++;
-    };
+    } : undefined;
 
-    const doRevealTick = () => {
-      if (abortController.signal.aborted) return;
-      if (revealedLen >= targetText.length) return;
+    if (useStreaming) {
+      const doRevealTick = () => {
+        if (abortController.signal.aborted) return;
+        if (revealedLen >= targetText.length) return;
 
-      revealedLen = Math.min(revealedLen + MAX_CHARS_PER_TICK, targetText.length);
+        revealedLen = Math.min(revealedLen + MAX_CHARS_PER_TICK, targetText.length);
 
-      const visibleText = targetText.substring(0, revealedLen);
-      const safeText = closeOpenMarkdown(visibleText);
-      const displayText = safeText.length > 4096 ? safeText.substring(0, 4093) + '...' : safeText;
+        const visibleText = targetText.substring(0, revealedLen);
+        const safeText = closeOpenMarkdown(visibleText);
+        const displayText = safeText.length > 4096 ? safeText.substring(0, 4093) + '...' : safeText;
 
-      if (!streamingMessageId && !firstMsgPromise) {
-        firstMsgPromise = sendTelegramMessageWithId(botToken, chatId, displayText, "Markdown");
-        firstMsgPromise.then(msgId => {
-          if (msgId) {
-            streamingMessageId = msgId;
-            console.log(`[TELEGRAM] Streaming message created: ${msgId} for chat ${chatId}`);
-          }
-        }).catch(() => {});
-      } else if (streamingMessageId) {
-        lastEditPromise = editTelegramMessage(botToken, chatId, streamingMessageId, displayText, "Markdown").catch(() => {});
+        if (!streamingMessageId && !firstMsgPromise) {
+          firstMsgPromise = sendTelegramMessageWithId(botToken, chatId, displayText, "Markdown");
+          firstMsgPromise.then(msgId => {
+            if (msgId) {
+              streamingMessageId = msgId;
+              console.log(`[TELEGRAM] Streaming message created: ${msgId} for chat ${chatId}`);
+            }
+          }).catch(() => {});
+        } else if (streamingMessageId) {
+          lastEditPromise = editTelegramMessage(botToken, chatId, streamingMessageId, displayText, "Markdown").catch(() => {});
+        }
+      };
+
+      revealInterval = setInterval(doRevealTick, TICK_MS);
+
+      const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
+      console.log(`[TELEGRAM] Starting AI generation for chat ${chatId}, role ${aiRole} (streaming enabled)`);
+      const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
+        skipUserMessageInsert: true,
+        metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, chat_title: chatTitle, sender_id: senderId, sender_name: firstName, sender_username: username },
+        source: "telegram",
+        isOpenMode: isOpenMode,
+        telegramChatId: chatId,
+        signal: abortController.signal,
+        streamCallback,
+      });
+
+      generationDone = true;
+      if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
+
+      if (revealInterval) { clearInterval(revealInterval); revealInterval = null; }
+      while (revealedLen < targetText.length) {
+        doRevealTick();
+        await new Promise(r => setTimeout(r, 100));
       }
-    };
+      if (firstMsgPromise) await firstMsgPromise;
+      await lastEditPromise;
 
-    revealInterval = setInterval(doRevealTick, TICK_MS);
+      console.log(`[TELEGRAM] AI generation complete for chat ${chatId}: ${aiResponse.length} chars, ${chunkCount} stream chunks received, streamMsgId=${streamingMessageId}`);
 
-    const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
-    console.log(`[TELEGRAM] Starting AI generation for chat ${chatId}, role ${aiRole} (streaming enabled)`);
-    const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
-      skipUserMessageInsert: true,
-      metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, chat_title: chatTitle, sender_id: senderId, sender_name: firstName, sender_username: username },
-      source: "telegram",
-      isOpenMode: isOpenMode,
-      telegramChatId: chatId,
-      signal: abortController.signal,
-      streamCallback,
-    });
-
-    generationDone = true;
-    if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
-
-    if (revealInterval) { clearInterval(revealInterval); revealInterval = null; }
-    while (revealedLen < targetText.length) {
-      doRevealTick();
-      await new Promise(r => setTimeout(r, 100));
-    }
-    if (firstMsgPromise) await firstMsgPromise;
-    await lastEditPromise;
-
-    console.log(`[TELEGRAM] AI generation complete for chat ${chatId}: ${aiResponse.length} chars, ${chunkCount} stream chunks received, streamMsgId=${streamingMessageId}`);
-
-    if (streamingMessageId) {
-      const htmlText = markdownToHtml(aiResponse);
-      const editOk = await editTelegramMessage(botToken, chatId, streamingMessageId, htmlText, "HTML");
-      if (!editOk) {
-        const plainText = stripMarkdown(aiResponse);
-        await editTelegramMessage(botToken, chatId, streamingMessageId, plainText);
+      if (streamingMessageId) {
+        const htmlText = markdownToHtml(aiResponse);
+        const editOk = await editTelegramMessage(botToken, chatId, streamingMessageId, htmlText, "HTML");
+        if (!editOk) {
+          const plainText = stripMarkdown(aiResponse);
+          await editTelegramMessage(botToken, chatId, streamingMessageId, plainText);
+        }
+        console.log(`[TELEGRAM] Streaming message updated to final for chat ${chatId} role ${aiRole}`);
+      } else {
+        const htmlText = markdownToHtml(aiResponse);
+        const sentOk = await sendTelegramMessage(botToken, chatId, htmlText, "HTML");
+        if (!sentOk) {
+          await sendTelegramMessage(botToken, chatId, stripMarkdown(aiResponse));
+        }
+        console.log(`[TELEGRAM] Final message sent to chat ${chatId} for role ${aiRole}`);
       }
-      console.log(`[TELEGRAM] Streaming message updated to final for chat ${chatId} role ${aiRole}`);
     } else {
+      const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
+      console.log(`[TELEGRAM] Starting AI generation for chat ${chatId}, role ${aiRole} (single message mode)`);
+      const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
+        skipUserMessageInsert: true,
+        metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, chat_title: chatTitle, sender_id: senderId, sender_name: firstName, sender_username: username },
+        source: "telegram",
+        isOpenMode: isOpenMode,
+        telegramChatId: chatId,
+        signal: abortController.signal,
+      });
+
+      if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
+
+      console.log(`[TELEGRAM] AI generation complete for chat ${chatId}: ${aiResponse.length} chars (single message mode)`);
+
       const htmlText = markdownToHtml(aiResponse);
       const sentOk = await sendTelegramMessage(botToken, chatId, htmlText, "HTML");
       if (!sentOk) {

@@ -1770,7 +1770,7 @@ function SettingsTab({
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/30">
+                  <div className="mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/30 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
@@ -1783,6 +1783,30 @@ function SettingsTab({
                         checked={settings.telegram_spontaneous_enabled !== false}
                         onCheckedChange={(checked) => setSettings(prev => ({ ...prev, telegram_spontaneous_enabled: checked }))}
                       />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Send className="h-3.5 w-3.5 text-cyan-500" />
+                        <div>
+                          <span className="text-xs font-semibold">Modalità invio Telegram</span>
+                          <p className="text-[10px] text-muted-foreground">
+                            {(settings as any).telegram_send_mode === 'single'
+                              ? 'Messaggio completo inviato tutto insieme'
+                              : 'Messaggio inviato a chunk progressivi (effetto digitazione)'}
+                          </p>
+                        </div>
+                      </div>
+                      <Select
+                        value={(settings as any).telegram_send_mode || 'streaming'}
+                        onValueChange={(value) => setSettings(prev => ({ ...prev, telegram_send_mode: value }))}
+                      >
+                        <SelectTrigger className="rounded-xl h-8 text-[11px] w-[130px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="streaming">Streaming</SelectItem>
+                          <SelectItem value="single">Messaggio unico</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
