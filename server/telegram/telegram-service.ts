@@ -1120,8 +1120,8 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     let firstMsgPromise: Promise<number | null> | null = null;
     let lastEditPromise: Promise<any> = Promise.resolve();
 
-    const REVEAL_INTERVAL_MS = 150;
-    const CHARS_PER_TICK = 12;
+    const REVEAL_INTERVAL_MS = 200;
+    const CHARS_PER_TICK = 8;
 
     const streamCallback = (chunk: string) => {
       targetText += chunk;
