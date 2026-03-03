@@ -1135,41 +1135,46 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
 
     let accumulatedText = '';
     let chunkCount = 0;
-    let lastSnapshotLen = 0;
-    let editInFlight: Promise<void> | null = null;
+    let lastEditedLen = 0;
+    let editQueue: Promise<void> = Promise.resolve();
+    let firstMsgSent = false;
 
     const STREAM_EDIT_INTERVAL_MS = 1200;
 
-    const streamCallback = (chunk: string) => {
-      accumulatedText += chunk;
-      chunkCount++;
-    };
-
-    streamEditInterval = setInterval(async () => {
-      if (abortController.signal.aborted) return;
-      if (accumulatedText.length === lastSnapshotLen) return;
-      if (editInFlight) return;
-
-      const snapshot = accumulatedText;
-      lastSnapshotLen = snapshot.length;
-      const displayText = snapshot.length > 4096 ? snapshot.substring(0, 4093) + '...' : snapshot;
-
-      editInFlight = (async () => {
+    const enqueueStreamUpdate = (text: string, isFirst: boolean) => {
+      editQueue = editQueue.then(async () => {
+        if (abortController.signal.aborted) return;
         try {
-          if (!streamingMessageId) {
-            if (snapshot.length < 15) return;
+          const displayText = text.length > 4096 ? text.substring(0, 4093) + '...' : text;
+          if (isFirst) {
             const msgId = await sendTelegramMessageWithId(botToken, chatId, displayText + ' ▌');
             if (msgId) {
               streamingMessageId = msgId;
               console.log(`[TELEGRAM] Streaming message created: ${msgId} for chat ${chatId}`);
             }
-          } else {
+          } else if (streamingMessageId) {
             await editTelegramMessage(botToken, chatId, streamingMessageId, displayText + ' ▌');
           }
         } catch {}
-      })();
-      await editInFlight;
-      editInFlight = null;
+      });
+    };
+
+    const streamCallback = (chunk: string) => {
+      accumulatedText += chunk;
+      chunkCount++;
+      if (!firstMsgSent && accumulatedText.length >= 15) {
+        firstMsgSent = true;
+        lastEditedLen = accumulatedText.length;
+        enqueueStreamUpdate(accumulatedText, true);
+      }
+    };
+
+    streamEditInterval = setInterval(() => {
+      if (abortController.signal.aborted) return;
+      if (!streamingMessageId) return;
+      if (accumulatedText.length === lastEditedLen) return;
+      lastEditedLen = accumulatedText.length;
+      enqueueStreamUpdate(accumulatedText, false);
     }, STREAM_EDIT_INTERVAL_MS);
 
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
@@ -1184,9 +1189,9 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       streamCallback,
     });
 
-    clearInterval(streamEditInterval);
+    if (streamEditInterval) { clearInterval(streamEditInterval); streamEditInterval = null; }
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
-    if (editInFlight) await editInFlight;
+    await editQueue;
 
     console.log(`[TELEGRAM] AI generation complete for chat ${chatId}: ${aiResponse.length} chars, ${chunkCount} stream chunks received, streamMsgId=${streamingMessageId}`);
 
