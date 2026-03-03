@@ -131,7 +131,7 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
   const fetchMessages = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/ai-autonomy/agent-chat/${roleId}/messages?limit=50`, {
+      const res = await fetch(`/api/ai-autonomy/agent-chat/${roleId}/messages`, {
         headers: getAuthHeaders(),
       });
       if (res.ok) {

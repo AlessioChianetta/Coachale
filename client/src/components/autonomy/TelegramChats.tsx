@@ -431,10 +431,15 @@ export default function TelegramChats({ roleId, roleName, open, onClose }: Teleg
     if (!silent) setLoading(false);
   };
 
+  const getMessageLimit = (chatId: string) => {
+    const isOwner = conversations.find(c => c.telegram_chat_id === chatId)?.is_owner;
+    return isOwner ? 500 : 200;
+  };
+
   const loadMessages = async (chatId: string) => {
     setMessagesLoading(true);
     try {
-      const res = await fetch(`/api/ai-autonomy/telegram-conversations/${roleId}/${chatId}/messages?limit=200`, { headers: getAuthHeaders() });
+      const res = await fetch(`/api/ai-autonomy/telegram-conversations/${roleId}/${chatId}/messages?limit=${getMessageLimit(chatId)}`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         const msgs = data.messages || [];
@@ -447,7 +452,7 @@ export default function TelegramChats({ roleId, roleName, open, onClose }: Teleg
 
   const pollNewMessages = useCallback(async (chatId: string) => {
     try {
-      const res = await fetch(`/api/ai-autonomy/telegram-conversations/${roleId}/${chatId}/messages?limit=200`, { headers: getAuthHeaders() });
+      const res = await fetch(`/api/ai-autonomy/telegram-conversations/${roleId}/${chatId}/messages?limit=${getMessageLimit(chatId)}`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         const msgs = data.messages || [];

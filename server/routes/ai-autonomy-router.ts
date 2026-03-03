@@ -5582,10 +5582,13 @@ router.get("/telegram-conversations/:roleId", authenticateToken, requireAnyRole(
         tcl.chat_title,
         COALESCE(last_msg.sender_name, tcl.first_name) as sender_name,
         COALESCE(last_msg.sender_username, tcl.username) as sender_username,
-        COALESCE(last_msg.message, onb.last_onboarding_message) as last_message,
-        COALESCE(last_msg.last_message_at, tcl.linked_at) as last_message_at,
-        COALESCE(last_msg.message_count, 0) + COALESCE(onb.onboarding_msg_count, 0) as message_count,
-        COALESCE(prof.onboarding_status, 'pending') as onboarding_status,
+        COALESCE(last_msg.message, owner_msg.last_message, onb.last_onboarding_message) as last_message,
+        COALESCE(last_msg.last_message_at, owner_msg.last_message_at, tcl.linked_at) as last_message_at,
+        CASE WHEN tcl.is_owner = true 
+          THEN COALESCE(owner_msg.message_count, 0)
+          ELSE COALESCE(last_msg.message_count, 0) + COALESCE(onb.onboarding_msg_count, 0)
+        END as message_count,
+        CASE WHEN tcl.is_owner = true THEN 'completed' ELSE COALESCE(prof.onboarding_status, 'pending') END as onboarding_status,
         prof.user_name,
         prof.user_job,
         prof.user_goals,
@@ -5610,6 +5613,19 @@ router.get("/telegram-conversations/:roleId", authenticateToken, requireAnyRole(
       ) last_msg ON true
       LEFT JOIN LATERAL (
         SELECT 
+          message as last_message, created_at as last_message_at,
+          (SELECT COUNT(*)::int FROM agent_chat_messages ac2
+           WHERE ac2.consultant_id = tcl.consultant_id
+             AND ac2.ai_role = tcl.ai_role) as message_count
+        FROM agent_chat_messages acm
+        WHERE acm.consultant_id = tcl.consultant_id
+          AND acm.ai_role = tcl.ai_role
+          AND tcl.is_owner = true
+        ORDER BY acm.created_at DESC
+        LIMIT 1
+      ) owner_msg ON true
+      LEFT JOIN LATERAL (
+        SELECT 
           onboarding_conversation->-1->>'content' as last_onboarding_message,
           jsonb_array_length(COALESCE(onboarding_conversation, '[]'::jsonb)) as onboarding_msg_count
         FROM telegram_user_profiles tup
@@ -5630,7 +5646,7 @@ router.get("/telegram-conversations/:roleId", authenticateToken, requireAnyRole(
       ) prof ON true
       WHERE tcl.consultant_id = ${consultantId}::uuid AND tcl.ai_role = ${roleId}
         AND tcl.active = true
-      ORDER BY COALESCE(last_msg.last_message_at, tcl.linked_at) DESC
+      ORDER BY COALESCE(last_msg.last_message_at, owner_msg.last_message_at, tcl.linked_at) DESC
     `);
 
     res.json({ conversations: result.rows });
@@ -5645,8 +5661,47 @@ router.get("/telegram-conversations/:roleId/:chatId/messages", authenticateToken
     const consultantId = (req as AuthRequest).user?.id;
     if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
     const { roleId, chatId } = req.params;
-    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 200);
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 500);
     const before = req.query.before as string;
+
+    const chatLinkResult = await db.execute(sql`
+      SELECT is_owner, first_name, username FROM telegram_chat_links
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND telegram_chat_id = ${chatId}::bigint
+      LIMIT 1
+    `);
+    const chatLink = chatLinkResult.rows[0] as any;
+    const isOwner = chatLink?.is_owner === true;
+
+    if (isOwner) {
+      let ownerResult;
+      if (before) {
+        ownerResult = await db.execute(sql`
+          SELECT id, sender, message, created_at
+          FROM agent_chat_messages
+          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+            AND created_at < ${before}::timestamptz
+          ORDER BY created_at DESC LIMIT ${limit}
+        `);
+      } else {
+        ownerResult = await db.execute(sql`
+          SELECT id, sender, message, created_at
+          FROM agent_chat_messages
+          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          ORDER BY created_at DESC LIMIT ${limit}
+        `);
+      }
+      const ownerName = chatLink?.first_name || 'Consulente';
+      const ownerUsername = chatLink?.username || null;
+      const messages = (ownerResult.rows as any[]).reverse().map((msg: any) => ({
+        id: msg.id,
+        sender_type: msg.sender === 'consultant' ? 'user' : 'agent',
+        sender_name: msg.sender === 'consultant' ? ownerName : null,
+        sender_username: msg.sender === 'consultant' ? ownerUsername : null,
+        message: msg.message,
+        created_at: msg.created_at,
+      }));
+      return res.json({ messages, hasMore: messages.length === limit });
+    }
 
     let result;
     if (before) {
@@ -5826,29 +5881,49 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
     if (!validRoleIds.includes(roleId)) {
       return res.status(400).json({ error: "Invalid role ID" });
     }
-    const safeLimit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
+    const requestedLimit = parseInt(req.query.limit as string) || 0;
     const before = req.query.before as string;
 
     let result;
-    if (before) {
-      result = await db.execute(sql`
-        SELECT id, ai_role, role_name, sender, message, created_at, metadata
-        FROM agent_chat_messages
-        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-          AND created_at < ${before}::timestamptz
-        ORDER BY created_at DESC LIMIT ${safeLimit}
-      `);
+    if (requestedLimit > 0) {
+      const safeLimit = Math.min(requestedLimit, 5000);
+      if (before) {
+        result = await db.execute(sql`
+          SELECT id, ai_role, role_name, sender, message, created_at, metadata
+          FROM agent_chat_messages
+          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+            AND created_at < ${before}::timestamptz
+          ORDER BY created_at DESC LIMIT ${safeLimit}
+        `);
+      } else {
+        result = await db.execute(sql`
+          SELECT id, ai_role, role_name, sender, message, created_at, metadata
+          FROM agent_chat_messages
+          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          ORDER BY created_at DESC LIMIT ${safeLimit}
+        `);
+      }
     } else {
-      result = await db.execute(sql`
-        SELECT id, ai_role, role_name, sender, message, created_at, metadata
-        FROM agent_chat_messages
-        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-        ORDER BY created_at DESC LIMIT ${safeLimit}
-      `);
+      if (before) {
+        result = await db.execute(sql`
+          SELECT id, ai_role, role_name, sender, message, created_at, metadata
+          FROM agent_chat_messages
+          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+            AND created_at < ${before}::timestamptz
+          ORDER BY created_at ASC
+        `);
+      } else {
+        result = await db.execute(sql`
+          SELECT id, ai_role, role_name, sender, message, created_at, metadata
+          FROM agent_chat_messages
+          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          ORDER BY created_at ASC
+        `);
+      }
     }
-    const messages = (result.rows as any[]).reverse();
+    const messages = requestedLimit > 0 ? (result.rows as any[]).reverse() : (result.rows as any[]);
 
-    return res.json({ messages, hasMore: messages.length === safeLimit });
+    return res.json({ messages, hasMore: requestedLimit > 0 && messages.length === requestedLimit });
   } catch (error: any) {
     console.error("[AGENT-CHAT] Error fetching messages:", error);
     return res.status(500).json({ error: "Failed to fetch messages" });
