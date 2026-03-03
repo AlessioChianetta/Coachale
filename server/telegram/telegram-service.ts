@@ -1181,7 +1181,8 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     if (streamingMessageId) {
       const editOk = await editTelegramMessage(botToken, chatId, streamingMessageId, aiResponse, "Markdown");
       if (!editOk) {
-        await editTelegramMessage(botToken, chatId, streamingMessageId, aiResponse);
+        const plainText = aiResponse.replace(/\*\*/g, '').replace(/(?<!\*)\*(?!\*)/g, '').replace(/__/g, '').replace(/```/g, '').replace(/(?<!`)`(?!`)/g, '');
+        await editTelegramMessage(botToken, chatId, streamingMessageId, plainText);
       }
       console.log(`[TELEGRAM] Streaming message updated to final for chat ${chatId} role ${aiRole}`);
     } else {
