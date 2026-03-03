@@ -1179,14 +1179,19 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     console.log(`[TELEGRAM] AI generation complete for chat ${chatId}: ${aiResponse.length} chars, ${chunkCount} stream chunks received, streamMsgId=${streamingMessageId}`);
 
     if (streamingMessageId) {
-      const editOk = await editTelegramMessage(botToken, chatId, streamingMessageId, aiResponse, "Markdown");
+      const htmlText = markdownToHtml(aiResponse);
+      const editOk = await editTelegramMessage(botToken, chatId, streamingMessageId, htmlText, "HTML");
       if (!editOk) {
-        const plainText = aiResponse.replace(/\*\*/g, '').replace(/(?<!\*)\*(?!\*)/g, '').replace(/__/g, '').replace(/```/g, '').replace(/(?<!`)`(?!`)/g, '');
+        const plainText = stripMarkdown(aiResponse);
         await editTelegramMessage(botToken, chatId, streamingMessageId, plainText);
       }
       console.log(`[TELEGRAM] Streaming message updated to final for chat ${chatId} role ${aiRole}`);
     } else {
-      await sendTelegramMessage(botToken, chatId, aiResponse, "Markdown");
+      const htmlText = markdownToHtml(aiResponse);
+      const sentOk = await sendTelegramMessage(botToken, chatId, htmlText, "HTML");
+      if (!sentOk) {
+        await sendTelegramMessage(botToken, chatId, stripMarkdown(aiResponse));
+      }
       console.log(`[TELEGRAM] Final message sent to chat ${chatId} for role ${aiRole}`);
     }
   } catch (err: any) {
@@ -1210,6 +1215,26 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
     activeGenerations.delete(bufferKey);
   }
+}
+
+function markdownToHtml(text: string): string {
+  let html = text;
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  html = html.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
+  html = html.replace(/(?<!`)`([^`]+)`(?!`)/g, '<code>$1</code>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<i>$1</i>');
+  html = html.replace(/__(.+?)__/g, '<u>$1</u>');
+  return html;
+}
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*/g, '')
+    .replace(/(?<!\*)\*(?!\*)/g, '')
+    .replace(/__/g, '')
+    .replace(/```/g, '')
+    .replace(/(?<!`)`(?!`)/g, '');
 }
 
 function closeOpenMarkdown(text: string): string {
