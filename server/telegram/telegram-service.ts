@@ -334,20 +334,16 @@ async function sendTelegramChatAction(botToken: string, chatId: number | string,
   } catch {}
 }
 
-async function sendTelegramMessageDraft(botToken: string, chatId: number | string, text: string, randomId?: number): Promise<boolean> {
+async function sendTelegramMessageDraft(botToken: string, chatId: number | string, text: string, draftId: number): Promise<boolean> {
   try {
-    const body: any = { chat_id: chatId, text };
-    if (randomId !== undefined) {
-      body.random_id = randomId;
-    }
     const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessageDraft`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ chat_id: chatId, text, draft_id: draftId }),
     });
     const data = await res.json();
     if (!data.ok) {
-      console.warn(`[TELEGRAM] sendMessageDraft failed (random_id=${randomId}): ${JSON.stringify(data)}`);
+      console.warn(`[TELEGRAM] sendMessageDraft failed: ${data.description || 'unknown'}`);
     }
     return data.ok === true;
   } catch (err: any) {
@@ -1140,7 +1136,8 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     let draftSupported = true;
     let draftChecked = false;
     let chunkCount = 0;
-    const draftRandomId = Math.floor(Math.random() * 1_000_000_000_000);
+    const draftId = Math.floor(Math.random() * 2147483646) + 1;
+    if (isGroupChat) draftSupported = false; // sendMessageDraft only works in private chats
 
     const streamCallback = (chunk: string) => {
       accumulatedText += chunk;
@@ -1150,7 +1147,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
         lastDraftTime = now;
         if (draftSupported) {
           const displayText = accumulatedText.length > 4096 ? accumulatedText.substring(0, 4093) + '...' : accumulatedText;
-          sendTelegramMessageDraft(botToken, chatId, displayText + ' ▌', draftRandomId).then(ok => {
+          sendTelegramMessageDraft(botToken, chatId, displayText + ' ▌', draftId).then(ok => {
             if (!ok && !draftChecked) {
               draftChecked = true;
               console.warn(`[TELEGRAM] sendMessageDraft not supported for chat ${chatId}, using typing fallback only`);
@@ -1180,7 +1177,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
 
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
     if (draftSupported && chunkCount > 0) {
-      sendTelegramMessageDraft(botToken, chatId, "").catch(() => {});
+      sendTelegramMessageDraft(botToken, chatId, "", draftId).catch(() => {});
     }
 
     console.log(`[TELEGRAM] AI generation complete for chat ${chatId}: ${aiResponse.length} chars, ${chunkCount} stream chunks received, draftSupported=${draftSupported}`);
@@ -1189,11 +1186,11 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
   } catch (err: any) {
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
     if (err.message === 'AbortError' || abortController.signal.aborted) {
-      sendTelegramMessageDraft(botToken, chatId, "").catch(() => {});
+      sendTelegramMessageDraft(botToken, chatId, "", draftId).catch(() => {});
       console.log(`[TELEGRAM] Generation aborted for ${bufferKey}, will re-generate with new messages`);
     } else {
       console.error(`[TELEGRAM] Error processing buffered message:`, err.message);
-      sendTelegramMessageDraft(botToken, chatId, "").catch(() => {});
+      sendTelegramMessageDraft(botToken, chatId, "", draftId).catch(() => {});
       await sendTelegramMessage(botToken, chatId, "⚠️ Mi dispiace, c'è stato un errore. Riprova tra poco.");
     }
   } finally {
@@ -1267,19 +1264,19 @@ async function downloadTelegramFile(botToken: string, fileId: string): Promise<B
 async function extractTextFromDocument(buffer: Buffer, fileName: string, mimeType: string): Promise<string | null> {
   try {
     const ext = fileName.toLowerCase().split('.').pop() || '';
-    
+
     if (mimeType === 'application/pdf' || ext === 'pdf') {
       const pdfParse = (await import('pdf-parse')).default;
       const data = await pdfParse(buffer);
       return data.text?.trim() || null;
     }
-    
+
     if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || ext === 'docx') {
       const mammoth = await import('mammoth');
       const result = await mammoth.extractRawText({ buffer });
       return result.value?.trim() || null;
     }
-    
+
     if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || ext === 'xlsx' || ext === 'xls' || mimeType === 'application/vnd.ms-excel') {
       const XLSX = await import('xlsx');
       const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -1315,7 +1312,7 @@ async function transcribeAudioWithGemini(buffer: Buffer, mimeType: string, consu
 
     const ai = new GoogleGenAI({ apiKey });
     const base64Audio = buffer.toString('base64');
-    
+
     const audioPart = {
       inlineData: {
         mimeType: mimeType || 'audio/ogg',
@@ -1364,7 +1361,7 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
   const chatTitle = msg.chat.title || '';
 
   let mediaContext = '';
-  
+
   if (msg.document) {
     console.log(`[TELEGRAM-MEDIA] Document received: ${msg.document.file_name} (${msg.document.mime_type}, ${msg.document.file_size} bytes)`);
     if (msg.document.file_size && msg.document.file_size > 20 * 1024 * 1024) {
@@ -1389,7 +1386,7 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
       }
     }
   }
-  
+
   if (msg.voice || msg.audio) {
     const audio = msg.voice || msg.audio;
     console.log(`[TELEGRAM-MEDIA] ${msg.voice ? 'Voice' : 'Audio'} message received: ${audio.duration}s, ${audio.mime_type || 'unknown'}`);
@@ -1414,7 +1411,7 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
       }
     }
   }
-  
+
   if (msg.photo && msg.photo.length > 0) {
     const largestPhoto = msg.photo[msg.photo.length - 1];
     console.log(`[TELEGRAM-MEDIA] Photo received: ${largestPhoto.width}x${largestPhoto.height}`);
@@ -1650,7 +1647,7 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
           console.log(`[TELEGRAM] Open mode message arrived during active generation for ${bufferKey}, aborting and re-queuing`);
           activeGen.abortController.abort();
           activeGen.previousMessages.push(processedText);
-          sendTelegramMessageDraft(botToken, chatId, "").catch(() => {});
+          sendTelegramMessageDraft(botToken, chatId, "", 1).catch(() => {});
           const buf = {
             messages: activeGen.previousMessages.map(t => ({ text: t, date: Math.floor(Date.now() / 1000) })),
             timer: null as NodeJS.Timeout | null,
@@ -1812,7 +1809,7 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
       console.log(`[TELEGRAM] Owner message arrived during active generation for ${bufferKey}, aborting and re-queuing`);
       activeGen.abortController.abort();
       activeGen.previousMessages.push(processedText);
-      sendTelegramMessageDraft(botToken, chatId, "").catch(() => {});
+      sendTelegramMessageDraft(botToken, chatId, "", 1).catch(() => {});
       const buf = {
         messages: activeGen.previousMessages.map(t => ({ text: t, date: Math.floor(Date.now() / 1000) })),
         timer: null as NodeJS.Timeout | null,
