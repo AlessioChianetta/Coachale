@@ -150,6 +150,33 @@ export default function ConsultantClientsPage() {
 
   const licenseData = licensesQuery.data?.data || { employeeTotal: 5, employeeUsed: 0 };
 
+  const stripeStatusQuery = useQuery({
+    queryKey: ["/api/consultant/stripe-connect/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/stripe-connect/status", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch stripe status");
+      return res.json();
+    },
+  });
+  const stripeStatus = stripeStatusQuery.data;
+
+  function computePrice(pricingConfig: any, level: string, billingPeriod: string): number {
+    if (level === "2") {
+      if (billingPeriod === 'annual_onetime') return pricingConfig?.level2AnnualOneTimePriceCents || 49000;
+      if (billingPeriod === 'onetime') return pricingConfig?.level2OneTimePriceCents || 98000;
+      if (billingPeriod === 'yearly') return pricingConfig?.level2YearlyPriceCents || 29900;
+      return pricingConfig?.level2MonthlyPriceCents || pricingConfig?.level2PriceCents || 2900;
+    }
+    if (billingPeriod === 'annual_onetime') return pricingConfig?.level3AnnualOneTimePriceCents || 99000;
+    if (billingPeriod === 'onetime') return pricingConfig?.level3OneTimePriceCents || 198000;
+    if (billingPeriod === 'yearly') return pricingConfig?.level3YearlyPriceCents || 59900;
+    return pricingConfig?.level3MonthlyPriceCents || pricingConfig?.level3PriceCents || 5900;
+  }
+
+  function formatPrice(cents: number): string {
+    return `€${(cents / 100).toFixed(2).replace('.', ',')}`;
+  }
+
   const departmentsQuery = useQuery({
     queryKey: ["/api/departments"],
     queryFn: async () => {
@@ -2718,21 +2745,59 @@ export default function ConsultantClientsPage() {
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+
+            {/* Stripe Connect status badge */}
+            {stripeStatus && (
+              <div className={`rounded-lg px-3 py-2 text-xs flex items-center gap-2 border ${
+                !stripeStatus.connected
+                  ? 'bg-red-50 border-red-200 text-red-700'
+                  : !stripeStatus.onboarded
+                  ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              }`}>
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  !stripeStatus.connected ? 'bg-red-500' : !stripeStatus.onboarded ? 'bg-yellow-500' : 'bg-emerald-500'
+                }`} />
+                <span className="font-medium">
+                  {!stripeStatus.connected
+                    ? 'Stripe Connect non collegato — il link non verrà generato'
+                    : !stripeStatus.onboarded
+                    ? 'Onboarding Stripe incompleto — completa la configurazione'
+                    : 'Stripe Connect attivo'}
+                </span>
+                {stripeStatus.connected && (
+                  <span className={`ml-auto px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    stripeStatus.isTestMode
+                      ? 'bg-yellow-200 text-yellow-800'
+                      : 'bg-emerald-200 text-emerald-800'
+                  }`}>
+                    {stripeStatus.isTestMode ? 'TEST' : 'LIVE'}
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right text-sm font-medium">Livello</Label>
-              <div className="col-span-3 flex gap-3">
-                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all flex-1 ${paymentLinkForm.level === "2" ? 'border-cyan-500 bg-cyan-50' : 'border-border hover:border-border'}`}>
-                  <input type="radio" name="plLevel" checked={paymentLinkForm.level === "2"} onChange={() => setPaymentLinkForm(prev => ({...prev, level: "2"}))} className="sr-only" />
+              <div className="col-span-3 flex gap-2">
+                <label className="flex items-center gap-2 p-2.5 rounded-lg border-2 border-dashed border-border opacity-50 cursor-not-allowed flex-1" title="Prossimamente">
                   <div>
-                    <span className="text-sm font-medium">Silver</span>
-                    <span className="text-xs text-muted-foreground block">Livello 2</span>
+                    <span className="text-xs font-medium text-muted-foreground">Bronze</span>
+                    <span className="text-[10px] text-muted-foreground block">Livello 1 — presto</span>
                   </div>
                 </label>
-                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all flex-1 ${paymentLinkForm.level === "3" ? 'border-amber-500 bg-amber-50' : 'border-border hover:border-border'}`}>
+                <label className={`flex items-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all flex-1 ${paymentLinkForm.level === "2" ? 'border-cyan-500 bg-cyan-50' : 'border-border hover:border-border'}`}>
+                  <input type="radio" name="plLevel" checked={paymentLinkForm.level === "2"} onChange={() => setPaymentLinkForm(prev => ({...prev, level: "2"}))} className="sr-only" />
+                  <div>
+                    <span className="text-xs font-medium">Silver</span>
+                    <span className="text-[10px] text-muted-foreground block">Livello 2</span>
+                  </div>
+                </label>
+                <label className={`flex items-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all flex-1 ${paymentLinkForm.level === "3" ? 'border-amber-500 bg-amber-50' : 'border-border hover:border-border'}`}>
                   <input type="radio" name="plLevel" checked={paymentLinkForm.level === "3"} onChange={() => setPaymentLinkForm(prev => ({...prev, level: "3"}))} className="sr-only" />
                   <div>
-                    <span className="text-sm font-medium">Gold</span>
-                    <span className="text-xs text-muted-foreground block">Livello 3</span>
+                    <span className="text-xs font-medium">Gold</span>
+                    <span className="text-[10px] text-muted-foreground block">Livello 3</span>
                   </div>
                 </label>
               </div>
@@ -2747,8 +2812,22 @@ export default function ConsultantClientsPage() {
               >
                 <option value="monthly">Mensile</option>
                 <option value="yearly">Annuale (ricorrente)</option>
-                <option value="annual_onetime">Annuale (unico)</option>
+                <option value="annual_onetime">Annuale (pagamento unico)</option>
               </select>
+            </div>
+
+            {/* Price preview */}
+            <div className="rounded-lg px-3 py-2.5 bg-muted/50 border border-border flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Importo che pagherà il cliente</span>
+              <span className="text-base font-bold text-foreground">
+                {stripeStatus?.pricingConfig
+                  ? formatPrice(computePrice(stripeStatus.pricingConfig, paymentLinkForm.level, paymentLinkForm.billingPeriod))
+                  : '—'}
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  {paymentLinkForm.billingPeriod === 'monthly' ? '/mese' :
+                   paymentLinkForm.billingPeriod === 'yearly' ? '/anno' : ' una tantum'}
+                </span>
+              </span>
             </div>
 
             {generatedPaymentLink && (

@@ -80,20 +80,28 @@ async function getStripeInstance() {
 router.get("/consultant/stripe-connect/status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    
+
     const [license] = await db.select().from(consultantLicenses)
       .where(eq(consultantLicenses.consultantId, consultantId));
-    
+
+    const [consultant] = await db.select({ pricingPageConfig: users.pricingPageConfig })
+      .from(users).where(eq(users.id, consultantId));
+
+    const stripeKey = process.env.STRIPE_SECRET_KEY || '';
+    const isTestMode = stripeKey.startsWith('sk_test_');
+
     if (!license?.stripeConnectAccountId) {
-      return res.json({ connected: false });
+      return res.json({ connected: false, isTestMode, pricingConfig: consultant?.pricingPageConfig || {} });
     }
-    
+
     res.json({
       connected: true,
       stripeAccountId: license.stripeConnectAccountId,
       detailsSubmitted: license.stripeConnectDetailsSubmitted,
       onboarded: license.stripeConnectOnboarded,
       revenueSharePercentage: license.revenueSharePercentage || 50,
+      isTestMode,
+      pricingConfig: consultant?.pricingPageConfig || {},
     });
   } catch (error) {
     console.error("[Stripe Connect Status] Error:", error);
