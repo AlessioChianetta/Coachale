@@ -1791,14 +1791,14 @@ function SettingsTab({
                         <div>
                           <span className="text-xs font-semibold">Modalità invio Telegram</span>
                           <p className="text-[10px] text-muted-foreground">
-                            {(settings as any).telegram_send_mode === 'single'
-                              ? 'Messaggio completo inviato tutto insieme'
-                              : 'Messaggio inviato a chunk progressivi (effetto digitazione)'}
+                            {(settings as any).telegram_send_mode === 'streaming'
+                              ? 'Messaggio inviato a chunk progressivi (effetto digitazione)'
+                              : 'Messaggio completo inviato tutto insieme'}
                           </p>
                         </div>
                       </div>
                       <Select
-                        value={(settings as any).telegram_send_mode || 'streaming'}
+                        value={(settings as any).telegram_send_mode || 'single'}
                         onValueChange={(value) => setSettings(prev => ({ ...prev, telegram_send_mode: value }))}
                       >
                         <SelectTrigger className="rounded-xl h-8 text-[11px] w-[130px]"><SelectValue /></SelectTrigger>

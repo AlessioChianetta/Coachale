@@ -93,7 +93,7 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         autonomy_thinking_level: 'low',
         role_temperatures: {},
         telegram_spontaneous_enabled: true,
-        telegram_send_mode: 'streaming',
+        telegram_send_mode: 'single',
       });
     }
 
@@ -138,7 +138,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const autonomyThinkingLevel = body.autonomy_thinking_level ?? 'low';
     const roleTemperatures = JSON.stringify(body.role_temperatures ?? {});
     const telegramSpontaneousEnabled = body.telegram_spontaneous_enabled !== false;
-    const telegramSendMode = body.telegram_send_mode === 'single' ? 'single' : 'streaming';
+    const telegramSendMode = body.telegram_send_mode === 'streaming' ? 'streaming' : 'single';
 
     const result = await db.execute(sql`
       INSERT INTO ai_autonomy_settings (

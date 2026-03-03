@@ -1097,7 +1097,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
 
   console.log(`[TELEGRAM] Flushing private buffer for chat ${chatId}: ${messages.length} messages combined`);
 
-  let telegramSendMode = 'streaming';
+  let telegramSendMode = 'single';
   try {
     const settingsResult = await db.execute(sql`SELECT telegram_send_mode FROM ai_autonomy_settings WHERE consultant_id = ${consultantId}::uuid`);
     if (settingsResult.rows.length > 0 && settingsResult.rows[0].telegram_send_mode) {
