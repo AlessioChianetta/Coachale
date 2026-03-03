@@ -334,26 +334,6 @@ async function sendTelegramChatAction(botToken: string, chatId: number | string,
   } catch {}
 }
 
-async function sendTelegramMessageDraft(botToken: string, chatId: number | string, text: string, draftId: number): Promise<boolean> {
-  try {
-    const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessageDraft`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, draft_id: draftId }),
-    });
-    const data = await res.json();
-    if (!data.ok) {
-      console.warn(`[TELEGRAM] sendMessageDraft failed: ${data.description || 'unknown'}`);
-    }
-    return data.ok === true;
-  } catch (err: any) {
-    console.error(`[TELEGRAM] sendMessageDraft error:`, err.message);
-    return false;
-  }
-}
-
-const STREAM_DRAFT_INTERVAL_MS = 1000;
-
 const MAX_ONBOARDING_STEPS = 15;
 
 const ROLE_ONBOARDING_PROMPTS: Record<string, { private: string; group: string }> = {
@@ -1109,7 +1089,6 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
   activeGenerations.set(bufferKey, genEntry);
 
   let typingInterval: NodeJS.Timeout | null = null;
-  let streamEditInterval: NodeJS.Timeout | null = null;
   let streamingMessageId: number | null = null;
 
   try {
@@ -1135,11 +1114,11 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
 
     let accumulatedText = '';
     let chunkCount = 0;
-    let lastEditedLen = 0;
+    let lastEditTime = 0;
     let editQueue: Promise<void> = Promise.resolve();
     let firstMsgSent = false;
 
-    const STREAM_EDIT_INTERVAL_MS = 1200;
+    const STREAM_THROTTLE_MS = 500;
 
     const enqueueStreamUpdate = (text: string, isFirst: boolean) => {
       editQueue = editQueue.then(async () => {
@@ -1162,20 +1141,17 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     const streamCallback = (chunk: string) => {
       accumulatedText += chunk;
       chunkCount++;
+      const now = Date.now();
+
       if (!firstMsgSent && accumulatedText.length >= 15) {
         firstMsgSent = true;
-        lastEditedLen = accumulatedText.length;
+        lastEditTime = now;
         enqueueStreamUpdate(accumulatedText, true);
+      } else if (firstMsgSent && (now - lastEditTime >= STREAM_THROTTLE_MS)) {
+        lastEditTime = now;
+        enqueueStreamUpdate(accumulatedText, false);
       }
     };
-
-    streamEditInterval = setInterval(() => {
-      if (abortController.signal.aborted) return;
-      if (!streamingMessageId) return;
-      if (accumulatedText.length === lastEditedLen) return;
-      lastEditedLen = accumulatedText.length;
-      enqueueStreamUpdate(accumulatedText, false);
-    }, STREAM_EDIT_INTERVAL_MS);
 
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
     console.log(`[TELEGRAM] Starting AI generation for chat ${chatId}, role ${aiRole} (streaming enabled)`);
@@ -1189,7 +1165,6 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       streamCallback,
     });
 
-    if (streamEditInterval) { clearInterval(streamEditInterval); streamEditInterval = null; }
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
     await editQueue;
 
@@ -1206,8 +1181,8 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       console.log(`[TELEGRAM] Final message sent to chat ${chatId} for role ${aiRole}`);
     }
   } catch (err: any) {
-    if (streamEditInterval) { clearInterval(streamEditInterval); streamEditInterval = null; }
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
+    try { await editQueue; } catch {}
     if (err.message === 'AbortError' || abortController.signal.aborted) {
       if (streamingMessageId) {
         deleteTelegramMessage(botToken, chatId, streamingMessageId).catch(() => {});
@@ -1222,7 +1197,6 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       }
     }
   } finally {
-    if (streamEditInterval) { clearInterval(streamEditInterval); streamEditInterval = null; }
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
     activeGenerations.delete(bufferKey);
   }
@@ -1676,7 +1650,6 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
           console.log(`[TELEGRAM] Open mode message arrived during active generation for ${bufferKey}, aborting and re-queuing`);
           activeGen.abortController.abort();
           activeGen.previousMessages.push(processedText);
-          sendTelegramMessageDraft(botToken, chatId, "", 1).catch(() => {});
           const buf = {
             messages: activeGen.previousMessages.map(t => ({ text: t, date: Math.floor(Date.now() / 1000) })),
             timer: null as NodeJS.Timeout | null,
@@ -1838,7 +1811,6 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
       console.log(`[TELEGRAM] Owner message arrived during active generation for ${bufferKey}, aborting and re-queuing`);
       activeGen.abortController.abort();
       activeGen.previousMessages.push(processedText);
-      sendTelegramMessageDraft(botToken, chatId, "", 1).catch(() => {});
       const buf = {
         messages: activeGen.previousMessages.map(t => ({ text: t, date: Math.floor(Date.now() / 1000) })),
         timer: null as NodeJS.Timeout | null,
