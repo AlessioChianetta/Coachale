@@ -1118,13 +1118,18 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     let chunkCount = 0;
     let firstMsgPromise: Promise<number | null> | null = null;
     let lastEditPromise: Promise<any> = Promise.resolve();
-    const DEBOUNCE_MS = 500;
+    let lastFlushLen = 0;
+    let lastFlushTime = 0;
+    const THROTTLE_MS = 800;
 
     const flushToTelegram = () => {
       debounceTimer = null;
       if (abortController.signal.aborted) return;
       if (targetText.length === 0) return;
+      if (targetText.length === lastFlushLen) return;
 
+      lastFlushLen = targetText.length;
+      lastFlushTime = Date.now();
       const displayText = targetText.length > 4096 ? targetText.substring(0, 4093) + '...' : targetText;
 
       if (!streamingMessageId && !firstMsgPromise) {
@@ -1145,8 +1150,15 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       chunkCount++;
       if (abortController.signal.aborted) return;
 
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(flushToTelegram, DEBOUNCE_MS);
+      const now = Date.now();
+      const elapsed = now - lastFlushTime;
+
+      if (elapsed >= THROTTLE_MS) {
+        if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+        flushToTelegram();
+      } else if (!debounceTimer) {
+        debounceTimer = setTimeout(flushToTelegram, THROTTLE_MS - elapsed);
+      }
     };
 
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
