@@ -87,8 +87,13 @@ router.get("/consultant/stripe-connect/status", authenticateToken, requireRole("
     const [consultant] = await db.select({ pricingPageConfig: users.pricingPageConfig })
       .from(users).where(eq(users.id, consultantId));
 
-    const stripeKey = process.env.STRIPE_SECRET_KEY || '';
-    const isTestMode = stripeKey.startsWith('sk_test_');
+    const [stripeConfig] = await db.select({ stripeSecretKey: superadminStripeConfig.stripeSecretKey })
+      .from(superadminStripeConfig).limit(1);
+    let resolvedKey = stripeConfig?.stripeSecretKey || '';
+    if (resolvedKey.includes(':')) {
+      try { resolvedKey = decrypt(resolvedKey); } catch {}
+    }
+    const isTestMode = resolvedKey.startsWith('sk_test_');
 
     if (!license?.stripeConnectAccountId) {
       return res.json({ connected: false, isTestMode, pricingConfig: consultant?.pricingPageConfig || {} });
