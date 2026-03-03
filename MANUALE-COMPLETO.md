@@ -45,6 +45,7 @@
 - Capitolo 22: AI Autonomy – Sistema di Dipendenti AI Autonomi (9 dipendenti, incluso Hunter)
 - Capitolo 23: Ricerca Lead e Outreach – Lead Scraper (5 tab: Ricerca, CRM Lead, Sales Agent, Hunter, Nuovo Lead)
 - Capitolo 24: Integrazione tra i Quattro Sistemi
+- Capitolo 25: Clienti CRM – Contatti Senza Accesso e Link di Pagamento Stripe
 
 ---
 
@@ -4401,9 +4402,181 @@ Questo garantisce che ogni comunicazione – sia un messaggio WhatsApp, una chia
 
 ---
 
+# Capitolo 25: Clienti CRM – Contatti Senza Accesso e Link di Pagamento Stripe
+
+## 25.1 Cos'è un Cliente CRM
+
+Un **Contatto CRM** è una persona che il consulente gestisce attivamente come cliente potenziale o in fase di onboarding, senza dargli credenziali di accesso alla piattaforma. Si differenzia dai clienti normali per tre caratteristiche fondamentali:
+
+| Caratteristica | Cliente Normale | Contatto CRM |
+|---|---|---|
+| Può fare login | Sì | No (bloccato a livello server) |
+| Consuma una licenza | Sì | No |
+| Ha una password | Sì | No (hash casuale non indovinabile) |
+| Può ricevere link di pagamento Stripe | No | Sì |
+| Si converte in cliente full dopo il pagamento | N/A | Automaticamente |
+
+Il flusso tipico è: **crei il contatto CRM → generi il link pagamento → il cliente paga → il sistema lo converte in cliente full automaticamente**.
+
+---
+
+## 25.2 Creare un Contatto CRM
+
+1. Vai su `/consultant/clients`
+2. Clicca **"Nuovo Cliente"**
+3. Nel selettore tipo, scegli **"CRM"** (opzione con bordo ambra, etichetta "Senza accesso")
+4. Compila **nome** ed **email** — il campo password non compare
+5. Il campo **telefono** è opzionale ma consigliato
+6. Clicca **"Crea Contatto CRM"**
+
+Dopo la creazione:
+- Il contatto appare nella lista con un **badge ambra "CRM"** accanto al nome
+- Il contatore licenze nella barra in alto **non aumenta**
+- Se il contatto tenta il login riceve: *"Questo account non ha credenziali di accesso. Contatta il tuo consulente."*
+
+---
+
+## 25.3 Il Badge CRM e il Filtro
+
+Nella lista clienti i contatti CRM sono identificabili visivamente:
+- **Bordo sinistro ambra** nella riga della tabella
+- **Avatar con gradiente ambra-arancio**
+- **Badge "CRM"** accanto al nome (sia in vista mobile che desktop)
+
+Per visualizzare solo i contatti CRM usa il filtro **"CRM"** nella barra filtri in cima alla lista. Il numero tra parentesi indica quanti contatti CRM sono presenti.
+
+---
+
+## 25.4 Generare un Link di Pagamento Stripe
+
+Il link di pagamento permette al consulente di inviare al contatto CRM un link Stripe personalizzato. Quando il contatto paga, il suo account si attiva automaticamente.
+
+**Prerequisito**: Stripe Connect deve essere configurato e l'onboarding completato (vai su Impostazioni → Stripe Connect).
+
+**Passaggi:**
+1. Nel dropdown azioni del contatto CRM (icona tre puntini) → clicca **"Genera Link Pagamento"**
+2. Scegli il **livello**: Silver (2) o Gold (3)
+3. Scegli il **periodo di fatturazione**: mensile, annuale, pagamento unico annuale, pagamento unico
+4. Clicca il bottone per generare
+5. Apparirà il link Stripe con il bottone **"Copia"**
+6. Incolla il link e mandalo al cliente (email, WhatsApp, ecc.)
+
+**Se Stripe Connect non è collegato**: appare un avviso con link diretto alla pagina di configurazione. Il link non può essere generato finché l'onboarding non è completato.
+
+Il link generato è una checkout Stripe pre-compilata con email e nome del cliente. Il cliente non deve inserire i suoi dati — trova già tutto compilato.
+
+---
+
+## 25.5 Cosa Succede Dopo il Pagamento
+
+Quando il contatto completa il pagamento tramite il link Stripe, il sistema in automatico:
+
+1. **Intercetta l'evento** `checkout.session.completed` dal webhook Stripe
+2. **Identifica il contatto CRM** tramite i metadata `crmClientId` e `autoProvision` allegati al checkout
+3. **Genera una password temporanea** di 12 caratteri alfanumerici
+4. **Aggiorna il record utente**:
+   - `is_crm_only` → `false` (ora può fare login)
+   - `password` → hash della password temporanea
+   - `must_change_password` → `true` (al primo login verrà chiesto di cambiarla)
+   - `temp_password` → password in chiaro salvata temporaneamente
+5. **Crea la subscription** in `client_level_subscriptions` con livello e date corrette
+6. Il cliente può ora fare login con la propria email e la password temporanea
+
+La password temporanea è consultabile nel database nel campo `temp_password` del record utente, finché il cliente non la cambia al primo accesso.
+
+---
+
+## 25.6 Come Testare (Step by Step)
+
+### Test 1 — Creare un contatto CRM
+1. Login come consulente → `/consultant/clients`
+2. Clicca "Nuovo Cliente" → seleziona **"CRM"** (bordo ambra)
+3. Inserisci nome + email — verifica che il campo password **non appaia**
+4. Clicca "Crea Contatto CRM"
+5. **Verifica**: il contatto appare con badge ambra "CRM"
+6. **Verifica**: il contatore licenze non è aumentato
+7. **Verifica accesso bloccato**: tenta il login con quell'email da una finestra privata → deve ricevere errore 403
+
+### Test 2 — Filtro CRM
+1. Nella barra filtri → clicca **"CRM"**
+2. Verifica che compaiano solo i contatti CRM
+3. Clicca **"Clienti"** → verifica che i CRM non compaiano nel conteggio
+
+### Test 3 — Generare il link di pagamento
+1. Nel dropdown del contatto CRM → **"Genera Link Pagamento"**
+2. Se Stripe Connect **non configurato**: deve apparire avviso con link alle impostazioni (nessun crash)
+3. Se Stripe Connect **è configurato**: scegli livello e periodo → clicca genera
+4. Verifica che appaia un URL Stripe con bottone "Copia"
+5. Apri il link in una finestra privata: deve mostrare la checkout Stripe con email del cliente già compilata
+
+### Test 4 — Conversione dopo il pagamento (richiede Stripe CLI o pagamento reale)
+**Con Stripe CLI:**
+```bash
+# Avvia il listener in locale
+stripe listen --forward-to localhost:5000/api/stripe/webhook
+
+# In altro terminale, simula il pagamento completato
+stripe trigger checkout.session.completed
+```
+
+**Con pagamento reale di test:**
+- Usa il link generato al Test 3
+- Completa il pagamento con la carta di test Stripe: `4242 4242 4242 4242` (qualsiasi data futura, qualsiasi CVC)
+
+**Verifiche nel DB dopo il pagamento:**
+```sql
+-- Verifica conversione utente
+SELECT id, email, is_crm_only, must_change_password, temp_password
+FROM users
+WHERE email = 'email-del-contatto-crm@esempio.com';
+-- Atteso: is_crm_only=false, must_change_password=true, temp_password valorizzata
+
+-- Verifica subscription creata
+SELECT client_email, level, status, start_date
+FROM client_level_subscriptions
+WHERE client_email = 'email-del-contatto-crm@esempio.com';
+-- Atteso: status=active, livello corretto
+```
+
+**Verifica login**: dopo la conversione il cliente deve poter fare login con la propria email e la `temp_password` mostrata nel DB.
+
+---
+
+## 25.7 Riepilogo Tecnico del Flusso
+
+```
+Consulente crea contatto CRM
+        ↓
+  is_crm_only = true
+  password = hash(UUID casuale)
+  licenze: non conteggiate
+        ↓
+Consulente genera link pagamento
+        ↓
+  POST /api/clients/:id/payment-link
+  Stripe Checkout Session creata con metadata:
+    crmClientId = <id contatto>
+    autoProvision = "true"
+        ↓
+Cliente paga tramite link Stripe
+        ↓
+Webhook checkout.session.completed
+        ↓
+  Trova utente con crmClientId
+  Genera tempPassword (12 char)
+  is_crm_only = false
+  password = hash(tempPassword)
+  mustChangePassword = true
+  Crea subscription in client_level_subscriptions
+        ↓
+Cliente fa login → cambia password al primo accesso
+```
+
+---
+
 # FINE DEL MANUALE
 
-**Versione:** 3.1 Espansa – Funzionalità Avanzate (Hunter, Lead Scraper, Venditori Autonomi)
+**Versione:** 3.2 – Aggiunto Capitolo 25: Clienti CRM e Link di Pagamento Stripe
 **Data:** Marzo 2026
 **Autore:** Sistema AI + Team Piattaforma
 
