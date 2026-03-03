@@ -155,6 +155,7 @@ export const users = pgTable("users", {
   revenueSharePercentage: integer("revenue_share_percentage").default(50), // Percentage that goes to consultant (default 50%)
 
   isEmployee: boolean("is_employee").default(false), // true = dipendente/collaboratore del consulente
+  isCrmOnly: boolean("is_crm_only").default(false), // true = contatto CRM senza credenziali, non consuma licenze
   departmentId: varchar("department_id", { length: 255 }), // Reference to departments table for employees
 
   memoryGenerationHour: integer("memory_generation_hour").default(3), // Hour (0-23) for automatic memory generation, defaults to 3 AM

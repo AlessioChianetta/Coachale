@@ -417,6 +417,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserByEmail(emailLower);
       
       if (user) {
+        // Block CRM-only users from logging in
+        if (user.isCrmOnly) {
+          return res.status(403).json({ message: "Questo account non ha credenziali di accesso. Contatta il tuo consulente per attivare l'accesso." });
+        }
+
         // Verify password
         const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
         if (!isValidPassword) {
@@ -3408,44 +3413,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new client (consultant only)
   app.post("/api/clients", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const { firstName, lastName, email, password, isEmployee = false } = req.body;
+      const { firstName, lastName, email, password, isEmployee = false, isCrmOnly = false, phoneNumber } = req.body;
       const consultantId = req.user!.id;
 
-      // Check license availability - BOTH clients and employees count against license total
-      const licenseResult = await db.execute(sql`
-        SELECT employee_total, employee_used FROM consultant_licenses
-        WHERE consultant_id = ${consultantId}
-      `);
+      if (!isCrmOnly) {
+        // Check license availability - BOTH clients and employees count against license total (CRM contacts are exempt)
+        const licenseResult = await db.execute(sql`
+          SELECT employee_total, employee_used FROM consultant_licenses
+          WHERE consultant_id = ${consultantId}
+        `);
 
-      let licenseTotal = 5;
-      let licenseUsed = 0;
+        let licenseTotal = 5;
+        let licenseUsed = 0;
 
-      if (licenseResult.rows.length > 0) {
-        const lic = licenseResult.rows[0] as any;
-        licenseTotal = Math.max(lic.employee_total || 0, 5);
-        licenseUsed = lic.employee_used || 0;
-      }
+        if (licenseResult.rows.length > 0) {
+          const lic = licenseResult.rows[0] as any;
+          licenseTotal = Math.max(lic.employee_total || 0, 5);
+          licenseUsed = lic.employee_used || 0;
+        }
 
-      const actualCountResult = await db.execute(sql`
-        SELECT COUNT(*)::int as total FROM users u
-        WHERE u.consultant_id = ${consultantId} 
-        AND u.is_active = true
-        AND u.id NOT IN (
-          SELECT cls.client_id FROM client_level_subscriptions cls
-          WHERE cls.consultant_id = ${consultantId}
-          AND cls.level = '3' AND cls.status = 'active'
-          AND cls.client_id IS NOT NULL
-        )
-      `);
-      const actualUsed = (actualCountResult.rows[0] as any)?.total || 0;
+        const actualCountResult = await db.execute(sql`
+          SELECT COUNT(*)::int as total FROM users u
+          WHERE u.consultant_id = ${consultantId} 
+          AND u.is_active = true
+          AND u.is_crm_only = false
+          AND u.id NOT IN (
+            SELECT cls.client_id FROM client_level_subscriptions cls
+            WHERE cls.consultant_id = ${consultantId}
+            AND cls.level = '3' AND cls.status = 'active'
+            AND cls.client_id IS NOT NULL
+          )
+        `);
+        const actualUsed = (actualCountResult.rows[0] as any)?.total || 0;
 
-      if (actualUsed >= licenseTotal) {
-        return res.status(403).json({ 
-          message: `Hai raggiunto il limite di ${licenseTotal} licenze. Acquista un pacchetto aggiuntivo per aggiungere altri utenti.`,
-          licenseLimit: true,
-          total: licenseTotal,
-          used: actualUsed
-        });
+        if (actualUsed >= licenseTotal) {
+          return res.status(403).json({ 
+            message: `Hai raggiunto il limite di ${licenseTotal} licenze. Acquista un pacchetto aggiuntivo per aggiungere altri utenti.`,
+            licenseLimit: true,
+            total: licenseTotal,
+            used: actualUsed
+          });
+        }
       }
 
       // Validate required fields for email (always needed)
@@ -3517,20 +3525,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // For NEW users: validate all required fields
-      if (!firstName || !lastName || !password) {
-        return res.status(400).json({ message: "Nome, cognome e password sono obbligatori" });
+      // For NEW users: validate required fields
+      if (!firstName || !lastName) {
+        return res.status(400).json({ message: "Nome e cognome sono obbligatori" });
       }
 
-      if (password.length < 6) {
-        return res.status(400).json({ message: "La password deve essere di almeno 6 caratteri" });
+      if (!isCrmOnly) {
+        if (!password) {
+          return res.status(400).json({ message: "La password è obbligatoria" });
+        }
+        if (password.length < 6) {
+          return res.status(400).json({ message: "La password deve essere di almeno 6 caratteri" });
+        }
       }
 
       // Generate username from email
       const username = email.split('@')[0] + '_' + Date.now().toString().slice(-4);
 
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, 10);
+      // Hash password (for CRM-only, generate a random unguessable hash)
+      const hashedPassword = isCrmOnly
+        ? await bcrypt.hash(crypto.randomUUID() + crypto.randomUUID(), 10)
+        : await bcrypt.hash(password, 10);
 
       // Create client user
       const user = await storage.createUser({
@@ -3542,10 +3557,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: "client",
         consultantId: consultantId,
         isEmployee: isEmployee,
+        isCrmOnly: isCrmOnly,
         departmentId: isEmployee ? (req.body.departmentId || null) : null,
       });
 
-      // Update license used count
+      // Update license used count (CRM-only users excluded)
       try {
         await db.execute(sql`
           UPDATE consultant_licenses 
@@ -3553,6 +3569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             SELECT COUNT(*)::int FROM users u
             WHERE u.consultant_id = ${consultantId} 
             AND u.is_active = true
+            AND u.is_crm_only = false
             AND u.id NOT IN (
               SELECT cls.client_id FROM client_level_subscriptions cls
               WHERE cls.consultant_id = ${consultantId}

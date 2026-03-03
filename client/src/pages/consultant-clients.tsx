@@ -75,7 +75,7 @@ export default function ConsultantClientsPage() {
   const [editingClient, setEditingClient] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
-  const [typeFilter, setTypeFilter] = useState<"all" | "clients" | "employees">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "clients" | "employees" | "crm">("all");
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
   const [newClientForm, setNewClientForm] = useState({
     firstName: '',
@@ -83,8 +83,14 @@ export default function ConsultantClientsPage() {
     email: '',
     password: '',
     isEmployee: false,
-    departmentId: ''
+    isCrmOnly: false,
+    departmentId: '',
+    phoneNumber: '',
   });
+  const [paymentLinkDialog, setPaymentLinkDialog] = useState<{ open: boolean; clientId: string; clientName: string; clientEmail: string } | null>(null);
+  const [paymentLinkForm, setPaymentLinkForm] = useState({ level: "3" as "2" | "3", billingPeriod: "monthly" });
+  const [generatedPaymentLink, setGeneratedPaymentLink] = useState<string | null>(null);
+  const [isGeneratingPaymentLink, setIsGeneratingPaymentLink] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
   const [editForm, setEditForm] = useState({
     firstName: '',
@@ -346,23 +352,60 @@ export default function ConsultantClientsPage() {
   });
 
   const handleCreateClient = () => {
-    if (!newClientForm.firstName || !newClientForm.lastName || !newClientForm.email || !newClientForm.password) {
+    if (!newClientForm.firstName || !newClientForm.lastName || !newClientForm.email) {
       toast({
         title: "Campi obbligatori",
-        description: "Compila tutti i campi per creare il cliente",
+        description: "Compila nome, cognome e email",
         variant: "destructive",
       });
       return;
     }
-    if (newClientForm.password.length < 6) {
-      toast({
-        title: "Password troppo corta",
-        description: "La password deve essere di almeno 6 caratteri",
-        variant: "destructive",
-      });
-      return;
+    if (!newClientForm.isCrmOnly) {
+      if (!newClientForm.password) {
+        toast({
+          title: "Password obbligatoria",
+          description: "La password è richiesta per i clienti con accesso",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (newClientForm.password.length < 6) {
+        toast({
+          title: "Password troppo corta",
+          description: "La password deve essere di almeno 6 caratteri",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     createClientMutation.mutate(newClientForm);
+  };
+
+  const handleGeneratePaymentLink = async () => {
+    if (!paymentLinkDialog) return;
+    setIsGeneratingPaymentLink(true);
+    setGeneratedPaymentLink(null);
+    try {
+      const res = await fetch(`/api/clients/${paymentLinkDialog.clientId}/payment-link`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(paymentLinkForm),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Errore", description: data.error || "Errore nella generazione", variant: "destructive" });
+        if (data.stripeNotConnected) {
+          toast({ title: "Stripe Connect", description: "Vai su Chiavi API per collegare Stripe Connect", variant: "destructive" });
+        }
+      } else {
+        setGeneratedPaymentLink(data.url);
+        toast({ title: "Link generato!", description: "Copia e invia al cliente" });
+      }
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setIsGeneratingPaymentLink(false);
+    }
   };
 
   // Fetch clients
@@ -522,8 +565,9 @@ export default function ConsultantClientsPage() {
 
     const matchesType =
       typeFilter === "all" ? true :
-      typeFilter === "employees" ? !!client.isEmployee :
-      !client.isEmployee;
+      typeFilter === "crm" ? !!client.isCrmOnly :
+      typeFilter === "employees" ? (!!client.isEmployee && !client.isCrmOnly) :
+      (!client.isEmployee && !client.isCrmOnly);
     
     return matchesSearch && matchesStatus && matchesType;
   });
@@ -1624,19 +1668,22 @@ export default function ConsultantClientsPage() {
                   <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
                     {([
                       { value: 'all', label: 'Tutti', count: clients.length },
-                      { value: 'clients', label: 'Clienti', count: clients.filter((c: any) => !c.isEmployee).length },
-                      { value: 'employees', label: 'Dip.', count: clients.filter((c: any) => c.isEmployee).length },
+                      { value: 'clients', label: 'Clienti', count: clients.filter((c: any) => !c.isEmployee && !c.isCrmOnly).length },
+                      { value: 'crm', label: 'CRM', count: clients.filter((c: any) => c.isCrmOnly).length },
+                      { value: 'employees', label: 'Dip.', count: clients.filter((c: any) => c.isEmployee && !c.isCrmOnly).length },
                     ] as const).map(opt => (
                       <button
                         key={opt.value}
-                        onClick={() => { setTypeFilter(opt.value); setCurrentPage(1); }}
+                        onClick={() => { setTypeFilter(opt.value as any); setCurrentPage(1); }}
                         className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-all ${
                           typeFilter === opt.value
                             ? opt.value === 'employees'
                               ? 'bg-violet-600 text-white shadow-sm'
-                              : opt.value === 'clients'
-                                ? 'bg-cyan-600 text-white shadow-sm'
-                                : 'bg-foreground text-background shadow-sm'
+                              : opt.value === 'crm'
+                                ? 'bg-amber-600 text-white shadow-sm'
+                                : opt.value === 'clients'
+                                  ? 'bg-cyan-600 text-white shadow-sm'
+                                  : 'bg-foreground text-background shadow-sm'
                             : 'text-muted-foreground hover:bg-muted'
                         }`}
                       >
@@ -1690,7 +1737,7 @@ export default function ConsultantClientsPage() {
                         <div className={`w-2 h-2 rounded-full flex-shrink-0 ${client.isActive !== false ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
                         <Avatar className="w-9 h-9 flex-shrink-0">
                           <AvatarImage src={client.avatar} />
-                          <AvatarFallback className={`${client.isEmployee ? 'bg-gradient-to-br from-violet-400 to-purple-500' : 'bg-gradient-to-br from-cyan-400 to-teal-500'} text-white font-medium text-[10px]`}>
+                          <AvatarFallback className={`${client.isCrmOnly ? 'bg-gradient-to-br from-amber-400 to-orange-500' : client.isEmployee ? 'bg-gradient-to-br from-violet-400 to-purple-500' : 'bg-gradient-to-br from-cyan-400 to-teal-500'} text-white font-medium text-[10px]`}>
                             {client.firstName?.[0]}{client.lastName?.[0]}
                           </AvatarFallback>
                         </Avatar>
@@ -1699,11 +1746,15 @@ export default function ConsultantClientsPage() {
                             <span className="font-semibold text-sm text-foreground truncate">
                               {client.firstName} {client.lastName}
                             </span>
-                            {client.isEmployee && (
+                            {client.isCrmOnly ? (
+                              <Badge className="text-[9px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200 flex-shrink-0">
+                                CRM
+                              </Badge>
+                            ) : client.isEmployee ? (
                               <Badge className="text-[9px] px-1.5 py-0 bg-violet-100 text-violet-700 border-violet-200 flex-shrink-0">
                                 Dip.
                               </Badge>
-                            )}
+                            ) : null}
                           </div>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
                             <span>{client._completedCount}/{client._assignmentsCount} esercizi</span>
@@ -1729,6 +1780,18 @@ export default function ConsultantClientsPage() {
                               <Edit className="w-4 h-4 mr-2" />
                               Modifica
                             </DropdownMenuItem>
+                            {client.isCrmOnly && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setPaymentLinkDialog({ open: true, clientId: client.id, clientName: `${client.firstName} ${client.lastName}`, clientEmail: client.email });
+                                  setGeneratedPaymentLink(null);
+                                }}
+                                className="text-amber-600 focus:text-amber-700"
+                              >
+                                <Zap className="w-4 h-4 mr-2" />
+                                Genera Link Pagamento
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               onClick={async () => {
                                 const checked = client.isActive === false;
@@ -1850,7 +1913,7 @@ export default function ConsultantClientsPage() {
                         {sortedAndPaginatedClients.map((client: any) => (
                           <tr 
                             key={client.id}
-                            className={`transition-colors group ${client.isEmployee ? 'hover:bg-violet-50/50 border-l-2 border-l-violet-300' : 'hover:bg-cyan-50/50 border-l-2 border-l-cyan-300'}`}
+                            className={`transition-colors group ${client.isCrmOnly ? 'hover:bg-amber-50/50 border-l-2 border-l-amber-300' : client.isEmployee ? 'hover:bg-violet-50/50 border-l-2 border-l-violet-300' : 'hover:bg-cyan-50/50 border-l-2 border-l-cyan-300'}`}
                           >
                             <td className="px-3 py-2.5">
                               <Checkbox 
@@ -1867,7 +1930,7 @@ export default function ConsultantClientsPage() {
                               <div className="flex items-center gap-2">
                                 <Avatar className="w-7 h-7 flex-shrink-0">
                                   <AvatarImage src={client.avatar} />
-                                  <AvatarFallback className={`${client.isEmployee ? 'bg-gradient-to-br from-violet-400 to-purple-500' : 'bg-gradient-to-br from-cyan-400 to-teal-500'} text-white font-medium text-[10px]`}>
+                                  <AvatarFallback className={`${client.isCrmOnly ? 'bg-gradient-to-br from-amber-400 to-orange-500' : client.isEmployee ? 'bg-gradient-to-br from-violet-400 to-purple-500' : 'bg-gradient-to-br from-cyan-400 to-teal-500'} text-white font-medium text-[10px]`}>
                                     {client.firstName?.[0]}{client.lastName?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
@@ -1876,7 +1939,12 @@ export default function ConsultantClientsPage() {
                                     <span className="font-medium text-sm text-foreground truncate">
                                       {client.firstName} {client.lastName}
                                     </span>
-                                    {client.isEmployee ? (
+                                    {client.isCrmOnly ? (
+                                      <Badge className="text-[9px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200 flex-shrink-0">
+                                        <Target className="w-2.5 h-2.5 mr-0.5" />
+                                        CRM
+                                      </Badge>
+                                    ) : client.isEmployee ? (
                                       <Badge className="text-[9px] px-1.5 py-0 bg-violet-100 text-violet-700 border-violet-200 flex-shrink-0">
                                         <UserCog className="w-2.5 h-2.5 mr-0.5" />
                                         Dipendente
@@ -1985,6 +2053,18 @@ export default function ConsultantClientsPage() {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-52">
+                                    {client.isCrmOnly && (
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setPaymentLinkDialog({ open: true, clientId: client.id, clientName: `${client.firstName} ${client.lastName}`, clientEmail: client.email });
+                                          setGeneratedPaymentLink(null);
+                                        }}
+                                        className="text-amber-600 focus:text-amber-700"
+                                      >
+                                        <Zap className="w-4 h-4 mr-2" />
+                                        Genera Link Pagamento
+                                      </DropdownMenuItem>
+                                    )}
                                     {client.role === 'consultant' ? (
                                       <DropdownMenuItem 
                                         onClick={() => removeConsultantProfileMutation.mutate(client.id)}
@@ -2119,41 +2199,54 @@ export default function ConsultantClientsPage() {
         <DialogContent className="max-w-md bg-card/95 backdrop-blur-sm border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
-              <div className={`p-2 rounded-lg ${newClientForm.isEmployee ? 'bg-violet-100' : 'bg-emerald-100'}`}>
-                {newClientForm.isEmployee ? (
+              <div className={`p-2 rounded-lg ${newClientForm.isCrmOnly ? 'bg-amber-100' : newClientForm.isEmployee ? 'bg-violet-100' : 'bg-emerald-100'}`}>
+                {newClientForm.isCrmOnly ? (
+                  <Target className="h-5 w-5 text-amber-600" />
+                ) : newClientForm.isEmployee ? (
                   <Briefcase className="h-5 w-5 text-violet-600" />
                 ) : (
                   <UserPlus className="h-5 w-5 text-emerald-600" />
                 )}
               </div>
-              {newClientForm.isEmployee ? 'Nuovo Dipendente' : 'Nuovo Cliente'}
+              {newClientForm.isCrmOnly ? 'Nuovo Contatto CRM' : newClientForm.isEmployee ? 'Nuovo Dipendente' : 'Nuovo Cliente'}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              {newClientForm.isEmployee 
-                ? 'Aggiungi un collaboratore o dipendente al tuo team' 
-                : 'Crea un nuovo account cliente associato al tuo profilo consulente'}
+              {newClientForm.isCrmOnly
+                ? 'Aggiungi un contatto da gestire senza credenziali di accesso'
+                : newClientForm.isEmployee 
+                  ? 'Aggiungi un collaboratore o dipendente al tuo team' 
+                  : 'Crea un nuovo account cliente associato al tuo profilo consulente'}
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
-            <div className={cn(
-              "rounded-xl p-3 border text-sm",
-              (licenseData.employeeUsed >= licenseData.employeeTotal)
-                ? "bg-red-50 border-red-200 text-red-700"
-                : "bg-blue-50 border-blue-200 text-blue-700"
-            )}>
-              {licenseData.employeeUsed >= licenseData.employeeTotal ? (
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>Hai raggiunto il limite di <strong>{licenseData.employeeTotal}</strong> licenze. Acquista un pacchetto aggiuntivo dalla sezione licenze.</span>
-                </div>
-              ) : (
+            {newClientForm.isCrmOnly ? (
+              <div className="rounded-xl p-3 border text-sm bg-amber-50 border-amber-200 text-amber-700">
                 <div className="flex items-center gap-2">
                   <Info className="h-4 w-4 shrink-0" />
-                  <span>Licenze disponibili: <strong>{licenseData.employeeTotal - licenseData.employeeUsed}</strong> su {licenseData.employeeTotal} totali</span>
+                  <span>I contatti CRM non consumano licenze e non possono accedere alla piattaforma.</span>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className={cn(
+                "rounded-xl p-3 border text-sm",
+                (licenseData.employeeUsed >= licenseData.employeeTotal)
+                  ? "bg-red-50 border-red-200 text-red-700"
+                  : "bg-blue-50 border-blue-200 text-blue-700"
+              )}>
+                {licenseData.employeeUsed >= licenseData.employeeTotal ? (
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>Hai raggiunto il limite di <strong>{licenseData.employeeTotal}</strong> licenze. Acquista un pacchetto aggiuntivo dalla sezione licenze.</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Info className="h-4 w-4 shrink-0" />
+                    <span>Licenze disponibili: <strong>{licenseData.employeeTotal - licenseData.employeeUsed}</strong> su {licenseData.employeeTotal} totali</span>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="newFirstName" className="text-right text-sm font-medium">
                 Nome *
@@ -2194,17 +2287,33 @@ export default function ConsultantClientsPage() {
               />
             </div>
             
+            {!newClientForm.isCrmOnly && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="newPassword" className="text-right text-sm font-medium">
+                  Password *
+                </Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newClientForm.password}
+                  onChange={(e) => setNewClientForm(prev => ({...prev, password: e.target.value}))}
+                  className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
+                  placeholder="Minimo 6 caratteri"
+                />
+              </div>
+            )}
+
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="newPassword" className="text-right text-sm font-medium">
-                Password *
+              <Label htmlFor="newPhone" className="text-right text-sm font-medium">
+                Telefono
               </Label>
               <Input
-                id="newPassword"
-                type="password"
-                value={newClientForm.password}
-                onChange={(e) => setNewClientForm(prev => ({...prev, password: e.target.value}))}
+                id="newPhone"
+                type="tel"
+                value={newClientForm.phoneNumber}
+                onChange={(e) => setNewClientForm(prev => ({...prev, phoneNumber: e.target.value}))}
                 className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
-                placeholder="Minimo 6 caratteri"
+                placeholder="+39 333 1234567"
               />
             </div>
             
@@ -2212,33 +2321,47 @@ export default function ConsultantClientsPage() {
               <Label className="text-right text-sm font-medium">
                 Tipo
               </Label>
-              <div className="col-span-3 flex gap-4">
-                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${!newClientForm.isEmployee ? 'border-emerald-500 bg-emerald-50' : 'border-border hover:border-border'}`}>
+              <div className="col-span-3 flex gap-2 flex-wrap">
+                <label className={`flex items-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all flex-1 min-w-[100px] ${!newClientForm.isEmployee && !newClientForm.isCrmOnly ? 'border-emerald-500 bg-emerald-50' : 'border-border hover:border-border'}`}>
                   <input
                     type="radio"
                     name="userType"
-                    checked={!newClientForm.isEmployee}
-                    onChange={() => setNewClientForm(prev => ({...prev, isEmployee: false}))}
+                    checked={!newClientForm.isEmployee && !newClientForm.isCrmOnly}
+                    onChange={() => setNewClientForm(prev => ({...prev, isEmployee: false, isCrmOnly: false}))}
                     className="sr-only"
                   />
                   <Users className="h-4 w-4 text-emerald-600" />
                   <div>
-                    <span className="text-sm font-medium">Cliente</span>
-                    <span className="text-xs text-muted-foreground block mt-0.5">Accede come utente</span>
+                    <span className="text-xs font-medium">Cliente</span>
+                    <span className="text-[10px] text-muted-foreground block">Con accesso</span>
                   </div>
                 </label>
-                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${newClientForm.isEmployee ? 'border-violet-500 bg-violet-50' : 'border-border hover:border-border'}`}>
+                <label className={`flex items-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all flex-1 min-w-[100px] ${newClientForm.isCrmOnly ? 'border-amber-500 bg-amber-50' : 'border-border hover:border-border'}`}>
                   <input
                     type="radio"
                     name="userType"
-                    checked={newClientForm.isEmployee}
-                    onChange={() => setNewClientForm(prev => ({...prev, isEmployee: true}))}
+                    checked={newClientForm.isCrmOnly}
+                    onChange={() => setNewClientForm(prev => ({...prev, isEmployee: false, isCrmOnly: true, password: ''}))}
+                    className="sr-only"
+                  />
+                  <Target className="h-4 w-4 text-amber-600" />
+                  <div>
+                    <span className="text-xs font-medium">CRM</span>
+                    <span className="text-[10px] text-muted-foreground block">Senza accesso</span>
+                  </div>
+                </label>
+                <label className={`flex items-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all flex-1 min-w-[100px] ${newClientForm.isEmployee && !newClientForm.isCrmOnly ? 'border-violet-500 bg-violet-50' : 'border-border hover:border-border'}`}>
+                  <input
+                    type="radio"
+                    name="userType"
+                    checked={newClientForm.isEmployee && !newClientForm.isCrmOnly}
+                    onChange={() => setNewClientForm(prev => ({...prev, isEmployee: true, isCrmOnly: false}))}
                     className="sr-only"
                   />
                   <Briefcase className="h-4 w-4 text-violet-600" />
                   <div>
-                    <span className="text-sm font-medium">Dipendente</span>
-                    <span className="text-xs text-muted-foreground block mt-0.5">Membro del team</span>
+                    <span className="text-xs font-medium">Dipendente</span>
+                    <span className="text-[10px] text-muted-foreground block">Team</span>
                   </div>
                 </label>
               </div>
@@ -2273,8 +2396,10 @@ export default function ConsultantClientsPage() {
             </Button>
             <Button 
               onClick={handleCreateClient}
-              disabled={createClientMutation.isPending || (licenseData.employeeUsed >= licenseData.employeeTotal)}
-              className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
+              disabled={createClientMutation.isPending || (!newClientForm.isCrmOnly && licenseData.employeeUsed >= licenseData.employeeTotal)}
+              className={newClientForm.isCrmOnly 
+                ? "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+                : "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"}
             >
               {createClientMutation.isPending ? (
                 <>
@@ -2284,7 +2409,7 @@ export default function ConsultantClientsPage() {
               ) : (
                 <>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  {newClientForm.isEmployee ? "Crea Dipendente" : "Crea Cliente"}
+                  {newClientForm.isCrmOnly ? "Crea Contatto CRM" : newClientForm.isEmployee ? "Crea Dipendente" : "Crea Cliente"}
                 </>
               )}
             </Button>
@@ -2571,6 +2696,108 @@ export default function ConsultantClientsPage() {
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvataggio...</>
               ) : (
                 <>{editingDepartment ? 'Salva Modifiche' : 'Crea Reparto'}</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Link Dialog for CRM clients */}
+      <Dialog open={!!paymentLinkDialog?.open} onOpenChange={(open) => { if (!open) setPaymentLinkDialog(null); }}>
+        <DialogContent className="max-w-md bg-card/95 backdrop-blur-sm border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <Zap className="h-5 w-5 text-amber-600" />
+              </div>
+              Link di Pagamento
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Genera un link per {paymentLinkDialog?.clientName} ({paymentLinkDialog?.clientEmail})
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right text-sm font-medium">Livello</Label>
+              <div className="col-span-3 flex gap-3">
+                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all flex-1 ${paymentLinkForm.level === "2" ? 'border-cyan-500 bg-cyan-50' : 'border-border hover:border-border'}`}>
+                  <input type="radio" name="plLevel" checked={paymentLinkForm.level === "2"} onChange={() => setPaymentLinkForm(prev => ({...prev, level: "2"}))} className="sr-only" />
+                  <div>
+                    <span className="text-sm font-medium">Silver</span>
+                    <span className="text-xs text-muted-foreground block">Livello 2</span>
+                  </div>
+                </label>
+                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all flex-1 ${paymentLinkForm.level === "3" ? 'border-amber-500 bg-amber-50' : 'border-border hover:border-border'}`}>
+                  <input type="radio" name="plLevel" checked={paymentLinkForm.level === "3"} onChange={() => setPaymentLinkForm(prev => ({...prev, level: "3"}))} className="sr-only" />
+                  <div>
+                    <span className="text-sm font-medium">Gold</span>
+                    <span className="text-xs text-muted-foreground block">Livello 3</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right text-sm font-medium">Periodo</Label>
+              <select
+                value={paymentLinkForm.billingPeriod}
+                onChange={(e) => setPaymentLinkForm(prev => ({...prev, billingPeriod: e.target.value}))}
+                className="col-span-3 px-3 py-2 text-sm border border-border rounded-md bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              >
+                <option value="monthly">Mensile</option>
+                <option value="yearly">Annuale (ricorrente)</option>
+                <option value="annual_onetime">Annuale (unico)</option>
+              </select>
+            </div>
+
+            {generatedPaymentLink && (
+              <div className="rounded-xl p-3 border border-emerald-200 bg-emerald-50">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-600" />
+                  <span className="text-sm font-medium text-emerald-700">Link generato</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={generatedPaymentLink}
+                    readOnly
+                    className="text-xs bg-white border-emerald-200"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-emerald-300 text-emerald-700 hover:bg-emerald-100 flex-shrink-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedPaymentLink);
+                      toast({ title: "Copiato!", description: "Link copiato negli appunti" });
+                    }}
+                  >
+                    Copia
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-3">
+            <Button variant="outline" onClick={() => setPaymentLinkDialog(null)} className="border-border hover:bg-muted/40">
+              Chiudi
+            </Button>
+            <Button
+              onClick={handleGeneratePaymentLink}
+              disabled={isGeneratingPaymentLink}
+              className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+            >
+              {isGeneratingPaymentLink ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generazione...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 mr-2" />
+                  Genera Link
+                </>
               )}
             </Button>
           </DialogFooter>

@@ -406,6 +406,139 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/clients/:clientId/payment-link", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const { clientId } = req.params;
+    const consultantId = req.user!.id;
+    const { level, billingPeriod = "monthly" } = req.body;
+
+    if (!level || !["2", "3"].includes(level)) {
+      return res.status(400).json({ error: "Livello non valido. Deve essere '2' (Silver) o '3' (Gold)" });
+    }
+
+    const [client] = await db.select().from(users).where(eq(users.id, clientId));
+    if (!client || client.consultantId !== consultantId) {
+      return res.status(404).json({ error: "Cliente non trovato" });
+    }
+    if (!client.isCrmOnly) {
+      return res.status(400).json({ error: "Questo cliente ha già le credenziali di accesso" });
+    }
+
+    const [consultant] = await db.select().from(users).where(eq(users.id, consultantId));
+    if (!consultant) {
+      return res.status(404).json({ error: "Consulente non trovato" });
+    }
+
+    const [license] = await db.select().from(consultantLicenses).where(eq(consultantLicenses.consultantId, consultantId));
+    if (!license?.stripeConnectAccountId) {
+      return res.status(400).json({ error: "Collega Stripe Connect per generare link di pagamento", stripeNotConnected: true });
+    }
+    if (!license.stripeConnectOnboarded) {
+      return res.status(400).json({ error: "Completa l'onboarding di Stripe Connect prima di generare link", stripeNotConnected: true });
+    }
+
+    const pricingConfig = consultant.pricingPageConfig as any;
+    const validBillingPeriods = ['monthly', 'yearly', 'annual_onetime', 'onetime'];
+    const validBillingPeriod = validBillingPeriods.includes(billingPeriod) ? billingPeriod : 'monthly';
+    const isOneTimePayment = validBillingPeriod === 'annual_onetime' || validBillingPeriod === 'onetime';
+
+    let price: number;
+    if (level === "2") {
+      if (validBillingPeriod === 'annual_onetime') price = pricingConfig?.level2AnnualOneTimePriceCents || 49000;
+      else if (validBillingPeriod === 'onetime') price = pricingConfig?.level2OneTimePriceCents || 98000;
+      else if (validBillingPeriod === 'yearly') price = pricingConfig?.level2YearlyPriceCents || 29900;
+      else price = pricingConfig?.level2MonthlyPriceCents || pricingConfig?.level2PriceCents || 2900;
+    } else {
+      if (validBillingPeriod === 'annual_onetime') price = pricingConfig?.level3AnnualOneTimePriceCents || 99000;
+      else if (validBillingPeriod === 'onetime') price = pricingConfig?.level3OneTimePriceCents || 198000;
+      else if (validBillingPeriod === 'yearly') price = pricingConfig?.level3YearlyPriceCents || 59900;
+      else price = pricingConfig?.level3MonthlyPriceCents || pricingConfig?.level3PriceCents || 5900;
+    }
+
+    const revenueSharePercentage = license.revenueSharePercentage || 50;
+    const applicationFeePercent = revenueSharePercentage;
+    const stripe = await getStripeInstance();
+
+    const baseUrl = process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "http://localhost:5000";
+
+    const consultantSlug = consultant.pricingPageSlug || consultantId;
+    const productName = level === "2"
+      ? (pricingConfig?.level2Name || "Licenza Argento")
+      : (pricingConfig?.level3Name || "Licenza Deluxe");
+
+    const commonMetadata = {
+      consultantId,
+      consultantSlug,
+      clientEmail: client.email,
+      clientName: `${client.firstName} ${client.lastName}`.trim(),
+      level,
+      billingPeriod: validBillingPeriod,
+      firstName: client.firstName || "",
+      lastName: client.lastName || "",
+      phone: client.phoneNumber || "",
+      crmClientId: clientId,
+      autoProvision: "true",
+    };
+
+    let session;
+    if (isOneTimePayment) {
+      const applicationFeeAmount = Math.round(price * applicationFeePercent / 100);
+      session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        payment_method_types: ["card"],
+        line_items: [{
+          price_data: {
+            currency: "eur",
+            product_data: { name: productName },
+            unit_amount: price,
+          },
+          quantity: 1,
+        }],
+        payment_intent_data: {
+          application_fee_amount: applicationFeeAmount,
+          transfer_data: { destination: license.stripeConnectAccountId },
+          metadata: commonMetadata,
+        },
+        customer_email: client.email,
+        metadata: commonMetadata,
+        success_url: `${baseUrl}/c/${consultantSlug}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/c/${consultantSlug}/pricing?canceled=true`,
+      });
+    } else {
+      session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        payment_method_types: ["card"],
+        line_items: [{
+          price_data: {
+            currency: "eur",
+            product_data: { name: productName },
+            unit_amount: price,
+            recurring: { interval: validBillingPeriod === 'yearly' ? 'year' : 'month' },
+          },
+          quantity: 1,
+        }],
+        subscription_data: {
+          application_fee_percent: applicationFeePercent,
+          transfer_data: { destination: license.stripeConnectAccountId },
+          metadata: commonMetadata,
+        },
+        customer_email: client.email,
+        metadata: commonMetadata,
+        success_url: `${baseUrl}/c/${consultantSlug}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/c/${consultantSlug}/pricing?canceled=true`,
+      });
+    }
+
+    console.log(`[CRM Payment Link] Generated for ${client.email} (Level ${level}, ${validBillingPeriod}) - Client: ${clientId}`);
+    res.json({ url: session.url, clientEmail: client.email });
+  } catch (error: any) {
+    console.error("[CRM Payment Link] Error:", error);
+    res.status(500).json({ error: error.message || "Errore nella generazione del link di pagamento" });
+  }
+});
+
 router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) => {
   try {
     const { slug, targetLevel } = req.body;
@@ -985,6 +1118,59 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
         
         if (!consultantId || !clientEmail) {
           console.error("[Stripe Webhook] Missing consultantId or clientEmail in checkout session");
+          break;
+        }
+
+        // CRM Client Conversion: if metadata has crmClientId, convert existing CRM user
+        if (metadata.crmClientId && metadata.autoProvision === "true") {
+          const crmClientId = metadata.crmClientId;
+          console.log(`[Stripe Webhook] CRM Client conversion for ${crmClientId} (${clientEmail})`);
+
+          const [crmClient] = await db.select().from(users).where(eq(users.id, crmClientId));
+          if (!crmClient || !crmClient.isCrmOnly) {
+            console.error(`[Stripe Webhook] CRM client not found or already converted: ${crmClientId}`);
+            break;
+          }
+
+          const tempPassword = generateRandomPassword(12);
+          const hashedPwd = await bcrypt.hash(tempPassword, 10);
+
+          await db.update(users).set({
+            isCrmOnly: false,
+            password: hashedPwd,
+            mustChangePassword: true,
+            tempPassword: tempPassword,
+          }).where(eq(users.id, crmClientId));
+
+          const stripeSubscriptionId2 = session.subscription || null;
+          const stripePaymentIntentId2 = session.payment_intent || null;
+          const isOneTimePurchase2 = billingPeriod === 'annual_onetime' || billingPeriod === 'onetime';
+
+          let endDate2: Date | null = null;
+          if (billingPeriod === 'annual_onetime') {
+            endDate2 = new Date();
+            endDate2.setFullYear(endDate2.getFullYear() + 1);
+          }
+
+          await db.insert(clientLevelSubscriptions).values({
+            consultantId,
+            clientId: crmClientId,
+            clientEmail,
+            clientName: `${crmClient.firstName} ${crmClient.lastName}`.trim(),
+            phone: crmClient.phoneNumber || null,
+            level: level as "2" | "3",
+            status: "active",
+            startDate: new Date(),
+            endDate: endDate2 || undefined,
+            stripeCustomerId: session.customer || null,
+            stripeSubscriptionId: isOneTimePurchase2 ? (stripePaymentIntentId2 || null) : (stripeSubscriptionId2 || null),
+            tempPassword: null,
+            passwordHash: hashedPwd,
+            paymentSource: "stripe_connect",
+            mustChangePassword: true,
+          });
+
+          console.log(`[Stripe Webhook] CRM Client ${crmClientId} converted successfully. Temp password generated.`);
           break;
         }
         
