@@ -1120,20 +1120,23 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     let firstMsgPromise: Promise<number | null> | null = null;
     let lastEditPromise: Promise<any> = Promise.resolve();
 
-    const MIN_EDIT_GAP_MS = 400;
-    let lastEditTime = 0;
-    let pendingEdit: NodeJS.Timeout | null = null;
+    const TICK_MS = 700;
+    const MAX_CHARS_PER_TICK = 40;
 
-    const flushEdit = () => {
+    const streamCallback = (chunk: string) => {
+      targetText += chunk;
+      chunkCount++;
+    };
+
+    const doRevealTick = () => {
       if (abortController.signal.aborted) return;
       if (revealedLen >= targetText.length) return;
-      pendingEdit = null;
 
-      revealedLen = targetText.length;
+      revealedLen = Math.min(revealedLen + MAX_CHARS_PER_TICK, targetText.length);
+
       const visibleText = targetText.substring(0, revealedLen);
       const displayText = visibleText.length > 4096 ? visibleText.substring(0, 4093) + '...' : visibleText;
 
-      lastEditTime = Date.now();
       if (!streamingMessageId && !firstMsgPromise) {
         firstMsgPromise = sendTelegramMessageWithId(botToken, chatId, displayText);
         firstMsgPromise.then(msgId => {
@@ -1147,20 +1150,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       }
     };
 
-    const streamCallback = (chunk: string) => {
-      targetText += chunk;
-      chunkCount++;
-      if (abortController.signal.aborted) return;
-
-      const now = Date.now();
-      const elapsed = now - lastEditTime;
-      if (elapsed >= MIN_EDIT_GAP_MS) {
-        if (pendingEdit) { clearTimeout(pendingEdit); pendingEdit = null; }
-        flushEdit();
-      } else if (!pendingEdit) {
-        pendingEdit = setTimeout(flushEdit, MIN_EDIT_GAP_MS - elapsed);
-      }
-    };
+    revealInterval = setInterval(doRevealTick, TICK_MS);
 
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
     console.log(`[TELEGRAM] Starting AI generation for chat ${chatId}, role ${aiRole} (streaming enabled)`);
@@ -1177,8 +1167,11 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     generationDone = true;
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
 
-    if (pendingEdit) { clearTimeout(pendingEdit); pendingEdit = null; }
-    if (revealedLen < targetText.length) flushEdit();
+    if (revealInterval) { clearInterval(revealInterval); revealInterval = null; }
+    while (revealedLen < targetText.length) {
+      doRevealTick();
+      await new Promise(r => setTimeout(r, 100));
+    }
     if (firstMsgPromise) await firstMsgPromise;
     await lastEditPromise;
 
@@ -1211,7 +1204,6 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       }
     }
   } finally {
-    if (pendingEdit) { clearTimeout(pendingEdit); pendingEdit = null; }
     if (revealInterval) { clearInterval(revealInterval); revealInterval = null; }
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
     activeGenerations.delete(bufferKey);
