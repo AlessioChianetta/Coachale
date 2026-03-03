@@ -1,0 +1,76 @@
+Aggiungere la possibilità di creare "Clienti CRM" nella pagina /consultant/clients — contatti che il consulente gestisce senza dargli credenziali di accesso e senza consumare licenze. Il consulente può generare un link di pagamento Stripe Connect personalizzato da mandare al cliente; quando il cliente paga, l'account si attiva automaticamente con accesso completo.
+
+Situazione attuale
+Per creare un cliente servono email + password → il cliente può fare login → consuma una licenza
+Stripe Connect già funziona: create-checkout genera checkout sessions, il webhook checkout.session.completed crea automaticamente l'account
+Il checkout attuale richiede che il cliente compili un form sulla pricing page pubblica con nome, email, password, telefono
+I proactive_leads sono lead/prospect, non ancora clienti — il "Cliente CRM" è qualcosa di diverso: è una persona che il consulente gestisce attivamente come cliente ma senza dargli login
+Approccio
+Aggiungere un flag is_crm_only sulla tabella users (boolean, default false)
+I clienti CRM vengono creati senza password, non possono fare login, non consumano licenze
+Il consulente può generare un "Link di pagamento" per un cliente CRM → checkout Stripe pre-compilato con i dati del cliente
+Al pagamento completato, il webhook converte il cliente CRM in cliente full (assegna password temporanea, notifica via email)
+Tasks
+T001: Aggiungere flag is_crm_only al DB e allo schema
+Blocked By: []
+Details:
+Aggiungere colonna is_crm_only (boolean, default false) alla tabella users via SQL diretto
+Aggiornare lo schema Drizzle in shared/schema.ts per includere il campo
+Sincronizzare con db:push
+Files: shared/schema.ts
+Acceptance: Colonna presente, schema sincronizzato
+T002: Backend — Creazione clienti CRM senza password
+Blocked By: [T001]
+Details:
+Modificare POST /api/clients in server/routes.ts per accettare isCrmOnly: true
+Se isCrmOnly = true: password NON richiesta, il campo password nella tabella viene messo a hash di stringa casuale non indovinabile
+Impostare is_crm_only = true sul record utente
+Non contare i clienti CRM nel calcolo licenze — modificare la query di conteggio licenze per escludere is_crm_only = true
+Accettare campo opzionale phoneNumber alla creazione
+Il login deve essere bloccato per utenti con is_crm_only = true (check nella route di login)
+Files: server/routes.ts
+Acceptance: Si può creare un cliente CRM senza password; non consuma licenze; non può fare login
+T003: Backend — Endpoint generazione link di pagamento per cliente CRM
+Blocked By: [T002]
+Details:
+Nuovo endpoint POST /api/clients/:clientId/payment-link (consultant auth)
+Verifica che il cliente sia is_crm_only = true e appartenga al consulente
+Verifica che il consulente abbia Stripe Connect configurato e onboarded
+Crea una Stripe Checkout Session pre-compilata con i dati del cliente (email, nome)
+Il livello (Silver/Gold) e billing period vengono passati nel body
+La password non viene richiesta: il webhook la genererà
+Nei metadata della session: crmClientId (id del cliente CRM da convertire), autoProvision: true
+Restituisce { url: session.url } — il consulente copia e manda al cliente
+Se Stripe Connect non collegato: errore 400 con messaggio "Collega Stripe Connect per generare link di pagamento"
+Files: server/routes/stripe-connect-router.ts
+Acceptance: Endpoint genera un URL checkout Stripe funzionante con i dati del cliente pre-compilati
+T004: Backend — Webhook converte cliente CRM in cliente full
+Blocked By: [T003]
+Details:
+Modificare il webhook handler checkout.session.completed in stripe-connect-router.ts
+Se i metadata contengono crmClientId e autoProvision: true:
+Recupera il cliente CRM dalla tabella users
+Genera una password temporanea casuale (12 chars alfanumerici)
+Aggiorna il record: is_crm_only = false, password = hash(tempPassword)
+Crea la subscription in client_level_subscriptions
+Logga la password temporanea e la salva in un campo accessibile al consulente (es. tempPassword nel response del webhook o consultabile via API)
+Se i metadata NON contengono crmClientId, il flusso esistente resta invariato
+Files: server/routes/stripe-connect-router.ts
+Acceptance: Dopo il pagamento, il cliente CRM diventa cliente full con password e subscription attiva
+T005: Frontend — Form creazione cliente CRM + badge + link pagamento
+Blocked By: [T002, T003]
+Details:
+Nel dialog di creazione cliente in consultant-clients.tsx:
+Aggiungere terza opzione oltre "Cliente" e "Dipendente": "Contatto CRM" con icona UserPlus e colore ambra
+Se "Contatto CRM" selezionato: nascondere campo password, mostrare campo telefono (opzionale)
+Inviare isCrmOnly: true nel body
+Nella lista clienti:
+I clienti CRM mostrano badge "CRM" (ambra) accanto al nome, distinto da "Cliente" (verde) e "Dipendente" (viola)
+Non contati nel conteggio licenze usate nel UI
+Nel dropdown azioni di ogni cliente CRM:
+Bottone "Genera Link Pagamento" → apre un mini-dialog per scegliere livello (Silver/Gold) e billing period (mensile/annuale)
+Se Stripe Connect non collegato, mostra avviso con link alla pagina di configurazione
+Se collegato, chiama l'endpoint e mostra il link generato con bottone "Copia"
+Filter: aggiungere "CRM" come opzione nel filtro tipo (typeFilter)
+Files: client/src/pages/consultant-clients.tsx
+Acceptance: Si può creare un contatto CRM senza password; si vede con badge CRM; si può generare link di pagamento
