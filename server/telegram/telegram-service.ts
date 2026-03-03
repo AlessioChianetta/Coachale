@@ -1091,7 +1091,6 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
   let typingInterval: NodeJS.Timeout | null = null;
   let streamingMessageId: number | null = null;
   let revealInterval: NodeJS.Timeout | null = null;
-  let debounceTimer: NodeJS.Timeout | null = null;
 
   try {
     if (isOpenMode) {
@@ -1116,21 +1115,27 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
 
     let targetText = '';
     let chunkCount = 0;
+    let revealedLen = 0;
+    let generationDone = false;
     let firstMsgPromise: Promise<number | null> | null = null;
     let lastEditPromise: Promise<any> = Promise.resolve();
-    let lastFlushLen = 0;
-    let lastFlushTime = 0;
-    const THROTTLE_MS = 800;
 
-    const flushToTelegram = () => {
-      debounceTimer = null;
+    const TICK_MS = 700;
+    const MAX_CHARS_PER_TICK = 40;
+
+    const streamCallback = (chunk: string) => {
+      targetText += chunk;
+      chunkCount++;
+    };
+
+    const doRevealTick = () => {
       if (abortController.signal.aborted) return;
-      if (targetText.length === 0) return;
-      if (targetText.length === lastFlushLen) return;
+      if (revealedLen >= targetText.length) return;
 
-      lastFlushLen = targetText.length;
-      lastFlushTime = Date.now();
-      const displayText = targetText.length > 4096 ? targetText.substring(0, 4093) + '...' : targetText;
+      revealedLen = Math.min(revealedLen + MAX_CHARS_PER_TICK, targetText.length);
+
+      const visibleText = targetText.substring(0, revealedLen);
+      const displayText = visibleText.length > 4096 ? visibleText.substring(0, 4093) + '...' : visibleText;
 
       if (!streamingMessageId && !firstMsgPromise) {
         firstMsgPromise = sendTelegramMessageWithId(botToken, chatId, displayText);
@@ -1145,21 +1150,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       }
     };
 
-    const streamCallback = (chunk: string) => {
-      targetText += chunk;
-      chunkCount++;
-      if (abortController.signal.aborted) return;
-
-      const now = Date.now();
-      const elapsed = now - lastFlushTime;
-
-      if (elapsed >= THROTTLE_MS) {
-        if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
-        flushToTelegram();
-      } else if (!debounceTimer) {
-        debounceTimer = setTimeout(flushToTelegram, THROTTLE_MS - elapsed);
-      }
-    };
+    revealInterval = setInterval(doRevealTick, TICK_MS);
 
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
     console.log(`[TELEGRAM] Starting AI generation for chat ${chatId}, role ${aiRole} (streaming enabled)`);
@@ -1173,10 +1164,14 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       streamCallback,
     });
 
+    generationDone = true;
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
 
-    if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
-    flushToTelegram();
+    if (revealInterval) { clearInterval(revealInterval); revealInterval = null; }
+    while (revealedLen < targetText.length) {
+      doRevealTick();
+      await new Promise(r => setTimeout(r, 100));
+    }
     if (firstMsgPromise) await firstMsgPromise;
     await lastEditPromise;
 
@@ -1209,7 +1204,6 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       }
     }
   } finally {
-    if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
     if (revealInterval) { clearInterval(revealInterval); revealInterval = null; }
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
     activeGenerations.delete(bufferKey);
