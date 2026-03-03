@@ -1120,8 +1120,8 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     let firstMsgPromise: Promise<number | null> | null = null;
     let lastEditPromise: Promise<any> = Promise.resolve();
 
-    const TICK_MS = 700;
-    const MAX_CHARS_PER_TICK = 40;
+    const TICK_MS = 600;
+    const MAX_CHARS_PER_TICK = 20;
 
     const streamCallback = (chunk: string) => {
       targetText += chunk;
@@ -1135,10 +1135,11 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       revealedLen = Math.min(revealedLen + MAX_CHARS_PER_TICK, targetText.length);
 
       const visibleText = targetText.substring(0, revealedLen);
-      const displayText = visibleText.length > 4096 ? visibleText.substring(0, 4093) + '...' : visibleText;
+      const safeText = closeOpenMarkdown(visibleText);
+      const displayText = safeText.length > 4096 ? safeText.substring(0, 4093) + '...' : safeText;
 
       if (!streamingMessageId && !firstMsgPromise) {
-        firstMsgPromise = sendTelegramMessageWithId(botToken, chatId, displayText);
+        firstMsgPromise = sendTelegramMessageWithId(botToken, chatId, displayText, "Markdown");
         firstMsgPromise.then(msgId => {
           if (msgId) {
             streamingMessageId = msgId;
@@ -1146,7 +1147,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
           }
         }).catch(() => {});
       } else if (streamingMessageId) {
-        lastEditPromise = editTelegramMessage(botToken, chatId, streamingMessageId, displayText).catch(() => {});
+        lastEditPromise = editTelegramMessage(botToken, chatId, streamingMessageId, displayText, "Markdown").catch(() => {});
       }
     };
 
@@ -1208,6 +1209,21 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
     activeGenerations.delete(bufferKey);
   }
+}
+
+function closeOpenMarkdown(text: string): string {
+  let result = text;
+  const boldCount = (result.match(/\*\*/g) || []).length;
+  if (boldCount % 2 !== 0) result += '**';
+  const italicSingle = result.match(/(?<!\*)\*(?!\*)/g) || [];
+  if (italicSingle.length % 2 !== 0) result += '*';
+  const underscoreCount = (result.match(/_/g) || []).length;
+  if (underscoreCount % 2 !== 0) result += '_';
+  const backtickTriple = (result.match(/```/g) || []).length;
+  if (backtickTriple % 2 !== 0) result += '```';
+  const backtickSingle = result.match(/(?<!`)`(?!`)/g) || [];
+  if (backtickSingle.length % 2 !== 0) result += '`';
+  return result;
 }
 
 function buildTelegramChatContext(params: {
