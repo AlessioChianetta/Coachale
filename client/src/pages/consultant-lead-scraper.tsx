@@ -100,7 +100,8 @@ import {
   Building,
   Hash,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { getAuthHeaders } from "@/lib/auth";
@@ -259,6 +260,8 @@ export default function ConsultantLeadScraper() {
   const [crmPage, setCrmPage] = useState(1);
   const CRM_PAGE_SIZE = 10;
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [deleteDialogLeadId, setDeleteDialogLeadId] = useState<string | null>(null);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [historySourceFilter, setHistorySourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
   const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false);
 
@@ -1037,7 +1040,7 @@ export default function ConsultantLeadScraper() {
 
   const deleteLeadMutation = useMutation({
     mutationFn: async (leadId: string) => {
-      const res = await fetch(`/api/proactive-leads/${leadId}`, {
+      const res = await fetch(`/api/lead-scraper/results/${leadId}`, {
         method: "DELETE",
         headers: getAuthHeaders(),
       });
@@ -1045,8 +1048,8 @@ export default function ConsultantLeadScraper() {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/all-results"] });
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/results"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/proactive-leads"] });
       toast({ title: "Lead eliminato", description: "Il lead è stato rimosso dal CRM" });
     },
     onError: () => {
@@ -1056,7 +1059,7 @@ export default function ConsultantLeadScraper() {
 
   const bulkDeleteLeadsMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const res = await fetch("/api/proactive-leads/bulk", {
+      const res = await fetch("/api/lead-scraper/results/bulk", {
         method: "DELETE",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
@@ -1066,8 +1069,8 @@ export default function ConsultantLeadScraper() {
     },
     onSuccess: (data) => {
       setSelectedLeadIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/all-results"] });
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/results"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/proactive-leads"] });
       toast({ title: "Lead eliminati", description: `${data.deletedCount} lead rimossi dal CRM` });
     },
     onError: () => {
@@ -1916,11 +1919,7 @@ export default function ConsultantLeadScraper() {
                             size="sm"
                             className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30 gap-1"
                             disabled={bulkDeleteLeadsMutation.isPending}
-                            onClick={() => {
-                              if (confirm(`Sei sicuro di voler eliminare ${selectedLeadIds.size} lead selezionati?`)) {
-                                bulkDeleteLeadsMutation.mutate(Array.from(selectedLeadIds));
-                              }
-                            }}
+                            onClick={() => setShowBulkDeleteDialog(true)}
                           >
                             {bulkDeleteLeadsMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                             Elimina {selectedLeadIds.size}
@@ -2071,9 +2070,7 @@ export default function ConsultantLeadScraper() {
                                         disabled={deleteLeadMutation.isPending}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          if (confirm("Sei sicuro di voler eliminare questo lead?")) {
-                                            deleteLeadMutation.mutate(r.id);
-                                          }
+                                          setDeleteDialogLeadId(r.id);
                                         }}
                                       >
                                         <Trash2 className="h-3.5 w-3.5" />
@@ -4813,6 +4810,66 @@ export default function ConsultantLeadScraper() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteDialogLeadId} onOpenChange={(open) => { if (!open) setDeleteDialogLeadId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questo lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                if (!deleteDialogLeadId) return "Questo lead verrà rimosso definitivamente dal CRM.";
+                const lead = allResults.find((r: any) => r.id === deleteDialogLeadId);
+                return lead
+                  ? `Stai per eliminare "${lead.businessName || "Lead senza nome"}" dal CRM. Questa azione è irreversibile.`
+                  : "Questo lead verrà rimosso definitivamente dal CRM.";
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLeadMutation.isPending}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteLeadMutation.isPending}
+              onClick={() => {
+                if (deleteDialogLeadId) {
+                  deleteLeadMutation.mutate(deleteDialogLeadId, {
+                    onSettled: () => setDeleteDialogLeadId(null),
+                  });
+                }
+              }}
+            >
+              {deleteLeadMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare {selectedLeadIds.size} lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per eliminare {selectedLeadIds.size} lead selezionati dal CRM. Questa azione è irreversibile e non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteLeadsMutation.isPending}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={bulkDeleteLeadsMutation.isPending}
+              onClick={() => {
+                bulkDeleteLeadsMutation.mutate(Array.from(selectedLeadIds), {
+                  onSettled: () => setShowBulkDeleteDialog(false),
+                });
+              }}
+            >
+              {bulkDeleteLeadsMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Elimina {selectedLeadIds.size} lead
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 }

@@ -1,6 +1,6 @@
 import { Router, Response } from "express";
 import { db } from "../db";
-import { eq, and, desc, sql, ilike, gte } from "drizzle-orm";
+import { eq, and, desc, sql, ilike, gte, inArray } from "drizzle-orm";
 import { leadScraperSearches, leadScraperResults, superadminLeadScraperConfig, leadScraperSalesContext, leadScraperActivities } from "../../shared/schema";
 import { AuthRequest, authenticateToken, requireAnyRole } from "../middleware/auth";
 import { searchGoogleMaps, searchGoogleWeb, scrapeWebsiteWithFirecrawl, enrichSearchResults, generateSalesSummary, generateBatchSalesSummaries } from "../services/lead-scraper-service";
@@ -652,16 +652,9 @@ router.get("/all-results", authenticateToken, requireAnyRole(["consultant", "sup
     const consultantId = req.user!.id;
     const { lead_status, search, source } = req.query;
 
-    const searches = await db
-      .select({ id: leadScraperSearches.id })
-      .from(leadScraperSearches)
-      .where(eq(leadScraperSearches.consultantId, consultantId));
-
-    if (searches.length === 0) return res.json([]);
-
-    const searchIds = searches.map(s => s.id);
-
-    let conditions: any[] = [sql`${leadScraperResults.searchId} IN (${sql.join(searchIds.map(id => sql`${id}`), sql`, `)})`];
+    let conditions: any[] = [
+      sql`EXISTS (SELECT 1 FROM ${leadScraperSearches} WHERE ${leadScraperSearches.id} = ${leadScraperResults.searchId} AND ${leadScraperSearches.consultantId} = ${consultantId})`
+    ];
 
     if (lead_status && lead_status !== "tutti") {
       conditions.push(eq(leadScraperResults.leadStatus, lead_status as string));
@@ -691,6 +684,64 @@ router.get("/all-results", authenticateToken, requireAnyRole(["consultant", "sup
     res.json(results);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/results/bulk", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: "ids array required" });
+    }
+
+    const owned = await db
+      .select({ id: leadScraperResults.id })
+      .from(leadScraperResults)
+      .innerJoin(leadScraperSearches, eq(leadScraperResults.searchId, leadScraperSearches.id))
+      .where(and(
+        inArray(leadScraperResults.id, ids),
+        eq(leadScraperSearches.consultantId, consultantId)
+      ));
+
+    const ownedIds = owned.map(r => r.id);
+
+    if (ownedIds.length === 0) {
+      return res.json({ success: true, deletedCount: 0 });
+    }
+
+    await db.delete(leadScraperResults).where(inArray(leadScraperResults.id, ownedIds));
+
+    res.json({ success: true, deletedCount: ownedIds.length });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete("/results/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const leadId = req.params.id;
+
+    const [owned] = await db
+      .select({ id: leadScraperResults.id })
+      .from(leadScraperResults)
+      .innerJoin(leadScraperSearches, eq(leadScraperResults.searchId, leadScraperSearches.id))
+      .where(and(
+        eq(leadScraperResults.id, leadId),
+        eq(leadScraperSearches.consultantId, consultantId)
+      ));
+
+    if (!owned) {
+      return res.status(404).json({ success: false, error: "Lead not found" });
+    }
+
+    await db.delete(leadScraperResults).where(eq(leadScraperResults.id, leadId));
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
