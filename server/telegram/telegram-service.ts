@@ -352,7 +352,7 @@ async function sendTelegramMessageDraft(botToken: string, chatId: number | strin
   }
 }
 
-const STREAM_DRAFT_INTERVAL_MS = 300;
+const STREAM_DRAFT_INTERVAL_MS = 1000;
 
 const MAX_ONBOARDING_STEPS = 15;
 
@@ -1176,6 +1176,11 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     });
 
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
+
+    if (draftSupported && chunkCount > 0) {
+      await sendTelegramMessageDraft(botToken, chatId, " ", draftId);
+      await new Promise(r => setTimeout(r, 100));
+    }
 
     console.log(`[TELEGRAM] AI generation complete for chat ${chatId}: ${aiResponse.length} chars, ${chunkCount} stream chunks received, draftSupported=${draftSupported}`);
     await sendTelegramMessage(botToken, chatId, aiResponse, "Markdown");
