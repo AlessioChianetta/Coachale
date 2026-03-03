@@ -785,7 +785,7 @@ function AgentMemoryContent({ roleId }: { roleId: string }) {
 
   const fetchSummaries = () => {
     setLoading(true);
-    fetch(`/api/ai-autonomy/agent-chat/${roleId}/daily-summaries?limit=60`, {
+    fetch(`/api/ai-autonomy/agent-chat/${roleId}/daily-summaries?limit=90`, {
       headers: getAuthHeaders(),
     })
       .then(res => res.json())
@@ -876,7 +876,7 @@ function AgentMemoryContent({ roleId }: { roleId: string }) {
       <div className="text-center py-12">
         <Brain className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
         <p className="text-sm font-medium text-muted-foreground">Nessun riassunto disponibile</p>
-        <p className="text-xs text-muted-foreground/70 mt-1 mb-4">I riassunti vengono generati automaticamente ogni sera alle 23:55</p>
+        <p className="text-xs text-muted-foreground/70 mt-1 mb-4">Genera retroattivamente tutti i riassunti delle conversazioni passate</p>
         <Button
           size="sm"
           variant="outline"
@@ -885,7 +885,7 @@ function AgentMemoryContent({ roleId }: { roleId: string }) {
           disabled={generating}
         >
           {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-          {generating ? 'Generazione in corso...' : 'Genera riassunti'}
+          {generating ? 'Generazione in corso (potrebbe richiedere un minuto)...' : 'Genera tutti i riassunti'}
         </Button>
         {generateResult && (
           <p className="text-xs text-muted-foreground mt-2">{generateResult}</p>

@@ -5483,6 +5483,10 @@ router.post("/agent-chat/:roleId/generate-summaries", authenticateToken, require
 
     const roleName = AI_ROLES[roleId as keyof typeof AI_ROLES]?.name || roleId;
     let generated = 0;
+    let failed = 0;
+    const totalToGenerate = datesToGenerate.length;
+
+    console.log(`[DAILY-SUMMARY-MANUAL] Starting generation for ${totalToGenerate} missing dates for ${roleId} (consultant ${consultantId.substring(0, 8)})`);
 
     for (const dateRow of datesToGenerate) {
       try {
@@ -5527,14 +5531,19 @@ ${summaryInput.substring(0, 15000)}`;
               summary_text = EXCLUDED.summary_text, message_count = EXCLUDED.message_count, updated_at = NOW()
           `);
           generated++;
+          console.log(`[DAILY-SUMMARY-MANUAL] ${generated}/${totalToGenerate} — ${msgDate} OK (${messages.length} msg)`);
         }
       } catch (err: any) {
+        failed++;
         console.error(`[DAILY-SUMMARY-MANUAL] Error for ${roleId} on ${dateRow.msg_date}:`, err.message);
       }
     }
 
-    console.log(`[DAILY-SUMMARY-MANUAL] Generated ${generated} summaries for ${roleId} (consultant ${consultantId.substring(0, 8)})`);
-    return res.json({ generated, total: datesToGenerate.length, message: `${generated} riassunti generati` });
+    console.log(`[DAILY-SUMMARY-MANUAL] Done: ${generated} generated, ${failed} failed out of ${totalToGenerate} for ${roleId}`);
+    const msg = failed > 0
+      ? `${generated} riassunti generati su ${totalToGenerate} (${failed} errori)`
+      : `${generated} riassunti generati su ${totalToGenerate}`;
+    return res.json({ generated, total: totalToGenerate, failed, message: msg });
   } catch (error: any) {
     console.error("[DAILY-SUMMARY-MANUAL] Error:", error.message);
     return res.status(500).json({ error: "Errore nella generazione dei riassunti" });
