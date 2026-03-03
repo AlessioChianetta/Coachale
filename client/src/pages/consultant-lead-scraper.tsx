@@ -275,6 +275,77 @@ export default function ConsultantLeadScraper() {
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [historySourceFilter, setHistorySourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
   const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false);
+  const [showQuerySuggestions, setShowQuerySuggestions] = useState(false);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const queryInputRef = useRef<HTMLInputElement>(null);
+  const locationInputRef = useRef<HTMLInputElement>(null);
+  const querySuggestionsRef = useRef<HTMLDivElement>(null);
+  const locationSuggestionsRef = useRef<HTMLDivElement>(null);
+
+  const QUERY_SUGGESTIONS_MAPS = [
+    "ristoranti", "pizzerie", "bar", "hotel", "B&B", "palestre", "dentisti", "fisioterapisti",
+    "parrucchieri", "estetiste", "meccanici", "idraulici", "elettricisti", "avvocati", "commercialisti",
+    "notai", "farmacie", "ottici", "veterinari", "autofficine", "carrozzerie", "lavanderie",
+    "fioristi", "pasticcerie", "gelaterie", "panifici", "macellerie", "pescherie", "ferramenta",
+    "cartolerie", "librerie", "gioiellerie", "profumerie", "calzature", "abbigliamento",
+    "agenzie immobiliari", "agenzie viaggi", "assicurazioni", "banche", "centri estetici",
+    "centri sportivi", "cliniche", "studi medici", "studi dentistici", "studi legali",
+    "cooperative sociali", "imprese edili", "imprese di pulizia", "trasporti", "logistica",
+    "fotografi", "wedding planner", "catering", "eventi", "consulenti", "formazione",
+  ];
+
+  const QUERY_SUGGESTIONS_SEARCH = [
+    "agenzia marketing", "agenzia comunicazione", "web agency", "software house", "e-commerce",
+    "startup", "SaaS", "consulenza aziendale", "studio grafico", "agenzia SEO", "social media agency",
+    "agenzia pubblicitaria", "studio architettura", "interior design", "agenzia eventi",
+    "formazione aziendale", "coaching business", "consulenza finanziaria", "studio commercialista",
+    "agenzia assicurativa", "broker", "agenzia immobiliare", "property manager",
+    "agenzia recruiting", "HR consulting", "agenzia traduzione", "import export",
+    "produzione video", "agenzia influencer", "digital PR", "content agency",
+  ];
+
+  const LOCATION_SUGGESTIONS = [
+    "Milano", "Roma", "Napoli", "Torino", "Bologna", "Firenze", "Genova", "Venezia",
+    "Palermo", "Bari", "Catania", "Verona", "Padova", "Brescia", "Parma", "Modena",
+    "Bergamo", "Reggio Emilia", "Trieste", "Perugia", "Cagliari", "Messina", "Livorno",
+    "Ravenna", "Ferrara", "Rimini", "Salerno", "Pescara", "Lecce", "Monza",
+    "Bolzano", "Trento", "Ancona", "Udine", "Pisa", "Siena", "Lucca", "Como", "Varese",
+    "Novara", "Piacenza", "Sassari", "Terni", "Vicenza", "Treviso", "Aosta",
+    "Lombardia", "Lazio", "Campania", "Piemonte", "Emilia-Romagna", "Toscana",
+    "Veneto", "Sicilia", "Puglia", "Sardegna", "Liguria", "Calabria", "Friuli-Venezia Giulia",
+    "Marche", "Abruzzo", "Umbria", "Trentino-Alto Adige", "Basilicata", "Molise", "Valle d'Aosta",
+  ];
+
+  const filteredQuerySuggestions = useMemo(() => {
+    if (!searchQuery || searchQuery.length < 1) return (searchEngine === "google_maps" ? QUERY_SUGGESTIONS_MAPS : QUERY_SUGGESTIONS_SEARCH).slice(0, 8);
+    const q = searchQuery.toLowerCase();
+    return (searchEngine === "google_maps" ? QUERY_SUGGESTIONS_MAPS : QUERY_SUGGESTIONS_SEARCH)
+      .filter(s => s.toLowerCase().includes(q) && s.toLowerCase() !== q)
+      .slice(0, 8);
+  }, [searchQuery, searchEngine]);
+
+  const filteredLocationSuggestions = useMemo(() => {
+    if (!searchLocation || searchLocation.length < 1) return LOCATION_SUGGESTIONS.slice(0, 8);
+    const q = searchLocation.toLowerCase();
+    return LOCATION_SUGGESTIONS
+      .filter(s => s.toLowerCase().includes(q) && s.toLowerCase() !== q)
+      .slice(0, 8);
+  }, [searchLocation]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (querySuggestionsRef.current && !querySuggestionsRef.current.contains(e.target as Node) &&
+          queryInputRef.current && !queryInputRef.current.contains(e.target as Node)) {
+        setShowQuerySuggestions(false);
+      }
+      if (locationSuggestionsRef.current && !locationSuggestionsRef.current.contains(e.target as Node) &&
+          locationInputRef.current && !locationInputRef.current.contains(e.target as Node)) {
+        setShowLocationSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const [keywordSuggestions, setKeywordSuggestions] = useState<KeywordSuggestion[]>([]);
   const [keywordsLoading, setKeywordsLoading] = useState(false);
@@ -1459,25 +1530,67 @@ export default function ConsultantLeadScraper() {
 
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                         <Input
-                          placeholder={searchEngine === "google_search" ? "es. agenzia marketing Milano, studio legale..." : "es. ristoranti, dentisti, palestre..."}
+                          ref={queryInputRef}
+                          placeholder={searchEngine === "google_search" ? "es. agenzia marketing, studio legale..." : "es. ristoranti, dentisti, palestre..."}
                           value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onChange={(e) => { setSearchQuery(e.target.value); setShowQuerySuggestions(true); }}
+                          onFocus={() => setShowQuerySuggestions(true)}
                           className="pl-9 h-10 text-sm"
-                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) startSearchMutation.mutate(); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) { setShowQuerySuggestions(false); startSearchMutation.mutate(); } if (e.key === "Escape") setShowQuerySuggestions(false); }}
+                          autoComplete="off"
                         />
+                        {showQuerySuggestions && filteredQuerySuggestions.length > 0 && (
+                          <div ref={querySuggestionsRef} className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
+                            <div className="px-2.5 py-1.5 border-b border-gray-100 dark:border-gray-800">
+                              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">
+                                {searchEngine === "google_maps" ? "Categorie Maps" : "Tipologie Search"}
+                              </span>
+                            </div>
+                            {filteredQuerySuggestions.map((s, i) => (
+                              <button
+                                key={i}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-violet-50 dark:hover:bg-violet-950/20 text-gray-700 dark:text-gray-300 hover:text-violet-700 dark:hover:text-violet-400 transition-colors flex items-center gap-2"
+                                onMouseDown={(e) => { e.preventDefault(); setSearchQuery(s); setShowQuerySuggestions(false); }}
+                              >
+                                {searchEngine === "google_maps" ? <MapIcon className="h-3 w-3 text-orange-400 shrink-0" /> : <Globe className="h-3 w-3 text-blue-400 shrink-0" />}
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="relative w-[200px] shrink-0">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                         <Input
+                          ref={locationInputRef}
                           placeholder="es. Milano, Roma, Napoli..."
                           value={searchLocation}
-                          onChange={(e) => setSearchLocation(e.target.value)}
+                          onChange={(e) => { setSearchLocation(e.target.value); setShowLocationSuggestions(true); }}
+                          onFocus={() => setShowLocationSuggestions(true)}
                           className="pl-9 h-10 text-sm"
-                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) startSearchMutation.mutate(); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) { setShowLocationSuggestions(false); startSearchMutation.mutate(); } if (e.key === "Escape") setShowLocationSuggestions(false); }}
+                          autoComplete="off"
                         />
+                        {showLocationSuggestions && filteredLocationSuggestions.length > 0 && (
+                          <div ref={locationSuggestionsRef} className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
+                            <div className="px-2.5 py-1.5 border-b border-gray-100 dark:border-gray-800">
+                              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Città e regioni</span>
+                            </div>
+                            {filteredLocationSuggestions.map((s, i) => (
+                              <button
+                                key={i}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-violet-50 dark:hover:bg-violet-950/20 text-gray-700 dark:text-gray-300 hover:text-violet-700 dark:hover:text-violet-400 transition-colors flex items-center gap-2"
+                                onMouseDown={(e) => { e.preventDefault(); setSearchLocation(s); setShowLocationSuggestions(false); }}
+                              >
+                                <MapPin className="h-3 w-3 text-gray-400 shrink-0" />
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
