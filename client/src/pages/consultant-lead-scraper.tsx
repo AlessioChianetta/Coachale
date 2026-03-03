@@ -1424,90 +1424,111 @@ export default function ConsultantLeadScraper() {
             <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900">
               <CardContent className="py-3 px-4">
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setSearchEngine("google_maps")}
-                        className={cn(
-                          "flex items-center gap-1 px-2.5 py-2 text-xs font-medium transition-all",
-                          searchEngine === "google_maps"
-                            ? "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400"
-                            : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
-                        )}
-                      >
-                        <MapIcon className="h-3.5 w-3.5" />Maps
-                      </button>
-                      <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
-                      <button
-                        type="button"
-                        onClick={() => setSearchEngine("google_search")}
-                        className={cn(
-                          "flex items-center gap-1 px-2.5 py-2 text-xs font-medium transition-all",
-                          searchEngine === "google_search"
-                            ? "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400"
-                            : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
-                        )}
-                      >
-                        <Globe className="h-3.5 w-3.5" />Search
-                      </button>
-                    </div>
-
-                    <div className="relative flex-1 min-w-[150px]">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder={searchEngine === "google_search" ? "es. agenzia marketing..." : "es. ristoranti, dentisti..."}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9 h-9"
-                        onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) startSearchMutation.mutate(); }}
-                      />
-                    </div>
-
-                    <div className="relative w-[180px] shrink-0">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="es. Milano, Roma..."
-                        value={searchLocation}
-                        onChange={(e) => setSearchLocation(e.target.value)}
-                        className="pl-9 h-9"
-                        onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) startSearchMutation.mutate(); }}
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Label className="text-[11px] text-muted-foreground whitespace-nowrap">Max</Label>
-                      <Input
-                        type="number"
-                        value={searchLimit}
-                        onChange={(e) => setSearchLimit(Math.max(5, Math.min(100, parseInt(e.target.value) || 5)))}
-                        className="h-9 w-[60px] text-center text-sm font-semibold"
-                        min={5}
-                        max={100}
-                        step={5}
-                      />
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 border-violet-200 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/20 text-violet-700 dark:text-violet-400 shrink-0"
-                      onClick={handleSuggestKeywords}
-                      disabled={keywordsLoading}
-                    >
-                      {keywordsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                    </Button>
-
-                    <Popover open={historyPopoverOpen} onOpenChange={setHistoryPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 gap-1.5 shrink-0">
-                          <FileText className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Storico</span>
-                          {searches.length > 0 && (
-                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] ml-0.5">{searches.length}</Badge>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shrink-0 bg-gray-50 dark:bg-gray-800/50 p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setSearchEngine("google_maps")}
+                          className={cn(
+                            "flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium transition-all rounded-lg",
+                            searchEngine === "google_maps"
+                              ? "bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 shadow-sm"
+                              : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                           )}
-                        </Button>
-                      </PopoverTrigger>
+                        >
+                          <MapIcon className="h-4 w-4" />Maps
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSearchEngine("google_search")}
+                          className={cn(
+                            "flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium transition-all rounded-lg",
+                            searchEngine === "google_search"
+                              ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                              : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                          )}
+                        >
+                          <Globe className="h-4 w-4" />Search
+                        </button>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {searchEngine === "google_maps" ? "Cerca attività su Google Maps (telefono, indirizzo, orari, rating)" : "Cerca siti web su Google Search (aziende online, agenzie, servizi)"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1 min-w-[200px]">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder={searchEngine === "google_search" ? "es. agenzia marketing Milano, studio legale..." : "es. ristoranti, dentisti, palestre..."}
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-9 h-10 text-sm"
+                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) startSearchMutation.mutate(); }}
+                        />
+                      </div>
+
+                      <div className="relative w-[200px] shrink-0">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="es. Milano, Roma, Napoli..."
+                          value={searchLocation}
+                          onChange={(e) => setSearchLocation(e.target.value)}
+                          className="pl-9 h-10 text-sm"
+                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) startSearchMutation.mutate(); }}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
+                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Lead</Label>
+                        <Input
+                          type="number"
+                          value={searchLimit}
+                          onChange={(e) => setSearchLimit(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                          className="h-8 w-[55px] text-center text-sm font-semibold border-0 bg-transparent p-0"
+                          min={1}
+                          max={100}
+                          step={1}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        className="bg-violet-600 hover:bg-violet-700 text-white border-0 shadow-sm h-10 px-6 text-sm font-semibold flex-1 max-w-[200px]"
+                        onClick={() => startSearchMutation.mutate()}
+                        disabled={!searchQuery || startSearchMutation.isPending}
+                      >
+                        {startSearchMutation.isPending ? (
+                          <><Loader2 className="h-4 w-4 animate-spin mr-2" />Avvio ricerca...</>
+                        ) : (
+                          <><Search className="h-4 w-4 mr-2" />Avvia ricerca</>
+                        )}
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-10 px-3 border-violet-200 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/20 text-violet-700 dark:text-violet-400"
+                        onClick={handleSuggestKeywords}
+                        disabled={keywordsLoading}
+                      >
+                        {keywordsLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
+                        Suggerisci AI
+                      </Button>
+
+                      <Popover open={historyPopoverOpen} onOpenChange={setHistoryPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-10 gap-1.5 shrink-0">
+                            <FileText className="h-4 w-4" />
+                            Storico
+                            {searches.length > 0 && (
+                              <Badge variant="secondary" className="h-5 px-1.5 text-[10px] ml-0.5">{searches.length}</Badge>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
                       <PopoverContent align="end" className="w-[380px] p-0">
                         <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800">
                           <div className="flex items-center justify-between">
@@ -1591,19 +1612,8 @@ export default function ConsultantLeadScraper() {
                           )}
                         </ScrollArea>
                       </PopoverContent>
-                    </Popover>
-
-                    <Button
-                      className="bg-violet-600 hover:bg-violet-700 text-white border-0 shadow-sm h-9 px-5 shrink-0"
-                      onClick={() => startSearchMutation.mutate()}
-                      disabled={!searchQuery || startSearchMutation.isPending}
-                    >
-                      {startSearchMutation.isPending ? (
-                        <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Avvio...</>
-                      ) : (
-                        <><Search className="h-4 w-4 mr-1.5" />Cerca</>
-                      )}
-                    </Button>
+                      </Popover>
+                    </div>
                   </div>
 
                   <div className="border-t border-gray-100 dark:border-gray-800 pt-3">
