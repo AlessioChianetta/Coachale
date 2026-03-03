@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getAuthHeaders } from "@/lib/auth";
@@ -6,8 +6,8 @@ import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, MessageCircle, ArrowLeft, Globe, Users, Eye, MessageSquare, Clock } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Loader2, MessageCircle, ArrowLeft, Globe, Users, Eye, MessageSquare, Clock, Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { formatDistanceToNow, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks, addMonths, format, isWithinInterval, isSameDay } from "date-fns";
 import it from "date-fns/locale/it";
 
 interface ShareAgent {
@@ -52,12 +52,16 @@ interface ChatMessage {
   createdAt: string;
 }
 
+type DateFilterMode = "all" | "day" | "week" | "month";
+
 export default function ConsultantWhatsAppAgentsChat() {
   const isMobile = useIsMobile();
   const [selectedShare, setSelectedShare] = useState<ShareAgent | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<ShareConversation | null>(null);
   const [mobileView, setMobileView] = useState<"agents" | "conversations" | "chat">("agents");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [dateFilter, setDateFilter] = useState<DateFilterMode>("all");
+  const [dateAnchor, setDateAnchor] = useState<Date>(new Date());
 
   const { data: sharesData, isLoading: sharesLoading } = useQuery({
     queryKey: ["/api/whatsapp/agent-share"],
@@ -100,7 +104,42 @@ export default function ConsultantWhatsAppAgentsChat() {
     enabled: !!selectedShare,
   });
 
-  const conversations: ShareConversation[] = conversationsData?.conversations || [];
+  const allConversations: ShareConversation[] = conversationsData?.conversations || [];
+
+  const getDateRange = useCallback((mode: DateFilterMode, anchor: Date): { start: Date; end: Date } | null => {
+    if (mode === "all") return null;
+    if (mode === "day") return { start: startOfDay(anchor), end: endOfDay(anchor) };
+    if (mode === "week") return { start: startOfWeek(anchor, { weekStartsOn: 1 }), end: endOfWeek(anchor, { weekStartsOn: 1 }) };
+    return { start: startOfMonth(anchor), end: endOfMonth(anchor) };
+  }, []);
+
+  const navigateDate = useCallback((direction: -1 | 1) => {
+    setDateAnchor(prev => {
+      if (dateFilter === "day") return addDays(prev, direction);
+      if (dateFilter === "week") return addWeeks(prev, direction);
+      return addMonths(prev, direction);
+    });
+  }, [dateFilter]);
+
+  const dateRange = useMemo(() => getDateRange(dateFilter, dateAnchor), [dateFilter, dateAnchor, getDateRange]);
+
+  const dateLabel = useMemo(() => {
+    if (dateFilter === "all" || !dateRange) return "";
+    if (dateFilter === "day") return format(dateAnchor, "d MMMM yyyy", { locale: it });
+    if (dateFilter === "week") return `${format(dateRange.start, "d MMM", { locale: it })} – ${format(dateRange.end, "d MMM yyyy", { locale: it })}`;
+    return format(dateAnchor, "MMMM yyyy", { locale: it });
+  }, [dateFilter, dateAnchor, dateRange]);
+
+  const conversations = useMemo(() => {
+    if (!dateRange) return allConversations;
+    return allConversations.filter(conv => {
+      const dateStr = conv.lastMessageAt || conv.createdAt;
+      if (!dateStr) return false;
+      try {
+        return isWithinInterval(new Date(dateStr), { start: dateRange.start, end: dateRange.end });
+      } catch { return false; }
+    });
+  }, [allConversations, dateRange]);
 
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
     queryKey: ["/api/whatsapp/agent-share/conversations", selectedConversation?.id, "messages"],
@@ -127,6 +166,8 @@ export default function ConsultantWhatsAppAgentsChat() {
   const handleSelectShare = (share: ShareAgent) => {
     setSelectedShare(share);
     setSelectedConversation(null);
+    setDateFilter("all");
+    setDateAnchor(new Date());
     if (isMobile) setMobileView("conversations");
   };
 
@@ -221,11 +262,60 @@ export default function ConsultantWhatsAppAgentsChat() {
               {selectedShare?.agent?.agentName || selectedShare?.agentName || ""}
             </h2>
             <p className="text-xs text-muted-foreground">
-              {conversations.length} conversazioni
+              {conversations.length}{dateFilter !== "all" ? ` / ${allConversations.length}` : ""} conversazioni
             </p>
           </div>
         </div>
       </div>
+
+      <div className="border-b bg-gradient-to-b from-gray-50 to-white">
+        <div className="flex items-center gap-1 px-2 py-2">
+          {(["all", "day", "week", "month"] as DateFilterMode[]).map(mode => (
+            <button
+              key={mode}
+              onClick={() => { setDateFilter(mode); setDateAnchor(new Date()); }}
+              className={`px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-all whitespace-nowrap ${
+                dateFilter === mode
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              }`}
+            >
+              {mode === "all" ? "Tutte" : mode === "day" ? "Giorno" : mode === "week" ? "Settimana" : "Mese"}
+            </button>
+          ))}
+        </div>
+
+        {dateFilter !== "all" && (
+          <div className="flex items-center justify-between px-2 pb-2">
+            <button
+              onClick={() => navigateDate(-1)}
+              className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-blue-500" />
+              <span className="text-xs font-medium text-gray-700 capitalize">{dateLabel}</span>
+            </div>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => navigateDate(1)}
+                className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => { setDateFilter("all"); }}
+                className="p-1 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                title="Rimuovi filtro"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <ScrollArea className="flex-1">
         {conversationsLoading ? (
           <div className="flex items-center justify-center p-8">
