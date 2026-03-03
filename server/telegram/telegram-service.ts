@@ -1090,6 +1090,7 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
 
   let typingInterval: NodeJS.Timeout | null = null;
   let streamingMessageId: number | null = null;
+  let revealInterval: NodeJS.Timeout | null = null;
 
   try {
     if (isOpenMode) {
@@ -1117,10 +1118,9 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     let revealedLen = 0;
     let generationDone = false;
     let editInFlight = false;
-    let revealInterval: NodeJS.Timeout | null = null;
 
-    const REVEAL_INTERVAL_MS = 300;
-    const WORDS_PER_TICK = 4;
+    const REVEAL_INTERVAL_MS = 250;
+    const WORDS_PER_TICK = 3;
 
     const streamCallback = (chunk: string) => {
       targetText += chunk;
