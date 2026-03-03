@@ -1606,34 +1606,73 @@ export default function ConsultantLeadScraper() {
                     </Button>
                   </div>
 
-                  <div className="flex items-center gap-1 px-1">
-                    <span className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-semibold mr-1">Modalità</span>
-                    <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="border-t border-gray-100 dark:border-gray-800 pt-3">
+                    <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-semibold mb-2 px-0.5">Modalità di ricerca</p>
+                    <div className="grid grid-cols-3 gap-2">
                       {([
-                        { value: "solo_cerca" as const, label: "Solo Cerca", Icon: Search },
-                        { value: "predefinito" as const, label: "Predefinito", Icon: Zap },
-                        { value: "cerca_outreach" as const, label: "Cerca + Outreach", Icon: Crosshair },
-                      ]).map(m => (
-                        <button
-                          key={m.value}
-                          onClick={() => setSearchMode(m.value)}
-                          className={cn(
-                            "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all",
-                            searchMode === m.value
-                              ? "bg-white dark:bg-gray-700 text-violet-700 dark:text-violet-300 shadow-sm"
-                              : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                          )}
-                        >
-                          <m.Icon className="h-3 w-3" />
-                          {m.label}
-                        </button>
-                      ))}
+                        {
+                          value: "solo_cerca" as const,
+                          label: "Solo Cerca",
+                          desc: "Trova lead da Google Maps/Search. Nessuna analisi AI o scraping siti.",
+                          Icon: Search,
+                          color: "blue",
+                          steps: ["Ricerca Google"],
+                        },
+                        {
+                          value: "predefinito" as const,
+                          label: "Predefinito",
+                          desc: "Trova lead, analizza i siti web con Firecrawl e genera report AI per ogni azienda.",
+                          Icon: Zap,
+                          color: "violet",
+                          steps: ["Ricerca", "Scraping siti", "Analisi AI"],
+                        },
+                        {
+                          value: "cerca_outreach" as const,
+                          label: "Cerca + Outreach",
+                          desc: "Pipeline completa: trova, analizza e crea task outreach automatici per contattare i lead.",
+                          Icon: Crosshair,
+                          color: "teal",
+                          steps: ["Ricerca", "Scraping", "AI", "Outreach"],
+                        },
+                      ] as const).map(m => {
+                        const isActive = searchMode === m.value;
+                        const colorMap = {
+                          blue: { bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-300 dark:border-blue-700", text: "text-blue-700 dark:text-blue-300", icon: "text-blue-600 dark:text-blue-400", pill: "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" },
+                          violet: { bg: "bg-violet-50 dark:bg-violet-950/30", border: "border-violet-300 dark:border-violet-700", text: "text-violet-700 dark:text-violet-300", icon: "text-violet-600 dark:text-violet-400", pill: "bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400" },
+                          teal: { bg: "bg-teal-50 dark:bg-teal-950/30", border: "border-teal-300 dark:border-teal-700", text: "text-teal-700 dark:text-teal-300", icon: "text-teal-600 dark:text-teal-400", pill: "bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400" },
+                        };
+                        const c = colorMap[m.color];
+                        return (
+                          <button
+                            key={m.value}
+                            onClick={() => setSearchMode(m.value)}
+                            className={cn(
+                              "flex flex-col items-start gap-1.5 p-3 rounded-xl border-2 text-left transition-all",
+                              isActive
+                                ? `${c.bg} ${c.border} shadow-sm`
+                                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-900"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <div className={cn("p-1.5 rounded-lg", isActive ? c.bg : "bg-gray-100 dark:bg-gray-800")}>
+                                <m.Icon className={cn("h-4 w-4", isActive ? c.icon : "text-gray-400")} />
+                              </div>
+                              <span className={cn("text-sm font-semibold", isActive ? c.text : "text-gray-700 dark:text-gray-300")}>{m.label}</span>
+                              {isActive && <div className={cn("ml-auto h-2 w-2 rounded-full", m.color === "blue" ? "bg-blue-500" : m.color === "violet" ? "bg-violet-500" : "bg-teal-500")} />}
+                            </div>
+                            <p className={cn("text-[11px] leading-relaxed", isActive ? c.text : "text-gray-500 dark:text-gray-400")}>{m.desc}</p>
+                            <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                              {m.steps.map((step, i) => (
+                                <span key={i} className="flex items-center gap-0.5">
+                                  <span className={cn("text-[9px] font-medium px-1.5 py-0.5 rounded-full", isActive ? c.pill : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400")}>{step}</span>
+                                  {i < m.steps.length - 1 && <ArrowRight className="h-2.5 w-2.5 text-gray-300 dark:text-gray-600" />}
+                                </span>
+                              ))}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                    <span className="text-[10px] text-muted-foreground ml-1">
-                      {searchMode === "solo_cerca" && "Solo ricerca, senza analisi AI"}
-                      {searchMode === "predefinito" && "Ricerca + analisi AI dei siti"}
-                      {searchMode === "cerca_outreach" && "Ricerca + AI + schedulazione outreach"}
-                    </span>
                   </div>
 
                   <AnimatePresence>
