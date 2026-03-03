@@ -258,6 +258,7 @@ export default function ConsultantLeadScraper() {
   const [crmChannelView, setCrmChannelView] = useState<"tutti" | "nuovi" | "con_telefono" | "con_email" | "wa" | "voice" | "email" | "multi">("tutti");
   const [crmPage, setCrmPage] = useState(1);
   const CRM_PAGE_SIZE = 10;
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
   const [historySourceFilter, setHistorySourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
   const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false);
 
@@ -1053,6 +1054,27 @@ export default function ConsultantLeadScraper() {
     },
   });
 
+  const bulkDeleteLeadsMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await fetch("/api/proactive-leads/bulk", {
+        method: "DELETE",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) throw new Error("Errore eliminazione bulk");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setSelectedLeadIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/results"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/proactive-leads"] });
+      toast({ title: "Lead eliminati", description: `${data.deletedCount} lead rimossi dal CRM` });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile eliminare i lead selezionati", variant: "destructive" });
+    },
+  });
+
   const createManualLeadMutation = useMutation({
     mutationFn: async (data: typeof emptyManualLead) => {
       const res = await fetch("/api/lead-scraper/manual-lead", {
@@ -1452,7 +1474,7 @@ export default function ConsultantLeadScraper() {
                                   )}
                                 >
                                   {v === "tutti" && "Tutti"}
-                                  {v === "google_maps" && <><MapIcon className="h-2.5 w-2.5 text-rose-500" />Maps</>}
+                                  {v === "google_maps" && <><MapIcon className="h-2.5 w-2.5 text-orange-500" />Maps</>}
                                   {v === "google_search" && <><Globe className="h-2.5 w-2.5 text-blue-500" />Search</>}
                                 </button>
                               ))}
@@ -1490,7 +1512,7 @@ export default function ConsultantLeadScraper() {
                                               <Globe className="h-2.5 w-2.5" />Search
                                             </Badge>
                                           ) : (
-                                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 shrink-0 border-rose-300 text-rose-600 bg-rose-50 dark:bg-rose-950/30 gap-0.5">
+                                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 shrink-0 border-orange-300 text-orange-600 bg-orange-50 dark:bg-orange-950/30 gap-0.5">
                                               <MapIcon className="h-2.5 w-2.5" />Maps
                                             </Badge>
                                           )}
@@ -1555,7 +1577,7 @@ export default function ConsultantLeadScraper() {
                                       setSearchEngine(kw.engine === "maps" ? "google_maps" : "google_search");
                                     }}
                                   >
-                                    {kw.engine === "maps" ? <MapIcon className="h-2.5 w-2.5 text-rose-500" /> : <Globe className="h-2.5 w-2.5 text-blue-500" />}
+                                    {kw.engine === "maps" ? <MapIcon className="h-2.5 w-2.5 text-orange-500" /> : <Globe className="h-2.5 w-2.5 text-blue-500" />}
                                     <span className="truncate max-w-[120px]">{kw.keyword}</span>
                                   </button>
                                 </TooltipTrigger>
@@ -1778,287 +1800,318 @@ export default function ConsultantLeadScraper() {
           </TabsContent>
 
           <TabsContent value="crm" className="mt-4">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {LEAD_STATUSES.map((s) => {
-                  const count = crmStats[s.value] || 0;
-                  const isActive = crmFilterStatus === s.value;
-                  return (
+            <div className="flex gap-4">
+              <div className="w-[220px] shrink-0 space-y-2">
+                <button
+                  onClick={() => { setCrmFilterStatus("tutti"); setCrmChannelView("tutti"); }}
+                  className={cn(
+                    "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border",
+                    crmFilterStatus === "tutti" && crmChannelView === "tutti"
+                      ? "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800 shadow-sm"
+                      : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  )}
+                >
+                  <span>Tutti i lead</span>
+                  <span className="text-xs font-bold bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md">{allResults.length}</span>
+                </button>
+
+                <div className="pt-1">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-semibold px-3 mb-1.5">Stato</p>
+                  {LEAD_STATUSES.map((s) => {
+                    const count = crmStats[s.value] || 0;
+                    const isActive = crmFilterStatus === s.value;
+                    return (
+                      <button
+                        key={s.value}
+                        onClick={() => setCrmFilterStatus(crmFilterStatus === s.value ? "tutti" : s.value)}
+                        className={cn(
+                          "w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+                          isActive
+                            ? "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        )}
+                      >
+                        <span className="truncate">{s.label}</span>
+                        <span className={cn(
+                          "text-[11px] font-bold min-w-[24px] text-center px-1.5 py-0.5 rounded-md",
+                          isActive ? "bg-violet-200/50 dark:bg-violet-800/30 text-violet-700 dark:text-violet-300" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500"
+                        )}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-1">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-semibold px-3 mb-1.5">Canale</p>
+                  {([
+                    { key: "nuovi", label: "Nuovi", icon: null },
+                    { key: "con_telefono", label: "Con Telefono", icon: PhoneCall },
+                    { key: "con_email", label: "Con Email", icon: MailIcon },
+                    { key: "wa", label: "Contattati WA", icon: MessageCircle },
+                    { key: "voice", label: "Contattati Voce", icon: PhoneCall },
+                    { key: "email", label: "Contattati Email", icon: MailIcon },
+                    { key: "multi", label: "Multi-canale", icon: Crosshair },
+                  ] as const).map((v) => {
+                    const VIcon = v.icon;
+                    const isActive = crmChannelView === v.key;
+                    return (
+                      <button
+                        key={v.key}
+                        onClick={() => setCrmChannelView(isActive ? "tutti" : v.key)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+                          isActive
+                            ? "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        )}
+                      >
+                        {VIcon && <VIcon className={cn("h-3.5 w-3.5 shrink-0", isActive ? "text-violet-600 dark:text-violet-400" : "text-gray-400")} />}
+                        <span className="truncate">{v.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-1">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-semibold px-3 mb-1.5">Fonte</p>
+                  {(["google_maps", "google_search"] as const).map((v) => (
                     <button
-                      key={s.value}
+                      key={v}
+                      onClick={() => setCrmSourceFilter(crmSourceFilter === v ? "tutti" : v)}
                       className={cn(
-                        "flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-150 whitespace-nowrap border",
-                        isActive
-                          ? `${s.color} shadow-sm ring-1 ring-offset-1 ring-current/10`
-                          : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600"
+                        "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+                        crmSourceFilter === v
+                          ? "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300"
+                          : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
                       )}
-                      onClick={() => setCrmFilterStatus(crmFilterStatus === s.value ? "tutti" : s.value)}
                     >
-                      {s.label}
-                      <span className={cn(
-                        "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-md text-[11px] font-bold",
-                        isActive ? "bg-white/30 dark:bg-black/20" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                      )}>{count}</span>
+                      {v === "google_maps" && <><MapIcon className="h-3.5 w-3.5 text-orange-500 shrink-0" /><span>Maps</span></>}
+                      {v === "google_search" && <><Globe className="h-3.5 w-3.5 text-blue-500 shrink-0" /><span>Search</span></>}
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
+
+                {(crmFilterStatus !== "tutti" || crmSourceFilter !== "tutti" || crmChannelView !== "tutti") && (
+                  <Button variant="ghost" size="sm" onClick={() => { setCrmFilterStatus("tutti"); setCrmSourceFilter("tutti"); setCrmChannelView("tutti"); }} className="w-full text-xs h-8 text-gray-500 hover:text-gray-700 mt-1">
+                    <X className="h-3 w-3 mr-1" />Rimuovi filtri
+                  </Button>
+                )}
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                {([
-                  { key: "tutti", label: "Tutti", icon: null },
-                  { key: "nuovi", label: "Nuovi", icon: null },
-                  { key: "con_telefono", label: "Con Telefono", icon: PhoneCall },
-                  { key: "con_email", label: "Con Email", icon: MailIcon },
-                  { key: "wa", label: "Contattati WA", icon: MessageCircle },
-                  { key: "voice", label: "Contattati Voce", icon: PhoneCall },
-                  { key: "email", label: "Contattati Email", icon: MailIcon },
-                  { key: "multi", label: "Multi-canale", icon: Crosshair },
-                ] as const).map((v) => {
-                  const VIcon = v.icon;
-                  const isActive = crmChannelView === v.key;
-                  return (
-                    <button
-                      key={v.key}
-                      onClick={() => setCrmChannelView(isActive && v.key !== "tutti" ? "tutti" : v.key)}
-                      className={cn(
-                        "flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-medium border transition-all whitespace-nowrap",
-                        isActive
-                          ? "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-700 shadow-sm"
-                          : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700"
-                      )}
-                    >
-                      {VIcon && <VIcon className={cn("h-3 w-3", isActive ? "text-violet-600 dark:text-violet-400" : "")} />}
-                      {v.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <Card className="rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/30">
-                        <ClipboardList className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                      </div>
-                      CRM Lead
-                      <span className="text-sm font-normal text-muted-foreground">({filteredCrmResults.length}{crmChannelView !== "tutti" ? ` / ${allResults.length}` : ""})</span>
-                    </CardTitle>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-                        {(["tutti", "google_maps", "google_search"] as const).map((v) => (
-                          <button
-                            key={v}
-                            onClick={() => setCrmSourceFilter(v)}
-                            className={cn(
-                              "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
-                              crmSourceFilter === v
-                                ? "bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white"
-                                : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                            )}
+              <div className="flex-1 min-w-0">
+                <Card className="rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/30">
+                          <ClipboardList className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        CRM Lead
+                        <span className="text-sm font-normal text-muted-foreground">({filteredCrmResults.length})</span>
+                      </CardTitle>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {selectedLeadIds.size > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30 gap-1"
+                            disabled={bulkDeleteLeadsMutation.isPending}
+                            onClick={() => {
+                              if (confirm(`Sei sicuro di voler eliminare ${selectedLeadIds.size} lead selezionati?`)) {
+                                bulkDeleteLeadsMutation.mutate(Array.from(selectedLeadIds));
+                              }
+                            }}
                           >
-                            {v === "tutti" && "Tutti"}
-                            {v === "google_maps" && <><MapIcon className="h-3 w-3 text-rose-500" />Maps</>}
-                            {v === "google_search" && <><Globe className="h-3 w-3 text-blue-500" />Search</>}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
-                        <Input
-                          placeholder="Cerca azienda, email o telefono..."
-                          value={crmSearch}
-                          onChange={(e) => setCrmSearch(e.target.value)}
-                          className="pl-9 w-[300px] h-10 rounded-xl border-gray-200 dark:border-gray-700 focus-visible:ring-violet-500/30 focus-visible:border-violet-400"
-                        />
-                        {crmSearch && (
-                          <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => setCrmSearch("")}>
-                            <X className="h-3 w-3" />
+                            {bulkDeleteLeadsMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                            Elimina {selectedLeadIds.size}
                           </Button>
                         )}
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+                          <Input
+                            placeholder="Cerca..."
+                            value={crmSearch}
+                            onChange={(e) => setCrmSearch(e.target.value)}
+                            className="pl-9 w-[220px] h-9 rounded-xl border-gray-200 dark:border-gray-700 focus-visible:ring-violet-500/30 focus-visible:border-violet-400"
+                          />
+                          {crmSearch && (
+                            <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => setCrmSearch("")}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      {(crmFilterStatus !== "tutti" || crmSourceFilter !== "tutti" || crmChannelView !== "tutti") && (
-                        <Button variant="ghost" size="sm" onClick={() => { setCrmFilterStatus("tutti"); setCrmSourceFilter("tutti"); setCrmChannelView("tutti"); }} className="text-xs h-8 text-gray-500 hover:text-gray-700">
-                          <X className="h-3 w-3 mr-1" />Rimuovi filtri
-                        </Button>
-                      )}
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {filteredCrmResults.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                      <p>Nessun lead trovato</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-gray-50/80 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800">
-                            <TableHead className="font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 pl-4">Lead</TableHead>
-                            <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[70px]">Fonte</TableHead>
-                            <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[80px]">Canali</TableHead>
-                            <TableHead className="font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Contatti</TableHead>
-                            <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[80px]">Score</TableHead>
-                            <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[110px]">Stato</TableHead>
-                            <TableHead className="font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Prossima azione</TableHead>
-                            <TableHead className="text-right font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[60px]"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {paginatedCrmResults.map((r) => {
-                            const statusInfo = getLeadStatusInfo(r.leadStatus);
-                            return (
-                              <TableRow
-                                key={r.id}
-                                className={cn("cursor-pointer hover:bg-violet-50/30 dark:hover:bg-gray-800/40 transition-all duration-150 border-l-[3px] group", statusInfo.borderColor)}
-                                onClick={() => navigateToLead(r.id)}
-                              >
-                                <TableCell className="py-4 pl-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shrink-0 text-sm font-bold", statusInfo.color)}>
-                                      {(r.businessName || "?").charAt(0).toUpperCase()}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="font-semibold text-gray-900 dark:text-white text-sm truncate">{r.businessName || "-"}</span>
-                                        {r.outreachTaskId && (
-                                          <Badge className="text-[9px] px-1.5 py-0 h-4 bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800 gap-0.5">
-                                            <Crosshair className="h-2.5 w-2.5" />Auto
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      {r.category && <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate mt-0.5">{r.category}</p>}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center py-4">
-                                  {r.source === "google_search" ? (
-                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-blue-300 text-blue-600 bg-blue-50 dark:bg-blue-950/30 gap-0.5">
-                                      <Globe className="h-2.5 w-2.5" />Search
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-rose-300 text-rose-600 bg-rose-50 dark:bg-rose-950/30 gap-0.5">
-                                      <MapIcon className="h-2.5 w-2.5" />Maps
-                                    </Badge>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {filteredCrmResults.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                        <p>Nessun lead trovato</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-gray-50/80 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800">
+                              <TableHead className="w-[40px] pl-3">
+                                <Checkbox
+                                  checked={paginatedCrmResults.length > 0 && paginatedCrmResults.every(r => selectedLeadIds.has(r.id))}
+                                  onCheckedChange={(checked) => {
+                                    setSelectedLeadIds(prev => {
+                                      const next = new Set(prev);
+                                      paginatedCrmResults.forEach(r => checked ? next.add(r.id) : next.delete(r.id));
+                                      return next;
+                                    });
+                                  }}
+                                />
+                              </TableHead>
+                              <TableHead className="font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Lead</TableHead>
+                              <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[70px]">Fonte</TableHead>
+                              <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[80px]">Canali</TableHead>
+                              <TableHead className="font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Contatti</TableHead>
+                              <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[80px]">Score</TableHead>
+                              <TableHead className="text-center font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[110px]">Stato</TableHead>
+                              <TableHead className="text-right font-semibold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[80px]"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedCrmResults.map((r) => {
+                              const statusInfo = getLeadStatusInfo(r.leadStatus);
+                              const isSelected = selectedLeadIds.has(r.id);
+                              return (
+                                <TableRow
+                                  key={r.id}
+                                  className={cn(
+                                    "cursor-pointer hover:bg-violet-50/30 dark:hover:bg-gray-800/40 transition-all duration-150 border-l-[3px] group",
+                                    statusInfo.borderColor,
+                                    isSelected && "bg-violet-50/50 dark:bg-violet-950/20"
                                   )}
-                                </TableCell>
-                                <TableCell className="text-center py-4">
-                                  {(r.contactedChannels && r.contactedChannels.length > 0) ? (
-                                    <div className="flex items-center justify-center gap-1">
-                                      {r.contactedChannels.includes("voice") && <PhoneCall className="h-3 w-3 text-green-500" />}
-                                      {r.contactedChannels.includes("whatsapp") && <MessageCircle className="h-3 w-3 text-emerald-500" />}
-                                      {r.contactedChannels.includes("email") && <MailIcon className="h-3 w-3 text-blue-500" />}
-                                    </div>
-                                  ) : (
-                                    <span className="text-[10px] text-muted-foreground">—</span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="py-4">
-                                  <div className="space-y-0.5">
-                                    {r.email && <p className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-[180px]">{r.email}</p>}
-                                    {r.phone && <p className="text-xs text-gray-500 dark:text-gray-500">{r.phone}</p>}
-                                    {!r.email && !r.phone && <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center py-4">{getScoreBar(r.aiCompatibilityScore)}</TableCell>
-                                <TableCell className="text-center py-4">
-                                  <Badge className={cn("text-[10px] px-2 py-0.5 h-5 font-semibold border", statusInfo.color)}>{statusInfo.label}</Badge>
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground py-4">
-                                  {r.leadNextAction ? (
-                                    <span className="flex items-center gap-1">
-                                      <Calendar className="h-3 w-3 text-violet-400" />{r.leadNextAction}
-                                      {r.leadNextActionDate && <span className="text-[10px]">({new Date(r.leadNextActionDate).toLocaleDateString("it-IT")})</span>}
-                                    </span>
-                                  ) : "\u2014"}
-                                </TableCell>
-                                <TableCell className="text-right py-4">
-                                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                                    {r.leadValue ? <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mr-2">{r.leadValue.toLocaleString("it-IT")}€</span> : null}
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-lg text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/30"
-                                      title="Avvia Hunter su questo lead"
-                                      onClick={(e) => { e.stopPropagation(); openHunterSingleLead(r); }}
-                                    >
-                                      <Crosshair className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                                      title="Elimina lead"
-                                      disabled={deleteLeadMutation.isPending}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (confirm("Sei sicuro di voler eliminare questo lead?")) {
-                                          deleteLeadMutation.mutate(r.id);
-                                        }
+                                  onClick={() => navigateToLead(r.id)}
+                                >
+                                  <TableCell className="py-3 pl-3 w-[40px]" onClick={(e) => e.stopPropagation()}>
+                                    <Checkbox
+                                      checked={isSelected}
+                                      onCheckedChange={(checked) => {
+                                        setSelectedLeadIds(prev => {
+                                          const next = new Set(prev);
+                                          checked ? next.add(r.id) : next.delete(r.id);
+                                          return next;
+                                        });
                                       }}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                  {filteredCrmResults.length > CRM_PAGE_SIZE && (
-                    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-                      <span className="text-xs text-muted-foreground">
-                        {((crmPage - 1) * CRM_PAGE_SIZE) + 1}–{Math.min(crmPage * CRM_PAGE_SIZE, filteredCrmResults.length)} di {filteredCrmResults.length} lead
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          disabled={crmPage <= 1}
-                          onClick={() => setCrmPage(1)}
-                        >
-                          <ChevronsLeft className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          disabled={crmPage <= 1}
-                          onClick={() => setCrmPage(p => Math.max(1, p - 1))}
-                        >
-                          <ChevronLeft className="h-3.5 w-3.5" />
-                        </Button>
-                        <span className="text-xs font-medium px-2">{crmPage} / {crmTotalPages}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          disabled={crmPage >= crmTotalPages}
-                          onClick={() => setCrmPage(p => Math.min(crmTotalPages, p + 1))}
-                        >
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          disabled={crmPage >= crmTotalPages}
-                          onClick={() => setCrmPage(crmTotalPages)}
-                        >
-                          <ChevronsRight className="h-3.5 w-3.5" />
-                        </Button>
+                                    />
+                                  </TableCell>
+                                  <TableCell className="py-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0 text-sm font-bold", statusInfo.color)}>
+                                        {(r.businessName || "?").charAt(0).toUpperCase()}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="font-semibold text-gray-900 dark:text-white text-sm truncate">{r.businessName || "-"}</span>
+                                          {r.outreachTaskId && (
+                                            <Badge className="text-[9px] px-1.5 py-0 h-4 bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800 gap-0.5">
+                                              <Crosshair className="h-2.5 w-2.5" />Auto
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        {r.category && <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate mt-0.5">{r.category}</p>}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-center py-3">
+                                    {r.source === "google_search" ? (
+                                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-blue-300 text-blue-600 bg-blue-50 dark:bg-blue-950/30 gap-0.5">
+                                        <Globe className="h-2.5 w-2.5" />Search
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-orange-300 text-orange-600 bg-orange-50 dark:bg-orange-950/30 gap-0.5">
+                                        <MapIcon className="h-2.5 w-2.5" />Maps
+                                      </Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-center py-3">
+                                    {(r.contactedChannels && r.contactedChannels.length > 0) ? (
+                                      <div className="flex items-center justify-center gap-1">
+                                        {r.contactedChannels.includes("voice") && <PhoneCall className="h-3 w-3 text-green-500" />}
+                                        {r.contactedChannels.includes("whatsapp") && <MessageCircle className="h-3 w-3 text-emerald-500" />}
+                                        {r.contactedChannels.includes("email") && <MailIcon className="h-3 w-3 text-blue-500" />}
+                                      </div>
+                                    ) : (
+                                      <span className="text-[10px] text-muted-foreground">—</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="py-3">
+                                    <div className="space-y-0.5">
+                                      {r.email && <p className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-[180px]">{r.email}</p>}
+                                      {r.phone && <p className="text-xs text-gray-500 dark:text-gray-500">{r.phone}</p>}
+                                      {!r.email && !r.phone && <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-center py-3">{getScoreBar(r.aiCompatibilityScore)}</TableCell>
+                                  <TableCell className="text-center py-3">
+                                    <Badge className={cn("text-[10px] px-2 py-0.5 h-5 font-semibold border", statusInfo.color)}>{statusInfo.label}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right py-3">
+                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 rounded-lg text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                                        title="Avvia Hunter"
+                                        onClick={(e) => { e.stopPropagation(); openHunterSingleLead(r); }}
+                                      >
+                                        <Crosshair className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                                        title="Elimina lead"
+                                        disabled={deleteLeadMutation.isPending}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (confirm("Sei sicuro di voler eliminare questo lead?")) {
+                                            deleteLeadMutation.mutate(r.id);
+                                          }
+                                        }}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
                       </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                    )}
+                    {filteredCrmResults.length > CRM_PAGE_SIZE && (
+                      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+                        <span className="text-xs text-muted-foreground">
+                          {((crmPage - 1) * CRM_PAGE_SIZE) + 1}–{Math.min(crmPage * CRM_PAGE_SIZE, filteredCrmResults.length)} di {filteredCrmResults.length} lead
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={crmPage <= 1} onClick={() => setCrmPage(1)}>
+                            <ChevronsLeft className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={crmPage <= 1} onClick={() => setCrmPage(p => Math.max(1, p - 1))}>
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                          </Button>
+                          <span className="text-xs font-medium px-2">{crmPage} / {crmTotalPages}</span>
+                          <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={crmPage >= crmTotalPages} onClick={() => setCrmPage(p => Math.min(crmTotalPages, p + 1))}>
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={crmPage >= crmTotalPages} onClick={() => setCrmPage(crmTotalPages)}>
+                            <ChevronsRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </TabsContent>
 
