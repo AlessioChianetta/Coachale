@@ -967,6 +967,14 @@ export default function ConsultantLeadScraper() {
     }
   }, [searches, selectedSearchId]);
 
+  const prevSearchRunningRef = useRef(isSearchRunning);
+  useEffect(() => {
+    if (prevSearchRunningRef.current && !isSearchRunning) {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/all-results"] });
+    }
+    prevSearchRunningRef.current = isSearchRunning;
+  }, [isSearchRunning, queryClient]);
+
   useEffect(() => {
     if (!isSearchRunning) return;
     const interval = setInterval(() => {
@@ -2235,6 +2243,15 @@ export default function ConsultantLeadScraper() {
                             Elimina {selectedLeadIds.size}
                           </Button>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs gap-1"
+                          onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/all-results"] })}
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          Aggiorna
+                        </Button>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
                           <Input
