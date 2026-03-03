@@ -3,7 +3,7 @@ import { db } from "../db";
 import { eq, and, desc, sql, ilike, gte, inArray } from "drizzle-orm";
 import { leadScraperSearches, leadScraperResults, superadminLeadScraperConfig, leadScraperSalesContext, leadScraperActivities } from "../../shared/schema";
 import { AuthRequest, authenticateToken, requireAnyRole } from "../middleware/auth";
-import { searchGoogleMaps, searchGoogleWeb, scrapeWebsiteWithFirecrawl, enrichSearchResults, generateSalesSummary, generateBatchSalesSummaries } from "../services/lead-scraper-service";
+import { searchGoogleMaps, searchGoogleWeb, scrapeWebsiteWithFirecrawl, enrichSearchResults, generateSalesSummary, generateBatchSalesSummaries, searchItalianLocations, normalizeLocation } from "../services/lead-scraper-service";
 import { decrypt } from "../encryption";
 import { generateOutreachContent, scheduleIndividualOutreach, loadSelectedWaTemplates, titleCaseName } from "./ai-autonomy-router";
 
@@ -45,19 +45,33 @@ router.get("/autocomplete/query", authenticateToken, async (req: AuthRequest, re
 router.get("/autocomplete/location", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const q = (req.query.q as string || "").trim();
-    if (!q || q.length < 2) return res.json([]);
-    const resp = await fetch(`https://suggestqueries.google.com/complete/search?client=firefox&hl=it&gl=it&q=${encodeURIComponent(q + " italia città")}`);
-    if (!resp.ok) return res.json([]);
-    const data = await resp.json();
-    const raw = (data[1] || []) as string[];
-    const cleaned = raw
-      .map((s: string) => s.replace(/\s*(italia|città|paese|comune|provincia|regione)\s*/gi, "").trim())
-      .filter((s: string) => s.length > 1 && s.length < 50)
-      .slice(0, 8);
-    res.json(cleaned);
+    if (!q || q.length < 1) return res.json([]);
+    const matches = searchItalianLocations(q, 8);
+    const formatted = matches.map(m => {
+      if (m.type === "region") return { label: m.name, subtitle: "Regione", value: m.name };
+      return { label: m.name, subtitle: m.region || "", value: m.name };
+    });
+    res.json(formatted);
   } catch (e) {
     console.error("[AUTOCOMPLETE] location error:", e);
     res.json([]);
+  }
+});
+
+router.get("/normalize-location", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const q = (req.query.q as string || "").trim();
+    if (!q) return res.json({ normalized: "", displayName: "", type: "unknown", changed: false });
+    const result = normalizeLocation(q);
+    res.json({
+      normalized: result.normalized,
+      displayName: result.displayName,
+      type: result.type,
+      changed: result.normalized.toLowerCase() !== q.toLowerCase(),
+    });
+  } catch (e) {
+    console.error("[NORMALIZE] location error:", e);
+    res.json({ normalized: q, displayName: q, type: "unknown", changed: false });
   }
 });
 
@@ -66,6 +80,14 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
     let { query, location, limit = 20, autoScrapeWebsites = true, searchEngine = "google_maps", searchMode = "predefinito" } = req.body;
     if (searchMode === "cerca_outreach") autoScrapeWebsites = true;
     const consultantId = req.user?.id;
+
+    if (location) {
+      const locResult = normalizeLocation(location);
+      if (locResult.type !== "unknown") {
+        console.log(`[LEAD-SCRAPER] Location normalized: "${location}" → "${locResult.normalized}" (${locResult.type})`);
+        location = locResult.normalized;
+      }
+    }
 
     if (!query) return res.status(400).json({ error: "Query is required" });
     if (!["google_maps", "google_search"].includes(searchEngine)) {

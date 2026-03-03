@@ -23,79 +23,300 @@ interface SerpApiResult {
   extensions?: any;
 }
 
-const ITALIAN_CITY_COORDINATES: Record<string, string> = {
-  "roma": "@41.9028,12.4964,13z",
-  "milano": "@45.4642,9.1900,13z",
-  "napoli": "@40.8518,14.2681,13z",
-  "torino": "@45.0703,7.6869,13z",
-  "palermo": "@38.1157,13.3615,13z",
-  "genova": "@44.4056,8.9463,13z",
-  "bologna": "@44.4949,11.3426,13z",
-  "firenze": "@43.7696,11.2558,13z",
-  "bari": "@41.1171,16.8719,13z",
-  "catania": "@37.5079,15.0830,13z",
-  "venezia": "@45.4408,12.3155,13z",
-  "verona": "@45.4384,10.9916,13z",
-  "messina": "@38.1938,15.5540,13z",
-  "padova": "@45.4064,11.8768,13z",
-  "trieste": "@45.6495,13.7768,13z",
-  "taranto": "@40.4764,17.2295,13z",
-  "brescia": "@45.5416,10.2118,13z",
-  "reggio calabria": "@38.1113,15.6474,13z",
-  "modena": "@44.6471,10.9252,13z",
-  "prato": "@43.8777,11.1020,13z",
-  "reggio emilia": "@44.6989,10.6297,13z",
-  "perugia": "@43.1107,12.3908,13z",
-  "cagliari": "@39.2238,9.1217,13z",
-  "livorno": "@43.5485,10.3106,13z",
-  "ravenna": "@44.4184,12.2035,13z",
-  "rimini": "@44.0594,12.5681,13z",
-  "salerno": "@40.6824,14.7681,13z",
-  "ferrara": "@44.8381,11.6199,13z",
-  "sassari": "@40.7268,8.5600,13z",
-  "siracusa": "@37.0755,15.2866,13z",
-  "pescara": "@42.4618,14.2141,13z",
-  "monza": "@45.5845,9.2744,13z",
-  "bergamo": "@45.6983,9.6773,13z",
-  "lecce": "@40.3516,18.1750,13z",
-  "trento": "@46.0748,11.1217,13z",
-  "bolzano": "@46.4983,11.3548,13z",
-  "vicenza": "@45.5455,11.5354,13z",
-  "terni": "@42.5636,12.6427,13z",
-  "novara": "@45.4467,8.6200,13z",
-  "piacenza": "@45.0526,9.6930,13z",
-  "ancona": "@43.6158,13.5189,13z",
-  "udine": "@46.0711,13.2346,13z",
-  "arezzo": "@43.4634,11.8798,13z",
-  "cesena": "@44.1391,12.2431,13z",
-  "pesaro": "@43.9096,12.9131,13z",
-  "como": "@45.8081,9.0852,13z",
-  "la spezia": "@44.1025,9.8241,13z",
-  "varese": "@45.8206,8.8257,13z",
-  "parma": "@44.8015,10.3279,13z",
-  "lucca": "@43.8429,10.5027,13z",
-  "pisa": "@43.7228,10.4017,13z",
-  "siena": "@43.3188,11.3308,13z",
-  "treviso": "@45.6669,12.2430,13z",
-  "latina": "@41.4676,12.9037,13z",
-  "cosenza": "@39.3004,16.2510,13z",
-  "potenza": "@40.6404,15.8056,13z",
-  "catanzaro": "@38.9100,16.5878,13z",
-  "campobasso": "@41.5614,14.6684,13z",
-  "l'aquila": "@42.3498,13.3995,13z",
-  "aosta": "@45.7370,7.3209,13z",
-  "matera": "@40.6664,16.6043,13z",
-};
+interface ItalianLocation {
+  name: string;
+  province?: string;
+  region: string;
+  coords: string;
+  aliases?: string[];
+  population?: number;
+}
+
+const ITALIAN_LOCATIONS: ItalianLocation[] = [
+  { name: "Roma", region: "Lazio", coords: "@41.9028,12.4964,13z", aliases: ["rome", "rm"], population: 2873000 },
+  { name: "Milano", region: "Lombardia", coords: "@45.4642,9.1900,13z", aliases: ["milan", "mi"], population: 1396000 },
+  { name: "Napoli", region: "Campania", coords: "@40.8518,14.2681,13z", aliases: ["naples", "na"], population: 967000 },
+  { name: "Torino", region: "Piemonte", coords: "@45.0703,7.6869,13z", aliases: ["turin", "to"], population: 886000 },
+  { name: "Palermo", region: "Sicilia", coords: "@38.1157,13.3615,13z", aliases: ["pa"], population: 674000 },
+  { name: "Genova", region: "Liguria", coords: "@44.4056,8.9463,13z", aliases: ["genoa", "ge"], population: 583000 },
+  { name: "Bologna", region: "Emilia-Romagna", coords: "@44.4949,11.3426,13z", aliases: ["bo"], population: 394000 },
+  { name: "Firenze", region: "Toscana", coords: "@43.7696,11.2558,13z", aliases: ["florence", "fi"], population: 382000 },
+  { name: "Bari", region: "Puglia", coords: "@41.1171,16.8719,13z", aliases: ["ba"], population: 326000 },
+  { name: "Catania", region: "Sicilia", coords: "@37.5079,15.0830,13z", aliases: ["ct"], population: 311000 },
+  { name: "Venezia", region: "Veneto", coords: "@45.4408,12.3155,13z", aliases: ["venice", "ve"], population: 261000 },
+  { name: "Verona", region: "Veneto", coords: "@45.4384,10.9916,13z", aliases: ["vr"], population: 259000 },
+  { name: "Messina", region: "Sicilia", coords: "@38.1938,15.5540,13z", aliases: ["me"], population: 236000 },
+  { name: "Padova", region: "Veneto", coords: "@45.4064,11.8768,13z", aliases: ["padua", "pd"], population: 214000 },
+  { name: "Trieste", region: "Friuli Venezia Giulia", coords: "@45.6495,13.7768,13z", aliases: ["ts"], population: 204000 },
+  { name: "Taranto", region: "Puglia", coords: "@40.4764,17.2295,13z", aliases: ["ta"], population: 203000 },
+  { name: "Brescia", region: "Lombardia", coords: "@45.5416,10.2118,13z", aliases: ["bs"], population: 198000 },
+  { name: "Reggio Calabria", region: "Calabria", coords: "@38.1113,15.6474,13z", aliases: ["rc", "reggio c"], population: 182000 },
+  { name: "Modena", region: "Emilia-Romagna", coords: "@44.6471,10.9252,13z", aliases: ["mo"], population: 186000 },
+  { name: "Prato", region: "Toscana", coords: "@43.8777,11.1020,13z", aliases: ["po"], population: 195000 },
+  { name: "Reggio Emilia", region: "Emilia-Romagna", coords: "@44.6989,10.6297,13z", aliases: ["re", "reggio e"], population: 172000 },
+  { name: "Perugia", region: "Umbria", coords: "@43.1107,12.3908,13z", aliases: ["pg"], population: 166000 },
+  { name: "Cagliari", region: "Sardegna", coords: "@39.2238,9.1217,13z", aliases: ["ca"], population: 155000 },
+  { name: "Livorno", region: "Toscana", coords: "@43.5485,10.3106,13z", aliases: ["li", "leghorn"], population: 160000 },
+  { name: "Ravenna", region: "Emilia-Romagna", coords: "@44.4184,12.2035,13z", aliases: ["ra"], population: 159000 },
+  { name: "Rimini", region: "Emilia-Romagna", coords: "@44.0594,12.5681,13z", aliases: ["rn"], population: 150000 },
+  { name: "Salerno", region: "Campania", coords: "@40.6824,14.7681,13z", aliases: ["sa"], population: 135000 },
+  { name: "Ferrara", region: "Emilia-Romagna", coords: "@44.8381,11.6199,13z", aliases: ["fe"], population: 133000 },
+  { name: "Sassari", region: "Sardegna", coords: "@40.7268,8.5600,13z", aliases: ["ss"], population: 128000 },
+  { name: "Siracusa", region: "Sicilia", coords: "@37.0755,15.2866,13z", aliases: ["sr", "syracuse"], population: 122000 },
+  { name: "Pescara", region: "Abruzzo", coords: "@42.4618,14.2141,13z", aliases: ["pe"], population: 121000 },
+  { name: "Monza", region: "Lombardia", coords: "@45.5845,9.2744,13z", aliases: ["mb"], population: 124000 },
+  { name: "Bergamo", region: "Lombardia", coords: "@45.6983,9.6773,13z", aliases: ["bg"], population: 122000 },
+  { name: "Lecce", region: "Puglia", coords: "@40.3516,18.1750,13z", aliases: ["le"], population: 95000 },
+  { name: "Trento", region: "Trentino-Alto Adige", coords: "@46.0748,11.1217,13z", aliases: ["tn", "trent"], population: 119000 },
+  { name: "Bolzano", region: "Trentino-Alto Adige", coords: "@46.4983,11.3548,13z", aliases: ["bz", "bozen"], population: 108000 },
+  { name: "Vicenza", region: "Veneto", coords: "@45.5455,11.5354,13z", aliases: ["vi"], population: 112000 },
+  { name: "Terni", region: "Umbria", coords: "@42.5636,12.6427,13z", aliases: ["tr"], population: 112000 },
+  { name: "Novara", region: "Piemonte", coords: "@45.4467,8.6200,13z", aliases: ["no"], population: 104000 },
+  { name: "Piacenza", region: "Emilia-Romagna", coords: "@45.0526,9.6930,13z", aliases: ["pc"], population: 104000 },
+  { name: "Ancona", region: "Marche", coords: "@43.6158,13.5189,13z", aliases: ["an"], population: 101000 },
+  { name: "Udine", region: "Friuli Venezia Giulia", coords: "@46.0711,13.2346,13z", aliases: ["ud"], population: 99000 },
+  { name: "Arezzo", region: "Toscana", coords: "@43.4634,11.8798,13z", aliases: ["ar"], population: 99000 },
+  { name: "Cesena", region: "Emilia-Romagna", coords: "@44.1391,12.2431,13z", aliases: ["fc"], population: 97000 },
+  { name: "Pesaro", region: "Marche", coords: "@43.9096,12.9131,13z", aliases: ["pu"], population: 95000 },
+  { name: "Como", region: "Lombardia", coords: "@45.8081,9.0852,13z", aliases: ["co"], population: 84000 },
+  { name: "La Spezia", region: "Liguria", coords: "@44.1025,9.8241,13z", aliases: ["sp", "spezia"], population: 94000 },
+  { name: "Varese", region: "Lombardia", coords: "@45.8206,8.8257,13z", aliases: ["va"], population: 81000 },
+  { name: "Parma", region: "Emilia-Romagna", coords: "@44.8015,10.3279,13z", aliases: ["pr"], population: 198000 },
+  { name: "Lucca", region: "Toscana", coords: "@43.8429,10.5027,13z", aliases: ["lu"], population: 89000 },
+  { name: "Pisa", region: "Toscana", coords: "@43.7228,10.4017,13z", aliases: ["pi"], population: 91000 },
+  { name: "Siena", region: "Toscana", coords: "@43.3188,11.3308,13z", aliases: ["si"], population: 54000 },
+  { name: "Treviso", region: "Veneto", coords: "@45.6669,12.2430,13z", aliases: ["tv"], population: 85000 },
+  { name: "Latina", region: "Lazio", coords: "@41.4676,12.9037,13z", aliases: ["lt"], population: 128000 },
+  { name: "Cosenza", region: "Calabria", coords: "@39.3004,16.2510,13z", aliases: ["cs"], population: 67000 },
+  { name: "Potenza", region: "Basilicata", coords: "@40.6404,15.8056,13z", aliases: ["pz"], population: 67000 },
+  { name: "Catanzaro", region: "Calabria", coords: "@38.9100,16.5878,13z", aliases: ["cz"], population: 88000 },
+  { name: "Campobasso", region: "Molise", coords: "@41.5614,14.6684,13z", aliases: ["cb"], population: 49000 },
+  { name: "L'Aquila", region: "Abruzzo", coords: "@42.3498,13.3995,13z", aliases: ["aq", "aquila"], population: 70000 },
+  { name: "Aosta", region: "Valle d'Aosta", coords: "@45.7370,7.3209,13z", aliases: ["ao", "aoste"], population: 34000 },
+  { name: "Matera", region: "Basilicata", coords: "@40.6664,16.6043,13z", aliases: ["mt"], population: 60000 },
+  { name: "Foggia", region: "Puglia", coords: "@41.4622,15.5446,13z", aliases: ["fg"], population: 152000 },
+  { name: "Alessandria", region: "Piemonte", coords: "@44.9129,8.6154,13z", aliases: ["al"], population: 94000 },
+  { name: "Asti", region: "Piemonte", coords: "@44.9007,8.2064,13z", aliases: ["at"], population: 76000 },
+  { name: "Cuneo", region: "Piemonte", coords: "@44.3905,7.5484,13z", aliases: ["cn"], population: 56000 },
+  { name: "Mantova", region: "Lombardia", coords: "@45.1564,10.7914,13z", aliases: ["mn", "mantua"], population: 49000 },
+  { name: "Cremona", region: "Lombardia", coords: "@45.1332,10.0227,13z", aliases: ["cr"], population: 72000 },
+  { name: "Lodi", region: "Lombardia", coords: "@45.3138,9.5037,13z", aliases: ["lo"], population: 45000 },
+  { name: "Lecco", region: "Lombardia", coords: "@45.8566,9.3977,13z", aliases: ["lc"], population: 48000 },
+  { name: "Sondrio", region: "Lombardia", coords: "@46.1699,9.8720,13z", aliases: ["so"], population: 22000 },
+  { name: "Biella", region: "Piemonte", coords: "@45.5624,8.0572,13z", aliases: ["bi"], population: 44000 },
+  { name: "Vercelli", region: "Piemonte", coords: "@45.3221,8.4186,13z", aliases: ["vc"], population: 47000 },
+  { name: "Verbania", region: "Piemonte", coords: "@45.9228,8.5517,13z", aliases: ["vb"], population: 31000 },
+  { name: "Savona", region: "Liguria", coords: "@44.3091,8.4806,13z", aliases: ["sv"], population: 62000 },
+  { name: "Imperia", region: "Liguria", coords: "@43.8888,8.0396,13z", aliases: ["im"], population: 43000 },
+  { name: "Belluno", region: "Veneto", coords: "@46.1399,12.2177,13z", aliases: ["bl"], population: 36000 },
+  { name: "Rovigo", region: "Veneto", coords: "@45.0693,11.7900,13z", aliases: ["ro"], population: 52000 },
+  { name: "Pordenone", region: "Friuli Venezia Giulia", coords: "@45.9576,12.6603,13z", aliases: ["pn"], population: 52000 },
+  { name: "Gorizia", region: "Friuli Venezia Giulia", coords: "@45.9414,13.6220,13z", aliases: ["go"], population: 35000 },
+  { name: "Forlì", region: "Emilia-Romagna", coords: "@44.2227,12.0407,13z", aliases: ["forli", "fc"], population: 118000 },
+  { name: "Massa", region: "Toscana", coords: "@44.0361,10.1380,13z", aliases: ["ms", "massa carrara"], population: 70000 },
+  { name: "Carrara", region: "Toscana", coords: "@44.0793,10.0982,13z", aliases: ["ms"], population: 63000 },
+  { name: "Pistoia", region: "Toscana", coords: "@43.9303,10.9078,13z", aliases: ["pt"], population: 90000 },
+  { name: "Grosseto", region: "Toscana", coords: "@42.7635,11.1124,13z", aliases: ["gr"], population: 82000 },
+  { name: "Viterbo", region: "Lazio", coords: "@42.4173,12.1048,13z", aliases: ["vt"], population: 67000 },
+  { name: "Rieti", region: "Lazio", coords: "@42.4040,12.8568,13z", aliases: ["ri"], population: 47000 },
+  { name: "Frosinone", region: "Lazio", coords: "@41.6397,13.3426,13z", aliases: ["fr"], population: 47000 },
+  { name: "Caserta", region: "Campania", coords: "@41.0742,14.3323,13z", aliases: ["ce"], population: 76000 },
+  { name: "Benevento", region: "Campania", coords: "@41.1297,14.7826,13z", aliases: ["bn"], population: 60000 },
+  { name: "Avellino", region: "Campania", coords: "@40.9146,14.7906,13z", aliases: ["av"], population: 55000 },
+  { name: "Brindisi", region: "Puglia", coords: "@40.6326,17.9462,13z", aliases: ["br"], population: 89000 },
+  { name: "Andria", region: "Puglia", coords: "@41.2316,16.2927,13z", aliases: ["bt"], population: 100000 },
+  { name: "Crotone", region: "Calabria", coords: "@39.0812,17.1272,13z", aliases: ["kr"], population: 61000 },
+  { name: "Vibo Valentia", region: "Calabria", coords: "@38.6769,16.0998,13z", aliases: ["vv"], population: 34000 },
+  { name: "Trapani", region: "Sicilia", coords: "@38.0174,12.5365,13z", aliases: ["tp"], population: 69000 },
+  { name: "Agrigento", region: "Sicilia", coords: "@37.3111,13.5765,13z", aliases: ["ag"], population: 59000 },
+  { name: "Caltanissetta", region: "Sicilia", coords: "@37.4901,14.0611,13z", aliases: ["cl"], population: 63000 },
+  { name: "Enna", region: "Sicilia", coords: "@37.5608,14.2756,13z", aliases: ["en"], population: 28000 },
+  { name: "Ragusa", region: "Sicilia", coords: "@36.9269,14.7253,13z", aliases: ["rg"], population: 73000 },
+  { name: "Nuoro", region: "Sardegna", coords: "@40.3211,9.3269,13z", aliases: ["nu"], population: 37000 },
+  { name: "Oristano", region: "Sardegna", coords: "@39.9062,8.5886,13z", aliases: ["or"], population: 32000 },
+  { name: "Olbia", region: "Sardegna", coords: "@40.9234,9.4962,13z", aliases: ["ot"], population: 60000 },
+  { name: "Sanremo", region: "Liguria", coords: "@43.8168,7.7759,13z", aliases: ["san remo"], population: 55000 },
+  { name: "Busto Arsizio", region: "Lombardia", coords: "@45.6119,8.8520,13z", population: 83000 },
+  { name: "Sesto San Giovanni", region: "Lombardia", coords: "@45.5354,9.2384,13z", aliases: ["sesto"], population: 82000 },
+  { name: "Cinisello Balsamo", region: "Lombardia", coords: "@45.5581,9.2157,13z", aliases: ["cinisello"], population: 75000 },
+  { name: "Guidonia", region: "Lazio", coords: "@42.0000,12.7233,13z", aliases: ["guidonia montecelio"], population: 89000 },
+  { name: "Torre del Greco", region: "Campania", coords: "@40.7880,14.3688,13z", population: 86000 },
+  { name: "Giugliano in Campania", region: "Campania", coords: "@40.9277,14.1957,13z", aliases: ["giugliano"], population: 125000 },
+];
+
+const ITALIAN_REGIONS: { name: string; coords: string; aliases?: string[] }[] = [
+  { name: "Lombardia", coords: "@45.4642,9.1900,11z", aliases: ["lombardy"] },
+  { name: "Lazio", coords: "@41.9028,12.4964,11z", aliases: ["latium"] },
+  { name: "Campania", coords: "@40.8518,14.2681,11z" },
+  { name: "Sicilia", coords: "@37.5994,14.0154,10z", aliases: ["sicily"] },
+  { name: "Veneto", coords: "@45.4408,12.3155,11z" },
+  { name: "Emilia-Romagna", coords: "@44.4949,11.3426,10z", aliases: ["emilia romagna", "emilia"] },
+  { name: "Piemonte", coords: "@45.0703,7.6869,10z", aliases: ["piedmont"] },
+  { name: "Puglia", coords: "@41.1171,16.8719,10z", aliases: ["apulia"] },
+  { name: "Toscana", coords: "@43.7696,11.2558,10z", aliases: ["tuscany"] },
+  { name: "Calabria", coords: "@39.3004,16.2510,10z" },
+  { name: "Sardegna", coords: "@39.2238,9.1217,10z", aliases: ["sardinia"] },
+  { name: "Liguria", coords: "@44.4056,8.9463,10z" },
+  { name: "Marche", coords: "@43.6158,13.5189,10z" },
+  { name: "Abruzzo", coords: "@42.4618,14.2141,10z" },
+  { name: "Friuli Venezia Giulia", coords: "@46.0711,13.2346,10z", aliases: ["friuli", "fvg"] },
+  { name: "Trentino-Alto Adige", coords: "@46.0748,11.1217,10z", aliases: ["trentino", "alto adige", "sudtirol", "sud tirol"] },
+  { name: "Umbria", coords: "@43.1107,12.3908,10z" },
+  { name: "Basilicata", coords: "@40.6404,15.8056,10z" },
+  { name: "Molise", coords: "@41.5614,14.6684,10z" },
+  { name: "Valle d'Aosta", coords: "@45.7370,7.3209,10z", aliases: ["val d'aosta", "valle aosta", "vda"] },
+];
+
+function levenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+export function searchItalianLocations(query: string, maxResults: number = 8): { name: string; type: "city" | "region"; region?: string; province?: string }[] {
+  if (!query || query.length < 1) return [];
+  const q = query.toLowerCase().trim();
+  const results: { name: string; type: "city" | "region"; region?: string; province?: string; score: number }[] = [];
+
+  for (const loc of ITALIAN_LOCATIONS) {
+    const nameLower = loc.name.toLowerCase();
+    let score = 0;
+
+    if (nameLower === q) { score = 1000 + (loc.population || 0); }
+    else if (nameLower.startsWith(q)) { score = 500 + (loc.population || 0); }
+    else if (loc.aliases?.some(a => a === q)) { score = 900 + (loc.population || 0); }
+    else if (loc.aliases?.some(a => a.startsWith(q))) { score = 400 + (loc.population || 0); }
+    else if (nameLower.includes(q)) { score = 200 + (loc.population || 0); }
+    else if (loc.region.toLowerCase().startsWith(q)) { score = 50 + (loc.population || 0); }
+    else {
+      const target = nameLower.length > q.length + 2 ? nameLower.substring(0, q.length + 2) : nameLower;
+      const dist = levenshteinDistance(q, target);
+      const threshold = q.length <= 3 ? 1 : q.length <= 5 ? 2 : 3;
+      if (dist <= threshold) {
+        score = 100 - dist * 30 + (loc.population || 0) / 10000;
+      }
+    }
+
+    if (score > 0) {
+      results.push({ name: loc.name, type: "city", region: loc.region, province: loc.province, score });
+    }
+  }
+
+  for (const reg of ITALIAN_REGIONS) {
+    const nameLower = reg.name.toLowerCase();
+    let score = 0;
+
+    if (nameLower === q) { score = 800; }
+    else if (nameLower.startsWith(q)) { score = 350; }
+    else if (reg.aliases?.some(a => a === q)) { score = 700; }
+    else if (reg.aliases?.some(a => a.startsWith(q))) { score = 300; }
+    else if (nameLower.includes(q)) { score = 150; }
+    else {
+      const dist = levenshteinDistance(q, nameLower.substring(0, Math.max(q.length + 2, nameLower.length)));
+      if (dist <= 2) { score = 80 - dist * 25; }
+    }
+
+    if (score > 0) {
+      results.push({ name: reg.name, type: "region", score });
+    }
+  }
+
+  results.sort((a, b) => b.score - a.score);
+  return results.slice(0, maxResults).map(({ score, ...rest }) => rest);
+}
+
+export function normalizeLocation(input: string): { normalized: string; coords: string | null; type: "city" | "region" | "unknown"; displayName: string } {
+  if (!input || !input.trim()) return { normalized: "", coords: null, type: "unknown", displayName: "" };
+  const q = input.toLowerCase().trim();
+
+  for (const loc of ITALIAN_LOCATIONS) {
+    const nameLower = loc.name.toLowerCase();
+    if (nameLower === q || loc.aliases?.includes(q)) {
+      return { normalized: loc.name, coords: loc.coords, type: "city", displayName: `${loc.name}, ${loc.region}` };
+    }
+  }
+
+  for (const reg of ITALIAN_REGIONS) {
+    const nameLower = reg.name.toLowerCase();
+    if (nameLower === q || reg.aliases?.includes(q)) {
+      return { normalized: reg.name, coords: reg.coords, type: "region", displayName: reg.name };
+    }
+  }
+
+  for (const loc of ITALIAN_LOCATIONS) {
+    const nameLower = loc.name.toLowerCase();
+    if (nameLower.startsWith(q) || q.startsWith(nameLower)) {
+      return { normalized: loc.name, coords: loc.coords, type: "city", displayName: `${loc.name}, ${loc.region}` };
+    }
+  }
+
+  for (const reg of ITALIAN_REGIONS) {
+    const nameLower = reg.name.toLowerCase();
+    if (nameLower.startsWith(q) || q.startsWith(nameLower)) {
+      return { normalized: reg.name, coords: reg.coords, type: "region", displayName: reg.name };
+    }
+  }
+
+  let bestMatch: ItalianLocation | null = null;
+  let bestDist = Infinity;
+  const threshold = q.length <= 3 ? 1 : q.length <= 5 ? 2 : 3;
+  for (const loc of ITALIAN_LOCATIONS) {
+    const nameLower = loc.name.toLowerCase();
+    const dist = levenshteinDistance(q, nameLower);
+    if (dist <= threshold && dist < bestDist) {
+      bestDist = dist;
+      bestMatch = loc;
+    }
+  }
+  if (bestMatch) {
+    return { normalized: bestMatch.name, coords: bestMatch.coords, type: "city", displayName: `${bestMatch.name}, ${bestMatch.region}` };
+  }
+
+  let bestRegionMatch: typeof ITALIAN_REGIONS[0] | null = null;
+  let bestRegionDist = Infinity;
+  for (const reg of ITALIAN_REGIONS) {
+    const nameLower = reg.name.toLowerCase();
+    const dist = levenshteinDistance(q, nameLower);
+    const regThreshold = q.length <= 4 ? 1 : q.length <= 7 ? 2 : 3;
+    if (dist <= regThreshold && dist < bestRegionDist) {
+      bestRegionDist = dist;
+      bestRegionMatch = reg;
+    }
+    if (reg.aliases) {
+      for (const alias of reg.aliases) {
+        const aliasDist = levenshteinDistance(q, alias);
+        if (aliasDist <= regThreshold && aliasDist < bestRegionDist) {
+          bestRegionDist = aliasDist;
+          bestRegionMatch = reg;
+        }
+      }
+    }
+  }
+  if (bestRegionMatch) {
+    return { normalized: bestRegionMatch.name, coords: bestRegionMatch.coords, type: "region", displayName: bestRegionMatch.name };
+  }
+
+  return { normalized: input.trim(), coords: null, type: "unknown", displayName: input.trim() };
+}
 
 function getGPSCoordinatesForLocation(location: string): string | null {
   if (!location) return null;
-  const normalized = location.toLowerCase().trim();
-  for (const [city, coords] of Object.entries(ITALIAN_CITY_COORDINATES)) {
-    if (normalized.includes(city) || city.includes(normalized)) {
-      return coords;
-    }
-  }
-  return null;
+  const result = normalizeLocation(location);
+  return result.coords;
 }
 
 export async function searchGoogleMaps(

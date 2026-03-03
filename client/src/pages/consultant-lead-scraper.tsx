@@ -280,7 +280,8 @@ export default function ConsultantLeadScraper() {
   const [showQuerySuggestions, setShowQuerySuggestions] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [querySuggestionsList, setQuerySuggestionsList] = useState<string[]>([]);
-  const [locationSuggestionsList, setLocationSuggestionsList] = useState<string[]>([]);
+  const [locationSuggestionsList, setLocationSuggestionsList] = useState<{ label: string; subtitle: string; value: string }[]>([]);
+  const [normalizedLocation, setNormalizedLocation] = useState<{ normalized: string; displayName: string; type: string; changed: boolean } | null>(null);
   const queryInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
   const querySuggestionsRef = useRef<HTMLDivElement>(null);
@@ -301,13 +302,27 @@ export default function ConsultantLeadScraper() {
 
   const fetchLocationSuggestions = (q: string) => {
     if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current);
-    if (!q || q.length < 2) { setLocationSuggestionsList([]); return; }
+    if (!q || q.length < 1) { setLocationSuggestionsList([]); return; }
     locationDebounceRef.current = setTimeout(async () => {
       try {
         const resp = await fetch(`/api/lead-scraper/autocomplete/location?q=${encodeURIComponent(q)}`, { headers: getAuthHeaders() });
         if (resp.ok) { const data = await resp.json(); setLocationSuggestionsList(data); }
       } catch {}
-    }, 250);
+    }, 150);
+  };
+
+  const fetchNormalizedLocation = async (loc: string, autoCorrect = true) => {
+    if (!loc || !loc.trim()) { setNormalizedLocation(null); return; }
+    try {
+      const resp = await fetch(`/api/lead-scraper/normalize-location?q=${encodeURIComponent(loc.trim())}`, { headers: getAuthHeaders() });
+      if (resp.ok) {
+        const data = await resp.json();
+        setNormalizedLocation(data);
+        if (autoCorrect && data.changed && data.type !== "unknown") {
+          setSearchLocation(data.normalized);
+        }
+      }
+    } catch {}
   };
 
   useEffect(() => {
@@ -1516,7 +1531,7 @@ export default function ConsultantLeadScraper() {
                           onChange={(e) => { setSearchQuery(e.target.value); setShowQuerySuggestions(true); fetchQuerySuggestions(e.target.value); }}
                           onFocus={() => { setShowQuerySuggestions(true); if (searchQuery.length >= 2) fetchQuerySuggestions(searchQuery); }}
                           className="pl-9 h-10 text-sm"
-                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) { setShowQuerySuggestions(false); setShowSearchConfirm(true); } if (e.key === "Escape") setShowQuerySuggestions(false); }}
+                          onKeyDown={async (e) => { if (e.key === "Enter" && searchQuery) { setShowQuerySuggestions(false); await fetchNormalizedLocation(searchLocation); setShowSearchConfirm(true); } if (e.key === "Escape") setShowQuerySuggestions(false); }}
                           autoComplete="off"
                         />
                         {showQuerySuggestions && querySuggestionsList.length > 0 && (
@@ -1544,25 +1559,27 @@ export default function ConsultantLeadScraper() {
                           ref={locationInputRef}
                           placeholder="es. Milano, Roma, Napoli..."
                           value={searchLocation}
-                          onChange={(e) => { setSearchLocation(e.target.value); setShowLocationSuggestions(true); fetchLocationSuggestions(e.target.value); }}
-                          onFocus={() => { setShowLocationSuggestions(true); if (searchLocation.length >= 2) fetchLocationSuggestions(searchLocation); }}
+                          onChange={(e) => { setSearchLocation(e.target.value); setNormalizedLocation(null); setShowLocationSuggestions(true); fetchLocationSuggestions(e.target.value); }}
+                          onFocus={() => { setShowLocationSuggestions(true); if (searchLocation.length >= 1) fetchLocationSuggestions(searchLocation); }}
+                          onBlur={() => { if (searchLocation.trim()) fetchNormalizedLocation(searchLocation); }}
                           className="pl-9 h-10 text-sm"
-                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) { setShowLocationSuggestions(false); setShowSearchConfirm(true); } if (e.key === "Escape") setShowLocationSuggestions(false); }}
+                          onKeyDown={async (e) => { if (e.key === "Enter" && searchQuery) { setShowLocationSuggestions(false); await fetchNormalizedLocation(searchLocation); setShowSearchConfirm(true); } if (e.key === "Escape") setShowLocationSuggestions(false); }}
                           autoComplete="off"
                         />
                         {showLocationSuggestions && locationSuggestionsList.length > 0 && (
                           <div ref={locationSuggestionsRef} className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden max-h-[280px] overflow-y-auto">
                             <div className="px-2.5 py-1.5 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-900">
-                              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Suggerimenti</span>
+                              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Località italiane</span>
                             </div>
                             {locationSuggestionsList.map((s, i) => (
                               <button
                                 key={i}
                                 className="w-full text-left px-3 py-2 text-sm hover:bg-violet-50 dark:hover:bg-violet-950/20 text-gray-700 dark:text-gray-300 hover:text-violet-700 dark:hover:text-violet-400 transition-colors flex items-center gap-2"
-                                onMouseDown={(e) => { e.preventDefault(); setSearchLocation(s); setShowLocationSuggestions(false); }}
+                                onMouseDown={(e) => { e.preventDefault(); setSearchLocation(s.value); setNormalizedLocation(null); setShowLocationSuggestions(false); }}
                               >
                                 <MapPin className="h-3 w-3 text-gray-400 shrink-0" />
-                                {s}
+                                <span className="flex-1 truncate">{s.label}</span>
+                                <span className="text-[10px] text-gray-400 shrink-0">{s.subtitle}</span>
                               </button>
                             ))}
                           </div>
@@ -1587,7 +1604,7 @@ export default function ConsultantLeadScraper() {
                     <div className="flex items-center gap-2">
                       <Button
                         className="bg-violet-600 hover:bg-violet-700 text-white border-0 shadow-sm h-10 px-6 text-sm font-semibold flex-1 max-w-[200px]"
-                        onClick={() => setShowSearchConfirm(true)}
+                        onClick={async () => { await fetchNormalizedLocation(searchLocation); setShowSearchConfirm(true); }}
                         disabled={!searchQuery || startSearchMutation.isPending}
                       >
                         {startSearchMutation.isPending ? (
@@ -5120,7 +5137,16 @@ export default function ConsultantLeadScraper() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Località</span>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{searchLocation || "Non specificata"}</span>
+                    <div className="flex items-center gap-1.5 text-right">
+                      {normalizedLocation?.changed && normalizedLocation.type !== "unknown" ? (
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                          <span className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-1.5 py-0.5 rounded-md font-medium">corretto</span>
+                          {normalizedLocation.displayName || searchLocation}
+                        </span>
+                      ) : (
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{searchLocation || "Non specificata"}</span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Fonte</span>
