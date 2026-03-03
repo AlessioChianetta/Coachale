@@ -199,6 +199,22 @@ export default function ConsultantLeadDetail() {
   const [, params] = useRoute("/consultant/lead-scraper/lead/:leadId");
   const leadId = params?.leadId;
 
+  const backParams = useMemo(() => {
+    const sp = new URLSearchParams(window.location.search);
+    return {
+      from: sp.get("from") || "",
+      page: sp.get("page") || "1",
+    };
+  }, []);
+
+  const handleBack = () => {
+    if (backParams.from === "crm") {
+      setLocation(`/consultant/lead-scraper?tab=crm&page=${backParams.page}`);
+    } else {
+      setLocation("/consultant/lead-scraper");
+    }
+  };
+
   const [crmLeadStatus, setCrmLeadStatus] = useState("");
   const [crmNotes, setCrmNotes] = useState("");
   const [crmNextAction, setCrmNextAction] = useState("");
@@ -585,7 +601,7 @@ export default function ConsultantLeadDetail() {
         <div className="text-center py-20">
           <Building2 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Lead non trovato</h2>
-          <Button variant="outline" onClick={() => setLocation("/consultant/lead-scraper")}>
+          <Button variant="outline" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4 mr-2" />Torna al Lead Scraper
           </Button>
         </div>
@@ -614,7 +630,7 @@ export default function ConsultantLeadDetail() {
     <PageLayout role="consultant">
       <div className="space-y-5 max-w-7xl mx-auto">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => window.history.back()} className="text-gray-500 hover:text-gray-900 dark:hover:text-white">
+          <Button variant="ghost" size="sm" onClick={handleBack} className="text-gray-500 hover:text-gray-900 dark:hover:text-white">
             <ArrowLeft className="h-4 w-4 mr-1.5" />Indietro
           </Button>
           <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />

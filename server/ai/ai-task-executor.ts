@@ -324,16 +324,31 @@ async function updateLeadStatusAfterOutreach(
   }
 
   try {
-    const updateData: Record<string, any> = {
-      leadStatus: newLeadStatus,
-    };
-    if (newLeadStatus === 'contattato' || newLeadStatus === 'in_trattativa') {
-      updateData.leadContactedAt = new Date();
+    const channel = stepAction === 'voice_call' ? 'voice' : stepAction === 'send_whatsapp' ? 'whatsapp' : 'email';
+    const isSuccessfulDelivery = (stepAction === 'voice_call' && (result.status === 'scheduled' || result.call_id))
+      || (stepAction === 'send_whatsapp' && result.status === 'sent')
+      || (stepAction === 'send_email' && result.status === 'sent');
+
+    if (isSuccessfulDelivery) {
+      await db.execute(sql`
+        UPDATE lead_scraper_results
+        SET lead_status = ${newLeadStatus},
+            lead_contacted_at = COALESCE(lead_contacted_at, NOW()),
+            contacted_channels = CASE
+              WHEN ${channel} = ANY(COALESCE(contacted_channels, '{}'))
+              THEN contacted_channels
+              ELSE array_append(COALESCE(contacted_channels, '{}'), ${channel})
+            END
+        WHERE id = ${leadId}
+      `);
+    } else {
+      await db
+        .update(leadScraperResults)
+        .set({
+          leadStatus: newLeadStatus,
+        })
+        .where(eq(leadScraperResults.id, leadId));
     }
-    await db
-      .update(leadScraperResults)
-      .set(updateData)
-      .where(eq(leadScraperResults.id, leadId));
 
     let enrichedDescription: string;
     const enrichedMetadata: Record<string, any> = {
@@ -821,20 +836,18 @@ Richiama il lead come richiesto. Ricorda la conversazione precedente e procedi c
       }
     }
 
-    const updateData: Record<string, any> = {
-      leadStatus: newLeadStatus,
-    };
-    if (newLeadStatus === 'in_trattativa' || newLeadStatus === 'contattato') {
-      updateData.leadContactedAt = new Date();
-    }
-    if (classification.next_action) {
-      updateData.leadNextAction = classification.next_action;
-    }
-
-    await db
-      .update(leadScraperResults)
-      .set(updateData)
-      .where(eq(leadScraperResults.id, leadId));
+    await db.execute(sql`
+      UPDATE lead_scraper_results
+      SET lead_status = ${newLeadStatus},
+          lead_contacted_at = COALESCE(lead_contacted_at, NOW()),
+          contacted_channels = CASE
+            WHEN 'voice' = ANY(COALESCE(contacted_channels, '{}'))
+            THEN contacted_channels
+            ELSE array_append(COALESCE(contacted_channels, '{}'), 'voice')
+          END
+          ${classification.next_action ? sql`, lead_next_action = ${classification.next_action}` : sql``}
+      WHERE id = ${leadId}
+    `);
 
     await logActivity(task.consultant_id, {
       event_type: 'transcript_analysis_completed',

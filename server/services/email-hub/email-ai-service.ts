@@ -1411,7 +1411,14 @@ export async function executeMillieActions(params: {
       console.log(`[MILLIE-ACTION] Lead ${fromEmail} - action: mark_interested - details: Lead accepted call`);
       try {
         await db.execute(
-          sql`UPDATE lead_scraper_results SET lead_status = 'interested'
+          sql`UPDATE lead_scraper_results
+              SET lead_status = 'in_trattativa',
+                  lead_contacted_at = COALESCE(lead_contacted_at, NOW()),
+                  contacted_channels = CASE
+                    WHEN 'email' = ANY(COALESCE(contacted_channels, '{}'))
+                    THEN contacted_channels
+                    ELSE array_append(COALESCE(contacted_channels, '{}'), 'email')
+                  END
               WHERE id IN (
                 SELECT r.id FROM lead_scraper_results r
                 JOIN lead_scraper_searches s ON r.search_id = s.id
@@ -1424,7 +1431,7 @@ export async function executeMillieActions(params: {
               WHERE consultant_id = ${consultantId}
               AND LOWER(email) = ${normalizedEmail}`
         );
-        actions.push({ type: "mark_interested", success: true, details: `Lead ${fromEmail} marked as interested (accepted call)` });
+        actions.push({ type: "mark_interested", success: true, details: `Lead ${fromEmail} marked as in_trattativa (accepted call via email reply)` });
       } catch (err: any) {
         console.error(`[MILLIE-ACTION] Error marking lead as interested:`, err.message);
         actions.push({ type: "mark_interested", success: false, details: err.message });
@@ -1503,7 +1510,13 @@ export async function executeMillieActions(params: {
       console.log(`[MILLIE-ACTION] Lead ${fromEmail} - action: mark_lost - details: Lead not interested`);
       try {
         await db.execute(
-          sql`UPDATE lead_scraper_results SET lead_status = 'lost'
+          sql`UPDATE lead_scraper_results
+              SET lead_status = 'non_interessato',
+                  contacted_channels = CASE
+                    WHEN 'email' = ANY(COALESCE(contacted_channels, '{}'))
+                    THEN contacted_channels
+                    ELSE array_append(COALESCE(contacted_channels, '{}'), 'email')
+                  END
               WHERE id IN (
                 SELECT r.id FROM lead_scraper_results r
                 JOIN lead_scraper_searches s ON r.search_id = s.id
@@ -1516,7 +1529,7 @@ export async function executeMillieActions(params: {
               WHERE consultant_id = ${consultantId}
               AND LOWER(email) = ${normalizedEmail}`
         );
-        actions.push({ type: "mark_lost", success: true, details: `Lead ${fromEmail} marked as lost (not interested)` });
+        actions.push({ type: "mark_lost", success: true, details: `Lead ${fromEmail} marked as non_interessato (not interested)` });
       } catch (err: any) {
         console.error(`[MILLIE-ACTION] Error marking lead as lost:`, err.message);
         actions.push({ type: "mark_lost", success: false, details: err.message });

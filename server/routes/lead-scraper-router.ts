@@ -28,7 +28,8 @@ async function getLeadScraperKeys(): Promise<{ serpApiKey: string | null; firecr
 
 router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const { query, location, limit = 20, autoScrapeWebsites = true, searchEngine = "google_maps" } = req.body;
+    let { query, location, limit = 20, autoScrapeWebsites = true, searchEngine = "google_maps", searchMode = "predefinito" } = req.body;
+    if (searchMode === "cerca_outreach") autoScrapeWebsites = true;
     const consultantId = req.user?.id;
 
     if (!query) return res.status(400).json({ error: "Query is required" });
@@ -49,7 +50,7 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
         query,
         location: location || "",
         status: "running",
-        metadata: { params: { limit, autoScrapeWebsites, searchEngine } },
+        metadata: { params: { limit, autoScrapeWebsites, searchEngine, searchMode } },
       })
       .returning();
 
@@ -196,39 +197,102 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
           }
         }
 
-        console.log(`[LEAD-SCRAPER] Search complete: ${newCount} new leads inserted, ${duplicatesSkipped} duplicates skipped`);
+        console.log(`[LEAD-SCRAPER] Search complete: ${newCount} new leads inserted, ${duplicatesSkipped} duplicates skipped (mode: ${searchMode})`);
 
-        await db
-          .update(leadScraperSearches)
-          .set({
-            status: autoScrapeWebsites ? "enriching" : "completed",
-            resultsCount: newCount,
-          })
-          .where(eq(leadScraperSearches.id, search.id));
-
-        if (autoScrapeWebsites) {
-          const bgKeys = await getLeadScraperKeys();
-          const firecrawlKey = bgKeys.firecrawlKey;
-          if (firecrawlKey) {
-            await enrichSearchResults(search.id, firecrawlKey);
-          }
-
+        if (searchMode === "solo_cerca") {
           await db
             .update(leadScraperSearches)
-            .set({ status: "analyzing" })
+            .set({ status: "completed", resultsCount: newCount })
             .where(eq(leadScraperSearches.id, search.id));
-
-          try {
-            await generateBatchSalesSummaries(search.id, consultantId!);
-            console.log(`[LEAD-SCRAPER] Auto AI analysis completed for search ${search.id}`);
-          } catch (aiErr: any) {
-            console.error(`[LEAD-SCRAPER] AI analysis error (non-blocking):`, aiErr?.message || aiErr);
-          }
-
+        } else {
           await db
             .update(leadScraperSearches)
-            .set({ status: "completed" })
+            .set({
+              status: autoScrapeWebsites ? "enriching" : "completed",
+              resultsCount: newCount,
+            })
             .where(eq(leadScraperSearches.id, search.id));
+
+          if (autoScrapeWebsites) {
+            const bgKeys = await getLeadScraperKeys();
+            const firecrawlKey = bgKeys.firecrawlKey;
+            if (firecrawlKey) {
+              await enrichSearchResults(search.id, firecrawlKey);
+            }
+
+            await db
+              .update(leadScraperSearches)
+              .set({ status: "analyzing" })
+              .where(eq(leadScraperSearches.id, search.id));
+
+            try {
+              await generateBatchSalesSummaries(search.id, consultantId!);
+              console.log(`[LEAD-SCRAPER] Auto AI analysis completed for search ${search.id}`);
+            } catch (aiErr: any) {
+              console.error(`[LEAD-SCRAPER] AI analysis error (non-blocking):`, aiErr?.message || aiErr);
+            }
+
+            if (searchMode === "cerca_outreach") {
+              await db
+                .update(leadScraperSearches)
+                .set({ status: "scheduling" })
+                .where(eq(leadScraperSearches.id, search.id));
+
+              let outreachCount = 0;
+              try {
+                const searchResults = await db.select().from(leadScraperResults).where(eq(leadScraperResults.searchId, search.id));
+                const leadsWithContact = searchResults.filter(r => r.email || r.phone);
+                for (const lead of leadsWithContact) {
+                  try {
+                    const channels: string[] = [];
+                    if (lead.email) channels.push("email");
+                    if (lead.phone) channels.push("whatsapp", "voice");
+                    const channel = channels[0] || "email";
+                    const taskId = `outreach-${search.id}-${lead.id}-${Date.now()}`;
+                    const scheduledAt = new Date(Date.now() + (outreachCount + 1) * 5 * 60 * 1000);
+                    await db.execute(sql`
+                      INSERT INTO ai_scheduled_tasks (id, consultant_id, contact_name, contact_phone, task_type, ai_instruction, scheduled_at, timezone, status, channel, additional_context)
+                      VALUES (
+                        ${taskId},
+                        ${consultantId},
+                        ${lead.businessName || 'Lead'},
+                        ${lead.phone || ''},
+                        'ai_task',
+                        ${'Contatta questo lead per presentare i servizi del consulente. Informazioni lead: ' + (lead.aiSalesSummary || lead.businessName || '')},
+                        ${scheduledAt.toISOString()},
+                        'Europe/Rome',
+                        'waiting_approval',
+                        ${channel},
+                        ${JSON.stringify({ lead_id: lead.id, search_id: search.id, email: lead.email, phone: lead.phone })}
+                      )
+                    `);
+                    await db.update(leadScraperResults)
+                      .set({ outreachTaskId: taskId, leadStatus: "in_outreach" })
+                      .where(eq(leadScraperResults.id, lead.id));
+                    outreachCount++;
+                  } catch (taskErr: any) {
+                    console.error(`[LEAD-SCRAPER] Outreach task creation error for lead ${lead.id}:`, taskErr?.message || taskErr);
+                  }
+                }
+                console.log(`[LEAD-SCRAPER] Outreach scheduling complete: ${outreachCount} tasks created`);
+              } catch (outreachErr: any) {
+                console.error(`[LEAD-SCRAPER] Outreach scheduling error:`, outreachErr?.message || outreachErr);
+              }
+
+              await db
+                .update(leadScraperSearches)
+                .set({
+                  status: "completed",
+                  metadata: sql`jsonb_set(COALESCE(metadata, '{}'::jsonb), '{outreachResults}', ${JSON.stringify({ tasksCreated: outreachCount })}::jsonb)`,
+                })
+                .where(eq(leadScraperSearches.id, search.id));
+            } else {
+              await db
+                .update(leadScraperSearches)
+                .set({ status: "completed" })
+                .where(eq(leadScraperSearches.id, search.id));
+            }
+          }
         }
       } catch (error: any) {
         console.error("Background search error:", error);
@@ -681,7 +745,24 @@ router.get("/all-results", authenticateToken, requireAnyRole(["consultant", "sup
       .where(and(...conditions))
       .orderBy(desc(leadScraperResults.createdAt));
 
-    res.json(results);
+    const outreachIds = results.filter(r => r.outreachTaskId).map(r => r.outreachTaskId!);
+    let taskStatusMap: Record<string, { status: string; channel: string }> = {};
+    if (outreachIds.length > 0) {
+      try {
+        const taskRows = await db.execute(sql`SELECT id, status, channel FROM ai_scheduled_tasks WHERE id = ANY(${outreachIds})`);
+        for (const row of taskRows.rows as any[]) {
+          taskStatusMap[row.id] = { status: row.status, channel: row.channel };
+        }
+      } catch {}
+    }
+
+    const resultsWithOutreach = results.map(r => ({
+      ...r,
+      outreachTaskStatus: r.outreachTaskId ? (taskStatusMap[r.outreachTaskId]?.status || null) : null,
+      outreachTaskChannel: r.outreachTaskId ? (taskStatusMap[r.outreachTaskId]?.channel || null) : null,
+    }));
+
+    res.json(resultsWithOutreach);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -697,7 +778,7 @@ router.delete("/results/bulk", authenticateToken, requireAnyRole(["consultant", 
     }
 
     const owned = await db
-      .select({ id: leadScraperResults.id })
+      .select({ id: leadScraperResults.id, outreachTaskId: leadScraperResults.outreachTaskId })
       .from(leadScraperResults)
       .innerJoin(leadScraperSearches, eq(leadScraperResults.searchId, leadScraperSearches.id))
       .where(and(
@@ -709,6 +790,34 @@ router.delete("/results/bulk", authenticateToken, requireAnyRole(["consultant", 
 
     if (ownedIds.length === 0) {
       return res.json({ success: true, deletedCount: 0 });
+    }
+
+    const outreachTaskIds = owned
+      .map(r => r.outreachTaskId)
+      .filter((id): id is string => !!id);
+
+    if (outreachTaskIds.length > 0) {
+      try {
+        await db.execute(sql`
+          DELETE FROM ai_scheduled_tasks
+          WHERE id = ANY(${outreachTaskIds}::varchar[])
+        `);
+        console.log(`[LEAD-SCRAPER] Bulk delete: removed ${outreachTaskIds.length} outreach tasks by outreachTaskId`);
+      } catch (e: any) {
+        console.error(`[LEAD-SCRAPER] Error deleting outreach tasks by id:`, e?.message);
+      }
+    }
+
+    try {
+      for (const leadId of ownedIds) {
+        await db.execute(sql`
+          DELETE FROM ai_scheduled_tasks
+          WHERE additional_context LIKE ${'%' + leadId + '%'}
+            AND id NOT IN (SELECT unnest(${outreachTaskIds.length > 0 ? outreachTaskIds : ['']}::varchar[]))
+        `);
+      }
+    } catch (e: any) {
+      console.error(`[LEAD-SCRAPER] Error deleting outreach tasks by additional_context:`, e?.message);
     }
 
     await db.delete(leadScraperResults).where(inArray(leadScraperResults.id, ownedIds));
@@ -725,7 +834,7 @@ router.delete("/results/:id", authenticateToken, requireAnyRole(["consultant", "
     const leadId = req.params.id;
 
     const [owned] = await db
-      .select({ id: leadScraperResults.id })
+      .select({ id: leadScraperResults.id, outreachTaskId: leadScraperResults.outreachTaskId })
       .from(leadScraperResults)
       .innerJoin(leadScraperSearches, eq(leadScraperResults.searchId, leadScraperSearches.id))
       .where(and(
@@ -735,6 +844,27 @@ router.delete("/results/:id", authenticateToken, requireAnyRole(["consultant", "
 
     if (!owned) {
       return res.status(404).json({ success: false, error: "Lead not found" });
+    }
+
+    if (owned.outreachTaskId) {
+      try {
+        await db.execute(sql`
+          DELETE FROM ai_scheduled_tasks WHERE id = ${owned.outreachTaskId}
+        `);
+        console.log(`[LEAD-SCRAPER] Deleted outreach task ${owned.outreachTaskId} for lead ${leadId}`);
+      } catch (e: any) {
+        console.error(`[LEAD-SCRAPER] Error deleting outreach task by id:`, e?.message);
+      }
+    }
+
+    try {
+      await db.execute(sql`
+        DELETE FROM ai_scheduled_tasks
+        WHERE additional_context LIKE ${'%' + leadId + '%'}
+          ${owned.outreachTaskId ? sql`AND id != ${owned.outreachTaskId}` : sql``}
+      `);
+    } catch (e: any) {
+      console.error(`[LEAD-SCRAPER] Error deleting outreach tasks by additional_context:`, e?.message);
     }
 
     await db.delete(leadScraperResults).where(eq(leadScraperResults.id, leadId));

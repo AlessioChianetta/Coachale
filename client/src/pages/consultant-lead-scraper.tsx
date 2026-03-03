@@ -136,6 +136,8 @@ interface SearchResult {
   aiSalesSummaryGeneratedAt: string | null;
   outreachTaskId: string | null;
   contactedChannels: string[] | null;
+  outreachTaskStatus: string | null;
+  outreachTaskChannel: string | null;
   createdAt: string;
 }
 
@@ -226,11 +228,15 @@ export default function ConsultantLeadScraper() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
-  const [activeTab, setActiveTab] = useState("ricerca");
+  const [activeTab, setActiveTab] = useState(() => {
+    const sp = new URLSearchParams(window.location.search);
+    return sp.get("tab") || "ricerca";
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLocation, setSearchLocation] = useState("");
   const [searchLimit, setSearchLimit] = useState(20);
   const [searchEngine, setSearchEngine] = useState<"google_maps" | "google_search">("google_maps");
+  const [searchMode, setSearchMode] = useState<"solo_cerca" | "predefinito" | "cerca_outreach">("predefinito");
   const [selectedSearchId, setSelectedSearchId] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
 
@@ -257,7 +263,12 @@ export default function ConsultantLeadScraper() {
   const [crmSearch, setCrmSearch] = useState("");
   const [crmSourceFilter, setCrmSourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
   const [crmChannelView, setCrmChannelView] = useState<"tutti" | "nuovi" | "con_telefono" | "con_email" | "wa" | "voice" | "email" | "multi">("tutti");
-  const [crmPage, setCrmPage] = useState(1);
+  const [crmOutreachFilter, setCrmOutreachFilter] = useState<"tutti" | "in_approvazione" | "schedulati" | "in_corso" | "contattati" | "in_trattativa" | "non_raggiungibile">("tutti");
+  const [crmPage, setCrmPage] = useState(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const p = parseInt(sp.get("page") || "1", 10);
+    return p > 0 ? p : 1;
+  });
   const CRM_PAGE_SIZE = 10;
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
   const [deleteDialogLeadId, setDeleteDialogLeadId] = useState<string | null>(null);
@@ -884,7 +895,7 @@ export default function ConsultantLeadScraper() {
   }, [savedSalesContext]);
 
   const selectedSearch = searches.find((s) => s.id === selectedSearchId);
-  const isSearchRunning = selectedSearch?.status === "running" || selectedSearch?.status === "enriching" || selectedSearch?.status === "analyzing";
+  const isSearchRunning = selectedSearch?.status === "running" || selectedSearch?.status === "enriching" || selectedSearch?.status === "analyzing" || selectedSearch?.status === "scheduling";
 
   useEffect(() => {
     if (!selectedSearchId && searches.length > 0) {
@@ -922,24 +933,53 @@ export default function ConsultantLeadScraper() {
   const hunterSearches = useMemo(() => searches.filter(s => s.originRole === "hunter"), [searches]);
   const hunterLeadsCount = useMemo(() => allResults.filter(r => r.outreachTaskId).length, [allResults]);
 
-  const filteredCrmResults = useMemo(() => {
-    if (crmChannelView === "tutti") return allResults;
-    return allResults.filter(r => {
-      const ch = r.contactedChannels || [];
-      switch (crmChannelView) {
-        case "nuovi": return ch.length === 0;
-        case "con_telefono": return !!r.phone;
-        case "con_email": return !!r.email;
-        case "wa": return ch.includes("whatsapp");
-        case "voice": return ch.includes("voice");
-        case "email": return ch.includes("email");
-        case "multi": return ch.length >= 2;
-        default: return true;
-      }
+  const crmOutreachStats = useMemo(() => {
+    const counts: Record<string, number> = { in_approvazione: 0, schedulati: 0, in_corso: 0, contattati: 0, in_trattativa: 0, non_raggiungibile: 0 };
+    allResults.forEach(r => {
+      if (r.outreachTaskStatus === "waiting_approval") counts.in_approvazione++;
+      if (r.outreachTaskStatus === "scheduled") counts.schedulati++;
+      if (r.outreachTaskStatus === "in_progress") counts.in_corso++;
+      if (r.leadStatus === "contattato") counts.contattati++;
+      if (r.leadStatus === "in_trattativa") counts.in_trattativa++;
+      if (r.leadStatus === "non_raggiungibile") counts.non_raggiungibile++;
     });
-  }, [allResults, crmChannelView]);
+    return counts;
+  }, [allResults]);
 
-  useEffect(() => { setCrmPage(1); }, [crmFilterStatus, crmSearch, crmSourceFilter, crmChannelView]);
+  const filteredCrmResults = useMemo(() => {
+    let results = allResults;
+    if (crmChannelView !== "tutti") {
+      results = results.filter(r => {
+        const ch = r.contactedChannels || [];
+        switch (crmChannelView) {
+          case "nuovi": return ch.length === 0;
+          case "con_telefono": return !!r.phone;
+          case "con_email": return !!r.email;
+          case "wa": return ch.includes("whatsapp");
+          case "voice": return ch.includes("voice");
+          case "email": return ch.includes("email");
+          case "multi": return ch.length >= 2;
+          default: return true;
+        }
+      });
+    }
+    if (crmOutreachFilter !== "tutti") {
+      results = results.filter(r => {
+        switch (crmOutreachFilter) {
+          case "in_approvazione": return r.outreachTaskStatus === "waiting_approval";
+          case "schedulati": return r.outreachTaskStatus === "scheduled";
+          case "in_corso": return r.outreachTaskStatus === "in_progress";
+          case "contattati": return r.leadStatus === "contattato";
+          case "in_trattativa": return r.leadStatus === "in_trattativa";
+          case "non_raggiungibile": return r.leadStatus === "non_raggiungibile";
+          default: return true;
+        }
+      });
+    }
+    return results;
+  }, [allResults, crmChannelView, crmOutreachFilter]);
+
+  useEffect(() => { setCrmPage(1); }, [crmFilterStatus, crmSearch, crmSourceFilter, crmChannelView, crmOutreachFilter]);
 
   const crmTotalPages = Math.max(1, Math.ceil(filteredCrmResults.length / CRM_PAGE_SIZE));
   const paginatedCrmResults = useMemo(() => {
@@ -973,7 +1013,7 @@ export default function ConsultantLeadScraper() {
       const res = await fetch("/api/lead-scraper/search", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery, location: searchLocation, limit: searchLimit, searchEngine }),
+        body: JSON.stringify({ query: searchQuery, location: searchLocation, limit: searchLimit, searchEngine, searchMode }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Errore" }));
@@ -1233,6 +1273,8 @@ export default function ConsultantLeadScraper() {
         return <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400"><RefreshCw className="h-3 w-3 animate-spin mr-1" />Arricchimento</Badge>;
       case "analyzing":
         return <Badge className="bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400"><Sparkles className="h-3 w-3 animate-pulse mr-1" />Analisi AI...</Badge>;
+      case "scheduling":
+        return <Badge className="bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400"><Crosshair className="h-3 w-3 animate-spin mr-1" />Scheduling...</Badge>;
       case "completed":
         return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"><CheckCircle className="h-3 w-3 mr-1" />Completata</Badge>;
       case "failed":
@@ -1254,7 +1296,13 @@ export default function ConsultantLeadScraper() {
   };
 
   const navigateToLead = (leadId: string) => {
-    setLocation(`/consultant/lead-scraper/lead/${leadId}`);
+    const params = new URLSearchParams();
+    if (activeTab === "crm") {
+      params.set("from", "crm");
+      params.set("page", String(crmPage));
+    }
+    const qs = params.toString();
+    setLocation(`/consultant/lead-scraper/lead/${leadId}${qs ? `?${qs}` : ""}`);
   };
 
   return (
@@ -1558,6 +1606,36 @@ export default function ConsultantLeadScraper() {
                     </Button>
                   </div>
 
+                  <div className="flex items-center gap-1 px-1">
+                    <span className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-semibold mr-1">Modalità</span>
+                    <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 bg-gray-50 dark:bg-gray-800/50">
+                      {([
+                        { value: "solo_cerca" as const, label: "Solo Cerca", Icon: Search },
+                        { value: "predefinito" as const, label: "Predefinito", Icon: Zap },
+                        { value: "cerca_outreach" as const, label: "Cerca + Outreach", Icon: Crosshair },
+                      ]).map(m => (
+                        <button
+                          key={m.value}
+                          onClick={() => setSearchMode(m.value)}
+                          className={cn(
+                            "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all",
+                            searchMode === m.value
+                              ? "bg-white dark:bg-gray-700 text-violet-700 dark:text-violet-300 shadow-sm"
+                              : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                          )}
+                        >
+                          <m.Icon className="h-3 w-3" />
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground ml-1">
+                      {searchMode === "solo_cerca" && "Solo ricerca, senza analisi AI"}
+                      {searchMode === "predefinito" && "Ricerca + analisi AI dei siti"}
+                      {searchMode === "cerca_outreach" && "Ricerca + AI + schedulazione outreach"}
+                    </span>
+                  </div>
+
                   <AnimatePresence>
                     {showKeywords && keywordSuggestions.length > 0 && (
                       <motion.div
@@ -1636,7 +1714,7 @@ export default function ConsultantLeadScraper() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          {selectedSearch.status === "completed" && (
+                          {selectedSearch.status === "completed" && (selectedSearch.metadata as any)?.params?.searchMode !== "solo_cerca" && (
                             <>
                               <Button variant="outline" size="sm" onClick={() => {
                                 if (confirm("Vuoi ri-analizzare tutti i siti web di questa ricerca? I dati esistenti verranno aggiornati.")) {
@@ -1676,12 +1754,21 @@ export default function ConsultantLeadScraper() {
                         <div className="mt-3">
                           <Progress value={undefined} className="h-1.5" />
                           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                            <Loader2 className="h-3 w-3 animate-spin" />{selectedSearch.status === "analyzing" ? "Generazione analisi AI in corso..." : selectedSearch.status === "enriching" ? "Analisi siti web in corso..." : "Ricerca in corso..."}
+                            <Loader2 className="h-3 w-3 animate-spin" />{selectedSearch.status === "scheduling" ? "Schedulazione outreach in corso..." : selectedSearch.status === "analyzing" ? "Generazione analisi AI in corso..." : selectedSearch.status === "enriching" ? "Analisi siti web in corso..." : "Ricerca in corso..."}
                           </p>
                         </div>
                       )}
                     </CardContent>
                   </Card>
+                )}
+
+                {selectedSearch?.status === "completed" && (selectedSearch.metadata as any)?.outreachResults && (
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800">
+                    <Crosshair className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                    <p className="text-sm text-teal-700 dark:text-teal-300 font-medium">
+                      {results.length} lead trovati, {results.filter(r => r.aiSalesSummary).length} analizzati dall'AI, {(selectedSearch.metadata as any).outreachResults.tasksCreated} task outreach schedulati
+                    </p>
+                  </div>
                 )}
 
                 {showFilters && (
@@ -1723,7 +1810,19 @@ export default function ConsultantLeadScraper() {
                       <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-violet-400" /></div>
                     ) : results.length === 0 ? (
                       <div className="text-center py-12 text-muted-foreground">
-                        {isSearchRunning ? <><Loader2 className="h-6 w-6 animate-spin text-violet-400 mx-auto mb-2" /><p>Ricerca in corso...</p></> : "Nessun risultato"}
+                        {selectedSearch?.status === "failed" ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <AlertCircle className="h-6 w-6 text-red-500 mx-auto" />
+                            <p className="text-sm font-semibold text-red-600 dark:text-red-400">Ricerca fallita</p>
+                            {selectedSearch.metadata?.error && (
+                              <p className="text-xs text-red-500 dark:text-red-400">{selectedSearch.metadata.error}</p>
+                            )}
+                          </div>
+                        ) : isSearchRunning ? (
+                          <><Loader2 className="h-6 w-6 animate-spin text-violet-400 mx-auto mb-2" /><p>Ricerca in corso...</p></>
+                        ) : (
+                          "Nessun risultato"
+                        )}
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
@@ -1806,10 +1905,10 @@ export default function ConsultantLeadScraper() {
             <div className="flex gap-4">
               <div className="w-[220px] shrink-0 space-y-2">
                 <button
-                  onClick={() => { setCrmFilterStatus("tutti"); setCrmChannelView("tutti"); }}
+                  onClick={() => { setCrmFilterStatus("tutti"); setCrmChannelView("tutti"); setCrmOutreachFilter("tutti"); }}
                   className={cn(
                     "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border",
-                    crmFilterStatus === "tutti" && crmChannelView === "tutti"
+                    crmFilterStatus === "tutti" && crmChannelView === "tutti" && crmOutreachFilter === "tutti"
                       ? "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800 shadow-sm"
                       : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                   )}
@@ -1835,6 +1934,42 @@ export default function ConsultantLeadScraper() {
                         )}
                       >
                         <span className="truncate">{s.label}</span>
+                        <span className={cn(
+                          "text-[11px] font-bold min-w-[24px] text-center px-1.5 py-0.5 rounded-md",
+                          isActive ? "bg-violet-200/50 dark:bg-violet-800/30 text-violet-700 dark:text-violet-300" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500"
+                        )}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-1">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-semibold px-3 mb-1.5">Outreach</p>
+                  {([
+                    { key: "in_approvazione" as const, label: "In Approvazione", Icon: Clock },
+                    { key: "schedulati" as const, label: "Schedulati", Icon: Calendar },
+                    { key: "in_corso" as const, label: "In Corso", Icon: Activity },
+                    { key: "contattati" as const, label: "Contattati", Icon: CheckCircle },
+                    { key: "in_trattativa" as const, label: "In Trattativa", Icon: TrendingUp },
+                    { key: "non_raggiungibile" as const, label: "Non Raggiungibile", Icon: XCircle },
+                  ]).map((v) => {
+                    const count = crmOutreachStats[v.key] || 0;
+                    const isActive = crmOutreachFilter === v.key;
+                    return (
+                      <button
+                        key={v.key}
+                        onClick={() => setCrmOutreachFilter(isActive ? "tutti" : v.key)}
+                        className={cn(
+                          "w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+                          isActive
+                            ? "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        )}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <v.Icon className={cn("h-3.5 w-3.5 shrink-0", isActive ? "text-violet-600 dark:text-violet-400" : "text-gray-400")} />
+                          {v.label}
+                        </span>
                         <span className={cn(
                           "text-[11px] font-bold min-w-[24px] text-center px-1.5 py-0.5 rounded-md",
                           isActive ? "bg-violet-200/50 dark:bg-violet-800/30 text-violet-700 dark:text-violet-300" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500"
@@ -1894,8 +2029,8 @@ export default function ConsultantLeadScraper() {
                   ))}
                 </div>
 
-                {(crmFilterStatus !== "tutti" || crmSourceFilter !== "tutti" || crmChannelView !== "tutti") && (
-                  <Button variant="ghost" size="sm" onClick={() => { setCrmFilterStatus("tutti"); setCrmSourceFilter("tutti"); setCrmChannelView("tutti"); }} className="w-full text-xs h-8 text-gray-500 hover:text-gray-700 mt-1">
+                {(crmFilterStatus !== "tutti" || crmSourceFilter !== "tutti" || crmChannelView !== "tutti" || crmOutreachFilter !== "tutti") && (
+                  <Button variant="ghost" size="sm" onClick={() => { setCrmFilterStatus("tutti"); setCrmSourceFilter("tutti"); setCrmChannelView("tutti"); setCrmOutreachFilter("tutti"); }} className="w-full text-xs h-8 text-gray-500 hover:text-gray-700 mt-1">
                     <X className="h-3 w-3 mr-1" />Rimuovi filtri
                   </Button>
                 )}

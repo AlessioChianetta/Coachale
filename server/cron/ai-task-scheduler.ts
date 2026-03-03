@@ -667,9 +667,17 @@ async function executeSingleWhatsApp(task: AIScheduledTask): Promise<void> {
     if (leadId) {
       await db.execute(sql`
         UPDATE lead_scraper_results
-        SET lead_status = 'in_outreach', lead_next_action_date = NOW() + INTERVAL '7 days'
+        SET lead_status = 'contattato',
+            lead_contacted_at = COALESCE(lead_contacted_at, NOW()),
+            lead_next_action_date = NOW() + INTERVAL '7 days',
+            contacted_channels = CASE
+              WHEN 'whatsapp' = ANY(COALESCE(contacted_channels, '{}'))
+              THEN contacted_channels
+              ELSE array_append(COALESCE(contacted_channels, '{}'), 'whatsapp')
+            END
         WHERE id = ${leadId}
       `);
+      console.log(`${LOG} Lead ${leadId} updated: status=contattato, channel=whatsapp added`);
     }
 
     try {
@@ -863,9 +871,17 @@ async function executeSingleEmail(task: AIScheduledTask): Promise<void> {
     if (leadId) {
       await db.execute(sql`
         UPDATE lead_scraper_results
-        SET lead_status = 'in_outreach', lead_next_action_date = NOW() + INTERVAL '7 days'
+        SET lead_status = 'contattato',
+            lead_contacted_at = COALESCE(lead_contacted_at, NOW()),
+            lead_next_action_date = NOW() + INTERVAL '7 days',
+            contacted_channels = CASE
+              WHEN 'email' = ANY(COALESCE(contacted_channels, '{}'))
+              THEN contacted_channels
+              ELSE array_append(COALESCE(contacted_channels, '{}'), 'email')
+            END
         WHERE id = ${leadId}
       `);
+      console.log(`${LOG} Lead ${leadId} updated: status=contattato, channel=email added`);
     }
   } catch (err: any) {
     console.error(`${LOG} ✗ Send failed: ${err.message}`);
@@ -1108,6 +1124,29 @@ async function handleSuccess(task: AIScheduledTask, result: { callId?: string })
         updated_at = NOW()
     WHERE id = ${task.id}
   `);
+
+  let additionalContextData: Record<string, any> = {};
+  if (task.additional_context) {
+    try { additionalContextData = JSON.parse(task.additional_context); } catch {}
+  }
+  const leadId = additionalContextData.lead_id;
+  if (leadId) {
+    try {
+      await db.execute(sql`
+        UPDATE lead_scraper_results
+        SET lead_contacted_at = COALESCE(lead_contacted_at, NOW()),
+            contacted_channels = CASE
+              WHEN 'voice' = ANY(COALESCE(contacted_channels, '{}'))
+              THEN contacted_channels
+              ELSE array_append(COALESCE(contacted_channels, '{}'), 'voice')
+            END
+        WHERE id = ${leadId}
+      `);
+      console.log(`✅ [AI-SCHEDULER] Lead ${leadId} updated: channel=voice added`);
+    } catch (leadErr: any) {
+      console.error(`[AI-SCHEDULER] Lead channel update error (non-blocking):`, leadErr.message);
+    }
+  }
   
   if (task.contact_phone) {
     try {
@@ -1197,9 +1236,18 @@ async function handleFailure(task: AIScheduledTask, reason: string): Promise<voi
       })
     ).catch(() => {});
     
-    // NOTE: Recurrence is NOT scheduled here on failure
-    // The callback will handle recurrence when a call actually completes successfully
-    // This prevents duplicate recurrence scheduling
+    const additionalCtx = typeof task.additional_context === 'string' ? JSON.parse(task.additional_context) : task.additional_context;
+    const leadId = additionalCtx?.lead_id;
+    if (leadId) {
+      try {
+        await db.execute(sql`
+          UPDATE lead_scraper_results 
+          SET lead_status = 'non_raggiungibile', updated_at = NOW()
+          WHERE id = ${leadId} AND lead_status NOT IN ('contattato', 'in_trattativa', 'non_interessato')
+        `);
+        console.log(`❌ [AI-SCHEDULER] Lead ${leadId} marked as non_raggiungibile (all retries exhausted)`);
+      } catch {}
+    }
   }
 }
 
