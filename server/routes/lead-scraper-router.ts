@@ -26,6 +26,40 @@ async function getLeadScraperKeys(): Promise<{ serpApiKey: string | null; firecr
   };
 }
 
+router.get("/autocomplete/query", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const q = (req.query.q as string || "").trim();
+    if (!q || q.length < 2) return res.json([]);
+    const resp = await fetch(`https://suggestqueries.google.com/complete/search?client=firefox&hl=it&gl=it&q=${encodeURIComponent(q)}`);
+    if (!resp.ok) return res.json([]);
+    const data = await resp.json();
+    const suggestions = (data[1] || []).slice(0, 8) as string[];
+    res.json(suggestions);
+  } catch (e) {
+    console.error("[AUTOCOMPLETE] query error:", e);
+    res.json([]);
+  }
+});
+
+router.get("/autocomplete/location", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const q = (req.query.q as string || "").trim();
+    if (!q || q.length < 2) return res.json([]);
+    const resp = await fetch(`https://suggestqueries.google.com/complete/search?client=firefox&hl=it&gl=it&q=${encodeURIComponent(q + " italia città")}`);
+    if (!resp.ok) return res.json([]);
+    const data = await resp.json();
+    const raw = (data[1] || []) as string[];
+    const cleaned = raw
+      .map((s: string) => s.replace(/\s*(italia|città|paese|comune|provincia|regione)\s*/gi, "").trim())
+      .filter((s: string) => s.length > 1 && s.length < 50)
+      .slice(0, 8);
+    res.json(cleaned);
+  } catch (e) {
+    console.error("[AUTOCOMPLETE] location error:", e);
+    res.json([]);
+  }
+});
+
 router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     let { query, location, limit = 20, autoScrapeWebsites = true, searchEngine = "google_maps", searchMode = "predefinito" } = req.body;
