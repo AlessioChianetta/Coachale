@@ -99,6 +99,7 @@ import {
   UserPlus,
   Building,
   Hash,
+  CheckCircle2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -275,6 +276,7 @@ export default function ConsultantLeadScraper() {
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [historySourceFilter, setHistorySourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
   const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false);
+  const [showSearchConfirm, setShowSearchConfirm] = useState(false);
   const [showQuerySuggestions, setShowQuerySuggestions] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [querySuggestionsList, setQuerySuggestionsList] = useState<string[]>([]);
@@ -1514,7 +1516,7 @@ export default function ConsultantLeadScraper() {
                           onChange={(e) => { setSearchQuery(e.target.value); setShowQuerySuggestions(true); fetchQuerySuggestions(e.target.value); }}
                           onFocus={() => { setShowQuerySuggestions(true); if (searchQuery.length >= 2) fetchQuerySuggestions(searchQuery); }}
                           className="pl-9 h-10 text-sm"
-                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) { setShowQuerySuggestions(false); startSearchMutation.mutate(); } if (e.key === "Escape") setShowQuerySuggestions(false); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) { setShowQuerySuggestions(false); setShowSearchConfirm(true); } if (e.key === "Escape") setShowQuerySuggestions(false); }}
                           autoComplete="off"
                         />
                         {showQuerySuggestions && querySuggestionsList.length > 0 && (
@@ -1545,7 +1547,7 @@ export default function ConsultantLeadScraper() {
                           onChange={(e) => { setSearchLocation(e.target.value); setShowLocationSuggestions(true); fetchLocationSuggestions(e.target.value); }}
                           onFocus={() => { setShowLocationSuggestions(true); if (searchLocation.length >= 2) fetchLocationSuggestions(searchLocation); }}
                           className="pl-9 h-10 text-sm"
-                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) { setShowLocationSuggestions(false); startSearchMutation.mutate(); } if (e.key === "Escape") setShowLocationSuggestions(false); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) { setShowLocationSuggestions(false); setShowSearchConfirm(true); } if (e.key === "Escape") setShowLocationSuggestions(false); }}
                           autoComplete="off"
                         />
                         {showLocationSuggestions && locationSuggestionsList.length > 0 && (
@@ -1585,7 +1587,7 @@ export default function ConsultantLeadScraper() {
                     <div className="flex items-center gap-2">
                       <Button
                         className="bg-violet-600 hover:bg-violet-700 text-white border-0 shadow-sm h-10 px-6 text-sm font-semibold flex-1 max-w-[200px]"
-                        onClick={() => startSearchMutation.mutate()}
+                        onClick={() => setShowSearchConfirm(true)}
                         disabled={!searchQuery || startSearchMutation.isPending}
                       >
                         {startSearchMutation.isPending ? (
@@ -5081,6 +5083,88 @@ export default function ConsultantLeadScraper() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showSearchConfirm} onOpenChange={setShowSearchConfirm}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-violet-600" />
+              Conferma ricerca
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 pt-2">
+                <div className="rounded-lg bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Keyword</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{searchQuery || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Località</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{searchLocation || "Non specificata"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Fonte</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                      {searchEngine === "google_maps" ? <><MapIcon className="h-3.5 w-3.5 text-orange-500" />Google Maps</> : <><Globe className="h-3.5 w-3.5 text-blue-500" />Google Search</>}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Max lead</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{searchLimit}</span>
+                  </div>
+                </div>
+
+                <div className={cn(
+                  "rounded-lg p-3 border",
+                  searchMode === "solo_cerca" ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" :
+                  searchMode === "predefinito" ? "bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800" :
+                  "bg-teal-50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800"
+                )}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    {searchMode === "solo_cerca" && <Search className="h-4 w-4 text-blue-600" />}
+                    {searchMode === "predefinito" && <Zap className="h-4 w-4 text-violet-600" />}
+                    {searchMode === "cerca_outreach" && <Crosshair className="h-4 w-4 text-teal-600" />}
+                    <span className={cn("text-sm font-semibold",
+                      searchMode === "solo_cerca" ? "text-blue-700 dark:text-blue-300" :
+                      searchMode === "predefinito" ? "text-violet-700 dark:text-violet-300" :
+                      "text-teal-700 dark:text-teal-300"
+                    )}>
+                      {searchMode === "solo_cerca" ? "Solo Cerca" : searchMode === "predefinito" ? "Predefinito" : "Cerca + Outreach"}
+                    </span>
+                  </div>
+                  <ul className={cn("text-xs space-y-1",
+                    searchMode === "solo_cerca" ? "text-blue-600 dark:text-blue-400" :
+                    searchMode === "predefinito" ? "text-violet-600 dark:text-violet-400" :
+                    "text-teal-600 dark:text-teal-400"
+                  )}>
+                    <li className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 shrink-0" />Ricerca lead su {searchEngine === "google_maps" ? "Google Maps" : "Google Search"}</li>
+                    {searchMode !== "solo_cerca" && <li className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 shrink-0" />Scraping siti web con Firecrawl</li>}
+                    {searchMode !== "solo_cerca" && <li className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 shrink-0" />Analisi AI con report personalizzato</li>}
+                    {searchMode === "cerca_outreach" && <li className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 shrink-0" />Creazione task outreach automatici</li>}
+                    {searchMode === "solo_cerca" && <li className="flex items-center gap-1.5 text-gray-400"><X className="h-3 w-3 shrink-0" />Nessuno scraping o analisi AI</li>}
+                  </ul>
+                </div>
+
+                {!searchLocation && (
+                  <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 rounded-lg">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    Nessuna località specificata — i risultati saranno generici
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-violet-600 hover:bg-violet-700 text-white"
+              onClick={() => { setShowSearchConfirm(false); startSearchMutation.mutate(); }}
+            >
+              <Search className="h-4 w-4 mr-1.5" />Avvia ricerca
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleteDialogLeadId} onOpenChange={(open) => { if (!open) setDeleteDialogLeadId(null); }}>
         <AlertDialogContent>
