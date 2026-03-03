@@ -56,6 +56,9 @@ import {
   XCircle,
   Building2,
   ChevronRight,
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight,
   ChevronDown,
   ChevronUp,
   Filter,
@@ -253,6 +256,8 @@ export default function ConsultantLeadScraper() {
   const [crmSearch, setCrmSearch] = useState("");
   const [crmSourceFilter, setCrmSourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
   const [crmChannelView, setCrmChannelView] = useState<"tutti" | "nuovi" | "con_telefono" | "con_email" | "wa" | "voice" | "email" | "multi">("tutti");
+  const [crmPage, setCrmPage] = useState(1);
+  const CRM_PAGE_SIZE = 10;
   const [historySourceFilter, setHistorySourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
   const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false);
 
@@ -930,6 +935,14 @@ export default function ConsultantLeadScraper() {
     });
   }, [allResults, crmChannelView]);
 
+  useEffect(() => { setCrmPage(1); }, [crmFilterStatus, crmSearch, crmSourceFilter, crmChannelView]);
+
+  const crmTotalPages = Math.max(1, Math.ceil(filteredCrmResults.length / CRM_PAGE_SIZE));
+  const paginatedCrmResults = useMemo(() => {
+    const start = (crmPage - 1) * CRM_PAGE_SIZE;
+    return filteredCrmResults.slice(start, start + CRM_PAGE_SIZE);
+  }, [filteredCrmResults, crmPage, CRM_PAGE_SIZE]);
+
   const filteredSearches = useMemo(() => {
     if (historySourceFilter === "tutti") return searches;
     return searches.filter((s) => {
@@ -1018,6 +1031,25 @@ export default function ConsultantLeadScraper() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/sales-context"] });
       toast({ title: "Contesto salvato", description: "Il tuo profilo vendita e' stato aggiornato" });
+    },
+  });
+
+  const deleteLeadMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      const res = await fetch(`/api/proactive-leads/${leadId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Errore eliminazione lead");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/results"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/proactive-leads"] });
+      toast({ title: "Lead eliminato", description: "Il lead è stato rimosso dal CRM" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile eliminare il lead", variant: "destructive" });
     },
   });
 
@@ -1876,7 +1908,7 @@ export default function ConsultantLeadScraper() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredCrmResults.map((r) => {
+                          {paginatedCrmResults.map((r) => {
                             const statusInfo = getLeadStatusInfo(r.leadStatus);
                             return (
                               <TableRow
@@ -1955,6 +1987,21 @@ export default function ConsultantLeadScraper() {
                                     >
                                       <Crosshair className="h-3.5 w-3.5" />
                                     </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                                      title="Elimina lead"
+                                      disabled={deleteLeadMutation.isPending}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (confirm("Sei sicuro di voler eliminare questo lead?")) {
+                                          deleteLeadMutation.mutate(r.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                   </div>
                                 </TableCell>
                               </TableRow>
@@ -1962,6 +2009,52 @@ export default function ConsultantLeadScraper() {
                           })}
                         </TableBody>
                       </Table>
+                    </div>
+                  )}
+                  {filteredCrmResults.length > CRM_PAGE_SIZE && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+                      <span className="text-xs text-muted-foreground">
+                        {((crmPage - 1) * CRM_PAGE_SIZE) + 1}–{Math.min(crmPage * CRM_PAGE_SIZE, filteredCrmResults.length)} di {filteredCrmResults.length} lead
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          disabled={crmPage <= 1}
+                          onClick={() => setCrmPage(1)}
+                        >
+                          <ChevronsLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          disabled={crmPage <= 1}
+                          onClick={() => setCrmPage(p => Math.max(1, p - 1))}
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        <span className="text-xs font-medium px-2">{crmPage} / {crmTotalPages}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          disabled={crmPage >= crmTotalPages}
+                          onClick={() => setCrmPage(p => Math.min(crmTotalPages, p + 1))}
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          disabled={crmPage >= crmTotalPages}
+                          onClick={() => setCrmPage(crmTotalPages)}
+                        >
+                          <ChevronsRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </CardContent>
