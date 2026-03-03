@@ -368,7 +368,7 @@ export default function ConsultantWhatsAppAgentsChat() {
 
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar />
+      <Sidebar role="consultant" />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
         <div className="flex-1 overflow-hidden">
