@@ -1161,7 +1161,6 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
       streamCallback,
     });
 
-    generationDone = true;
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
 
     if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
