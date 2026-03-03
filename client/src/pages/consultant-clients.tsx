@@ -2196,7 +2196,7 @@ export default function ConsultantClientsPage() {
 
       {/* New Client Dialog */}
       <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
-        <DialogContent className="max-w-md bg-card/95 backdrop-blur-sm border-border">
+        <DialogContent className="max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <div className={`p-2 rounded-lg ${newClientForm.isCrmOnly ? 'bg-amber-100' : newClientForm.isEmployee ? 'bg-violet-100' : 'bg-emerald-100'}`}>
@@ -2419,7 +2419,7 @@ export default function ConsultantClientsPage() {
 
       {/* Enhanced Edit Client Dialog */}
       <Dialog open={!!editingClient} onOpenChange={() => setEditingClient(null)}>
-        <DialogContent className="max-w-md bg-card/95 backdrop-blur-sm border-border">
+        <DialogContent className="max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <div className="p-2 bg-cyan-100 rounded-lg">
@@ -2629,7 +2629,7 @@ export default function ConsultantClientsPage() {
           setDepartmentForm({ name: '', color: '#6366f1', description: '' });
         }
       }}>
-        <DialogContent className="max-w-md bg-card/95 backdrop-blur-sm border-border">
+        <DialogContent className="max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <div className="p-2 bg-indigo-100 rounded-lg">
@@ -2704,7 +2704,7 @@ export default function ConsultantClientsPage() {
 
       {/* Payment Link Dialog for CRM clients */}
       <Dialog open={!!paymentLinkDialog?.open} onOpenChange={(open) => { if (!open) setPaymentLinkDialog(null); }}>
-        <DialogContent className="max-w-md bg-card/95 backdrop-blur-sm border-border">
+        <DialogContent className="max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <div className="p-2 bg-amber-100 rounded-lg">
