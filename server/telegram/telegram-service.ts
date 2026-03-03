@@ -1176,9 +1176,6 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
     });
 
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
-    if (draftSupported && chunkCount > 0) {
-      sendTelegramMessageDraft(botToken, chatId, "", draftId).catch(() => {});
-    }
 
     console.log(`[TELEGRAM] AI generation complete for chat ${chatId}: ${aiResponse.length} chars, ${chunkCount} stream chunks received, draftSupported=${draftSupported}`);
     await sendTelegramMessage(botToken, chatId, aiResponse, "Markdown");
@@ -1186,11 +1183,9 @@ async function flushPrivateBuffer(bufferKey: string): Promise<void> {
   } catch (err: any) {
     if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
     if (err.message === 'AbortError' || abortController.signal.aborted) {
-      sendTelegramMessageDraft(botToken, chatId, "", draftId).catch(() => {});
       console.log(`[TELEGRAM] Generation aborted for ${bufferKey}, will re-generate with new messages`);
     } else {
       console.error(`[TELEGRAM] Error processing buffered message:`, err.message);
-      sendTelegramMessageDraft(botToken, chatId, "", draftId).catch(() => {});
       await sendTelegramMessage(botToken, chatId, "⚠️ Mi dispiace, c'è stato un errore. Riprova tra poco.");
     }
   } finally {
