@@ -35,7 +35,7 @@ export function originateOutboundCall(dialString: string): Promise<string> {
 }
 
 function startAudioStream(conn: any, uuid: string, tStart: number): void {
-  (conn as any).bgapi(`uuid_setvar_multi ${uuid} STREAM_PLAYBACK=true;STREAM_SAMPLE_RATE=8000;mod_audio_stream_bidirectional=true;jitterbuffer_msec=60:120:20`);
+  (conn as any).bgapi(`uuid_setvar_multi ${uuid} STREAM_PLAYBACK=true;STREAM_SAMPLE_RATE=8000;mod_audio_stream_bidirectional=true;jitterbuffer_msec=0`);
 
   const wsUrl = `ws://172.17.0.1:${config.ws.port}/stream/${uuid}`;
   const streamCmd = `uuid_audio_stream ${uuid} start ${wsUrl} mono 8000`;
