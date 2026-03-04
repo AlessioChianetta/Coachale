@@ -1,0 +1,141 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec -it freeswitch fs_cli -x "show calls"
+
+0 total.
+
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec -it freeswitch fs_cli -x "sofia global siptrace on"
++OK Global siptrace on
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec -it freeswitch fs_cli -x "sofia global siptrace off"
+docker logs freeswitch --tail 100
++OK Global siptrace off
+User-Agent: Z 5.6.4 v2.10.20.4
+Authorization: Digest username="1004",realm="72.62.50.40",nonce="8976c1f8-0c30-4c3c-8a59-aef25948654f",uri="sip:72.62.50.40;transport=UDP",response="ec5561b423e7139299a90715c1f4aac9",cnonce="3cd8d9f03d36c12b2265efc2a716c79d",nc=00000008,qop=auth,algorithm=MD5
+Allow-Events: presence, kpml, talk, as-feature-event
+Content-Length: 0
+
+
+tport.c:3055 tport_deliver() tport_deliver(0x7404f8006960): msg 0x7404f803dab0 (973 bytes) from udp/109.116.200.59:5060/sip next=(nil)
+nta.c:2968 agent_recv_request() nta: received REGISTER sip:72.62.50.40;transport=UDP SIP/2.0 (CSeq 803) (load: 0 rps)
+nta.c:3265 agent_check_request_via() nta: Via check: received=109.116.200.59
+nta.c:3337 agent_aliases() nta: canonizing sip:72.62.50.40 with contact
+nta.c:3175 agent_recv_request() nta: REGISTER (803) going to a default leg
+nua_server.c:102 nua_stack_process_request() nua: nua_stack_process_request: entering
+nua_stack.c:938 nh_create() nua: nh_create: entering
+nua_common.c:108 nh_create_handle() nua: nh_create_handle: entering
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:278 soa_clone() soa_clone(static::0x7404f801da90, 0x7404f801e890, 0x7404f8039d80) called
+soa.c:402 soa_set_params() soa_set_params(static::0x7404f803a140, ...) called
+nua_stack.c:301 nua_stack_event() nua(0x7404f8039d80): event i_register 100 Trying
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x7404f8039d80): entering
+nua_stack.c:558 nua_signal() nua(0x7404f8039d80): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua_stack.c:599 nua_stack_signal() nua(0x7404f8039d80): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua.c:878 nua_respond() nua: nua_respond: entering
+nua_stack.c:558 nua_signal() nua(0x7404f8039d80): sent signal r_respond
+nua.c:920 nua_handle_destroy() nua: nua_handle_destroy: entering
+nua_stack.c:558 nua_signal() nua(0x7404f8039d80): sent signal r_destroy
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:920 nua_handle_destroy() nua: nua_handle_destroy: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x7404f8039d80): entering
+nua_stack.c:601 nua_stack_signal() nua(0x7404f8039d80): recv signal r_respond 200 OK
+nua_stack.c:558 nua_signal() nua(0x7404f8039d80): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+soa.c:402 soa_set_params() soa_set_params(static::0x7404f803a140, ...) called
+tport.c:3290 tport_tsend() tport_tsend(0x7404f8006960) tpn = UDP/109.116.200.59:64523
+tport.c:4076 tport_resolve() tport_resolve addrinfo = 109.116.200.59:64523
+tport.c:4713 tport_by_addrinfo() tport_by_addrinfo(0x7404f8006960): not found by name UDP/109.116.200.59:64523
+tport.c:3625 tport_vsend() tport_vsend(0x7404f8006960): 702 bytes of 702 to udp/109.116.200.59:64523
+tport.c:3526 tport_send_msg() tport_vsend returned 702
+send 702 bytes to udp/[109.116.200.59]:64523 at 17:45:59.836870:
+------------------------------------------------------------------------
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 192.168.1.5:64523;branch=z9hG4bK-524287-1---d04e5c079941bb43;rport=64523;received=109.116.200.59
+From: "Alessio"<sip:1004@72.62.50.40;transport=UDP>;tag=a708d01f
+To: "Alessio" <sip:1004@72.62.50.40;transport=UDP>;tag=aSaH3SF5r20vg
+Call-ID: 400XTNNLtr5l8fSfCSMrvw..
+CSeq: 803 REGISTER
+Contact: <sip:1004@109.116.200.59:64523;transport=UDP;rinstance=c194600211b5e89a>;expires=60
+Date: Wed, 04 Mar 2026 17:45:59 GMT
+User-Agent: FreeSWITCH-mod_sofia/1.10.13-dev+git~20260116T201023Z~88fa1f95ca~64bit
+Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY, PUBLISH, SUBSCRIBE
+Supported: timer, path, replaces
+Content-Length: 0
+
+
+nta.c:6890 incoming_reply() nta: sent 200 OK for REGISTER (803)
+nta.c:1382 set_timeout() nta: timer set to 32000 ms
+nua_stack.c:599 nua_stack_signal() nua(0x7404f8039d80): recv signal r_destroy
+nta.c:4561 nta_leg_destroy() nta_leg_destroy((nil))
+soa.c:355 soa_destroy() soa_destroy(static::0x7404f803a140) called
+nua_stack.c:599 nua_stack_signal() nua(0x7404f8039d80): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nta.c:1328 agent_timer() nta: timer set next to 4129 ms
+nta.c:9279 outgoing_timer_dk() nta: timer K fired, terminate OPTIONS (111752528)
+nta.c:8951 outgoing_reclaim_queued() outgoing_reclaim_all((nil), (nil), 0x7405118e09e0)
+nta.c:9091 _nta_outgoing_timer() nta_outgoing_timer: 0/0 resent, 0/0 tout, 1/1 term, 1/1 free
+nta.c:1321 agent_timer() nta: timer not set
+nua.c:574 nua_set_params() nua: nua_set_params: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_set_params
+nua.c:574 nua_set_params() nua: nua_set_params: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_set_params
+nua.c:574 nua_set_params() nua: nua_set_params: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_set_params
+nua.c:574 nua_set_params() nua: nua_set_params: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_set_params
+nua.c:574 nua_set_params() nua: nua_set_params: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_set_params
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_set_params
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:402 soa_set_params() soa_set_params(static::0x7404f801da90, ...) called
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_set_params
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:402 soa_set_params() soa_set_params(static::0x7404e4001bf0, ...) called
+nua_stack.c:301 nua_stack_event() nua((nil)): event r_set_params 200 OK
+nua_stack.c:301 nua_stack_event() nua((nil)): event r_set_params 200 OK
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_set_params
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:402 soa_set_params() soa_set_params(static::0x7404f801da90, ...) called
+nua_stack.c:301 nua_stack_event() nua((nil)): event r_set_params 200 OK
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_set_params
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:402 soa_set_params() soa_set_params(static::0x74050c0266e0, ...) called
+nua_stack.c:301 nua_stack_event() nua((nil)): event r_set_params 200 OK
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_set_params
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec -it freeswitch fs_cli -x "sofia status gateway telnyx-ip"
+=================================================================================================
+Name            telnyx-ip
+Profile         external
+Scheme          Digest
+Realm           sip.telnyx.com
+Username        not-used
+Password        yes
+From            <sip:not-used@sip.telnyx.com>
+Contact         <sip:gw+telnyx-ip@72.62.50.40:5080;transport=udp;gw=telnyx-ip>
+Exten           not-used
+To              sip:not-used@sip.telnyx.com
+Proxy           sip:sip.telnyx.com
+Context         public
+Expires         3600
+Freq            3600
+Ping            1772646384
+PingFreq        25
+PingTime        129.22
+PingState       1/1/1
+State           NOREG
+Status          UP
+Uptime          36679s
+CallsIN         0
+CallsOUT        14
+FailedCallsIN   0
+FailedCallsOUT  8
+=================================================================================================
+
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
