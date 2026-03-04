@@ -346,50 +346,33 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
     sessionId: session.id.slice(0, 8),
   });
 
-  let lastTickNs = process.hrtime.bigint();
-  const FRAME_NS = BigInt(20_000_000);
+  const FRAME_MS = 20;
   const PREFILL_FRAMES = 4;
+  const MAX_CATCHUP = 5;
 
-  function audioTick() {
+  const audioInterval = setInterval(() => {
     const s = sessionManager.getSession(session.id);
     if (!s || (s.state !== 'active' && s.state !== 'reconnecting') || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
-      bgTimers.set(session.id, setTimeout(audioTick, 10));
       return;
     }
 
-    const now = process.hrtime.bigint();
-    const elapsed = now - lastTickNs;
-    const framesToSend = Number(elapsed / FRAME_NS);
-
-    if (framesToSend >= 1) {
-      lastTickNs += FRAME_NS * BigInt(framesToSend);
-
-      const queue = audioOutputQueues.get(session.id);
-      const maxCatchUp = Math.min(framesToSend, 3);
-
-      for (let f = 0; f < maxCatchUp; f++) {
-        if (queue && queue.length > 0) {
-          const chunk = queue.shift()!;
-          s.fsWebSocket.send(chunk, { binary: true });
-        } else if (config.audio.backgroundEnabled && isBackgroundLoaded()) {
-          const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
-          if (bgChunk) {
-            s.fsWebSocket.send(bgChunk, { binary: true });
-          }
-        }
+    const queue = audioOutputQueues.get(session.id);
+    if (queue && queue.length > 0) {
+      const toSend = Math.min(queue.length, MAX_CATCHUP);
+      for (let f = 0; f < toSend; f++) {
+        const chunk = queue.shift()!;
+        s.fsWebSocket.send(chunk, { binary: true });
+      }
+    } else if (config.audio.backgroundEnabled && isBackgroundLoaded()) {
+      const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
+      if (bgChunk) {
+        s.fsWebSocket.send(bgChunk, { binary: true });
       }
     }
+  }, FRAME_MS);
 
-    const nextFrameAt = lastTickNs + FRAME_NS;
-    const nowAfter = process.hrtime.bigint();
-    const waitNs = nextFrameAt > nowAfter ? nextFrameAt - nowAfter : BigInt(1_000_000);
-    const waitMs = Math.max(1, Math.min(15, Number(waitNs / BigInt(1_000_000))));
-
-    bgTimers.set(session.id, setTimeout(audioTick, waitMs));
-  }
-
-  bgTimers.set(session.id, setTimeout(audioTick, 5));
-  log.info(`🎵 Adaptive audio timer started (prefill=${PREFILL_FRAMES})`, { sessionId: session.id.slice(0, 8) });
+  bgTimers.set(session.id, audioInterval as any);
+  log.info(`🎵 Audio timer started (interval=${FRAME_MS}ms, prefill=${PREFILL_FRAMES})`, { sessionId: session.id.slice(0, 8) });
 
   const tPreConnect = Date.now();
   log.info(`⏱️ [VPS-TIMING] Pre-connect overhead: ${tPreConnect - t0}ms`, { sessionId: session.id.slice(0, 8) });
@@ -527,7 +510,7 @@ function queueAudioForFreeSWITCH(sessionId: string, audio: Buffer): void {
 function cleanupSession(sessionId: string): void {
   const timer = bgTimers.get(sessionId);
   if (timer) {
-    clearTimeout(timer);
+    clearInterval(timer);
     bgTimers.delete(sessionId);
   }
   audioOutputQueues.delete(sessionId);
