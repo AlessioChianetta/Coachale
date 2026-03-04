@@ -1,0 +1,13 @@
+|voice-bridge  | 2026-03-04T23:31:17.022Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772666705894_rrqfb2suy targetPhone=1004 aiMode=assistenza
+6|voice-bridge  | 2026-03-04T23:31:17.022Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling LOCAL extension 1004 (no gateway, no tech prefix)
+6|voice-bridge  | 2026-03-04T23:31:17.022Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772667077022-wsxplz dialString={origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772667077022-wsxplz}user/1004 &park()
+6|voice-bridge  | 2026-03-04T23:31:17.022Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772667077022-wsxplz}user/1004 &park()
+6|voice-bridge  | 2026-03-04T23:31:20.566Z [INFO ] [BRIDGE:ESL] 🔍 [CHANNEL_ANSWER DEBUG] uuid=outbound-1772667077022-wsxplz otherLeg= direction=outbound dest=1004 caller=9999 isOutbound=true
+6|voice-bridge  | 2026-03-04T23:31:20.566Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=+OK outbound-1772667077022-wsxplz
+6|voice-bridge  | 2026-03-04T23:31:20.566Z [WARN ] [BRIDGE:ESL] ⚠️ [CHANNEL_ANSWER] No metadata for uuid=outbound-1772667077022-wsxplz (original=outbound-1772667077022-wsxplz)
+6|voice-bridge  | 2026-03-04T23:31:20.566Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Call originated callId=sc_1772666705894_rrqfb2suy uuid=outbound-1772667077022-wsxplz — callId mapped for CHANNEL_PARK
+6|voice-bridge  | 2026-03-04T23:31:20.586Z [INFO ] [BRIDGE:ESL] 🅿️  Call parked type=OUTBOUND uuid=outbound-1772667077022-wsxplz callerIdNumber=1004 calledNumber=1004
+6|voice-bridge  | 2026-03-04T23:31:20.586Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] CHANNEL_PARK at 1772667080586 uuid=outbound-1772667077022-wsxplz
+6|voice-bridge  | 2026-03-04T23:31:20.586Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call parked — linking callId=sc_1772666705894_rrqfb2suy to uuid=outbound-1772667077022-wsxplz, waiting for CHANNEL_ANSWER before starting stream
+6|voice-bridge  | 2026-03-04T23:31:20.586Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=sc_1772666705894_rrqfb2suy, uuid=outbound-1772667077022-wsxplz
+6|voice-bridge  | 2026-03-04T23:31:20.586Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
