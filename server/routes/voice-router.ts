@@ -2466,10 +2466,11 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
       instructionType: call.instruction_type,
       useDefaultTemplate: call.use_default_template
     };
-    // Add SIP settings - se useVpsNumber è ON, non mandare sipCallerId (usa numero VPS)
-    if (!useVpsNumber && sipCallerId) {
+    // Manda sempre sipCallerId (numero Telnyx del consulente) come caller ID
+    if (sipCallerId) {
       vpsPayload.sipCallerId = sipCallerId;
     }
+    // Non mandare sipGateway quando useVpsNumber=true — il bridge usa telnyx-ip di default
     if (!useVpsNumber && sipGateway) {
       vpsPayload.sipGateway = sipGateway;
     }
@@ -2482,6 +2483,8 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     console.log(`📋   callInstruction: ${vpsPayload.callInstruction || 'null'}`);
     console.log(`📋   instructionType: ${vpsPayload.instructionType || 'null'}`);
     console.log(`📋   useDefaultTemplate: ${vpsPayload.useDefaultTemplate}`);
+    console.log(`📋   sipCallerId: ${vpsPayload.sipCallerId || 'non inviato'}`);
+    console.log(`📋   sipGateway: ${vpsPayload.sipGateway || 'non inviato (usa default VPS)'}`);
     console.log(`📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     
     const response = await fetch(outboundUrl, {
