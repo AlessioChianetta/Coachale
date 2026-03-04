@@ -34,13 +34,33 @@ export function originateOutboundCall(dialString: string): Promise<string> {
   });
 }
 
+function startAudioStream(conn: any, uuid: string, tStart: number): void {
+  (conn as any).bgapi(`uuid_setvar_multi ${uuid} STREAM_PLAYBACK=true;STREAM_SAMPLE_RATE=8000;mod_audio_stream_bidirectional=true;jitterbuffer_msec=60:120`);
+
+  const wsUrl = `ws://172.17.0.1:${config.ws.port}/stream/${uuid}`;
+  const streamCmd = `uuid_audio_stream ${uuid} start ${wsUrl} mono 8000`;
+
+  const tStreamCmd = Date.now();
+  log.info(`⏱️ [ESL-TIMING] Executing uuid_audio_stream after ${tStreamCmd - tStart}ms`, { uuid });
+
+  (conn as any).bgapi(streamCmd, (res: any) => {
+    const tStreamDone = Date.now();
+    const body = res.getBody();
+    if (body && body.includes('+OK')) {
+      log.info(`✅ Audio stream started in ${tStreamDone - tStreamCmd}ms (total: ${tStreamDone - tStart}ms)`, { uuid });
+    } else {
+      log.error(`❌ Failed to start audio stream`, { uuid, error: body || 'Unknown error' });
+    }
+  });
+}
+
 export function startESLController(): void {
   log.info(`Connecting to FreeSWITCH ESL at ${config.esl.host}:${config.esl.port}...`);
 
   const conn = new esl.Connection(config.esl.host, config.esl.port, config.esl.password, () => {
     log.info('✅ Connected to FreeSWITCH Event Socket!');
     eslConn = conn;
-    conn.subscribe(['CHANNEL_PARK', 'CHANNEL_HANGUP']);
+    conn.subscribe(['CHANNEL_PARK', 'CHANNEL_ANSWER', 'CHANNEL_HANGUP']);
   });
 
   conn.on('esl::event::CHANNEL_PARK::*', (event: any) => {
@@ -69,7 +89,7 @@ export function startESLController(): void {
     if (isOutbound) {
       const callId = outboundCallIdMap.get(uuid);
       if (callId) {
-        log.info(`📞 OUTBOUND call parked — linking callId=${callId} to uuid=${uuid}`);
+        log.info(`📞 OUTBOUND call parked — linking callId=${callId} to uuid=${uuid}, waiting for CHANNEL_ANSWER before starting stream`);
         setExpectedCallId(callId, uuid);
         outboundCallIdMap.delete(uuid);
       } else {
@@ -79,25 +99,25 @@ export function startESLController(): void {
     } else {
       setExpectedCallId(uuid);
       log.info(`📞 INBOUND call parked — uuid=${uuid}`);
+
+      startAudioStream(conn, uuid, tPark);
     }
+  });
 
-    (conn as any).bgapi(`uuid_setvar_multi ${uuid} STREAM_PLAYBACK=true;STREAM_SAMPLE_RATE=8000;mod_audio_stream_bidirectional=true;jitterbuffer_msec=60:120`);
+  conn.on('esl::event::CHANNEL_ANSWER::*', (event: any) => {
+    const uuid = event.getHeader('Unique-ID');
+    const isOutbound = uuid.startsWith('outbound-');
 
-    const wsUrl = `ws://172.17.0.1:${config.ws.port}/stream/${uuid}`;
-    const streamCmd = `uuid_audio_stream ${uuid} start ${wsUrl} mono 8000`;
+    if (!isOutbound) return;
 
-    const tStreamCmd = Date.now();
-    log.info(`⏱️ [ESL-TIMING] Executing uuid_audio_stream after ${tStreamCmd - tPark}ms`, { uuid });
+    const meta = callMetadata.get(uuid);
+    if (!meta) return;
 
-    (conn as any).bgapi(streamCmd, (res: any) => {
-        const tStreamDone = Date.now();
-        const body = res.getBody();
-        if (body && body.includes('+OK')) {
-            log.info(`✅ Audio stream started in ${tStreamDone - tStreamCmd}ms (total: ${tStreamDone - tPark}ms)`, { uuid });
-        } else {
-            log.error(`❌ Failed to start audio stream`, { uuid, error: body || 'Unknown error' });
-        }
-    });
+    const tAnswer = Date.now();
+    const ringTime = meta.parkTime ? tAnswer - meta.parkTime : 0;
+    log.info(`📞 OUTBOUND call ANSWERED — starting audio stream`, { uuid, ringTimeMs: ringTime });
+
+    startAudioStream(conn, uuid, tAnswer);
   });
 
   conn.on('esl::event::CHANNEL_HANGUP::*', (event: any) => {
