@@ -538,7 +538,7 @@ export default function ConsultantEmailHub() {
   });
 
   const outreachLeads = outreachData?.data?.leads || [];
-  const outreachStats = outreachData?.data?.stats || { totalSent: 0, totalReplied: 0, totalInSequence: 0, totalCompleted: 0, followUpsInQueue: 0 };
+  const outreachStats = outreachData?.data?.stats || { totalSent: 0, totalReplied: 0, totalInSequence: 0, totalCompleted: 0, followUpsInQueue: 0, totalPending: 0 };
 
   const cancelFollowUpMutation = useMutation({
     mutationFn: async (taskId: string) => {
@@ -3306,17 +3306,26 @@ export default function ConsultantEmailHub() {
                     </Button>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
                     <Card className="bg-white dark:bg-slate-800">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 mb-1">
                           <Send className="h-4 w-4 text-blue-500" />
-                          <span className="text-xs text-muted-foreground">Lead contattati</span>
+                          <span className="text-xs text-muted-foreground">Inviate</span>
                         </div>
                         <p className="text-2xl font-bold">{outreachStats.totalSent}</p>
                         {outreachStats.avgScore && (
                           <p className="text-xs text-muted-foreground">Score medio: {outreachStats.avgScore}/100</p>
                         )}
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-white dark:bg-slate-800">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Clock className="h-4 w-4 text-indigo-500" />
+                          <span className="text-xs text-muted-foreground">Schedulate</span>
+                        </div>
+                        <p className="text-2xl font-bold text-indigo-600">{outreachStats.totalPending || 0}</p>
                       </CardContent>
                     </Card>
                     <Card className="bg-white dark:bg-slate-800">
@@ -3376,6 +3385,7 @@ export default function ConsultantEmailHub() {
                     <span className="text-sm text-muted-foreground">Filtra per stato:</span>
                     {[
                       { value: "all", label: "Tutti" },
+                      { value: "pending", label: "Schedulata" },
                       { value: "in_sequence", label: "In sequenza" },
                       { value: "responded", label: "Ha risposto" },
                       { value: "completed", label: "Completata" },
@@ -3481,6 +3491,23 @@ export default function ConsultantEmailHub() {
                                         {lead.firstContact.subject}
                                       </span>
                                     </div>
+                                  ) : lead.scheduledFirstContact ? (
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <Clock className="h-3.5 w-3.5 text-indigo-500" />
+                                        <span className="text-xs text-indigo-600">
+                                          {lead.scheduledFirstContact.status === 'waiting_approval' ? 'In approvazione' : 'Schedulata'}
+                                        </span>
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">
+                                        {format(new Date(lead.scheduledFirstContact.scheduledAt), "dd/MM/yy HH:mm")}
+                                      </span>
+                                      {lead.scheduledFirstContact.subject && (
+                                        <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                                          {lead.scheduledFirstContact.subject}
+                                        </span>
+                                      )}
+                                    </div>
                                   ) : (
                                     <span className="text-xs text-muted-foreground">—</span>
                                   )}
@@ -3552,6 +3579,10 @@ export default function ConsultantEmailHub() {
                                   {lead.globalStatus === 'responded' ? (
                                     <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
                                       Ha risposto
+                                    </Badge>
+                                  ) : lead.globalStatus === 'pending' ? (
+                                    <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+                                      Schedulata
                                     </Badge>
                                   ) : lead.globalStatus === 'in_sequence' ? (
                                     <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">

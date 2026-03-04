@@ -4406,12 +4406,56 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
       });
     }
 
+    // Also load pending/scheduled tasks not yet sent
+    const pendingTaskRows = await db.execute(sql`
+      SELECT ast.id, ast.contact_name, ast.status, ast.scheduled_at,
+             ast.ai_instruction, ast.additional_context
+      FROM ai_scheduled_tasks ast
+      WHERE ast.consultant_id = ${consultantId}
+        AND ast.preferred_channel = 'email'
+        AND (ast.ai_role = 'hunter' OR ast.task_category = 'prospecting')
+        AND ast.status IN ('scheduled', 'waiting_approval', 'approved')
+        AND ast.created_at > NOW() - INTERVAL '90 days'
+      ORDER BY ast.scheduled_at ASC
+    `);
+    for (const pt of pendingTaskRows.rows as any[]) {
+      let ctx: any = {};
+      if (typeof pt.additional_context === 'string') {
+        try { ctx = JSON.parse(pt.additional_context); } catch {}
+      } else if (pt.additional_context) {
+        ctx = pt.additional_context;
+      }
+      const leadEmail = ctx.lead_email || '';
+      if (!leadEmail) continue;
+      const instructionText = pt.ai_instruction || '';
+      const subjectMatch = instructionText.match(/^Oggetto:\s*(.+)$/m);
+      const subject = subjectMatch ? subjectMatch[1].trim() : null;
+      if (!leadMap.has(leadEmail)) {
+        leadMap.set(leadEmail, {
+          email: leadEmail,
+          name: pt.contact_name || leadEmail.split('@')[0],
+          businessName: ctx.business_name || null,
+          category: ctx.sector || null,
+          emails: [],
+          followUps: [],
+          replies: [],
+          globalStatus: 'pending',
+          scheduledFirstContact: {
+            taskId: pt.id,
+            scheduledAt: pt.scheduled_at,
+            subject,
+            status: pt.status,
+          },
+        });
+      }
+    }
+
     if (leadMap.size === 0) {
       return res.json({
         success: true,
         data: {
           leads: [],
-          stats: { totalSent: 0, totalReplied: 0, totalInSequence: 0, totalCompleted: 0, followUpsInQueue: 0 },
+          stats: { totalSent: 0, totalReplied: 0, totalInSequence: 0, totalCompleted: 0, followUpsInQueue: 0, totalPending: 0 },
         },
       });
     }
@@ -4423,7 +4467,7 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
       FROM hub_emails he
       WHERE he.consultant_id = ${consultantId}
         AND he.direction = 'inbound'
-        AND he.from_email = ANY(${recipientEmails})
+        AND he.from_email = ANY(${sql`ARRAY[${sql.join(recipientEmails.map(e => sql`${e}`), sql`, `)}]::text[]`})
         AND he.created_at > NOW() - INTERVAL '90 days'
       ORDER BY he.received_at DESC
     `);
@@ -4487,7 +4531,7 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
       FROM lead_scraper_results lsr
       INNER JOIN lead_scraper_searches lss ON lsr.search_id = lss.id
       WHERE lss.consultant_id = ${consultantId}
-        AND lsr.email = ANY(${recipientEmails})
+        AND lsr.email = ANY(${sql`ARRAY[${sql.join(recipientEmails.map(e => sql`${e}`), sql`, `)}]::text[]`})
     `);
 
     for (const lr of leadSearchResults.rows as any[]) {
@@ -4508,6 +4552,7 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
     let totalInSequence = 0;
     let totalCompleted = 0;
     let totalNoResponse = 0;
+    let totalPending = 0;
     let followUpsInQueue = 0;
     let scoreSum = 0;
     let scoreCount = 0;
@@ -4518,6 +4563,15 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
       if (lead.aiScore) {
         scoreSum += lead.aiScore;
         scoreCount++;
+      }
+
+      // Leads with no sent emails are pending (scheduled but not yet sent)
+      if (lead.emails.length === 0 && lead.globalStatus === 'pending') {
+        totalPending++;
+        lead.firstContact = null;
+        lead.followUp1 = null;
+        lead.followUp2 = null;
+        continue;
       }
 
       const hasReply = lead.replies.length > 0;
@@ -4565,8 +4619,17 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
     }
 
     leads.sort((a: any, b: any) => {
-      const dateA = a.firstContact?.sentAt ? new Date(a.firstContact.sentAt).getTime() : 0;
-      const dateB = b.firstContact?.sentAt ? new Date(b.firstContact.sentAt).getTime() : 0;
+      // Pending leads (scheduled, not sent) sort by scheduledAt descending, placed after sent
+      const dateA = a.firstContact?.sentAt
+        ? new Date(a.firstContact.sentAt).getTime()
+        : a.scheduledFirstContact?.scheduledAt
+          ? new Date(a.scheduledFirstContact.scheduledAt).getTime() - 1e12
+          : 0;
+      const dateB = b.firstContact?.sentAt
+        ? new Date(b.firstContact.sentAt).getTime()
+        : b.scheduledFirstContact?.scheduledAt
+          ? new Date(b.scheduledFirstContact.scheduledAt).getTime() - 1e12
+          : 0;
       return dateB - dateA;
     });
 
@@ -4575,11 +4638,12 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
       data: {
         leads,
         stats: {
-          totalSent: leadMap.size,
+          totalSent: leads.filter((l: any) => l.emails.length > 0).length,
           totalReplied,
           totalInSequence,
           totalCompleted,
           totalNoResponse,
+          totalPending,
           followUpsInQueue,
           avgScore: scoreCount > 0 ? Math.round(scoreSum / scoreCount) : null,
         },
