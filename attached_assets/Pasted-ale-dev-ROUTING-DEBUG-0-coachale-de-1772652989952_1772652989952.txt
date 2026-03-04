@@ -1,0 +1,51 @@
+ale-dev  | 🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0|coachale-dev  | 🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.type: phone_service
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   calledNumber: +3614451530
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   callerId: 1003
+0|coachale-dev  | 🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0|coachale-dev  | 📞 [Number Lookup] Not found: +3614451530 (normalized: +3614451530)
+0|coachale-dev  | 7:36:12 PM [express] GET /api/voice/number-lookup 200 in 126ms :: {"found":false}
+0|coachale-dev  | 🎤 [55dmz] Client connected to Live API
+0|coachale-dev  | ⏱️ [LATENCY-E2E] WebSocket arrival: 2026-03-04T19:36:12.589Z
+0|coachale-dev  | ⏱️ [AUTH-DETAIL] JWT verify: 2ms
+0|coachale-dev  | 🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0|coachale-dev  | 🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.type: phone_service
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   calledNumber: +3614451530
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   callerId: 1003
+0|coachale-dev  | 🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0|coachale-dev  | 📞 [Number Lookup] Not found: +3614451530 (normalized: +3614451530)
+0|coachale-dev  | 7:36:12 PM [express] GET /api/voice/number-lookup 200 in 43ms :: {"found":false}
+0|coachale-dev  | 🎤 [v0s2nr] Client connected to Live API
+0|coachale-dev  | ⏱️ [LATENCY-E2E] WebSocket arrival: 2026-03-04T19:36:12.610Z
+0|coachale-dev  | ⏱️ [AUTH-DETAIL] JWT verify: 2ms
+0|coachale-dev  | 🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0|coachale-dev  | 🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.type: phone_service
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   calledNumber: +3614451530
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   callerId: 1003
+0|coachale-dev  | 🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0|coachale-dev  | 📞 [Number Lookup] Not found: +3614451530 (normalized: +3614451530)
+0|coachale-dev  | 7:36:12 PM [express] GET /api/voice/number-lookup 200 in 41ms :: {"found":false}
+0|coachale-dev  | ⏱️ [AUTH-DETAIL] voice_numbers lookup: 27ms (tried: +3614451530, +3614451530, 3614451530)
+0|coachale-dev  | ❌ [PHONE SERVICE] Called number +3614451530 not found or inactive in voice_numbers → REJECTING CALL
+0|coachale-dev  | ❌ [55dmz] Authentication failed
+0|coachale-dev  | ⏱️ [AUTH-DETAIL] voice_numbers lookup: 25ms (tried: +3614451530, +3614451530, 3614451530)
+0|coachale-dev  | ❌ [PHONE SERVICE] Called number +3614451530 not found or inactive in voice_numbers → REJECTING CALL
+0|coachale-dev  | ❌ [5czhc3] Authentication failed
+0|coachale-dev  | 🎤 [do07tf] Client connected to Live API
+0|coachale-dev  | ⏱️ [LATENCY-E2E] WebSocket arrival: 2026-03-04T19:36:12.624Z
+0|coachale-dev  | ⏱️ [AUTH-DETAIL] JWT verify: 4ms
+0|coachale-dev  | 🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0|coachale-dev  | 🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.type: phone_service
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+0|coachale-dev  | 🔍 [ROUTING-DEBUG]   calledNumber: +3614451530

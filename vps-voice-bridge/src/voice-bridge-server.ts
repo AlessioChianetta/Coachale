@@ -8,7 +8,7 @@ import { sessionManager } from './session-manager.js';
 import { ReplitWSClient } from './replit-ws-client.js';
 import { convertForGemini, convertFromGemini } from './audio-converter.js';
 import { fetchCallerContext, fetchNumberOwner, notifyCallStart, notifyCallEnd } from './caller-context.js';
-import { callMetadata } from './esl-client.js';
+import { callMetadata, getEslConnection } from './esl-client.js';
 import { handleOutboundCall } from './outbound-handler.js';
 import {
   loadBackgroundAudio,
@@ -279,6 +279,15 @@ export function startVoiceBridgeServer(): void {
       }).catch((e) => {
         log.error(`Session init error: ${e.message}`);
         ws.close(1011, 'Session init failed');
+        if (uuidFromUrl) {
+          const eslConn = getEslConnection();
+          if (eslConn) {
+            log.warn(`🔴 Killing FreeSWITCH call ${uuidFromUrl} after auth rejection`);
+            (eslConn as any).bgapi(`uuid_kill ${uuidFromUrl} CALL_REJECTED`, (res: any) => {
+              log.info(`uuid_kill result: ${res?.getBody?.() || 'no response'}`);
+            });
+          }
+        }
       });
     } else {
       log.warn('⚠️ No pending call found for this WebSocket connection');

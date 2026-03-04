@@ -31,6 +31,9 @@ const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your
 
 const VOICE_CACHE_TTL = 5 * 60 * 1000;
 const _voiceNumbersCache = new Map<string, { data: any; ts: number }>();
+const _rejectedNumbersCache = new Map<string, { count: number; ts: number }>();
+const REJECTED_CACHE_TTL = 60 * 1000;
+const REJECTED_MAX_LOG = 3;
 const _settingsCache = new Map<string, { data: any[]; ts: number }>();
 const _consultantInfoCache = new Map<string, { data: any; ts: number }>();
 
@@ -1142,6 +1145,16 @@ async function getUserIdFromRequest(req: any): Promise<{
           const e164Called = normalizeCalledE164(calledNumber.replace(/\s+/g, ''));
           let normalizedCalledNumber = e164Called || calledNumber.replace(/\s+/g, '').replace(/^00/, '+');
           resolvedCalledNumber = normalizedCalledNumber;
+
+          const rejectedEntry = _rejectedNumbersCache.get(normalizedCalledNumber);
+          if (rejectedEntry && Date.now() - rejectedEntry.ts < REJECTED_CACHE_TTL) {
+            rejectedEntry.count++;
+            if (rejectedEntry.count <= REJECTED_MAX_LOG) {
+              console.error(`❌ [PHONE SERVICE] Called number ${normalizedCalledNumber} rejected (cached, attempt ${rejectedEntry.count}) — suppressing further logs`);
+            }
+            return null;
+          }
+
           const lookupStart = Date.now();
           
           const cachedNumber = getCached(_voiceNumbersCache, normalizedCalledNumber);
@@ -1170,6 +1183,7 @@ async function getUserIdFromRequest(req: any): Promise<{
               console.log(`⚠️ [PHONE SERVICE] calledNumber ${normalizedCalledNumber} not in voice_numbers — OUTBOUND call allowed (consultant ${resolvedConsultantId} resolved from scheduled_voice_calls)`);
             } else {
               console.error(`❌ [PHONE SERVICE] Called number ${normalizedCalledNumber} not found or inactive in voice_numbers → REJECTING CALL`);
+              _rejectedNumbersCache.set(normalizedCalledNumber, { count: 1, ts: Date.now() });
               return null;
             }
           }
