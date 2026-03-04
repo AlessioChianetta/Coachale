@@ -1130,10 +1130,10 @@ router.get("/numbers", authenticateToken, requireAnyRole(["consultant", "super_a
         'voicemail' AS out_of_hours_action,
         5 AS max_concurrent_calls,
         30 AS max_call_duration_minutes,
-        'Kore'::varchar AS voice_id,
         true AS is_active,
         cn.created_at,
-        cn.updated_at
+        cn.updated_at,
+        'Kore'::varchar AS voice_id
       FROM consultant_numbers cn
       WHERE cn.status = 'active'
         ${consultantId ? sql`AND cn.consultant_id = ${consultantId}` : sql``}

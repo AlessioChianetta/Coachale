@@ -10250,10 +10250,10 @@ export const voiceNumbers = pgTable("voice_numbers", {
   outOfHoursAction: varchar("out_of_hours_action", { length: 50 }).default("voicemail"),
   maxConcurrentCalls: integer("max_concurrent_calls").default(5),
   maxCallDurationMinutes: integer("max_call_duration_minutes").default(30),
-  voiceId: varchar("voice_id", { length: 50 }).default("Kore"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
+  voiceId: varchar("voice_id", { length: 50 }).default("Kore"),
 }, (table) => ({
   consultantIdx: index("idx_voice_numbers_consultant").on(table.consultantId),
   phoneIdx: index("idx_voice_numbers_phone").on(table.phoneNumber),
