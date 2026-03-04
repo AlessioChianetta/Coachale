@@ -95,6 +95,7 @@ import {
   MailOpen,
   Maximize2,
   Layers,
+  Copy,
 } from "lucide-react";
 import { Link } from "wouter";
 import Navbar from "@/components/navbar";
@@ -1112,6 +1113,31 @@ export default function ConsultantEmailHub() {
     setShowAccountDialog(true);
   };
 
+  const handleDuplicateAccount = (account: EmailAccount) => {
+    setEditingAccount(null);
+    const detectedAccountType = classifyAccountType(account);
+    setFormData({
+      displayName: `Copia di ${account.displayName}`,
+      emailAddress: "",
+      accountType: detectedAccountType,
+      imapHost: account.imapHost || "",
+      imapPort: account.imapPort || 993,
+      imapUser: "",
+      imapPassword: "",
+      imapTls: account.imapTls ?? true,
+      smtpHost: account.smtpHost || "",
+      smtpPort: account.smtpPort || 587,
+      smtpUser: "",
+      smtpPassword: "",
+      smtpTls: account.smtpTls ?? true,
+      autoReplyMode: account.autoReplyMode,
+      confidenceThreshold: account.confidenceThreshold,
+      aiTone: account.aiTone,
+      signature: account.signature || "",
+    });
+    setShowAccountDialog(true);
+  };
+
   const handleSaveAccount = () => {
     if (editingAccount) {
       updateAccountMutation.mutate({ id: editingAccount.id, data: formData });
@@ -1693,6 +1719,10 @@ export default function ConsultantEmailHub() {
                       <DropdownMenuItem onClick={() => handleOpenEditAccount(account)}>
                         <Edit className="h-4 w-4 mr-2" />
                         Modifica
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDuplicateAccount(account)}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Duplica
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => {
