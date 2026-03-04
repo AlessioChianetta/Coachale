@@ -724,9 +724,10 @@ export default function ConsultantLeadScraper() {
     email: { label: "Email (Millie)", color: "text-blue-600" },
   };
 
-  const updateOutreachConfig = async (key: string, value: any) => {
-    const newConfig = { ...outreachConfig, [key]: value };
-    setLocalOutreachOverride(prev => ({ ...(prev || {}), [key]: value }));
+  const updateOutreachConfig = async (keyOrUpdates: string | Record<string, any>, value?: any) => {
+    const updates = typeof keyOrUpdates === 'string' ? { [keyOrUpdates]: value } : keyOrUpdates;
+    const newConfig = { ...outreachConfig, ...updates };
+    setLocalOutreachOverride(prev => ({ ...(prev || {}), ...updates }));
     try {
       await fetch("/api/ai-autonomy/outreach-config", {
         method: "PATCH",
@@ -4253,8 +4254,11 @@ export default function ConsultantLeadScraper() {
                                     <div>
                                       <Label className="text-xs text-muted-foreground">Pool di rotazione</Label>
                                       <Select value={outreachConfig.pool_id || "none"} onValueChange={(v) => {
-                                        updateOutreachConfig("pool_id", v === "none" ? "" : v);
-                                        if (v !== "none") updateOutreachConfig("email_account_id", "");
+                                        if (v === "none") {
+                                          updateOutreachConfig("pool_id", "");
+                                        } else {
+                                          updateOutreachConfig({ pool_id: v, email_account_id: "" });
+                                        }
                                       }}>
                                         <SelectTrigger className="w-full h-10 text-sm mt-1">
                                           <SelectValue placeholder="Seleziona pool outreach" />
