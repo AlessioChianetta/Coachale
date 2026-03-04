@@ -1479,7 +1479,7 @@ export async function scheduleIndividualOutreach(
   lead: any,
   channel: string,
   content: any,
-  config: { voiceTemplateId: string | null; whatsappConfigId: string | null; emailAccountId: string | null; timezone: string; voiceTemplateName?: string; callInstructionTemplate?: string; outreachConfig?: any },
+  config: { voiceTemplateId: string | null; whatsappConfigId: string | null; emailAccountId: string | null; poolId?: string | null; timezone: string; voiceTemplateName?: string; callInstructionTemplate?: string; outreachConfig?: any },
   mode: 'autonomous' | 'approval',
   slotIndex: number
 ): Promise<{ taskId: string; channel: string; leadName: string; status: string; scheduledAt: string; contentPreview: string }> {
@@ -1651,7 +1651,7 @@ export async function scheduleIndividualOutreach(
         ${scheduledAtIso}, ${config.timezone},
         ${emailTaskStatus},
         2, 'prospecting', 'hunter', 'email',
-        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis', email_account_id: config.emailAccountId, lead_email: lead.email || '', email_template_name: content.emailTemplateName || null })}::text,
+        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis', email_account_id: config.emailAccountId, pool_id: config.poolId || null, lead_email: lead.email || '', email_template_name: content.emailTemplateName || null })}::text,
         1, 0, 5, NOW(), NOW()
       )
     `);
@@ -1888,7 +1888,8 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     const waTemplateSids: string[] = outreachConfig.whatsapp_template_ids || [];
     const loadedWaTemplates = await loadSelectedWaTemplates(consultantId, waTemplateSids);
 
-    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate, outreachConfig };
+    const poolId = outreachConfig.pool_id ?? null;
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, poolId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate, outreachConfig };
 
     for (let i = 0; i < leadsWithChannels.length; i++) {
       const { lead, channel } = leadsWithChannels[i];
@@ -1977,6 +1978,7 @@ router.post("/hunter-single-lead", authenticateToken, requireAnyRole(["consultan
     const voiceTemplateId = outreachConfig.voice_template_id || null;
     const whatsappConfigId = outreachConfig.whatsapp_config_id || null;
     const emailAccountId = outreachConfig.email_account_id || null;
+    const poolId = outreachConfig.pool_id ?? null;
     const callInstructionTemplate = outreachConfig.call_instruction_template || null;
 
     const [salesCtxResult, consultantResult, waConfigResult2] = await Promise.all([
@@ -2006,7 +2008,7 @@ router.post("/hunter-single-lead", authenticateToken, requireAnyRole(["consultan
     const waTemplateSids: string[] = outreachConfig.whatsapp_template_ids || [];
     const loadedWaTemplates = await loadSelectedWaTemplates(consultantId, waTemplateSids);
 
-    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate, outreachConfig };
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, poolId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate, outreachConfig };
 
     const results: any[] = [];
     for (let i = 0; i < validChannels.length; i++) {
@@ -2322,6 +2324,7 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
     const voiceTemplateId = outreachConfig.voice_template_id ?? null;
     const whatsappConfigId = outreachConfig.whatsapp_config_id ?? null;
     const emailAccountId = outreachConfig.email_account_id ?? null;
+    const poolId = outreachConfig.pool_id ?? null;
     const includedLeads = plan.leads.filter((l: any) => {
       if (!l.included || l.action === 'skip') return false;
       const channel = l.action === 'call' ? 'voice' : l.action;
@@ -2353,7 +2356,7 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
     const waTemplateSids2: string[] = outreachConfig.whatsapp_template_ids || [];
     const loadedWaTemplates2 = await loadSelectedWaTemplates(consultantId, waTemplateSids2);
 
-    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName2, callInstructionTemplate: callInstructionTemplate2, outreachConfig };
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, poolId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName2, callInstructionTemplate: callInstructionTemplate2, outreachConfig };
 
     const [salesCtxResult, consultantResult, waConfigResult3] = await Promise.all([
       db.execute(sql`

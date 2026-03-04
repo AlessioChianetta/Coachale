@@ -308,6 +308,7 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
                 const voiceTemplateId = outreachConfig.voice_template_id || null;
                 const whatsappConfigId = outreachConfig.whatsapp_config_id || null;
                 const emailAccountId = outreachConfig.email_account_id || null;
+                const poolId = outreachConfig.pool_id ?? null;
                 const callInstructionTemplate = outreachConfig.call_instruction_template || null;
 
                 const [salesCtxResult, consultantResult, waConfigResult2] = await Promise.all([
@@ -338,7 +339,7 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
                 const loadedWaTemplates = await loadSelectedWaTemplates(consultantId, waTemplateSids);
 
                 const scheduleConfig = {
-                  voiceTemplateId, whatsappConfigId, emailAccountId,
+                  voiceTemplateId, whatsappConfigId, emailAccountId, poolId,
                   timezone: 'Europe/Rome',
                   voiceTemplateName: resolvedVoiceTemplateName,
                   callInstructionTemplate, outreachConfig,

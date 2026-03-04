@@ -4248,19 +4248,19 @@ export default function ConsultantLeadScraper() {
                                 Email
                               </Label>
                               <div className="space-y-3">
-                                {outreachPools.length > 0 ? (
+                                {outreachPools.length > 0 && (
                                   <>
                                     <div>
                                       <Label className="text-xs text-muted-foreground">Pool di rotazione</Label>
                                       <Select value={outreachConfig.pool_id || "none"} onValueChange={(v) => {
                                         updateOutreachConfig("pool_id", v === "none" ? "" : v);
-                                        updateOutreachConfig("email_account_id", "");
+                                        if (v !== "none") updateOutreachConfig("email_account_id", "");
                                       }}>
                                         <SelectTrigger className="w-full h-10 text-sm mt-1">
                                           <SelectValue placeholder="Seleziona pool outreach" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          <SelectItem value="none">Nessuno</SelectItem>
+                                          <SelectItem value="none">Nessuno (usa account singolo)</SelectItem>
                                           {outreachPools.map((p) => (
                                             <SelectItem key={p.id} value={p.id}>
                                               {p.poolName} ({p.accounts.length} account)
@@ -4283,7 +4283,8 @@ export default function ConsultantLeadScraper() {
                                       Gestisci Pool →
                                     </a>
                                   </>
-                                ) : (
+                                )}
+                                {(!outreachConfig.pool_id || outreachConfig.pool_id === "") && (
                                   <>
                                     <Label className="text-xs text-muted-foreground">Account di invio (singolo)</Label>
                                     <Select value={outreachConfig.email_account_id || "none"} onValueChange={(v) => updateOutreachConfig("email_account_id", v === "none" ? "" : v)}>

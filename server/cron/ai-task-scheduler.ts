@@ -443,6 +443,7 @@ export async function handleCrmLeadOutreach(task: AIScheduledTask): Promise<void
   const whatsappConfigId = outreachConfig.whatsapp_config_id ?? outreachConfig.whatsappConfigId ?? null;
   const voiceTemplateId = outreachConfig.voice_template_id ?? outreachConfig.voiceTemplateId ?? null;
   const emailAccountId = outreachConfig.email_account_id ?? outreachConfig.emailAccountId ?? null;
+  const poolId = outreachConfig.pool_id ?? null;
   const hunterMode = outreachConfig.hunter_mode ?? 'approval';
   const outreachStatus = hunterMode === 'autonomous' ? 'scheduled' : 'waiting_approval';
   const safetyCooldown = outreachConfig.cooldown_hours ?? 24;
@@ -512,7 +513,7 @@ export async function handleCrmLeadOutreach(task: AIScheduledTask): Promise<void
   const loadedWaTemplates = await loadSelectedWaTemplates(task.consultant_id, waTemplateSids);
 
   const callInstructionTemplate = outreachConfig.call_instruction_template || null;
-  const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: task.timezone || 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate, outreachConfig };
+  const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, poolId, timezone: task.timezone || 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate, outreachConfig };
 
   const leadObj = {
     id: leadId, leadId: leadId,
@@ -757,15 +758,10 @@ async function executeSingleEmail(task: AIScheduledTask): Promise<void> {
     try { additionalContextData = JSON.parse(task.additional_context); } catch {}
   }
 
-  const emailAccountId = additionalContextData.email_account_id;
+  const poolId = additionalContextData.pool_id || null;
+  let emailAccountId = additionalContextData.email_account_id;
   const leadEmail = additionalContextData.lead_email || '';
   const resolvedName = task.contact_name || additionalContextData.business_name || 'Cliente';
-
-  if (!emailAccountId) {
-    console.error(`${LOG} No email_account_id for task ${task.id}, marking failed`);
-    await handleFailure(task, 'Nessun account email configurato');
-    return;
-  }
 
   if (!leadEmail) {
     console.error(`${LOG} No lead email for task ${task.id}, marking failed`);
@@ -780,16 +776,58 @@ async function executeSingleEmail(task: AIScheduledTask): Promise<void> {
     return;
   }
 
-  console.log(`${LOG} Sending email to ${leadEmail} (${resolvedName})`);
+  let smtpConfig: any = null;
 
-  try {
-    const smtpResult = await db.execute(sql`
-      SELECT id, smtp_host, smtp_port, smtp_user, smtp_password, email_address, display_name
-      FROM email_accounts
-      WHERE id = ${emailAccountId} AND consultant_id = ${task.consultant_id} AND smtp_host IS NOT NULL
+  if (poolId) {
+    const today = new Date().toISOString().split('T')[0];
+    await db.execute(sql`
+      UPDATE email_accounts
+      SET daily_send_count = 0, last_send_reset_date = ${today}
+      WHERE outreach_pool_id = ${poolId}
+        AND is_outreach_sender = true
+        AND (last_send_reset_date IS NULL OR last_send_reset_date < ${today})
+    `);
+    const poolResult = await db.execute(sql`
+      SELECT ea.id, ea.smtp_host, ea.smtp_port, ea.smtp_user, ea.smtp_password,
+             ea.email_address, ea.display_name, ea.daily_send_count, ea.daily_send_limit,
+             ea.outreach_pool_id
+      FROM email_accounts ea
+      WHERE ea.outreach_pool_id = ${poolId}
+        AND ea.is_outreach_sender = true
+        AND ea.daily_send_count < ea.daily_send_limit
+        AND ea.smtp_host IS NOT NULL
+        AND ea.consultant_id = ${task.consultant_id}
+      ORDER BY ea.daily_send_count ASC
       LIMIT 1
     `);
-    const smtpConfig = smtpResult.rows[0] as any;
+    if (poolResult.rows.length === 0) {
+      console.warn(`${LOG} Pool ${poolId}: tutti gli account hanno raggiunto il limite giornaliero per task ${task.id}`);
+      await handleFailure(task, 'Limite giornaliero raggiunto per tutti gli account del pool');
+      return;
+    }
+    smtpConfig = poolResult.rows[0] as any;
+    emailAccountId = smtpConfig.id;
+    console.log(`${LOG} Pool rotation: selected account ${smtpConfig.email_address} (${smtpConfig.daily_send_count}/${smtpConfig.daily_send_limit} invii oggi)`);
+  } else {
+    if (!emailAccountId) {
+      console.error(`${LOG} No email_account_id for task ${task.id}, marking failed`);
+      await handleFailure(task, 'Nessun account email configurato');
+      return;
+    }
+  }
+
+  console.log(`${LOG} Sending email to ${leadEmail} (${resolvedName}) via ${poolId ? 'pool rotation' : 'single account'}`);
+
+  try {
+    if (!smtpConfig) {
+      const smtpResult = await db.execute(sql`
+        SELECT id, smtp_host, smtp_port, smtp_user, smtp_password, email_address, display_name
+        FROM email_accounts
+        WHERE id = ${emailAccountId} AND consultant_id = ${task.consultant_id} AND smtp_host IS NOT NULL
+        LIMIT 1
+      `);
+      smtpConfig = smtpResult.rows[0] as any;
+    }
 
     if (!smtpConfig) {
       console.error(`${LOG} SMTP config not found for account ${emailAccountId}`);
@@ -815,19 +853,31 @@ async function executeSingleEmail(task: AIScheduledTask): Promise<void> {
     const fromField = smtpConfig.display_name ? `"${smtpConfig.display_name}" <${smtpConfig.email_address}>` : smtpConfig.email_address;
     const sendResult = await transporter.sendMail({ from: fromField, to: leadEmail, subject: emailSubject, html: htmlBody });
 
+    if (poolId) {
+      await db.execute(sql`
+        UPDATE email_accounts
+        SET daily_send_count = daily_send_count + 1, updated_at = NOW()
+        WHERE id = ${emailAccountId}
+      `);
+    }
+
     const hubEmailId = `hub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     await db.execute(sql`
       INSERT INTO hub_emails (
         id, account_id, consultant_id, message_id, subject, from_name, from_email,
         to_recipients, body_html, body_text, snippet, direction, folder,
-        is_read, processing_status, sent_at, created_at, updated_at
+        is_read, processing_status, email_type, is_outreach_email, outreach_lead_id, outreach_pool_id,
+        sent_at, created_at, updated_at
       ) VALUES (
         ${hubEmailId}, ${emailAccountId}, ${task.consultant_id},
         ${sendResult.messageId || hubEmailId},
         ${emailSubject}, ${smtpConfig.display_name || ''}, ${smtpConfig.email_address},
         ${JSON.stringify([{ email: leadEmail, name: resolvedName }])}::jsonb,
         ${htmlBody}, ${emailBody}, ${emailBody.substring(0, 200)},
-        'outbound', 'sent', true, 'sent', NOW(), NOW(), NOW()
+        'outbound', 'sent', true, 'sent',
+        ${poolId ? 'hunter_outreach' : null},
+        ${!!poolId}, ${additionalContextData.lead_id || null}, ${poolId},
+        NOW(), NOW(), NOW()
       )
       ON CONFLICT (message_id) DO NOTHING
     `);
