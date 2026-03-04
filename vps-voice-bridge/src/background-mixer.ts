@@ -103,10 +103,22 @@ export function loadBackgroundAudio(filePath?: string): boolean {
       return false;
     }
 
-    bgPcmBuffer = fileBuffer.slice(header.dataOffset, header.dataOffset + header.dataSize);
+    let pcmData = fileBuffer.slice(header.dataOffset, header.dataOffset + header.dataSize);
+    if (pcmData.length % 2 !== 0) {
+      pcmData = pcmData.slice(0, pcmData.length - 1);
+      log.warn(`Trimmed 1 byte from background audio for 16-bit alignment`);
+    }
+
+    const startSample = pcmData.readInt16LE(0);
+    const endSample = pcmData.readInt16LE(pcmData.length - 2);
+    if (Math.abs(startSample - endSample) > 1000) {
+      log.warn(`Background loop boundary discontinuity: start=${startSample}, end=${endSample} (delta=${Math.abs(startSample - endSample)}). Consider editing WAV for smooth loop.`);
+    }
+
+    bgPcmBuffer = pcmData;
     bgLoaded = true;
 
-    log.info(`✅ Background audio loaded: ${(bgPcmBuffer.length / 1024).toFixed(1)}KB, ${durationSec.toFixed(1)}s loop`);
+    log.info(`✅ Background audio loaded: ${(bgPcmBuffer.length / 1024).toFixed(1)}KB, ${durationSec.toFixed(1)}s loop (aligned: ${bgPcmBuffer.length % 2 === 0 ? 'yes' : 'no'})`);
 
     return true;
   } catch (error: any) {

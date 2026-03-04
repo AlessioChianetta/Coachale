@@ -73,12 +73,25 @@ function downsample3x(input: Buffer): Buffer {
   const aligned = Buffer.from(input);
   const inp = new Int16Array(aligned.buffer, aligned.byteOffset, inputSamples);
 
-  const LP_ALPHA = 0.65;
+  const omega = 2 * Math.PI * 3400 / 24000;
+  const sinW = Math.sin(omega);
+  const cosW = Math.cos(omega);
+  const alpha = sinW / (2 * 0.7071);
+  const a0 = 1 + alpha;
+  const b0 = ((1 - cosW) / 2) / a0;
+  const b1 = (1 - cosW) / a0;
+  const b2 = b0;
+  const a1 = (-2 * cosW) / a0;
+  const a2 = (1 - alpha) / a0;
+
   const filtered = new Int16Array(inputSamples);
-  let prev = inp[0];
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
   for (let i = 0; i < inputSamples; i++) {
-    prev = prev + LP_ALPHA * (inp[i] - prev);
-    filtered[i] = prev | 0;
+    const x0 = inp[i];
+    const y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+    filtered[i] = Math.max(-32768, Math.min(32767, Math.round(y0)));
+    x2 = x1; x1 = x0;
+    y2 = y1; y1 = y0;
   }
 
   const outputSamples = Math.ceil(inputSamples / 3);

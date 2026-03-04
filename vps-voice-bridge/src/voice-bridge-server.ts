@@ -26,6 +26,8 @@ const bgTimers = new Map<string, NodeJS.Timeout>();
 const audioOutputQueues = new Map<string, Buffer[]>();
 const AUDIO_QUEUE_MAX = 2500;
 const CHUNK_SIZE = 320;
+const FADE_SAMPLES = 16;
+const lastQueueHadAudio = new Map<string, boolean>();
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const blockedIps = new Map<string, number>();
@@ -371,9 +373,18 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
         if (queue && queue.length > 0) {
           const chunk = queue.shift()!;
           s.fsWebSocket.send(chunk, { binary: true });
+          lastQueueHadAudio.set(session.id, true);
         } else if (config.audio.backgroundEnabled && isBackgroundLoaded()) {
           const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
           if (bgChunk) {
+            if (lastQueueHadAudio.get(session.id)) {
+              lastQueueHadAudio.set(session.id, false);
+              for (let si = 0; si < FADE_SAMPLES && si * 2 + 1 < bgChunk.length; si++) {
+                const gain = (si + 1) / FADE_SAMPLES;
+                const sample = bgChunk.readInt16LE(si * 2);
+                bgChunk.writeInt16LE(Math.round(sample * gain), si * 2);
+              }
+            }
             s.fsWebSocket.send(bgChunk, { binary: true });
           }
         }
@@ -529,6 +540,7 @@ function cleanupSession(sessionId: string): void {
     bgTimers.delete(sessionId);
   }
   audioOutputQueues.delete(sessionId);
+  lastQueueHadAudio.delete(sessionId);
   bgDestroySession(sessionId);
 }
 
