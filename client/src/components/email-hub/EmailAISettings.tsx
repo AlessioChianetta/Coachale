@@ -11,6 +11,7 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
 import { 
@@ -25,6 +26,8 @@ import {
   Shield,
   Languages,
   Briefcase,
+  Download,
+  ChevronDown,
 } from "lucide-react";
 
 interface EmailAISettingsProps {
@@ -69,6 +72,49 @@ export function EmailAISettings({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newKeyword, setNewKeyword] = useState("");
+  const [importing, setImporting] = useState(false);
+
+  const { data: accountsData } = useQuery({
+    queryKey: ["/api/email-hub/accounts"],
+    queryFn: async () => {
+      const res = await fetch("/api/email-hub/accounts", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore caricamento account");
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const otherAccounts: Array<{ id: string; displayName: string; emailAddress: string }> =
+    (accountsData?.data ?? accountsData ?? []).filter((a: any) => a.id !== accountId);
+
+  const handleImportFrom = async (sourceId: string, sourceName: string) => {
+    setImporting(true);
+    try {
+      const res = await fetch(`/api/email-hub/accounts/${sourceId}/ai-settings`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Errore nel caricamento");
+      const json = await res.json();
+      const src = json?.data ?? json;
+      setFormData({
+        aiTone: src.aiTone ?? "professional",
+        confidenceThreshold: src.confidenceThreshold ?? 0.8,
+        autoReplyMode: src.autoReplyMode ?? "review",
+        signature: src.signature ?? "",
+        customInstructions: src.customInstructions ?? "",
+        aiLanguage: src.aiLanguage ?? "it",
+        escalationKeywords: src.escalationKeywords ?? [],
+        stopOnRisk: src.stopOnRisk ?? true,
+        bookingLink: src.bookingLink ?? "",
+        salesContext: src.salesContext ?? {},
+      });
+      toast({ title: "Impostazioni importate", description: `Configurazione copiata da "${sourceName}". Salva per confermare.` });
+    } catch {
+      toast({ title: "Errore", description: "Impossibile importare le impostazioni", variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const [formData, setFormData] = useState<{
     aiTone: string;
@@ -186,13 +232,53 @@ export function EmailAISettings({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-violet-500" />
-            Impostazioni AI - {accountName}
-          </DialogTitle>
-          <DialogDescription>
-            Configura come l'AI genera le risposte per questo account email
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-violet-500" />
+                Impostazioni AI - {accountName}
+              </DialogTitle>
+              <DialogDescription className="mt-1">
+                Configura come l'AI genera le risposte per questo account email
+              </DialogDescription>
+            </div>
+            {otherAccounts.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5 text-xs h-8"
+                    disabled={importing}
+                  >
+                    {importing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    Importa da
+                    <ChevronDown className="h-3 w-3 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  {otherAccounts.map((acc) => (
+                    <DropdownMenuItem
+                      key={acc.id}
+                      onClick={() => handleImportFrom(acc.id, acc.displayName || acc.emailAddress)}
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium truncate text-sm">{acc.displayName || acc.emailAddress}</span>
+                        {acc.displayName && (
+                          <span className="text-xs text-muted-foreground truncate">{acc.emailAddress}</span>
+                        )}
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </DialogHeader>
 
         {isLoading ? (
