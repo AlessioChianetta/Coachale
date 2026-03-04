@@ -5,6 +5,17 @@ const log = logger.child('AUDIO');
 const MULAW_BIAS = 33;
 const MULAW_MAX = 32635;
 
+const _bq_omega = 2 * Math.PI * 3400 / 24000;
+const _bq_sinW = Math.sin(_bq_omega);
+const _bq_cosW = Math.cos(_bq_omega);
+const _bq_alpha = _bq_sinW / (2 * 0.7071);
+const _bq_a0 = 1 + _bq_alpha;
+const _bq_b0 = ((1 - _bq_cosW) / 2) / _bq_a0;
+const _bq_b1 = (1 - _bq_cosW) / _bq_a0;
+const _bq_b2 = _bq_b0;
+const _bq_a1 = (-2 * _bq_cosW) / _bq_a0;
+const _bq_a2 = (1 - _bq_alpha) / _bq_a0;
+
 const mulawDecodeTable = new Int16Array(256);
 const mulawEncodeTable = new Uint8Array(65536);
 
@@ -73,22 +84,13 @@ function downsample3x(input: Buffer): Buffer {
   const aligned = Buffer.from(input);
   const inp = new Int16Array(aligned.buffer, aligned.byteOffset, inputSamples);
 
-  const omega = 2 * Math.PI * 3400 / 24000;
-  const sinW = Math.sin(omega);
-  const cosW = Math.cos(omega);
-  const alpha = sinW / (2 * 0.7071);
-  const a0 = 1 + alpha;
-  const b0 = ((1 - cosW) / 2) / a0;
-  const b1 = (1 - cosW) / a0;
-  const b2 = b0;
-  const a1 = (-2 * cosW) / a0;
-  const a2 = (1 - alpha) / a0;
-
   const filtered = new Int16Array(inputSamples);
-  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  const firstSample = inp[0];
+  let x1 = firstSample, x2 = firstSample;
+  let y1 = firstSample, y2 = firstSample;
   for (let i = 0; i < inputSamples; i++) {
     const x0 = inp[i];
-    const y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+    const y0 = _bq_b0 * x0 + _bq_b1 * x1 + _bq_b2 * x2 - _bq_a1 * y1 - _bq_a2 * y2;
     filtered[i] = Math.max(-32768, Math.min(32767, Math.round(y0)));
     x2 = x1; x1 = x0;
     y2 = y1; y1 = y0;
