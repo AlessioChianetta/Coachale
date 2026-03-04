@@ -849,9 +849,8 @@ async function executeSingleEmail(task: AIScheduledTask): Promise<void> {
       tls: { rejectUnauthorized: false },
     });
 
-    const htmlBody = emailBody.replace(/\n/g, '<br>');
     const fromField = smtpConfig.display_name ? `"${smtpConfig.display_name}" <${smtpConfig.email_address}>` : smtpConfig.email_address;
-    const sendResult = await transporter.sendMail({ from: fromField, to: leadEmail, subject: emailSubject, html: htmlBody });
+    const sendResult = await transporter.sendMail({ from: fromField, to: leadEmail, subject: emailSubject, text: emailBody });
 
     if (poolId) {
       await db.execute(sql`
@@ -873,7 +872,7 @@ async function executeSingleEmail(task: AIScheduledTask): Promise<void> {
         ${sendResult.messageId || hubEmailId},
         ${emailSubject}, ${smtpConfig.display_name || ''}, ${smtpConfig.email_address},
         ${JSON.stringify([{ email: leadEmail, name: resolvedName }])}::jsonb,
-        ${htmlBody}, ${emailBody}, ${emailBody.substring(0, 200)},
+        ${emailBody}, ${emailBody}, ${emailBody.substring(0, 200)},
         'outbound', 'sent', true, 'sent',
         ${poolId ? 'hunter_outreach' : null},
         ${!!poolId}, ${additionalContextData.lead_id || null}, ${poolId},

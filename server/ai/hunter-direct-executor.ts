@@ -459,7 +459,6 @@ Rispondi SOLO con il JSON, senza markdown.`;
               to: lead.email,
               subject: emailSubject,
               text: finalBodyText,
-              html: finalBodyHtml,
             });
 
             // Increment daily counter on used account

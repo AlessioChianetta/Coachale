@@ -1611,9 +1611,8 @@ export async function scheduleIndividualOutreach(
             tls: { rejectUnauthorized: false },
           });
 
-          const htmlBody = emailBody.replace(/\n/g, '<br>');
           const fromField = smtpConfig.display_name ? `"${smtpConfig.display_name}" <${smtpConfig.email_address}>` : smtpConfig.email_address;
-          const sendResult = await transporter.sendMail({ from: fromField, to: lead.email, subject: emailSubject, html: htmlBody });
+          const sendResult = await transporter.sendMail({ from: fromField, to: lead.email, subject: emailSubject, text: emailBody });
           emailSent = true;
 
           const hubEmailId = `hub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -1627,7 +1626,7 @@ export async function scheduleIndividualOutreach(
               ${sendResult.messageId || hubEmailId},
               ${emailSubject}, ${smtpConfig.display_name || ''}, ${smtpConfig.email_address},
               ${JSON.stringify([{ email: lead.email, name: leadName }])}::jsonb,
-              ${htmlBody}, ${emailBody}, ${emailBody.substring(0, 200)},
+              ${emailBody}, ${emailBody}, ${emailBody.substring(0, 200)},
               'outbound', 'sent', true, 'sent', 'hunter_outreach', NOW(), NOW(), NOW()
             )
             ON CONFLICT (message_id) DO NOTHING
@@ -4721,9 +4720,8 @@ router.patch("/tasks/:id/approve", authenticateToken, requireAnyRole(["consultan
                   tls: { rejectUnauthorized: false },
                 });
 
-                const htmlBody = emailBody.replace(/\n/g, '<br>');
                 const fromField = smtpConfig.display_name ? `"${smtpConfig.display_name}" <${smtpConfig.email_address}>` : smtpConfig.email_address;
-                const sendResult = await transporter.sendMail({ from: fromField, to: leadEmail, subject: emailSubject, html: htmlBody });
+                const sendResult = await transporter.sendMail({ from: fromField, to: leadEmail, subject: emailSubject, text: emailBody });
 
                 const hubEmailId = `hub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
                 await db.execute(sql`
@@ -4736,7 +4734,7 @@ router.patch("/tasks/:id/approve", authenticateToken, requireAnyRole(["consultan
                     ${sendResult.messageId || hubEmailId},
                     ${emailSubject}, ${smtpConfig.display_name || ''}, ${smtpConfig.email_address},
                     ${JSON.stringify([{ email: leadEmail, name: approvedTask.contact_name }])}::jsonb,
-                    ${htmlBody}, ${emailBody}, ${emailBody.substring(0, 200)},
+                    ${emailBody}, ${emailBody}, ${emailBody.substring(0, 200)},
                     'outbound', 'sent', true, 'sent', NOW(), NOW(), NOW()
                   )
                   ON CONFLICT (message_id) DO NOTHING
