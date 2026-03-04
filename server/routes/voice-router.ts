@@ -163,7 +163,7 @@ router.delete("/clear-history", authenticateToken, requireAnyRole(["consultant"]
 // GET /api/voice/calls - Lista chiamate con filtri
 router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const { from, to, status, client_id, direction, page = "1", limit = "20" } = req.query;
+    const { from, to, status, client_id, direction, called_number, page = "1", limit = "20" } = req.query;
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
     
     const pageNum = parseInt(page as string, 10);
@@ -189,6 +189,9 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
     }
     if (direction && (direction === 'inbound' || direction === 'outbound')) {
       whereConditions.push(sql`vc.direction = ${direction}`);
+    }
+    if (called_number) {
+      whereConditions.push(sql`vc.called_number = ${called_number}`);
     }
 
     const whereClause = whereConditions.length > 0 
@@ -2350,11 +2353,15 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     }
     
     // ═══ CONCURRENCY CHECK: verify line availability before calling ═══
+    // Only count 'calling' status if recent (< 5 min) to auto-expire stale records
     const activeCallsResult = await db.execute(sql`
       SELECT COUNT(*)::int as active_count FROM scheduled_voice_calls
       WHERE consultant_id = ${consultantId}
-        AND status IN ('calling', 'talking')
         AND id != ${callId}
+        AND (
+          (status = 'talking')
+          OR (status = 'calling' AND updated_at > NOW() - INTERVAL '5 minutes')
+        )
     `);
     const activeVoiceResult = await db.execute(sql`
       SELECT COUNT(*)::int as active_count FROM voice_calls
@@ -2365,6 +2372,15 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     const activeLive = (activeVoiceResult.rows[0] as any)?.active_count || 0;
     const totalActive = Math.max(activeScheduled, activeLive);
     
+    // Auto-expire stale 'calling' records older than 5 minutes
+    await db.execute(sql`
+      UPDATE scheduled_voice_calls
+      SET status = 'failed', error_message = 'stale_calling_timeout', updated_at = NOW()
+      WHERE consultant_id = ${consultantId}
+        AND status = 'calling'
+        AND updated_at < NOW() - INTERVAL '5 minutes'
+    `);
+    
     const concurrencyResult = await db.execute(sql`
       SELECT max_concurrent_calls FROM consultant_availability_settings
       WHERE consultant_id = ${consultantId}
@@ -2372,7 +2388,10 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     const maxConcurrent = (concurrencyResult.rows[0] as any)?.max_concurrent_calls || 2;
     
     if (totalActive >= maxConcurrent) {
-      const requeueAt = new Date(Date.now() + 3 * 60 * 1000);
+      // Exponential backoff for busy requeues: 3min, 6min, 12min (capped at 15min)
+      const currentAttempts = call.attempts || 0;
+      const busyDelayMs = Math.min(3 * 60 * 1000 * Math.pow(2, currentAttempts), 15 * 60 * 1000);
+      const requeueAt = new Date(Date.now() + busyDelayMs);
       await db.execute(sql`
         UPDATE scheduled_voice_calls
         SET status = 'pending',
@@ -2381,7 +2400,7 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
         WHERE id = ${callId}
       `);
       _scheduleTimerFromManager(callId, consultantId, requeueAt);
-      console.log(`⏳ [Outbound] Call ${callId} re-queued: line busy (${totalActive}/${maxConcurrent} active). Next try at ${requeueAt.toISOString()}`);
+      console.log(`⏳ [Outbound] Call ${callId} re-queued: line busy (${totalActive}/${maxConcurrent} active). Next try in ${Math.round(busyDelayMs/1000)}s at ${requeueAt.toISOString()}`);
       return { success: false, error: 'line_busy_requeued' };
     }
     // ═══ END CONCURRENCY CHECK ═══
@@ -2534,6 +2553,26 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     } else {
       console.warn(`⚠️ [Outbound] VPS did not return a callId for ${callId}. Callback may not work correctly.`);
     }
+    
+    // Safety timeout: if no callback arrives within 90s, mark call as failed
+    setTimeout(async () => {
+      try {
+        const checkResult = await db.execute(sql`
+          SELECT status FROM scheduled_voice_calls WHERE id = ${callId}
+        `);
+        const currentStatus = (checkResult.rows[0] as any)?.status;
+        if (currentStatus === 'calling') {
+          console.warn(`⏰ [Outbound] Safety timeout: call ${callId} still 'calling' after 90s — marking as failed`);
+          await db.execute(sql`
+            UPDATE scheduled_voice_calls
+            SET status = 'failed', error_message = 'no_callback_timeout', updated_at = NOW()
+            WHERE id = ${callId} AND status = 'calling'
+          `);
+        }
+      } catch (err) {
+        console.error(`❌ [Outbound] Safety timeout check failed for ${callId}:`, err);
+      }
+    }, 90000);
     
     return { success: true };
   } catch (error: any) {
@@ -3000,6 +3039,25 @@ async function reloadPendingCalls(): Promise<void> {
 
 // Call reload on module load (deferred to avoid blocking)
 setTimeout(() => reloadPendingCalls(), 5000);
+
+async function cleanupStaleCalling(): Promise<void> {
+  try {
+    const result = await db.execute(sql`
+      UPDATE scheduled_voice_calls
+      SET status = 'failed', error_message = 'stale_calling_cleanup', updated_at = NOW()
+      WHERE status = 'calling' AND updated_at < NOW() - INTERVAL '5 minutes'
+      RETURNING id
+    `);
+    if (result.rows.length > 0) {
+      console.log(`🧹 [Outbound] Cleaned up ${result.rows.length} stale calling records: ${result.rows.map((r: any) => r.id).join(', ')}`);
+    }
+  } catch (error) {
+    console.error("[Outbound] Stale calling cleanup failed:", error);
+  }
+}
+
+setInterval(() => cleanupStaleCalling(), 2 * 60 * 1000);
+setTimeout(() => cleanupStaleCalling(), 10000);
 
 // GET /api/voice/health - Health check (placeholder)
 router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {

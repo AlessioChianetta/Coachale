@@ -9,6 +9,8 @@ export const callMetadata = new Map<string, { callerIdNumber: string, callerIdNa
 
 export const outboundCallIdMap = new Map<string, string>();
 
+const pendingAnswers = new Map<string, number>();
+
 let eslConn: any = null;
 
 export function getEslConnection(): any {
@@ -84,17 +86,32 @@ export function startESLController(): void {
     log.info(`🅿️  Call parked type=${isOutbound ? 'OUTBOUND' : 'INBOUND'}`, { uuid, callerIdNumber: cleanCallerId, calledNumber: cleanDest });
     log.info(`⏱️ [ESL-TIMING] CHANNEL_PARK at ${tPark}`, { uuid });
 
-    callMetadata.set(uuid, { callerIdNumber: cleanCallerId, callerIdName, calledNumber: cleanDest, parkTime: tPark });
+    const existingMeta = callMetadata.get(uuid);
+    if (existingMeta) {
+      existingMeta.callerIdNumber = cleanCallerId;
+      existingMeta.callerIdName = callerIdName;
+      existingMeta.calledNumber = cleanDest;
+      existingMeta.parkTime = tPark;
+    } else {
+      callMetadata.set(uuid, { callerIdNumber: cleanCallerId, callerIdName, calledNumber: cleanDest, parkTime: tPark });
+    }
 
     if (isOutbound) {
       const callId = outboundCallIdMap.get(uuid);
       if (callId) {
-        log.info(`📞 OUTBOUND call parked — linking callId=${callId} to uuid=${uuid}, waiting for CHANNEL_ANSWER before starting stream`);
+        log.info(`📞 OUTBOUND call parked — linking callId=${callId} to uuid=${uuid}`, { uuid });
         setExpectedCallId(callId, uuid);
         outboundCallIdMap.delete(uuid);
       } else {
         log.warn(`📞 OUTBOUND call parked but no callId mapping found for uuid=${uuid}`);
         setExpectedCallId(uuid, uuid);
+      }
+
+      if (pendingAnswers.has(uuid)) {
+        const tAnswer = pendingAnswers.get(uuid)!;
+        pendingAnswers.delete(uuid);
+        log.info(`🔄 [CHANNEL_PARK] CHANNEL_ANSWER already arrived for uuid=${uuid} — starting audio stream now`);
+        startAudioStream(conn, uuid, tAnswer);
       }
     } else {
       setExpectedCallId(uuid);
@@ -124,7 +141,28 @@ export function startESLController(): void {
 
     const meta = callMetadata.get(resolvedUuid);
     if (!meta) {
-      log.warn(`⚠️ [CHANNEL_ANSWER] No metadata for uuid=${resolvedUuid} (original=${uuid})`);
+      log.info(`⏳ [CHANNEL_ANSWER] No metadata yet for uuid=${resolvedUuid} — CHANNEL_PARK may arrive later, queuing for retry`);
+      pendingAnswers.set(resolvedUuid, Date.now());
+
+      setTimeout(() => {
+        if (pendingAnswers.has(resolvedUuid)) {
+          const retryMeta = callMetadata.get(resolvedUuid);
+          if (retryMeta) {
+            pendingAnswers.delete(resolvedUuid);
+            log.info(`🔄 [CHANNEL_ANSWER] Retry found metadata for uuid=${resolvedUuid} — starting audio stream`);
+            startAudioStream(conn, resolvedUuid, Date.now());
+          } else {
+            log.warn(`⚠️ [CHANNEL_ANSWER] Retry still no metadata for uuid=${resolvedUuid} after 200ms`);
+            pendingAnswers.delete(resolvedUuid);
+            const preRegistered = outboundCallIdMap.get(resolvedUuid);
+            if (preRegistered) {
+              log.info(`🔄 [CHANNEL_ANSWER] Using pre-registered callId=${preRegistered}, starting audio stream anyway`);
+              setExpectedCallId(preRegistered, resolvedUuid);
+              startAudioStream(conn, resolvedUuid, Date.now());
+            }
+          }
+        }
+      }, 200);
       return;
     }
 
@@ -142,6 +180,7 @@ export function startESLController(): void {
       callMetadata.delete(uuid);
     }
     outboundCallIdMap.delete(uuid);
+    pendingAnswers.delete(uuid);
   });
 
   conn.on('error', (err: any) => {

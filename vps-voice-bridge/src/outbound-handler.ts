@@ -8,7 +8,7 @@
 
 import { logger } from './logger.js';
 import { config } from './config.js';
-import { originateOutboundCall, outboundCallIdMap } from './esl-client.js';
+import { originateOutboundCall, outboundCallIdMap, callMetadata } from './esl-client.js';
 
 const log = logger.child('OUTBOUND');
 
@@ -67,12 +67,24 @@ export async function handleOutboundCall(req: OutboundCallRequest): Promise<Outb
 
   log.info(`[BRIDGE:OUTBOUND] Executing originate command uuid=${uuid} dialString=${dialString}`);
 
+  outboundCallIdMap.set(uuid, callId);
+  callMetadata.set(uuid, { callerIdNumber: callerId, callerIdName: '', calledNumber: targetPhone });
+  log.info(`[BRIDGE:OUTBOUND] Pre-registered uuid=${uuid} → callId=${callId} + metadata (before originate)`);
+
   try {
     const resultUuid = await originateOutboundCall(dialString);
     const finalUuid = resultUuid || uuid;
 
-    outboundCallIdMap.set(finalUuid, callId);
-    log.info(`[BRIDGE:OUTBOUND] Call originated callId=${callId} uuid=${finalUuid} — callId mapped for CHANNEL_PARK`);
+    if (finalUuid !== uuid) {
+      outboundCallIdMap.set(finalUuid, callId);
+      const existingMeta = callMetadata.get(uuid);
+      if (existingMeta) {
+        callMetadata.set(finalUuid, existingMeta);
+      }
+      log.info(`[BRIDGE:OUTBOUND] FreeSWITCH returned different uuid=${finalUuid}, re-mapped from pre-registered uuid=${uuid}`);
+    }
+
+    log.info(`[BRIDGE:OUTBOUND] Call originated callId=${callId} uuid=${finalUuid}`);
 
     return {
       success: true,
@@ -80,6 +92,8 @@ export async function handleOutboundCall(req: OutboundCallRequest): Promise<Outb
       freeswitchUuid: finalUuid,
     };
   } catch (error: any) {
+    outboundCallIdMap.delete(uuid);
+    callMetadata.delete(uuid);
     log.error(`[BRIDGE:OUTBOUND] Failed to originate call callId=${callId} error=${error.message}`);
     return {
       success: false,

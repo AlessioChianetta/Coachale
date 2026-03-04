@@ -965,6 +965,110 @@ function BrandVoicePreview({ prompt, agentName }: { prompt: string; agentName: s
   );
 }
 
+function CallQueueCountdown({ targetDate }: { targetDate: string }) {
+  const [remaining, setRemaining] = useState('');
+  useEffect(() => {
+    const update = () => {
+      const diff = new Date(targetDate).getTime() - Date.now();
+      if (diff <= 0) { setRemaining('ora'); return; }
+      const mins = Math.floor(diff / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      setRemaining(mins > 0 ? `${mins}:${String(secs).padStart(2, '0')}` : `${secs}s`);
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [targetDate]);
+  return <span className="font-mono text-sm font-medium">{remaining}</span>;
+}
+
+function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow }: {
+  scheduledCalls: any[];
+  onCancel: (id: string) => void;
+  onTriggerNow: (id: string) => void;
+}) {
+  const queuedCalls = scheduledCalls
+    .filter((c: any) => ['pending', 'calling', 'talking', 'retry_scheduled', 'in_progress', 'ringing'].includes(c.status))
+    .sort((a: any, b: any) => {
+      const statusOrder: Record<string, number> = { talking: 0, calling: 1, ringing: 2, in_progress: 3, pending: 4, retry_scheduled: 5 };
+      const oa = statusOrder[a.status] ?? 6;
+      const ob = statusOrder[b.status] ?? 6;
+      if (oa !== ob) return oa - ob;
+      const da = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
+      const db = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0;
+      return da - db;
+    });
+
+  if (queuedCalls.length === 0) return null;
+
+  const getStatusBadge = (call: any) => {
+    switch (call.status) {
+      case 'talking': return <Badge className="bg-green-500 text-white text-[10px]">In corso</Badge>;
+      case 'calling': case 'ringing': return <Badge className="bg-yellow-500 text-white text-[10px]">Connessione...</Badge>;
+      case 'in_progress': return <Badge className="bg-blue-500 text-white text-[10px]">In elaborazione</Badge>;
+      case 'retry_scheduled': return <Badge className="bg-orange-500 text-white text-[10px]">Retry {call.attempts || 0}/{call.max_attempts || 3}</Badge>;
+      case 'pending': return <Badge variant="outline" className="text-[10px]">In coda</Badge>;
+      default: return <Badge variant="outline" className="text-[10px]">{call.status}</Badge>;
+    }
+  };
+
+  return (
+    <Card className="mb-4 border-blue-200 bg-blue-50/30 dark:bg-blue-950/10 dark:border-blue-800">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Timer className="h-4 w-4 text-blue-600" />
+          Coda Chiamate
+          <Badge variant="outline" className="text-[10px] ml-auto">{queuedCalls.length} in coda</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-3 pt-0">
+        <div className="space-y-2 max-h-[240px] overflow-auto">
+          {queuedCalls.map((call: any) => (
+            <div key={call.id} className="flex items-center gap-3 p-2 rounded-lg bg-background border text-sm">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs truncate">{call.target_phone}</span>
+                  {(call as any).contact_name && <span className="text-xs text-muted-foreground truncate">({(call as any).contact_name})</span>}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {getStatusBadge(call)}
+                  {call.call_instruction && (
+                    <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">{call.call_instruction}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {call.scheduled_at && !['talking', 'calling', 'ringing'].includes(call.status) && (
+                  <div className="flex items-center gap-1 text-blue-600">
+                    <Clock className="h-3 w-3" />
+                    <CallQueueCountdown targetDate={call.scheduled_at} />
+                  </div>
+                )}
+                {['talking', 'calling'].includes(call.status) && (
+                  <div className="flex items-center gap-1 text-green-600">
+                    <Phone className="h-3 w-3 animate-pulse" />
+                    <span className="text-xs font-medium">Attiva</span>
+                  </div>
+                )}
+                {['pending', 'retry_scheduled'].includes(call.status) && (
+                  <>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => onTriggerNow(call.id)} title="Chiama subito">
+                      <PhoneOutgoing className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-destructive hover:text-destructive" onClick={() => onCancel(call.id)} title="Annulla">
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ConsultantVoiceCallsPage() {
   const isMobile = useIsMobile();
   const { currentRole } = useRoleSwitch();
@@ -973,6 +1077,7 @@ export default function ConsultantVoiceCallsPage() {
   const toggleGuideSection = (key: string) => setGuideOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [numberFilter, setNumberFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [period, setPeriod] = useState<string>("day");
   const [vpsBridgeUrl, setVpsBridgeUrl] = useState<string>("");
@@ -1219,10 +1324,11 @@ export default function ConsultantVoiceCallsPage() {
   });
 
   const { data: callsData, isLoading: loadingCalls, refetch: refetchCalls } = useQuery({
-    queryKey: ["/api/voice/calls", page, statusFilter, search],
+    queryKey: ["/api/voice/calls", page, statusFilter, search, numberFilter],
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), limit: "10" });
       if (statusFilter !== "all") params.set("status", statusFilter);
+      if (numberFilter !== "all") params.set("called_number", numberFilter);
       const res = await fetch(`/api/voice/calls?${params}`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Errore nel caricamento chiamate");
       return res.json();
@@ -2319,6 +2425,26 @@ export default function ConsultantVoiceCallsPage() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
+                    {myVoiceNumbers.length > 1 && (
+                      <Select value={numberFilter} onValueChange={(v) => { setNumberFilter(v); setPage(1); }}>
+                        <SelectTrigger className="w-[130px] sm:w-[160px] h-8 text-xs sm:text-sm">
+                          <SelectValue placeholder="Numero" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            <span className="flex items-center gap-2">
+                              <Phone className="h-4 w-4" />
+                              Tutti i numeri
+                            </span>
+                          </SelectItem>
+                          {myVoiceNumbers.map((n) => (
+                            <SelectItem key={n.id} value={n.phone_number}>
+                              {n.display_name && n.display_name !== n.phone_number ? n.display_name : n.phone_number}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger className="w-[110px] sm:w-[130px] h-8 text-xs sm:text-sm">
                         <SelectValue placeholder="Stato" />
@@ -2356,6 +2482,7 @@ export default function ConsultantVoiceCallsPage() {
                         <TableRow>
                           <TableHead className="whitespace-nowrap">Data</TableHead>
                           <TableHead className="whitespace-nowrap">Chiamante</TableHead>
+                          {myVoiceNumbers.length > 1 && <TableHead className="whitespace-nowrap">Numero</TableHead>}
                           <TableHead className="whitespace-nowrap">Cliente</TableHead>
                           <TableHead className="whitespace-nowrap">Stato</TableHead>
                           <TableHead className="whitespace-nowrap">Origine</TableHead>
@@ -2384,6 +2511,11 @@ export default function ConsultantVoiceCallsPage() {
                                 </div>
                               </TableCell>
                               <TableCell className="font-mono">{call.caller_id}</TableCell>
+                              {myVoiceNumbers.length > 1 && (
+                                <TableCell className="text-xs text-muted-foreground">
+                                  {call.called_number || '-'}
+                                </TableCell>
+                              )}
                               <TableCell>
                                 {call.client_name ? (
                                   <div className="flex items-center gap-2">
@@ -2640,25 +2772,25 @@ export default function ConsultantVoiceCallsPage() {
                         <Badge className={health?.overall === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'}>
                           {health?.overall === 'healthy' ? '🟢 Sistema Online' : '🟡 Verifica Sistema'}
                         </Badge>
-                        <span className="text-muted-foreground">Voice: {voiceSettings?.voiceId || 'Kore'}</span>
-                        <span className="text-muted-foreground">VPS: {voiceSettings?.vpsBridgeUrl ? 'Connesso' : 'Non configurato'}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-4 text-center">
-                      <div>
-                        <p className="text-2xl font-bold">{stats?.total_calls || 0}</p>
-                        <p className="text-xs text-muted-foreground">Chiamate oggi</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-green-600">{stats?.completed_calls || 0}</p>
-                        <p className="text-xs text-muted-foreground">Completate</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-blue-600">{scheduledCallsData?.count || 0}</p>
-                        <p className="text-xs text-muted-foreground">Programmate</p>
+                        <Badge variant="outline" className="text-xs">{stats?.total_calls || 0} oggi</Badge>
+                        <Badge variant="outline" className="text-xs text-green-600">{stats?.completed_calls || 0} completate</Badge>
+                        <Badge variant="outline" className="text-xs text-blue-600">{scheduledCallsData?.count || 0} in coda</Badge>
                       </div>
                     </div>
                   </div>
+
+                  {/* CODA CHIAMATE LIVE */}
+                  <CallQueuePanel
+                    scheduledCalls={scheduledCallsData?.calls || []}
+                    onCancel={(id) => cancelOutboundMutation.mutate(id)}
+                    onTriggerNow={(id) => {
+                      fetch(`/api/voice/outbound/trigger`, {
+                        method: 'POST',
+                        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ callId: id, immediate: true })
+                      }).then(() => refetchScheduledCalls());
+                    }}
+                  />
 
                   <div className="flex gap-4">
                     <Button 
