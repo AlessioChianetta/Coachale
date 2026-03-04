@@ -1008,6 +1008,7 @@ export default function ConsultantVoiceCallsPage() {
   const [voiceVadSilenceMs, setVoiceVadSilenceMs] = useState(500);
 
   const [outboundPhone, setOutboundPhone] = useState("");
+  const [outboundFromNumber, setOutboundFromNumber] = useState<string>("");
   const [outboundAiMode, setOutboundAiMode] = useState("assistenza");
   const [outboundScheduledDate, setOutboundScheduledDate] = useState("");
   const [outboundScheduledTime, setOutboundScheduledTime] = useState("");
@@ -1354,6 +1355,16 @@ export default function ConsultantVoiceCallsPage() {
     refetchInterval: 10000,
   });
 
+  const { data: voiceNumbersData } = useQuery<{ numbers: Array<{ id: string; phone_number: string; display_name?: string; is_active: boolean }> }>({
+    queryKey: ["/api/voice/numbers"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/numbers", { headers: getAuthHeaders() });
+      if (!res.ok) return { numbers: [] };
+      return res.json();
+    },
+  });
+  const myVoiceNumbers = (voiceNumbersData?.numbers || []).filter(n => n.is_active);
+
   // AI Tasks query
   const { data: aiTasksData, isLoading: loadingAITasks, refetch: refetchAITasks } = useQuery<{ tasks: AITask[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>({
     queryKey: ["/api/voice/ai-tasks", aiTasksFilter, aiTasksPage],
@@ -1629,11 +1640,11 @@ export default function ConsultantVoiceCallsPage() {
   const scheduledTotalPages = Math.ceil(filteredScheduledCalls.length / SCHEDULED_PER_PAGE);
 
   const triggerOutboundMutation = useMutation({
-    mutationFn: async ({ targetPhone, aiMode, callInstruction, instructionType }: { targetPhone: string; aiMode: string; callInstruction?: string; instructionType?: 'task' | 'reminder' | null }) => {
+    mutationFn: async ({ targetPhone, aiMode, callInstruction, instructionType, fromNumber }: { targetPhone: string; aiMode: string; callInstruction?: string; instructionType?: 'task' | 'reminder' | null; fromNumber?: string }) => {
       const res = await fetch("/api/voice/outbound/trigger", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ targetPhone, aiMode, callInstruction: callInstruction || null, instructionType: instructionType || null }),
+        body: JSON.stringify({ targetPhone, aiMode, callInstruction: callInstruction || null, instructionType: instructionType || null, fromNumber: fromNumber || null }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -1659,11 +1670,11 @@ export default function ConsultantVoiceCallsPage() {
   });
 
   const scheduleOutboundMutation = useMutation({
-    mutationFn: async ({ targetPhone, scheduledAt, aiMode, callInstruction, instructionType, useDefaultTemplate }: { targetPhone: string; scheduledAt: string; aiMode: string; callInstruction?: string; instructionType?: 'task' | 'reminder' | null; useDefaultTemplate?: boolean }) => {
+    mutationFn: async ({ targetPhone, scheduledAt, aiMode, callInstruction, instructionType, useDefaultTemplate, fromNumber }: { targetPhone: string; scheduledAt: string; aiMode: string; callInstruction?: string; instructionType?: 'task' | 'reminder' | null; useDefaultTemplate?: boolean; fromNumber?: string }) => {
       const res = await fetch("/api/voice/outbound/schedule", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ targetPhone, scheduledAt, aiMode, callInstruction: callInstruction || null, instructionType: instructionType || null, useDefaultTemplate: useDefaultTemplate ?? false }),
+        body: JSON.stringify({ targetPhone, scheduledAt, aiMode, callInstruction: callInstruction || null, instructionType: instructionType || null, useDefaultTemplate: useDefaultTemplate ?? false, fromNumber: fromNumber || null }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -1928,7 +1939,8 @@ export default function ConsultantVoiceCallsPage() {
       aiMode: outboundAiMode,
       callInstruction: callInstruction.trim() || undefined,
       instructionType: instructionType,
-      useDefaultTemplate: !!instructionType
+      useDefaultTemplate: !!instructionType,
+      fromNumber: outboundFromNumber || undefined,
     });
   };
 
@@ -1945,7 +1957,8 @@ export default function ConsultantVoiceCallsPage() {
       aiMode: outboundAiMode,
       callInstruction: callInstruction.trim() || undefined,
       instructionType: instructionType,
-      useDefaultTemplate: !!instructionType
+      useDefaultTemplate: !!instructionType,
+      fromNumber: outboundFromNumber || undefined,
     });
   };
 
@@ -2745,7 +2758,34 @@ export default function ConsultantVoiceCallsPage() {
                         <CardTitle>{isScheduleMode ? "Programma Chiamata" : "Avvia Chiamata AI"}</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {/* Step 1: Numero */}
+                        {/* Numero chiamante (Da) */}
+                        {myVoiceNumbers.length > 1 ? (
+                          <div className="space-y-1.5">
+                            <Label className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Phone className="h-3.5 w-3.5" />
+                              Da che numero chiami
+                            </Label>
+                            <select
+                              value={outboundFromNumber}
+                              onChange={(e) => setOutboundFromNumber(e.target.value)}
+                              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                            >
+                              <option value="">Numero di default (dalle impostazioni)</option>
+                              {myVoiceNumbers.map((n) => (
+                                <option key={n.id} value={n.phone_number}>
+                                  {n.phone_number}{n.display_name && n.display_name !== n.phone_number ? ` — ${n.display_name}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : myVoiceNumbers.length === 1 ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground px-1">
+                            <Phone className="h-3.5 w-3.5 shrink-0" />
+                            <span>Chiami da: <span className="font-medium text-foreground">{myVoiceNumbers[0].phone_number}</span></span>
+                          </div>
+                        ) : null}
+
+                        {/* Step 1: Numero da chiamare */}
                         <div className="space-y-2">
                           <Label className="flex items-center gap-2">
                             <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</span>

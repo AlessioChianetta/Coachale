@@ -2398,9 +2398,11 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     const sipResult = await db.execute(sql`
       SELECT sip_caller_id, sip_gateway, use_vps_number FROM users WHERE id = ${consultantId}
     `);
-    const sipCallerId = (sipResult.rows[0] as any)?.sip_caller_id;
+    const defaultSipCallerId = (sipResult.rows[0] as any)?.sip_caller_id;
     const sipGateway = (sipResult.rows[0] as any)?.sip_gateway;
     const useVpsNumber = (sipResult.rows[0] as any)?.use_vps_number ?? false;
+    // Override caller ID with from_number if explicitly chosen by the consultant
+    const sipCallerId = call.from_number || defaultSipCallerId;
 
     // Se use_vps_number è OFF (default), il consulente DEVE avere un numero configurato
     if (!useVpsNumber && !sipCallerId) {
@@ -2597,7 +2599,7 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
       return res.status(401).json({ error: "Unauthorized" });
     }
     
-    const { targetPhone, aiMode = "assistenza", customPrompt, callInstruction, instructionType, useDefaultTemplate } = req.body;
+    const { targetPhone, aiMode = "assistenza", customPrompt, callInstruction, instructionType, useDefaultTemplate, fromNumber } = req.body;
     
     if (!targetPhone) {
       return res.status(400).json({ error: "targetPhone is required" });
@@ -2615,16 +2617,18 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
       return res.status(400).json({ error: "Invalid phone number format. Use extension (1000) or international (+393331234567)" });
     }
     
-    // Pre-flight: check if consultant has a caller ID configured
-    const callerCheck = await db.execute(sql`
-      SELECT sip_caller_id, use_vps_number FROM users WHERE id = ${consultantId}
-    `);
-    const callerRow = callerCheck.rows[0] as any;
-    if (!callerRow?.use_vps_number && !callerRow?.sip_caller_id) {
-      return res.status(400).json({ 
-        error: "Nessun numero configurato per le chiamate in uscita. Configura il tuo numero nelle Impostazioni oppure attiva il numero VPS generico.",
-        code: "NO_CALLER_ID"
-      });
+    // Pre-flight: check if consultant has a caller ID configured (fromNumber overrides the default)
+    if (!fromNumber) {
+      const callerCheck = await db.execute(sql`
+        SELECT sip_caller_id, use_vps_number FROM users WHERE id = ${consultantId}
+      `);
+      const callerRow = callerCheck.rows[0] as any;
+      if (!callerRow?.use_vps_number && !callerRow?.sip_caller_id) {
+        return res.status(400).json({ 
+          error: "Nessun numero configurato per le chiamate in uscita. Configura il tuo numero nelle Impostazioni oppure attiva il numero VPS generico.",
+          code: "NO_CALLER_ID"
+        });
+      }
     }
 
     const callId = generateScheduledCallId();
@@ -2640,9 +2644,9 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
     // When task/reminder is set, use_default_template forces base template (ignores agent prompt)
     await db.execute(sql`
       INSERT INTO scheduled_voice_calls (
-        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, call_instruction, instruction_type, use_default_template, max_attempts
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, call_instruction, instruction_type, use_default_template, max_attempts, from_number
       ) VALUES (
-        ${callId}, ${consultantId}, ${cleanPhone}, NOW(), 'calling', ${aiMode}, ${customPrompt || null}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}, ${maxAttempts}
+        ${callId}, ${consultantId}, ${cleanPhone}, NOW(), 'calling', ${aiMode}, ${customPrompt || null}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}, ${maxAttempts}, ${fromNumber || null}
       )
     `);
     
@@ -2686,7 +2690,7 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
       return res.status(401).json({ error: "Unauthorized" });
     }
     
-    const { targetPhone, scheduledAt, aiMode = "assistenza", customPrompt, priority = 5, callInstruction, instructionType, useDefaultTemplate } = req.body;
+    const { targetPhone, scheduledAt, aiMode = "assistenza", customPrompt, priority = 5, callInstruction, instructionType, useDefaultTemplate, fromNumber } = req.body;
     
     if (!targetPhone || !scheduledAt) {
       return res.status(400).json({ error: "targetPhone and scheduledAt are required" });
@@ -2713,16 +2717,18 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
       return res.status(400).json({ error: "scheduledAt must be in the future" });
     }
     
-    // Pre-flight: check if consultant has a caller ID configured
-    const callerCheckSched = await db.execute(sql`
-      SELECT sip_caller_id, use_vps_number FROM users WHERE id = ${consultantId}
-    `);
-    const callerRowSched = callerCheckSched.rows[0] as any;
-    if (!callerRowSched?.use_vps_number && !callerRowSched?.sip_caller_id) {
-      return res.status(400).json({ 
-        error: "Nessun numero configurato per le chiamate in uscita. Configura il tuo numero nelle Impostazioni oppure attiva il numero VPS generico.",
-        code: "NO_CALLER_ID"
-      });
+    // Pre-flight: check if consultant has a caller ID configured (fromNumber overrides the default)
+    if (!fromNumber) {
+      const callerCheckSched = await db.execute(sql`
+        SELECT sip_caller_id, use_vps_number FROM users WHERE id = ${consultantId}
+      `);
+      const callerRowSched = callerCheckSched.rows[0] as any;
+      if (!callerRowSched?.use_vps_number && !callerRowSched?.sip_caller_id) {
+        return res.status(400).json({ 
+          error: "Nessun numero configurato per le chiamate in uscita. Configura il tuo numero nelle Impostazioni oppure attiva il numero VPS generico.",
+          code: "NO_CALLER_ID"
+        });
+      }
     }
 
     const callId = generateScheduledCallId();
@@ -2738,9 +2744,9 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
     // When task/reminder is set, use_default_template forces base template (ignores agent prompt)
     await db.execute(sql`
       INSERT INTO scheduled_voice_calls (
-        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, priority, call_instruction, instruction_type, use_default_template, max_attempts
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, priority, call_instruction, instruction_type, use_default_template, max_attempts, from_number
       ) VALUES (
-        ${callId}, ${consultantId}, ${cleanPhone}, ${scheduledDate.toISOString()}, 'pending', ${aiMode}, ${customPrompt || null}, ${priority}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}, ${maxAttempts}
+        ${callId}, ${consultantId}, ${cleanPhone}, ${scheduledDate.toISOString()}, 'pending', ${aiMode}, ${customPrompt || null}, ${priority}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}, ${maxAttempts}, ${fromNumber || null}
       )
     `);
     
