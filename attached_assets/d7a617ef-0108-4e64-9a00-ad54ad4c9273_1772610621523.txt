@@ -1,0 +1,69 @@
+proto:UDP 2026-03-04T07:46:22.568057Z  185.246.41.141:5060 ---> 72.62.50.40:5060
+
+INVITE sip:390902041022@72.62.50.40:5060 SIP/2.0
+Record-Route: <sip:185.246.41.141;r2=on;lr;ftag=74eemjvQHc1ej>
+Record-Route: <sip:10.31.224.11;r2=on;lr;ftag=74eemjvQHc1ej>
+Via: SIP/2.0/UDP 185.246.41.141;branch=z9hG4bK1c72.3afd67a40f2ea6f8732b93bba5886f56.0
+v:SIP/2.0/UDP 10.31.34.24:6000;received=10.31.34.24;rport=6000;branch=z9hG4bKK65D6vvXpaQ5S
+Max-Forwards:53
+f:"3890566422"<sip:3890566422@sip.telnyx.eu>;tag=74eemjvQHc1ej
+t:<sip:390902041022@72.62.50.40:5060>
+i:d7a617ef-0108-4e64-9a00-ad54ad4c9273
+CSeq:111751399 INVITE
+m:<sip:mod_sofia@10.31.34.24:6000>
+Allow:INVITE,ACK,BYE,CANCEL,OPTIONS,MESSAGE,INFO,UPDATE,REFER,NOTIFY
+k:timer,path
+u:talk,hold,conference,refer
+Privacy:none
+c:application/sdp
+Content-Disposition:session
+l:359
+P-Asserted-Identity:"3890566422"<sip:3890566422@sip.telnyx.eu;verstat=No-TN-Validation>
+
+v=0
+o=Telnyx 1772578302 1772578303 IN IP4 185.246.41.143
+s=Telnyx
+c=IN IP4 185.246.41.143
+t=0 0
+m=audio 32080 RTP/AVP 18 8 9 0 101
+a=rtpmap:18 G729/8000
+a=fmtp:18 annexb=no
+a=rtpmap:8 PCMA/8000
+a=rtpmap:9 G722/8000
+a=rtpmap:0 PCMU/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+a=sendrecv
+a=rtcp:32081 IN IP4 185.246.41.143
+a=ptime:20
+
+proto:UDP 2026-03-04T07:46:22.596067Z  72.62.50.40:5060 ---> 185.246.41.141:5060
+
+SIP/2.0 407 Proxy Authentication Required
+Via: SIP/2.0/UDP 185.246.41.141;branch=z9hG4bK1c72.3afd67a40f2ea6f8732b93bba5886f56.0
+Via: SIP/2.0/UDP 10.31.34.24:6000;received=10.31.34.24;rport=6000;branch=z9hG4bKK65D6vvXpaQ5S
+From: "3890566422" <sip:3890566422@sip.telnyx.eu>;tag=74eemjvQHc1ej
+To: <sip:390902041022@72.62.50.40:5060>;tag=gSgrvUX91jBNm
+Call-ID: d7a617ef-0108-4e64-9a00-ad54ad4c9273
+CSeq: 111751399 INVITE
+User-Agent: FreeSWITCH-mod_sofia/1.10.13-dev+git~20260116T201023Z~88fa1f95ca~64bit
+Accept: application/sdp
+Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY, PUBLISH, SUBSCRIBE
+Supported: timer, path, replaces
+Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer
+Proxy-Authenticate: Digest realm="sip.telnyx.eu", nonce="1a3bbf30-b39e-49c6-bb62-adc1af249cfd", algorithm=MD5, qop="auth"
+Content-Length: 0
+
+
+proto:UDP 2026-03-04T07:46:22.596351Z  185.246.41.141:5060 ---> 72.62.50.40:5060
+
+ACK sip:390902041022@72.62.50.40:5060 SIP/2.0
+Via: SIP/2.0/UDP 185.246.41.141;branch=z9hG4bK1c72.3afd67a40f2ea6f8732b93bba5886f56.0
+Max-Forwards:53
+f:"3890566422"<sip:3890566422@sip.telnyx.eu>;tag=74eemjvQHc1ej
+To: <sip:390902041022@72.62.50.40:5060>;tag=gSgrvUX91jBNm
+i:d7a617ef-0108-4e64-9a00-ad54ad4c9273
+CSeq:111751399 ACK
+l: 0
+
+

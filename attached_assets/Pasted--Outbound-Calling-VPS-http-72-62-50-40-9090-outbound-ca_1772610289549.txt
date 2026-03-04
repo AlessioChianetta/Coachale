@@ -1,0 +1,48 @@
+━━
+📞 [Outbound] Calling VPS: http://72.62.50.40:9090/outbound/call for +393890566422
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [Outbound] FULL VPS PAYLOAD:
+📋   targetPhone: +393890566422
+📋   callId: sc_1772610261840_xvbvxlwlj
+📋   aiMode: assistenza
+📋   customPrompt: null
+📋   callInstruction: null
+📋   instructionType: null
+📋   useDefaultTemplate: false
+📋   sipCallerId: +390902041022
+📋   sipGateway: non inviato (usa default VPS)
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7:44:23 AM [express] GET /api/voice/outbound/scheduled 200 in 819ms :: {"calls":[{"id":"sc_177260973…
+[TELNYX-WEBHOOK] Received event: call.initiated, payload.status: undefined, payload.id: undefined
+[TELNYX-WEBHOOK] Unhandled event type: call.initiated
+7:44:24 AM [express] POST /api/webhooks/telnyx 200 in 124ms :: {"received":true}
+✅ [Outbound] VPS accepted call: {
+  success: true,
+  callId: 'sc_1772610261840_xvbvxlwlj',
+  freeswitchUuid: 'outbound-1772610263078-6b2d4o'
+}
+🔗 [Outbound] Linking scheduled call sc_1772610261840_xvbvxlwlj to VPS call sc_1772610261840_xvbvxlwlj
+7:44:26 AM [express] GET /api/voice/gemini-connections 304 in 234ms :: {"success":true,"connections"…
+[TELNYX-WEBHOOK] Received event: call.bridged, payload.status: undefined, payload.id: undefined
+[TELNYX-WEBHOOK] Unhandled event type: call.bridged
+7:44:26 AM [express] POST /api/webhooks/telnyx 200 in 115ms :: {"received":true}
+7:44:26 AM [express] POST /api/voice/call-start 200 in 10ms
+🎤 [t4ma2h] Client connected to Live API
+⏱️ [LATENCY-E2E] WebSocket arrival: 2026-03-04T07:44:26.845Z
+⏱️ [AUTH-DETAIL] JWT verify: 1ms
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:
+🔍 [ROUTING-DEBUG]   decoded.consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   decoded.type: phone_service
+🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+🔍 [ROUTING-DEBUG]   calledNumber: +393890566422
+🔍 [ROUTING-DEBUG]   callerId: +393890566422
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️ [AUTH-DETAIL] voice_numbers lookup: 124ms
+❌ [PHONE SERVICE] Called number +393890566422 not found or inactive in voice_numbers → REJECTING CALL
+❌ [t4ma2h] Authentication failed
+📞 [Number Lookup] Not found: +393890566422 (normalized: +393890566422)
+7:44:27 AM [express] GET /api/voice/number-lookup 200 in 229ms :: {"found":false}
+7:44:27 AM [express] POST /api/voice/call-end 200 in 6ms
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+7:44:28 AM [express] GET /api/voice/ai-task
