@@ -1162,49 +1162,51 @@ async function getUserIdFromRequest(req: any): Promise<{
           }
 
           if (numberRows.rows.length === 0) {
-            console.error(`❌ [PHONE SERVICE] Called number ${normalizedCalledNumber} not found or inactive in voice_numbers → REJECTING CALL`);
-            return null;
-          }
-
-          numberConfig = numberRows.rows[0] as any;
-          console.log(`🔍 [ROUTING-DEBUG] voice_numbers lookup result:`);
-          console.log(`🔍 [ROUTING-DEBUG]   BEFORE: resolvedConsultantId = ${resolvedConsultantId}`);
-          console.log(`🔍 [ROUTING-DEBUG]   voice_numbers.consultant_id = ${numberConfig.consultant_id}`);
-          
-          // For OUTBOUND calls, the scheduledCallId already resolved the correct consultant
-          // Do NOT let voice_numbers override it (the calledNumber may belong to a different consultant)
-          if (scheduledCallIdParam && resolvedConsultantId !== numberConfig.consultant_id) {
-            console.log(`🔍 [ROUTING-DEBUG]   ⏭️ SKIPPING voice_numbers override for OUTBOUND call`);
-            console.log(`🔍 [ROUTING-DEBUG]   Keeping resolvedConsultantId = ${resolvedConsultantId} (from scheduled_voice_calls)`);
-            console.log(`🔍 [ROUTING-DEBUG]   voice_numbers would have set: ${numberConfig.consultant_id} (IGNORED for outbound)`);
-          } else {
-            resolvedConsultantId = numberConfig.consultant_id;
-            console.log(`🔍 [ROUTING-DEBUG]   AFTER: resolvedConsultantId = ${resolvedConsultantId}`);
-          }
-          console.log(`✅ [PHONE SERVICE] Number ${normalizedCalledNumber} → consultant ${resolvedConsultantId} (${numberConfig.display_name || 'unnamed'})`);
-
-          // Verify token ↔ consultant: JWT must match the number's consultant OR be a platform/global token
-          console.log(`🔍 [ROUTING-DEBUG] Cross-consultant token check:`);
-          console.log(`🔍 [ROUTING-DEBUG]   decoded.consultantId (from JWT): ${decoded.consultantId}`);
-          console.log(`🔍 [ROUTING-DEBUG]   resolvedConsultantId (from voice_numbers): ${resolvedConsultantId}`);
-          console.log(`🔍 [ROUTING-DEBUG]   decoded.scope: ${decoded.scope || 'N/A'}`);
-          console.log(`🔍 [ROUTING-DEBUG]   match? ${decoded.consultantId === resolvedConsultantId}`);
-          if (decoded.consultantId !== resolvedConsultantId && decoded.scope !== 'platform') {
-            console.log(`🔍 [ROUTING-DEBUG]   ⚠️ MISMATCH detected! JWT consultant ≠ number consultant. Checking global token...`);
-            const isGlobalToken = await db.execute(sql`
-              SELECT 1 FROM superadmin_voice_config WHERE id = 'default' AND enabled = true AND service_token = ${token} LIMIT 1
-            `);
-            if (isGlobalToken.rows.length === 0) {
-              console.error(`❌ [PHONE SERVICE] Token consultant ${decoded.consultantId} ≠ number consultant ${resolvedConsultantId} and not a platform/global token → REJECTING`);
+            if (scheduledCallIdParam && _cachedScheduledCallRow) {
+              console.log(`⚠️ [PHONE SERVICE] calledNumber ${normalizedCalledNumber} not in voice_numbers — OUTBOUND call allowed (consultant ${resolvedConsultantId} resolved from scheduled_voice_calls)`);
+            } else {
+              console.error(`❌ [PHONE SERVICE] Called number ${normalizedCalledNumber} not found or inactive in voice_numbers → REJECTING CALL`);
               return null;
             }
-            console.log(`🔍 [ROUTING-DEBUG]   ✅ Global token confirmed. Using resolvedConsultantId=${resolvedConsultantId} (overridden from JWT's ${decoded.consultantId})`);
-            console.log(`✅ [PHONE SERVICE] Global superadmin token accepted for cross-consultant routing`);
           }
 
-          // Check concurrent call capacity
+          if (numberRows.rows.length > 0) {
+            numberConfig = numberRows.rows[0] as any;
+            console.log(`🔍 [ROUTING-DEBUG] voice_numbers lookup result:`);
+            console.log(`🔍 [ROUTING-DEBUG]   BEFORE: resolvedConsultantId = ${resolvedConsultantId}`);
+            console.log(`🔍 [ROUTING-DEBUG]   voice_numbers.consultant_id = ${numberConfig.consultant_id}`);
+            
+            if (scheduledCallIdParam && resolvedConsultantId !== numberConfig.consultant_id) {
+              console.log(`🔍 [ROUTING-DEBUG]   ⏭️ SKIPPING voice_numbers override for OUTBOUND call`);
+              console.log(`🔍 [ROUTING-DEBUG]   Keeping resolvedConsultantId = ${resolvedConsultantId} (from scheduled_voice_calls)`);
+              console.log(`🔍 [ROUTING-DEBUG]   voice_numbers would have set: ${numberConfig.consultant_id} (IGNORED for outbound)`);
+            } else {
+              resolvedConsultantId = numberConfig.consultant_id;
+              console.log(`🔍 [ROUTING-DEBUG]   AFTER: resolvedConsultantId = ${resolvedConsultantId}`);
+            }
+            console.log(`✅ [PHONE SERVICE] Number ${normalizedCalledNumber} → consultant ${resolvedConsultantId} (${numberConfig.display_name || 'unnamed'})`);
+
+            console.log(`🔍 [ROUTING-DEBUG] Cross-consultant token check:`);
+            console.log(`🔍 [ROUTING-DEBUG]   decoded.consultantId (from JWT): ${decoded.consultantId}`);
+            console.log(`🔍 [ROUTING-DEBUG]   resolvedConsultantId (from voice_numbers): ${resolvedConsultantId}`);
+            console.log(`🔍 [ROUTING-DEBUG]   decoded.scope: ${decoded.scope || 'N/A'}`);
+            console.log(`🔍 [ROUTING-DEBUG]   match? ${decoded.consultantId === resolvedConsultantId}`);
+            if (decoded.consultantId !== resolvedConsultantId && decoded.scope !== 'platform') {
+              console.log(`🔍 [ROUTING-DEBUG]   ⚠️ MISMATCH detected! JWT consultant ≠ number consultant. Checking global token...`);
+              const isGlobalToken = await db.execute(sql`
+                SELECT 1 FROM superadmin_voice_config WHERE id = 'default' AND enabled = true AND service_token = ${token} LIMIT 1
+              `);
+              if (isGlobalToken.rows.length === 0) {
+                console.error(`❌ [PHONE SERVICE] Token consultant ${decoded.consultantId} ≠ number consultant ${resolvedConsultantId} and not a platform/global token → REJECTING`);
+                return null;
+              }
+              console.log(`🔍 [ROUTING-DEBUG]   ✅ Global token confirmed. Using resolvedConsultantId=${resolvedConsultantId} (overridden from JWT's ${decoded.consultantId})`);
+              console.log(`✅ [PHONE SERVICE] Global superadmin token accepted for cross-consultant routing`);
+            }
+          }
+
           const channelCheckStart = Date.now();
-          const maxChannels = numberConfig.max_concurrent_calls || 5;
+          const maxChannels = numberConfig?.max_concurrent_calls || 5;
           const activeCallsResult = await db.execute(sql`
             SELECT COUNT(*) as active_count 
             FROM voice_calls 
