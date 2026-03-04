@@ -54,9 +54,12 @@ export async function handleOutboundCall(req: OutboundCallRequest): Promise<Outb
 
   log.info(`[BRIDGE:OUTBOUND] Calling external number via gateway phone=${targetPhone} gateway=${gateway} callerId=${callerId}`);
 
-  // Costruisci il dialstring FreeSWITCH con caller ID per-tenant
+  // Telnyx richiede tech prefix (0312) per identificare la connessione su sip.telnyx.com
+  const techPrefix = config.sip.techPrefix || '';
+  const dialTarget = techPrefix ? `${techPrefix}${targetPhone}` : targetPhone;
+
   const uuid = `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const dialString = `{origination_caller_id_number=${callerId},effective_caller_id_number=${callerId},originate_timeout=30,origination_uuid=${uuid}}sofia/gateway/${gateway}/${targetPhone} &park()`;
+  const dialString = `{origination_caller_id_number=${callerId},effective_caller_id_number=${callerId},originate_timeout=30,origination_uuid=${uuid}}sofia/gateway/${gateway}/${dialTarget} &park()`;
 
   log.info(`[BRIDGE:OUTBOUND] Executing originate command uuid=${uuid} dialString=${dialString}`);
 

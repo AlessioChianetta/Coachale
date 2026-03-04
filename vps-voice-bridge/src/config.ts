@@ -22,6 +22,7 @@ export interface BridgeConfig {
   sip: {
     gateway: string;
     callerId: string;
+    techPrefix: string;
   };
   serviceToken: string;
   audio: {
