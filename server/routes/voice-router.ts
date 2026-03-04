@@ -1113,7 +1113,33 @@ router.get("/numbers", authenticateToken, requireAnyRole(["consultant", "super_a
       : sql``;
 
     const numbersResult = await db.execute(sql`
-      SELECT * FROM voice_numbers ${whereClause} ORDER BY created_at DESC
+      SELECT * FROM voice_numbers ${whereClause}
+      UNION
+      SELECT
+        cn.id::text AS id,
+        cn.phone_number,
+        cn.phone_number AS display_name,
+        cn.consultant_id,
+        NULL::text AS greeting_text,
+        'assistenza' AS ai_mode,
+        NULL::varchar AS fallback_number,
+        '["mon","tue","wed","thu","fri"]'::jsonb AS active_days,
+        '09:00'::time AS active_hours_start,
+        '18:00'::time AS active_hours_end,
+        'Europe/Rome' AS timezone,
+        'voicemail' AS out_of_hours_action,
+        5 AS max_concurrent_calls,
+        30 AS max_call_duration_minutes,
+        true AS is_active,
+        cn.created_at,
+        cn.updated_at
+      FROM consultant_numbers cn
+      WHERE cn.status = 'active'
+        ${consultantId ? sql`AND cn.consultant_id = ${consultantId}` : sql``}
+        AND cn.phone_number NOT IN (
+          SELECT phone_number FROM voice_numbers ${whereClause}
+        )
+      ORDER BY created_at DESC
     `);
 
     res.json({ numbers: numbersResult.rows });
