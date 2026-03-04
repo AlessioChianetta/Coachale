@@ -1138,10 +1138,9 @@ async function getUserIdFromRequest(req: any): Promise<{
         }
 
         if (calledNumber) {
-          let normalizedCalledNumber = calledNumber.replace(/\s+/g, '').replace(/^00/, '+');
-          if (!normalizedCalledNumber.startsWith('+') && normalizedCalledNumber.length > 6) {
-            normalizedCalledNumber = '+' + normalizedCalledNumber;
-          }
+          const { normalizePhoneNumber: normalizeCalledE164 } = await import('../routes/lead-import-router');
+          const e164Called = normalizeCalledE164(calledNumber.replace(/\s+/g, ''));
+          let normalizedCalledNumber = e164Called || calledNumber.replace(/\s+/g, '').replace(/^00/, '+');
           resolvedCalledNumber = normalizedCalledNumber;
           const lookupStart = Date.now();
           
@@ -1239,8 +1238,10 @@ async function getUserIdFromRequest(req: any): Promise<{
           }
         }
 
-        const normalizedCallerId = callerId.replace(/\s+/g, '').replace(/^00/, '+');
-        console.log(`📞 [PHONE SERVICE] Incoming call from ${normalizedCallerId} for consultant ${resolvedConsultantId}`);
+        const { normalizePhoneNumber: normalizePhoneE164 } = await import('../routes/lead-import-router');
+        const e164CallerId = normalizePhoneE164(callerId.replace(/\s+/g, ''));
+        const normalizedCallerId = e164CallerId || callerId.replace(/\s+/g, '').replace(/^00/, '+');
+        console.log(`📞 [PHONE SERVICE] Incoming call from ${normalizedCallerId} (raw: ${callerId}, e164: ${e164CallerId || 'failed'}) for consultant ${resolvedConsultantId}`);
 
         let userId: string | null = null;
         let userRole = 'anonymous_caller';
@@ -1826,7 +1827,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         _earlyStartedTasksPromise = db.execute(sql`
           SELECT id, ai_instruction, scheduled_at, recurrence_type, status, contact_name
           FROM ai_scheduled_tasks
-          WHERE consultant_id = ${consultantId} AND contact_phone = ${phoneCallerId}
+          WHERE consultant_id = ${consultantId} AND (contact_phone = ${phoneCallerId}
+            OR contact_phone = ${phoneCallerId.replace(/^\+/, '')}
+            OR ('+' || contact_phone) = ${phoneCallerId})
           AND status IN ('scheduled', 'retry_pending', 'paused')
           AND (scheduled_at >= NOW() OR recurrence_type IN ('daily', 'weekly'))
           ORDER BY scheduled_at ASC
@@ -1918,7 +1921,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
               ) sub
             ) as messages
           FROM ai_conversations ac
-          WHERE ac.caller_phone = ${phoneCallerId}
+          WHERE (ac.caller_phone = ${phoneCallerId}
+            OR ac.caller_phone = ${phoneCallerId.replace(/^\+/, '')}
+            OR ('+' || ac.caller_phone) = ${phoneCallerId})
             AND ac.consultant_id = ${consultantId}
           ORDER BY ac.created_at DESC
           LIMIT 100
@@ -4713,7 +4718,9 @@ ${contentPrompt}`;
                     ) sub
                   ) as messages
                 FROM ai_conversations ac
-                WHERE ac.caller_phone = ${phoneCallerId}
+                WHERE (ac.caller_phone = ${phoneCallerId}
+                  OR ac.caller_phone = ${phoneCallerId.replace(/^\+/, '')}
+                  OR ('+' || ac.caller_phone) = ${phoneCallerId})
                   AND ac.consultant_id = ${consultantId}
                 ORDER BY ac.created_at DESC
                 LIMIT 100
@@ -5055,7 +5062,9 @@ ${clientInstructionCallHistory}
                     ) sub
                   ) as messages
                 FROM ai_conversations ac
-                WHERE ac.caller_phone = ${phoneCallerId}
+                WHERE (ac.caller_phone = ${phoneCallerId}
+                  OR ac.caller_phone = ${phoneCallerId.replace(/^\+/, '')}
+                  OR ('+' || ac.caller_phone) = ${phoneCallerId})
                   AND ac.consultant_id = ${consultantId}
                 ORDER BY ac.created_at DESC
                 LIMIT 100
