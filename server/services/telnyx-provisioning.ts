@@ -369,6 +369,27 @@ export async function runFullProvisioningFlow(requestId: number): Promise<void> 
   }
 }
 
+export async function listAccountPhoneNumbers(): Promise<Array<{
+  phoneNumber: string;
+  status: string;
+  connectionId: string | null;
+  countryCode: string;
+  createdAt: string;
+}>> {
+  const data = await telnyxRequest("/phone_numbers?page[size]=250&filter[status]=active");
+  const numbers = data?.data || [];
+  return numbers.map((n: any) => ({
+    phoneNumber: n.phone_number,
+    status: n.status || "active",
+    connectionId: n.connection_id || null,
+    countryCode: (n.phone_number || "").startsWith("+39") ? "IT"
+      : (n.phone_number || "").startsWith("+1") ? "US"
+      : (n.phone_number || "").startsWith("+44") ? "GB"
+      : "IT",
+    createdAt: n.created_at || "",
+  }));
+}
+
 export async function getProvisioningStatus(consultantId: string) {
   const result = await db.execute(sql`
     SELECT r.*, 

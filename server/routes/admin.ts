@@ -2730,6 +2730,95 @@ router.post(
   }
 );
 
+router.get(
+  "/admin/number-inventory/telnyx-account-numbers",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const telnyxProvisioning = await import("../services/telnyx-provisioning");
+      const configured = await telnyxProvisioning.isTelnyxConfigured();
+      if (!configured) {
+        return res.status(400).json({ success: false, error: "Telnyx non configurato. Configura API Key e Connection ID dal pannello Super Admin." });
+      }
+
+      const accountNumbers = await telnyxProvisioning.listAccountPhoneNumbers();
+
+      const inventoryResult = await db.execute(sql`SELECT phone_number FROM number_inventory`);
+      const inventorySet = new Set((inventoryResult.rows as any[]).map(r => r.phone_number));
+
+      const numbersWithStatus = accountNumbers.map(n => ({
+        ...n,
+        alreadyInInventory: inventorySet.has(n.phoneNumber),
+      }));
+
+      res.json({ success: true, numbers: numbersWithStatus });
+    } catch (error: any) {
+      console.error("[ADMIN] List Telnyx account numbers error:", error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/admin/number-inventory/import",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { phoneNumbers, countryCode } = req.body;
+      if (!phoneNumbers || !Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+        return res.status(400).json({ success: false, error: "phoneNumbers array is required" });
+      }
+
+      const telnyxProvisioning = await import("../services/telnyx-provisioning");
+      const config = await telnyxProvisioning.getTelnyxConfig();
+      const results: Array<{ phoneNumber: string; success: boolean; error?: string }> = [];
+
+      for (const phoneNumber of phoneNumbers) {
+        try {
+          const cc = countryCode || "IT";
+          const digits = phoneNumber.replace(/^\+/, "");
+          const numberPrefix = cc === "IT" ? digits.substring(2, 5) : digits.substring(0, 5);
+
+          await db.execute(sql`
+            INSERT INTO number_inventory (phone_number, country_code, prefix, telnyx_order_id, connection_id, status, purchased_by, monthly_cost)
+            VALUES (${phoneNumber}, ${cc}, ${numberPrefix}, NULL, ${config.connectionId || null}, 'available', ${req.user!.id}, 0)
+            ON CONFLICT (phone_number) DO UPDATE SET
+              status = CASE WHEN number_inventory.status = 'assigned' THEN number_inventory.status ELSE 'available' END,
+              updated_at = NOW()
+          `);
+
+          results.push({ phoneNumber, success: true });
+        } catch (err: any) {
+          console.error(`[ADMIN] Failed to import ${phoneNumber}:`, err.message);
+          results.push({ phoneNumber, success: false, error: err.message });
+        }
+      }
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "import_numbers",
+        targetType: "number_inventory",
+        targetId: "batch",
+        details: { phoneNumbers, results }
+      });
+
+      const imported = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+
+      res.json({
+        success: true,
+        message: `${imported} numeri importati${failed > 0 ? `, ${failed} falliti` : ""}`,
+        results
+      });
+    } catch (error: any) {
+      console.error("[ADMIN] Import numbers error:", error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
 router.delete(
   "/admin/number-inventory/:id",
   authenticateToken,

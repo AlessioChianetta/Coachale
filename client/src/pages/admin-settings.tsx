@@ -44,6 +44,7 @@ import {
   MapPin,
   Globe,
   Search,
+  Download,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -319,6 +320,10 @@ export default function AdminSettings() {
   const [isPurchasingNumbers, setIsPurchasingNumbers] = useState(false);
   const [inventoryFilterStatus, setInventoryFilterStatus] = useState<string>("all");
   const [editingInventoryNote, setEditingInventoryNote] = useState<{ id: number; notes: string } | null>(null);
+  const [telnyxAccountNumbers, setTelnyxAccountNumbers] = useState<Array<{ phoneNumber: string; status: string; countryCode: string; createdAt: string; alreadyInInventory: boolean }>>([]);
+  const [isLoadingTelnyxNumbers, setIsLoadingTelnyxNumbers] = useState(false);
+  const [importSelectedNumbers, setImportSelectedNumbers] = useState<Set<string>>(new Set());
+  const [isImportingNumbers, setIsImportingNumbers] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -1544,6 +1549,58 @@ export default function AdminSettings() {
       }
     } catch (err: any) {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleLoadTelnyxAccountNumbers = async () => {
+    setIsLoadingTelnyxNumbers(true);
+    setTelnyxAccountNumbers([]);
+    setImportSelectedNumbers(new Set());
+    try {
+      const res = await fetch("/api/admin/number-inventory/telnyx-account-numbers", {
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTelnyxAccountNumbers(data.numbers || []);
+        if (data.numbers?.length === 0) {
+          toast({ title: "Nessun numero trovato", description: "Nessun numero attivo sull'account Telnyx" });
+        }
+      } else {
+        toast({ title: "Errore", description: data.error || "Errore nel caricamento", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setIsLoadingTelnyxNumbers(false);
+    }
+  };
+
+  const handleImportSelectedNumbers = async () => {
+    if (importSelectedNumbers.size === 0) {
+      toast({ title: "Errore", description: "Seleziona almeno un numero", variant: "destructive" });
+      return;
+    }
+    setIsImportingNumbers(true);
+    try {
+      const res = await fetch("/api/admin/number-inventory/import", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumbers: Array.from(importSelectedNumbers), countryCode: "IT" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Importazione completata", description: data.message });
+        setImportSelectedNumbers(new Set());
+        setTelnyxAccountNumbers([]);
+        refetchNumberInventory();
+      } else {
+        toast({ title: "Errore", description: data.error || "Errore nell'importazione", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setIsImportingNumbers(false);
     }
   };
 
@@ -4469,6 +4526,131 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   <TableCell className="font-mono text-sm">{num.phone_number}</TableCell>
                                   <TableCell className="text-sm">{num.monthly_cost || "N/A"}</TableCell>
                                   <TableCell className="text-sm">{num.region || "—"}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border rounded-lg p-4 space-y-4 bg-blue-50/40 dark:bg-blue-950/10 border-blue-200 dark:border-blue-800/50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-sm flex items-center gap-2">
+                          <Download className="h-4 w-4 text-blue-600" />
+                          Importa Numeri Già Acquistati
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Lista i numeri già presenti sul tuo account Telnyx e importali in inventario senza riacquistarli.
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleLoadTelnyxAccountNumbers}
+                        disabled={isLoadingTelnyxNumbers || !telnyxConfig?.configured}
+                        className="border-blue-300 hover:bg-blue-50"
+                      >
+                        {isLoadingTelnyxNumbers ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        Carica da Account Telnyx
+                      </Button>
+                    </div>
+                    {!telnyxConfig?.configured && (
+                      <p className="text-xs text-amber-600">Configura Telnyx API prima di caricare i numeri.</p>
+                    )}
+                    {telnyxAccountNumbers.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground">
+                            {telnyxAccountNumbers.length} numeri sull'account — {importSelectedNumbers.size} selezionati
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={handleImportSelectedNumbers}
+                            disabled={isImportingNumbers || importSelectedNumbers.size === 0}
+                          >
+                            {isImportingNumbers ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Download className="h-4 w-4 mr-2" />
+                            )}
+                            Importa Selezionati ({importSelectedNumbers.size})
+                          </Button>
+                        </div>
+                        <div className="border rounded-lg overflow-x-auto bg-white dark:bg-background">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-10">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-gray-300"
+                                    checked={
+                                      importSelectedNumbers.size ===
+                                      telnyxAccountNumbers.filter(n => !n.alreadyInInventory).length &&
+                                      telnyxAccountNumbers.filter(n => !n.alreadyInInventory).length > 0
+                                    }
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setImportSelectedNumbers(
+                                          new Set(telnyxAccountNumbers.filter(n => !n.alreadyInInventory).map(n => n.phoneNumber))
+                                        );
+                                      } else {
+                                        setImportSelectedNumbers(new Set());
+                                      }
+                                    }}
+                                  />
+                                </TableHead>
+                                <TableHead>Numero</TableHead>
+                                <TableHead>Paese</TableHead>
+                                <TableHead>Stato Telnyx</TableHead>
+                                <TableHead>Inventario</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {telnyxAccountNumbers.map((num) => (
+                                <TableRow
+                                  key={num.phoneNumber}
+                                  className={num.alreadyInInventory ? "opacity-50" : "cursor-pointer"}
+                                  onClick={() => {
+                                    if (num.alreadyInInventory) return;
+                                    setImportSelectedNumbers(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(num.phoneNumber)) next.delete(num.phoneNumber);
+                                      else next.add(num.phoneNumber);
+                                      return next;
+                                    });
+                                  }}
+                                >
+                                  <TableCell>
+                                    <input
+                                      type="checkbox"
+                                      className="h-4 w-4 rounded border-gray-300"
+                                      checked={importSelectedNumbers.has(num.phoneNumber)}
+                                      disabled={num.alreadyInInventory}
+                                      onChange={() => {}}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="font-mono text-sm">{num.phoneNumber}</TableCell>
+                                  <TableCell className="text-sm">{num.countryCode}</TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                                      {num.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    {num.alreadyInInventory ? (
+                                      <Badge variant="secondary" className="text-xs">Già importato</Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Da importare</Badge>
+                                    )}
+                                  </TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
