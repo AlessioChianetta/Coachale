@@ -4364,7 +4364,7 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
           he.email_type IN ('hunter_outreach', 'hunter_followup')
           ${hunterLeadEmails.length > 0 ? sql`OR EXISTS (
             SELECT 1 FROM jsonb_array_elements(he.to_recipients) elem
-            WHERE elem ->> 'email' = ANY(${hunterLeadEmails})
+            WHERE elem ->> 'email' = ANY(${sql`ARRAY[${sql.join(hunterLeadEmails.map(e => sql`${e}`), sql`, `)}]::text[]`})
           )` : sql``}
         )
       ORDER BY he.sent_at DESC

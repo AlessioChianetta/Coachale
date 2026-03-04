@@ -1673,10 +1673,11 @@ export async function scheduleIndividualOutreach(
   `);
   console.log(`[HUNTER] Step 4/6: Updated lead_scraper_results → in_outreach (leadId=${leadId})`);
 
+  const isPending = taskStatus === 'waiting_approval';
   const activityTypeMap: Record<string, string> = {
     voice: 'chiamata',
-    whatsapp: 'whatsapp_inviato',
-    email: 'email_inviata',
+    whatsapp: isPending ? 'whatsapp_programmato' : 'whatsapp_inviato',
+    email: isPending ? 'email_programmata' : 'email_inviata',
   };
   const activityTitleMap: Record<string, string> = {
     voice: 'Hunter — Chiamata programmata',

@@ -131,8 +131,10 @@ const ACTIVITY_TYPES = [
   { value: "chiamata_completata", label: "Chiamata completata", icon: PhoneIncoming, color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-950/20" },
   { value: "chiamata_ricevuta", label: "Chiamata ricevuta", icon: PhoneIncoming, color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-950/20" },
   { value: "whatsapp_inviato", label: "WhatsApp inviato", icon: MessageCircle, color: "text-green-600", bgColor: "bg-green-50 dark:bg-green-950/20" },
+  { value: "whatsapp_programmato", label: "WhatsApp programmato", icon: MessageCircle, color: "text-amber-600", bgColor: "bg-amber-50 dark:bg-amber-950/20" },
   { value: "whatsapp_ricevuto", label: "WhatsApp ricevuto", icon: MessageCircle, color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-950/20" },
   { value: "email_inviata", label: "Email inviata", icon: Mail, color: "text-cyan-500", bgColor: "bg-cyan-50 dark:bg-cyan-950/20" },
+  { value: "email_programmata", label: "Email programmata", icon: Mail, color: "text-amber-500", bgColor: "bg-amber-50 dark:bg-amber-950/20" },
   { value: "email_ricevuta", label: "Email ricevuta", icon: MailOpen, color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-950/20" },
   { value: "discovery", label: "Discovery", icon: Presentation, color: "text-violet-500", bgColor: "bg-violet-50 dark:bg-violet-950/20" },
   { value: "demo", label: "Demo", icon: BarChart3, color: "text-amber-500", bgColor: "bg-amber-50 dark:bg-amber-950/20" },
@@ -156,6 +158,7 @@ function getLeadStatusInfo(status: string | null) {
 
 const INCOMING_TYPES = new Set(['email_ricevuta', 'whatsapp_ricevuto', 'chiamata_completata', 'chiamata_ricevuta']);
 const OUTGOING_TYPES = new Set(['chiamata', 'whatsapp_inviato', 'email_inviata']);
+const PENDING_TYPES = new Set(['whatsapp_programmato', 'email_programmata']);
 
 function getActivityType(type: string) {
   return ACTIVITY_TYPES.find(t => t.value === type) || { value: type, label: type, icon: Activity, color: "text-gray-500", bgColor: "bg-gray-50 dark:bg-gray-950/20" };
@@ -164,6 +167,7 @@ function getActivityType(type: string) {
 function getDirectionBadge(type: string): { label: string; color: string } | null {
   if (INCOMING_TYPES.has(type)) return { label: "↓ Ricevuto", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
   if (OUTGOING_TYPES.has(type)) return { label: "↑ Inviato", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" };
+  if (PENDING_TYPES.has(type)) return { label: "⏳ In approvazione", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
   return null;
 }
 
@@ -281,7 +285,7 @@ export default function ConsultantLeadDetail() {
   const filteredActivities = useMemo(() => {
     if (activeActivityTab === "outreach") {
       const outreachTypes = new Set([
-        "chiamata", "whatsapp_inviato", "email_inviata",
+        "chiamata", "whatsapp_inviato", "whatsapp_programmato", "email_inviata", "email_programmata",
         "email_ricevuta", "whatsapp_ricevuto", "chiamata_completata", "chiamata_ricevuta",
       ]);
       return activities.filter(a => outreachTypes.has(a.type));
