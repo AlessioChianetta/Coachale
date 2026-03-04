@@ -106,18 +106,33 @@ export function startESLController(): void {
 
   conn.on('esl::event::CHANNEL_ANSWER::*', (event: any) => {
     const uuid = event.getHeader('Unique-ID');
+    const otherLegUuid = event.getHeader('Other-Leg-Unique-ID') || '';
+    const direction = event.getHeader('Call-Direction') || '';
+    const dest = event.getHeader('Caller-Destination-Number') || '';
+    const callerNum = event.getHeader('Caller-Caller-ID-Number') || '';
     const isOutbound = uuid.startsWith('outbound-');
 
-    if (!isOutbound) return;
+    log.info(`🔍 [CHANNEL_ANSWER DEBUG] uuid=${uuid} otherLeg=${otherLegUuid} direction=${direction} dest=${dest} caller=${callerNum} isOutbound=${isOutbound}`);
 
-    const meta = callMetadata.get(uuid);
-    if (!meta) return;
+    let resolvedUuid = uuid;
+    if (!isOutbound && otherLegUuid?.startsWith('outbound-')) {
+      resolvedUuid = otherLegUuid;
+      log.info(`🔄 [CHANNEL_ANSWER] B-leg answered, resolving to A-leg uuid=${resolvedUuid}`);
+    } else if (!isOutbound) {
+      return;
+    }
+
+    const meta = callMetadata.get(resolvedUuid);
+    if (!meta) {
+      log.warn(`⚠️ [CHANNEL_ANSWER] No metadata for uuid=${resolvedUuid} (original=${uuid})`);
+      return;
+    }
 
     const tAnswer = Date.now();
     const ringTime = meta.parkTime ? tAnswer - meta.parkTime : 0;
-    log.info(`📞 OUTBOUND call ANSWERED — starting audio stream`, { uuid, ringTimeMs: ringTime });
+    log.info(`📞 OUTBOUND call ANSWERED — starting audio stream`, { uuid: resolvedUuid, ringTimeMs: ringTime });
 
-    startAudioStream(conn, uuid, tAnswer);
+    startAudioStream(conn, resolvedUuid, tAnswer);
   });
 
   conn.on('esl::event::CHANNEL_HANGUP::*', (event: any) => {
