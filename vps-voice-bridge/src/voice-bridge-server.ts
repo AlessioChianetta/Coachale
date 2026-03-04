@@ -21,9 +21,11 @@ import {
 
 const log = logger.child('SERVER');
 
-const CHUNK_SIZE = 320;
 const bgTimers = new Map<string, NodeJS.Timeout>();
-const lastAiSendTime = new Map<string, number>();
+
+const audioOutputQueues = new Map<string, Buffer[]>();
+const AUDIO_QUEUE_MAX = 2500;
+const CHUNK_SIZE = 320;
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const blockedIps = new Map<string, number>();
@@ -337,33 +339,57 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
 
   bgInitSession(session.id);
 
+  audioOutputQueues.set(session.id, []);
   const tSetup = Date.now();
 
   log.info(`⏱️ [VPS-TIMING] handleCallStart setup: session=${tSession - t0}ms, bgInit+queue=${tSetup - tSession}ms`, {
     sessionId: session.id.slice(0, 8),
   });
 
-  if (config.audio.backgroundEnabled && isBackgroundLoaded()) {
-    const bgInterval = setInterval(() => {
-      const s = sessionManager.getSession(session.id);
-      if (!s || (s.state !== 'active' && s.state !== 'reconnecting') || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
-        return;
+  let lastTickNs = process.hrtime.bigint();
+  const FRAME_NS = BigInt(20_000_000);
+  const PREFILL_FRAMES = 4;
+
+  function audioTick() {
+    const s = sessionManager.getSession(session.id);
+    if (!s || (s.state !== 'active' && s.state !== 'reconnecting') || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
+      bgTimers.set(session.id, setTimeout(audioTick, 10));
+      return;
+    }
+
+    const now = process.hrtime.bigint();
+    const elapsed = now - lastTickNs;
+    const framesToSend = Number(elapsed / FRAME_NS);
+
+    if (framesToSend >= 1) {
+      lastTickNs += FRAME_NS * BigInt(framesToSend);
+
+      const queue = audioOutputQueues.get(session.id);
+      const maxCatchUp = Math.min(framesToSend, 3);
+
+      for (let f = 0; f < maxCatchUp; f++) {
+        if (queue && queue.length > 0) {
+          const chunk = queue.shift()!;
+          s.fsWebSocket.send(chunk, { binary: true });
+        } else if (config.audio.backgroundEnabled && isBackgroundLoaded()) {
+          const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
+          if (bgChunk) {
+            s.fsWebSocket.send(bgChunk, { binary: true });
+          }
+        }
       }
+    }
 
-      const aiTime = lastAiSendTime.get(session.id) || 0;
-      if (Date.now() - aiTime < 15) return;
+    const nextFrameAt = lastTickNs + FRAME_NS;
+    const nowAfter = process.hrtime.bigint();
+    const waitNs = nextFrameAt > nowAfter ? nextFrameAt - nowAfter : BigInt(1_000_000);
+    const waitMs = Math.max(1, Math.min(15, Number(waitNs / BigInt(1_000_000))));
 
-      const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
-      if (bgChunk) {
-        s.fsWebSocket.send(bgChunk, { binary: true });
-      }
-    }, 20);
-
-    bgTimers.set(session.id, bgInterval);
-    log.info(`🎵 Background audio timer started (20ms interval, continuous)`, { sessionId: session.id.slice(0, 8) });
-  } else {
-    log.info(`🎵 Audio direct-send mode (no background audio)`, { sessionId: session.id.slice(0, 8) });
+    bgTimers.set(session.id, setTimeout(audioTick, waitMs));
   }
+
+  bgTimers.set(session.id, setTimeout(audioTick, 5));
+  log.info(`🎵 Adaptive audio timer started (prefill=${PREFILL_FRAMES})`, { sessionId: session.id.slice(0, 8) });
 
   const tPreConnect = Date.now();
   log.info(`⏱️ [VPS-TIMING] Pre-connect overhead: ${tPreConnect - t0}ms`, { sessionId: session.id.slice(0, 8) });
@@ -398,8 +424,10 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
         log.info(`[AI]: "${text}"`);
       },
       onInterrupted: () => {
-        _firstAudioSent.delete(session.id);
-        log.info(`🛑 BARGE-IN: reset first-audio flag for next response`, { sessionId: session.id.slice(0, 8) });
+        const queue = audioOutputQueues.get(session.id);
+        const flushed = queue?.length || 0;
+        if (queue) queue.length = 0;
+        log.info(`🛑 BARGE-IN: flushed ${flushed} chunks (${flushed * 20}ms audio)`, { sessionId: session.id.slice(0, 8) });
       },
       onError: (err) => {
         log.error(`Replit Error: ${err.message}`);
@@ -410,8 +438,7 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
         sessionManager.pauseInactivityTimeout(session.id);
       },
       onReconnected: () => {
-        _firstAudioSent.delete(session.id);
-        log.info(`✅ Gemini session resumed - returning to active state, reset first-audio flag`, { sessionId: session.id.slice(0, 8) });
+        log.info(`✅ Gemini session resumed - returning to active state`, { sessionId: session.id.slice(0, 8) });
         sessionManager.updateSessionState(session.id, 'active');
         sessionManager.resumeInactivityTimeout(session.id);
       },
@@ -450,8 +477,6 @@ function handleAudioData(sessionId: string, audioData: Buffer): void {
   session.replitClient?.sendAudio(pcm);
 }
 
-const _firstAudioSent = new Set<string>();
-
 function queueAudioForFreeSWITCH(sessionId: string, audio: Buffer): void {
   const session = sessionManager.getSession(sessionId);
   if (!session?.fsWebSocket || session.fsWebSocket.readyState !== WebSocket.OPEN) {
@@ -464,42 +489,46 @@ function queueAudioForFreeSWITCH(sessionId: string, audio: Buffer): void {
     pcmAudio = mixWithBackground(pcmAudio, sessionId);
   }
 
-  const isFirstBurst = !_firstAudioSent.has(sessionId);
-  if (isFirstBurst) {
-    _firstAudioSent.add(sessionId);
-    const SILENCE_FRAMES = 3;
-    const silenceChunk = Buffer.alloc(CHUNK_SIZE, 0);
-    for (let i = 0; i < SILENCE_FRAMES; i++) {
-      session.fsWebSocket.send(silenceChunk, { binary: true });
-    }
-    log.info(`🔊 First audio burst: sent ${SILENCE_FRAMES} silence frames as jitter buffer primer`, { sessionId: sessionId.slice(0, 8) });
-  }
+  const queue = audioOutputQueues.get(sessionId);
+  if (!queue) return;
 
-  lastAiSendTime.set(sessionId, Date.now());
+  const wasEmpty = queue.length === 0;
 
   for (let i = 0; i < pcmAudio.length; i += CHUNK_SIZE) {
     const end = Math.min(i + CHUNK_SIZE, pcmAudio.length);
     const chunk = pcmAudio.slice(i, end);
     if (chunk.length === CHUNK_SIZE) {
-      session.fsWebSocket.send(chunk, { binary: true });
+      queue.push(chunk);
     } else if (chunk.length > 0) {
       const padded = Buffer.alloc(CHUNK_SIZE, 0);
       chunk.copy(padded);
-      session.fsWebSocket.send(padded, { binary: true });
+      queue.push(padded);
     }
   }
 
-  lastAiSendTime.set(sessionId, Date.now());
+  if (queue.length > AUDIO_QUEUE_MAX) {
+    const overflow = queue.length - AUDIO_QUEUE_MAX;
+    queue.splice(0, overflow);
+    log.warn(`Audio queue overflow, dropped ${overflow} old chunks`, { sessionId: sessionId.slice(0, 8) });
+  }
+
+  if (wasEmpty && queue.length > 0) {
+    const PREFILL = 4;
+    const prefillCount = Math.min(queue.length, PREFILL);
+    for (let i = 0; i < prefillCount; i++) {
+      const chunk = queue.shift()!;
+      session.fsWebSocket.send(chunk, { binary: true });
+    }
+  }
 }
 
 function cleanupSession(sessionId: string): void {
   const timer = bgTimers.get(sessionId);
   if (timer) {
-    clearInterval(timer);
+    clearTimeout(timer);
     bgTimers.delete(sessionId);
   }
-  lastAiSendTime.delete(sessionId);
-  _firstAudioSent.delete(sessionId);
+  audioOutputQueues.delete(sessionId);
   bgDestroySession(sessionId);
 }
 
