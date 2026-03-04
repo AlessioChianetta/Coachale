@@ -498,7 +498,13 @@ function queueAudioForFreeSWITCH(sessionId: string, audio: Buffer): void {
   }
 
   if (wasEmpty && queue.length > 0) {
-    const PREFILL = 4;
+    const SILENCE_FRAMES = 3;
+    const silenceChunk = Buffer.alloc(CHUNK_SIZE, 0);
+    for (let i = 0; i < SILENCE_FRAMES; i++) {
+      session.fsWebSocket.send(silenceChunk, { binary: true });
+    }
+
+    const PREFILL = 6;
     const prefillCount = Math.min(queue.length, PREFILL);
     for (let i = 0; i < prefillCount; i++) {
       const chunk = queue.shift()!;
