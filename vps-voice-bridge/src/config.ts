@@ -28,6 +28,7 @@ export interface BridgeConfig {
   audio: {
     sampleRateIn: number;
     sampleRateOut: number;
+    backgroundEnabled: boolean;
   };
   session: {
     timeoutMs: number;
@@ -85,6 +86,7 @@ export function loadConfig(): BridgeConfig {
     audio: {
       sampleRateIn: parseInt(getEnv('AUDIO_SAMPLE_RATE_IN', '8000'), 10),
       sampleRateOut: parseInt(getEnv('AUDIO_SAMPLE_RATE_OUT', '8000'), 10),
+      backgroundEnabled: getEnv('BACKGROUND_AUDIO_ENABLED', 'false') === 'true',
     },
     session: {
       timeoutMs: parseInt(getEnv('SESSION_TIMEOUT_MS', '30000'), 10),

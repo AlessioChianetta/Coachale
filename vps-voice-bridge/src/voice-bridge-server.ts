@@ -75,7 +75,12 @@ setInterval(() => {
   }
 }, 60000);
 
-loadBackgroundAudio();
+if (config.audio.backgroundEnabled) {
+  loadBackgroundAudio();
+  log.info('🎵 Background audio ENABLED');
+} else {
+  log.info('🔇 Background audio DISABLED (set BACKGROUND_AUDIO_ENABLED=true to enable)');
+}
 
 const pendingCalls = new Map<string, { callId: string; timer: NodeJS.Timeout }>();
 
@@ -357,7 +362,7 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
         if (queue && queue.length > 0) {
           const chunk = queue.shift()!;
           s.fsWebSocket.send(chunk, { binary: true });
-        } else if (isBackgroundLoaded()) {
+        } else if (config.audio.backgroundEnabled && isBackgroundLoaded()) {
           const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
           if (bgChunk) {
             s.fsWebSocket.send(bgChunk, { binary: true });
@@ -470,7 +475,7 @@ function queueAudioForFreeSWITCH(sessionId: string, audio: Buffer): void {
 
   let pcmAudio = convertFromGemini(audio, 'L16', session.sampleRate);
 
-  if (isBackgroundLoaded()) {
+  if (config.audio.backgroundEnabled && isBackgroundLoaded()) {
     pcmAudio = mixWithBackground(pcmAudio, sessionId);
   }
 
