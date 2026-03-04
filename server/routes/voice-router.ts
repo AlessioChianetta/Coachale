@@ -2394,11 +2394,18 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     const vpsUrl = globalVoice?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
     const token = globalVoice?.service_token;
 
-    // Get SIP settings from consultant
+    // Get SIP settings from consultant — JOIN consultant_numbers come fallback per sip_caller_id
     const sipResult = await db.execute(sql`
-      SELECT sip_caller_id, sip_gateway, use_vps_number FROM users WHERE id = ${consultantId}
+      SELECT u.sip_caller_id, u.sip_gateway, u.use_vps_number,
+             cn.phone_number AS consultant_active_number
+      FROM users u
+      LEFT JOIN consultant_numbers cn
+        ON cn.consultant_id = u.id AND cn.status = 'active'
+      WHERE u.id = ${consultantId}
+      LIMIT 1
     `);
-    const defaultSipCallerId = (sipResult.rows[0] as any)?.sip_caller_id;
+    const consultantActiveNumber = (sipResult.rows[0] as any)?.consultant_active_number;
+    const defaultSipCallerId = (sipResult.rows[0] as any)?.sip_caller_id || consultantActiveNumber;
     const sipGateway = (sipResult.rows[0] as any)?.sip_gateway;
     const useVpsNumber = (sipResult.rows[0] as any)?.use_vps_number ?? false;
     // Override caller ID with from_number if explicitly chosen by the consultant
@@ -2623,10 +2630,14 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
     // Pre-flight: check if consultant has a caller ID configured (fromNumber overrides the default)
     if (!fromNumber) {
       const callerCheck = await db.execute(sql`
-        SELECT sip_caller_id, use_vps_number FROM users WHERE id = ${consultantId}
+        SELECT u.sip_caller_id, u.use_vps_number, cn.phone_number AS consultant_active_number
+        FROM users u
+        LEFT JOIN consultant_numbers cn ON cn.consultant_id = u.id AND cn.status = 'active'
+        WHERE u.id = ${consultantId}
+        LIMIT 1
       `);
       const callerRow = callerCheck.rows[0] as any;
-      if (!callerRow?.use_vps_number && !callerRow?.sip_caller_id) {
+      if (!callerRow?.use_vps_number && !callerRow?.sip_caller_id && !callerRow?.consultant_active_number) {
         return res.status(400).json({ 
           error: "Nessun numero configurato per le chiamate in uscita. Configura il tuo numero nelle Impostazioni oppure attiva il numero VPS generico.",
           code: "NO_CALLER_ID"
@@ -2723,10 +2734,14 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
     // Pre-flight: check if consultant has a caller ID configured (fromNumber overrides the default)
     if (!fromNumber) {
       const callerCheckSched = await db.execute(sql`
-        SELECT sip_caller_id, use_vps_number FROM users WHERE id = ${consultantId}
+        SELECT u.sip_caller_id, u.use_vps_number, cn.phone_number AS consultant_active_number
+        FROM users u
+        LEFT JOIN consultant_numbers cn ON cn.consultant_id = u.id AND cn.status = 'active'
+        WHERE u.id = ${consultantId}
+        LIMIT 1
       `);
       const callerRowSched = callerCheckSched.rows[0] as any;
-      if (!callerRowSched?.use_vps_number && !callerRowSched?.sip_caller_id) {
+      if (!callerRowSched?.use_vps_number && !callerRowSched?.sip_caller_id && !callerRowSched?.consultant_active_number) {
         return res.status(400).json({ 
           error: "Nessun numero configurato per le chiamate in uscita. Configura il tuo numero nelle Impostazioni oppure attiva il numero VPS generico.",
           code: "NO_CALLER_ID"

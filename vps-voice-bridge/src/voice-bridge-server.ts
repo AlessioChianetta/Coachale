@@ -163,13 +163,13 @@ export function startVoiceBridgeServer(): void {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const { targetPhone, callId, aiMode, customPrompt } = req.body;
+    const { targetPhone, callId, aiMode, customPrompt, sipCallerId, sipGateway } = req.body;
 
     if (!targetPhone || !callId) {
       return res.status(400).json({ success: false, error: 'Missing targetPhone or callId' });
     }
 
-    const result = await handleOutboundCall({ targetPhone, callId, aiMode, customPrompt });
+    const result = await handleOutboundCall({ targetPhone, callId, aiMode, customPrompt, sipCallerId, sipGateway });
 
     if (result.success) {
       res.json(result);

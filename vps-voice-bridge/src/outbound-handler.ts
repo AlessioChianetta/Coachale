@@ -1,12 +1,14 @@
 /**
  * Outbound Call Handler for VPS Voice Bridge
- * 
+ *
  * Gestisce le chiamate in uscita ricevute da Replit.
- * Comunica con FreeSWITCH per originare la chiamata.
+ * Comunica con FreeSWITCH via ESL per originare la chiamata.
+ * Supporta caller ID per-tenant: ogni consulente usa il suo numero Telnyx.
  */
 
 import { logger } from './logger.js';
 import { config } from './config.js';
+import { originateOutboundCall } from './esl-client.js';
 
 const log = logger.child('OUTBOUND');
 
@@ -15,6 +17,8 @@ interface OutboundCallRequest {
   callId: string;
   aiMode: string;
   customPrompt?: string;
+  sipCallerId?: string;
+  sipGateway?: string;
 }
 
 interface OutboundCallResponse {
@@ -24,86 +28,54 @@ interface OutboundCallResponse {
   error?: string;
 }
 
-/**
- * Valida il numero di telefono (E.164 o estensione interna)
- */
 function validatePhoneNumber(phone: string): boolean {
   const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
-  // Accept: internal extensions (3-6 digits) OR international numbers (7-15 digits with optional +)
   return /^(\+?[1-9]\d{6,14}|\d{3,6})$/.test(cleanPhone);
 }
 
-/**
- * Esegue il comando originate su FreeSWITCH via ESL
- * 
- * NOTA: Richiede connessione ESL a FreeSWITCH
- * Il formato del comando originate dipende dalla configurazione del trunk SIP
- */
-async function originateCall(targetPhone: string, callId: string): Promise<{ uuid: string }> {
-  // TODO: Implementare connessione ESL a FreeSWITCH
-  // 
-  // Esempio comando originate:
-  // originate {origination_caller_id_number=NUMERO_CENTRALINO}sofia/gateway/TRUNK/${targetPhone} &bridge(user/ai-bridge)
-  //
-  // Dove:
-  // - TRUNK è il nome del gateway SIP configurato in FreeSWITCH
-  // - ai-bridge è l'estensione che connette al WebSocket bridge
-  //
-  // Per ora, simuliamo la risposta per test
-  
-  log.info('Originate call requested', { targetPhone, callId });
-  
-  // Placeholder - in produzione questo userà ESL
-  throw new Error('ESL connection not implemented yet. Configure FreeSWITCH ESL connection.');
-}
-
-/**
- * Handler per richieste di chiamata in uscita
- */
 export async function handleOutboundCall(req: OutboundCallRequest): Promise<OutboundCallResponse> {
-  const { targetPhone, callId, aiMode } = req;
-  
-  log.info('Received outbound call request', { callId, targetPhone, aiMode });
-  
-  // Validazione
+  const { targetPhone, callId, aiMode, sipCallerId, sipGateway } = req;
+
+  log.info(`[BRIDGE:OUTBOUND] Received outbound call request callId=${callId} targetPhone=${targetPhone} aiMode=${aiMode}`);
+
   if (!validatePhoneNumber(targetPhone)) {
     log.warn('Invalid phone number', { targetPhone });
     return { success: false, error: 'Invalid phone number format' };
   }
-  
+
   if (!callId) {
     return { success: false, error: 'Missing callId' };
   }
-  
+
+  // Caller ID: usa quello del consulente (per-tenant), fallback al default di config
+  const callerId = sipCallerId || config.sip.callerId;
+  // Gateway: usa quello specificato, fallback al default di config (telnyx-ip)
+  const gateway = sipGateway || config.sip.gateway;
+
+  log.info(`[BRIDGE:OUTBOUND] Calling external number via gateway phone=${targetPhone} gateway=${gateway} callerId=${callerId}`);
+
+  // Costruisci il dialstring FreeSWITCH con caller ID per-tenant
+  const uuid = `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const dialString = `{origination_caller_id_number=${callerId},effective_caller_id_number=${callerId},originate_timeout=30,origination_uuid=${uuid}}sofia/gateway/${gateway}/${targetPhone} &park()`;
+
+  log.info(`[BRIDGE:OUTBOUND] Executing originate command uuid=${uuid} dialString=${dialString}`);
+
   try {
-    // Esegui originate su FreeSWITCH
-    const result = await originateCall(targetPhone, callId);
-    
-    log.info('Call originated successfully', { callId, uuid: result.uuid });
-    
+    const resultUuid = await originateOutboundCall(dialString);
+
+    log.info(`[BRIDGE:OUTBOUND] Call originated successfully callId=${callId} uuid=${resultUuid || uuid}`);
+
     return {
       success: true,
       callId,
-      freeswitchUuid: result.uuid,
+      freeswitchUuid: resultUuid || uuid,
     };
   } catch (error: any) {
-    log.error('Failed to originate call', { callId, error: error.message });
+    log.error(`[BRIDGE:OUTBOUND] Failed to originate call callId=${callId} error=${error.message}`);
     return {
       success: false,
       callId,
       error: error.message,
     };
   }
-}
-
-/**
- * Setup dell'endpoint HTTP per chiamate in uscita
- * Da aggiungere al server principale
- */
-export function setupOutboundEndpoint(server: any): void {
-  // POST /outbound/call
-  // Body: { targetPhone, callId, aiMode, customPrompt? }
-  // Headers: Authorization: Bearer <service_token>
-  
-  log.info('Outbound endpoint ready at POST /outbound/call');
 }

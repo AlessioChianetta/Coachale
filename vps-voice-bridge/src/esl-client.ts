@@ -8,11 +8,38 @@ const log = logger.child('ESL');
 // Mappa per memorizzare caller info per UUID
 export const callMetadata = new Map<string, { callerIdNumber: string, callerIdName: string, calledNumber?: string, parkTime?: number }>();
 
+// Connessione ESL condivisa — usata anche per originate outbound
+let eslConn: any = null;
+
+export function getEslConnection(): any {
+  return eslConn;
+}
+
+export function originateOutboundCall(dialString: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!eslConn) {
+      return reject(new Error('ESL connection not available'));
+    }
+    log.info(`[OUTBOUND] Executing originate: ${dialString}`);
+    (eslConn as any).bgapi(`originate ${dialString}`, (res: any) => {
+      const body: string = res.getBody ? res.getBody() : String(res);
+      log.info(`[OUTBOUND] Originate result response=${body}`);
+      if (body && body.startsWith('+OK')) {
+        const uuid = body.replace('+OK ', '').trim();
+        resolve(uuid);
+      } else {
+        reject(new Error(`FreeSWITCH error: ${body}`));
+      }
+    });
+  });
+}
+
 export function startESLController(): void {
   log.info(`Connecting to FreeSWITCH ESL at ${config.esl.host}:${config.esl.port}...`);
 
   const conn = new esl.Connection(config.esl.host, config.esl.port, config.esl.password, () => {
     log.info('✅ Connected to FreeSWITCH Event Socket!');
+    eslConn = conn;
     conn.subscribe(['CHANNEL_PARK', 'CHANNEL_HANGUP']);
   });
 
@@ -26,7 +53,6 @@ export function startESLController(): void {
 
     const callerIdNumber = event.getHeader('Caller-Caller-ID-Number') || 'unknown';
     const callerIdName = event.getHeader('Caller-Caller-ID-Name') || '';
-    const calledNumber = event.getHeader('Caller-Destination-Number') || '';
 
     log.info(`🅿️  Detected inbound call (Parked)`, { uuid, callerIdNumber, callerIdName, calledNumber: dest });
     log.info(`⏱️ [ESL-TIMING] CHANNEL_PARK event received at ${tPark}`, { uuid });
@@ -72,6 +98,7 @@ export function startESLController(): void {
 
   conn.on('error', (err: any) => {
     log.error('❌ ESL Connection Error', { error: err?.message || err });
+    eslConn = null;
     setTimeout(() => startESLController(), 5000);
   });
 }
