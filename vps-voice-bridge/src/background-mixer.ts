@@ -129,7 +129,7 @@ export function destroySession(sessionId: string): void {
   log.debug(`Background session destroyed`, { sessionId: sessionId.slice(0, 8) });
 }
 
-export function mixWithBackground(audio: Buffer, sessionId: string, volume: number = 0.08): Buffer {
+export function mixWithBackground(audio: Buffer, sessionId: string, volume: number = 0.15): Buffer {
   if (!bgPcmBuffer || !bgLoaded) return audio;
 
   let cursor = sessionCursors.get(sessionId) || 0;
@@ -152,7 +152,7 @@ export function mixWithBackground(audio: Buffer, sessionId: string, volume: numb
   return mixed;
 }
 
-export function generateBackgroundChunk(sessionId: string, bytes: number = 320, volume: number = 0.08): Buffer | null {
+export function generateBackgroundChunk(sessionId: string, bytes: number = 320, volume: number = 0.15): Buffer | null {
   if (!bgPcmBuffer || !bgLoaded) return null;
 
   let cursor = sessionCursors.get(sessionId) || 0;
