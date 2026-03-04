@@ -70,7 +70,8 @@ function upsample2x(input: Buffer): Buffer {
 
 function downsample3x(input: Buffer): Buffer {
   const inputSamples = input.length / 2;
-  const inp = new Int16Array(input.buffer, input.byteOffset, inputSamples);
+  const aligned = Buffer.from(input);
+  const inp = new Int16Array(aligned.buffer, aligned.byteOffset, inputSamples);
 
   const LP_ALPHA = 0.65;
   const filtered = new Int16Array(inputSamples);
