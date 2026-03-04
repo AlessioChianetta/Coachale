@@ -1,0 +1,13 @@
+
+6|voice-bridge  | 2026-03-04T07:05:26.419Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772607864328_lol0wcx89 targetPhone=+393890566422 aiMode=assistenza
+6|voice-bridge  | 2026-03-04T07:05:26.419Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling external number via gateway phone=+393890566422 gateway=telnyx-ip callerId=+390000000000
+6|voice-bridge  | 2026-03-04T07:05:26.419Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772607926419-26yapa dialString={origination_caller_id_number=+390000000000,effective_caller_id_number=+390000000000,originate_timeout=30,origination_uuid=outbound-1772607926419-26yapa}sofia/gateway/telnyx-ip/+393890566422 &park()
+6|voice-bridge  | 2026-03-04T07:05:26.419Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=+390000000000,effective_caller_id_number=+390000000000,originate_timeout=30,origination_uuid=outbound-1772607926419-26yapa}sofia/gateway/telnyx-ip/+393890566422 &park()
+6|voice-bridge  | 2026-03-04T07:05:26.965Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=-ERR UNALLOCATED_NUMBER
+6|voice-bridge  | 2026-03-04T07:05:26.965Z [ERROR] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772607864328_lol0wcx89 error=FreeSWITCH error: -ERR UNALLOCATED_NUMBER
+6|voice-bridge  | 2026-03-04T07:05:27.544Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772607864328_lol0wcx89 targetPhone=+393890566422 aiMode=assistenza
+6|voice-bridge  | 2026-03-04T07:05:27.544Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling external number via gateway phone=+393890566422 gateway=telnyx-ip callerId=+390902041022
+6|voice-bridge  | 2026-03-04T07:05:27.544Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772607927544-iqghe4 dialString={origination_caller_id_number=+390902041022,effective_caller_id_number=+390902041022,originate_timeout=30,origination_uuid=outbound-1772607927544-iqghe4}sofia/gateway/telnyx-ip/+393890566422 &park()
+6|voice-bridge  | 2026-03-04T07:05:27.544Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=+390902041022,effective_caller_id_number=+390902041022,originate_timeout=30,origination_uuid=outbound-1772607927544-iqghe4}sofia/gateway/telnyx-ip/+393890566422 &park()
+6|voice-bridge  | 2026-03-04T07:05:28.052Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=-ERR UNALLOCATED_NUMBER
+6|voice-bridge  | 2026-03-04T07:05:28.052Z [ERROR] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772607864328_lol0wcx89 error=FreeSWITCH error: -ERR UNALLOCATED_NUMBER
