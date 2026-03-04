@@ -561,6 +561,31 @@ export default function ConsultantEmailHub() {
     },
   });
 
+  const [sendNowDialog, setSendNowDialog] = useState<{ lead: any; task: any } | null>(null);
+  const [leadDetailPanel, setLeadDetailPanel] = useState<any | null>(null);
+
+  const sendNowMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const response = await fetch(`/api/email-hub/outreach-pipeline/send-now/${taskId}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Errore durante l'invio");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-hub/outreach-pipeline"] });
+      setSendNowDialog(null);
+      toast({ title: "Email inviata", description: "L'email è stata inviata con successo" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore invio", description: error.message, variant: "destructive" });
+    },
+  });
+
   const filteredEmails = useMemo(() => {
     let result = emails;
     if (searchQuery.trim()) {
@@ -3433,7 +3458,7 @@ export default function ConsultantEmailHub() {
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {outreachLeads.map((lead: any) => (
-                              <tr key={lead.email} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                              <tr key={lead.scheduledFirstContact?.taskId || lead.email} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer" onClick={() => setLeadDetailPanel(lead)}>
                                 <td className="py-3 px-4">
                                   <div className="flex flex-col">
                                     <span className="font-medium text-slate-900 dark:text-white">
@@ -3606,8 +3631,25 @@ export default function ConsultantEmailHub() {
                                   )}
                                 </td>
 
-                                <td className="py-3 px-4 text-right">
+                                <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex items-center justify-end gap-1">
+                                    {lead.globalStatus === 'pending' && lead.scheduledFirstContact && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-7 w-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                              onClick={() => setSendNowDialog({ lead, task: lead.scheduledFirstContact })}
+                                            >
+                                              <Send className="h-4 w-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>Invia subito</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
                                     {lead.followUps.some((fu: any) => ['scheduled', 'waiting_approval', 'approved'].includes(fu.status)) && (
                                       <TooltipProvider>
                                         <Tooltip>
@@ -3735,6 +3777,204 @@ export default function ConsultantEmailHub() {
           </>
         </div>
       </div>
+
+      {sendNowDialog && (
+        <Dialog open={!!sendNowDialog} onOpenChange={(open) => { if (!open) setSendNowDialog(null); }}>
+          <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5 text-indigo-500" />
+                Invia subito — {sendNowDialog.lead.businessName || sendNowDialog.lead.name}
+              </DialogTitle>
+              <DialogDescription>
+                Questa email verrà inviata immediatamente a <strong>{sendNowDialog.lead.email}</strong> tramite pool rotation.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto space-y-4 py-2">
+              {sendNowDialog.task.subject && (
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border">
+                  <p className="text-xs text-muted-foreground mb-1">Oggetto</p>
+                  <p className="font-medium text-slate-900 dark:text-white">{sendNowDialog.task.subject}</p>
+                </div>
+              )}
+              {sendNowDialog.task.body && (
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border">
+                  <p className="text-xs text-muted-foreground mb-2">Corpo dell'email</p>
+                  <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed max-h-60 overflow-auto">
+                    {sendNowDialog.task.body}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setSendNowDialog(null)}>Annulla</Button>
+              <Button
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                onClick={() => sendNowMutation.mutate(sendNowDialog.task.taskId)}
+                disabled={sendNowMutation.isPending}
+              >
+                {sendNowMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Invio in corso...</>
+                ) : (
+                  <><Send className="h-4 w-4 mr-2" />Invia ora</>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {leadDetailPanel && (
+        <Sheet open={!!leadDetailPanel} onOpenChange={(open) => { if (!open) setLeadDetailPanel(null); }}>
+          <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+            <SheetHeader className="mb-4">
+              <SheetTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-emerald-500" />
+                {leadDetailPanel.businessName || leadDetailPanel.name}
+              </SheetTitle>
+              <SheetDescription>
+                {leadDetailPanel.email}
+                {leadDetailPanel.category && <span className="ml-2 text-xs">· {leadDetailPanel.category}</span>}
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="space-y-6">
+              {leadDetailPanel.aiScore && (
+                <div className="flex items-center gap-3">
+                  <span className={`inline-flex items-center justify-center w-12 h-8 rounded-full text-sm font-bold ${
+                    leadDetailPanel.aiScore >= 80 ? 'bg-emerald-100 text-emerald-700' :
+                    leadDetailPanel.aiScore >= 60 ? 'bg-amber-100 text-amber-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>{leadDetailPanel.aiScore}</span>
+                  <span className="text-sm text-muted-foreground">AI Compatibility Score</span>
+                </div>
+              )}
+
+              {leadDetailPanel.scheduledFirstContact && (
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-indigo-500" />
+                    Email Schedulata
+                  </h3>
+                  <div className="border rounded-lg p-4 bg-indigo-50/50 dark:bg-indigo-900/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+                        {leadDetailPanel.scheduledFirstContact.status === 'waiting_approval' ? 'In approvazione' : 'Schedulata'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(leadDetailPanel.scheduledFirstContact.scheduledAt), "dd/MM/yyyy HH:mm")}
+                      </span>
+                    </div>
+                    {leadDetailPanel.scheduledFirstContact.subject && (
+                      <p className="text-sm font-medium">{leadDetailPanel.scheduledFirstContact.subject}</p>
+                    )}
+                    {leadDetailPanel.scheduledFirstContact.body && (
+                      <div className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed max-h-48 overflow-auto bg-white dark:bg-slate-800 rounded p-3">
+                        {leadDetailPanel.scheduledFirstContact.body}
+                      </div>
+                    )}
+                    <Button
+                      size="sm"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white w-full"
+                      onClick={() => {
+                        setSendNowDialog({ lead: leadDetailPanel, task: leadDetailPanel.scheduledFirstContact });
+                        setLeadDetailPanel(null);
+                      }}
+                    >
+                      <Send className="h-3.5 w-3.5 mr-1.5" />
+                      Invia subito
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {leadDetailPanel.emails && leadDetailPanel.emails.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+                    <Send className="h-4 w-4 text-blue-500" />
+                    Email inviate ({leadDetailPanel.emails.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {leadDetailPanel.emails.map((email: any, idx: number) => (
+                      <div key={email.id || idx} className="border rounded-lg p-3 bg-white dark:bg-slate-800">
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs">
+                            {idx === 0 ? 'Primo contatto' : `Follow-up ${idx}`}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {email.sentAt ? format(new Date(email.sentAt), "dd/MM/yy HH:mm") : '—'}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium truncate">{email.subject}</p>
+                        {email.snippet && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{email.snippet}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {leadDetailPanel.replies && leadDetailPanel.replies.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+                    <Reply className="h-4 w-4 text-emerald-500" />
+                    Risposte ricevute ({leadDetailPanel.replies.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {leadDetailPanel.replies.map((reply: any, idx: number) => (
+                      <div key={idx} className="border rounded-lg p-3 bg-emerald-50/50 dark:bg-emerald-900/10">
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-xs">Risposta</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {reply.receivedAt ? format(new Date(reply.receivedAt), "dd/MM/yy HH:mm") : '—'}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium truncate">{reply.subject}</p>
+                        {reply.snippet && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{reply.snippet}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {leadDetailPanel.followUps && leadDetailPanel.followUps.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+                    <TrendingUp className="h-4 w-4 text-violet-500" />
+                    Follow-up programmati ({leadDetailPanel.followUps.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {leadDetailPanel.followUps.map((fu: any) => (
+                      <div key={fu.id} className="border rounded-lg p-3 bg-white dark:bg-slate-800">
+                        <div className="flex items-center justify-between">
+                          <Badge className={fu.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : fu.status === 'cancelled' ? 'bg-slate-100 text-slate-600' : 'bg-violet-100 text-violet-700'}>
+                            {fu.status === 'completed' ? 'Inviato' : fu.status === 'cancelled' ? 'Annullato' : 'In coda'}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {fu.scheduledAt ? format(new Date(fu.scheduledAt), "dd/MM/yy HH:mm") : '—'}
+                          </span>
+                        </div>
+                        {fu.templateName && (
+                          <p className="text-xs text-violet-500 mt-1">{fu.templateName}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!leadDetailPanel.scheduledFirstContact && !leadDetailPanel.emails?.length && !leadDetailPanel.replies?.length && !leadDetailPanel.followUps?.length && (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  Nessuna attività registrata per questo lead.
+                </div>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
 
       {renderAccountDialog()}
       {renderEmailSheet()}

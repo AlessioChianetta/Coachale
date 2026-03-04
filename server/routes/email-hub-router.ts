@@ -4428,8 +4428,9 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
       const leadEmail = ctx.lead_email || '';
       if (!leadEmail) continue;
       const instructionText = pt.ai_instruction || '';
-      const subjectMatch = instructionText.match(/^Oggetto:\s*(.+)$/m);
+      const subjectMatch = instructionText.match(/^Oggetto:\s*(.+?)(?:\n|$)/);
       const subject = subjectMatch ? subjectMatch[1].trim() : null;
+      const body = subjectMatch ? instructionText.replace(/^Oggetto:\s*.+?\n\n?/, '').trim() : instructionText;
       // Use unique key for pending tasks to avoid collisions when multiple leads share same email (e.g. test emails)
       const mapKey = leadMap.has(leadEmail) ? `${leadEmail}::${pt.id}` : leadEmail;
       if (!leadMap.has(mapKey)) {
@@ -4446,6 +4447,7 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
             taskId: pt.id,
             scheduledAt: pt.scheduled_at,
             subject,
+            body,
             status: pt.status,
           },
         });
@@ -4678,6 +4680,127 @@ router.post("/outreach-pipeline/cancel-followup/:taskId", async (req: AuthReques
     res.json({ success: true, message: "Follow-up annullato" });
   } catch (error: any) {
     console.error("[EMAIL-HUB] Error cancelling follow-up:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/outreach-pipeline/send-now/:taskId", async (req: AuthRequest, res) => {
+  const LOG = '🚀 [SEND-NOW]';
+  try {
+    const consultantId = req.user!.id;
+    const taskId = req.params.taskId;
+
+    const taskResult = await db.execute(sql`
+      SELECT id, consultant_id, contact_name, ai_instruction, additional_context, status
+      FROM ai_scheduled_tasks
+      WHERE id = ${taskId} AND consultant_id = ${consultantId}
+        AND preferred_channel = 'email'
+        AND status IN ('scheduled', 'waiting_approval', 'approved')
+      LIMIT 1
+    `);
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Task non trovato o già inviato" });
+    }
+    const task = taskResult.rows[0] as any;
+
+    let ctx: any = {};
+    if (typeof task.additional_context === 'string') {
+      try { ctx = JSON.parse(task.additional_context); } catch {}
+    } else if (task.additional_context) { ctx = task.additional_context; }
+
+    const leadEmail = ctx.lead_email || '';
+    if (!leadEmail) return res.status(400).json({ success: false, error: 'Email destinatario mancante' });
+
+    const poolId = ctx.pool_id || null;
+    let emailAccountId = ctx.email_account_id || null;
+    const resolvedName = task.contact_name || ctx.business_name || 'Cliente';
+
+    let smtpConfig: any = null;
+
+    if (poolId) {
+      const today = new Date().toISOString().split('T')[0];
+      await db.execute(sql`
+        UPDATE email_accounts SET daily_send_count = 0, last_send_reset_date = ${today}
+        WHERE outreach_pool_id = ${poolId} AND is_outreach_sender = true
+          AND (last_send_reset_date IS NULL OR last_send_reset_date < ${today})
+      `);
+      const poolResult = await db.execute(sql`
+        SELECT ea.id, ea.smtp_host, ea.smtp_port, ea.smtp_user, ea.smtp_password,
+               ea.email_address, ea.display_name, ea.daily_send_count, ea.daily_send_limit
+        FROM email_accounts ea
+        WHERE ea.outreach_pool_id = ${poolId} AND ea.is_outreach_sender = true
+          AND ea.daily_send_count < ea.daily_send_limit AND ea.smtp_host IS NOT NULL
+          AND ea.consultant_id = ${consultantId}
+        ORDER BY ea.daily_send_count ASC LIMIT 1
+      `);
+      if (poolResult.rows.length === 0) {
+        return res.status(400).json({ success: false, error: 'Limite giornaliero raggiunto per tutti gli account del pool' });
+      }
+      smtpConfig = poolResult.rows[0] as any;
+      emailAccountId = smtpConfig.id;
+    } else {
+      if (!emailAccountId) return res.status(400).json({ success: false, error: 'Nessun account email configurato' });
+      const smtpResult = await db.execute(sql`
+        SELECT id, smtp_host, smtp_port, smtp_user, smtp_password, email_address, display_name
+        FROM email_accounts WHERE id = ${emailAccountId} AND consultant_id = ${consultantId} AND smtp_host IS NOT NULL LIMIT 1
+      `);
+      smtpConfig = smtpResult.rows[0] as any;
+      if (!smtpConfig) return res.status(400).json({ success: false, error: 'Configurazione SMTP non trovata' });
+    }
+
+    const instructionText = task.ai_instruction || '';
+    const subjectMatch = instructionText.match(/^Oggetto:\s*(.+?)(?:\n|$)/);
+    const emailSubject = subjectMatch ? subjectMatch[1].trim() : `Proposta per ${resolvedName}`;
+    const emailBody = subjectMatch ? instructionText.replace(/^Oggetto:\s*.+?\n\n?/, '').trim() : instructionText;
+
+    const nodemailer = await import('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: smtpConfig.smtp_host,
+      port: smtpConfig.smtp_port || 587,
+      secure: (smtpConfig.smtp_port || 587) === 465,
+      auth: { user: smtpConfig.smtp_user, pass: smtpConfig.smtp_password },
+      tls: { rejectUnauthorized: false },
+    });
+
+    const htmlBody = emailBody.replace(/\n/g, '<br>');
+    const fromField = smtpConfig.display_name ? `"${smtpConfig.display_name}" <${smtpConfig.email_address}>` : smtpConfig.email_address;
+    const sendResult = await transporter.sendMail({ from: fromField, to: leadEmail, subject: emailSubject, html: htmlBody });
+    console.log(`${LOG} ✅ Email sent immediately to ${leadEmail} (subject="${emailSubject}")`);
+
+    if (poolId) {
+      await db.execute(sql`UPDATE email_accounts SET daily_send_count = daily_send_count + 1, updated_at = NOW() WHERE id = ${emailAccountId}`);
+    }
+
+    const hubEmailId = `hub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    await db.execute(sql`
+      INSERT INTO hub_emails (
+        id, account_id, consultant_id, message_id, subject, from_name, from_email,
+        to_recipients, body_html, body_text, snippet, direction, folder,
+        is_read, processing_status, email_type, is_outreach_email, outreach_lead_id, outreach_pool_id,
+        sent_at, created_at, updated_at
+      ) VALUES (
+        ${hubEmailId}, ${emailAccountId}, ${consultantId},
+        ${sendResult.messageId || hubEmailId},
+        ${emailSubject}, ${smtpConfig.display_name || ''}, ${smtpConfig.email_address},
+        ${JSON.stringify([{ email: leadEmail, name: resolvedName }])}::jsonb,
+        ${htmlBody}, ${emailBody}, ${emailBody.substring(0, 200)},
+        'outbound', 'sent', true, 'sent',
+        ${poolId ? 'hunter_outreach' : null},
+        ${!!poolId}, ${ctx.lead_id || null}, ${poolId},
+        NOW(), NOW(), NOW()
+      ) ON CONFLICT (message_id) DO NOTHING
+    `);
+
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'completed', completed_at = NOW(), updated_at = NOW(),
+          result_summary = ${'Email inviata (manuale) a ' + leadEmail}
+      WHERE id = ${taskId}
+    `);
+
+    res.json({ success: true, message: `Email inviata a ${leadEmail}` });
+  } catch (error: any) {
+    console.error(`${LOG} Error:`, error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
