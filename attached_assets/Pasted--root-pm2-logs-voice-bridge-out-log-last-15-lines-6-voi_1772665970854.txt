@@ -1,0 +1,29 @@
+/root/.pm2/logs/voice-bridge-out.log last 15 lines:
+6|voice-br | 2026-03-04T23:11:24.699Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772665884699-s7y2a6}user/9999 &park()
+6|voice-br | 2026-03-04T23:11:24.762Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=-ERR SUBSCRIBER_ABSENT
+6|voice-br | 
+6|voice-br | 2026-03-04T23:11:42.032Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772665900825_fre6jsqgq targetPhone=1004 aiMode=assistenza
+6|voice-br | 2026-03-04T23:11:42.033Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling LOCAL extension 1004 (no gateway, no tech prefix)
+6|voice-br | 2026-03-04T23:11:42.033Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772665902032-y9z2h1 dialString={origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772665902032-y9z2h1}user/1004 &park()
+6|voice-br | 2026-03-04T23:11:42.033Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772665902032-y9z2h1}user/1004 &park()
+6|voice-br | 2026-03-04T23:11:44.187Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=+OK outbound-1772665902032-y9z2h1
+6|voice-br | 
+6|voice-br | 2026-03-04T23:11:44.187Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Call originated callId=sc_1772665900825_fre6jsqgq uuid=outbound-1772665902032-y9z2h1 — callId mapped for CHANNEL_PARK
+6|voice-br | 2026-03-04T23:11:44.188Z [INFO ] [BRIDGE:ESL] 🅿️  Call parked type=OUTBOUND uuid=outbound-1772665902032-y9z2h1 callerIdNumber=1004 calledNumber=1004
+6|voice-br | 2026-03-04T23:11:44.188Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] CHANNEL_PARK at 1772665904188 uuid=outbound-1772665902032-y9z2h1
+6|voice-br | 2026-03-04T23:11:44.188Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call parked — linking callId=sc_1772665900825_fre6jsqgq to uuid=outbound-1772665902032-y9z2h1, waiting for CHANNEL_ANSWER before starting stream
+6|voice-br | 2026-03-04T23:11:44.188Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=sc_1772665900825_fre6jsqgq, uuid=outbound-1772665902032-y9z2h1
+6|voice-br | 2026-03-04T23:11:44.188Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
+
+6|voice-bridge  | 2026-03-04T23:12:14.188Z [WARN ] [BRIDGE:SERVER] ⏰ Pending call expired: callId=sc_1772665900825_fre6jsqgq, uuid=outbound-1772665902032-y9z2h1
+6|voice-bridge  | 2026-03-04T23:12:22.183Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772665940964_sfq1ssi2m targetPhone=1004 aiMode=assistenza
+6|voice-bridge  | 2026-03-04T23:12:22.184Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling LOCAL extension 1004 (no gateway, no tech prefix)
+6|voice-bridge  | 2026-03-04T23:12:22.184Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772665942184-h4a7i0 dialString={origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772665942184-h4a7i0}user/1004 &park()
+6|voice-bridge  | 2026-03-04T23:12:22.184Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772665942184-h4a7i0}user/1004 &park()
+6|voice-bridge  | 2026-03-04T23:12:24.900Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=+OK outbound-1772665942184-h4a7i0
+6|voice-bridge  | 2026-03-04T23:12:24.901Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Call originated callId=sc_1772665940964_sfq1ssi2m uuid=outbound-1772665942184-h4a7i0 — callId mapped for CHANNEL_PARK
+6|voice-bridge  | 2026-03-04T23:12:24.902Z [INFO ] [BRIDGE:ESL] 🅿️  Call parked type=OUTBOUND uuid=outbound-1772665942184-h4a7i0 callerIdNumber=1004 calledNumber=1004
+6|voice-bridge  | 2026-03-04T23:12:24.902Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] CHANNEL_PARK at 1772665944902 uuid=outbound-1772665942184-h4a7i0
+6|voice-bridge  | 2026-03-04T23:12:24.902Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call parked — linking callId=sc_1772665940964_sfq1ssi2m to uuid=outbound-1772665942184-h4a7i0, waiting for CHANNEL_ANSWER before starting stream
+6|voice-bridge  | 2026-03-04T23:12:24.902Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=sc_1772665940964_sfq1ssi2m, uuid=outbound-1772665942184-h4a7i0
+6|voice-bridge  | 2026-03-04T23:12:24.902Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
