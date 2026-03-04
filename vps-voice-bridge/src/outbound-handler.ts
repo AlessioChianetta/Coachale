@@ -47,19 +47,23 @@ export async function handleOutboundCall(req: OutboundCallRequest): Promise<Outb
     return { success: false, error: 'Missing callId' };
   }
 
-  // Caller ID: usa quello del consulente (per-tenant), fallback al default di config
   const callerId = sipCallerId || config.sip.callerId;
-  // Gateway: usa quello specificato, fallback al default di config (telnyx-ip)
   const gateway = sipGateway || config.sip.gateway;
 
-  log.info(`[BRIDGE:OUTBOUND] Calling external number via gateway phone=${targetPhone} gateway=${gateway} callerId=${callerId}`);
-
-  // Telnyx richiede tech prefix (0312) per identificare la connessione su sip.telnyx.com
-  const techPrefix = config.sip.techPrefix || '';
-  const dialTarget = techPrefix ? `${techPrefix}${targetPhone}` : targetPhone;
+  const isLocalExtension = /^\d{3,4}$/.test(targetPhone) && !targetPhone.startsWith('+');
 
   const uuid = `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const dialString = `{origination_caller_id_number=${callerId},effective_caller_id_number=${callerId},originate_timeout=30,origination_uuid=${uuid}}sofia/gateway/${gateway}/${dialTarget} &park()`;
+  let dialString: string;
+
+  if (isLocalExtension) {
+    log.info(`[BRIDGE:OUTBOUND] Calling LOCAL extension ${targetPhone} (no gateway, no tech prefix)`);
+    dialString = `{origination_caller_id_number=${callerId},effective_caller_id_number=${callerId},originate_timeout=30,origination_uuid=${uuid}}user/${targetPhone} &park()`;
+  } else {
+    log.info(`[BRIDGE:OUTBOUND] Calling PSTN number via gateway phone=${targetPhone} gateway=${gateway} callerId=${callerId}`);
+    const techPrefix = config.sip.techPrefix || '';
+    const dialTarget = techPrefix ? `${techPrefix}${targetPhone}` : targetPhone;
+    dialString = `{origination_caller_id_number=${callerId},effective_caller_id_number=${callerId},originate_timeout=30,origination_uuid=${uuid}}sofia/gateway/${gateway}/${dialTarget} &park()`;
+  }
 
   log.info(`[BRIDGE:OUTBOUND] Executing originate command uuid=${uuid} dialString=${dialString}`);
 
