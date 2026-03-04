@@ -188,10 +188,10 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
       whereConditions.push(sql`vc.client_id = ${client_id}`);
     }
     if (direction && (direction === 'inbound' || direction === 'outbound')) {
-      whereConditions.push(sql`vc.direction = ${direction}`);
+      whereConditions.push(sql`vc.call_direction = ${direction}`);
     }
     if (called_number) {
-      whereConditions.push(sql`vc.called_number = ${called_number}`);
+      whereConditions.push(sql`(vc.called_number = ${called_number} OR vc.caller_id = ${called_number})`);
     }
 
     const whereClause = whereConditions.length > 0 

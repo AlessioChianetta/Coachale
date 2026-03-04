@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -2227,6 +2227,29 @@ export default function ConsultantVoiceCallsPage() {
     return matchesSearch && matchesClientType;
   });
 
+  const groupedCalls = useMemo(() => {
+    const groups: Record<string, { latest: any; count: number; allCalls: any[]; totalDuration: number; statuses: Record<string, number> }> = {};
+    for (const call of filteredCalls) {
+      const contactPhone = call.call_direction === 'outbound' ? (call.called_number || '') : (call.caller_id || '');
+      const dayKey = call.started_at ? new Date(call.started_at).toISOString().slice(0, 10) : 'unknown';
+      const key = `${contactPhone}__${dayKey}`;
+      if (!groups[key]) {
+        groups[key] = { latest: call, count: 0, allCalls: [], totalDuration: 0, statuses: {} };
+      }
+      groups[key].count++;
+      groups[key].allCalls.push(call);
+      groups[key].totalDuration += (call.duration_seconds || 0);
+      const st = call.status || 'unknown';
+      groups[key].statuses[st] = (groups[key].statuses[st] || 0) + 1;
+      if (new Date(call.started_at) > new Date(groups[key].latest.started_at)) {
+        groups[key].latest = call;
+      }
+    }
+    return Object.values(groups).sort((a, b) => new Date(b.latest.started_at).getTime() - new Date(a.latest.started_at).getTime());
+  }, [filteredCalls]);
+
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} role="consultant" />
@@ -2481,176 +2504,255 @@ export default function ConsultantVoiceCallsPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="whitespace-nowrap">Data</TableHead>
-                          <TableHead className="whitespace-nowrap">Chiamante</TableHead>
+                          <TableHead className="whitespace-nowrap">Contatto</TableHead>
                           {myVoiceNumbers.length > 1 && <TableHead className="whitespace-nowrap">Numero</TableHead>}
                           <TableHead className="whitespace-nowrap">Cliente</TableHead>
                           <TableHead className="whitespace-nowrap">Stato</TableHead>
                           <TableHead className="whitespace-nowrap">Origine</TableHead>
                           <TableHead className="whitespace-nowrap">Tipo</TableHead>
-                          <TableHead className="whitespace-nowrap">Istruzione</TableHead>
                           <TableHead className="whitespace-nowrap">Durata</TableHead>
                           <TableHead className="whitespace-nowrap">Esito</TableHead>
                           <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredCalls.map((call) => {
+                        {groupedCalls.map((group) => {
+                          const call = group.latest;
                           const statusConfig = STATUS_CONFIG[call.status] || STATUS_CONFIG.ended;
                           const StatusIcon = statusConfig.icon;
-                          return (
-                            <TableRow key={call.id}>
-                              <TableCell>
-                                <div className="text-sm">
-                                  {format(toItalianTime(call.started_at), "dd/MM HH:mm", { locale: it })}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(call.started_at), {
-                                    addSuffix: true,
-                                    locale: it,
-                                  })}
-                                </div>
-                              </TableCell>
-                              <TableCell className="font-mono">{call.caller_id}</TableCell>
-                              {myVoiceNumbers.length > 1 && (
-                                <TableCell className="text-xs text-muted-foreground">
-                                  {call.called_number || '-'}
-                                </TableCell>
-                              )}
-                              <TableCell>
-                                {call.client_name ? (
-                                  <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4 text-muted-foreground" />
-                                    {call.client_name}
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground">-</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={statusConfig.color}>
-                                  <StatusIcon className="h-3 w-3 mr-1" />
-                                  {statusConfig.label}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {call.source_task_id || call.ai_task_type ? (
-                                  <div className="flex flex-col gap-0.5">
-                                    <div className="flex items-center gap-1 text-sm">
-                                      <Bot className="h-3 w-3 text-purple-500" />
-                                      <span className="font-medium">AI Task</span>
+                          const contactPhone = call.call_direction === 'outbound' ? (call.called_number || call.caller_id) : (call.caller_id || '');
+                          const groupKey = `${contactPhone}__${call.started_at ? new Date(call.started_at).toISOString().slice(0, 10) : ''}`;
+                          const isExpanded = expandedGroups.has(groupKey);
+                          const isGrouped = group.count > 1;
+                          
+                          const renderCallRow = (c: any, isSubRow = false) => {
+                            const sc = STATUS_CONFIG[c.status] || STATUS_CONFIG.ended;
+                            const SIcon = sc.icon;
+                            return (
+                              <TableRow key={c.id} className={isSubRow ? "bg-muted/30" : ""}>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    {isSubRow && <span className="text-muted-foreground text-xs ml-2">↳</span>}
+                                    <div>
+                                      <div className="text-sm">
+                                        {format(toItalianTime(c.started_at), "dd/MM HH:mm", { locale: it })}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {formatDistanceToNow(new Date(c.started_at), { addSuffix: true, locale: it })}
+                                      </div>
                                     </div>
-                                    {call.ai_task_recurrence && call.ai_task_recurrence !== 'once' && (
-                                      <span className="text-xs text-muted-foreground">
-                                        {call.ai_task_recurrence === 'daily' ? '🔁 Giornaliero' : call.ai_task_recurrence === 'weekly' ? '🔁 Settimanale' : `🔁 ${call.ai_task_recurrence}`}
-                                      </span>
-                                    )}
-                                    {call.svc_attempts && call.svc_attempts > 1 && (
-                                      <span className="text-xs text-orange-600">
-                                        Tentativo {call.svc_attempts}/{call.svc_max_attempts || 5}
-                                      </span>
-                                    )}
                                   </div>
-                                ) : call.svc_direct_match || call.svc_phone_match ? (
-                                  <div className="flex flex-col gap-0.5">
+                                </TableCell>
+                                <TableCell className="font-mono text-sm">{c.call_direction === 'outbound' ? (c.called_number || c.caller_id) : c.caller_id}</TableCell>
+                                {myVoiceNumbers.length > 1 && (
+                                  <TableCell className="text-xs text-muted-foreground">
+                                    {c.call_direction === 'outbound' ? c.caller_id : c.called_number || '-'}
+                                  </TableCell>
+                                )}
+                                <TableCell>
+                                  {c.client_name ? (
+                                    <div className="flex items-center gap-2">
+                                      <User className="h-4 w-4 text-muted-foreground" />
+                                      <span className="text-sm">{c.client_name}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={sc.color}>
+                                    <SIcon className="h-3 w-3 mr-1" />
+                                    {sc.label}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {c.source_task_id || c.ai_task_type ? (
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-1 text-sm">
+                                        <Bot className="h-3 w-3 text-purple-500" />
+                                        <span className="font-medium">AI Task</span>
+                                      </div>
+                                      {c.svc_attempts && c.svc_attempts > 1 && (
+                                        <span className="text-xs text-orange-600">
+                                          Tentativo {c.svc_attempts}/{c.svc_max_attempts || 5}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : c.svc_direct_match || c.svc_phone_match ? (
                                     <div className="flex items-center gap-1 text-sm">
                                       <Calendar className="h-3 w-3 text-blue-500" />
                                       <span className="font-medium">Programmata</span>
                                     </div>
-                                    {call.svc_attempts && call.svc_attempts > 1 && (
-                                      <span className="text-xs text-orange-600">
-                                        Tentativo {call.svc_attempts}/{call.svc_max_attempts || 5}
-                                      </span>
+                                  ) : (
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                      <PhoneIncoming className="h-3 w-3" />
+                                      <span>In entrata</span>
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {c.instruction_type === 'task' ? (
+                                    <div className="flex items-center gap-1 text-sm">
+                                      <ClipboardList className="h-3 w-3 text-blue-500" />
+                                      <span>Task</span>
+                                    </div>
+                                  ) : c.instruction_type === 'reminder' ? (
+                                    <div className="flex items-center gap-1 text-sm">
+                                      <Bell className="h-3 w-3 text-orange-500" />
+                                      <span>Reminder</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>{formatDuration(c.duration_seconds)}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {c.outcome ? (
+                                      <Badge variant="outline">{c.outcome}</Badge>
+                                    ) : (
+                                      <span className="text-muted-foreground">-</span>
+                                    )}
+                                    {c.metadata?.bookingCreated && (
+                                      <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white text-[10px] px-1.5 py-0 gap-1">
+                                        <CalendarCheck className="h-3 w-3" />
+                                        Appuntamento
+                                      </Badge>
                                     )}
                                   </div>
-                                ) : (
-                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                    <PhoneIncoming className="h-3 w-3" />
-                                    <span>In entrata</span>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Link href={`/consultant/voice-calls/${c.id}`}>
+                                      <Button variant="ghost" size="sm">
+                                        Dettagli
+                                      </Button>
+                                    </Link>
+                                    <Link href={`/consultant/voice-calls/contact/${encodeURIComponent((c.target_phone || c.called_number || c.caller_id || '').replace(/\s+/g, ''))}`}>
+                                      <Button variant="ghost" size="sm" title="Profilo contatto">
+                                        <User className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </Link>
                                   </div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {call.instruction_type === 'task' ? (
-                                  <div className="flex items-center gap-1 text-sm">
-                                    <ClipboardList className="h-3 w-3 text-blue-500" />
-                                    <span>Task</span>
-                                  </div>
-                                ) : call.instruction_type === 'reminder' ? (
-                                  <div className="flex items-center gap-1 text-sm">
-                                    <Bell className="h-3 w-3 text-orange-500" />
-                                    <span>Reminder</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground text-sm">-</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="max-w-[200px]">
-                                {call.call_instruction ? (
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <button 
-                                        className="text-left w-full group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
-                                        aria-label={`Espandi istruzione: ${call.call_instruction.substring(0, 50)}...`}
-                                        title="Clicca per vedere l'istruzione completa"
-                                      >
-                                        <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                                          {call.call_instruction}
-                                        </p>
-                                        <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
-                                          Clicca per espandere
-                                        </span>
-                                      </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-80 max-h-60 overflow-auto">
-                                      <div className="space-y-2">
-                                        <h4 className="font-medium text-sm flex items-center gap-2">
-                                          {call.instruction_type === 'task' ? (
-                                            <><ClipboardList className="h-4 w-4 text-blue-500" /> Istruzione Task</>
-                                          ) : call.instruction_type === 'reminder' ? (
-                                            <><Bell className="h-4 w-4 text-orange-500" /> Istruzione Reminder</>
-                                          ) : (
-                                            <>Istruzione</>
-                                          )}
-                                        </h4>
-                                        <p className="text-sm whitespace-pre-wrap">{call.call_instruction}</p>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          };
+
+                          if (!isGrouped) {
+                            return renderCallRow(call);
+                          }
+
+                          const completedCount = group.statuses['completed'] || 0;
+                          const failedCount = group.statuses['failed'] || 0;
+                          
+                          return (
+                            <React.Fragment key={groupKey}>
+                              <TableRow 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => setExpandedGroups(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(groupKey)) next.delete(groupKey);
+                                  else next.add(groupKey);
+                                  return next;
+                                })}
+                              >
+                                <TableCell>
+                                  <div className="flex items-center gap-1.5">
+                                    <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                    <div>
+                                      <div className="text-sm">
+                                        {format(toItalianTime(call.started_at), "dd/MM HH:mm", { locale: it })}
                                       </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                ) : (
-                                  <span className="text-muted-foreground text-sm">-</span>
+                                      <div className="text-xs text-muted-foreground">
+                                        {formatDistanceToNow(new Date(call.started_at), { addSuffix: true, locale: it })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="font-mono text-sm">{contactPhone}</div>
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 mt-0.5">
+                                    {group.count} chiamate
+                                  </Badge>
+                                </TableCell>
+                                {myVoiceNumbers.length > 1 && (
+                                  <TableCell className="text-xs text-muted-foreground">
+                                    {call.call_direction === 'outbound' ? call.caller_id : call.called_number || '-'}
+                                  </TableCell>
                                 )}
-                              </TableCell>
-                              <TableCell>{formatDuration(call.duration_seconds)}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1.5 flex-wrap">
+                                <TableCell>
+                                  {call.client_name ? (
+                                    <div className="flex items-center gap-2">
+                                      <User className="h-4 w-4 text-muted-foreground" />
+                                      <span className="text-sm">{call.client_name}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-wrap gap-1">
+                                    {completedCount > 0 && (
+                                      <Badge className="bg-green-500/20 text-green-700 text-[10px] px-1.5 py-0">
+                                        {completedCount} completate
+                                      </Badge>
+                                    )}
+                                    {failedCount > 0 && (
+                                      <Badge className="bg-red-500/20 text-red-700 text-[10px] px-1.5 py-0">
+                                        {failedCount} fallite
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {call.source_task_id || call.ai_task_type ? (
+                                    <div className="flex items-center gap-1 text-sm">
+                                      <Bot className="h-3 w-3 text-purple-500" />
+                                      <span className="font-medium">AI Task</span>
+                                    </div>
+                                  ) : call.svc_direct_match || call.svc_phone_match ? (
+                                    <div className="flex items-center gap-1 text-sm">
+                                      <Calendar className="h-3 w-3 text-blue-500" />
+                                      <span>Programmata</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                      <PhoneIncoming className="h-3 w-3" />
+                                      <span>In entrata</span>
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                </TableCell>
+                                <TableCell>
+                                  {group.totalDuration > 0 ? (
+                                    <span className="text-sm">{formatDuration(group.totalDuration)} tot</span>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
                                   {call.outcome ? (
                                     <Badge variant="outline">{call.outcome}</Badge>
                                   ) : (
                                     <span className="text-muted-foreground">-</span>
                                   )}
-                                  {call.metadata?.bookingCreated && (
-                                    <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white text-[10px] px-1.5 py-0 gap-1">
-                                      <CalendarCheck className="h-3 w-3" />
-                                      Appuntamento
-                                    </Badge>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Link href={`/consultant/voice-calls/${call.id}`}>
-                                    <Button variant="ghost" size="sm">
-                                      Dettagli
-                                    </Button>
-                                  </Link>
-                                  <Link href={`/consultant/voice-calls/contact/${encodeURIComponent((call.target_phone || call.called_number || call.caller_id || '').replace(/\s+/g, ''))}`}>
+                                </TableCell>
+                                <TableCell>
+                                  <Link href={`/consultant/voice-calls/contact/${encodeURIComponent(contactPhone.replace(/\s+/g, ''))}`}>
                                     <Button variant="ghost" size="sm" title="Profilo contatto">
                                       <User className="h-3.5 w-3.5" />
                                     </Button>
                                   </Link>
-                                </div>
-                              </TableCell>
-                            </TableRow>
+                                </TableCell>
+                              </TableRow>
+                              {isExpanded && group.allCalls
+                                .sort((a: any, b: any) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
+                                .map((c: any) => renderCallRow(c, true))
+                              }
+                            </React.Fragment>
                           );
                         })}
                       </TableBody>
