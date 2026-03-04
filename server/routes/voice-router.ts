@@ -1233,12 +1233,15 @@ router.put("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "sup
 
     let ownerCheck = consultantId ? sql`AND consultant_id = ${consultantId}` : sql``;
 
+    const setClauses: any[] = [sql`updated_at = NOW()`];
+    if (display_name !== undefined) setClauses.push(sql`display_name = ${display_name}`);
+    if (is_active !== undefined) setClauses.push(sql`is_active = ${is_active}`);
+    if (voice_id !== undefined) setClauses.push(sql`voice_id = ${voice_id}`);
+
+    const setFragment = sql.join(setClauses, sql`, `);
+
     const result = await db.execute(sql`
-      UPDATE voice_numbers SET
-        display_name = COALESCE(${display_name}, display_name),
-        is_active = COALESCE(${is_active}, is_active),
-        voice_id = COALESCE(${voice_id}, voice_id),
-        updated_at = NOW()
+      UPDATE voice_numbers SET ${setFragment}
       WHERE id = ${id} ${ownerCheck}
       RETURNING *
     `);
