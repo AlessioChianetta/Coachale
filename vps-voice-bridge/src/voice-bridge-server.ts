@@ -365,7 +365,7 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
       lastTickNs += FRAME_NS * BigInt(framesToSend);
 
       const queue = audioOutputQueues.get(session.id);
-      const maxCatchUp = Math.min(framesToSend, 3);
+      const maxCatchUp = Math.min(framesToSend, 5);
 
       for (let f = 0; f < maxCatchUp; f++) {
         if (queue && queue.length > 0) {
@@ -513,7 +513,7 @@ function queueAudioForFreeSWITCH(sessionId: string, audio: Buffer): void {
   }
 
   if (wasEmpty && queue.length > 0) {
-    const PREFILL = 4;
+    const PREFILL = 2;
     const prefillCount = Math.min(queue.length, PREFILL);
     for (let i = 0; i < prefillCount; i++) {
       const chunk = queue.shift()!;

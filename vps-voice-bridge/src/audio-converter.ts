@@ -70,14 +70,31 @@ function upsample2x(input: Buffer): Buffer {
 
 function downsample3x(input: Buffer): Buffer {
   const inputSamples = input.length / 2;
-  const outputSamples = Math.floor(inputSamples / 3);
-  const output = Buffer.alloc(outputSamples * 2);
   const inp = new Int16Array(input.buffer, input.byteOffset, inputSamples);
+
+  const LP_ALPHA = 0.65;
+  const filtered = new Int16Array(inputSamples);
+  let prev = inp[0];
+  for (let i = 0; i < inputSamples; i++) {
+    prev = prev + LP_ALPHA * (inp[i] - prev);
+    filtered[i] = prev | 0;
+  }
+
+  const outputSamples = Math.ceil(inputSamples / 3);
+  const output = Buffer.alloc(outputSamples * 2);
   const out = new Int16Array(output.buffer, output.byteOffset, outputSamples);
 
-  for (let i = 0; i < outputSamples; i++) {
+  const fullTriples = Math.floor(inputSamples / 3);
+  for (let i = 0; i < fullTriples; i++) {
     const idx = i * 3;
-    out[i] = ((inp[idx] + inp[idx + 1] + inp[idx + 2]) / 3) | 0;
+    out[i] = ((filtered[idx] + filtered[idx + 1] + filtered[idx + 2]) / 3) | 0;
+  }
+
+  const remainder = inputSamples % 3;
+  if (remainder === 1) {
+    out[fullTriples] = filtered[inputSamples - 1];
+  } else if (remainder === 2) {
+    out[fullTriples] = ((filtered[inputSamples - 2] + filtered[inputSamples - 1]) / 2) | 0;
   }
 
   return output;
