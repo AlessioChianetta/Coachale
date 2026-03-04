@@ -610,10 +610,22 @@ export default function ConsultantLeadScraper() {
     },
   });
 
+  const { data: outreachPools = [] } = useQuery<{ id: string; poolName: string; accounts: any[]; totalSendToday: number; totalLimit: number }[]>({
+    queryKey: ["/api/email-hub/pools"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/email-hub/pools", { headers: getAuthHeaders() });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.pools || [];
+      } catch { return []; }
+    },
+  });
+
   const outreachDefaults = {
     enabled: false, require_approval: true, max_searches_per_day: 5, max_calls_per_day: 10, max_whatsapp_per_day: 15,
     max_emails_per_day: 20, score_threshold: 60, channel_priority: ["voice", "whatsapp", "email"],
-    cooldown_hours: 48, whatsapp_config_id: "", voice_template_id: "", email_account_id: "",
+    cooldown_hours: 48, whatsapp_config_id: "", voice_template_id: "", email_account_id: "", pool_id: "",
     call_instruction_template: "", whatsapp_template_id: "", whatsapp_template_ids: [] as string[],
     cooldown_new_hours: 24, cooldown_contacted_days: 5, cooldown_negotiation_days: 7,
     max_attempts_per_lead: 3, first_contact_channel: "auto", high_score_channel: "voice",
@@ -4235,20 +4247,62 @@ export default function ConsultantLeadScraper() {
                                 <MailIcon className="h-4 w-4 text-blue-600" />
                                 Email
                               </Label>
-                              <div className="space-y-2">
-                                <Label className="text-xs text-muted-foreground">Account di invio</Label>
-                                <Select value={outreachConfig.email_account_id || "none"} onValueChange={(v) => updateOutreachConfig("email_account_id", v === "none" ? "" : v)}>
-                                  <SelectTrigger className="w-full h-10 text-sm">
-                                    <SelectValue placeholder="Seleziona account email" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">Nessuno (disabilita email)</SelectItem>
-                                    {emailAccounts.map((a) => (
-                                      <SelectItem key={a.id} value={a.id}>{a.name} ({a.email})</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                {emailAccounts.length === 0 && <p className="text-xs text-amber-600 mt-1">Nessun account email configurato</p>}
+                              <div className="space-y-3">
+                                {outreachPools.length > 0 ? (
+                                  <>
+                                    <div>
+                                      <Label className="text-xs text-muted-foreground">Pool di rotazione</Label>
+                                      <Select value={outreachConfig.pool_id || "none"} onValueChange={(v) => {
+                                        updateOutreachConfig("pool_id", v === "none" ? "" : v);
+                                        updateOutreachConfig("email_account_id", "");
+                                      }}>
+                                        <SelectTrigger className="w-full h-10 text-sm mt-1">
+                                          <SelectValue placeholder="Seleziona pool outreach" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="none">Nessuno</SelectItem>
+                                          {outreachPools.map((p) => (
+                                            <SelectItem key={p.id} value={p.id}>
+                                              {p.poolName} ({p.accounts.length} account)
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      {outreachConfig.pool_id && (() => {
+                                        const pool = outreachPools.find(p => p.id === outreachConfig.pool_id);
+                                        if (!pool) return null;
+                                        const pct = pool.totalLimit > 0 ? Math.round((pool.totalSendToday / pool.totalLimit) * 100) : 0;
+                                        return (
+                                          <p className="text-xs text-muted-foreground mt-1">
+                                            {pool.accounts.filter((a: any) => a.smtpHost).length} account attivi · {pool.totalSendToday}/{pool.totalLimit} invii oggi ({pct}%)
+                                          </p>
+                                        );
+                                      })()}
+                                    </div>
+                                    <a href="/consultant/email-hub" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                                      Gestisci Pool →
+                                    </a>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Label className="text-xs text-muted-foreground">Account di invio (singolo)</Label>
+                                    <Select value={outreachConfig.email_account_id || "none"} onValueChange={(v) => updateOutreachConfig("email_account_id", v === "none" ? "" : v)}>
+                                      <SelectTrigger className="w-full h-10 text-sm">
+                                        <SelectValue placeholder="Seleziona account email" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="none">Nessuno (disabilita email)</SelectItem>
+                                        {emailAccounts.map((a) => (
+                                          <SelectItem key={a.id} value={a.id}>{a.name} ({a.email})</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <a href="/consultant/email-hub" className="text-xs text-blue-600 hover:underline">
+                                      Crea un Pool Outreach per la rotazione →
+                                    </a>
+                                    {emailAccounts.length === 0 && <p className="text-xs text-amber-600">Nessun account email configurato</p>}
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>

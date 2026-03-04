@@ -1973,6 +1973,31 @@ router.post("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
     
     const autoReplyMode = account.autoReplyMode || "review";
     const confidenceThreshold = account.confidenceThreshold || 0.8;
+
+    // Check if this is a reply to a Hunter outreach email — enrich Millie context with pool data
+    let outreachContext: string | null = null;
+    let resolvedCustomInstructions = account.customInstructions;
+    if (email.inReplyTo) {
+      const outreachOrigin = await db.execute(sql`
+        SELECT he.body_text, he.subject, he.sent_at, he.outreach_lead_id, he.outreach_pool_id,
+               eop.sales_context as pool_sales_context, eop.custom_instructions as pool_custom_instructions
+        FROM hub_emails he
+        LEFT JOIN email_outreach_pools eop ON eop.id = he.outreach_pool_id
+        WHERE he.message_id = ${email.inReplyTo}
+          AND he.is_outreach_email = true
+          AND he.consultant_id = ${consultantId}
+        LIMIT 1
+      `);
+      if (outreachOrigin.rows.length > 0) {
+        const origin = outreachOrigin.rows[0] as any;
+        const sentDate = origin.sent_at ? new Date(origin.sent_at).toLocaleDateString("it-IT") : "data sconosciuta";
+        outreachContext = `Questa è una risposta a un'email di outreach inviata il ${sentDate}.\nTesto originale:\n${origin.body_text || ""}\n\nIl lead ha risposto — mantieni il tono, la coerenza e il contesto dell'email originale.`;
+        if (origin.pool_custom_instructions) {
+          resolvedCustomInstructions = origin.pool_custom_instructions;
+        }
+        console.log(`[EMAIL-AI] Outreach reply detected — enriching Millie context from pool`);
+      }
+    }
     
     const accountSettings = {
       aiTone: (account.aiTone as "formal" | "friendly" | "professional") || "professional",
@@ -1981,7 +2006,9 @@ router.post("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
     };
     
     const extendedSettings = {
-      customInstructions: account.customInstructions,
+      customInstructions: outreachContext
+        ? `${resolvedCustomInstructions || ""}\n\n${outreachContext}`.trim()
+        : resolvedCustomInstructions,
       aiLanguage: account.aiLanguage,
       escalationKeywords: account.escalationKeywords as string[] | null,
       stopOnRisk: account.stopOnRisk,
@@ -4622,5 +4649,292 @@ export async function initializeEmailHubIdle() {
     console.error("[EMAIL-HUB INIT] Error initializing IDLE connections:", error);
   }
 }
+
+// ============================================================
+// OUTREACH POOL ROUTES
+// ============================================================
+
+router.get("/pools", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const pools = await db
+      .select()
+      .from(schema.emailOutreachPools)
+      .where(eq(schema.emailOutreachPools.consultantId, consultantId))
+      .orderBy(desc(schema.emailOutreachPools.createdAt));
+
+    const poolsWithAccounts = await Promise.all(
+      pools.map(async (pool) => {
+        const accounts = await db
+          .select({
+            id: schema.emailAccounts.id,
+            emailAddress: schema.emailAccounts.emailAddress,
+            displayName: schema.emailAccounts.displayName,
+            provider: schema.emailAccounts.provider,
+            isOutreachSender: schema.emailAccounts.isOutreachSender,
+            dailySendLimit: schema.emailAccounts.dailySendLimit,
+            dailySendCount: schema.emailAccounts.dailySendCount,
+            lastSendResetDate: schema.emailAccounts.lastSendResetDate,
+            isActive: schema.emailAccounts.isActive,
+            smtpHost: schema.emailAccounts.smtpHost,
+          })
+          .from(schema.emailAccounts)
+          .where(
+            and(
+              eq(schema.emailAccounts.consultantId, consultantId),
+              eq(schema.emailAccounts.outreachPoolId, pool.id)
+            )
+          );
+
+        const today = new Date().toISOString().slice(0, 10);
+        const accountsWithStats = accounts.map((a) => ({
+          ...a,
+          dailySendCount: a.lastSendResetDate !== today ? 0 : a.dailySendCount,
+        }));
+
+        const totalSendToday = accountsWithStats.reduce((s, a) => s + (a.dailySendCount || 0), 0);
+        const totalLimit = accountsWithStats.reduce((s, a) => s + (a.dailySendLimit || 50), 0);
+
+        return { ...pool, accounts: accountsWithStats, totalSendToday, totalLimit };
+      })
+    );
+
+    res.json({ success: true, pools: poolsWithAccounts });
+  } catch (error: any) {
+    console.error("[POOL] Error fetching pools:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/pools", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { poolName, trackingDomain, salesContext, customInstructions } = req.body;
+
+    if (!poolName?.trim()) {
+      return res.status(400).json({ error: "poolName è obbligatorio" });
+    }
+
+    const [pool] = await db
+      .insert(schema.emailOutreachPools)
+      .values({
+        consultantId,
+        poolName: poolName.trim(),
+        trackingDomain: trackingDomain?.trim() || null,
+        salesContext: salesContext || null,
+        customInstructions: customInstructions?.trim() || null,
+      })
+      .returning();
+
+    res.status(201).json({ success: true, pool });
+  } catch (error: any) {
+    console.error("[POOL] Error creating pool:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put("/pools/:poolId", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { poolId } = req.params;
+    const { poolName, trackingDomain, salesContext, customInstructions, isActive } = req.body;
+
+    const [pool] = await db
+      .update(schema.emailOutreachPools)
+      .set({
+        ...(poolName !== undefined && { poolName: poolName.trim() }),
+        ...(trackingDomain !== undefined && { trackingDomain: trackingDomain?.trim() || null }),
+        ...(salesContext !== undefined && { salesContext }),
+        ...(customInstructions !== undefined && { customInstructions: customInstructions?.trim() || null }),
+        ...(isActive !== undefined && { isActive }),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(schema.emailOutreachPools.id, poolId),
+          eq(schema.emailOutreachPools.consultantId, consultantId)
+        )
+      )
+      .returning();
+
+    if (!pool) return res.status(404).json({ error: "Pool non trovato" });
+    res.json({ success: true, pool });
+  } catch (error: any) {
+    console.error("[POOL] Error updating pool:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/pools/:poolId", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { poolId } = req.params;
+
+    await db
+      .update(schema.emailAccounts)
+      .set({ outreachPoolId: null, isOutreachSender: false })
+      .where(
+        and(
+          eq(schema.emailAccounts.consultantId, consultantId),
+          eq(schema.emailAccounts.outreachPoolId, poolId)
+        )
+      );
+
+    await db
+      .delete(schema.emailOutreachPools)
+      .where(
+        and(
+          eq(schema.emailOutreachPools.id, poolId),
+          eq(schema.emailOutreachPools.consultantId, consultantId)
+        )
+      );
+
+    res.json({ success: true, message: "Pool eliminato" });
+  } catch (error: any) {
+    console.error("[POOL] Error deleting pool:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/pools/:poolId/accounts", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { poolId } = req.params;
+    const { accountId, dailySendLimit } = req.body;
+
+    if (!accountId) return res.status(400).json({ error: "accountId obbligatorio" });
+
+    const [pool] = await db
+      .select()
+      .from(schema.emailOutreachPools)
+      .where(
+        and(
+          eq(schema.emailOutreachPools.id, poolId),
+          eq(schema.emailOutreachPools.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!pool) return res.status(404).json({ error: "Pool non trovato" });
+
+    const [account] = await db
+      .update(schema.emailAccounts)
+      .set({
+        outreachPoolId: poolId,
+        isOutreachSender: true,
+        dailySendLimit: dailySendLimit || 50,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(schema.emailAccounts.id, accountId),
+          eq(schema.emailAccounts.consultantId, consultantId)
+        )
+      )
+      .returning();
+
+    if (!account) return res.status(404).json({ error: "Account non trovato" });
+    res.json({ success: true, account });
+  } catch (error: any) {
+    console.error("[POOL] Error adding account to pool:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/pools/:poolId/accounts/:accountId", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { poolId, accountId } = req.params;
+    const { dailySendLimit } = req.body;
+
+    const [account] = await db
+      .update(schema.emailAccounts)
+      .set({
+        ...(dailySendLimit !== undefined && { dailySendLimit: Number(dailySendLimit) }),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(schema.emailAccounts.id, accountId),
+          eq(schema.emailAccounts.consultantId, consultantId),
+          eq(schema.emailAccounts.outreachPoolId, poolId)
+        )
+      )
+      .returning();
+
+    if (!account) return res.status(404).json({ error: "Account non trovato nel pool" });
+    res.json({ success: true, account });
+  } catch (error: any) {
+    console.error("[POOL] Error updating account in pool:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/pools/:poolId/accounts/:accountId", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { poolId, accountId } = req.params;
+
+    const [account] = await db
+      .update(schema.emailAccounts)
+      .set({ outreachPoolId: null, isOutreachSender: false, updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.emailAccounts.id, accountId),
+          eq(schema.emailAccounts.consultantId, consultantId),
+          eq(schema.emailAccounts.outreachPoolId, poolId)
+        )
+      )
+      .returning();
+
+    if (!account) return res.status(404).json({ error: "Account non trovato nel pool" });
+    res.json({ success: true, message: "Account rimosso dal pool" });
+  } catch (error: any) {
+    console.error("[POOL] Error removing account from pool:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/pools/:poolId/stats", async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { poolId } = req.params;
+
+    const [pool] = await db
+      .select()
+      .from(schema.emailOutreachPools)
+      .where(
+        and(
+          eq(schema.emailOutreachPools.id, poolId),
+          eq(schema.emailOutreachPools.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!pool) return res.status(404).json({ error: "Pool non trovato" });
+
+    const openEvents = await db.execute(
+      sql`SELECT COUNT(*) as count FROM email_tracking_events WHERE pool_id = ${poolId} AND event_type = 'open' AND triggered_at IS NOT NULL`
+    );
+    const clickEvents = await db.execute(
+      sql`SELECT COUNT(*) as count FROM email_tracking_events WHERE pool_id = ${poolId} AND event_type = 'click' AND triggered_at IS NOT NULL`
+    );
+    const totalSent = await db.execute(
+      sql`SELECT COUNT(*) as count FROM hub_emails WHERE outreach_pool_id = ${poolId} AND is_outreach_email = true`
+    );
+
+    res.json({
+      success: true,
+      stats: {
+        totalSent: Number((totalSent.rows[0] as any)?.count || 0),
+        totalOpens: Number((openEvents.rows[0] as any)?.count || 0),
+        totalClicks: Number((clickEvents.rows[0] as any)?.count || 0),
+      },
+    });
+  } catch (error: any) {
+    console.error("[POOL] Error fetching pool stats:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 export default router;

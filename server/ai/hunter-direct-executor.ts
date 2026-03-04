@@ -333,20 +333,114 @@ Rispondi SOLO con il JSON, senza markdown.`;
         const emailSubject = aiDecision.subject || `Collaborazione con ${lead.business_name}`;
         const emailBody = aiDecision.body || `Buongiorno, vorrei presentarvi i miei servizi.`;
 
-        const smtpResult = await db.execute(sql`
-          SELECT id, smtp_host, smtp_port, smtp_user, smtp_password, email_address, display_name
-          FROM email_accounts
-          WHERE consultant_id = ${consultantId} AND smtp_host IS NOT NULL
-          ${emailAccountId ? sql`AND id = ${emailAccountId}` : sql``}
-          ORDER BY created_at
-          LIMIT 1
-        `);
+        const poolId = outreachConfig.pool_id ?? null;
+        const today = new Date().toISOString().slice(0, 10);
+
+        // Reset daily counters for accounts where the date has changed
+        if (poolId) {
+          await db.execute(sql`
+            UPDATE email_accounts
+            SET daily_send_count = 0, last_send_reset_date = ${today}
+            WHERE outreach_pool_id = ${poolId}
+              AND (last_send_reset_date IS NULL OR last_send_reset_date != ${today})
+          `);
+        } else if (emailAccountId) {
+          await db.execute(sql`
+            UPDATE email_accounts
+            SET daily_send_count = 0, last_send_reset_date = ${today}
+            WHERE id = ${emailAccountId}
+              AND (last_send_reset_date IS NULL OR last_send_reset_date != ${today})
+          `);
+        }
+
+        // Select account: pool rotation or single fallback
+        const smtpResult = poolId
+          ? await db.execute(sql`
+              SELECT ea.id, ea.smtp_host, ea.smtp_port, ea.smtp_user, ea.smtp_password,
+                     ea.email_address, ea.display_name, ea.outreach_pool_id,
+                     ea.daily_send_count, ea.daily_send_limit,
+                     eop.tracking_domain, eop.sales_context as pool_sales_context,
+                     eop.custom_instructions as pool_custom_instructions
+              FROM email_accounts ea
+              JOIN email_outreach_pools eop ON eop.id = ea.outreach_pool_id
+              WHERE ea.outreach_pool_id = ${poolId}
+                AND ea.is_outreach_sender = true
+                AND ea.smtp_host IS NOT NULL
+                AND ea.daily_send_count < ea.daily_send_limit
+                AND ea.is_active = true
+              ORDER BY ea.daily_send_count ASC
+              LIMIT 1
+            `)
+          : await db.execute(sql`
+              SELECT ea.id, ea.smtp_host, ea.smtp_port, ea.smtp_user, ea.smtp_password,
+                     ea.email_address, ea.display_name, ea.outreach_pool_id,
+                     ea.daily_send_count, ea.daily_send_limit,
+                     NULL as tracking_domain,
+                     NULL as pool_sales_context,
+                     NULL as pool_custom_instructions
+              FROM email_accounts ea
+              WHERE ea.consultant_id = ${consultantId} AND ea.smtp_host IS NOT NULL
+              ${emailAccountId ? sql`AND ea.id = ${emailAccountId}` : sql``}
+              ORDER BY ea.created_at
+              LIMIT 1
+            `);
 
         if (smtpResult.rows.length === 0) {
           actionStatus = "failed";
-          resultNote = "Nessun account email SMTP configurato";
+          resultNote = poolId
+            ? "Tutti gli account del pool hanno raggiunto il limite giornaliero di invii"
+            : "Nessun account email SMTP configurato";
+          console.warn(`${LOG_PREFIX} No SMTP account available (poolId: ${poolId})`);
         } else {
           const smtpConfig = smtpResult.rows[0] as any;
+          const trackingDomain: string | null = smtpConfig.tracking_domain || null;
+
+          // Prepare email body with tracking if domain is configured
+          let finalBodyText = emailBody;
+          let finalBodyHtml = emailBody.replace(/\n/g, "<br>");
+          let openTrackingToken: string | null = null;
+
+          if (trackingDomain) {
+            // Create open tracking event
+            const openTokenResult = await db.execute(sql`
+              INSERT INTO email_tracking_events (consultant_id, account_id, pool_id, lead_id, event_type)
+              VALUES (${consultantId}, ${smtpConfig.id}, ${smtpConfig.outreach_pool_id || null}, ${lead.id}, 'open')
+              RETURNING token
+            `);
+            openTrackingToken = (openTokenResult.rows[0] as any)?.token || null;
+
+            // Wrap links in body for click tracking
+            const linkRegex = /href=["'](https?:\/\/[^"']+)["']/g;
+            let clickWrappedHtml = finalBodyHtml;
+            let match;
+            while ((match = linkRegex.exec(finalBodyHtml)) !== null) {
+              const originalUrl = match[1];
+              const clickResult = await db.execute(sql`
+                INSERT INTO email_tracking_events (consultant_id, account_id, pool_id, lead_id, event_type, target_url)
+                VALUES (${consultantId}, ${smtpConfig.id}, ${smtpConfig.outreach_pool_id || null}, ${lead.id}, 'click', ${originalUrl})
+                RETURNING token
+              `);
+              const clickToken = (clickResult.rows[0] as any)?.token;
+              if (clickToken) {
+                clickWrappedHtml = clickWrappedHtml.replace(
+                  originalUrl,
+                  `https://${trackingDomain}/track/c/${clickToken}`
+                );
+              }
+            }
+
+            // Add open pixel before closing body
+            if (openTrackingToken) {
+              const pixel = `<img src="https://${trackingDomain}/track/o/${openTrackingToken}" width="1" height="1" style="display:none;border:0" alt="" />`;
+              clickWrappedHtml = clickWrappedHtml.includes("</body>")
+                ? clickWrappedHtml.replace("</body>", `${pixel}</body>`)
+                : `${clickWrappedHtml}${pixel}`;
+            }
+
+            finalBodyHtml = clickWrappedHtml;
+            console.log(`${LOG_PREFIX} Tracking enabled via ${trackingDomain} (open: ${openTrackingToken})`);
+          }
+
           try {
             const nodemailer = await import("nodemailer");
             const transporter = nodemailer.createTransport({
@@ -358,17 +452,57 @@ Rispondi SOLO con il JSON, senza markdown.`;
                 pass: smtpConfig.smtp_password,
               },
             });
-            await transporter.sendMail({
+            const sendResult = await transporter.sendMail({
               from: smtpConfig.display_name
                 ? `"${smtpConfig.display_name}" <${smtpConfig.email_address}>`
                 : smtpConfig.email_address,
               to: lead.email,
               subject: emailSubject,
-              text: emailBody,
+              text: finalBodyText,
+              html: finalBodyHtml,
             });
+
+            // Increment daily counter on used account
+            await db.execute(sql`
+              UPDATE email_accounts
+              SET daily_send_count = daily_send_count + 1, last_send_reset_date = ${today}
+              WHERE id = ${smtpConfig.id}
+            `);
+
+            // Save to hub_emails for Millie thread tracking
+            const outgoingMsgId = sendResult.messageId || `outreach-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const hubEmailId = `outreach-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            await db.execute(sql`
+              INSERT INTO hub_emails (
+                id, account_id, consultant_id, message_id,
+                subject, from_email, from_name,
+                to_recipients, body_html, body_text, snippet,
+                direction, folder, is_read, processing_status,
+                is_outreach_email, outreach_lead_id, outreach_pool_id,
+                sent_at, created_at, updated_at
+              ) VALUES (
+                ${hubEmailId}, ${smtpConfig.id}, ${consultantId}, ${outgoingMsgId},
+                ${emailSubject}, ${smtpConfig.email_address}, ${smtpConfig.display_name || null},
+                ${JSON.stringify([{ email: lead.email, name: lead.business_name || lead.email }])},
+                ${finalBodyHtml}, ${finalBodyText}, ${finalBodyText.substring(0, 200)},
+                'outbound', 'sent', true, 'sent',
+                true, ${lead.id}, ${smtpConfig.outreach_pool_id || null},
+                NOW(), NOW(), NOW()
+              )
+            `);
+
+            // Update open tracking event with message id
+            if (openTrackingToken) {
+              await db.execute(sql`
+                UPDATE email_tracking_events
+                SET outreach_message_id = ${outgoingMsgId}
+                WHERE token = ${openTrackingToken}
+              `);
+            }
+
             actionStatus = "sent";
-            resultNote = `Email inviata a ${lead.email}`;
-            console.log(`${LOG_PREFIX} Email sent to ${lead.email}`);
+            resultNote = `Email inviata a ${lead.email} tramite ${smtpConfig.email_address} (${smtpConfig.daily_send_count + 1}/${smtpConfig.daily_send_limit} oggi)`;
+            console.log(`${LOG_PREFIX} Email sent to ${lead.email} via ${smtpConfig.email_address}`);
           } catch (emailErr: any) {
             actionStatus = "failed";
             resultNote = `Errore invio email: ${emailErr.message}`;

@@ -8212,6 +8212,13 @@ export const emailAccounts = pgTable("email_accounts", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+
+  // Outreach Pool & Rotation
+  outreachPoolId: varchar("outreach_pool_id"),
+  isOutreachSender: boolean("is_outreach_sender").notNull().default(false),
+  dailySendLimit: integer("daily_send_limit").notNull().default(50),
+  dailySendCount: integer("daily_send_count").notNull().default(0),
+  lastSendResetDate: varchar("last_send_reset_date", { length: 10 }),
 }, (table) => ({
   consultantIdx: index("idx_email_accounts_consultant").on(table.consultantId),
   activeIdx: index("idx_email_accounts_active").on(table.isActive),
@@ -8220,6 +8227,56 @@ export const emailAccounts = pgTable("email_accounts", {
 
 export type EmailAccount = typeof emailAccounts.$inferSelect;
 export type InsertEmailAccount = typeof emailAccounts.$inferInsert;
+
+// Email Outreach Pools - Group multiple accounts for rotation
+export const emailOutreachPools = pgTable("email_outreach_pools", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  poolName: varchar("pool_name", { length: 100 }).notNull(),
+  trackingDomain: varchar("tracking_domain", { length: 255 }),
+  salesContext: jsonb("sales_context").$type<{
+    servicesOffered?: string;
+    targetAudience?: string;
+    valueProposition?: string;
+    pricingInfo?: string;
+    competitiveAdvantages?: string;
+    idealClientProfile?: string;
+    salesApproach?: string;
+    caseStudies?: string;
+    additionalContext?: string;
+  }>(),
+  customInstructions: text("custom_instructions"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_email_outreach_pools_consultant").on(table.consultantId),
+}));
+
+export type EmailOutreachPool = typeof emailOutreachPools.$inferSelect;
+export type InsertEmailOutreachPool = typeof emailOutreachPools.$inferInsert;
+
+// Email Tracking Events - open pixels and click redirects
+export const emailTrackingEvents = pgTable("email_tracking_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: varchar("token", { length: 36 }).unique().notNull().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  accountId: varchar("account_id").references(() => emailAccounts.id, { onDelete: "set null" }),
+  poolId: varchar("pool_id"),
+  leadId: varchar("lead_id"),
+  eventType: varchar("event_type", { length: 10 }).notNull().$type<"open" | "click">(),
+  targetUrl: text("target_url"),
+  triggeredAt: timestamp("triggered_at", { withTimezone: true }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  outreachMessageId: varchar("outreach_message_id", { length: 500 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  tokenIdx: index("idx_email_tracking_token").on(table.token),
+  consultantIdx: index("idx_email_tracking_consultant").on(table.consultantId),
+}));
+
+export type EmailTrackingEvent = typeof emailTrackingEvents.$inferSelect;
 
 // Hub Emails - Email messages
 export const hubEmails = pgTable("hub_emails", {
@@ -8273,6 +8330,11 @@ export const hubEmails = pgTable("hub_emails", {
     "hunter_reply" | "system_notification" | "client_inquiry" | "lead_inquiry" | "unknown"
   >(),
   
+  // Outreach tracking
+  isOutreachEmail: boolean("is_outreach_email").notNull().default(false),
+  outreachLeadId: varchar("outreach_lead_id"),
+  outreachPoolId: varchar("outreach_pool_id"),
+
   // Timestamps
   receivedAt: timestamp("received_at", { withTimezone: true }),
   sentAt: timestamp("sent_at", { withTimezone: true }),

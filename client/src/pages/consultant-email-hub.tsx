@@ -94,6 +94,7 @@ import {
   Filter,
   MailOpen,
   Maximize2,
+  Layers,
 } from "lucide-react";
 import { Link } from "wouter";
 import Navbar from "@/components/navbar";
@@ -109,6 +110,7 @@ import { TicketSettingsPanel } from "@/components/email-hub/TicketSettingsPanel"
 import { TicketsList } from "@/components/email-hub/TicketsList";
 import { TicketsHistory } from "@/components/email-hub/TicketsHistory";
 import { AIEventsPanel } from "@/components/email-hub/AIEventsPanel";
+import OutreachPoolManager from "@/components/email-hub/OutreachPoolManager";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
@@ -321,6 +323,7 @@ export default function ConsultantEmailHub() {
   const [showTicketView, setShowTicketView] = useState<"list" | "history" | "settings" | null>(null);
   const [showAiEventsView, setShowAiEventsView] = useState(false);
   const [showOutreachPipeline, setShowOutreachPipeline] = useState(false);
+  const [showPoolManager, setShowPoolManager] = useState(false);
   const [outreachStatusFilter, setOutreachStatusFilter] = useState<string>("all");
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -1463,6 +1466,7 @@ export default function ConsultantEmailHub() {
               setShowAiEventsView(false);
               setShowTicketView(null);
               setShowFullEmailView(false);
+              setShowPoolManager(false);
             }}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
               showOutreachPipeline
@@ -1472,6 +1476,24 @@ export default function ConsultantEmailHub() {
           >
             <Target className="h-4 w-4" />
             <span className="text-sm flex-1 text-left">Outreach Pipeline</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setShowPoolManager(true);
+              setShowOutreachPipeline(false);
+              setShowAiEventsView(false);
+              setShowTicketView(null);
+              setShowFullEmailView(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              showPoolManager
+                ? "bg-indigo-600/20 text-indigo-300"
+                : "hover:bg-white/5 text-slate-300"
+            }`}
+          >
+            <Layers className="h-4 w-4" />
+            <span className="text-sm flex-1 text-left">Pool Outreach</span>
           </button>
           
           <Link href="/consultant/knowledge-documents">
@@ -3220,7 +3242,24 @@ export default function ConsultantEmailHub() {
         <div className="flex-1 flex overflow-hidden">
           {!isMobile && renderLeftSidebar()}
           <>
-            {showOutreachPipeline ? (
+            {showPoolManager ? (
+              <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-6">
+                <div className="max-w-4xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Layers className="h-6 w-6 text-indigo-500" />
+                        Pool Outreach
+                      </h1>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Gestisci i gruppi di account email per la rotazione automatica di Hunter
+                      </p>
+                    </div>
+                  </div>
+                  <OutreachPoolManager />
+                </div>
+              </div>
+            ) : showOutreachPipeline ? (
               <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-6">
                 <div className="max-w-6xl mx-auto">
                   <div className="flex items-center justify-between mb-6">

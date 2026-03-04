@@ -13977,6 +13977,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // Email tracking routes (no auth required - for tracking pixels and click redirects)
   app.use("/", nurturingTrackingRouter);
 
+  // Outreach email tracking (open pixels + click redirects - no auth)
+  const { default: emailTrackingRouter } = await import("./routes/email-tracking-router");
+  app.use("/track", emailTrackingRouter);
+
   // WhatsApp Template Export to Twilio routes
   app.use("/api", twilioTemplateExportRouter);
 
