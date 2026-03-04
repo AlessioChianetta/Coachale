@@ -67,12 +67,12 @@ export default function OutreachPoolManager() {
     queryKey: ["/api/email-hub/pools"],
   });
 
-  const { data: accountsData } = useQuery<{ accounts: EmailAccount[] }>({
+  const { data: accountsData } = useQuery<{ success: boolean; data: EmailAccount[] }>({
     queryKey: ["/api/email-hub/accounts"],
   });
 
   const pools = poolsData?.pools || [];
-  const allAccounts: EmailAccount[] = accountsData?.accounts || [];
+  const allAccounts: EmailAccount[] = accountsData?.data || [];
   const freeAccounts = allAccounts.filter(
     (a) => !a.outreachPoolId && a.smtpHost
   );

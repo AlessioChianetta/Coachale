@@ -32,10 +32,16 @@ export const apiRequest = async (method: string, url: string, data?: any) => {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || 'Request failed');
+    throw new Error(error.error || error.message || 'Request failed');
   }
 
-  return response.json();
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Server response non valida: ${text.slice(0, 100)}`);
+  }
 };
 
 type UnauthorizedBehavior = "returnNull" | "throw";
