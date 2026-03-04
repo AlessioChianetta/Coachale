@@ -1,0 +1,13 @@
+
+6|voice-bridge  | 2026-03-04T07:35:35.872Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772609734653_kotw9cvh8 targetPhone=+393890566422 aiMode=assistenza
+6|voice-bridge  | 2026-03-04T07:35:35.872Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling via gateway=telnyx-ip callerId=+390902041022 techPrefix=0312 dialTarget=0312+393890566422
+6|voice-bridge  | 2026-03-04T07:35:35.872Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate uuid=outbound-1772609735872-8h2f6l dialString={origination_caller_id_number=+390902041022,effective_caller_id_number=+390902041022,originate_timeout=30,origination_uuid=outbound-1772609735872-8h2f6l}sofia/gateway/telnyx-ip/0312+393890566422 &park()
+6|voice-bridge  | 2026-03-04T07:35:35.872Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=+390902041022,effective_caller_id_number=+390902041022,originate_timeout=30,origination_uuid=outbound-1772609735872-8h2f6l}sofia/gateway/telnyx-ip/0312+393890566422 &park()
+6|voice-bridge  | 2026-03-04T07:35:39.313Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=+OK outbound-1772609735872-8h2f6l
+6|voice-bridge  | 2026-03-04T07:35:39.313Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Call originated successfully callId=sc_1772609734653_kotw9cvh8 uuid=outbound-1772609735872-8h2f6l
+6|voice-bridge  | 2026-03-04T07:36:17.215Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772609591748_dv4abmhwd targetPhone=+393890566422 aiMode=assistenza
+6|voice-bridge  | 2026-03-04T07:36:17.215Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling via gateway=telnyx-ip callerId=+390902041022 techPrefix=0312 dialTarget=0312+393890566422
+6|voice-bridge  | 2026-03-04T07:36:17.215Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate uuid=outbound-1772609777215-h6hpde dialString={origination_caller_id_number=+390902041022,effective_caller_id_number=+390902041022,originate_timeout=30,origination_uuid=outbound-1772609777215-h6hpde}sofia/gateway/telnyx-ip/0312+393890566422 &park()
+6|voice-bridge  | 2026-03-04T07:36:17.215Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=+390902041022,effective_caller_id_number=+390902041022,originate_timeout=30,origination_uuid=outbound-1772609777215-h6hpde}sofia/gateway/telnyx-ip/0312+393890566422 &park()
+6|voice-bridge  | 2026-03-04T07:36:19.610Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=-ERR USER_BUSY
+6|voice-bridge  | 2026-03-04T07:36:19.611Z [ERROR] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772609591748_dv4abmhwd error=FreeSWITCH error: -ERR USER_BUSY

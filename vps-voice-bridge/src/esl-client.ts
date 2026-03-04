@@ -5,10 +5,10 @@ import esl from 'modesl';
 
 const log = logger.child('ESL');
 
-// Mappa per memorizzare caller info per UUID
 export const callMetadata = new Map<string, { callerIdNumber: string, callerIdName: string, calledNumber?: string, parkTime?: number }>();
 
-// Connessione ESL condivisa — usata anche per originate outbound
+export const outboundCallIdMap = new Map<string, string>();
+
 let eslConn: any = null;
 
 export function getEslConnection(): any {
@@ -47,23 +47,34 @@ export function startESLController(): void {
     const tPark = Date.now();
     const uuid = event.getHeader('Unique-ID');
     const dest = event.getHeader('Caller-Destination-Number');
+    const isOutbound = uuid.startsWith('outbound-');
 
-    const isInbound = /^(\+?3[0-9]{8,12}|[0-9]{4,12})$/.test(dest || '');
-    if (!isInbound) return;
+    if (!isOutbound) {
+      const isInbound = /^(\+?3[0-9]{8,12}|[0-9]{4,12})$/.test(dest || '');
+      if (!isInbound) return;
+    }
 
     const callerIdNumber = event.getHeader('Caller-Caller-ID-Number') || 'unknown';
     const callerIdName = event.getHeader('Caller-Caller-ID-Name') || '';
 
-    log.info(`🅿️  Detected inbound call (Parked)`, { uuid, callerIdNumber, callerIdName, calledNumber: dest });
-    log.info(`⏱️ [ESL-TIMING] CHANNEL_PARK event received at ${tPark}`, { uuid });
+    log.info(`🅿️  Call parked type=${isOutbound ? 'OUTBOUND' : 'INBOUND'}`, { uuid, callerIdNumber, calledNumber: dest });
+    log.info(`⏱️ [ESL-TIMING] CHANNEL_PARK at ${tPark}`, { uuid });
 
     callMetadata.set(uuid, { callerIdNumber, callerIdName, calledNumber: dest, parkTime: tPark });
 
-    if (uuid.startsWith('outbound-')) {
-      log.info(`📞 OUTBOUND call detected - using existing scheduled call ID`, { uuid });
+    if (isOutbound) {
+      const callId = outboundCallIdMap.get(uuid);
+      if (callId) {
+        log.info(`📞 OUTBOUND call parked — linking callId=${callId} to uuid=${uuid}`);
+        setExpectedCallId(callId, uuid);
+        outboundCallIdMap.delete(uuid);
+      } else {
+        log.warn(`📞 OUTBOUND call parked but no callId mapping found for uuid=${uuid}`);
+        setExpectedCallId(uuid, uuid);
+      }
     } else {
       setExpectedCallId(uuid);
-      log.info(`📞 INBOUND call - setting UUID as call ID`, { uuid });
+      log.info(`📞 INBOUND call parked — uuid=${uuid}`);
     }
 
     (conn as any).bgapi(`uuid_setvar_multi ${uuid} STREAM_PLAYBACK=true;STREAM_SAMPLE_RATE=8000;mod_audio_stream_bidirectional=true;jitterbuffer_msec=60:120`);
@@ -71,16 +82,14 @@ export function startESLController(): void {
     const wsUrl = `ws://172.17.0.1:${config.ws.port}/stream/${uuid}`;
     const streamCmd = `uuid_audio_stream ${uuid} start ${wsUrl} mono 8000`;
 
-    log.debug(`🚀 Executing stream command on PARKED call`, { cmd: streamCmd, wsUrl });
-
     const tStreamCmd = Date.now();
-    log.info(`⏱️ [ESL-TIMING] bgapi commands setup: ${tStreamCmd - tPark}ms, now executing uuid_audio_stream`, { uuid });
+    log.info(`⏱️ [ESL-TIMING] Executing uuid_audio_stream after ${tStreamCmd - tPark}ms`, { uuid });
 
     (conn as any).bgapi(streamCmd, (res: any) => {
         const tStreamDone = Date.now();
         const body = res.getBody();
         if (body && body.includes('+OK')) {
-            log.info(`✅ Audio stream initiated successfully in ${tStreamDone - tStreamCmd}ms (total from PARK: ${tStreamDone - tPark}ms)`, { uuid });
+            log.info(`✅ Audio stream started in ${tStreamDone - tStreamCmd}ms (total: ${tStreamDone - tPark}ms)`, { uuid });
         } else {
             log.error(`❌ Failed to start audio stream`, { uuid, error: body || 'Unknown error' });
         }
@@ -89,11 +98,11 @@ export function startESLController(): void {
 
   conn.on('esl::event::CHANNEL_HANGUP::*', (event: any) => {
     const uuid = event.getHeader('Unique-ID');
-    const dest = event.getHeader('Caller-Destination-Number');
     if (callMetadata.has(uuid)) {
-      log.debug(`🛑 Call ended`, { uuid, dest });
+      log.debug(`🛑 Call ended`, { uuid });
       callMetadata.delete(uuid);
     }
+    outboundCallIdMap.delete(uuid);
   });
 
   conn.on('error', (err: any) => {

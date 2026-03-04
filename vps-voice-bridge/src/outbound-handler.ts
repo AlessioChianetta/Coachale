@@ -8,7 +8,7 @@
 
 import { logger } from './logger.js';
 import { config } from './config.js';
-import { originateOutboundCall } from './esl-client.js';
+import { originateOutboundCall, outboundCallIdMap } from './esl-client.js';
 
 const log = logger.child('OUTBOUND');
 
@@ -65,13 +65,15 @@ export async function handleOutboundCall(req: OutboundCallRequest): Promise<Outb
 
   try {
     const resultUuid = await originateOutboundCall(dialString);
+    const finalUuid = resultUuid || uuid;
 
-    log.info(`[BRIDGE:OUTBOUND] Call originated successfully callId=${callId} uuid=${resultUuid || uuid}`);
+    outboundCallIdMap.set(finalUuid, callId);
+    log.info(`[BRIDGE:OUTBOUND] Call originated callId=${callId} uuid=${finalUuid} — callId mapped for CHANNEL_PARK`);
 
     return {
       success: true,
       callId,
-      freeswitchUuid: resultUuid || uuid,
+      freeswitchUuid: finalUuid,
     };
   } catch (error: any) {
     log.error(`[BRIDGE:OUTBOUND] Failed to originate call callId=${callId} error=${error.message}`);
