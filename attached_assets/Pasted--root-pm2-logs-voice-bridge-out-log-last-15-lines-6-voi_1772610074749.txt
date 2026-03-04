@@ -1,0 +1,60 @@
+/root/.pm2/logs/voice-bridge-out.log last 15 lines:
+6|voice-br | 2026-03-04T07:40:07.532Z [INFO ] [BRIDGE:MAIN] Configuration loaded:
+6|voice-br | 2026-03-04T07:40:07.532Z [INFO ] [BRIDGE:MAIN]   WebSocket Server: 0.0.0.0:9090
+6|voice-br | 2026-03-04T07:40:07.532Z [INFO ] [BRIDGE:MAIN]   Auth Token: configured
+6|voice-br | 2026-03-04T07:40:07.532Z [INFO ] [BRIDGE:MAIN]   Replit WS: wss://47d55935-8421-442d-acf7-2c9ee108295f-00-wyn8zb34r9zc.riker.replit.dev/ws/ai-voice
+6|voice-br | 2026-03-04T07:40:07.532Z [INFO ] [BRIDGE:MAIN]   Voice: Puck
+6|voice-br | 2026-03-04T07:40:07.533Z [INFO ] [BRIDGE:MAIN]   ESL Connection: 127.0.0.1:8021
+6|voice-br | 2026-03-04T07:40:07.533Z [INFO ] [BRIDGE:MAIN]   Max Concurrent Calls: 10
+6|voice-br | 2026-03-04T07:40:07.533Z [INFO ] [BRIDGE:MAIN]   Session Timeout: 1800000ms
+6|voice-br | 2026-03-04T07:40:07.533Z [INFO ] [BRIDGE:MAIN]   Log Level: debug
+6|voice-br | 2026-03-04T07:40:07.533Z [INFO ] [BRIDGE:MAIN] Starting Voice Bridge System...
+6|voice-br | 2026-03-04T07:40:07.537Z [INFO ] [BRIDGE:ESL] Connecting to FreeSWITCH ESL at 127.0.0.1:8021...
+6|voice-br | 2026-03-04T07:40:07.569Z [INFO ] [BRIDGE:SERVER] Voice Bridge Server started on port 9090
+6|voice-br | 2026-03-04T07:40:07.569Z [INFO ] [BRIDGE:SERVER] Outbound endpoint ready at POST /outbound/call
+6|voice-br | 2026-03-04T07:40:07.574Z [INFO ] [BRIDGE:ESL] ✅ Connected to FreeSWITCH Event Socket!
+6|voice-br | 2026-03-04T07:40:08.082Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 544ms
+
+6|voice-bridge  | 2026-03-04T07:40:24.411Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772610023174_sa0g37wrx targetPhone=+393890566422 aiMode=assi
+stenza
+6|voice-bridge  | 2026-03-04T07:40:24.411Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling via gateway=telnyx-ip callerId=+390902041022 techPrefix=0312 dialTarget=0312+393890566422
+6|voice-bridge  | 2026-03-04T07:40:24.411Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate uuid=outbound-1772610024411-49tbux
+6|voice-bridge  | 2026-03-04T07:40:24.411Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=+390902041022,effective_caller_id_number=+390902041022,originat
+e_timeout=30,origination_uuid=outbound-1772610024411-49tbux}sofia/gateway/telnyx-ip/0312+393890566422 &park()
+6|voice-bridge  | 2026-03-04T07:40:27.732Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=+OK outbound-1772610024411-49tbux
+6|voice-bridge  | 2026-03-04T07:40:27.732Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Call originated callId=sc_1772610023174_sa0g37wrx uuid=outbound-1772610024411-49tbux — callId mapped f
+or CHANNEL_PARK
+6|voice-bridge  | 2026-03-04T07:40:27.735Z [INFO ] [BRIDGE:ESL] 🅿️  Call parked type=OUTBOUND uuid=outbound-1772610024411-49tbux callerIdNumber=0312+393890566422 calledNumber=0312+3938905664
+22
+6|voice-bridge  | 2026-03-04T07:40:27.735Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] CHANNEL_PARK at 1772610027735 uuid=outbound-1772610024411-49tbux
+6|voice-bridge  | 2026-03-04T07:40:27.735Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call parked — linking callId=sc_1772610023174_sa0g37wrx to uuid=outbound-1772610024411-49tbux
+6|voice-bridge  | 2026-03-04T07:40:27.735Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=sc_1772610023174_sa0g37wrx, uuid=outbound-1772610024411-49tbux6|voice-bridge  | 2026-03-04T07:40:27.735Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
+6|voice-bridge  | 2026-03-04T07:40:27.736Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] Executing uuid_audio_stream after 1ms uuid=outbound-1772610024411-49tbux
+6|voice-bridge  | 2026-03-04T07:40:27.782Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+6|voice-bridge  | 2026-03-04T07:40:27.783Z [INFO ] [BRIDGE:SERVER] 🔍 WEBSOCKET CONNECTION path=/stream/outbound-1772610024411-49tbux uuidFromUrl=outbound-1772610024411-49tbux pendingCallsCo
+unt=1 pendingIds=[{"uuid":"outbound-1772610024411-49tbux","callId":"sc_1772610023174_sa0g37wrx"}] timestamp=1772610027783
+6|voice-bridge  | 2026-03-04T07:40:27.783Z [INFO ] [BRIDGE:SERVER] ✅ Consumed pending call: callId=sc_1772610023174_sa0g37wrx, uuid=outbound-1772610024411-49tbux
+6|voice-bridge  | 2026-03-04T07:40:27.783Z [INFO ] [BRIDGE:SERVER] 📞 OUTBOUND call matched: callId=sc_1772610023174_sa0g37wrx, uuid=outbound-1772610024411-49tbux
+6|voice-bridge  | 2026-03-04T07:40:27.783Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] CHANNEL_PARK → WebSocket connection: 48ms (FreeSWITCH audio_stream setup + WS open) callId=sc_1772610023174
+_sa0g37wrx
+6|voice-bridge  | 2026-03-04T07:40:27.783Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=sc_1772610023174_sa0g37wrx | CallerId=0312+393890566422 | CallerName=Outbound Call
+6|voice-bridge  | 2026-03-04T07:40:27.784Z [INFO ] [BRIDGE:SESSION] Session created sessionId=23450fad callId=sc_1772610023174_sa0g37wrx callerId=0312+393890566422 calledNumber=0312+3938905
+66422 codec=L16 sampleRate=8000 activeSessions=1
+6|voice-bridge  | 2026-03-04T07:40:27.814Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] handleCallStart setup: session=1ms, bgInit+queue=30ms sessionId=23450fad
+6|voice-bridge  | 2026-03-04T07:40:27.815Z [INFO ] [BRIDGE:SERVER] 🎵 Adaptive audio timer started (prefill=4) sessionId=23450fad
+6|voice-bridge  | 2026-03-04T07:40:27.815Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Pre-connect overhead: 32ms sessionId=23450fad
+6|voice-bridge  | 2026-03-04T07:40:27.815Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=23450fad url=wss://47d55935-8421-442d-acf7-2c9ee108295f-00-wyn8zb34r9zc.riker.
+replit.dev/ws/ai-voice voice=Puck isResume=false
+6|voice-bridge  | 2026-03-04T07:40:27.821Z [INFO ] [BRIDGE:ESL] ✅ Audio stream started in 85ms (total: 86ms) uuid=outbound-1772610024411-49tbux
+6|voice-bridge  | 2026-03-04T07:40:28.348Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] TLS+HTTP upgrade handshake: 533ms sessionId=23450fad resumed=false
+6|voice-bridge  | 2026-03-04T07:40:28.349Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Replit WS connected in 534ms (TLS handshake + HTTP upgrade) sessionId=23450fad
+6|voice-bridge  | 2026-03-04T07:40:28.349Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=23450fad
+6|voice-bridge  | 2026-03-04T07:40:28.349Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=23450fad from=connecting to=active
+6|voice-bridge  | 2026-03-04T07:40:28.349Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Total handleCallStart: 566ms (setup=32ms, connect=534ms, post=0ms) sessionId=23450fad
+6|voice-bridge  | 2026-03-04T07:40:28.475Z [WARN ] [BRIDGE:REPLIT-WS] ⚠️ Audio DISCARDED - connected=true, ws=true, readyState=2 sessionId=23450fad reconnecting=false
+6|voice-bridge  | 2026-03-04T07:40:28.557Z [INFO ] [BRIDGE:SERVER] 📞 [NUMBER LOOKUP] Called number 0312+393890566422 not found in voice_numbers
+6|voice-bridge  | 2026-03-04T07:40:28.582Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=23450fad code=4401 reason=Unauthorized - Valid JWT token required hasPendingResume=fa
+lse
+6|voice-bridge  | 2026-03-04T07:40:28.582Z [INFO ] [BRIDGE:SERVER] Replit connection closed sessionId=23450fad
+6|voice-bridge  | 2026-03-04T07:40:28.582Z [INFO ] [BRIDGE:SERVER] 📞 Replit closed permanently - ending call sessionId=23450fad
+6|voice-bridge  | 2026-03-04T07:40:28.584Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=23450fad callId=sc_1772610023174_sa0g37wrx reason=replit_disconnected duration=799ms bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0

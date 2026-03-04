@@ -57,10 +57,14 @@ export function startESLController(): void {
     const callerIdNumber = event.getHeader('Caller-Caller-ID-Number') || 'unknown';
     const callerIdName = event.getHeader('Caller-Caller-ID-Name') || '';
 
-    log.info(`🅿️  Call parked type=${isOutbound ? 'OUTBOUND' : 'INBOUND'}`, { uuid, callerIdNumber, calledNumber: dest });
+    const techPrefix = config.sip.techPrefix || '';
+    const cleanDest = techPrefix && dest?.startsWith(techPrefix) ? dest.slice(techPrefix.length) : dest;
+    const cleanCallerId = techPrefix && callerIdNumber?.startsWith(techPrefix) ? callerIdNumber.slice(techPrefix.length) : callerIdNumber;
+
+    log.info(`🅿️  Call parked type=${isOutbound ? 'OUTBOUND' : 'INBOUND'}`, { uuid, callerIdNumber: cleanCallerId, calledNumber: cleanDest });
     log.info(`⏱️ [ESL-TIMING] CHANNEL_PARK at ${tPark}`, { uuid });
 
-    callMetadata.set(uuid, { callerIdNumber, callerIdName, calledNumber: dest, parkTime: tPark });
+    callMetadata.set(uuid, { callerIdNumber: cleanCallerId, callerIdName, calledNumber: cleanDest, parkTime: tPark });
 
     if (isOutbound) {
       const callId = outboundCallIdMap.get(uuid);
