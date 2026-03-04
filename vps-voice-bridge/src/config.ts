@@ -76,7 +76,7 @@ export function loadConfig(): BridgeConfig {
       password: getEnv('ESL_PASSWORD', ''),
     },
     sip: {
-      gateway: getEnv('SIP_GATEWAY', 'voip_trunk'),
+      gateway: getEnv('SIP_GATEWAY', 'telnyx-ip'),
       callerId: getEnv('SIP_CALLER_ID', '+390000000000'),
     },
     serviceToken: getEnv('REPLIT_SERVICE_TOKEN', ''),
