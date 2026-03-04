@@ -2470,7 +2470,7 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     if (!useVpsNumber && sipCallerId) {
       vpsPayload.sipCallerId = sipCallerId;
     }
-    if (sipGateway) {
+    if (!useVpsNumber && sipGateway) {
       vpsPayload.sipGateway = sipGateway;
     }
     console.log(`📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -4855,6 +4855,14 @@ router.post("/voip-provisioning/select-number", authenticateToken, requireAnyRol
       ON CONFLICT (phone_number) DO UPDATE
         SET consultant_id = EXCLUDED.consultant_id,
             is_active = true
+    `);
+
+    await db.execute(sql`
+      UPDATE users
+      SET sip_caller_id = ${invNumber.phone_number},
+          sip_gateway = 'telnyx-ip',
+          updated_at = NOW()
+      WHERE id = ${consultantId}
     `);
 
     console.log(`[VOIP] Number ${phone_number} assigned from inventory to consultant ${consultantId}, KYC deadline: ${kycDeadline.toISOString()}`);
