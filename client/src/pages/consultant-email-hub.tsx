@@ -1666,12 +1666,12 @@ export default function ConsultantEmailHub() {
                 open={expandedAccounts.has(account.id)}
                 onOpenChange={() => toggleAccountExpanded(account.id)}
               >
-                <div className="flex items-center gap-1 group relative min-w-0 overflow-hidden">
+                <div className="relative">
                   {account.autoReplyMode === "auto" && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="absolute -top-1 right-8 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 z-10">
+                          <div className="absolute -top-1 right-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 z-10">
                             <Zap className="h-3 w-3 text-amber-400" />
                             <span className="text-[10px] font-medium text-amber-300">AUTO</span>
                           </div>
@@ -1686,117 +1686,114 @@ export default function ConsultantEmailHub() {
                     </TooltipProvider>
                   )}
                   <CollapsibleTrigger asChild>
-                    <button className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 text-left">
-                      <ChevronDown className={`h-3 w-3 transition-transform text-slate-400 ${
+                    <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 text-left min-w-0">
+                      <ChevronDown className={`h-3 w-3 shrink-0 transition-transform text-slate-400 ${
                         expandedAccounts.has(account.id) ? "" : "-rotate-90"
                       }`} />
                       {account.accountType === "smtp_only" ? (
-                        <Send className="h-4 w-4 text-amber-400" title="Solo invio" />
+                        <Send className="h-4 w-4 shrink-0 text-amber-400" title="Solo invio" />
                       ) : account.accountType === "imap_only" ? (
-                        <Inbox className="h-4 w-4 text-blue-400" title="Solo ricezione" />
+                        <Inbox className="h-4 w-4 shrink-0 text-blue-400" title="Solo ricezione" />
                       ) : account.accountType === "hybrid" ? (
-                        <ArrowRightLeft className="h-4 w-4 text-violet-400" title="Configurazione ibrida" />
+                        <ArrowRightLeft className="h-4 w-4 shrink-0 text-violet-400" title="Configurazione ibrida" />
                       ) : (
-                        <Mail className="h-4 w-4 text-slate-400" title="Account completo" />
+                        <Mail className="h-4 w-4 shrink-0 text-slate-400" title="Account completo" />
                       )}
                       <span className="text-sm truncate flex-1 text-slate-200">{account.displayName}</span>
                       {account.syncStatus === "connected" && (
-                        <Wifi className="h-3 w-3 text-emerald-400" />
+                        <Wifi className="h-3 w-3 shrink-0 text-emerald-400" />
                       )}
                     </button>
                   </CollapsibleTrigger>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-7 w-7 text-slate-400 hover:text-white hover:bg-white/10"
-                      >
-                        <Settings className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={() => handleOpenEditAccount(account)}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Modifica
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDuplicateAccount(account)}>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Duplica
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          setAISettingsAccountId(account.id);
-                          setAISettingsAccountName(account.displayName || account.emailAddress);
-                          setShowAISettings(true);
-                        }}
-                      >
-                        <Sparkles className="h-4 w-4 mr-2 text-violet-400" />
-                        Personalità di Millie
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          setKnowledgeAccountId(account.id);
-                          setKnowledgeAccountName(account.displayName || account.emailAddress);
-                          setShowKnowledge(true);
-                        }}
-                      >
-                        <BookOpen className="h-4 w-4 mr-2 text-emerald-400" />
-                        Knowledge Base
-                      </DropdownMenuItem>
-                      {(account.accountType === "imap_only" || account.accountType === "full" || account.accountType === "hybrid") && (
-                        <>
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              console.log("[EMAIL-HUB] Sync button clicked for account:", account.id, account.accountType);
-                              syncEmailsMutation.mutate(account.id);
-                            }}
-                            disabled={syncEmailsMutation.isPending}
-                          >
-                            <RefreshCw className={`h-4 w-4 mr-2 ${syncEmailsMutation.isPending ? "animate-spin" : ""}`} />
-                            {syncEmailsMutation.isPending ? "Sincronizzazione..." : "Sincronizza Email"}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setImportAccountId(account.id);
-                              setImportAccountName(account.displayName || account.emailAddress);
-                              setShowEmailImportDialog(true);
-                            }}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Importa Email
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          if (account.syncStatus === "connected") {
-                            stopIdleMutation.mutate(account.id);
-                          } else {
-                            startIdleMutation.mutate(account.id);
-                          }
-                        }}
-                      >
-                        <Wifi className="h-4 w-4 mr-2" />
-                        {account.syncStatus === "connected" ? "Disattiva Sync" : "Attiva Sync Live"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-destructive"
-                        onClick={() => {
-                          if (confirm("Sei sicuro di voler eliminare questo account?")) {
-                            deleteAccountMutation.mutate(account.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Elimina
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
                 
                 <CollapsibleContent>
                   <div className="ml-5 space-y-0.5">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-slate-200 transition-colors text-sm">
+                          <Settings className="h-4 w-4 shrink-0" />
+                          <span className="flex-1 text-left">Impostazioni account</span>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-52">
+                        <DropdownMenuItem onClick={() => handleOpenEditAccount(account)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Modifica
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicateAccount(account)}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplica
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setAISettingsAccountId(account.id);
+                            setAISettingsAccountName(account.displayName || account.emailAddress);
+                            setShowAISettings(true);
+                          }}
+                        >
+                          <Sparkles className="h-4 w-4 mr-2 text-violet-400" />
+                          Personalità di Millie
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setKnowledgeAccountId(account.id);
+                            setKnowledgeAccountName(account.displayName || account.emailAddress);
+                            setShowKnowledge(true);
+                          }}
+                        >
+                          <BookOpen className="h-4 w-4 mr-2 text-emerald-400" />
+                          Knowledge Base
+                        </DropdownMenuItem>
+                        {(account.accountType === "imap_only" || account.accountType === "full" || account.accountType === "hybrid") && (
+                          <>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                console.log("[EMAIL-HUB] Sync button clicked for account:", account.id, account.accountType);
+                                syncEmailsMutation.mutate(account.id);
+                              }}
+                              disabled={syncEmailsMutation.isPending}
+                            >
+                              <RefreshCw className={`h-4 w-4 mr-2 ${syncEmailsMutation.isPending ? "animate-spin" : ""}`} />
+                              {syncEmailsMutation.isPending ? "Sincronizzazione..." : "Sincronizza Email"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setImportAccountId(account.id);
+                                setImportAccountName(account.displayName || account.emailAddress);
+                                setShowEmailImportDialog(true);
+                              }}
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Importa Email
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            if (account.syncStatus === "connected") {
+                              stopIdleMutation.mutate(account.id);
+                            } else {
+                              startIdleMutation.mutate(account.id);
+                            }
+                          }}
+                        >
+                          <Wifi className="h-4 w-4 mr-2" />
+                          {account.syncStatus === "connected" ? "Disattiva Sync" : "Attiva Sync Live"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => {
+                            if (confirm("Sei sicuro di voler eliminare questo account?")) {
+                              deleteAccountMutation.mutate(account.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Elimina
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     {account.accountType !== "smtp_only" && (
                       <button
                         onClick={() => handleFolderClick("inbox", account.id)}
