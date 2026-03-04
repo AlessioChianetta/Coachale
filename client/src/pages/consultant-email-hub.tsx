@@ -285,6 +285,8 @@ export default function ConsultantEmailHub() {
   const [mainSidebarCollapsed, setMainSidebarCollapsed] = useState(true);
   const [showAccountDialog, setShowAccountDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
+  const [duplicatingFromName, setDuplicatingFromName] = useState<string | null>(null);
+  const [duplicatingFromId, setDuplicatingFromId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<AccountFormData>(defaultFormData);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
@@ -596,11 +598,36 @@ export default function ConsultantEmailHub() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async (responseData: any) => {
+      const newAccountId = responseData?.data?.id ?? responseData?.id;
+      if (duplicatingFromId && newAccountId) {
+        try {
+          const srcRes = await fetch(`/api/email-hub/accounts/${duplicatingFromId}/ai-settings`, {
+            headers: getAuthHeaders(),
+          });
+          if (srcRes.ok) {
+            const srcJson = await srcRes.json();
+            const srcSettings = srcJson?.data ?? srcJson;
+            const { id: _id, createdAt: _c, updatedAt: _u, ...settingsToCopy } = srcSettings;
+            await fetch(`/api/email-hub/accounts/${newAccountId}/ai-settings`, {
+              method: "PUT",
+              headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+              body: JSON.stringify(settingsToCopy),
+            });
+          }
+        } catch (_) {}
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/email-hub/accounts"] });
       setShowAccountDialog(false);
       setFormData(defaultFormData);
-      toast({ title: "Successo", description: "Account email aggiunto con successo" });
+      setDuplicatingFromName(null);
+      setDuplicatingFromId(null);
+      toast({
+        title: "Successo",
+        description: duplicatingFromId
+          ? "Account duplicato con tutte le impostazioni AI"
+          : "Account email aggiunto con successo",
+      });
     },
     onError: (error: any) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
@@ -1085,6 +1112,8 @@ export default function ConsultantEmailHub() {
 
   const handleOpenAddAccount = () => {
     setEditingAccount(null);
+    setDuplicatingFromName(null);
+    setDuplicatingFromId(null);
     setFormData(defaultFormData);
     setShowAccountDialog(true);
   };
@@ -1116,6 +1145,8 @@ export default function ConsultantEmailHub() {
 
   const handleDuplicateAccount = (account: EmailAccount) => {
     setEditingAccount(null);
+    setDuplicatingFromName(account.displayName || account.emailAddress);
+    setDuplicatingFromId(account.id);
     const detectedAccountType = classifyAccountType(account);
     setFormData({
       displayName: `Copia di ${account.displayName}`,
@@ -2706,17 +2737,29 @@ export default function ConsultantEmailHub() {
   };
 
   const renderAccountDialog = () => (
-    <Dialog open={showAccountDialog} onOpenChange={setShowAccountDialog}>
+    <Dialog open={showAccountDialog} onOpenChange={(open) => { setShowAccountDialog(open); if (!open) { setDuplicatingFromName(null); setDuplicatingFromId(null); } }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
-            {editingAccount ? "Modifica Account" : "Aggiungi Account Email"}
+            {editingAccount ? "Modifica Account" : duplicatingFromName ? "Duplica Account" : "Aggiungi Account Email"}
           </DialogTitle>
           <DialogDescription>
-            Configura le impostazioni IMAP e SMTP per collegare il tuo account email
+            {duplicatingFromName
+              ? `Stai copiando le impostazioni server di "${duplicatingFromName}". Inserisci l'indirizzo email e le credenziali del nuovo account.`
+              : "Configura le impostazioni IMAP e SMTP per collegare il tuo account email"}
           </DialogDescription>
         </DialogHeader>
+
+        {duplicatingFromName && (
+          <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 text-sm">
+            <Copy className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-violet-800 dark:text-violet-200">Impostazioni copiate da "{duplicatingFromName}"</p>
+              <p className="text-violet-600 dark:text-violet-400 text-xs mt-0.5">Server IMAP/SMTP, tono AI e firma sono già precompilati. Devi solo inserire l'email e le password del nuovo account.</p>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-6">
           <div className="space-y-4">
@@ -3000,7 +3043,7 @@ export default function ConsultantEmailHub() {
             ) : (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                {editingAccount ? "Salva Modifiche" : "Aggiungi Account"}
+                {editingAccount ? "Salva Modifiche" : duplicatingFromName ? "Crea Copia Account" : "Aggiungi Account"}
               </>
             )}
           </Button>
