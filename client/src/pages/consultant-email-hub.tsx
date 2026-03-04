@@ -96,6 +96,7 @@ import {
   Maximize2,
   Layers,
   Copy,
+  Bot,
 } from "lucide-react";
 import { Link } from "wouter";
 import Navbar from "@/components/navbar";
@@ -1918,79 +1919,83 @@ export default function ConsultantEmailHub() {
 
   const renderEmailList = () => (
     <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 border-x border-slate-200 dark:border-slate-800 min-w-0">
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{getFolderTitle()}</h2>
-          <div className="flex items-center gap-2">
-            <Button 
-              size="sm"
-              className="bg-violet-600 hover:bg-violet-700 gap-1"
-              onClick={() => {
-                setComposerReplyTo(null);
-                setComposerReplyAll(false);
-                setShowComposer(true);
-              }}
-            >
-              <PenSquare className="h-4 w-4" />
-              Nuova Email
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={syncAllAccountsAndRefresh}
-              disabled={isSyncing}
-              className="h-8 w-8"
-            >
-              <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-            </Button>
+      <div className="border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-2 px-4 py-3">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white flex-1">{getFolderTitle()}</h2>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs h-8 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/50"
+            onClick={() => window.dispatchEvent(new CustomEvent('ai:open-and-ask', { detail: {} }))}
+          >
+            <Bot className="h-3.5 w-3.5" />
+            Chiedi ad Alessio
+          </Button>
+          <Button 
+            size="sm"
+            className="bg-violet-600 hover:bg-violet-700 gap-1.5 h-8 text-xs"
+            onClick={() => {
+              setComposerReplyTo(null);
+              setComposerReplyAll(false);
+              setShowComposer(true);
+            }}
+          >
+            <PenSquare className="h-3.5 w-3.5" />
+            Nuova Email
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={syncAllAccountsAndRefresh}
+            disabled={isSyncing}
+            className="h-8 w-8 shrink-0"
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+
+        <div className="px-4 pb-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              placeholder="Cerca email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-8 text-sm bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus-visible:ring-violet-500"
+            />
           </div>
         </div>
-        
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Cerca email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9"
-          />
-        </div>
-        
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant={inboxFilter.readStatus === "all" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => setInboxFilter(prev => ({ ...prev, readStatus: "all" }))}
-          >
-            Tutte
-          </Button>
-          <Button
-            variant={inboxFilter.readStatus === "read" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => setInboxFilter(prev => ({ ...prev, readStatus: "read" }))}
-          >
-            Letta
-          </Button>
-          <Button
-            variant={inboxFilter.readStatus === "unread" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => setInboxFilter(prev => ({ ...prev, readStatus: "unread" }))}
-          >
-            Non letto
-          </Button>
-          <Button
-            variant={inboxFilter.starred ? "secondary" : "ghost"}
-            size="sm"
-            className="h-7 text-xs"
+
+        <div className="flex items-center gap-1 px-4 pb-2.5">
+          {[
+            { label: "Tutte", value: null as string | null, key: "all" },
+            { label: "Non lette", value: "unread", key: "unread" },
+            { label: "Lette", value: "read", key: "read" },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setInboxFilter(prev => ({ ...prev, readStatus: tab.value ?? "all" }))}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                inboxFilter.readStatus === (tab.value ?? "all")
+                  ? "bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+          <button
             onClick={() => setInboxFilter(prev => ({ ...prev, starred: !prev.starred }))}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
+              inboxFilter.starred
+                ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
           >
-            <Star className="h-3 w-3 mr-1" />
+            <Star className={`h-3 w-3 ${inboxFilter.starred ? "fill-amber-500 text-amber-500" : ""}`} />
             Preferiti
-          </Button>
-          
+          </button>
+
           <Select
             value={inboxFilter.emailType || "all"}
             onValueChange={(value) => {
@@ -1998,63 +2003,36 @@ export default function ConsultantEmailHub() {
               setCurrentPage(1);
             }}
           >
-            <SelectTrigger className="h-7 w-[140px] text-xs">
-              <SelectValue placeholder="Tipo email" />
+            <SelectTrigger className="h-6 w-auto min-w-[90px] text-xs border-0 bg-transparent shadow-none px-2 text-slate-500 dark:text-slate-400">
+              <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tutti i tipi</SelectItem>
               <SelectItem value="hunter_reply">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  Risposta Lead
-                </span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" />Risposta Lead</span>
               </SelectItem>
               <SelectItem value="client_inquiry">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  Cliente
-                </span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" />Cliente</span>
               </SelectItem>
               <SelectItem value="lead_inquiry">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-violet-500" />
-                  Lead CRM
-                </span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-violet-500" />Lead CRM</span>
               </SelectItem>
               <SelectItem value="system_notification">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-slate-400" />
-                  Sistema
-                </span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-400" />Sistema</span>
               </SelectItem>
               <SelectItem value="unknown">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-slate-300" />
-                  Sconosciuto
-                </span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300" />Sconosciuto</span>
               </SelectItem>
             </SelectContent>
           </Select>
-          
-          <div className="ml-auto flex items-center gap-1 text-xs text-slate-500">
-            <span>{inboxTotalCount > 0 ? `${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, inboxTotalCount)}` : "0"} di {inboxTotalCount}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              disabled={currentPage <= 1}
-              onClick={() => setCurrentPage(p => p - 1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
+
+          <div className="ml-auto flex items-center gap-0.5 text-xs text-slate-400">
+            <span className="tabular-nums">{inboxTotalCount > 0 ? `${(currentPage - 1) * ITEMS_PER_PAGE + 1}–${Math.min(currentPage * ITEMS_PER_PAGE, inboxTotalCount)}` : "0"} / {inboxTotalCount}</span>
+            <Button variant="ghost" size="icon" className="h-6 w-6" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage(p => p + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-6 w-6" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
@@ -2156,132 +2134,107 @@ export default function ConsultantEmailHub() {
             <p className="text-sm">Nessuna email trovata</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {paginatedEmails.map((email, index) => (
-              <div
-                key={email.id}
-                onClick={() => handleEmailClick(email)}
-                className={`px-4 py-3 cursor-pointer flex items-center gap-3 hover:bg-violet-50/80 dark:hover:bg-violet-950/30 transition-colors ${
-                  !email.isRead ? "bg-violet-50/50 dark:bg-violet-950/20" : ""
-                } ${selectedEmail?.id === email.id ? "bg-violet-100 dark:bg-violet-900/30" : ""}`}
-              >
-                <Checkbox
-                  checked={selectedEmails.has(email.id)}
-                  onCheckedChange={(checked) => {
-                    setSelectedEmails(prev => {
-                      const next = new Set(prev);
-                      if (checked) {
-                        next.add(email.id);
-                      } else {
-                        next.delete(email.id);
-                      }
-                      return next;
-                    });
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium shrink-0 ${getAvatarColor(getEmailDisplayName(email))}`}>
-                  {getEmailDisplayName(email).charAt(0).toUpperCase()}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    {email.direction === "outbound" && (
-                      <span className="text-xs text-slate-400 mr-0.5">A:</span>
-                    )}
-                    <span className={`text-sm truncate ${!email.isRead ? "font-semibold text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>
-                      {getEmailDisplayName(email)}
-                    </span>
-                    {email.processingStatus === "draft_generated" && (
-                      <Badge className="h-5 px-1.5 text-xs bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300">
-                        <img src={millieAvatar} alt="Millie" className="h-3 w-3 rounded-full mr-0.5" />
-                        Millie
-                      </Badge>
-                    )}
-                    {email.processingStatus === "needs_review" && (
-                      <Badge variant="destructive" className="h-5 px-1.5 text-xs">
-                        <AlertTriangle className="h-3 w-3 mr-0.5" />
-                        Urgente
-                      </Badge>
-                    )}
-                    {email.processingStatus === "sent" && (
-                      <Badge className="h-5 px-1.5 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
-                        <Check className="h-3 w-3 mr-0.5" />
-                        Risposto
-                      </Badge>
-                    )}
-                    {email.processingStatus === "ignored" && (
-                      <Badge className="h-5 px-1.5 text-xs bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                        Ignorata
-                      </Badge>
-                    )}
-                    {email.emailType === "hunter_reply" && (
-                      <Badge className="h-5 px-1.5 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
-                        Risposta Lead
-                      </Badge>
-                    )}
-                    {email.emailType === "system_notification" && email.processingStatus !== "ignored" && (
-                      <Badge className="h-5 px-1.5 text-xs bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                        Sistema
-                      </Badge>
-                    )}
-                    {email.emailType === "client_inquiry" && (
-                      <Badge className="h-5 px-1.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                        Cliente
-                      </Badge>
-                    )}
-                    {email.emailType === "lead_inquiry" && (
-                      <Badge className="h-5 px-1.5 text-xs bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300">
-                        Lead CRM
-                      </Badge>
-                    )}
-                    {(email as any).senderClient && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge className="h-5 px-1.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                              <Users className="h-3 w-3 mr-0.5" />
-                              Cliente
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-xs">
-                            <p className="font-medium">{(email as any).senderClient.firstName} {(email as any).senderClient.lastName}</p>
-                            {(email as any).senderClient.level && (
-                              <p className="text-xs text-slate-400">Livello: {(email as any).senderClient.level}</p>
-                            )}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
+          <div>
+            {paginatedEmails.map((email) => {
+              const isUnread = !email.isRead;
+              const isSelected = selectedEmail?.id === email.id;
+              const displayName = getEmailDisplayName(email);
+              const emailDate = new Date(email.receivedAt);
+              const isToday = new Date().toDateString() === emailDate.toDateString();
+              const dateStr = isToday ? format(emailDate, "HH:mm") : format(emailDate, "dd MMM");
+
+              return (
+                <div
+                  key={email.id}
+                  onClick={() => handleEmailClick(email)}
+                  className={`relative flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors group border-b border-slate-100 dark:border-slate-800/60 ${
+                    isSelected
+                      ? "bg-violet-50 dark:bg-violet-950/30 border-l-2 border-l-violet-500"
+                      : isUnread
+                      ? "bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                      : "bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                  }`}
+                >
+                  {isUnread && !isSelected && (
+                    <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
+                  )}
+
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 ${getAvatarColor(displayName)}`}>
+                    {email.direction === "outbound"
+                      ? <Send className="h-3.5 w-3.5" />
+                      : displayName.charAt(0).toUpperCase()}
                   </div>
-                  <p className={`text-sm truncate ${!email.isRead ? "text-slate-800 dark:text-slate-200" : "text-slate-600 dark:text-slate-400"}`}>
-                    {email.subject || "(Nessun oggetto)"}
-                  </p>
-                  <p className="text-xs text-slate-500 truncate">{email.snippet}</p>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 min-w-0">
+                      <span className={`text-sm shrink-0 max-w-[140px] truncate ${isUnread ? "font-semibold text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>
+                        {email.direction === "outbound" ? `→ ${displayName}` : displayName}
+                      </span>
+                      <span className={`text-sm truncate flex-1 ${isUnread ? "text-slate-800 dark:text-slate-200" : "text-slate-500 dark:text-slate-400"}`}>
+                        {email.subject || "(Nessun oggetto)"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                      <span className="text-xs text-slate-400 dark:text-slate-500 truncate flex-1">{email.snippet}</span>
+                      {email.processingStatus === "draft_generated" && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[10px] font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 shrink-0">
+                          <img src={millieAvatar} alt="" className="h-2.5 w-2.5 rounded-full" />Millie
+                        </span>
+                      )}
+                      {email.processingStatus === "needs_review" && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 shrink-0">
+                          <AlertTriangle className="h-2.5 w-2.5" />Urgente
+                        </span>
+                      )}
+                      {email.processingStatus === "sent" && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 shrink-0">
+                          <Check className="h-2.5 w-2.5" />Risposto
+                        </span>
+                      )}
+                      {email.emailType === "hunter_reply" && (
+                        <span className="inline-flex items-center px-1.5 py-0 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 shrink-0">Lead</span>
+                      )}
+                      {email.emailType === "client_inquiry" && (
+                        <span className="inline-flex items-center px-1.5 py-0 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 shrink-0">Cliente</span>
+                      )}
+                      {email.emailType === "lead_inquiry" && (
+                        <span className="inline-flex items-center px-1.5 py-0 rounded text-[10px] font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 shrink-0">CRM</span>
+                      )}
+                      {(email as any).senderClient && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 shrink-0 cursor-default">
+                                <Users className="h-2.5 w-2.5" />{(email as any).senderClient.firstName}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <p className="font-medium">{(email as any).senderClient.firstName} {(email as any).senderClient.lastName}</p>
+                              {(email as any).senderClient.level && <p className="text-xs text-slate-400">Livello: {(email as any).senderClient.level}</p>}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className={`text-[11px] tabular-nums ${isUnread ? "font-medium text-violet-600 dark:text-violet-400" : "text-slate-400"}`}>{dateStr}</span>
+                    <div className="flex items-center gap-1">
+                      {email.hasAttachments && <Paperclip className="h-3 w-3 text-slate-300 dark:text-slate-600" />}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleStarMutation.mutate(email.id); }}
+                        className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+                      >
+                        {email.isStarred
+                          ? <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+                          : <Star className="h-3.5 w-3.5 text-slate-200 dark:text-slate-700 group-hover:text-slate-300 dark:group-hover:text-slate-500" />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                
-                <div className="flex items-center gap-2 shrink-0">
-                  {email.hasAttachments && <Paperclip className="h-4 w-4 text-slate-400" />}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleStarMutation.mutate(email.id);
-                    }}
-                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
-                  >
-                    {email.isStarred ? (
-                      <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                    ) : (
-                      <Star className="h-4 w-4 text-slate-300" />
-                    )}
-                  </button>
-                  <span className="text-xs text-slate-400 w-14 text-right">
-                    {format(new Date(email.receivedAt), "dd/MM")}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </ScrollArea>
