@@ -1,0 +1,97 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker cp /opt/alessia-voice/vps-voice-bridge/freeswitch/autoload_configs/acl.conf.xml freeswitch:/usr/local/freeswitch/etc/freeswitch/autoload_configs/acl.conf.xml
+docker restart freeswitch
+lstat /opt/alessia-voice/vps-voice-bridge/freeswitch/autoload_configs: no such file or directory
+freeswitch
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec -it freeswitch fs_cli -x "acl trusted_providers 185.246.41.141"
+docker exec -it freeswitch fs_cli -x "acl trusted_providers 192.76.120.10"
+false
+false
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec -it freeswitch fs_cli -x "xml_locate configuration configuration name acl.conf"
+<configuration name="acl.conf" description="Network Lists">
+    <network-lists>
+
+        <list name="telnyx" default="deny">
+            <node type="allow" cidr="192.76.120.0/24"></node>
+
+            <node type="allow" cidr="36.255.198.128/25"></node>
+
+            <node type="allow" cidr="50.114.136.128/25"></node>
+
+            <node type="allow" cidr="50.114.144.0/21"></node>
+
+            <node type="allow" cidr="64.16.226.0/24"></node>
+
+            <node type="allow" cidr="64.16.227.0/24"></node>
+
+            <node type="allow" cidr="64.16.228.0/24"></node>
+
+            <node type="allow" cidr="64.16.229.0/24"></node>
+
+            <node type="allow" cidr="64.16.230.0/24"></node>
+
+            <node type="allow" cidr="64.16.248.0/24"></node>
+
+            <node type="allow" cidr="64.16.249.0/24"></node>
+
+            <node type="allow" cidr="103.115.244.128/25"></node>
+
+            <node type="allow" cidr="185.246.41.128/25"></node>
+
+    </list>
+
+
+        <list name="messagenet" default="deny">
+            <node type="allow" cidr="109.233.128.0/21"></node>
+
+    </list>
+
+
+        <list name="trusted_providers" default="deny">
+            <node type="allow" cidr="192.76.120.0/24"></node>
+
+            <node type="allow" cidr="36.255.198.128/25"></node>
+
+            <node type="allow" cidr="50.114.136.128/25"></node>
+
+            <node type="allow" cidr="50.114.144.0/21"></node>
+
+            <node type="allow" cidr="64.16.226.0/24"></node>
+
+            <node type="allow" cidr="64.16.227.0/24"></node>
+
+            <node type="allow" cidr="64.16.228.0/24"></node>
+
+            <node type="allow" cidr="64.16.229.0/24"></node>
+
+            <node type="allow" cidr="64.16.230.0/24"></node>
+
+            <node type="allow" cidr="64.16.248.0/24"></node>
+
+            <node type="allow" cidr="64.16.249.0/24"></node>
+
+            <node type="allow" cidr="103.115.244.128/25"></node>
+
+            <node type="allow" cidr="185.246.41.128/25"></node>
+
+            <node type="allow" cidr="109.233.128.0/21"></node>
+
+    </list>
+
+
+        <list name="loopback" default="deny">
+            <node type="allow" cidr="127.0.0.0/8"></node>
+
+    </list>
+
+
+  </network-lists>
+
+</configuration>
+
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
