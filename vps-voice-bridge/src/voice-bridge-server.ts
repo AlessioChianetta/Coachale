@@ -22,6 +22,8 @@ import {
 const log = logger.child('SERVER');
 
 const CHUNK_SIZE = 320;
+const bgTimers = new Map<string, NodeJS.Timeout>();
+const lastAiSendTime = new Map<string, number>();
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const blockedIps = new Map<string, number>();
@@ -341,7 +343,27 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
     sessionId: session.id.slice(0, 8),
   });
 
-  log.info(`🎵 Audio direct-send mode (no timer, mod_audio_stream handles pacing)`, { sessionId: session.id.slice(0, 8) });
+  if (config.audio.backgroundEnabled && isBackgroundLoaded()) {
+    const bgInterval = setInterval(() => {
+      const s = sessionManager.getSession(session.id);
+      if (!s || (s.state !== 'active' && s.state !== 'reconnecting') || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
+        return;
+      }
+
+      const aiTime = lastAiSendTime.get(session.id) || 0;
+      if (Date.now() - aiTime < 15) return;
+
+      const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
+      if (bgChunk) {
+        s.fsWebSocket.send(bgChunk, { binary: true });
+      }
+    }, 20);
+
+    bgTimers.set(session.id, bgInterval);
+    log.info(`🎵 Background audio timer started (20ms interval, continuous)`, { sessionId: session.id.slice(0, 8) });
+  } else {
+    log.info(`🎵 Audio direct-send mode (no background audio)`, { sessionId: session.id.slice(0, 8) });
+  }
 
   const tPreConnect = Date.now();
   log.info(`⏱️ [VPS-TIMING] Pre-connect overhead: ${tPreConnect - t0}ms`, { sessionId: session.id.slice(0, 8) });
@@ -354,6 +376,7 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
       sessionId: session.id,
       callerId: message.caller_id,
       calledNumber: message.called_number,
+      callId: message.call_id,
       scheduledCallId: message.call_id.startsWith('sc_') ? message.call_id : undefined,
       onAudioResponse: (audio) => {
         if (!firstAudioReceived) {
@@ -452,6 +475,8 @@ function queueAudioForFreeSWITCH(sessionId: string, audio: Buffer): void {
     log.info(`🔊 First audio burst: sent ${SILENCE_FRAMES} silence frames as jitter buffer primer`, { sessionId: sessionId.slice(0, 8) });
   }
 
+  lastAiSendTime.set(sessionId, Date.now());
+
   for (let i = 0; i < pcmAudio.length; i += CHUNK_SIZE) {
     const end = Math.min(i + CHUNK_SIZE, pcmAudio.length);
     const chunk = pcmAudio.slice(i, end);
@@ -463,9 +488,17 @@ function queueAudioForFreeSWITCH(sessionId: string, audio: Buffer): void {
       session.fsWebSocket.send(padded, { binary: true });
     }
   }
+
+  lastAiSendTime.set(sessionId, Date.now());
 }
 
 function cleanupSession(sessionId: string): void {
+  const timer = bgTimers.get(sessionId);
+  if (timer) {
+    clearInterval(timer);
+    bgTimers.delete(sessionId);
+  }
+  lastAiSendTime.delete(sessionId);
   _firstAudioSent.delete(sessionId);
   bgDestroySession(sessionId);
 }

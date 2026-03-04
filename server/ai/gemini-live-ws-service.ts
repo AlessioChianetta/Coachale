@@ -1048,6 +1048,7 @@ async function getUserIdFromRequest(req: any): Promise<{
       const callerId = url.searchParams.get('callerId');
       const calledNumber = url.searchParams.get('calledNumber');
       const scheduledCallIdParam = url.searchParams.get('scheduledCallId');
+      const voiceCallIdParam = url.searchParams.get('voiceCallId');
       if (!callerId) {
         console.error('❌ No callerId provided for phone_service mode');
         return null;
@@ -1179,8 +1180,11 @@ async function getUserIdFromRequest(req: any): Promise<{
           }
 
           if (numberRows.rows.length === 0) {
+            const isOutboundCall = voiceCallIdParam?.startsWith('outbound-');
             if (scheduledCallIdParam && _cachedScheduledCallRow) {
               console.log(`⚠️ [PHONE SERVICE] calledNumber ${normalizedCalledNumber} not in voice_numbers — OUTBOUND call allowed (consultant ${resolvedConsultantId} resolved from scheduled_voice_calls)`);
+            } else if (isOutboundCall) {
+              console.log(`⚠️ [PHONE SERVICE] calledNumber ${normalizedCalledNumber} not in voice_numbers — OUTBOUND callback allowed (voiceCallId=${voiceCallIdParam}, consultant ${resolvedConsultantId} from JWT)`);
             } else {
               console.error(`❌ [PHONE SERVICE] Called number ${normalizedCalledNumber} not found or inactive in voice_numbers → REJECTING CALL`);
               _rejectedNumbersCache.set(normalizedCalledNumber, { count: 1, ts: Date.now() });
@@ -1446,6 +1450,7 @@ async function getUserIdFromRequest(req: any): Promise<{
           phoneCallLeadContext: callLeadContext,
           phoneInstructionType: instructionType,
           phoneScheduledCallId: scheduledCallId,
+          phoneVoiceCallId: voiceCallIdParam,
         };
       } catch (jwtError) {
         console.error('❌ Invalid phone_service token:', jwtError);
@@ -1807,7 +1812,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     const authDoneTime = Date.now();
     console.log(`⏱️ [LATENCY-E2E] Auth completed: +${authDoneTime - wsArrivalTime}ms from WS arrival`);
 
-    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneCallLeadContext, phoneInstructionType, phoneScheduledCallId } = authResult;
+    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneCallLeadContext, phoneInstructionType, phoneScheduledCallId, phoneVoiceCallId } = authResult;
 
     // ⚡ O4: EARLY-START parallel queries immediately after auth
     // These queries start running while 1400+ lines of variable declarations and function definitions execute
@@ -3850,11 +3855,11 @@ Una volta che hanno capito e confermato:
         
         // 🎯 FIX: Determine direction based on scheduledCallId FORMAT
         // OUTBOUND calls from Replit have scheduledCallId starting with "sc_" (e.g. sc_1770317815932_p4nhuqjl3)
+        // AI-initiated callbacks have voiceCallId starting with "outbound-"
         // INBOUND calls use FreeSWITCH UUID format (e.g. 005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd)
-        // Only calls with "sc_" prefix are truly OUTBOUND (we initiated them from Replit)
-        const isOutbound = !!phoneScheduledCallId && phoneScheduledCallId.startsWith('sc_');
+        const isOutbound = (!!phoneScheduledCallId && phoneScheduledCallId.startsWith('sc_')) || (!!phoneVoiceCallId && phoneVoiceCallId.startsWith('outbound-'));
         
-        console.log(`📞 [${connectionId}] DIRECTION DETECTION: scheduledCallId=${phoneScheduledCallId}, isOutbound=${isOutbound}`);
+        console.log(`📞 [${connectionId}] DIRECTION DETECTION: scheduledCallId=${phoneScheduledCallId}, voiceCallId=${phoneVoiceCallId || 'N/A'}, isOutbound=${isOutbound}`);
         
         // ⚡ Await pre-started settings promise (runs in parallel with other queries)
         {

@@ -40,6 +40,7 @@ export interface ReplitClientOptions {
   sessionId: string;
   callerId: string;
   calledNumber?: string;
+  callId?: string;
 scheduledCallId?: string;
   mode?: string;
   voice?: string;
@@ -57,6 +58,7 @@ export class ReplitWSClient {
   private sessionId: string;
   private callerId: string;
 private scheduledCallId?: string;
+  private callId?: string;
   private options: ReplitClientOptions;
   private isConnected = false;
   private audioSequence = 0;
@@ -85,7 +87,8 @@ private scheduledCallId?: string;
     this.sessionId = options.sessionId;
     this.callerId = options.callerId;
 
-this.scheduledCallId = options.scheduledCallId; 
+this.scheduledCallId = options.scheduledCallId;
+    this.callId = options.callId;
     this.options = options;
   }
 
@@ -111,6 +114,10 @@ this.scheduledCallId = options.scheduledCallId;
 if (this.scheduledCallId) {
     wsUrl += `&scheduledCallId=${encodeURIComponent(this.scheduledCallId)}`;
   }
+
+    if (this.callId) {
+      wsUrl += `&voiceCallId=${encodeURIComponent(this.callId)}`;
+    }
 
     if (resumeHandle) {
       wsUrl += `&resumeHandle=${encodeURIComponent(resumeHandle)}`;

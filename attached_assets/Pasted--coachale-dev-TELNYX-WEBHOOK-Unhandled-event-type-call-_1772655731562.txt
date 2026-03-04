@@ -1,0 +1,28 @@
+ coachale-dev > [TELNYX-WEBHOOK] Unhandled event type: call.answered                            │
+│[ 0] coachale-dev       Mem:  56 MB     ││ coachale-dev > 8:21:01 PM [express] POST /api/webhooks/telnyx 200 in 7ms :: {"received":true}  │
+│[ 4] orbitale-builder     Mem:  94 MB   ││ coachale-dev > [SHEETS POLLING] Date filter applied: 370 -> 370 rows (from 2025-02-07)         │
+│[ 3] orbitale-contract     Mem: 102 MB  ││ coachale-dev > [SHEETS POLLING] Processing 370 rows for job 0ceb7dcd-a981-49ff-8de8-257125dbb  │
+│[ 2] orbitale-crm       Mem: 101 MB     ││ coachale-dev > [SHEETS POLLING] Using campaign "Campagna Euro Space Massimo" for import        │
+│[ 1] orbitale-finanza     Mem:  97 MB   ││ coachale-dev > 🎤 [41t6y] Client connected to Live API                                          │
+│[ 5] orbitale-turbo     Mem: 139 MB     ││ coachale-dev > ⏱️ [LATENCY-E2E] WebSocket arrival: 2026-03-04T20:21:02.112Z                     │
+│[ 6] voice-bridge       Mem:  72 MB     ││ coachale-dev > ⏱️ [AUTH-DETAIL] JWT verify: 2ms                                                 │
+│                                        ││ coachale-dev > 🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━       │
+│                                        ││ coachale-dev > 🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:                                │
+│                                        ││ coachale-dev > 🔍 [ROUTING-DEBUG]   decoded.consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b  │
+│                                        ││ coachale-dev > 🔍 [ROUTING-DEBUG]   decoded.type: phone_service                                 │
+│                                        ││ coachale-dev > 🔍 [ROUTING-DEBUG]   decoded.scope: N/A                                          │
+│                                        ││ coachale-dev > 🔍 [ROUTING-DEBUG]   calledNumber: +393315436339                                 │
+│                                        ││ coachale-dev > 🔍 [ROUTING-DEBUG]   callerId: +393315436339                                     │
+│                                        ││ coachale-dev > 🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━       │
+│                                        ││ coachale-dev > 📞 [Number Lookup] Not found: +393315436339 (normalized: +393315436339)          │
+│                                        ││ coachale-dev > 8:21:02 PM [express] GET /api/voice/number-lookup 200 in 16ms :: {"found":fals  │
+│                                        ││ coachale-dev > ⏱️ [AUTH-DETAIL] voice_numbers lookup: 7ms (tried: +393315436339, +39331543633   │
+│                                        ││ coachale-dev > ❌ [PHONE SERVICE] Called number +393315436339 not found or inactive in          │
+│                                        ││ coachale-dev > ❌ [41t6y] Authentication failed                                                 │
+│                                        ││ coachale-dev > 8:21:02 PM [express] POST /api/voice/call-start 200 in 25ms                     │
+│                                        ││ coachale-dev > 8:21:02 PM [express] POST /api/voice/call-end 200 in 19ms                       │
+│                                        ││ coachale-dev > [SHEETS POLLING] Completed import for job 0ceb7dcd-a981-49ff-8de8-257125dbbb24  │
+│                                        ││ coachale-dev > [SHEETS POLLING] Polling cycle completed (ExecID: gyf1l)                        │
+│                                        ││ coachale-dev > 🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0                                     │
+│                                        ││ coachale-dev > 🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0                                     │
+│                                        ││ coachale-dev > 🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0 
