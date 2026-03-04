@@ -1,0 +1,94 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec -it freeswitch fs_cli -x "sofia status profile internal"
+=================================================================================================
+Name                    internal
+Domain Name             N/A
+Auto-NAT                false
+DBName                  sofia_reg_internal
+Pres Hosts              72.62.50.40,72.62.50.40
+Dialplan                XML
+Context                 public
+Challenge Realm         auto_from
+RTP-IP                  72.62.50.40
+Ext-RTP-IP              72.62.50.40
+SIP-IP                  72.62.50.40
+Ext-SIP-IP              72.62.50.40
+URL                     sip:mod_sofia@72.62.50.40:5060
+BIND-URL                sip:mod_sofia@72.62.50.40:5060;maddr=72.62.50.40;transport=udp,tcp
+WS-BIND-URL             sip:mod_sofia@72.62.50.40:5066;transport=ws
+WSS-BIND-URL            sips:mod_sofia@72.62.50.40:7443;transport=wss
+HOLD-MUSIC              local_stream://moh
+OUTBOUND-PROXY          N/A
+CODECS IN               OPUS,G722,PCMU,PCMA,H264,VP8
+CODECS OUT              OPUS,G722,PCMU,PCMA,H264,VP8
+TEL-EVENT               101
+DTMF-MODE               rfc2833
+CNG                     13
+SESSION-TO              0
+MAX-DIALOG              0
+MAX-RECV-RPS            1000
+NOMEDIA                 false
+LATE-NEG                true
+PROXY-MEDIA             false
+AGGRESSIVENAT           false
+CALLS-IN                2
+FAILED-CALLS-IN         2
+CALLS-OUT               0
+FAILED-CALLS-OUT        0
+REGISTRATIONS           1
+
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec -it freeswitch fs_cli -x "sofia global siptrace on"
++OK Global siptrace on
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec -it freeswitch fs_cli -x "sofia global siptrace off"
+docker logs freeswitch --tail 50
++OK Global siptrace off
+nta.c:4561 nta_leg_destroy() nta_leg_destroy((nil))
+soa.c:355 soa_destroy() soa_destroy(static::0x74050c031ef0) called
+nua_stack.c:599 nua_stack_signal() nua(0x7404d401e8d0): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nta.c:1328 agent_timer() nta: timer set next to 4094 ms
+nta.c:7234 _nta_incoming_timer() nta: timer I fired, terminate 407 response
+nta.c:5915 incoming_reclaim_queued() incoming_reclaim_all((nil), (nil), 0x740510fb79f0)
+nta.c:7281 _nta_incoming_timer() nta_incoming_timer: 0/0 resent, 0/0 tout, 1/3 term, 1/3 free
+nta.c:1328 agent_timer() nta: timer set next to 69 ms
+nta.c:7234 _nta_incoming_timer() nta: timer I fired, terminate 407 response
+nta.c:5915 incoming_reclaim_queued() incoming_reclaim_all((nil), (nil), 0x740510fb79f0)
+nta.c:7281 _nta_incoming_timer() nta_incoming_timer: 0/0 resent, 0/0 tout, 1/2 term, 1/2 free
+nta.c:1328 agent_timer() nta: timer set next to 8944 ms
+nta.c:9279 outgoing_timer_dk() nta: timer K fired, terminate OPTIONS (111752516)
+nta.c:8951 outgoing_reclaim_queued() outgoing_reclaim_all((nil), (nil), 0x7405118e09e0)
+nta.c:9091 _nta_outgoing_timer() nta_outgoing_timer: 0/0 resent, 0/0 tout, 1/1 term, 1/1 free
+nta.c:1321 agent_timer() nta: timer not set
+nua.c:574 nua_set_params() nua: nua_set_params: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_set_params
+nua.c:574 nua_set_params() nua: nua_set_params: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_set_params
+nua.c:574 nua_set_params() nua: nua_set_params: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_set_params
+nua.c:574 nua_set_params() nua: nua_set_params: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_set_params
+nua.c:574 nua_set_params() nua: nua_set_params: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_set_params
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_set_params
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:402 soa_set_params() soa_set_params(static::0x7404e4001bf0, ...) called
+nua_stack.c:301 nua_stack_event() nua((nil)): event r_set_params 200 OK
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_set_params
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:402 soa_set_params() soa_set_params(static::0x7404f801da90, ...) called
+nua_stack.c:301 nua_stack_event() nua((nil)): event r_set_params 200 OK
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_set_params
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:402 soa_set_params() soa_set_params(static::0x7404f801da90, ...) called
+nua_stack.c:301 nua_stack_event() nua((nil)): event r_set_params 200 OK
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_set_params
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:402 soa_set_params() soa_set_params(static::0x7404d4001bf0, ...) called
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:301 nua_stack_event() nua((nil)): event r_set_params 200 OK
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
