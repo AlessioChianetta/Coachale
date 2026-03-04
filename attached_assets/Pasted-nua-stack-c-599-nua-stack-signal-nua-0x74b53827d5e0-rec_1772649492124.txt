@@ -1,0 +1,716 @@
+nua_stack.c:599 nua_stack_signal() nua(0x74b53827d5e0): recv signal r_destroy
+nta.c:4561 nta_leg_destroy() nta_leg_destroy((nil))
+soa.c:355 soa_destroy() soa_destroy(static::0x74b5382881c0) called
+nua_stack.c:599 nua_stack_signal() nua(0x74b53827d5e0): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_common.c:108 nh_create_handle() nua: nh_create_handle: entering
+nua.c:341 nua_handle_bind() nua: nua_handle_bind: entering
+nua.c:656 nua_options() nua: nua_options: entering
+nua_stack.c:558 nua_signal() nua(0x74b5540120b0): sent signal r_options
+nua_stack.c:599 nua_stack_signal() nua(0x74b5540120b0): recv signal r_options
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:278 soa_clone() soa_clone(static::0x74b530035dc0, 0x74b530034b30, 0x74b5540120b0) called
+soa.c:402 soa_set_params() soa_set_params(static::0x74b53035b650, ...) called
+soa.c:402 soa_set_params() soa_set_params(static::0x74b53035b650, ...) called
+nta.c:2727 nta_tpn_by_url() nta: selecting scheme sip
+sres_cache.c:271 sres_cache_get() sres_cache_get(0x74b5300371a0, SRV, "_sip._udp.sip.telnyx.com.") called
+sres_cache.c:317 sres_cache_get() sres_cache_get(0x74b5300371a0, SRV, "_sip._udp.sip.telnyx.com.") returned 2 entries
+nta.c:10776 outgoing_query_srv() nta: for "sip.telnyx.com" query "_sip._udp.sip.telnyx.com" SRV (cached)
+nta.c:10872 outgoing_answer_srv() nta: _sip._udp.sip.telnyx.com IN SRV 1 1  5060 sip-anycast2.telnyx.com. (udp)
+nta.c:10872 outgoing_answer_srv() nta: _sip._udp.sip.telnyx.com IN SRV 1 1  5060 sip-anycast1.telnyx.com. (udp)
+sres_cache.c:271 sres_cache_get() sres_cache_get(0x74b5300371a0, A, "sip-anycast2.telnyx.com.") called
+sres_cache.c:317 sres_cache_get() sres_cache_get(0x74b5300371a0, A, "sip-anycast2.telnyx.com.") returned 1 entries
+nta.c:10987 outgoing_query_a() nta: for "sip.telnyx.com" query "sip-anycast2.telnyx.com." A (cached)
+nta.c:11046 outgoing_answer_a() nta: sip-anycast2.telnyx.com. IN A 64.16.250.10
+tport.c:3290 tport_tsend() tport_tsend(0x74b530038d70) tpn = udp/64.16.250.10:5060
+tport.c:4076 tport_resolve() tport_resolve addrinfo = 64.16.250.10:5060
+tport.c:4713 tport_by_addrinfo() tport_by_addrinfo(0x74b530038d70): not found by name udp/64.16.250.10:5060
+tport.c:3625 tport_vsend() tport_vsend(0x74b530038d70): 555 bytes of 555 to udp/64.16.250.10:5060
+tport.c:3526 tport_send_msg() tport_vsend returned 555
+send 555 bytes to udp/[64.16.250.10]:5060 at 18:37:35.193057:
+------------------------------------------------------------------------
+OPTIONS sip:sip.telnyx.com;transport=udp SIP/2.0
+Via: SIP/2.0/UDP 72.62.50.40:5080;rport;branch=z9hG4bKX5DrZa7vj49Nm
+Max-Forwards: 70
+From: <sip:sip.telnyx.com>;tag=XN7XXQ9N6j8jQ
+To: <sip:sip.telnyx.com>
+Call-ID: 0dc0f38c-929c-123f-68a1-b2e8d4b6d3e0
+CSeq: 111769882 OPTIONS
+User-Agent: FreeSWITCH-mod_sofia/1.10.13-dev+git~20260116T201023Z~88fa1f95ca~64bit
+Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY
+Supported: timer, path, replaces
+Allow-Events: talk, hold, conference, refer
+Content-Length: 0
+
+
+nta.c:8441 outgoing_send() nta: sent OPTIONS (111769882) to udp/64.16.250.10:5060
+tport.c:4191 tport_pend() tport_pend(0x74b530038d70): pending 0x74b5303a2560 for udp/72.62.50.40:5080 (already 0)
+nta.c:1382 set_timeout() nta: timer set to 32000 ms
+nta.c:1380 set_timeout() nta: timer shortened to 1000 ms
+tport.c:2769 tport_wakeup_pri() tport_wakeup_pri(0x74b530038d70): events IN
+tport.c:2900 tport_recv_event() tport_recv_event(0x74b530038d70)
+tport.c:3237 tport_recv_iovec() tport_recv_iovec(0x74b530038d70) msg 0x74b53035be40 from (udp/72.62.50.40:5080) has 359 bytes, veclen = 1
+recv 359 bytes from udp/[64.16.250.10]:5060 at 18:37:35.289739:
+------------------------------------------------------------------------
+SIP/2.0 200 Keepalive P20
+Via: SIP/2.0/UDP 72.62.50.40:5080;rport=5080;received=72.62.50.40;branch=z9hG4bKX5DrZa7vj49Nm
+From: <sip:sip.telnyx.com>;tag=XN7XXQ9N6j8jQ
+To: <sip:sip.telnyx.com>;tag=49eca4720681ace7032c6da6d5948f36.632ae42e
+Call-ID: 0dc0f38c-929c-123f-68a1-b2e8d4b6d3e0
+CSeq: 111769882 OPTIONS
+Server: Telnyx SIP Proxy
+Content-Length: 0
+
+
+tport.c:3055 tport_deliver() tport_deliver(0x74b530038d70): msg 0x74b53035be40 (359 bytes) from udp/64.16.250.10:5080/sip next=(nil)
+nta.c:3389 agent_recv_response() nta: received 200 Keepalive P20 for OPTIONS (111769882)
+nta.c:3456 agent_recv_response() nta: 200 Keepalive P20 is going to a transaction
+nta.c:9743 outgoing_estimate_delay() nta_outgoing: RTT is 96.754 ms
+tport.c:4253 tport_release() tport_release(0x74b530038d70): 0x74b5303a2560 by 0x74b53034e420 with 0x74b53035be40
+nua_stack.c:301 nua_stack_event() nua(0x74b5540120b0): event r_options 200 Keepalive P20
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b5540120b0): entering
+nua_stack.c:558 nua_signal() nua(0x74b5540120b0): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:341 nua_handle_bind() nua: nua_handle_bind: entering
+nua.c:920 nua_handle_destroy() nua: nua_handle_destroy: entering
+nua_stack.c:558 nua_signal() nua(0x74b5540120b0): sent signal r_destroy
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b5540120b0): entering
+nua_stack.c:558 nua_signal() nua(0x74b5540120b0): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b5540120b0): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b5540120b0): recv signal r_destroy
+nta.c:4561 nta_leg_destroy() nta_leg_destroy((nil))
+soa.c:355 soa_destroy() soa_destroy(static::0x74b53035b650) called
+nua_stack.c:599 nua_stack_signal() nua(0x74b5540120b0): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nta.c:1328 agent_timer() nta: timer set next to 4096 ms
+nta.c:9279 outgoing_timer_dk() nta: timer K fired, terminate OPTIONS (111769882)
+nta.c:8951 outgoing_reclaim_queued() outgoing_reclaim_all((nil), (nil), 0x74b542d589e0)
+nta.c:9091 _nta_outgoing_timer() nta_outgoing_timer: 0/0 resent, 0/0 tout, 1/1 term, 1/1 free
+nta.c:1321 agent_timer() nta: timer not set
+tport.c:2769 tport_wakeup_pri() tport_wakeup_pri(0x74b530038d70): events IN
+tport.c:2900 tport_recv_event() tport_recv_event(0x74b530038d70)
+tport.c:3237 tport_recv_iovec() tport_recv_iovec(0x74b530038d70) msg 0x74b5302398e0 from (udp/72.62.50.40:5080) has 1207 bytes, veclen = 1
+recv 1207 bytes from udp/[185.246.41.140]:5060 at 18:37:41.636941:
+------------------------------------------------------------------------
+INVITE sip:390902041022@72.62.50.40:5080 SIP/2.0
+Record-Route: <sip:185.246.41.140;r2=on;lr;ftag=vaH0g6256877p>
+Record-Route: <sip:10.31.224.10;r2=on;lr;ftag=vaH0g6256877p>
+Via: SIP/2.0/UDP 185.246.41.140;branch=z9hG4bKb756.ca7618fabf6b3cdc3ab3d77b589f8364.0
+v:SIP/2.0/UDP 10.31.34.24:6000;received=10.31.34.24;rport=6000;branch=z9hG4bK1SKt9QSB4U1Uc
+Max-Forwards:53
+f:"3890566422"<sip:3890566422@sip.telnyx.eu>;tag=vaH0g6256877p
+t:<sip:390902041022@72.62.50.40:5080>
+i:4bf69896-11ec-453f-aa53-3429e1808701
+CSeq:111770938 INVITE
+m:<sip:mod_sofia@10.31.34.24:6000>
+Allow:INVITE,ACK,BYE,CANCEL,OPTIONS,MESSAGE,INFO,UPDATE,REFER,NOTIFY
+k:timer,path
+u:talk,hold,conference,refer
+Privacy:none
+c:application/sdp
+Content-Disposition:session
+l:359
+P-Asserted-Identity:"3890566422"<sip:3890566422@sip.telnyx.eu;verstat=No-TN-Validation>
+
+v=0
+o=Telnyx 1772630547 1772630548 IN IP4 185.246.41.143
+s=Telnyx
+c=IN IP4 185.246.41.143
+t=0 0
+m=audio 18914 RTP/AVP 18 8 9 0 101
+a=rtpmap:18 G729/8000
+a=fmtp:18 annexb=no
+a=rtpmap:8 PCMA/8000
+a=rtpmap:9 G722/8000
+a=rtpmap:0 PCMU/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+a=sendrecv
+a=rtcp:18915 IN IP4 185.246.41.143
+a=ptime:20
+
+tport.c:3055 tport_deliver() tport_deliver(0x74b530038d70): msg 0x74b5302398e0 (1207 bytes) from udp/185.246.41.140:5080/sip next=(nil)
+nta.c:2968 agent_recv_request() nta: received INVITE sip:390902041022@72.62.50.40:5080 SIP/2.0 (CSeq 111770938) (load: 0 rps)
+nta.c:3337 agent_aliases() nta: canonizing sip:390902041022@72.62.50.40:5080 with contact
+nta.c:3175 agent_recv_request() nta: INVITE (111770938) going to a default leg
+nta.c:1382 set_timeout() nta: timer set to 200 ms
+nua_server.c:102 nua_stack_process_request() nua: nua_stack_process_request: entering
+nua_stack.c:938 nh_create() nua: nh_create: entering
+nua_common.c:108 nh_create_handle() nua: nh_create_handle: entering
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:278 soa_clone() soa_clone(static::0x74b530035dc0, 0x74b530034b30, 0x74b53003bc10) called
+soa.c:402 soa_set_params() soa_set_params(static::0x74b53025ebf0, ...) called
+nta.c:4508 nta_leg_tcreate() nta_leg_tcreate(0x74b53034e510)
+soa.c:1301 soa_init_offer_answer() soa_init_offer_answer(static::0x74b53025ebf0) called
+soa.c:1170 soa_set_remote_sdp() soa_set_remote_sdp(static::0x74b53025ebf0, (nil), 0x74b530232600, 359) called
+nua_dialog.c:338 nua_dialog_usage_add() nua(0x74b53003bc10): adding session usage
+nua_stack.c:301 nua_stack_event() nua(0x74b53003bc10): event i_invite 100 Trying
+nua_session.c:4144 signal_call_state_change() nua(0x74b53003bc10): call state changed: init -> received, received offer
+soa.c:1096 soa_get_remote_sdp() soa_get_remote_sdp(static::0x74b53025ebf0, [0x74b542d583b8], [0x74b542d583b0], [(nil)]) called
+nua_stack.c:301 nua_stack_event() nua(0x74b53003bc10): event i_state 100 Trying
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:341 nua_handle_bind() nua: nua_handle_bind: entering
+2026-03-04 18:37:41.621558 96.93% [NOTICE] switch_channel.c:1143 New Channel sofia/external/3890566422@sip.telnyx.eu [d759f950-74fd-4ab7-b1c2-ba9d41f4244c]
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:581 (sofia/external/3890566422@sip.telnyx.eu) Running State Change CS_NEW (Cur 1 Tot 14)
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+2026-03-04 18:37:41.621558 96.93% [INFO] sofia.c:10460 sofia/external/3890566422@sip.telnyx.eu receiving invite from 185.246.41.140:5060 version: 1.10.13-dev git 88fa1f9 2026-01-16 20:10:23Z 64bit call-id: 4bf69896-11ec-453f-aa53-3429e1808701
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua.c:609 nua_set_hparams() nua: nua_set_hparams: entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_set_params
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_set_params
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+soa.c:402 soa_set_params() soa_set_params(static::0x74b53025ebf0, ...) called
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua_stack.c:301 nua_stack_event() nua(0x74b53003bc10): event r_set_params 200 OK
+2026-03-04 18:37:41.621558 96.93% [DEBUG] sofia.c:7493 Channel sofia/external/3890566422@sip.telnyx.eu entering state [received][100]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] sofia.c:7503 Remote SDP:
+v=0
+o=Telnyx 1772630547 1772630548 IN IP4 185.246.41.143
+s=Telnyx
+c=IN IP4 185.246.41.143
+t=0 0
+m=audio 18914 RTP/AVP 18 8 9 0 101
+a=rtpmap:18 G729/8000
+a=fmtp:18 annexb=no
+a=rtpmap:8 PCMA/8000
+a=rtpmap:9 G722/8000
+a=rtpmap:0 PCMU/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+a=rtcp:18915 IN IP4 185.246.41.143
+a=ptime:20
+
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+2026-03-04 18:37:41.621558 96.93% [DEBUG] sofia.c:7906 (sofia/external/3890566422@sip.telnyx.eu) State Change CS_NEW -> CS_INIT
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:600 (sofia/external/3890566422@sip.telnyx.eu) State NEW
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:581 (sofia/external/3890566422@sip.telnyx.eu) Running State Change CS_INIT (Cur 1 Tot 14)
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:624 (sofia/external/3890566422@sip.telnyx.eu) State INIT
+2026-03-04 18:37:41.621558 96.93% [DEBUG] mod_sofia.c:97 sofia/external/3890566422@sip.telnyx.eu SOFIA INIT
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:40 sofia/external/3890566422@sip.telnyx.eu Standard INIT
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:48 (sofia/external/3890566422@sip.telnyx.eu) State Change CS_INIT -> CS_ROUTING
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:624 (sofia/external/3890566422@sip.telnyx.eu) State INIT going to sleep
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:581 (sofia/external/3890566422@sip.telnyx.eu) Running State Change CS_ROUTING (Cur 1 Tot 14)
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_channel.c:2400 (sofia/external/3890566422@sip.telnyx.eu) Callstate Change DOWN -> RINGING
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:640 (sofia/external/3890566422@sip.telnyx.eu) State ROUTING
+nua.c:878 nua_respond() nua: nua_respond: entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_respond
+2026-03-04 18:37:41.621558 96.93% [DEBUG] mod_sofia.c:158 sofia/external/3890566422@sip.telnyx.eu SOFIA ROUTING
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:230 sofia/external/3890566422@sip.telnyx.eu Standard ROUTING
+2026-03-04 18:37:41.621558 96.93% [INFO] mod_dialplan_xml.c:648 Processing 3890566422 <3890566422>->390902041022 in context public
+Dialplan: sofia/external/3890566422@sip.telnyx.eu parsing [public->unloop] continue=false
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Regex (PASS) [unloop] ${unroll_loops}(true) =~ /^true$/ break=on-false
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Regex (FAIL) [unloop] ${sip_looped_call}() =~ /^true$/ break=on-false
+Dialplan: sofia/external/3890566422@sip.telnyx.eu parsing [public->outside_call] continue=true
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Absolute Condition [outside_call]
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Action set(outside_call=true) 
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Action export(RFC2822_DATE=${strftime(%a, %d %b %Y %T %z)}) 
+Dialplan: sofia/external/3890566422@sip.telnyx.eu parsing [public->call_debug] continue=true
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Regex (FAIL) [call_debug] ${call_debug}(false) =~ /^true$/ break=never
+Dialplan: sofia/external/3890566422@sip.telnyx.eu parsing [public->public_extensions] continue=false
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Regex (FAIL) [public_extensions] destination_number(390902041022) =~ /^(10[01][0-9])$/ break=on-false
+Dialplan: sofia/external/3890566422@sip.telnyx.eu parsing [public->public_conference_extensions] continue=false
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Regex (FAIL) [public_conference_extensions] destination_number(390902041022) =~ /^(3[5-8][01][0-9])$/ break=on-false
+Dialplan: sofia/external/3890566422@sip.telnyx.eu parsing [public->acl_security_log] continue=true
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Absolute Condition [acl_security_log]
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Action log(INFO [INBOUND] Chiamata da ${network_addr} to ${destination_number} (caller: ${caller_id_number})) 
+Dialplan: sofia/external/3890566422@sip.telnyx.eu parsing [public->public_did] continue=false
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Regex (FAIL) [public_did] destination_number(390902041022) =~ /^(5551212)$/ break=on-false
+Dialplan: sofia/external/3890566422@sip.telnyx.eu parsing [public->alessia_ai_9999_public] continue=false
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Regex (PASS) [alessia_ai_9999_public] destination_number(390902041022) =~ /^(\+?3[0-9]{8,12}|[0-9]{4,12})$/ break=on-false
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Action answer() 
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Action sleep(500) 
+nua_stack.c:601 nua_stack_signal() nua(0x74b53003bc10): recv signal r_respond 100 Trying
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Action playback(tone_stream://%(200,0,800)) 
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:402 soa_set_params() soa_set_params(static::0x74b53025ebf0, ...) called
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Action set(STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}) 
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Action set(play_stream_name=websocket_audio) 
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Action set(write_stream_name=websocket_audio) 
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Action set(as_res=${api(uuid_audio_stream ${uuid} start ws://172.17.0.1:9090?call_id=${uuid}&caller_id=${caller_id_number}&called_number=${destination_number}&codec=L16&sample_rate=16000&bidirectional=true&buffer_size=1024)}) 
+Dialplan: sofia/external/3890566422@sip.telnyx.eu Action playback(local_stream://default) 
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:281 (sofia/external/3890566422@sip.telnyx.eu) State Change CS_ROUTING -> CS_EXECUTE
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:640 (sofia/external/3890566422@sip.telnyx.eu) State ROUTING going to sleep
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:581 (sofia/external/3890566422@sip.telnyx.eu) Running State Change CS_EXECUTE (Cur 1 Tot 14)
+tport.c:3290 tport_tsend() tport_tsend(0x74b530038d70) tpn = UDP/185.246.41.140:5060
+tport.c:4076 tport_resolve() tport_resolve addrinfo = 185.246.41.140:5060
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:647 (sofia/external/3890566422@sip.telnyx.eu) State EXECUTE
+2026-03-04 18:37:41.621558 96.93% [DEBUG] mod_sofia.c:213 sofia/external/3890566422@sip.telnyx.eu SOFIA EXECUTE
+tport.c:4713 tport_by_addrinfo() tport_by_addrinfo(0x74b530038d70): not found by name UDP/185.246.41.140:5060
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_state_machine.c:323 sofia/external/3890566422@sip.telnyx.eu Standard EXECUTE
+EXECUTE [depth=0] sofia/external/3890566422@sip.telnyx.eu set(outside_call=true)
+2026-03-04 18:37:41.621558 96.93% [DEBUG] mod_dptools.c:1671 SET sofia/external/3890566422@sip.telnyx.eu [outside_call]=[true]
+tport.c:3625 tport_vsend() tport_vsend(0x74b530038d70): 378 bytes of 378 to udp/185.246.41.140:5060
+tport.c:3526 tport_send_msg() tport_vsend returned 378
+EXECUTE [depth=0] sofia/external/3890566422@sip.telnyx.eu export(RFC2822_DATE=Wed, 04 Mar 2026 18:37:41 +0000)
+send 378 bytes to udp/[185.246.41.140]:5060 at 18:37:41.638318:
+------------------------------------------------------------------------
+SIP/2.0 100 Trying
+Via: SIP/2.0/UDP 185.246.41.140;branch=z9hG4bKb756.ca7618fabf6b3cdc3ab3d77b589f8364.0
+f:"3890566422"<sip:3890566422@sip.telnyx.eu>;tag=vaH0g6256877p
+t:<sip:390902041022@72.62.50.40:5080>
+i:4bf69896-11ec-453f-aa53-3429e1808701
+CSeq:111770938 INVITE
+User-Agent: FreeSWITCH-mod_sofia/1.10.13-dev+git~20260116T201023Z~88fa1f95ca~64bit
+Content-Length: 0
+
+
+nta.c:6890 incoming_reply() nta: sent 100 Trying for INVITE (111770938)
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_channel.c:1335 EXPORT (export_vars) [RFC2822_DATE]=[Wed, 04 Mar 2026 18:37:41 +0000]
+EXECUTE [depth=0] sofia/external/3890566422@sip.telnyx.eu log(INFO [INBOUND] Chiamata da 185.246.41.140 to 390902041022 (caller: 3890566422))
+2026-03-04 18:37:41.621558 96.93% [INFO] mod_dptools.c:1865 [INBOUND] Chiamata da 185.246.41.140 to 390902041022 (caller: 3890566422)
+EXECUTE [depth=0] sofia/external/3890566422@sip.telnyx.eu answer()
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G729:18:8000:20:8000:1]/[opus:116:48000:20:0:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G729:18:8000:20:8000:1]/[G722:9:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G729:18:8000:20:8000:1]/[PCMU:0:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G729:18:8000:20:8000:1]/[PCMA:8:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMA:8:8000:20:64000:1]/[opus:116:48000:20:0:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMA:8:8000:20:64000:1]/[G722:9:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMA:8:8000:20:64000:1]/[PCMU:0:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMA:8:8000:20:64000:1]/[PCMA:8:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5586 Audio Codec Compare [PCMA:8:8000:20:64000:1] ++++ is saved as a match
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G722:9:8000:20:64000:1]/[opus:116:48000:20:0:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G722:9:8000:20:64000:1]/[G722:9:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5586 Audio Codec Compare [G722:9:8000:20:64000:1] ++++ is saved as a match
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G722:9:8000:20:64000:1]/[PCMU:0:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G722:9:8000:20:64000:1]/[PCMA:8:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMU:0:8000:20:64000:1]/[opus:116:48000:20:0:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMU:0:8000:20:64000:1]/[G722:9:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMU:0:8000:20:64000:1]/[PCMU:0:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5586 Audio Codec Compare [PCMU:0:8000:20:64000:1] ++++ is saved as a match
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMU:0:8000:20:64000:1]/[PCMA:8:8000:20:64000:1]
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5436 Set telephone-event payload to 101@8000
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:3730 Set Codec sofia/external/3890566422@sip.telnyx.eu PCMA/8000 20 ms 160 samples 64000 bits 1 channels
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_codec.c:132 sofia/external/3890566422@sip.telnyx.eu Original read codec set to PCMA:8
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5796 Set telephone-event payload to 101@8000
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:5854 sofia/external/3890566422@sip.telnyx.eu Set 2833 dtmf send payload to 101 recv payload to 101
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:8658 AUDIO RTP [sofia/external/3890566422@sip.telnyx.eu] 72.62.50.40 port 32192 -> 185.246.41.143 port 18914 codec: 8 ms: 20
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_rtp.c:4566 Starting timer [soft] 160 bytes per 20ms
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:8879 Activating RTCP PORT 18915
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_rtp.c:4901 RTCP send rate is: 1000 and packet rate is: 20000 Remote Port: 18915
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_rtp.c:2692 Setting RTCP remote addr to 185.246.41.143:18915 2
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:8971 sofia/external/3890566422@sip.telnyx.eu Set 2833 dtmf send payload to 101
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:8978 sofia/external/3890566422@sip.telnyx.eu Set 2833 dtmf receive payload to 101
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:9001 sofia/external/3890566422@sip.telnyx.eu Set rtp dtmf delay to 40
+2026-03-04 18:37:41.621558 96.93% [NOTICE] sofia_media.c:90 Pre-Answer sofia/external/3890566422@sip.telnyx.eu!
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_channel.c:3587 (sofia/external/3890566422@sip.telnyx.eu) Callstate Change RINGING -> EARLY
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_core_media.c:8640 Audio params are unchanged for sofia/external/3890566422@sip.telnyx.eu.
+2026-03-04 18:37:41.621558 96.93% [DEBUG] mod_sofia.c:914 Local SDP sofia/external/3890566422@sip.telnyx.eu:
+v=0
+o=FreeSWITCH 1772617269 1772617270 IN IP4 72.62.50.40
+s=FreeSWITCH
+c=IN IP4 72.62.50.40
+t=0 0
+m=audio 32192 RTP/AVP 8 101
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+a=ptime:20
+a=sendrecv
+a=rtcp:32193 IN IP4 72.62.50.40
+
+nua.c:878 nua_respond() nua: nua_respond: entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_respond
+2026-03-04 18:37:41.621558 96.93% [NOTICE] mod_dptools.c:1406 Channel [sofia/external/3890566422@sip.telnyx.eu] has been answered
+2026-03-04 18:37:41.621558 96.93% [DEBUG] switch_channel.c:3914 (sofia/external/3890566422@sip.telnyx.eu) Callstate Change EARLY -> ACTIVE
+EXECUTE [depth=0] sofia/external/3890566422@sip.telnyx.eu sleep(500)
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:601 nua_stack_signal() nua(0x74b53003bc10): recv signal r_respond 200 OK
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:402 soa_set_params() soa_set_params(static::0x74b53025ebf0, ...) called
+soa.c:1051 soa_set_user_sdp() soa_set_user_sdp(static::0x74b53025ebf0, (nil), 0x74b524229c56, -1) called
+soa.c:889 soa_set_capability_sdp() soa_set_capability_sdp(static::0x74b53025ebf0, (nil), 0x74b524229c56, -1) called
+nua_session.c:2330 nua_invite_server_respond() nua: nua_invite_server_respond: entering
+soa.c:1514 soa_generate_answer() soa_generate_answer(static::0x74b53025ebf0) called
+soa_static.c:1147 offer_answer_step() soa_static_offer_answer_action(0x74b53025ebf0, soa_generate_answer): called
+soa_static.c:1188 offer_answer_step() soa_static(0x74b53025ebf0, soa_generate_answer): generating local description
+soa_static.c:1229 offer_answer_step() soa_static(0x74b53025ebf0, soa_generate_answer): upgrade with remote description
+soa_static.c:1028 soa_sdp_mode_set() soa_sdp_mode_set(0x74b542d58750, 0x74b530359250, ""): called
+soa_static.c:1445 offer_answer_step() soa_static(0x74b53025ebf0, soa_generate_answer): storing local description
+soa.c:1729 soa_activate() soa_activate(static::0x74b53025ebf0, (nil)) called
+soa.c:1268 soa_get_local_sdp() soa_get_local_sdp(static::0x74b53025ebf0, [(nil)], [0x74b542d58840], [0x74b542d5883c]) called
+tport.c:3290 tport_tsend() tport_tsend(0x74b530038d70) tpn = UDP/185.246.41.140:5060
+tport.c:4076 tport_resolve() tport_resolve addrinfo = 185.246.41.140:5060
+tport.c:4713 tport_by_addrinfo() tport_by_addrinfo(0x74b530038d70): not found by name UDP/185.246.41.140:5060
+tport.c:3625 tport_vsend() tport_vsend(0x74b530038d70): 1248 bytes of 1248 to udp/185.246.41.140:5060
+tport.c:3526 tport_send_msg() tport_vsend returned 1248
+send 1248 bytes to udp/[185.246.41.140]:5060 at 18:37:41.641606:
+------------------------------------------------------------------------
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 185.246.41.140;branch=z9hG4bKb756.ca7618fabf6b3cdc3ab3d77b589f8364.0
+v:SIP/2.0/UDP 10.31.34.24:6000;received=10.31.34.24;rport=6000;branch=z9hG4bK1SKt9QSB4U1Uc
+Record-Route: <sip:185.246.41.140;r2=on;lr;ftag=vaH0g6256877p>
+Record-Route: <sip:10.31.224.10;r2=on;lr;ftag=vaH0g6256877p>
+f:"3890566422"<sip:3890566422@sip.telnyx.eu>;tag=vaH0g6256877p
+To: <sip:390902041022@72.62.50.40:5080>;tag=yy0pZjtS3Uy5j
+i:4bf69896-11ec-453f-aa53-3429e1808701
+CSeq:111770938 INVITE
+Contact: <sip:390902041022@72.62.50.40:5080;transport=udp>
+User-Agent: FreeSWITCH-mod_sofia/1.10.13-dev+git~20260116T201023Z~88fa1f95ca~64bit
+Accept: application/sdp
+Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY
+Supported: timer, path, replaces
+Allow-Events: talk, hold, conference, refer
+Content-Type: application/sdp
+Content-Disposition: session
+Content-Length: 251
+P-Asserted-Identity: "390902041022" <sip:390902041022@72.62.50.40>
+
+v=0
+o=FreeSWITCH 1772617269 1772617270 IN IP4 72.62.50.40
+s=FreeSWITCH
+c=IN IP4 72.62.50.40
+t=0 0
+m=audio 32192 RTP/AVP 8 101
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+a=ptime:20
+a=rtcp:32193 IN IP4 72.62.50.40
+
+nta.c:6890 incoming_reply() nta: sent 200 OK for INVITE (111770938)
+nua_session.c:4144 signal_call_state_change() nua(0x74b53003bc10): call state changed: received -> completed, sent answer
+soa.c:1268 soa_get_local_sdp() soa_get_local_sdp(static::0x74b53025ebf0, [0x74b542d58908], [0x74b542d58900], [(nil)]) called
+soa.c:615 soa_get_params() soa_get_params(static::0x74b53025ebf0, ...) called
+nua_stack.c:301 nua_stack_event() nua(0x74b53003bc10): event i_state 200 OK
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+tport.c:2769 tport_wakeup_pri() tport_wakeup_pri(0x74b530038d70): events IN
+tport.c:2900 tport_recv_event() tport_recv_event(0x74b530038d70)
+tport.c:3237 tport_recv_iovec() tport_recv_iovec(0x74b530038d70) msg 0x74b53035be40 from (udp/72.62.50.40:5080) has 481 bytes, veclen = 1
+recv 481 bytes from udp/[185.246.41.140]:5060 at 18:37:41.655493:
+------------------------------------------------------------------------
+ACK sip:390902041022@72.62.50.40:5080;transport=udp SIP/2.0
+Via: SIP/2.0/UDP 185.246.41.140;branch=z9hG4bKb756.b3180a093865cb0ab2c9b5a8c2b0e098.0
+v:SIP/2.0/UDP 10.31.34.24:6000;received=10.31.34.24;rport=6000;branch=z9hG4bK22cKBKaF14Qer
+Max-Forwards:69
+f:"3890566422"<sip:3890566422@sip.telnyx.eu>;tag=vaH0g6256877p
+t:<sip:390902041022@72.62.50.40:5080>;tag=yy0pZjtS3Uy5j
+i:4bf69896-11ec-453f-aa53-3429e1808701
+CSeq:111770938 ACK
+m:<sip:mod_sofia@10.31.34.24:6000>
+l:0
+
+
+tport.c:3055 tport_deliver() tport_deliver(0x74b530038d70): msg 0x74b53035be40 (481 bytes) from udp/185.246.41.140:5080/sip next=(nil)
+nta.c:2968 agent_recv_request() nta: received ACK sip:390902041022@72.62.50.40:5080;transport=udp SIP/2.0 (CSeq 111770938) (load: 1 rps)
+nta.c:3108 agent_recv_request() nta: ACK (111770938) is going to INVITE (111770938)
+nua_session.c:2579 process_ack_or_cancel() nua: process_ack_or_cancel: entering
+soa.c:1213 soa_clear_remote_sdp() soa_clear_remote_sdp(static::0x74b53025ebf0) called
+nua_stack.c:301 nua_stack_event() nua(0x74b53003bc10): event i_ack 200 OK
+nua_session.c:4144 signal_call_state_change() nua(0x74b53003bc10): call state changed: completed -> ready
+nua_stack.c:301 nua_stack_event() nua(0x74b53003bc10): event i_state 200 OK
+nua_stack.c:301 nua_stack_event() nua(0x74b53003bc10): event i_active 200 Call active
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+2026-03-04 18:37:41.641693 96.93% [DEBUG] sofia.c:7493 Channel sofia/external/3890566422@sip.telnyx.eu entering state [completed][200]
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+2026-03-04 18:37:41.641693 96.93% [DEBUG] sofia.c:7493 Channel sofia/external/3890566422@sip.telnyx.eu entering state [ready][200]
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nta.c:1328 agent_timer() nta: timer set next to 4819 ms
+2026-03-04 18:37:42.101557 96.93% [DEBUG] switch_rtp.c:7710 Correct audio ip/port confirmed.
+2026-03-04 18:37:42.121562 96.93% [DEBUG] switch_rtp.c:1934 rtcp_stats_init: audio ssrc[2646128261] base_seq[18898]
+EXECUTE [depth=0] sofia/external/3890566422@sip.telnyx.eu playback(tone_stream://%(200,0,800))
+2026-03-04 18:37:42.121562 96.93% [DEBUG] switch_ivr_play_say.c:1564 Codec Activated L16@8000hz 1 channels 20ms
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_ivr_play_say.c:2013 done playing file tone_stream://%(200,0,800)
+EXECUTE [depth=0] sofia/external/3890566422@sip.telnyx.eu set(STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"})
+2026-03-04 18:37:42.321571 96.93% [DEBUG] mod_dptools.c:1671 SET sofia/external/3890566422@sip.telnyx.eu [STREAM_EXTRA_HEADERS]=[{"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}]
+EXECUTE [depth=0] sofia/external/3890566422@sip.telnyx.eu set(play_stream_name=websocket_audio)
+2026-03-04 18:37:42.321571 96.93% [DEBUG] mod_dptools.c:1671 SET sofia/external/3890566422@sip.telnyx.eu [play_stream_name]=[websocket_audio]
+EXECUTE [depth=0] sofia/external/3890566422@sip.telnyx.eu set(write_stream_name=websocket_audio)
+2026-03-04 18:37:42.321571 96.93% [DEBUG] mod_dptools.c:1671 SET sofia/external/3890566422@sip.telnyx.eu [write_stream_name]=[websocket_audio]
+EXECUTE [depth=0] sofia/external/3890566422@sip.telnyx.eu set(as_res=)
+2026-03-04 18:37:42.321571 96.93% [DEBUG] mod_dptools.c:1671 SET sofia/external/3890566422@sip.telnyx.eu [as_res]=[UNDEF]
+EXECUTE [depth=0] sofia/external/3890566422@sip.telnyx.eu playback(local_stream://default)
+2026-03-04 18:37:42.321571 96.93% [ERR] mod_local_stream.c:883 Unknown source default
+2026-03-04 18:37:42.321571 96.93% [NOTICE] switch_core_state_machine.c:382 sofia/external/3890566422@sip.telnyx.eu has executed the last dialplan instruction, hanging up.
+2026-03-04 18:37:42.321571 96.93% [NOTICE] switch_core_state_machine.c:384 Hangup sofia/external/3890566422@sip.telnyx.eu [CS_EXECUTE] [NORMAL_CLEARING]
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:647 (sofia/external/3890566422@sip.telnyx.eu) State EXECUTE going to sleep
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:581 (sofia/external/3890566422@sip.telnyx.eu) Running State Change CS_HANGUP (Cur 1 Tot 14)
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:844 (sofia/external/3890566422@sip.telnyx.eu) Callstate Change ACTIVE -> HANGUP
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:846 (sofia/external/3890566422@sip.telnyx.eu) State HANGUP
+2026-03-04 18:37:42.321571 96.93% [DEBUG] mod_sofia.c:469 Channel sofia/external/3890566422@sip.telnyx.eu hanging up, cause: NORMAL_CLEARING
+2026-03-04 18:37:42.321571 96.93% [DEBUG] mod_sofia.c:523 Sending BYE to sofia/external/3890566422@sip.telnyx.eu
+nua.c:644 nua_bye() nua: nua_bye: entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_bye
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:59 sofia/external/3890566422@sip.telnyx.eu Standard HANGUP, cause: NORMAL_CLEARING
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:846 (sofia/external/3890566422@sip.telnyx.eu) State HANGUP going to sleep
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:616 (sofia/external/3890566422@sip.telnyx.eu) State Change CS_HANGUP -> CS_REPORTING
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:581 (sofia/external/3890566422@sip.telnyx.eu) Running State Change CS_REPORTING (Cur 1 Tot 14)
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:932 (sofia/external/3890566422@sip.telnyx.eu) State REPORTING
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:168 sofia/external/3890566422@sip.telnyx.eu Standard REPORTING, cause: NORMAL_CLEARING
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:932 (sofia/external/3890566422@sip.telnyx.eu) State REPORTING going to sleep
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:607 (sofia/external/3890566422@sip.telnyx.eu) State Change CS_REPORTING -> CS_DESTROY
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_session.c:1748 Session 14 (sofia/external/3890566422@sip.telnyx.eu) Locked, Waiting on external entities
+2026-03-04 18:37:42.321571 96.93% [NOTICE] switch_core_session.c:1766 Session 14 (sofia/external/3890566422@sip.telnyx.eu) Ended
+2026-03-04 18:37:42.321571 96.93% [NOTICE] switch_core_session.c:1770 Close Channel sofia/external/3890566422@sip.telnyx.eu [CS_DESTROY]
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:735 (sofia/external/3890566422@sip.telnyx.eu) Running State Change CS_DESTROY (Cur 0 Tot 14)
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:745 (sofia/external/3890566422@sip.telnyx.eu) State DESTROY
+2026-03-04 18:37:42.321571 96.93% [DEBUG] mod_sofia.c:380 sofia/external/3890566422@sip.telnyx.eu SOFIA DESTROY
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:175 sofia/external/3890566422@sip.telnyx.eu Standard DESTROY
+2026-03-04 18:37:42.321571 96.93% [DEBUG] switch_core_state_machine.c:745 (sofia/external/3890566422@sip.telnyx.eu) State DESTROY going to sleep
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_bye
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:402 soa_set_params() soa_set_params(static::0x74b53025ebf0, ...) called
+soa.c:1783 soa_terminate() soa_terminate(static::0x74b53025ebf0) called
+soa.c:1301 soa_init_offer_answer() soa_init_offer_answer(static::0x74b53025ebf0) called
+nta.c:2727 nta_tpn_by_url() nta: selecting scheme sip
+tport.c:3290 tport_tsend() tport_tsend(0x74b530038d70) tpn = UDP/185.246.41.140:5060
+tport.c:4076 tport_resolve() tport_resolve addrinfo = 185.246.41.140:5060
+tport.c:4713 tport_by_addrinfo() tport_by_addrinfo(0x74b530038d70): not found by name UDP/185.246.41.140:5060
+tport.c:3625 tport_vsend() tport_vsend(0x74b530038d70): 715 bytes of 715 to udp/185.246.41.140:5060
+tport.c:3526 tport_send_msg() tport_vsend returned 715
+send 715 bytes to udp/[185.246.41.140]:5060 at 18:37:42.340454:
+------------------------------------------------------------------------
+BYE sip:mod_sofia@10.31.34.24:6000 SIP/2.0
+Via: SIP/2.0/UDP 72.62.50.40:5080;rport;branch=z9hG4bKye7g15Q0FD08F
+Route: <sip:185.246.41.140;r2=on;lr;ftag=vaH0g6256877p>
+Route: <sip:10.31.224.10;r2=on;lr;ftag=vaH0g6256877p>
+Max-Forwards: 70
+From: <sip:390902041022@72.62.50.40:5080>;tag=yy0pZjtS3Uy5j
+To: "3890566422" <sip:3890566422@sip.telnyx.eu>;tag=vaH0g6256877p
+Call-ID: 4bf69896-11ec-453f-aa53-3429e1808701
+CSeq: 111770939 BYE
+User-Agent: FreeSWITCH-mod_sofia/1.10.13-dev+git~20260116T201023Z~88fa1f95ca~64bit
+Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY
+Supported: timer, path, replaces
+Reason: Q.850;cause=16;text="NORMAL_CLEARING"
+Content-Length: 0
+
+
+nta.c:8441 outgoing_send() nta: sent BYE (111770939) to UDP/185.246.41.140:5060
+tport.c:4191 tport_pend() tport_pend(0x74b530038d70): pending 0x74b530260770 for udp/72.62.50.40:5080 (already 0)
+nta.c:1380 set_timeout() nta: timer shortened to 1000 ms
+tport.c:2769 tport_wakeup_pri() tport_wakeup_pri(0x74b530038d70): events IN
+tport.c:2900 tport_recv_event() tport_recv_event(0x74b530038d70)
+tport.c:3237 tport_recv_iovec() tport_recv_iovec(0x74b530038d70) msg 0x74b5303a2b00 from (udp/72.62.50.40:5080) has 432 bytes, veclen = 1
+recv 432 bytes from udp/[185.246.41.140]:5060 at 18:37:42.361478:
+------------------------------------------------------------------------
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 72.62.50.40:5080;received=72.62.50.40;rport=5080;branch=z9hG4bKye7g15Q0FD08F
+From: <sip:390902041022@72.62.50.40:5080>;tag=yy0pZjtS3Uy5j
+To: "3890566422" <sip:3890566422@sip.telnyx.eu>;tag=vaH0g6256877p
+Call-ID: 4bf69896-11ec-453f-aa53-3429e1808701
+CSeq: 111770939 BYE
+Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REFER, NOTIFY
+Supported: timer, path
+Content-Length: 0
+
+
+tport.c:3055 tport_deliver() tport_deliver(0x74b530038d70): msg 0x74b5303a2b00 (432 bytes) from udp/185.246.41.140:5080/sip next=(nil)
+nta.c:3389 agent_recv_response() nta: received 200 OK for BYE (111770939)
+nta.c:3456 agent_recv_response() nta: 200 OK is going to a transaction
+nta.c:9743 outgoing_estimate_delay() nta_outgoing: RTT is 21.094 ms
+tport.c:4253 tport_release() tport_release(0x74b530038d70): 0x74b530260770 by 0x74b530260b30 with 0x74b5303a2b00
+nua_stack.c:301 nua_stack_event() nua(0x74b53003bc10): event r_bye 200 OK
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_session.c:4144 signal_call_state_change() nua(0x74b53003bc10): call state changed: terminating -> terminated
+nua_stack.c:301 nua_stack_event() nua(0x74b53003bc10): event i_state 200 to BYE
+nua_stack.c:301 nua_stack_event() nua(0x74b53003bc10): event i_terminated 200 to BYE
+nua_dialog.c:397 nua_dialog_usage_remove_at() nua(0x74b53003bc10): removing session usage
+soa.c:355 soa_destroy() soa_destroy(static::0x74b53025ebf0) called
+nta.c:4561 nta_leg_destroy() nta_leg_destroy(0x74b53034e510)
+nua_session.c:351 nua_session_usage_destroy() nua: terminated session 0x74b53003bc10
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:389 nua_application_event() nua: nua_application_event: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:341 nua_handle_bind() nua: nua_handle_bind: entering
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:365 nua_handle_magic() nua: nua_handle_magic: entering
+nua.c:920 nua_handle_destroy() nua: nua_handle_destroy: entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_destroy
+nua.c:1170 nua_handle_unref_user() nua nua_handle_unref_user(0x74b53003bc10): entering
+nua_stack.c:558 nua_signal() nua(0x74b53003bc10): sent signal r_handle_unref
+nua.c:1157 nua_unref_user() nua: nua_unref_user: entering
+nua_stack.c:558 nua_signal() nua((nil)): sent signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_destroy
+nta.c:4561 nta_leg_destroy() nta_leg_destroy((nil))
+nua_stack.c:599 nua_stack_signal() nua(0x74b53003bc10): recv signal r_handle_unref
+nua_stack.c:599 nua_stack_signal() nua((nil)): recv signal r_unref
+nta.c:1328 agent_timer() nta: timer set next to 3314 ms
+nta.c:7234 _nta_incoming_timer() nta: timer I fired, terminate 200 response
+nta.c:5915 incoming_reclaim_queued() incoming_reclaim_all((nil), (nil), 0x74b542d589f0)
+nta.c:7281 _nta_incoming_timer() nta_incoming_timer: 0/0 resent, 0/0 tout, 1/1 term, 1/1 free
+nta.c:1328 agent_timer() nta: timer set next to 705 ms
+nta.c:9279 outgoing_timer_dk() nta: timer K fired, terminate BYE (111770939)
+nta.c:8951 outgoing_reclaim_queued() outgoing_reclaim_all((nil), (nil), 0x74b542d589e0)
+nta.c:9091 _nta_outgoing_timer() nta_outgoing_timer: 0/0 resent, 0/0 tout, 1/1 term, 1/1 free
+nta.c:1321 agent_timer() nta: timer not set
+tport.c:2769 tport_wakeup_pri() tport_wakeup_pri(0x74b538033710): events IN
+tport.c:2900 tport_recv_event() tport_recv_event(0x74b538033710)
+tport.c:3237 tport_recv_iovec() tport_recv_iovec(0x74b538033710) msg 0x74b5382464c0 from (udp/72.62.50.40:5060) has 4 bytes, veclen = 1
+tport.c:3055 tport_deliver() tport_deliver(0x74b538033710): bad msg 0x74b5382464c0 (4 bytes) from udp/109.116.200.59:5060/sip next=(nil)
+nta.c:7259 _nta_incoming_timer() nta: timer J fired, terminate 200 response
+nta.c:5915 incoming_reclaim_queued() incoming_reclaim_all((nil), (nil), 0x74b5435bc9f0)
+nta.c:7281 _nta_incoming_timer() nta_incoming_timer: 0/0 resent, 0/0 tout, 1/1 term, 1/1 free
+nta.c:1321 agent_timer() nta: timer not set
+nua_common.c:108 nh_create_handle() nua: nh_create_handle: entering
+nua.c:341 nua_handle_bind() nua: nua_handle_bind: entering
+nua.c:656 nua_options() nua: nua_options: entering
+nua_stack.c:558 nua_signal() nua(0x74b55400af70): sent signal r_options
+nua_stack.c:599 nua_stack_signal() nua(0x74b55400af70): recv signal r_options
+nua_params.c:486 nua_stack_set_params() nua: nua_stack_set_params: entering
+soa.c:278 soa_clone() soa_clone(static::0x74b530035dc0, 0x74b530034b30, 0x74b55400af70) called
+soa.c:402 soa_set_params() soa_set_params(static::0x74b53035b650, ...) called
+soa.c:402 soa_set_params() soa_set_params(static::0x74b53035b650, ...) called
+nta.c:2727 nta_tpn_by_url() nta: selecting scheme sip
+sres_cache.c:271 sres_cache_get() sres_cache_get(0x74b5300371a0, SRV, "_sip._udp.sip.telnyx.com.") called
+sres_cache.c:317 sres_cache_get() sres_cache_get(0x74b5300371a0, SRV, "_sip._udp.sip.telnyx.com.") returned 2 entries
+nta.c:10776 outgoing_query_srv() nta: for "sip.telnyx.com" query "_sip._udp.sip.telnyx.com" SRV (cached)
+nta.c:10872 outgoing_answer_srv() nta: _sip._udp.sip.telnyx.com IN SRV 1 1  5060 sip-anycast2.telnyx.com. (udp)
+nta.c:10872 outgoing_answer_srv() nta: _sip._udp.sip.telnyx.com IN SRV 1 1  5060 sip-anycast1.telnyx.com. (udp)
+sres_cache.c:271 sres_cache_get() sres_cache_get(0x74b5300371a0, A, "sip-anycast2.telnyx.com.") called
+sres_cache.c:317 sres_cache_get() sres_cache_get(0x74b5300371a0, A, "sip-anycast2.telnyx.com.") returned 1 entries
+nta.c:10987 outgoing_query_a() nta: for "sip.telnyx.com" query "sip-anycast2.telnyx.com." A (cached)
+nta.c:11046 outgoing_answer_a() nta: sip-anycast2.telnyx.com. IN A 64.16.250.10
+tport.c:3290 tport_tsend() tport_tsend(0x74b530038d70) tpn = udp/64.16.250.10:5060
+tport.c:4076 tport_resolve() tport_resolve addrinfo = 64.16.250.10:5060
+tport.c:4713 tport_by_addrinfo() tport_by_addrinfo(0x74b530038d70): not found by name udp/64.16.250.10:5060
+tport.c:3625 tport_vsend() tport_vsend(0x74b530038d70): 555 bytes of 555 to udp/64.16.250.10:5060
+tport.c:3526 tport_send_msg() tport_vsend returned 555
+send 555 bytes to udp/[64.16.250.10]:5060 at 18:38:00.228143:
+------------------------------------------------------------------------
+OPTIONS sip:sip.telnyx.com;transport=udp SIP/2.0
+Via: SIP/2.0/UDP 72.62.50.40:5080;rport;branch=z9hG4bKZQ092083cppUB
+Max-Forwards: 70
+From: <sip:sip.telnyx.com>;tag=Z7SF1DBX04mre
+To: <sip:sip.telnyx.com>
+Call-ID: 1cad0007-929c-123f-68a1-b2e8d4b6d3e0
+CSeq: 111769883 OPTIONS
+User-Agent: FreeSWITCH-mod_sofia/1.10.13-dev+git~20260116T201023Z~88fa1f95ca~64bit
+Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY
+Supported: timer, path, replaces
+Allow-Events: talk, hold, conference, refer
+Content-Length: 0
+
