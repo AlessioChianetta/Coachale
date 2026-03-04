@@ -1666,7 +1666,7 @@ export default function ConsultantEmailHub() {
                 open={expandedAccounts.has(account.id)}
                 onOpenChange={() => toggleAccountExpanded(account.id)}
               >
-                <div className="flex items-center gap-1 group relative">
+                <div className="flex items-center gap-1 group relative min-w-0 overflow-hidden">
                   {account.autoReplyMode === "auto" && (
                     <TooltipProvider>
                       <Tooltip>
