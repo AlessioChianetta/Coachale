@@ -1,6 +1,6 @@
 /**
  * Intent Router Agent
- * Classifies user intent using gemini-2.5-flash-lite for fast, cheap routing
+ * Classifies user intent using gemini-3.1-flash-lite-preview for fast, cheap routing
  * 
  * This is Layer 1 of the 3-layer pipeline:
  * 1. Router Agent (this file) - Intent classification only
@@ -283,7 +283,7 @@ function preClassifyAnalytics(question: string): IntentRouterOutput | null {
 }
 
 /**
- * Route user intent using gemini-2.5-flash-lite
+ * Route user intent using gemini-3.1-flash-lite-preview
  * @param question - User's question to classify
  * @param consultantId - Optional consultant ID for AI client resolution
  * @param conversationHistory - Previous messages for context-aware classification

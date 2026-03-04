@@ -1130,6 +1130,7 @@ router.get("/numbers", authenticateToken, requireAnyRole(["consultant", "super_a
         'voicemail' AS out_of_hours_action,
         5 AS max_concurrent_calls,
         30 AS max_call_duration_minutes,
+        'Kore'::varchar AS voice_id,
         true AS is_active,
         cn.created_at,
         cn.updated_at
@@ -1222,8 +1223,13 @@ router.put("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "sup
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
     const {
       display_name,
-      is_active
+      is_active,
+      voice_id
     } = req.body;
+
+    if (voice_id && !VALID_VOICES.includes(voice_id)) {
+      return res.status(400).json({ error: `Voce non valida. Opzioni: ${VALID_VOICES.join(', ')}` });
+    }
 
     let ownerCheck = consultantId ? sql`AND consultant_id = ${consultantId}` : sql``;
 
@@ -1231,6 +1237,7 @@ router.put("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "sup
       UPDATE voice_numbers SET
         display_name = COALESCE(${display_name}, display_name),
         is_active = COALESCE(${is_active}, is_active),
+        voice_id = COALESCE(${voice_id}, voice_id),
         updated_at = NOW()
       WHERE id = ${id} ${ownerCheck}
       RETURNING *
@@ -1579,7 +1586,7 @@ router.get("/service-token/validate", async (req: Request, res: Response) => {
 // VOICE SETTINGS - Impostazioni voce consultant
 // ═══════════════════════════════════════════════════════════════════
 
-const VALID_VOICES = ['Achernar', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'];
+const VALID_VOICES = ['Kore', 'Puck', 'Charon', 'Fenrir', 'Aoede'];
 
 // GET /api/voice/settings - Ottieni impostazioni voce
 router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {

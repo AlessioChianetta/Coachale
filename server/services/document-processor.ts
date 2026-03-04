@@ -860,7 +860,7 @@ export async function transcribeAudioWithGemini(
             },
           });
           
-          const model = vertexAI.preview.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+          const model = vertexAI.preview.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
           
           const result = await model.generateContent({
             contents: [{
@@ -883,7 +883,7 @@ export async function transcribeAudioWithGemini(
           if (usageMetaVertex) {
             tokenTracker.track({
               consultantId: 'system',
-              model: 'gemini-2.5-flash-lite',
+              model: 'gemini-3.1-flash-lite-preview',
               feature: 'document-processing',
               requestType: 'generate',
               inputTokens: usageMetaVertex.promptTokenCount || 0,

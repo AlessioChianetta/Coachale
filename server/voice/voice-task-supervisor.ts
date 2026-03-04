@@ -97,7 +97,7 @@ export class VoiceTaskSupervisor {
   private voiceCallId: string;
   private contactPhone: string;
   private contactName: string | null;
-  private static readonly MODEL = "gemini-2.5-flash-lite";
+  private static readonly MODEL = "gemini-3.1-flash-lite-preview";
   private static readonly TIMEOUT_MS = 12000;
   private static readonly MAX_RECENT_MESSAGES = 12;
 
@@ -774,14 +774,14 @@ Analizza la conversazione e rispondi SOLO con JSON valido nel seguente formato:
 }
 
 REGOLE CRITICHE:
-1. "confirmed" = true SOLO SE vengono soddisfatte TUTTE queste condizioni:
-   a) L'ULTIMO messaggio con ruolo "UTENTE" (NON "ASSISTENTE") contiene una parola di conferma esplicita ("sì", "confermo", "va bene", "esatto", "ok", "certo", "perfetto")
-   b) PRIMA di quel messaggio, l'ASSISTENTE ha riepilogato il promemoria chiedendo conferma
-   c) Il messaggio dell'UTENTE NON è un messaggio di sistema (NON contiene [SYSTEM_INSTRUCTION], [TASK_CREATED], [TASK_MODIFIED], [TASK_CANCELLED], [BOOKING_CREATED])
+1. "confirmed" = true SE viene soddisfatta UNA di queste condizioni:
+   A) CONFERMA ESPLICITA: L'ULTIMO messaggio UTENTE contiene una parola di conferma ("sì", "confermo", "va bene", "esatto", "ok", "certo", "perfetto", "d'accordo", "facciamo così", "procedi", "fai pure") E l'ASSISTENTE ha già riepilogato chiedendo conferma
+   B) CONSENSO IMPLICITO: L'ULTIMO messaggio UTENTE è una richiesta diretta/imperativa che contiene TUTTI i dati necessari (cosa + quando) in un'unica frase. Esempi: "richiamami tra mezz'ora", "mettimi un promemoria per venerdì alle 15", "fissami una call domani alle 10", "ricordami di chiamare Mario alle 17". In questo caso l'utente sta esprimendo intento + consenso nella stessa frase → confirmed=true senza bisogno di riepilogo.
+   In ENTRAMBI i casi: il messaggio dell'UTENTE NON deve essere un messaggio di sistema (NON contiene [SYSTEM_INSTRUCTION], [TASK_CREATED], [TASK_MODIFIED], [TASK_CANCELLED], [BOOKING_CREATED])
 2. "confirmed" DEVE essere false se:
    - L'ultimo messaggio è dell'ASSISTENTE (sta ancora aspettando risposta dell'utente)
-   - L'utente ha appena chiesto di creare il promemoria ma l'assistente non ha ancora confermato i dettagli
-   - Non ci sono parole di conferma esplicite nell'ultimo messaggio UTENTE
+   - Mancano dati essenziali (descrizione, data o ora) nella richiesta dell'utente
+   - L'utente sta solo chiedendo informazioni senza dare un'istruzione chiara
 3. Se l'utente menziona più promemoria, crea un array di tasks (es: "ricordami X alle 9 e Y alle 15" = 2 tasks)
 4. "intent" = "none" se la conversazione non riguarda promemoria, reminder, task, cose da ricordare
 5. Per "modify_task": identifica il task da modificare tramite data, ora o descrizione e specifica i nuovi valori

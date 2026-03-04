@@ -646,10 +646,9 @@ const OUTBOUND_STATUS_CONFIG: Record<string, { label: string; color: string; ico
 };
 
 const VOICES = [
-  { value: 'Achernar', label: 'Achernar', description: '🇮🇹 Femminile Professionale' },
+  { value: 'Kore', label: 'Kore', description: '🇮🇹 Femminile Professionale (Default)' },
   { value: 'Puck', label: 'Puck', description: '🇬🇧 Maschile Giovane' },
   { value: 'Charon', label: 'Charon', description: '🇬🇧 Maschile Maturo' },
-  { value: 'Kore', label: 'Kore', description: '🇬🇧 Femminile Giovane' },
   { value: 'Fenrir', label: 'Fenrir', description: '🇬🇧 Maschile Profondo' },
   { value: 'Aoede', label: 'Aoede', description: '🇬🇧 Femminile Melodiosa' },
 ];
@@ -1092,7 +1091,7 @@ export default function ConsultantVoiceCallsPage() {
     queryKey: ["/api/voice/settings"],
     queryFn: async () => {
       const res = await fetch("/api/voice/settings", { headers: getAuthHeaders() });
-      if (!res.ok) return { voiceId: 'achernar', vpsBridgeUrl: '', voiceMaxRetryAttempts: 3, voiceRetryIntervalMinutes: 5 };
+      if (!res.ok) return { voiceId: 'Kore', vpsBridgeUrl: '', voiceMaxRetryAttempts: 3, voiceRetryIntervalMinutes: 5 };
       return res.json();
     },
   });
@@ -1355,7 +1354,7 @@ export default function ConsultantVoiceCallsPage() {
     refetchInterval: 10000,
   });
 
-  const { data: voiceNumbersData } = useQuery<{ numbers: Array<{ id: string; phone_number: string; display_name?: string; is_active: boolean }> }>({
+  const { data: voiceNumbersData } = useQuery<{ numbers: Array<{ id: string; phone_number: string; display_name?: string; is_active: boolean; voice_id?: string }> }>({
     queryKey: ["/api/voice/numbers"],
     queryFn: async () => {
       const res = await fetch("/api/voice/numbers", { headers: getAuthHeaders() });
@@ -1364,6 +1363,28 @@ export default function ConsultantVoiceCallsPage() {
     },
   });
   const myVoiceNumbers = (voiceNumbersData?.numbers || []).filter(n => n.is_active);
+
+  const updateNumberVoiceMutation = useMutation({
+    mutationFn: async ({ numberId, voiceId }: { numberId: string; voiceId: string }) => {
+      const res = await fetch(`/api/voice/numbers/${numberId}`, {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ voice_id: voiceId }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore aggiornamento voce numero");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/numbers"] });
+      toast({ title: "Voce aggiornata", description: "La voce per questo numero è stata aggiornata" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
 
   // AI Tasks query
   const { data: aiTasksData, isLoading: loadingAITasks, refetch: refetchAITasks } = useQuery<{ tasks: AITask[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>({
@@ -2619,7 +2640,7 @@ export default function ConsultantVoiceCallsPage() {
                         <Badge className={health?.overall === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'}>
                           {health?.overall === 'healthy' ? '🟢 Sistema Online' : '🟡 Verifica Sistema'}
                         </Badge>
-                        <span className="text-muted-foreground">Voice: {voiceSettings?.voiceId || 'Achernar'}</span>
+                        <span className="text-muted-foreground">Voice: {voiceSettings?.voiceId || 'Kore'}</span>
                         <span className="text-muted-foreground">VPS: {voiceSettings?.vpsBridgeUrl ? 'Connesso' : 'Non configurato'}</span>
                       </div>
                     </div>
@@ -3709,6 +3730,46 @@ export default function ConsultantVoiceCallsPage() {
                     )}
                   </CardContent>
                 </Card>
+
+                {myVoiceNumbers.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Mic2 className="h-5 w-5" />
+                        Voce AI per Numero
+                      </CardTitle>
+                      <CardDescription>
+                        Scegli la voce dell'assistente AI per ciascun numero telefonico
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {myVoiceNumbers.map((n) => (
+                        <div key={n.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                          <div className="flex items-center gap-3">
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium font-mono">{n.phone_number}</p>
+                              {n.display_name && n.display_name !== n.phone_number && (
+                                <p className="text-xs text-muted-foreground">{n.display_name}</p>
+                              )}
+                            </div>
+                          </div>
+                          <select
+                            value={n.voice_id || 'Kore'}
+                            onChange={(e) => updateNumberVoiceMutation.mutate({ numberId: n.id, voiceId: e.target.value })}
+                            className="w-48 rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            {VOICES.map((v) => (
+                              <option key={v.value} value={v.value}>
+                                {v.label} — {v.description}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Card 2: Impostazioni Retry Chiamate - Visibile a tutti */}
                 <Card>

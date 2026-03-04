@@ -321,7 +321,7 @@ async function transcribeAudio(
           },
         });
 
-        const model = vertexAI.preview.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        const model = vertexAI.preview.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
         const result = await model.generateContent({
           contents: [
@@ -346,7 +346,7 @@ async function transcribeAudio(
         if (usageMeta) {
           tokenTracker.track({
             consultantId: consultantId || 'system',
-            model: 'gemini-2.5-flash-lite',
+            model: 'gemini-3.1-flash-lite-preview',
             feature: agentName ? `whatsapp-audio-transcription:${agentName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : 'whatsapp-audio-transcription',
             requestType: 'generate',
             inputTokens: usageMeta.promptTokenCount || 0,

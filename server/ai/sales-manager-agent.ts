@@ -797,7 +797,7 @@ Nel tuo output JSON, includi:
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export class SalesManagerAgent {
-  private static readonly MODEL = "gemini-2.5-flash-lite";
+  private static readonly MODEL = "gemini-3.1-flash-lite-preview";
   private static readonly TIMEOUT_MS = 3000; // 3 secondi max (ottimizzato da 6000)
 
   /**

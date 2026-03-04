@@ -2558,7 +2558,7 @@ export async function askDataset(
   const groupByIntent = detectGroupByIntent(userQuestion, availableColumns);
   console.log(`[WIRING-CHECK] groupByIntent - isProductListing=${groupByIntent.isProductListing}, productColumn=${groupByIntent.productColumn}`);
 
-  // ====== LAYER 1: INTENT ROUTER (AI - gemini-2.5-flash-lite) ======
+  // ====== LAYER 1: INTENT ROUTER (AI - gemini-3.1-flash-lite-preview) ======
   // Fast, cheap classification of user intent WITH conversation context
   // BYPASS: When _forceAnalytics=true (recursive call from follow_through), skip AI classification
   let routerOutput: IntentRouterOutput;

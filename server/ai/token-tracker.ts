@@ -11,6 +11,7 @@ export const PRICING: Record<string, { input: number; output: number; cachedInpu
   'gemini-2.5-flash-native-audio-preview-12-2025': { input: 3.00, output: 12.00, cachedInput: 0.30 },
   'gemini-live-2.5-flash-native-audio': { input: 3.00, output: 12.00, cachedInput: 0.30 },
   'gemini-2.5-flash': { input: 0.30, output: 2.50, cachedInput: 0.03 },
+  'gemini-3.1-flash-lite-preview': { input: 0.25, output: 1.50, cachedInput: 0.025 },
   'gemini-2.5-flash-lite': { input: 0.10, output: 0.40, cachedInput: 0.01 },
   'gemini-2.0-flash-lite': { input: 0.10, output: 0.40, cachedInput: 0.01 },
   'gemini-2.5-pro': { input: 1.25, output: 10.00, cachedInput: 0.125 },

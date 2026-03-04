@@ -159,7 +159,7 @@ export async function classifyConsultationIntent(
     console.log(`\n${'═'.repeat(80)}`);
     console.log(`🔍 [Intent:${traceId}] CLASSIFIER REQUEST - FULL CONTEXT`);
     console.log(`${'═'.repeat(80)}`);
-    console.log(`   Model: gemini-2.5-flash-lite`);
+    console.log(`   Model: gemini-3.1-flash-lite-preview`);
     console.log(`   Current Message: "${message}"`);
     console.log(`   hasPendingBooking: ${context?.hasPendingBooking || false}`);
     console.log(`   Recent Messages Count: ${context?.recentMessages?.length || 0}`);

@@ -143,7 +143,7 @@ export interface CheckpointAnalysisParams {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export class StepAdvancementAgent {
-  private static readonly MODEL = "gemini-2.5-flash-lite";
+  private static readonly MODEL = "gemini-3.1-flash-lite-preview";
   private static readonly TIMEOUT_MS = 10000; // 5 secondi max
   
   /**

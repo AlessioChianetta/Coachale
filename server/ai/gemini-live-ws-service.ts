@@ -1013,7 +1013,7 @@ async function getUserIdFromRequest(req: any): Promise<{
     const consultantType = url.searchParams.get('consultantType');
     const customPrompt = url.searchParams.get('customPrompt');
     const useFullPrompt = url.searchParams.get('useFullPrompt') === 'true';
-    const voiceName = url.searchParams.get('voice') || 'Achernar';
+    const voiceName = url.searchParams.get('voice') || 'Kore';
     const resumeHandle = url.searchParams.get('resumeHandle');
     const sessionType = url.searchParams.get('sessionType');
     const testModeParam = url.searchParams.get('testMode');
@@ -1168,7 +1168,7 @@ async function getUserIdFromRequest(req: any): Promise<{
             const withoutPlus = normalizedCalledNumber.startsWith('+') ? normalizedCalledNumber.slice(1) : normalizedCalledNumber;
             numberRows = await db.execute(sql`
               SELECT id, phone_number, display_name, consultant_id, ai_mode, 
-                     max_concurrent_calls, is_active, greeting_text
+                     max_concurrent_calls, is_active, greeting_text, voice_id
               FROM voice_numbers 
               WHERE (phone_number = ${normalizedCalledNumber} OR phone_number = ${withPlus} OR phone_number = ${withoutPlus}) AND is_active = true
               LIMIT 1
@@ -1186,9 +1186,17 @@ async function getUserIdFromRequest(req: any): Promise<{
             } else if (isOutboundCall) {
               console.log(`⚠️ [PHONE SERVICE] calledNumber ${normalizedCalledNumber} not in voice_numbers — OUTBOUND callback allowed (voiceCallId=${voiceCallIdParam}, consultant ${resolvedConsultantId} from JWT)`);
             } else {
-              console.error(`❌ [PHONE SERVICE] Called number ${normalizedCalledNumber} not found or inactive in voice_numbers → REJECTING CALL`);
-              _rejectedNumbersCache.set(normalizedCalledNumber, { count: 1, ts: Date.now() });
-              return null;
+              const fallbackResult = await db.execute(sql`
+                SELECT DISTINCT consultant_id FROM voice_numbers WHERE is_active = true AND consultant_id IS NOT NULL LIMIT 1
+              `);
+              if (fallbackResult.rows.length > 0) {
+                resolvedConsultantId = (fallbackResult.rows[0] as any).consultant_id;
+                console.log(`⚠️ [PHONE SERVICE] calledNumber ${normalizedCalledNumber} not in voice_numbers — INBOUND FALLBACK to first active consultant ${resolvedConsultantId}`);
+              } else {
+                console.error(`❌ [PHONE SERVICE] Called number ${normalizedCalledNumber} not found or inactive in voice_numbers → REJECTING CALL`);
+                _rejectedNumbersCache.set(normalizedCalledNumber, { count: 1, ts: Date.now() });
+                return null;
+              }
             }
           }
 
@@ -1263,7 +1271,7 @@ async function getUserIdFromRequest(req: any): Promise<{
 
         let userId: string | null = null;
         let userRole = 'anonymous_caller';
-        let consultantVoice = 'Achernar';
+        let consultantVoice = 'Kore';
         let callInstruction: string | null = null;
         let callLeadContext: string | null = null;
         let instructionType: 'task' | 'reminder' | null = null;
@@ -1310,10 +1318,15 @@ async function getUserIdFromRequest(req: any): Promise<{
           console.log(`📞 [PHONE SERVICE] Unknown caller - using anonymous mode`);
         }
 
-        const voiceSettings = voiceSettingsRows?.[0] as any;
-        if (voiceSettings?.voiceId) {
-          consultantVoice = voiceSettings.voiceId;
-          console.log(`🎤 [PHONE SERVICE] Using consultant voice: ${consultantVoice}`);
+        if (numberConfig?.voice_id) {
+          consultantVoice = numberConfig.voice_id;
+          console.log(`🎤 [PHONE SERVICE] Using voice from voice_numbers: ${consultantVoice}`);
+        } else {
+          const voiceSettings = voiceSettingsRows?.[0] as any;
+          if (voiceSettings?.voiceId) {
+            consultantVoice = voiceSettings.voiceId;
+            console.log(`🎤 [PHONE SERVICE] Using consultant voice from settings: ${consultantVoice}`);
+          }
         }
 
         if (scheduledCallIdParam) {
@@ -1530,7 +1543,7 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       // 🔊 Use agent's configured voice, fallback to URL param or default
-      const agentVoice = agent.voiceName || voiceName || 'Achernar';
+      const agentVoice = agent.voiceName || voiceName || 'Kore';
       console.log(`🎙️ [Sales Agent] Using voice: ${agentVoice} (agent: ${agent.voiceName}, url: ${voiceName})`);
       
       return {
@@ -1637,7 +1650,7 @@ async function getUserIdFromRequest(req: any): Promise<{
       console.log(`✅ WebSocket authenticated: Consultation Invite - Conversation ${conversation.id} - Prospect: ${conversation.prospectName} - Invite: ${inviteToken}`);
 
       // 🔊 Use agent's configured voice, fallback to URL param or default
-      const agentVoice = agent.voiceName || voiceName || 'Achernar';
+      const agentVoice = agent.voiceName || voiceName || 'Kore';
       console.log(`🎙️ [Consultation Invite] Using voice: ${agentVoice} (agent: ${agent.voiceName}, url: ${voiceName})`);
       
       return {
@@ -5799,10 +5812,8 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         // ✅ DUAL BACKEND: camelCase for Google AI Studio, snake_case for Vertex AI
         let setupMessage: any;
         
-        const effectiveVoice = liveApiBackend === 'google_ai_studio' 
-          ? (voiceName === 'Achernar' ? 'Kore' : voiceName) 
-          : voiceName;
-        console.log(`🎙️ [${connectionId}] Voice selection: requested="${voiceName}" → effective="${effectiveVoice}" (backend: ${liveApiBackend})`);
+        const effectiveVoice = voiceName;
+        console.log(`🎙️ [${connectionId}] Voice selection: "${effectiveVoice}" (backend: ${liveApiBackend})`);
         
         if (liveApiBackend === 'google_ai_studio') {
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

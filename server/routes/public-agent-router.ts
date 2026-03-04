@@ -1366,7 +1366,7 @@ ${share.agentInstructions}
           aiProvider.setFeature?.('public-chat');
           
           const titleResult = await aiProvider.client.generateContent({
-            model: "gemini-2.5-flash-lite",
+            model: "gemini-3.1-flash-lite-preview",
             contents: [{ role: "user", parts: [{ text: titlePrompt }] }],
             generationConfig: { 
               systemInstruction: "Rispondi solo con il titolo, senza virgolette o altro testo.",

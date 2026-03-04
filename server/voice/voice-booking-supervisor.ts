@@ -80,7 +80,7 @@ export class VoiceBookingSupervisor {
   private outboundTargetPhone: string | null;
   private availableSlots: AvailableSlot[];
   private slotsLoaded: boolean = false;
-  private static readonly MODEL = "gemini-2.5-flash-lite";
+  private static readonly MODEL = "gemini-3.1-flash-lite-preview";
   private static readonly TIMEOUT_MS = 12000;
   private static readonly MAX_RECENT_MESSAGES = 12;
 

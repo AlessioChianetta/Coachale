@@ -2545,7 +2545,7 @@ Titolo:`;
 
                 console.log(`   🤖 [TITLE-GEN] Calling Gemini API...`);
                 const result = await trackedGenerateContent(genai, {
-                  model: 'gemini-2.5-flash-lite',
+                  model: 'gemini-3.1-flash-lite-preview',
                   contents: titlePrompt,
                 } as any, { consultantId: agentConfig.consultantId, feature: 'whatsapp-agent' });
                 

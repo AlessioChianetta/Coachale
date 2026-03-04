@@ -3427,7 +3427,7 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   webhookExpiration: timestamp("webhook_expiration"),
 
   // Voice Telephony Settings
-  voiceId: text("voice_id").default("Achernar").notNull(), // Gemini voice: Achernar, Puck, Charon, Kore, Fenrir, Aoede
+  voiceId: text("voice_id").default("Kore").notNull(), // Gemini voice: Kore, Puck, Charon, Fenrir, Aoede
   voiceServiceTokenCreatedAt: timestamp("voice_service_token_created_at"), // When current VPS token was generated
   voiceServiceTokenCount: integer("voice_service_token_count").default(0).notNull(), // How many tokens generated (includes revoked)
 
@@ -10250,6 +10250,7 @@ export const voiceNumbers = pgTable("voice_numbers", {
   outOfHoursAction: varchar("out_of_hours_action", { length: 50 }).default("voicemail"),
   maxConcurrentCalls: integer("max_concurrent_calls").default(5),
   maxCallDurationMinutes: integer("max_call_duration_minutes").default(30),
+  voiceId: varchar("voice_id", { length: 50 }).default("Kore"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
