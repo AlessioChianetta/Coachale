@@ -1,0 +1,33 @@
+oice-bridge  | 2026-03-04T18:49:50.828Z [INFO ] [BRIDGE:SERVER] WebSocket closed (Session: bcb00a0e-db9f-4466-b1a3-8966b590f23a)
+6|voice-bridge  | 2026-03-04T18:49:50.830Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=bcb00a0e callId=b863224a-61bd-4a7b-a116-d4c8f7fe9a19 reason=websocket_closed duration=19.9s bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+6|voice-bridge  | 2026-03-04T18:49:50.954Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=bcb00a0e code=1000 reason=Session ended hasPendingResume=false
+6|voice-bridge  | 2026-03-04T18:49:50.954Z [INFO ] [BRIDGE:SERVER] Replit connection closed sessionId=bcb00a0e
+6|voice-bridge  | 2026-03-04T18:50:00.815Z [INFO ] [BRIDGE:ESL] 🅿️  Call parked type=INBOUND uuid=a3aacfef-13df-435e-9f03-5556527f458b callerIdNumber=3890566422 calledNumber=390902041022
+6|voice-bridge  | 2026-03-04T18:50:00.815Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] CHANNEL_PARK at 1772650200815 uuid=a3aacfef-13df-435e-9f03-5556527f458b
+6|voice-bridge  | 2026-03-04T18:50:00.815Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=a3aacfef-13df-435e-9f03-5556527f458b, uuid=a3aacfef-13df-435e-9f03-5556527f458b
+6|voice-bridge  | 2026-03-04T18:50:00.816Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
+6|voice-bridge  | 2026-03-04T18:50:00.816Z [INFO ] [BRIDGE:ESL] 📞 INBOUND call parked — uuid=a3aacfef-13df-435e-9f03-5556527f458b
+6|voice-bridge  | 2026-03-04T18:50:00.816Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] Executing uuid_audio_stream after 1ms uuid=a3aacfef-13df-435e-9f03-5556527f458b
+6|voice-bridge  | 2026-03-04T18:50:00.861Z [INFO ] [BRIDGE:ESL] ✅ Audio stream started in 45ms (total: 46ms) uuid=a3aacfef-13df-435e-9f03-5556527f458b
+6|voice-bridge  | 2026-03-04T18:50:00.863Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+6|voice-bridge  | 2026-03-04T18:50:00.863Z [INFO ] [BRIDGE:SERVER] 🔍 WEBSOCKET CONNECTION path=/stream/a3aacfef-13df-435e-9f03-5556527f458b uuidFromUrl=a3aacfef-13df-435e-9f03-5556527f458b pendingCallsCount=1 pendingIds=[{"uuid":"a3aacfef-13df-435e-9f03-5556527f458b","callId":"a3aacfef-13df-435e-9f03-5556527f458b"}] timestamp=1772650200863
+6|voice-bridge  | 2026-03-04T18:50:00.863Z [INFO ] [BRIDGE:SERVER] ✅ Consumed pending call: callId=a3aacfef-13df-435e-9f03-5556527f458b, uuid=a3aacfef-13df-435e-9f03-5556527f458b
+6|voice-bridge  | 2026-03-04T18:50:00.863Z [INFO ] [BRIDGE:SERVER] 📞 INBOUND call matched: callId=a3aacfef-13df-435e-9f03-5556527f458b (same as uuid)
+6|voice-bridge  | 2026-03-04T18:50:00.863Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] CHANNEL_PARK → WebSocket connection: 48ms (FreeSWITCH audio_stream setup + WS open) callId=a3aacfef-13df-435e-9f03-5556527f458b
+6|voice-bridge  | 2026-03-04T18:50:00.864Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=a3aacfef-13df-435e-9f03-5556527f458b | CallerId=3890566422 | CallerName=3890566422
+6|voice-bridge  | 2026-03-04T18:50:00.864Z [INFO ] [BRIDGE:SESSION] Session created sessionId=6698f2ce callId=a3aacfef-13df-435e-9f03-5556527f458b callerId=3890566422 calledNumber=390902041022 codec=L16 sampleRate=8000 activeSessions=1
+6|voice-bridge  | 2026-03-04T18:50:00.866Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] handleCallStart setup: session=0ms, bgInit+queue=2ms sessionId=6698f2ce
+6|voice-bridge  | 2026-03-04T18:50:00.866Z [INFO ] [BRIDGE:SERVER] 🎵 Adaptive audio timer started (prefill=4) sessionId=6698f2ce
+6|voice-bridge  | 2026-03-04T18:50:00.867Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Pre-connect overhead: 3ms sessionId=6698f2ce
+6|voice-bridge  | 2026-03-04T18:50:00.867Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=6698f2ce url=wss://47d55935-8421-442d-acf7-2c9ee108295f-00-wyn8zb34r9zc.riker.replit.dev/ws/ai-voice voice=Puck isResume=false
+6|voice-bridge  | 2026-03-04T18:50:01.379Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] TLS+HTTP upgrade handshake: 512ms sessionId=6698f2ce resumed=false
+6|voice-bridge  | 2026-03-04T18:50:01.379Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Replit WS connected in 512ms (TLS handshake + HTTP upgrade) sessionId=6698f2ce
+6|voice-bridge  | 2026-03-04T18:50:01.379Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=6698f2ce
+6|voice-bridge  | 2026-03-04T18:50:01.379Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=6698f2ce from=connecting to=active
+6|voice-bridge  | 2026-03-04T18:50:01.379Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Total handleCallStart: 515ms (setup=3ms, connect=512ms, post=0ms) sessionId=6698f2ce
+6|voice-bridge  | 2026-03-04T18:50:01.509Z [WARN ] [BRIDGE:REPLIT-WS] ⚠️ Audio DISCARDED - connected=true, ws=true, readyState=2 sessionId=6698f2ce reconnecting=false
+6|voice-bridge  | 2026-03-04T18:50:01.613Z [INFO ] [BRIDGE:SERVER] 📞 [NUMBER LOOKUP] Called number 390902041022 not found in voice_numbers
+6|voice-bridge  | 2026-03-04T18:50:01.614Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=6698f2ce code=4401 reason=Unauthorized - Valid JWT token required hasPendingResume=false
+6|voice-bridge  | 2026-03-04T18:50:01.614Z [INFO ] [BRIDGE:SERVER] Replit connection closed sessionId=6698f2ce
+6|voice-bridge  | 2026-03-04T18:50:01.614Z [INFO ] [BRIDGE:SERVER] 📞 Replit closed permanently - ending call sessionId=6698f2ce
+6|voice-bridge  | 2026-03-04T18:50:01.618Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=6698f2ce callId=a3aacfef-13df-435e-9f03-5556527f458b reason=replit_disconnected duration=754ms bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
