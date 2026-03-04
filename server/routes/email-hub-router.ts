@@ -4430,8 +4430,10 @@ router.get("/outreach-pipeline", async (req: AuthRequest, res) => {
       const instructionText = pt.ai_instruction || '';
       const subjectMatch = instructionText.match(/^Oggetto:\s*(.+)$/m);
       const subject = subjectMatch ? subjectMatch[1].trim() : null;
-      if (!leadMap.has(leadEmail)) {
-        leadMap.set(leadEmail, {
+      // Use unique key for pending tasks to avoid collisions when multiple leads share same email (e.g. test emails)
+      const mapKey = leadMap.has(leadEmail) ? `${leadEmail}::${pt.id}` : leadEmail;
+      if (!leadMap.has(mapKey)) {
+        leadMap.set(mapKey, {
           email: leadEmail,
           name: pt.contact_name || leadEmail.split('@')[0],
           businessName: ctx.business_name || null,
