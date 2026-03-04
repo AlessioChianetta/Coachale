@@ -2811,6 +2811,14 @@ export default function ConsultantVoiceCallsPage() {
                               placeholder="+39 XXX XXX XXXX"
                               value={outboundPhone}
                               onChange={(e) => setOutboundPhone(e.target.value)}
+                              onBlur={(e) => {
+                                const v = e.target.value.replace(/[\s\-\(\)]/g, "");
+                                if (!v) return;
+                                if (v.startsWith("+")) return;
+                                if (v.startsWith("00")) { setOutboundPhone("+" + v.slice(2)); return; }
+                                if (/^\d{3,6}$/.test(v)) return;
+                                setOutboundPhone("+39" + v);
+                              }}
                               className="pl-10"
                             />
                           </div>
