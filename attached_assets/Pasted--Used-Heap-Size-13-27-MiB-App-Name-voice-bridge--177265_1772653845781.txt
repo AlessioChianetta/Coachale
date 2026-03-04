@@ -1,0 +1,17 @@
+ Used Heap Size              13.27 MiB  ││ App Name              voice-bridge                                                             │
+│ Heap Usage                    90.12 %  ││ Namespace             default                                                                  │
+│ Heap Size                   14.73 MiB  ││ Version               1.0.0                                                                    │
+│ Event Loop Latency p95        1.22 ms  ││ Restarts              17                                                                       │
+│ Event Loop Latency            0.18 ms  ││ Uptime                110s                                                                     │
+│ Active handles                      7  ││ Script path           /opt/alessia-voice/vps-voice-bridge/dist/index.js                        │
+│ Active requests                     0  ││ Script args           N/A                                                                      │
+│                                        ││ Interpreter           node                                                                     │
+│                                        ││ Interpreter args      N/A                                                                      │
+│                                        ││ Exec mode             fork                                                                     │
+│                                        ││ Node.js version       20.20.0                                                                  │
+│                                        ││ watch & reload        ✘                                                                        │
+│                                        ││ Unstable restarts     0                                                                        │
+│                                        ││ Comment               N/A                                                                      │
+│                                        ││ Revision              N/A                                                                      │
+│                                        ││ Branch                N/A                                                                      │
+│                                        ││ Remote url            N/A   

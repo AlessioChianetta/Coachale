@@ -347,32 +347,47 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
   });
 
   const FRAME_MS = 20;
-  const PREFILL_FRAMES = 4;
+  const TICK_MS = 10;
   const MAX_CATCHUP = 5;
+
+  let lastDrainMs = Date.now();
+  let frameDebt = 0;
 
   const audioInterval = setInterval(() => {
     const s = sessionManager.getSession(session.id);
     if (!s || (s.state !== 'active' && s.state !== 'reconnecting') || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
+      lastDrainMs = Date.now();
+      frameDebt = 0;
       return;
     }
 
+    const now = Date.now();
+    const elapsedMs = now - lastDrainMs;
+    const framesToSend = Math.floor((elapsedMs + frameDebt) / FRAME_MS);
+
+    if (framesToSend < 1) return;
+
+    frameDebt = (elapsedMs + frameDebt) - (framesToSend * FRAME_MS);
+    lastDrainMs = now;
+
     const queue = audioOutputQueues.get(session.id);
-    if (queue && queue.length > 0) {
-      const toSend = Math.min(queue.length, MAX_CATCHUP);
-      for (let f = 0; f < toSend; f++) {
+    const actualSend = Math.min(framesToSend, MAX_CATCHUP);
+
+    for (let f = 0; f < actualSend; f++) {
+      if (queue && queue.length > 0) {
         const chunk = queue.shift()!;
         s.fsWebSocket.send(chunk, { binary: true });
-      }
-    } else if (config.audio.backgroundEnabled && isBackgroundLoaded()) {
-      const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
-      if (bgChunk) {
-        s.fsWebSocket.send(bgChunk, { binary: true });
+      } else if (config.audio.backgroundEnabled && isBackgroundLoaded()) {
+        const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
+        if (bgChunk) {
+          s.fsWebSocket.send(bgChunk, { binary: true });
+        }
       }
     }
-  }, FRAME_MS);
+  }, TICK_MS);
 
   bgTimers.set(session.id, audioInterval as any);
-  log.info(`🎵 Audio timer started (interval=${FRAME_MS}ms, prefill=${PREFILL_FRAMES})`, { sessionId: session.id.slice(0, 8) });
+  log.info(`🎵 Audio timer started (tick=${TICK_MS}ms, frame=${FRAME_MS}ms)`, { sessionId: session.id.slice(0, 8) });
 
   const tPreConnect = Date.now();
   log.info(`⏱️ [VPS-TIMING] Pre-connect overhead: ${tPreConnect - t0}ms`, { sessionId: session.id.slice(0, 8) });
