@@ -79,6 +79,7 @@ export function loadConfig(): BridgeConfig {
     sip: {
       gateway: getEnv('SIP_GATEWAY', 'telnyx-ip'),
       callerId: getEnv('SIP_CALLER_ID', '+390000000000'),
+      techPrefix: getEnv('SIP_TECH_PREFIX', ''),
     },
     serviceToken: getEnv('REPLIT_SERVICE_TOKEN', ''),
     audio: {
