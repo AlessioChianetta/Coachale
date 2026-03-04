@@ -1138,7 +1138,10 @@ async function getUserIdFromRequest(req: any): Promise<{
         }
 
         if (calledNumber) {
-          const normalizedCalledNumber = calledNumber.replace(/\s+/g, '').replace(/^00/, '+');
+          let normalizedCalledNumber = calledNumber.replace(/\s+/g, '').replace(/^00/, '+');
+          if (!normalizedCalledNumber.startsWith('+') && normalizedCalledNumber.length > 6) {
+            normalizedCalledNumber = '+' + normalizedCalledNumber;
+          }
           resolvedCalledNumber = normalizedCalledNumber;
           const lookupStart = Date.now();
           
@@ -1148,17 +1151,19 @@ async function getUserIdFromRequest(req: any): Promise<{
             numberRows = { rows: [cachedNumber] };
             console.log(`⏱️ [AUTH-DETAIL] voice_numbers CACHE HIT: ${Date.now() - lookupStart}ms`);
           } else {
+            const withPlus = normalizedCalledNumber.startsWith('+') ? normalizedCalledNumber : '+' + normalizedCalledNumber;
+            const withoutPlus = normalizedCalledNumber.startsWith('+') ? normalizedCalledNumber.slice(1) : normalizedCalledNumber;
             numberRows = await db.execute(sql`
               SELECT id, phone_number, display_name, consultant_id, ai_mode, 
                      max_concurrent_calls, is_active, greeting_text
               FROM voice_numbers 
-              WHERE phone_number = ${normalizedCalledNumber} AND is_active = true
+              WHERE (phone_number = ${normalizedCalledNumber} OR phone_number = ${withPlus} OR phone_number = ${withoutPlus}) AND is_active = true
               LIMIT 1
             `);
             if (numberRows.rows.length > 0) {
               _voiceNumbersCache.set(normalizedCalledNumber, { data: numberRows.rows[0], ts: Date.now() });
             }
-            console.log(`⏱️ [AUTH-DETAIL] voice_numbers lookup: ${Date.now() - lookupStart}ms`);
+            console.log(`⏱️ [AUTH-DETAIL] voice_numbers lookup: ${Date.now() - lookupStart}ms (tried: ${normalizedCalledNumber}, ${withPlus}, ${withoutPlus})`);
           }
 
           if (numberRows.rows.length === 0) {
