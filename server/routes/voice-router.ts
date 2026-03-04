@@ -4686,6 +4686,24 @@ router.post("/voip-provisioning/activate", authenticateToken, requireAnyRole(["s
       `);
     }
 
+    if (finalNumber && provRequest.consultant_id) {
+      await db.execute(sql`
+        INSERT INTO voice_numbers (
+          phone_number, display_name, consultant_id, ai_mode,
+          active_days, active_hours_start, active_hours_end,
+          timezone, out_of_hours_action, max_concurrent_calls, max_call_duration_minutes, is_active
+        ) VALUES (
+          ${finalNumber}, ${finalNumber}, ${provRequest.consultant_id}, 'assistenza',
+          '["mon","tue","wed","thu","fri"]'::jsonb, '09:00'::time, '18:00'::time,
+          'Europe/Rome', 'voicemail', 5, 30, true
+        )
+        ON CONFLICT (phone_number) DO UPDATE
+          SET consultant_id = EXCLUDED.consultant_id,
+              is_active = true
+      `);
+      console.log(`[VOIP] voice_numbers entry created/updated for ${finalNumber} → consultant ${provRequest.consultant_id}`);
+    }
+
     console.log(`[VOIP] Provisioning completed for request ${request_id}, number: ${finalNumber}, gateway: ${finalGateway}`);
     res.json({ success: true, message: "Numero attivato con successo", assignedNumber: finalNumber });
   } catch (error: any) {
@@ -4790,6 +4808,21 @@ router.post("/voip-provisioning/select-number", authenticateToken, requireAnyRol
     await db.execute(sql`
       INSERT INTO consultant_numbers (consultant_id, phone_number, country_code, prefix, telnyx_number_order_id, connection_id, status, kyc_status, kyc_deadline)
       VALUES (${consultantId}, ${invNumber.phone_number}, ${invNumber.country_code || 'IT'}, ${invNumber.prefix || null}, ${invNumber.telnyx_order_id || null}, ${invNumber.connection_id || null}, 'active', 'pending', ${kycDeadline.toISOString()})
+    `);
+
+    await db.execute(sql`
+      INSERT INTO voice_numbers (
+        phone_number, display_name, consultant_id, ai_mode,
+        active_days, active_hours_start, active_hours_end,
+        timezone, out_of_hours_action, max_concurrent_calls, max_call_duration_minutes, is_active
+      ) VALUES (
+        ${invNumber.phone_number}, ${invNumber.phone_number}, ${consultantId}, 'assistenza',
+        '["mon","tue","wed","thu","fri"]'::jsonb, '09:00'::time, '18:00'::time,
+        'Europe/Rome', 'voicemail', 5, 30, true
+      )
+      ON CONFLICT (phone_number) DO UPDATE
+        SET consultant_id = EXCLUDED.consultant_id,
+            is_active = true
     `);
 
     console.log(`[VOIP] Number ${phone_number} assigned from inventory to consultant ${consultantId}, KYC deadline: ${kycDeadline.toISOString()}`);
