@@ -2776,13 +2776,13 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     const sipCallerId = call.from_number || defaultSipCallerId;
 
     // ═══ PER-NUMBER CONCURRENCY CHECK ═══
-    // Auto-expire stale 'calling' records older than 5 minutes
+    // Auto-expire stale 'calling' records older than 90 seconds
     await db.execute(sql`
       UPDATE scheduled_voice_calls
       SET status = 'failed', error_message = 'stale_calling_timeout', updated_at = NOW()
       WHERE consultant_id = ${consultantId}
         AND status = 'calling'
-        AND updated_at < NOW() - INTERVAL '5 minutes'
+        AND updated_at < NOW() - INTERVAL '90 seconds'
     `);
 
     // Get per-number limit from voice_numbers table
@@ -2907,6 +2907,7 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
           updated_at = NOW()
       WHERE id = ${callId}
     `);
+    console.log(`📞 [LIFECYCLE] executeOutboundCall: ${callId} → status=CALLING | phone=${call.target_phone} | from=${sipCallerId} | attempt=${(call.attempts || 0) + 1} | timestamp=${new Date().toISOString()}`);
 
     // Se use_vps_number è OFF (default), il consulente DEVE avere un numero configurato
     if (!useVpsNumber && !sipCallerId) {
@@ -3491,9 +3492,79 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
         svc.scheduled_at ASC
     `);
     
+    const allCalls = result.rows as any[];
+    
+    const activeCalls = allCalls.filter((c: any) => ['calling', 'talking', 'ringing', 'in_progress'].includes(c.status));
+    
+    if (activeCalls.length > 0) {
+      const geminiService = (globalThis as any).__geminiLiveService;
+      const activeVoiceCalls: Map<string, any> = geminiService?.activeVoiceCalls || new Map();
+      const effectiveConsultantId = consultantId || req.user?.id;
+      
+      const streamVoiceCallIds = new Set<string>();
+      const streamCallerIds = new Set<string>();
+      let geminiStreamCount = 0;
+      for (const [, v] of activeVoiceCalls) {
+        if (v.consultantId === effectiveConsultantId) {
+          geminiStreamCount++;
+          if (v.id) streamVoiceCallIds.add(v.id);
+          if (v.callerId) streamCallerIds.add(v.callerId);
+        }
+      }
+      
+      const statusBreakdown: Record<string, number> = {};
+      for (const c of allCalls) {
+        statusBreakdown[c.status] = (statusBreakdown[c.status] || 0) + 1;
+      }
+      
+      console.log(`\n📊 [ACTIVE-CALLS-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`📊 [ACTIVE-CALLS-DEBUG] Consultant: ${(effectiveConsultantId || 'ALL').toString().substring(0, 8)}...`);
+      console.log(`📊 [ACTIVE-CALLS-DEBUG] Total: ${allCalls.length} | ${JSON.stringify(statusBreakdown)} | Gemini streams: ${geminiStreamCount} (vcIds: [${Array.from(streamVoiceCallIds).join(',')}], callerIds: [${Array.from(streamCallerIds).join(',')}])`);
+      
+      const ghostIds: string[] = [];
+      
+      for (const c of activeCalls) {
+        const ageSeconds = Math.round((Date.now() - new Date(c.updated_at).getTime()) / 1000);
+        const hasStream = (c.voice_call_id && streamVoiceCallIds.has(c.voice_call_id)) || streamCallerIds.has(c.target_phone);
+        
+        const isGhostCalling = c.status === 'calling' && !hasStream && ageSeconds > 30;
+        const isGhostTalking = c.status === 'talking' && !hasStream && ageSeconds > 60;
+        const ghostLabel = (isGhostCalling || isGhostTalking) ? '🔴 GHOST' : (hasStream ? '🟢 REAL' : '🟡 NO-STREAM');
+        
+        console.log(`📊 [ACTIVE-CALLS-DEBUG]   ${ghostLabel} | id=${c.id} | status=${c.status} | phone=${c.target_phone} | age=${ageSeconds}s | voice_call_id=${c.voice_call_id || 'NONE'}`);
+        
+        if (isGhostCalling || isGhostTalking) {
+          ghostIds.push(c.id);
+        }
+      }
+      
+      if (ghostIds.length > 0) {
+        console.log(`🧹 [ACTIVE-CALLS-DEBUG] Cleaning ${ghostIds.length} ghost calls: ${ghostIds.join(', ')}`);
+        for (const ghostId of ghostIds) {
+          await db.execute(sql`
+            UPDATE scheduled_voice_calls 
+            SET status = 'failed', error_message = 'ghost_no_stream', updated_at = NOW()
+            WHERE id = ${ghostId} AND status IN ('calling', 'talking')
+          `);
+        }
+        const cleanedSet = new Set(ghostIds);
+        const filteredCalls = allCalls.filter((c: any) => !cleanedSet.has(c.id));
+        console.log(`📊 [ACTIVE-CALLS-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        
+        res.json({
+          calls: filteredCalls,
+          count: filteredCalls.length,
+          activeTimers: getTimerCount()
+        });
+        return;
+      }
+      
+      console.log(`📊 [ACTIVE-CALLS-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    }
+    
     res.json({
-      calls: result.rows,
-      count: result.rows.length,
+      calls: allCalls,
+      count: allCalls.length,
       activeTimers: getTimerCount()
     });
   } catch (error: any) {
@@ -3638,7 +3709,7 @@ async function cleanupStaleCalling(): Promise<void> {
     const result = await db.execute(sql`
       UPDATE scheduled_voice_calls
       SET status = 'failed', error_message = 'stale_calling_cleanup', updated_at = NOW()
-      WHERE status = 'calling' AND updated_at < NOW() - INTERVAL '5 minutes'
+      WHERE status = 'calling' AND updated_at < NOW() - INTERVAL '90 seconds'
       RETURNING id
     `);
     if (result.rows.length > 0) {
@@ -3928,6 +3999,12 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
     }
     
     const call = callResult.rows[0] as any;
+    
+    const callCurrentStatus = await db.execute(sql`
+      SELECT status, updated_at FROM scheduled_voice_calls WHERE id = ${call.id}
+    `);
+    const currentDbStatus = (callCurrentStatus.rows[0] as any)?.status;
+    console.log(`📞 [LIFECYCLE] VPS Callback: scheduled_call=${call.id} | current_db_status=${currentDbStatus} | callback_status=${status} | phone=${call.target_phone} | cause=${hangup_cause}`);
     
     // Verify consultant ownership
     if (call.consultant_id !== consultantId) {

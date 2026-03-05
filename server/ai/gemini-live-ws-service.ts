@@ -1432,16 +1432,19 @@ async function getUserIdFromRequest(req: any): Promise<{
           status: 'talking',
         });
 
+        console.log(`📞 [LIFECYCLE] WS Auth: scheduledCallId=${scheduledCallId || 'UNDEFINED'} | voiceCallId=${voiceCallId} | callerId=${normalizedCallerId} | calledNumber=${resolvedCalledNumber}`);
         if (scheduledCallId) {
           db.execute(sql`
             UPDATE scheduled_voice_calls 
             SET status = 'talking', voice_call_id = ${voiceCallId}, updated_at = NOW()
             WHERE id = ${scheduledCallId} AND status IN ('calling', 'completed')
           `).then(() => {
-            console.log(`📞 [PHONE SERVICE] scheduled_voice_calls ${scheduledCallId} → talking`);
+            console.log(`📞 [LIFECYCLE] scheduled_voice_calls ${scheduledCallId} → TALKING | voiceCallId=${voiceCallId}`);
           }).catch(err => {
-            console.error(`❌ [PHONE SERVICE] Failed to update scheduled_voice_calls to talking:`, err);
+            console.error(`❌ [LIFECYCLE] Failed to update scheduled_voice_calls to talking:`, err);
           });
+        } else {
+          console.log(`📞 [LIFECYCLE] No scheduledCallId — scheduled_voice_calls will NOT be updated to talking (inbound call or missing param)`);
         }
 
         console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - CalledNumber: ${resolvedCalledNumber} - Consultant: ${resolvedConsultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'} - Voice: ${consultantVoice}${callInstruction ? ' - HAS INSTRUCTION' : ''}`);
@@ -10152,6 +10155,10 @@ ${compactFeedback}
             }
 
             // 🔗 SYNC: Update scheduled_voice_call if this was a scheduled outbound call
+            console.log(`📞 [LIFECYCLE] WS Close: phoneScheduledCallId=${phoneScheduledCallId || 'UNDEFINED'} | voiceCallId=${voiceCallId} | isGoAwayReconnecting=${isGoAwayReconnecting} | duration=${durationSeconds}s | code=${code}`);
+            if (!phoneScheduledCallId) {
+              console.log(`📞 [LIFECYCLE] ⚠️ phoneScheduledCallId is UNDEFINED — scheduled_voice_calls will NOT be marked completed! This call will remain as 'calling' or 'talking' until ghost cleanup catches it.`);
+            }
             if (phoneScheduledCallId && isGoAwayReconnecting) {
               console.log(`🔄 [${connectionId}] Skipping scheduled_voice_call completion — GoAway reconnect in progress (call still active)`);
             } else if (phoneScheduledCallId) {
