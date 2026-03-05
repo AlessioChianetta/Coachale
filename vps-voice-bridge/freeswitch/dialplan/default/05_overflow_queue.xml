@@ -13,24 +13,13 @@
   - sip_gateway: gateway SIP da usare per il trasferimento
   - tech_prefix: prefisso tecnico per il gateway (es. 0312 per Telnyx)
   - queue_position: posizione nella coda (1, 2, 3...)
-  - overflow_custom_message: messaggio personalizzato (opzionale)
   
   FLUSSO:
-  1. Annuncio posizione in coda (se queue_position impostata)
-  2. Annuncio vocale ciclico + musica d'attesa
+  1. Tono di ingresso coda
+  2. Musica d'attesa ciclica (FreeSWITCH built-in MOH)
   3. Se overflow_dtmf_enabled=true → bind DTMF "1" per trasferimento
   4. Il Voice Bridge gestisce il timeout (uuid_transfer a overflow_timeout)
   5. Il Voice Bridge può trasferire back all'AI (uuid_transfer)
-  
-  FILE AUDIO RICHIESTI in /opt/sounds/overflow/:
-  - announcement.wav: messaggio d'attesa (con DTMF)
-  - announcement_no_dtmf.wav: messaggio senza opzione "premi 1"
-  - hold_music.wav: musica d'attesa (~30 sec)
-  - transferring.wav: "Ti stiamo trasferendo..."
-  - transfer_failed.wav: "Il trasferimento non è riuscito"
-  - timeout.wav: messaggio pre-disconnessione per timeout
-  - position_prefix.wav: "Sei in posizione numero"
-  - position_suffix.wav: "nella coda d'attesa"
   
   PERCORSO DEPLOY:
   /usr/local/freeswitch/etc/freeswitch/dialplan/default/05_overflow_queue.xml
@@ -49,62 +38,21 @@
       <action application="bind_digit_action" data="overflow,1,exec:transfer,transfer_to_fallback XML default"/>
       <action application="digit_action_set_realm" data="overflow"/>
 
-      <!-- Ciclo 1: posizione + annuncio + musica -->
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
-      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
+      <action application="playback" data="tone_stream://%(300,200,800);%(300,200,600);%(500,0,400)"/>
 
-      <!-- Ciclo 2-6: annuncio + musica -->
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
-      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
+      <action application="playback" data="local_stream://moh"/>
 
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
-      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
-
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
-      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
-
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
-      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
-
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
-      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
-
-      <action application="log" data="WARNING [OVERFLOW] Chiamata ${uuid} - loop completato senza dequeue, parking"/>
+      <action application="log" data="WARNING [OVERFLOW] Chiamata ${uuid} - MOH stream ended, parking call as fallback"/>
       <action application="park"/>
 
     </condition>
   </extension>
 
-  <!-- Sub-extension: annuncia posizione in coda -->
-  <extension name="announce_position">
-    <condition field="destination_number" expression="^announce_position$">
-      <condition field="${queue_position}" expression="^[1-9]\d*$">
-        <action application="playback" data="/opt/sounds/overflow/position_prefix.wav"/>
-        <action application="say" data="it NUMBER PRONOUNCED ${queue_position}"/>
-        <action application="playback" data="/opt/sounds/overflow/position_suffix.wav"/>
-      </condition>
-    </condition>
-  </extension>
-
-  <!-- Sub-extension: riproduce annuncio (personalizzato o default) -->
-  <extension name="play_announcement">
-    <condition field="destination_number" expression="^play_announcement$">
-      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
-    </condition>
-  </extension>
-
-  <!-- Extension: messaggio timeout prima del disconnect -->
   <extension name="overflow_timeout">
     <condition field="destination_number" expression="^overflow_timeout$">
-      <action application="log" data="INFO [OVERFLOW-TIMEOUT] Chiamata ${uuid} - timeout raggiunto, riproduco messaggio"/>
+      <action application="log" data="INFO [OVERFLOW-TIMEOUT] Chiamata ${uuid} - timeout raggiunto"/>
       <action application="clear_digit_action" data="overflow"/>
-      <action application="playback" data="/opt/sounds/overflow/timeout.wav"/>
+      <action application="playback" data="tone_stream://%(500,100,400);%(500,100,300);%(1000,0,200)"/>
       <action application="hangup" data="NORMAL_CLEARING"/>
     </condition>
   </extension>
@@ -116,7 +64,7 @@
       
       <action application="clear_digit_action" data="overflow"/>
       
-      <action application="playback" data="/opt/sounds/overflow/transferring.wav"/>
+      <action application="playback" data="tone_stream://%(200,100,800);%(200,100,1000);%(400,0,1200)"/>
       
       <action application="set" data="hangup_after_bridge=true"/>
       <action application="set" data="call_timeout=30"/>
@@ -124,8 +72,8 @@
       
       <action application="bridge" data="sofia/gateway/${sip_gateway}/${tech_prefix}${fallback_transfer_number}"/>
       
-      <action application="log" data="WARNING [OVERFLOW-TRANSFER] Bridge fallito per ${fallback_transfer_number} - riproduco messaggio errore"/>
-      <action application="playback" data="/opt/sounds/overflow/transfer_failed.wav"/>
+      <action application="log" data="WARNING [OVERFLOW-TRANSFER] Bridge fallito per ${fallback_transfer_number}"/>
+      <action application="playback" data="tone_stream://%(500,200,300);%(500,200,200);%(1000,0,150)"/>
       <action application="hangup" data="NORMAL_CLEARING"/>
 
     </condition>

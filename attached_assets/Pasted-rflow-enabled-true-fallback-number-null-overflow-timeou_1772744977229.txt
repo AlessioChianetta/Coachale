@@ -1,0 +1,15 @@
+rflow_enabled=true fallback_number=null overflow_timeout_secs=120 overflow_dtmf_enabled=true overflow_auto_return=true
+6|voice-bridge  | 2026-03-05T21:08:03.041Z [INFO ] [BRIDGE:SESSION] 📥 Added to overflow queue uuid=9ee22e65-1093-40ac-9a34-c3757b84817e calledNumber=9999 queueSize=1 timeoutSecs=120
+6|voice-bridge  | 2026-03-05T21:08:03.042Z [INFO ] [BRIDGE:SERVER] 📥 Call 9ee22e65-1093-40ac-9a34-c3757b84817e queued in overflow (timeout=120s, dtmf=true, fallback=none)
+6|voice-bridge  | 2026-03-05T21:08:03.042Z [INFO ] [BRIDGE:SERVER] ✅ [OVERFLOW-4429] Call 9ee22e65-1093-40ac-9a34-c3757b84817e successfully routed to overflow queue
+6|voice-bridge  | 2026-03-05T21:08:03.086Z [INFO ] [BRIDGE:SERVER] Overflow vars set: +OK
+6|voice-bridge  | 2026-03-05T21:08:03.748Z [INFO ] [BRIDGE:SERVER] ✅ Call 9ee22e65-1093-40ac-9a34-c3757b84817e transferred to overflow_queue
+6|voice-bridge  | 2026-03-05T21:09:13.522Z [INFO ] [BRIDGE:SERVER] WebSocket closed (Session: 545d8f2e-f014-4daa-81df-d121f0290f16)
+6|voice-bridge  | 2026-03-05T21:09:13.524Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=545d8f2e callId=sc_1772744175851_e551bx61f reason=websocket_closed duration=12m 51s bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+6|voice-bridge  | 2026-03-05T21:09:13.524Z [INFO ] [BRIDGE:SESSION] 📤 Dequeued from overflow uuid=9ee22e65-1093-40ac-9a34-c3757b84817e calledNumber=9999 remaining=0
+6|voice-bridge  | 2026-03-05T21:09:13.676Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=545d8f2e code=1000 reason=Session ended hasPendingResume=false
+6|voice-bridge  | 2026-03-05T21:09:13.676Z [INFO ] [BRIDGE:SERVER] Replit connection closed sessionId=545d8f2e code=1000 reason=Session ended
+6|voice-bridge  | 2026-03-05T21:09:14.378Z [INFO ] [BRIDGE:CONTEXT] 📋 Overflow config loaded calledNumber=+9999 found=true overflow_enabled=true fallback_number=null overflow_timeout_secs=120 overflow_dtmf_enabled=true overflow_auto_return=true
+6|voice-bridge  | 2026-03-05T21:09:14.422Z [INFO ] [BRIDGE:SERVER] 🔄 Dequeuing overflow call 9ee22e65-1093-40ac-9a34-c3757b84817e → transferring back to AI (2s delay for DB sync)
+6|voice-bridge  | 2026-03-05T21:09:16.508Z [INFO ] [BRIDGE:SERVER] ✅ Overflow call 9ee22e65-1093-40ac-9a34-c3757b84817e transferred back to AI
+6|voice-bridge  | 2026-03-05T21:09:16.533Z [INFO ] [BRIDGE:SERVER] WebSocket closed (Session: 2bb0d751-b32c-4774-b00e-e149b0ccf1df)

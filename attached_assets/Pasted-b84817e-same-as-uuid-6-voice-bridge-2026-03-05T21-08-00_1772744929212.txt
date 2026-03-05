@@ -1,0 +1,28 @@
+b84817e (same as uuid)
+6|voice-bridge  | 2026-03-05T21:08:00.795Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] CHANNEL_PARK → WebSocket connection: 47ms (FreeSWITCH audio_stream setup + WS open) callId=9ee22e65-1093-40ac-9a34-c3757b84817e
+6|voice-bridge  | 2026-03-05T21:08:00.795Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=9ee22e65-1093-40ac-9a34-c3757b84817e | CallerId=1002 | CallerName=1002
+6|voice-bridge  | 2026-03-05T21:08:01.541Z [INFO ] [BRIDGE:CONTEXT] 📋 Overflow config loaded calledNumber=+9999 found=true overflow_enabled=true fallback_number=null overflow_timeout_secs=120 overflow_dtmf_enabled=true overflow_auto_return=true
+6|voice-bridge  | 2026-03-05T21:08:01.542Z [INFO ] [BRIDGE:SESSION] Session created sessionId=2bb0d751 callId=9ee22e65-1093-40ac-9a34-c3757b84817e callerId=1002 calledNumber=9999 codec=L16 sampleRate=8000 activeSessions=2
+6|voice-bridge  | 2026-03-05T21:08:01.545Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] handleCallStart setup: session=1ms, bgInit+queue=3ms sessionId=2bb0d751
+6|voice-bridge  | 2026-03-05T21:08:01.546Z [INFO ] [BRIDGE:SERVER] 🎵 Adaptive audio timer started (prefill=4) sessionId=2bb0d751
+6|voice-bridge  | 2026-03-05T21:08:01.546Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Pre-connect overhead: 5ms sessionId=2bb0d751
+6|voice-bridge  | 2026-03-05T21:08:01.546Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=2bb0d751 url=wss://4746543d-5b82-4e9e-b0fc-fef4cc83c57e-00-2lrdftkwmtekc.spock.replit.dev/ws/ai-voice voice=Puck isResume=false
+6|voice-bridge  | 2026-03-05T21:08:02.141Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] TLS+HTTP upgrade handshake: 595ms sessionId=2bb0d751 resumed=false
+6|voice-bridge  | 2026-03-05T21:08:02.141Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Replit WS connected in 595ms (TLS handshake + HTTP upgrade) sessionId=2bb0d751
+6|voice-bridge  | 2026-03-05T21:08:02.141Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=2bb0d751
+6|voice-bridge  | 2026-03-05T21:08:02.141Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=2bb0d751 from=connecting to=active
+6|voice-bridge  | 2026-03-05T21:08:02.141Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Total handleCallStart: 600ms (setup=5ms, connect=595ms, post=0ms) sessionId=2bb0d751
+6|voice-bridge  | 2026-03-05T21:08:02.459Z [INFO ] [BRIDGE:CONTEXT] Number owner found calledNumber=9999 consultant_id=0c73bbe5 display_name=Alessio Test
+6|voice-bridge  | 2026-03-05T21:08:02.459Z [INFO ] [BRIDGE:SERVER] 📞 [NUMBER LOOKUP] Called number 9999 belongs to consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, display=Alessio Test
+6|voice-bridge  | 2026-03-05T21:08:02.604Z [WARN ] [BRIDGE:REPLIT-WS] ⚠️ Audio DISCARDED - connected=true, ws=true, readyState=2 sessionId=2bb0d751 reconnecting=false
+6|voice-bridge  | 2026-03-05T21:08:02.732Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=2bb0d751 code=4429 reason=CHANNELS_FULL hasPendingResume=false
+6|voice-bridge  | 2026-03-05T21:08:02.732Z [INFO ] [BRIDGE:SERVER] Replit connection closed sessionId=2bb0d751 code=4429 reason=CHANNELS_FULL
+6|voice-bridge  | 2026-03-05T21:08:02.732Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=2bb0d751 callId=9ee22e65-1093-40ac-9a34-c3757b84817e reason=channels_full_overflow duration=1.2s bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+6|voice-bridge  | 2026-03-05T21:08:02.732Z [WARN ] [BRIDGE:REPLIT-WS] 🔶 Replit rejected with CHANNELS_FULL (4429) — routing to overflow sessionId=2bb0d751
+6|voice-bridge  | 2026-03-05T21:08:02.732Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Replit rejected — channels full. Routing 9ee22e65-1093-40ac-9a34-c3757b84817e to overflow (calledNumber: 9999) sessionId=2bb0d751
+6|voice-bridge  | 2026-03-05T21:08:03.040Z [INFO ] [BRIDGE:CONTEXT] 📋 Overflow config loaded calledNumber=+9999 found=true overflow_enabled=true fallback_number=null overflow_timeout_secs=120 overflow_dtmf_enabled=true overflow_auto_return=true
+6|voice-bridge  | 2026-03-05T21:08:03.041Z [INFO ] [BRIDGE:SESSION] 📥 Added to overflow queue uuid=9ee22e65-1093-40ac-9a34-c3757b84817e calledNumber=9999 queueSize=1 timeoutSecs=120
+6|voice-bridge  | 2026-03-05T21:08:03.042Z [INFO ] [BRIDGE:SERVER] 📥 Call 9ee22e65-1093-40ac-9a34-c3757b84817e queued in overflow (timeout=120s, dtmf=true, fallback=none)
+6|voice-bridge  | 2026-03-05T21:08:03.042Z [INFO ] [BRIDGE:SERVER] ✅ [OVERFLOW-4429] Call 9ee22e65-1093-40ac-9a34-c3757b84817e successfully routed to overflow queue
+6|voice-bridge  | 2026-03-05T21:08:03.086Z [INFO ] [BRIDGE:SERVER] Overflow vars set: +OK
+6|voice-bridge  | 2026-03-05T21:08:03.748Z [INFO ] [BRIDGE:SERVER] ✅ Call 9ee22e65-1093-40ac-9a34-c3757b84817e transferred to overflow_queue

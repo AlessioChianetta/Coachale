@@ -863,8 +863,9 @@ async function tryDequeueOverflow(): Promise<void> {
         continue;
       }
 
-      log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
-      (eslConn as any).bgapi(`uuid_transfer ${next.uuid} alessia_ai_9999_public XML public`, (res: any) => {
+      const transferDest = next.calledNumber || '9999';
+      log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → ${transferDest} XML public`);
+      (eslConn as any).bgapi(`uuid_transfer ${next.uuid} ${transferDest} XML public`, (res: any) => {
         const body = res?.getBody?.() || '';
         if (body.includes('+OK')) {
           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
