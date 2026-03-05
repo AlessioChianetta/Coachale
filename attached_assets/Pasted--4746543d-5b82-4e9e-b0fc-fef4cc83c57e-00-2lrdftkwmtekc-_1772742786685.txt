@@ -1,0 +1,33 @@
+://4746543d-5b82-4e9e-b0fc-fef4cc83c57e-00-2lrdftkwmtekc.spock.replit.dev/ws/ai-voice voice=Puck isResume=false
+6|voice-bridge  | 2026-03-05T20:29:47.273Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] TLS+HTTP upgrade handshake: 597ms sessionId=7ada477f resumed=false
+6|voice-bridge  | 2026-03-05T20:29:47.273Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Replit WS connected in 597ms (TLS handshake + HTTP upgrade) sessionId=7ada477f
+6|voice-bridge  | 2026-03-05T20:29:47.273Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=7ada477f
+6|voice-bridge  | 2026-03-05T20:29:47.273Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=7ada477f from=connecting to=active
+6|voice-bridge  | 2026-03-05T20:29:47.273Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Total handleCallStart: 599ms (setup=2ms, connect=597ms, post=0ms) sessionId=7ada477f
+6|voice-bridge  | 2026-03-05T20:29:47.723Z [WARN ] [BRIDGE:REPLIT-WS] ⚠️ Audio DISCARDED - connected=true, ws=true, readyState=2 sessionId=7ada477f reconnecting=false
+6|voice-bridge  | 2026-03-05T20:29:47.856Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=7ada477f code=4429 reason=CHANNELS_FULL hasPendingResume=false
+6|voice-bridge  | 2026-03-05T20:29:47.856Z [INFO ] [BRIDGE:SERVER] Replit connection closed sessionId=7ada477f code=4429 reason=CHANNELS_FULL
+6|voice-bridge  | 2026-03-05T20:29:47.856Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=7ada477f callId=45db695d-96e1-4b9d-a982-35331bf0461e reason=channels_full_overflow duration=1.2s bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+6|voice-bridge  | 2026-03-05T20:29:47.856Z [WARN ] [BRIDGE:REPLIT-WS] 🔶 Replit rejected with CHANNELS_FULL (4429) — routing to overflow sessionId=7ada477f
+6|voice-bridge  | 2026-03-05T20:29:47.856Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Replit rejected — channels full. Routing 45db695d-96e1-4b9d-a982-35331bf0461e to overflow (calledNumber: 9999) sessionId=7ada477f
+6|voice-bridge  | 2026-03-05T20:29:48.104Z [INFO ] [BRIDGE:CONTEXT] Number owner found calledNumber=9999 consultant_id=0c73bbe5 display_name=Alessio Test
+6|voice-bridge  | 2026-03-05T20:29:48.104Z [INFO ] [BRIDGE:SERVER] 📞 [NUMBER LOOKUP] Called number 9999 belongs to consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, display=Alessio Test
+6|voice-bridge  | 2026-03-05T20:29:48.161Z [INFO ] [BRIDGE:CONTEXT] 📋 Overflow config loaded calledNumber=+9999 found=true overflow_enabled=true fallback_number=null overflow_timeout_secs=120 overflow_dtmf_enabled=true overflow_auto_return=true
+6|voice-bridge  | 2026-03-05T20:29:48.161Z [INFO ] [BRIDGE:SESSION] 📥 Added to overflow queue uuid=45db695d-96e1-4b9d-a982-35331bf0461e calledNumber=9999 queueSize=1 timeoutSecs=120
+6|voice-bridge  | 2026-03-05T20:29:48.161Z [INFO ] [BRIDGE:SERVER] 📥 Call 45db695d-96e1-4b9d-a982-35331bf0461e queued in overflow (timeout=120s, dtmf=true, fallback=none)
+6|voice-bridge  | 2026-03-05T20:29:48.161Z [INFO ] [BRIDGE:SERVER] ✅ [OVERFLOW-4429] Call 45db695d-96e1-4b9d-a982-35331bf0461e successfully routed to overflow queue
+6|voice-bridge  | 2026-03-05T20:29:48.204Z [INFO ] [BRIDGE:SERVER] Overflow vars set: +OK
+6|voice-bridge  | 2026-03-05T20:29:48.324Z [INFO ] [BRIDGE:SERVER] ✅ Call 45db695d-96e1-4b9d-a982-35331bf0461e transferred to overflow_queue
+6|voice-bridge  | 2026-03-05T20:29:58.234Z [WARN ] [BRIDGE:SERVER] ⏰ Pending call expired: callId=sc_1772742561923_2b2z2qa57, uuid=outbound-1772742564033-n4dwpb
+6|voice-bridge  | 2026-03-05T20:30:04.356Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 638ms
+6|voice-bridge  | 2026-03-05T20:30:09.598Z [INFO ] [BRIDGE:ESL] 📤 [OVERFLOW] Call 45db695d-96e1-4b9d-a982-35331bf0461e hung up while in overflow queue — removing
+6|voice-bridge  | 2026-03-05T20:30:09.598Z [INFO ] [BRIDGE:SESSION] 📤 Removed from overflow queue uuid=45db695d-96e1-4b9d-a982-35331bf0461e queueSize=0
+6|voice-bridge  | 2026-03-05T20:30:09.605Z [INFO ] [BRIDGE:SERVER] WebSocket closed (Session: 7ada477f-bfbb-4818-a018-302fda83b864)
+6|voice-bridge  | 2026-03-05T20:30:11.086Z [INFO ] [BRIDGE:ESL] ▶️  [UNHOLD] Call resumed — restarting inactivity timeout uuid=outbound-1772742564033-n4dwpb callId=outbound-1772742564033-n4dwpb sessionId=d7e8b089
+6|voice-bridge  | 2026-03-05T20:30:11.086Z [INFO ] [BRIDGE:SESSION] Inactivity timeout resumed sessionId=d7e8b089
+6|voice-bridge  | 2026-03-05T20:30:13.457Z [INFO ] [BRIDGE:ESL] ⏸️  [HOLD] Call put on hold — pausing inactivity timeout uuid=outbound-1772742564033-n4dwpb callId=outbound-1772742564033-n4dwpb sessionId=d7e8b089
+6|voice-bridge  | 2026-03-05T20:30:13.457Z [INFO ] [BRIDGE:SESSION] Inactivity timeout paused (session resume) sessionId=d7e8b089
+6|voice-bridge  | 2026-03-05T20:31:24.906Z [INFO ] [BRIDGE:SERVER] WebSocket closed (Session: d7e8b089-e581-4c87-872d-41324a3ccbc0)
+6|voice-bridge  | 2026-03-05T20:31:24.907Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=d7e8b089 callId=outbound-1772742564033-n4dwpb reason=websocket_closed duration=1m 55s bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+6|voice-bridge  | 2026-03-05T20:31:25.054Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=d7e8b089 code=1000 reason=Session ended hasPendingResume=false
+6|voice-bridge  | 2026-03-05T20:31:25.054Z [INFO ] [BRIDGE:SERVER] Replit connection closed sessionId=d7e8b089 code=1000 reason=Session ended

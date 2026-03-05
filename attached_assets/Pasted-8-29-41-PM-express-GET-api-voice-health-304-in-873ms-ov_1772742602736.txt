@@ -1,0 +1,62 @@
+8:29:41 PM [express] GET /api/voice/health 304 in 873ms :: {"overall":"healthy","components":{"datab…
+📝 [yq5e9] Voice call transcript updated (1 messages)
+8:29:42 PM [express] GET /api/voice/calls 304 in 875ms :: {"calls":[{"id":"vc_1772742569953_mjo24ybc…
+8:29:43 PM [express] GET /api/voice/ai-tasks 304 in 1454ms :: {"tasks":[{"id":"task_1772735396810_0j…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 1
+   • yq5e9: assistenza - active - durata: 0min - idle: 0min - retries: 0
+📞 [OVERFLOW-CONFIG] ━━━ Request: called_number=+9999 ━━━
+📞 [OVERFLOW-CONFIG] Searching variants: [+9999, 9999, +399999]
+📞 [OVERFLOW-CONFIG] ✅ Found number 9999 → overflow_enabled=true, max_concurrent=1, timeout=120s, auto_return=true, dtmf=true, fallback=none
+8:29:46 PM [express] GET /api/voice/overflow-config 200 in 147ms :: {"found":true,"overflow_enabled"…
+8:29:46 PM [express] GET /api/voice/gemini-connections 200 in 292ms :: {"success":true,"connections"…
+🎤 [4f98e] Client connected to Live API
+⏱️ [LATENCY-E2E] WebSocket arrival: 2026-03-05T20:29:47.197Z
+⏱️ [AUTH-DETAIL] JWT verify: 1ms
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:
+🔍 [ROUTING-DEBUG]   decoded.consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   decoded.type: phone_service
+🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+🔍 [ROUTING-DEBUG]   calledNumber: 9999
+🔍 [ROUTING-DEBUG]   callerId: 1003
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8:29:47 PM [express] POST /api/voice/call-start 200 in 12ms
+⏱️ [AUTH-DETAIL] voice_numbers lookup: 145ms (tried: 9999, +9999, 9999)
+🔍 [ROUTING-DEBUG] voice_numbers lookup result:
+🔍 [ROUTING-DEBUG]   BEFORE: resolvedConsultantId = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   voice_numbers.consultant_id = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   AFTER: resolvedConsultantId = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [PHONE SERVICE] Number 9999 → consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (Alessio Test)
+🔍 [ROUTING-DEBUG] Cross-consultant token check:
+🔍 [ROUTING-DEBUG]   decoded.consultantId (from JWT): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   resolvedConsultantId (from voice_numbers): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+🔍 [ROUTING-DEBUG]   match? true
+📊 [CHANNEL-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [CHANNEL-CHECK] Checking channels for number=9999 consultant=0c73bbe5... maxChannels=1
+📊 [CHANNEL-CHECK] Query: status='talking' AND (called_number='9999' OR caller_id='9999' OR svc.from_number='9999')
+📊 [CHANNEL-CHECK] Result: activeCount(talking)=1/1 for 9999
+⏱️ [AUTH-DETAIL] Channel check: 145ms (active: 1/1, number: 9999)
+❌ [CHANNEL-CHECK] CHANNELS FULL! Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b has 1/1 active calls on 9999
+❌ [CHANNEL-CHECK] Incoming callerId=1003 calledNumber=9999 → REJECTING with 4429
+❌ [CHANNEL-CHECK] Calls occupying channels (talking+calling):
+❌ [CHANNEL-CHECK]   → vc_1772742569953_mjo24ybco | status=talking | caller=9999 | called=1003 | dir=outbound | svc_from=- | svc_target=- | created=2026-03-05 20:29:30.036599
+📊 [CHANNEL-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔶 [4f98e] ━━━ CHANNELS FULL 4429 ━━━
+🔶 [4f98e] Rejecting WS: callerId=1003 calledNumber=9999
+🔶 [4f98e] The VPS Bridge should catch this 4429 and route to overflow queue
+🔶 [4f98e] ━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 [ACTIVE-CALLS-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [ACTIVE-CALLS-DEBUG] Consultant: 0c73bbe5...
+📊 [ACTIVE-CALLS-DEBUG] Total: 135 | {"cancelled":7,"completed":40,"failed":87,"calling":1} | Gemini streams: 1 (vcIds: [vc_1772742569953_mjo24ybco], callerIds: [9999], calledNums: [1003], scIds: [])
+📊 [ACTIVE-CALLS-DEBUG]   🟢 REAL | id=sc_1772742561923_2b2z2qa57 | status=calling | phone=1003 | age=19s | voice_call_id=vc_1772741635582_htoefb41a | match: vcId=false, callerId=false, calledNum=true, scId=false
+📊 [ACTIVE-CALLS-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8:29:47 PM [express] GET /api/voice/outbound/scheduled 304 in 1017ms :: {"calls":[{"id":"sc_17711922…
+📞 [OVERFLOW-CONFIG] ━━━ Request: called_number=+9999 ━━━
+📞 [OVERFLOW-CONFIG] Searching variants: [+9999, 9999, +399999]
+📞 [Number Lookup] Found: 9999 → consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, display=Alessio Test
+8:29:48 PM [express] GET /api/voice/number-lookup 200 in 291ms :: {"found":true,"consultant_id":"0c7…
+📞 [OVERFLOW-CONFIG] ✅ Found number 9999 → overflow_enabled=true, max_concurrent=1, timeout=120s, auto_return=true, dtmf=true, fallback=none
+8:29:48 PM [express] GET /api/voice/overflow-config 200 in 145ms :: {"found":true,"overflow_enabled"…
