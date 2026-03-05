@@ -1000,7 +1000,7 @@ function ActiveCallDuration({ startedAt }: { startedAt?: string }) {
     return () => clearInterval(iv);
   }, [startedAt]);
   if (!elapsed) return null;
-  return <span className="font-mono text-[10px] text-green-700 dark:text-green-400">{elapsed}</span>;
+  return <span className="font-mono text-[11px] font-semibold text-green-600 dark:text-green-400">{elapsed}</span>;
 }
 
 function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch, maxConcurrent }: {
@@ -1012,7 +1012,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
 }) {
   const now = Date.now();
   const SOON_THRESHOLD = 5 * 60 * 1000;
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ future: true });
   const toggleSection = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
 
   const activeCalls = scheduledCalls.filter((c: any) => ['talking', 'calling', 'ringing', 'in_progress'].includes(c.status));
@@ -1045,143 +1045,210 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
   if (totalQueued === 0) return null;
 
   const cancellableCount = queuedCalls.length + retryCalls.length + futureCalls.length;
+  const linePercent = maxConcurrent > 0 ? Math.min(100, (activeCalls.length / maxConcurrent) * 100) : 0;
 
   const getOriginBadge = (call: any) => {
     if (call.source_task_id) {
-      return <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-medium">Hunter</span>;
+      return <span className="text-[9px] px-1.5 py-0.5 rounded-sm font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">Hunter</span>;
     }
     if (call.call_instruction?.includes('auto-call') || call.call_instruction?.includes('Auto-call')) {
-      return <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300 font-medium">Auto</span>;
+      return <span className="text-[9px] px-1.5 py-0.5 rounded-sm font-semibold bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60">Auto</span>;
     }
-    return <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 font-medium">Manuale</span>;
+    return <span className="text-[9px] px-1.5 py-0.5 rounded-sm font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800/80 dark:text-gray-400 border border-gray-200 dark:border-gray-700">Manuale</span>;
   };
 
   const reasonMap: Record<string, string> = { no_answer: 'Non ha risposto', busy: 'Occupato', short_call: 'Chiamata breve', voicemail: 'Segreteria' };
 
+  const getContactDisplay = (call: any) => {
+    const phone = call.target_phone;
+    const name = call.contact_name || call.client_name;
+    if (phone && phone !== 'N/A' && phone.trim()) {
+      return (
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="font-mono text-[13px] font-medium text-foreground shrink-0">{phone}</span>
+          {name && <span className="text-[11px] text-muted-foreground truncate">{name}</span>}
+        </div>
+      );
+    }
+    if (name) {
+      return (
+        <div className="flex items-center gap-1.5 min-w-0">
+          <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span className="text-[13px] font-medium text-foreground truncate">{name}</span>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1.5 min-w-0">
+        <User className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+        <span className="text-[13px] text-muted-foreground italic">Contatto sconosciuto</span>
+      </div>
+    );
+  };
+
+  const variantRowClass = (variant: string) => {
+    switch (variant) {
+      case 'active': return 'border-l-[3px] border-l-green-500 bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-900/40';
+      case 'retry': return 'border-l-[3px] border-l-orange-500 bg-orange-50/40 dark:bg-orange-950/15 border-orange-200 dark:border-orange-900/40';
+      default: return 'border-l-[3px] border-l-transparent bg-gray-50/80 dark:bg-[#111827] border-gray-200 dark:border-[#1f2937] hover:bg-gray-100 dark:hover:bg-[#1a2332]';
+    }
+  };
+
   const renderCallRow = (call: any, variant: 'active' | 'queued' | 'retry' | 'future') => (
-    <div key={call.id} className="flex items-center gap-2 p-2 rounded-md bg-background/80 border text-sm">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="font-mono text-xs truncate">{call.target_phone}</span>
-          {call.contact_name && <span className="text-[10px] text-muted-foreground truncate">({call.contact_name})</span>}
-          {getOriginBadge(call)}
+    <div key={call.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-md border text-sm transition-colors ${variantRowClass(variant)}`}>
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="flex items-center gap-2">
+          {getContactDisplay(call)}
+          <div className="shrink-0">{getOriginBadge(call)}</div>
         </div>
         {call.call_instruction && (
-          <p className="text-[10px] text-muted-foreground truncate mt-0.5">{call.call_instruction}</p>
+          <div className="overflow-hidden mt-0.5" style={{ maxWidth: 'calc(100% - 8px)' }}>
+            <p className="text-[11px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">{call.call_instruction}</p>
+          </div>
         )}
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         {variant === 'active' && (
-          <div className="flex items-center gap-1.5 text-green-600">
-            <Phone className="h-3 w-3 animate-pulse" />
-            <span className="text-[10px] font-medium">{call.status === 'talking' ? 'Attiva' : 'Connessione...'}</span>
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40">
+              <Phone className="h-3 w-3 text-green-600 dark:text-green-400 animate-pulse" />
+              <span className="text-[10px] font-semibold text-green-700 dark:text-green-400">{call.status === 'talking' ? 'Attiva' : 'Ring...'}</span>
+            </div>
             {call.status === 'talking' && <ActiveCallDuration startedAt={call.voice_call_started_at || call.updated_at} />}
           </div>
         )}
         {variant === 'retry' && (
-          <div className="flex items-center gap-1">
-            <Badge className="bg-orange-500 text-white text-[9px] px-1.5">{call.attempts || 0}/{call.max_attempts || 3}</Badge>
-            <span className="text-[10px] text-orange-600 dark:text-orange-400">{reasonMap[call.retry_reason] || ''}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800/50">{call.attempts || 0}/{call.max_attempts || 3}</span>
+            <span className="text-[10px] text-orange-600 dark:text-orange-400 hidden sm:inline">{reasonMap[call.retry_reason] || ''}</span>
           </div>
         )}
         {(variant === 'queued' || variant === 'retry') && (call.next_retry_at || call.scheduled_at) && (
-          <div className="flex items-center gap-1 text-blue-600">
+          <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
             <Clock className="h-3 w-3" />
             <CallQueueCountdown targetDate={variant === 'retry' && call.next_retry_at ? call.next_retry_at : call.scheduled_at} />
           </div>
         )}
         {variant === 'future' && call.scheduled_at && (
-          <span className="text-[10px] text-muted-foreground font-mono">
+          <span className="text-[11px] text-muted-foreground font-mono">
             {new Date(call.scheduled_at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
           </span>
         )}
-        {(variant === 'queued' || variant === 'retry') && (
-          <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => onTriggerNow(call.id)} title="Chiama subito">
-            <PhoneOutgoing className="h-3 w-3" />
-          </Button>
-        )}
-        {variant !== 'active' && (
-          <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-destructive hover:text-destructive" onClick={() => onCancel(call.id)} title="Annulla">
-            <X className="h-3 w-3" />
-          </Button>
+        {(variant === 'queued' || variant === 'retry' || variant === 'future') && (
+          <div className="flex items-center gap-1">
+            {(variant === 'queued' || variant === 'retry') && (
+              <button
+                onClick={() => onTriggerNow(call.id)}
+                title="Chiama subito"
+                className="h-7 w-7 rounded-md flex items-center justify-center bg-green-50 border border-green-200 text-green-600 hover:bg-green-100 dark:bg-green-950/60 dark:border-green-800/60 dark:text-green-400 dark:hover:bg-green-900/40 transition-colors"
+              >
+                <PhoneOutgoing className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <button
+              onClick={() => onCancel(call.id)}
+              title="Annulla"
+              className="h-7 w-7 rounded-md flex items-center justify-center bg-red-50 border border-red-200 text-red-500 hover:bg-red-100 dark:bg-red-950/60 dark:border-red-800/60 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
         )}
       </div>
     </div>
   );
 
+  const sectionStyles: Record<string, { headerBg: string; textColor: string; dotColor: string }> = {
+    active: { headerBg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-700 dark:text-green-400', dotColor: 'bg-green-500' },
+    queued: { headerBg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-700 dark:text-blue-400', dotColor: 'bg-blue-500' },
+    retry: { headerBg: 'bg-orange-50 dark:bg-orange-950/30', textColor: 'text-orange-700 dark:text-orange-400', dotColor: 'bg-orange-500' },
+    future: { headerBg: 'bg-gray-100 dark:bg-gray-800/40', textColor: 'text-gray-600 dark:text-gray-400', dotColor: 'bg-gray-400' },
+  };
+
   const renderSection = (
     key: string,
     label: string,
     count: number,
-    color: string,
-    dotColor: string,
     calls: any[],
     variant: 'active' | 'queued' | 'retry' | 'future',
     extra?: React.ReactNode,
     maxVisible?: number
   ) => {
-    if (count === 0) return null;
+    const style = sectionStyles[key];
     const isCollapsed = collapsed[key];
     const visibleCalls = maxVisible && !isCollapsed ? calls.slice(0, maxVisible) : calls;
     const hiddenCount = maxVisible ? Math.max(0, calls.length - maxVisible) : 0;
 
     return (
-      <div className="space-y-1">
+      <div>
         <button
           onClick={() => toggleSection(key)}
-          className="w-full text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1 hover:opacity-80 transition-opacity"
-          style={{ color }}
+          className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide transition-colors ${style.headerBg} ${style.textColor} hover:opacity-90`}
         >
-          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
+          <span className={`w-2 h-2 rounded-full shrink-0 ${style.dotColor} ${key === 'active' && count > 0 ? 'animate-pulse' : ''}`} />
           {label} ({count})
           {extra}
-          {isCollapsed ? <ChevronRight className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
+          {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 ml-auto" /> : <ChevronDown className="h-3.5 w-3.5 ml-auto" />}
         </button>
-        {!isCollapsed && (
-          <>
+        {!isCollapsed && count > 0 && (
+          <div className="mt-1.5 space-y-1">
             {visibleCalls.map((c: any) => renderCallRow(c, variant))}
             {hiddenCount > 0 && (
-              <p className="text-[10px] text-muted-foreground text-center">...e altre {hiddenCount} {label.toLowerCase()}</p>
+              <p className="text-[11px] text-muted-foreground text-center py-1">...e altre {hiddenCount} {label.toLowerCase()}</p>
             )}
-          </>
+          </div>
         )}
       </div>
     );
   };
 
   return (
-    <Card className="mb-4 border-blue-200 bg-blue-50/30 dark:bg-blue-950/10 dark:border-blue-800">
-      <CardHeader className="pb-2 pt-3 px-4">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <Timer className="h-4 w-4 text-blue-600" />
-          Coda Chiamate
-          <div className="flex items-center gap-1.5 ml-2">
-            <div className={`h-2 w-2 rounded-full ${activeCalls.length > 0 ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
-            <span className="text-[11px] text-muted-foreground font-medium">{activeCalls.length}/{maxConcurrent} linee</span>
+    <Card className="mb-4 bg-white dark:bg-[#0f1117] border-gray-200 dark:border-[#1e2330] shadow-sm">
+      <CardHeader className="pb-3 pt-4 px-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center">
+              <Phone className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-semibold">Coda Chiamate</CardTitle>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="w-20 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                  <div className={`h-full rounded-full transition-all duration-500 ${activeCalls.length > 0 ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} style={{ width: `${linePercent}%` }} />
+                </div>
+                <span className="text-[11px] text-muted-foreground font-medium">{activeCalls.length}/{maxConcurrent} linee</span>
+              </div>
+            </div>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <Badge variant="outline" className="text-[10px]">{totalQueued} totali</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[11px] font-medium">{totalQueued} in coda</Badge>
             {cancellableCount > 0 && (
-              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-destructive hover:text-destructive" onClick={() => onCancelBatch('all')}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-3 text-[11px] font-medium border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800/60 dark:text-red-400 dark:hover:bg-red-950/40"
+                onClick={() => onCancelBatch('all')}
+              >
+                <X className="h-3 w-3 mr-1" />
                 Annulla tutti ({cancellableCount})
               </Button>
             )}
           </div>
-        </CardTitle>
+        </div>
       </CardHeader>
-      <CardContent className="px-4 pb-3 pt-0">
-        <div className="space-y-3 max-h-[320px] overflow-auto">
-          {renderSection('active', 'Attive', activeCalls.length, 'rgb(22 163 74)', 'rgb(34 197 94)', activeCalls, 'active')}
+      <CardContent className="px-4 pb-4 pt-0">
+        <div className="space-y-2.5 max-h-[380px] overflow-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
+          {renderSection('active', 'Attive', activeCalls.length, activeCalls, 'active')}
 
-          {renderSection('queued', 'In coda', queuedCalls.length, 'rgb(37 99 235)', 'rgb(59 130 246)', queuedCalls, 'queued',
-            activeCalls.length >= maxConcurrent ? (
-              <span className="text-[9px] font-normal ml-1 normal-case tracking-normal" style={{ color: 'rgb(96 165 250)' }}>in attesa di linea libera</span>
+          {renderSection('queued', 'In coda', queuedCalls.length, queuedCalls, 'queued',
+            activeCalls.length >= maxConcurrent && queuedCalls.length > 0 ? (
+              <span className="text-[9px] font-normal ml-1 normal-case tracking-normal text-blue-500 dark:text-blue-400">in attesa di linea libera</span>
             ) : undefined
           )}
 
-          {renderSection('retry', 'Retry', retryCalls.length, 'rgb(234 88 12)', 'rgb(249 115 22)', retryCalls, 'retry')}
+          {renderSection('retry', 'Retry', retryCalls.length, retryCalls, 'retry')}
 
-          {renderSection('future', 'Programmate', futureCalls.length, 'rgb(107 114 128)', 'rgb(156 163 175)', futureCalls, 'future', undefined, 5)}
+          {renderSection('future', 'Programmate', futureCalls.length, futureCalls, 'future', undefined, 5)}
         </div>
       </CardContent>
     </Card>
@@ -3021,18 +3088,25 @@ export default function ConsultantVoiceCallsPage() {
                 {/* HEADER OPERATIVO */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-                    <div>
-                      <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <Phone className="h-6 w-6" />
-                        Centro Chiamate AI
-                      </h2>
-                      <div className="flex items-center gap-3 mt-1 text-sm flex-wrap">
-                        <Badge className={health?.overall === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'}>
-                          {health?.overall === 'healthy' ? '🟢 Sistema Online' : '🟡 Verifica Sistema'}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">{stats?.total_calls || 0} oggi</Badge>
-                        <Badge variant="outline" className="text-xs text-green-600">{stats?.completed_calls || 0} completate</Badge>
-                        <Badge variant="outline" className="text-xs text-blue-600">{scheduledCallsData?.count || 0} in coda</Badge>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-md">
+                        <Phone className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold">Centro Chiamate AI</h2>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                            health?.overall === 'healthy'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400'
+                              : 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${health?.overall === 'healthy' ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`} />
+                            {health?.overall === 'healthy' ? 'Online' : 'Verifica'}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground font-medium">{stats?.total_calls || 0} oggi</span>
+                          <span className="text-[11px] text-green-600 dark:text-green-400 font-medium">{stats?.completed_calls || 0} completate</span>
+                          <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">{scheduledCallsData?.count || 0} in coda</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3086,45 +3160,51 @@ export default function ConsultantVoiceCallsPage() {
 
                 {/* LAYOUT A 3 COLONNE */}
                 <div className="grid gap-4 lg:grid-cols-4">
-                  {/* COLONNA SINISTRA (25%): Rubrica + Template */}
+                  {/* COLONNA SINISTRA (25%): Rubrica */}
                   <div className="space-y-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <Users className="h-4 w-4" />
+                    <Card className="bg-white dark:bg-[#0f1117] border-gray-200 dark:border-[#1e2330] shadow-sm">
+                      <CardHeader className="pb-2 px-3 pt-3">
+                        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                          <div className="h-7 w-7 rounded-md bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center">
+                            <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                          </div>
                           Rubrica
                         </CardTitle>
-                        <div className="flex gap-1 mt-2">
-                          <Button
-                            variant={clientTab === 'active' ? "default" : "outline"}
-                            size="sm"
+                        <div className="flex gap-1 mt-2 p-0.5 bg-gray-100 dark:bg-[#1a2332] rounded-md">
+                          <button
                             onClick={() => setClientTab('active')}
-                            className="flex-1 h-7 text-xs"
+                            className={`flex-1 flex items-center justify-center gap-1 h-7 text-[11px] font-medium rounded transition-colors ${
+                              clientTab === 'active'
+                                ? 'bg-white dark:bg-[#0f1117] text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
+                            }`}
                           >
-                            <UserCheck className="h-3 w-3 mr-1" />
+                            <UserCheck className="h-3 w-3" />
                             Attivi ({clientsData?.active?.length || 0})
-                          </Button>
-                          <Button
-                            variant={clientTab === 'inactive' ? "default" : "outline"}
-                            size="sm"
+                          </button>
+                          <button
                             onClick={() => setClientTab('inactive')}
-                            className="flex-1 h-7 text-xs"
+                            className={`flex-1 flex items-center justify-center gap-1 h-7 text-[11px] font-medium rounded transition-colors ${
+                              clientTab === 'inactive'
+                                ? 'bg-white dark:bg-[#0f1117] text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
+                            }`}
                           >
-                            <UserX className="h-3 w-3 mr-1" />
+                            <UserX className="h-3 w-3" />
                             Inattivi ({clientsData?.inactive?.length || 0})
-                          </Button>
+                          </button>
                         </div>
                         <div className="relative mt-2">
-                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                           <Input
-                            placeholder="Cerca..."
+                            placeholder="Cerca contatto..."
                             value={clientSearch}
                             onChange={(e) => setClientSearch(e.target.value)}
-                            className="pl-7 h-7 text-xs"
+                            className="pl-8 h-8 text-xs bg-gray-50 dark:bg-[#111827] border-gray-200 dark:border-[#1f2937]"
                           />
                         </div>
                       </CardHeader>
-                      <CardContent className="pt-0">
+                      <CardContent className="pt-0 px-3 pb-3">
                         {loadingClients ? (
                           <div className="flex items-center justify-center py-6">
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -3132,36 +3212,40 @@ export default function ConsultantVoiceCallsPage() {
                         ) : filteredClients.length === 0 ? (
                           <div className="text-center py-4 text-muted-foreground text-sm">
                             <Users className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                            <p className="font-medium">👥 Nessun cliente ancora</p>
+                            <p className="font-medium text-xs">Nessun cliente trovato</p>
                             <Link href="/consultant/clients">
                               <Button variant="link" size="sm" className="mt-1 h-auto p-0 text-xs">
-                                Vai a Clienti →
+                                Vai a Clienti
                               </Button>
                             </Link>
                           </div>
                         ) : (
-                          <div className="space-y-1 max-h-[200px] overflow-auto">
-                            {filteredClients.slice(0, 10).map((client) => (
+                          <div className="space-y-0.5 max-h-[220px] overflow-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
+                            {filteredClients.slice(0, 15).map((client) => (
                               <div
                                 key={client.id}
                                 onClick={() => client.phoneNumber ? handleSelectClient(client) : null}
-                                className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
-                                  !client.phoneNumber 
-                                    ? 'opacity-50 cursor-not-allowed' 
-                                    : selectedClient?.id === client.id 
-                                      ? 'bg-primary/10 border border-primary cursor-pointer' 
-                                      : 'hover:bg-muted/50 cursor-pointer'
+                                className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all ${
+                                  !client.phoneNumber
+                                    ? 'cursor-not-allowed'
+                                    : selectedClient?.id === client.id
+                                      ? 'bg-blue-50 dark:bg-blue-950/30 border-l-[3px] border-l-blue-500 cursor-pointer'
+                                      : 'hover:bg-gray-50 dark:hover:bg-[#1a2332] cursor-pointer border-l-[3px] border-l-transparent'
                                 }`}
                               >
-                                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium flex-shrink-0">
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${
+                                  selectedClient?.id === client.id
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                }`}>
                                   {client.firstName[0]}{client.lastName[0]}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-xs truncate flex items-center gap-1">
                                     {client.firstName} {client.lastName}
-                                    {!client.phoneNumber && <AlertTriangle className="h-3 w-3 text-yellow-500" />}
+                                    {!client.phoneNumber && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
                                   </p>
-                                  <p className="text-xs text-muted-foreground truncate">
+                                  <p className={`text-[10px] truncate ${client.phoneNumber ? 'text-muted-foreground font-mono' : 'text-amber-500/70 italic'}`}>
                                     {client.phoneNumber || 'No telefono'}
                                   </p>
                                 </div>
@@ -3176,24 +3260,28 @@ export default function ConsultantVoiceCallsPage() {
 
                   {/* COLONNA CENTRALE (50%): Wizard Chiamata */}
                   <div className="lg:col-span-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>{isScheduleMode ? "Programma Chiamata" : "Avvia Chiamata AI"}</CardTitle>
+                    <Card className="bg-white dark:bg-[#0f1117] border-gray-200 dark:border-[#1e2330] shadow-sm">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                          <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center">
+                            <PhoneOutgoing className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                          </div>
+                          {isScheduleMode ? "Programma Chiamata" : "Avvia Chiamata AI"}
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {/* Numero chiamante (Da) */}
                         {myVoiceNumbers.length > 1 ? (
                           <div className="space-y-1.5">
-                            <Label className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Phone className="h-3.5 w-3.5" />
+                            <Label className="flex items-center gap-2 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                              <Phone className="h-3 w-3" />
                               Da che numero chiami
                             </Label>
                             <select
                               value={outboundFromNumber}
                               onChange={(e) => setOutboundFromNumber(e.target.value)}
-                              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                              className="w-full rounded-md border border-gray-200 dark:border-[#1f2937] bg-gray-50 dark:bg-[#111827] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-colors"
                             >
-                              <option value="">Numero di default (dalle impostazioni)</option>
+                              <option value="">Numero di default</option>
                               {myVoiceNumbers.map((n) => (
                                 <option key={n.id} value={n.phone_number}>
                                   {n.phone_number}{n.display_name && n.display_name !== n.phone_number ? ` — ${n.display_name}` : ""}
@@ -3204,34 +3292,36 @@ export default function ConsultantVoiceCallsPage() {
                         ) : myVoiceNumbers.length === 1 ? (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground px-1">
                             <Phone className="h-3.5 w-3.5 shrink-0" />
-                            <span>Chiami da: <span className="font-medium text-foreground">{myVoiceNumbers[0].phone_number}</span></span>
+                            <span>Da: <span className="font-medium text-foreground font-mono">{myVoiceNumbers[0].phone_number}</span></span>
                           </div>
                         ) : null}
 
-                        {/* Step 1: Numero da chiamare */}
                         <div className="space-y-2">
                           <Label className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</span>
-                            Numero da chiamare
+                            <span className="w-6 h-6 rounded-full bg-blue-600 dark:bg-blue-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+                            <span className="text-sm font-medium">Numero da chiamare</span>
                           </Label>
                           {selectedClient && (
-                            <div className="flex items-center justify-between p-2 bg-primary/10 rounded-lg mb-2">
+                            <div className="flex items-center justify-between p-2.5 bg-blue-50 dark:bg-blue-950/30 rounded-md border border-blue-200 dark:border-blue-800/50 mb-2">
                               <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium">
+                                <div className="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-semibold">
                                   {selectedClient.firstName[0]}{selectedClient.lastName[0]}
                                 </div>
                                 <span className="text-sm font-medium">{selectedClient.firstName} {selectedClient.lastName}</span>
                               </div>
-                              <Button variant="ghost" size="sm" onClick={() => { setSelectedClient(null); setOutboundPhone(""); }}>
-                                <X className="h-3 w-3" />
-                              </Button>
+                              <button
+                                onClick={() => { setSelectedClient(null); setOutboundPhone(""); }}
+                                className="h-6 w-6 rounded flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                              >
+                                <X className="h-3 w-3 text-muted-foreground" />
+                              </button>
                             </div>
                           )}
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🇮🇹</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">+39</span>
                             <Input
                               type="tel"
-                              placeholder="+39 XXX XXX XXXX"
+                              placeholder="XXX XXX XXXX"
                               value={outboundPhone}
                               onChange={(e) => setOutboundPhone(e.target.value)}
                               onBlur={(e) => {
@@ -3242,82 +3332,86 @@ export default function ConsultantVoiceCallsPage() {
                                 if (/^\d{3,6}$/.test(v)) return;
                                 setOutboundPhone("+39" + v);
                               }}
-                              className="pl-10"
+                              className="pl-11 bg-gray-50 dark:bg-[#111827] border-gray-200 dark:border-[#1f2937] font-mono"
                             />
                           </div>
                         </div>
 
-                        {/* Step 2: Obiettivo */}
                         <div className="space-y-2">
                           <Label className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">2</span>
-                            Cosa deve dire l'AI
+                            <span className="w-6 h-6 rounded-full bg-blue-600 dark:bg-blue-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+                            <span className="text-sm font-medium">Cosa deve dire l'AI</span>
                           </Label>
-                          <div className="flex gap-1 mb-2">
-                            <Button 
-                              variant={instructionType === 'task' ? "default" : "outline"} 
-                              size="sm" 
+                          <div className="flex gap-1.5 mb-2">
+                            <button
                               onClick={() => setInstructionType(instructionType === 'task' ? null : 'task')}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                                instructionType === 'task'
+                                  ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                                  : 'border-gray-200 dark:border-[#1f2937] text-muted-foreground hover:bg-gray-50 dark:hover:bg-[#1a2332]'
+                              }`}
                             >
-                              <ClipboardList className="h-3 w-3 mr-1" /> Task
-                            </Button>
-                            <Button 
-                              variant={instructionType === 'reminder' ? "default" : "outline"} 
-                              size="sm" 
+                              <ClipboardList className="h-3 w-3" /> Task
+                            </button>
+                            <button
                               onClick={() => setInstructionType(instructionType === 'reminder' ? null : 'reminder')}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                                instructionType === 'reminder'
+                                  ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300'
+                                  : 'border-gray-200 dark:border-[#1f2937] text-muted-foreground hover:bg-gray-50 dark:hover:bg-[#1a2332]'
+                              }`}
                             >
-                              <Bell className="h-3 w-3 mr-1" /> Reminder
-                            </Button>
+                              <Bell className="h-3 w-3" /> Reminder
+                            </button>
                           </div>
                           {instructionType && (
-                            <Textarea 
-                              value={callInstruction} 
-                              onChange={(e) => setCallInstruction(e.target.value)} 
-                              placeholder="Descrivi l'obiettivo della chiamata..." 
-                              className="min-h-[80px]" 
+                            <Textarea
+                              value={callInstruction}
+                              onChange={(e) => setCallInstruction(e.target.value)}
+                              placeholder="Descrivi l'obiettivo della chiamata..."
+                              className="min-h-[80px] bg-gray-50 dark:bg-[#111827] border-gray-200 dark:border-[#1f2937]"
                             />
                           )}
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap gap-1.5">
                             {['Ricorda scadenza contratto', 'Recupera pagamento', 'Follow-up preventivo', 'Upsell servizio'].map(ex => (
-                              <Badge 
-                                key={ex} 
-                                variant="outline" 
-                                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors" 
+                              <button
+                                key={ex}
+                                className="px-2.5 py-1 rounded-md text-[11px] font-medium border border-gray-200 dark:border-[#1f2937] text-muted-foreground hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 dark:hover:bg-blue-950/30 dark:hover:border-blue-700 dark:hover:text-blue-300 transition-colors"
                                 onClick={() => { setInstructionType('task'); setCallInstruction(ex); }}
                               >
                                 {ex}
-                              </Badge>
+                              </button>
                             ))}
                           </div>
                         </div>
 
-                        {/* Step 3: Data/Ora (solo se programma) */}
                         {isScheduleMode && (
                           <div className="space-y-2">
                             <Label className="flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</span>
-                              Quando chiamare
+                              <span className="w-6 h-6 rounded-full bg-blue-600 dark:bg-blue-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+                              <span className="text-sm font-medium">Quando chiamare</span>
                             </Label>
                             <div className="grid grid-cols-2 gap-2">
-                              <Input 
-                                type="date" 
-                                value={outboundScheduledDate} 
-                                onChange={(e) => setOutboundScheduledDate(e.target.value)} 
-                                min={new Date().toISOString().split('T')[0]} 
+                              <Input
+                                type="date"
+                                value={outboundScheduledDate}
+                                onChange={(e) => setOutboundScheduledDate(e.target.value)}
+                                min={new Date().toISOString().split('T')[0]}
+                                className="bg-gray-50 dark:bg-[#111827] border-gray-200 dark:border-[#1f2937]"
                               />
-                              <Input 
-                                type="time" 
-                                value={outboundScheduledTime} 
-                                onChange={(e) => setOutboundScheduledTime(e.target.value)} 
+                              <Input
+                                type="time"
+                                value={outboundScheduledTime}
+                                onChange={(e) => setOutboundScheduledTime(e.target.value)}
+                                className="bg-gray-50 dark:bg-[#111827] border-gray-200 dark:border-[#1f2937]"
                               />
                             </div>
                           </div>
                         )}
 
-                        {/* BOTTONE AZIONE */}
                         <Button
                           size="lg"
-                          className="w-full h-14 text-lg bg-purple-600 hover:bg-purple-700"
+                          className="w-full h-14 text-base font-semibold bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md hover:shadow-lg transition-all"
                           onClick={isScheduleMode ? handleScheduleCall : handleTriggerCall}
                           disabled={triggerOutboundMutation.isPending || scheduleOutboundMutation.isPending || !outboundPhone.trim()}
                         >
@@ -3326,47 +3420,53 @@ export default function ConsultantVoiceCallsPage() {
                           ) : (
                             <PhoneOutgoing className="h-5 w-5 mr-2" />
                           )}
-                          {isScheduleMode ? "🟣 PROGRAMMA CHIAMATA" : "🟣 AVVIA CHIAMATA AI ORA"}
+                          {isScheduleMode ? "PROGRAMMA CHIAMATA" : "AVVIA CHIAMATA AI"}
                         </Button>
-                        <p className="text-xs text-center text-muted-foreground">
-                          {isScheduleMode ? "La chiamata partirà all'orario impostato" : "L'AI chiamerà entro 5 secondi"}
+                        <p className="text-[11px] text-center text-muted-foreground">
+                          {isScheduleMode ? "La chiamata partira' all'orario impostato" : "L'AI chiamera' entro 5 secondi"}
                         </p>
                       </CardContent>
                     </Card>
                   </div>
 
                   {/* COLONNA DESTRA (25%): Template */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <FileText className="h-4 w-4" />
+                  <Card className="bg-white dark:bg-[#0f1117] border-gray-200 dark:border-[#1e2330] shadow-sm">
+                    <CardHeader className="pb-2 px-3 pt-3">
+                      <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                        <div className="h-7 w-7 rounded-md bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center">
+                          <FileText className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
                         Template
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="space-y-1 max-h-[400px] overflow-auto">
+                    <CardContent className="pt-0 px-3 pb-3">
+                      <div className="space-y-0.5 max-h-[400px] overflow-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
                         {TEMPLATE_LIBRARY.map((category) => {
                           const CategoryIcon = category.icon;
                           const isExpanded = expandedCategory === category.category;
                           return (
-                            <div key={category.category}>
+                            <div key={category.category} className={`rounded-md transition-colors ${isExpanded ? 'bg-blue-50/50 dark:bg-blue-950/15' : ''}`}>
                               <button
                                 onClick={() => setExpandedCategory(isExpanded ? null : category.category)}
-                                className={`w-full flex items-center justify-between p-1.5 rounded text-left hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted' : ''}`}
+                                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-left transition-colors ${
+                                  isExpanded
+                                    ? 'bg-blue-100/60 dark:bg-blue-900/20'
+                                    : 'hover:bg-gray-50 dark:hover:bg-[#1a2332]'
+                                }`}
                               >
-                                <div className="flex items-center gap-1.5">
-                                  <CategoryIcon className={`h-3 w-3 ${category.color}`} />
+                                <div className="flex items-center gap-2">
+                                  <CategoryIcon className={`h-3.5 w-3.5 ${category.color}`} />
                                   <span className="text-xs font-medium">{category.label}</span>
                                 </div>
-                                <ChevronRight className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
                               </button>
                               {isExpanded && (
-                                <div className="ml-4 mt-1 space-y-0.5">
+                                <div className="ml-3 mt-0.5 mb-1 space-y-0.5 border-l-2 border-blue-300 dark:border-blue-700 pl-2.5">
                                   {category.items.map((item, idx) => (
                                     <button
                                       key={idx}
                                       onClick={() => handleSelectTemplate(item)}
-                                      className="w-full flex items-center gap-1 p-1.5 text-left text-xs rounded hover:bg-primary/10 transition-colors"
+                                      className="w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-xs rounded-md hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                                     >
                                       {item.type === 'task' ? (
                                         <ClipboardList className="h-3 w-3 text-blue-500 flex-shrink-0" />
