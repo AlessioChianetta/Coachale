@@ -1245,7 +1245,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
     extra?: React.ReactNode,
     maxVisible?: number
   ) => {
-    const style = sectionStyles[key];
+    const style = sectionStyles[variant] || sectionStyles['queued'];
     const isCollapsed = collapsed[key];
     const visibleCalls = maxVisible && !isCollapsed ? calls.slice(0, maxVisible) : calls;
     const hiddenCount = maxVisible ? Math.max(0, calls.length - maxVisible) : 0;
