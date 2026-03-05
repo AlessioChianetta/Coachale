@@ -1,0 +1,275 @@
+REPORT COMPLETO — Sistema Overflow/Concurrency Alessia AI Voice Platform
+Contesto
+La piattaforma gestisce chiamate vocali AI (inbound via FreeSWITCH + VPS Bridge, outbound via Telnyx SIP). Il sistema precedente aveva un limite di concurrency globale. In queste sessioni abbiamo implementato un sistema per-numero con 6 miglioramenti interconnessi.
+
+GAP 1: Outbound — Limite per-numero invece di globale
+File: server/routes/voice-router.ts, funzione executeOutboundCall (riga ~2516)
+
+Cosa è stato fatto:
+
+La determinazione di sipCallerId (righe 2541–2555) è stata spostata PRIMA del concurrency check. Si usa una gerarchia: call.from_number → users.sip_caller_id → consultant_numbers.phone_number (stato active)
+Il concurrency check (righe 2557–2644) ora:
+Auto-scade i record calling più vecchi di 5 minuti (riga 2559–2565)
+Legge max_concurrent_calls da voice_numbers per il sipCallerId specifico, con fallback a 5 (righe 2567–2578)
+Conta le chiamate outbound attive per quel numero specifico (from_number = sipCallerId), non globali (righe 2581–2597)
+Se il limite è raggiunto, ri-accoda la chiamata con backoff esponenziale: 3min × 2^attempts, cap 15min (righe 2629–2643)
+Il campo max_concurrent_calls è nella tabella voice_numbers (intero, default 5, range 1-10)
+La variabile locale ovMaxConcurrent nel frontend (riga 4412) legge n.max_concurrent_calls ?? 5 ed è usata per tutti i salvataggi, evitando sovrascritture stale
+Stato precedente rimosso: La query a consultant_availability_settings.max_concurrent_calls per l'outbound è stata sostituita con la query a voice_numbers
+
+GAP 2: VPS Health endpoint — Overflow + conteggio per-numero esposti
+File: vps-voice-bridge/src/session-manager.ts (righe 339–358)
+
+Metodi aggiunti:
+
+activeCountForNumber(calledNumber) (riga 65): itera tutte le sessioni, normalizza i numeri (rimuove non-digit), conta le sessioni per quel numero
+canAcceptCallForNumber(calledNumber, maxForNumber) (riga 77): ritorna activeCountForNumber() < maxForNumber
+getActiveCountByNumber() (riga 339): ritorna Record<string, number>, es. { "+39xxx": 2, "+39yyy": 1 }
+getOverflowDetails() (riga 348): ritorna { count, entries: [{ calledNumber, waitingSecs, uuid }] } — calcola il tempo di attesa come (Date.now() - enqueuedAt) / 1000
+File: vps-voice-bridge/src/voice-bridge-server.ts (righe 188–202)
+
+Endpoint /health aggiornato — ora ritorna:
+
+{
+  "status": "ok",
+  "timestamp": "...",
+  "pendingCalls": 0,
+  "blockedIps": 0,
+  "activeSessions": 3,
+  "maxSessions": 10,
+  "activeByNumber": { "+3902xxx": 2, "+3903xxx": 1 },
+  "overflowCount": 1,
+  "overflowEntries": [
+    { "calledNumber": "+3902xxx", "waitingSecs": 45, "uuid": "abc-123" }
+  ]
+}
+GAP 3: Coordinamento outbound+inbound — Conteggio unificato
+File: server/routes/voice-router.ts, dentro executeOutboundCall (righe 2599–2627)
+
+Cosa è stato fatto:
+
+Dopo aver contato le outbound attive dal DB (righe 2581–2597), executeOutboundCall fa una HTTP GET al VPS /health (righe 2605–2609) con timeout 3 secondi via AbortController
+Dal response, legge activeByNumber e cerca il numero sipCallerId (normalizzando per confronto digit-only, righe 2613–2619)
+Somma: totalActiveForNumber = activeScheduledForNumber + vpsActiveForNumber (riga 2626)
+Se VPS non risponde (catch a riga 2621), prosegue con solo conteggio locale come fallback — la chiamata non viene bloccata per un VPS irraggiungibile
+Il check finale (riga 2629) confronta totalActiveForNumber >= maxConcurrentForNumber
+Log dettagliato include sia outbound count che VPS inbound count (riga 2641)
+Nota architetturale: activeVoiceResult (voce_calls con status='active', riga 2591) è usato solo per totalActiveGlobal (riga 2627) come safety cap secondario, non per il check per-numero
+
+GAP 4: UI — Visibilità coda overflow nel pannello consulente
+File: client/src/pages/consultant-voice-calls.tsx
+
+Health query con polling 10s:
+
+useQuery su /api/voice/health con refetchInterval: 10000 (riga 1667–1675)
+Server-side health proxy:
+
+GET /api/voice/health (riga 3340–3392 di voice-router.ts) fa fetch al VPS /health con timeout 3s, e ritorna i dati overflow e activeByNumber nel campo vps della risposta
+Card "Gestione Overflow" — visibilità per-numero (righe 4405–4661):
+Per ogni numero in myVoiceNumbers, mostra:
+
+Badge linee live (righe 4437–4443): pallino colorato (verde = sotto limite, rosso = al limite, grigio = 0 attive) + X/Y linee in mono font
+Badge overflow (righe 4444–4451): icona Clock arancione + "X in coda" — visibile solo se ci sono entry overflow per quel numero
+Dettaglio per chiamante (righe 4457–4465): icona PhoneIncoming arancione + "Chiamante #N — in attesa da Xs" per ogni entry
+Normalizzazione numeri VPS ↔ locale via replace(/\D/g, '') (righe 4415–4427)
+Card "Coda Chiamate" — outbound per-numero (righe 1059–1083):
+
+numberMap costruita da voiceNumbers con maxConcurrent per-numero (riga 1059–1064)
+numberGroups raggruppa le chiamate per from_number (righe 1075–1082)
+Se più numeri: barra di progresso per ciascuno con activeCount/maxConcurrent (righe 1273–1284)
+Se un numero: barra singola con linee badge (righe 1287–1296)
+Per ogni gruppo, se activeCount >= maxConcurrent: badge "in attesa di linea libera" in blu (righe 1333–1335)
+Import icons risolto in questa sessione:
+
+Clock era già importato alla riga 51 (primo blocco lucide-react)
+PhoneIncoming era già importato alla riga 46
+L'ultima sessione aveva aggiunto duplicati alle righe 116–117 che causavano SyntaxError: Identifier 'Clock' has already been declared
+Fix: rimossi i duplicati, mantenuti solo quelli nel primo blocco import
+GAP 5: Dialplan — Timeout audio, messaggio personalizzato, posizione coda
+File: vps-voice-bridge/freeswitch/dialplan/default/05_overflow_queue.xml
+
+Extension overflow_queue (riga 42):
+
+Flusso: bind_digit_action 1 → 6 cicli di announce_position + play_announcement + hold_music.wav → park se nessun dequeue
+Ciclo singolo = ~1-2 min (annuncio ~15s + musica 30s)
+set playback_terminators=none impedisce che DTMF interrompa i playback
+Extension announce_position (riga 85):
+
+Condizione: ${queue_position} matcha regex ^[1-9]\d*$ (solo numeri positivi)
+Se sì: riproduce position_prefix.wav → say it NUMBER PRONOUNCED ${queue_position} → position_suffix.wav
+Es: "Sei in posizione numero... due... nella coda d'attesa"
+Extension play_announcement (riga 96):
+
+Attualmente riproduce sempre announcement.wav (il file con DTMF)
+La variabile overflow_custom_message viene settata via ESL (riga 328–330 di voice-bridge-server.ts) ma il dialplan non la usa ancora per TTS — usa solo il file WAV statico
+Limitazione nota: TTS runtime non implementato nel dialplan. Il overflow_custom_message viene passato come variabile channel ma non letto. Per usarlo servirebbe mod_tts_commandline con Google TTS o simile. Il campo è comunque salvato nel DB e settato via ESL per uso futuro.
+Extension overflow_timeout (riga 103):
+
+Triggered quando il Voice Bridge fa uuid_transfer <uuid> overflow_timeout XML default
+Clear DTMF bindings → riproduce timeout.wav → hangup NORMAL_CLEARING
+Extension transfer_to_fallback (riga 112):
+
+Triggered da DTMF "1" via bind_digit_action
+Clear DTMF → transferring.wav → bridge sofia/gateway/${sip_gateway}/${tech_prefix}${fallback_transfer_number}
+Se bridge fallisce: transfer_failed.wav → hangup
+Variabili channel settate dal Voice Bridge (righe 316–330 di voice-bridge-server.ts):
+
+sip_gateway, tech_prefix: per il bridge SIP verso fallback
+queue_position: posizione nella coda (calcolata come overflowCount + 1)
+fallback_transfer_number: solo se DTMF abilitato e fallback configurato
+overflow_dtmf_enabled: true/false
+overflow_custom_message: testo sanitizzato (; e = sostituiti con spazio)
+Le variabili vengono settate via uuid_setvar_multi prima del uuid_transfer (100ms di delay per sicurezza)
+File: vps-voice-bridge/scripts/generate-overflow-audio.sh
+
+Script a 8 step che genera tutti i WAV necessari:
+
+announcement.wav — messaggio con opzione DTMF
+announcement_no_dtmf.wav — messaggio senza DTMF
+transferring.wav — "Ti stiamo trasferendo..."
+transfer_failed.wav — "Il trasferimento non è riuscito..."
+timeout.wav — "Ci scusiamo... riprova più tardi..."
+position_prefix.wav — "Sei in posizione numero"
+position_suffix.wav — "nella coda d'attesa."
+hold_music.wav — 30s di synth (sine 440:880 + 330:660, tremolo, reverb)
+TTS engine: espeak-ng con voce italiana (-v it -s 140 -p 50), conversione a 8kHz mono 16-bit via sox. Prerequisiti: sudo apt-get install espeak-ng sox
+
+GAP 6: Aggiornamento dinamico posizione coda dopo dequeue
+File: vps-voice-bridge/src/voice-bridge-server.ts, funzione tryDequeueOverflow (righe 657–750)
+
+Come funziona tryDequeueOverflow:
+
+Chiamata quando una sessione termina (endSession → tryDequeueOverflow(), riga 654)
+Guard: overflowCount === 0 o dequeueInProgress → exit
+Loop while: prende il prossimo dalla coda con getNextOverflow() (FIFO, riga 665)
+Calcola timeout residuo: remainingMs = max(5000, originalTimeout - elapsed) (riga 678)
+Check per-numero: se il numero del chiamante è ancora pieno → reinsertAtFront() con timeout residuo → break (riga 694–698)
+Check globale: se pieno → reinsertAtFront() → break (riga 700–703)
+Check auto-return: se disabilitato per quel numero → skip (riga 706–708)
+Check uuid_exists: verifica che il chiamante sia ancora in linea (riga 711–716)
+Se non esiste: skip, prova il prossimo (riga 718–720)
+Transfer: uuid_transfer <uuid> alessia_ai_9999_public XML public (riga 725)
+Aggiornamento posizioni (righe 734–741): dopo un dequeue riuscito, per ogni entry rimasta nella coda, aggiorna queue_position via uuid_setvar (1-indexed). Questo è best-effort — il dialplan legge la variabile solo al prossimo ciclo di annuncio, non interrompe l'audio in corso.
+Metodo reinsertAtFront (session-manager.ts riga 320): ri-mette l'entry in testa alla coda con un nuovo timeout. Preserva l'ordine FIFO originale e il enqueuedAt originale. Il timeout usa il tempo residuo, non il timeout intero.
+
+API ENDPOINTS COINVOLTI
+Endpoint	Metodo	Dove	Descrizione
+/health	GET	VPS (voice-bridge-server.ts:188)	Stato completo: sessioni, overflow, per-numero
+/api/voice/health	GET	Replit (voice-router.ts:3340)	Proxy verso VPS + stato DB
+/api/voice/overflow-config	GET	Replit (voice-router.ts:1233)	Config overflow letta dal VPS via service token
+/api/voice/numbers/:id/overflow	PATCH	Replit (voice-router.ts:1188)	Salva config overflow per numero
+/api/voice/numbers	GET	Replit	Lista numeri con tutti i campi overflow
+SCHEMA DB — COLONNE RILEVANTI
+Tabella voice_numbers:
+
+max_concurrent_calls (integer, default 5) — limite per-numero
+overflow_enabled (boolean, default true)
+overflow_timeout_secs (integer, default 120)
+overflow_dtmf_enabled (boolean, default true)
+overflow_auto_return (boolean, default true)
+fallback_number (varchar, nullable)
+overflow_message (text, nullable) — messaggio personalizzato, passato al VPS come variabile channel ma NON usato in TTS runtime
+COSA VA TESTATO
+Test 1 — Per-number outbound limit:
+
+Configura numero A con max_concurrent_calls = 2
+Lancia 3 chiamate outbound su numero A
+Verificare: la terza viene ri-accodata con status pending e log per-number limit (2/2 on +39xxx)
+Verificare: il backoff è ~3 minuti per il primo tentativo
+Test 2 — VPS Health endpoint:
+
+Con chiamate attive sul VPS, fare GET /health
+Verificare: activeByNumber contiene i numeri corretti con conteggi giusti
+Verificare: overflowEntries con waitingSecs crescente
+Test 3 — Coordinamento outbound+inbound:
+
+Con 2 inbound attive su numero A (max=3) via VPS
+Lanciare 1 outbound su numero A → deve passare
+Lanciare una 2a outbound → deve essere ri-accodata con log VPS inbound=2
+Con VPS spento: la outbound deve usare solo conteggio locale (fallback)
+Test 4 — UI overflow visibility:
+
+Con chiamate attive e in overflow, aprire la pagina Voice
+Card "Gestione Overflow": verificare pallino verde/rosso, badge X/Y linee, badge arancione X in coda
+Verificare che i dati si aggiornano ogni 10 secondi
+Verificare dettaglio per chiamante con tempo di attesa
+Test 5 — Dialplan timeout + posizione:
+
+Riempire tutte le linee di un numero
+Chiamare → deve entrare in overflow queue
+Verificare: annuncio posizione ("Sei in posizione numero uno nella coda d'attesa")
+Attendere timeout → verificare: timeout.wav viene riprodotto, poi hangup
+Nel VPS log: uuid_transfer <uuid> overflow_timeout XML default
+Test 6 — Posizione dinamica dopo dequeue:
+
+Mettere 3 chiamanti in coda overflow
+Liberare una linea → il primo viene dequeued
+VPS log: Updated queue_position for 2 remaining overflow callers
+I chiamanti rimasti sentono la nuova posizione al prossimo ciclo di annuncio
+Test 7 — DTMF "premi 1":
+
+Con DTMF abilitato e fallback configurato
+Chiamante in coda preme 1 → transferring.wav → bridge verso fallback
+Se bridge fallisce → transfer_failed.wav → hangup
+Test 8 — Overflow disabilitato:
+
+Con overflow_enabled = false per un numero
+Chiamare quando le linee sono piene → uuid_kill CALL_REJECTED
+DEPLOY VPS — COMANDI ESATTI
+# 1. Pull codice aggiornato
+cd /opt/voice-bridge && git pull origin main
+# 2. Build e restart
+npm run build && pm2 restart voice-bridge
+# 3. Copiare dialplan aggiornato
+sudo cp vps-voice-bridge/freeswitch/dialplan/default/05_overflow_queue.xml \
+  /usr/local/freeswitch/etc/freeswitch/dialplan/default/05_overflow_queue.xml
+# 4. Generare file audio (richiede espeak-ng e sox)
+sudo apt-get install -y espeak-ng sox
+chmod +x vps-voice-bridge/scripts/generate-overflow-audio.sh
+sudo ./vps-voice-bridge/scripts/generate-overflow-audio.sh
+# 5. Verificare file audio generati (devono essere 8)
+ls -la /opt/sounds/overflow/*.wav
+# announcement.wav, announcement_no_dtmf.wav, transferring.wav,
+# transfer_failed.wav, timeout.wav, position_prefix.wav,
+# position_suffix.wav, hold_music.wav
+# 6. Ricaricare dialplan FreeSWITCH
+fs_cli -x 'reloadxml'
+# 7. Verificare che l'extension sia caricata
+fs_cli -x 'xml_locate dialplan default overflow_queue'
+LIMITAZIONI NOTE
+overflow_custom_message non usato in TTS runtime: il campo è salvato nel DB, passato via ESL come variabile channel overflow_custom_message, ma il dialplan play_announcement riproduce sempre announcement.wav. Per TTS runtime servirebbe mod_tts_commandline con un engine esterno (Google TTS, Amazon Polly). Il campo è pronto per uso futuro.
+
+Posizione coda best-effort: uuid_setvar queue_position aggiorna la variabile, ma il dialplan la legge solo quando raggiunge di nuovo execute_extension announce_position nel loop. Non interrompe l'audio in corso.
+
+VPS health fallback: se il VPS non risponde entro 3 secondi, executeOutboundCall prosegue con solo conteggio locale. Questo significa che in caso di VPS down, il limite per-numero potrebbe non includere le inbound attive.
+
+announcement.wav vs announcement_no_dtmf.wav: il dialplan usa sempre announcement.wav (con DTMF), anche quando overflow_dtmf_enabled=false. Andrebbe aggiunto un branch nel play_announcement extension per usare il file senza DTMF.
+
+Conteggio outbound per-numero: il filtro from_number = sipCallerId nella query (riga 2585) funziona solo se le chiamate hanno from_number valorizzato. Se una chiamata non ha from_number settato, non viene contata per quel numero. Questo è di design — le chiamate senza numero esplicito usano il default del consulente.
+
+espeak-ng qualità audio: la voce sintetica di espeak-ng è riconoscibilmente robotica. Per produzione si consiglia di sostituire i file WAV con registrazioni professionali o output di un TTS cloud (Google TTS, ElevenLabs).
+
+ARCHITETTURA RIEPILOGATIVA
+Chiamata INBOUND:
+  Telnyx → FreeSWITCH → WebSocket → VPS Voice Bridge
+    → sessionManager.canAcceptCallForNumber(num, max)?
+      SÌ → createSession() → Gemini AI
+      NO → overflow_enabled?
+        SÌ → uuid_setvar_multi (queue_position, vars) → uuid_transfer overflow_queue → addToOverflow()
+        NO → uuid_kill CALL_REJECTED
+    → Quando sessione termina → tryDequeueOverflow()
+      → Primo in coda → uuid_transfer back to AI → aggiorna posizioni rimaste
+Chiamata OUTBOUND:
+  Replit → executeOutboundCall()
+    → Determina sipCallerId (gerarchia: call.from → user.sip → consultant_number)
+    → Query voice_numbers.max_concurrent_calls per quel numero
+    → Conta outbound attive per quel numero (scheduled_voice_calls + voice_calls)
+    → Fetch VPS /health → conta inbound attive per quel numero (activeByNumber)
+    → totalActive >= maxConcurrent?
+      SÌ → Re-queue con backoff esponenziale
+      NO → Procedi con la chiamata
+UI Consulente:
+  → Card "Gestione Overflow": per ogni numero, configurazione overflow con live status
+    (pallino verde/rosso, X/Y linee, X in coda con dettagli per chiamante)
+  → Card "Coda Chiamate": per-number grouping con barra progresso
+  → Polling ogni 10s via /api/voice/health → proxy VPS /health
