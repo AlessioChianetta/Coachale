@@ -5364,7 +5364,7 @@ export default function ConsultantVoiceCallsPage() {
                                 {i > 0 && (
                                   <span className="px-1 text-blue-400 dark:text-blue-500">
                                     → {backoffMode === 'exponential'
-                                      ? Math.min(retryIntervalMinutes * Math.pow(2, i - 1), 30)
+                                      ? Math.min(retryIntervalMinutes * Math.pow(2, i), 30)
                                       : (manualDelays[i - 1] ?? 5)} min →
                                   </span>
                                 )}

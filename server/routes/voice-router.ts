@@ -975,10 +975,11 @@ router.get("/contact/:phone", authenticateToken, requireAnyRole(["consultant", "
     const callIds = calls.map((c: any) => c.id).filter(Boolean);
     let callEvents: any[] = [];
     if (callIds.length > 0) {
+      const callIdsArray = `{${callIds.map((id: string) => `"${id}"`).join(',')}}`;
       const eventsResult = await db.execute(sql`
         SELECT vce.id, vce.call_id, vce.event_type, vce.event_data, vce.created_at
         FROM voice_call_events vce
-        WHERE vce.call_id = ANY(${callIds})
+        WHERE vce.call_id = ANY(${callIdsArray}::text[])
         ORDER BY vce.created_at DESC
       `);
       callEvents = eventsResult.rows as any[];
@@ -2934,7 +2935,7 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
         console.log(`🔄 [Outbound] Manual backoff: attempt ${call.attempts}, delay=${delayMinutes}min (index=${delayIndex})`);
       } else {
         const baseIntervalMs = baseIntervalMinutes * 60 * 1000;
-        retryDelayMs = Math.min(baseIntervalMs * Math.pow(2, call.attempts - 1), 1800000);
+        retryDelayMs = Math.min(baseIntervalMs * Math.pow(2, call.attempts), 1800000);
         console.log(`🔄 [Outbound] Exponential backoff: attempt ${call.attempts}, delay=${Math.round(retryDelayMs/60000)}min (base=${baseIntervalMinutes}min)`);
       }
       const retryDelaySeconds = Math.floor(retryDelayMs / 1000);
@@ -2996,6 +2997,35 @@ function scheduleCallTimer(callId: string, consultantId: string, scheduledAt: Da
 function cancelCallTimer(callId: string): void {
   _cancelTimerFromManager(callId);
 }
+
+async function recoverPendingRetries(): Promise<void> {
+  try {
+    const result = await db.execute(sql`
+      SELECT id, consultant_id, scheduled_at, next_retry_at, status
+      FROM scheduled_voice_calls
+      WHERE status IN ('retry_scheduled', 'pending', 'queued')
+        AND (next_retry_at IS NOT NULL OR scheduled_at IS NOT NULL)
+    `);
+    const rows = result.rows as any[];
+    if (rows.length === 0) {
+      console.log(`✅ [RECOVERY] No pending/retry calls to recover`);
+      return;
+    }
+    let recoveredCount = 0;
+    for (const row of rows) {
+      const targetDate = row.status === 'retry_scheduled' && row.next_retry_at
+        ? new Date(row.next_retry_at)
+        : new Date(row.scheduled_at);
+      _scheduleTimerFromManager(row.id, row.consultant_id, targetDate);
+      recoveredCount++;
+    }
+    console.log(`🔄 [RECOVERY] Recovered ${recoveredCount} call timers (${rows.length} total pending/retry calls)`);
+  } catch (err) {
+    console.error(`❌ [RECOVERY] Failed to recover pending retries:`, err);
+  }
+}
+
+setTimeout(() => recoverPendingRetries(), 3000);
 
 // POST /api/voice/outbound/trigger - Chiamata immediata
 router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
@@ -3896,7 +3926,7 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
           console.log(`🔄 [Callback] Manual backoff: attempt ${currentAttempts}, delay=${delayMinutes}min (index=${delayIndex})`);
         } else {
           const baseIntervalMs = baseIntervalMinutes * 60 * 1000;
-          retryDelayMs = Math.min(baseIntervalMs * Math.pow(2, currentAttempts - 1), 1800000);
+          retryDelayMs = Math.min(baseIntervalMs * Math.pow(2, currentAttempts), 1800000);
           console.log(`🔄 [Callback] Exponential backoff: attempt ${currentAttempts}, delay=${Math.round(retryDelayMs/60000)}min`);
         }
         const retryDelaySeconds = Math.floor(retryDelayMs / 1000);
