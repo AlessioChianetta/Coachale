@@ -2706,7 +2706,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       WHERE consultant_id::text = ${cId}
       GROUP BY contact_id
     ) lt ON lt.contact_id = u.id::text
-    WHERE urp.consultant_id = ${cId} AND urp.role = 'client'
+    WHERE urp.consultant_id::text = ${cId} AND urp.role = 'client'
       AND u.is_active = true
     ORDER BY COALESCE(lt.last_task_at, '1970-01-01'::timestamp) ASC, u.first_name ASC
     LIMIT 50
@@ -2719,7 +2719,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     try {
       const clientIdRaw = safeTextParam(String(client.id));
       const [lcResult, ltResult] = await Promise.all([
-        db.execute(sql`SELECT MAX(c.created_at) as d FROM consultations c WHERE c.client_id = ${clientIdRaw} AND c.consultant_id = ${cId}`),
+        db.execute(sql`SELECT MAX(c.created_at) as d FROM consultations c WHERE c.client_id::text = ${clientIdRaw} AND c.consultant_id::text = ${cId}`),
         db.execute(sql`SELECT MAX(t.scheduled_at) as d FROM ai_scheduled_tasks t WHERE t.contact_id::text = ${clientIdRaw} AND t.consultant_id::text = ${cId}`)
       ]);
       clients.push({
@@ -2886,7 +2886,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   const recentReasoningResult = await db.execute(sql`
     SELECT description, ai_role, created_at
     FROM ai_activity_log
-    WHERE consultant_id = ${cId}
+    WHERE consultant_id::text = ${cId}
       AND event_type = 'autonomous_analysis'
       AND description IS NOT NULL
       AND description != ''
