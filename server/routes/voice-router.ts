@@ -3503,12 +3503,16 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
       
       const streamVoiceCallIds = new Set<string>();
       const streamCallerIds = new Set<string>();
+      const streamCalledNumbers = new Set<string>();
+      const streamScheduledCallIds = new Set<string>();
       let geminiStreamCount = 0;
       for (const [, v] of activeVoiceCalls) {
         if (v.consultantId === effectiveConsultantId) {
           geminiStreamCount++;
           if (v.id) streamVoiceCallIds.add(v.id);
           if (v.callerId) streamCallerIds.add(v.callerId);
+          if (v.calledNumber) streamCalledNumbers.add(v.calledNumber);
+          if (v.scheduledCallId) streamScheduledCallIds.add(v.scheduledCallId);
         }
       }
       
@@ -3519,19 +3523,23 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
       
       console.log(`\n📊 [ACTIVE-CALLS-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
       console.log(`📊 [ACTIVE-CALLS-DEBUG] Consultant: ${(effectiveConsultantId || 'ALL').toString().substring(0, 8)}...`);
-      console.log(`📊 [ACTIVE-CALLS-DEBUG] Total: ${allCalls.length} | ${JSON.stringify(statusBreakdown)} | Gemini streams: ${geminiStreamCount} (vcIds: [${Array.from(streamVoiceCallIds).join(',')}], callerIds: [${Array.from(streamCallerIds).join(',')}])`);
+      console.log(`📊 [ACTIVE-CALLS-DEBUG] Total: ${allCalls.length} | ${JSON.stringify(statusBreakdown)} | Gemini streams: ${geminiStreamCount} (vcIds: [${Array.from(streamVoiceCallIds).join(',')}], callerIds: [${Array.from(streamCallerIds).join(',')}], calledNums: [${Array.from(streamCalledNumbers).join(',')}], scIds: [${Array.from(streamScheduledCallIds).join(',')}])`);
       
       const ghostIds: string[] = [];
       
       for (const c of activeCalls) {
         const ageSeconds = Math.round((Date.now() - new Date(c.updated_at).getTime()) / 1000);
-        const hasStream = (c.voice_call_id && streamVoiceCallIds.has(c.voice_call_id)) || streamCallerIds.has(c.target_phone);
+        const hasStream = 
+          (c.voice_call_id && streamVoiceCallIds.has(c.voice_call_id)) || 
+          streamCallerIds.has(c.target_phone) || 
+          streamCalledNumbers.has(c.target_phone) ||
+          streamScheduledCallIds.has(c.id);
         
         const isGhostCalling = c.status === 'calling' && !hasStream && ageSeconds > 30;
         const isGhostTalking = c.status === 'talking' && !hasStream && ageSeconds > 60;
         const ghostLabel = (isGhostCalling || isGhostTalking) ? '🔴 GHOST' : (hasStream ? '🟢 REAL' : '🟡 NO-STREAM');
         
-        console.log(`📊 [ACTIVE-CALLS-DEBUG]   ${ghostLabel} | id=${c.id} | status=${c.status} | phone=${c.target_phone} | age=${ageSeconds}s | voice_call_id=${c.voice_call_id || 'NONE'}`);
+        console.log(`📊 [ACTIVE-CALLS-DEBUG]   ${ghostLabel} | id=${c.id} | status=${c.status} | phone=${c.target_phone} | age=${ageSeconds}s | voice_call_id=${c.voice_call_id || 'NONE'} | match: vcId=${c.voice_call_id && streamVoiceCallIds.has(c.voice_call_id)}, callerId=${streamCallerIds.has(c.target_phone)}, calledNum=${streamCalledNumbers.has(c.target_phone)}, scId=${streamScheduledCallIds.has(c.id)}`);
         
         if (isGhostCalling || isGhostTalking) {
           ghostIds.push(c.id);

@@ -1426,6 +1426,8 @@ async function getUserIdFromRequest(req: any): Promise<{
         activeVoiceCalls.set(voiceCallId, {
           id: voiceCallId,
           callerId: normalizedCallerId,
+          calledNumber: resolvedCalledNumber,
+          scheduledCallId: scheduledCallId || null,
           consultantId: resolvedConsultantId,
           clientId: userId,
           startedAt: new Date(),
