@@ -2797,32 +2797,53 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
   } catch (error: any) {
     console.error(`❌ [Outbound] Failed to execute call ${callId}:`, error);
     
-    // Check if should retry
     const callResult = await db.execute(sql`
       SELECT attempts, max_attempts FROM scheduled_voice_calls WHERE id = ${callId}
     `);
     const call = callResult.rows[0] as any;
     
     if (call && call.attempts < call.max_attempts) {
-      // Schedule retry with exponential backoff
-      const retryDelayMs = Math.min(60000 * Math.pow(2, call.attempts - 1), 900000); // 1min, 2min, 4min... max 15min
+      const retryConfigResult = await db.execute(sql`
+        SELECT voice_retry_interval_minutes, voice_retry_backoff_mode, voice_retry_manual_delays 
+        FROM consultant_availability_settings 
+        WHERE consultant_id = ${consultantId}
+      `);
+      const retryRow = retryConfigResult.rows[0] as any;
+      const baseIntervalMinutes = retryRow?.voice_retry_interval_minutes || 5;
+      const backoffMode = retryRow?.voice_retry_backoff_mode || 'exponential';
+      const manualDelays = retryRow?.voice_retry_manual_delays as number[] | null;
+      
+      let retryDelayMs: number;
+      if (backoffMode === 'manual' && Array.isArray(manualDelays) && manualDelays.length > 0) {
+        const delayIndex = Math.min(call.attempts - 1, manualDelays.length - 1);
+        const delayMinutes = Math.max(1, Math.min(60, manualDelays[delayIndex] || 5));
+        retryDelayMs = delayMinutes * 60 * 1000;
+        console.log(`🔄 [Outbound] Manual backoff: attempt ${call.attempts}, delay=${delayMinutes}min (index=${delayIndex})`);
+      } else {
+        const baseIntervalMs = baseIntervalMinutes * 60 * 1000;
+        retryDelayMs = Math.min(baseIntervalMs * Math.pow(2, call.attempts - 1), 1800000);
+        console.log(`🔄 [Outbound] Exponential backoff: attempt ${call.attempts}, delay=${Math.round(retryDelayMs/60000)}min (base=${baseIntervalMinutes}min)`);
+      }
+      const retryDelaySeconds = Math.floor(retryDelayMs / 1000);
       
       await db.execute(sql`
         UPDATE scheduled_voice_calls 
-        SET status = 'pending', 
-            scheduled_at = NOW() + INTERVAL '${sql.raw(String(retryDelayMs / 1000))} seconds',
+        SET status = 'retry_scheduled', 
+            retry_reason = 'originate_error',
+            scheduled_at = NOW() + INTERVAL '${sql.raw(String(retryDelaySeconds))} seconds',
+            next_retry_at = NOW() + INTERVAL '${sql.raw(String(retryDelaySeconds))} seconds',
+            last_attempt_at = NOW(),
             error_message = ${error.message},
             updated_at = NOW()
         WHERE id = ${callId}
       `);
       
-      // Set timer for retry via shared manager
       const retryAt = new Date(Date.now() + retryDelayMs);
       _scheduleTimerFromManager(callId, consultantId, retryAt);
       
-      return { success: false, error: `Retry scheduled in ${retryDelayMs / 1000}s` };
+      console.log(`🔄 [Outbound] Call ${callId} scheduled for retry in ${retryDelaySeconds}s (attempt ${call.attempts}/${call.max_attempts})`);
+      return { success: false, error: `Retry scheduled in ${retryDelaySeconds}s` };
     } else {
-      // Max attempts reached
       await db.execute(sql`
         UPDATE scheduled_voice_calls 
         SET status = 'failed', error_message = ${error.message}, updated_at = NOW()
