@@ -1348,7 +1348,9 @@ router.get("/overflow-config", async (req: any, res: Response) => {
     }
 
     const calledNumber = req.query.called_number as string;
+    console.log(`📞 [OVERFLOW-CONFIG] ━━━ Request: called_number=${calledNumber || 'MISSING'} ━━━`);
     if (!calledNumber) {
+      console.log(`📞 [OVERFLOW-CONFIG] ❌ Missing called_number param → 400`);
       return res.status(400).json({ error: "called_number required" });
     }
 
@@ -1360,6 +1362,7 @@ router.get("/overflow-config", async (req: any, res: Response) => {
       normalized.startsWith('39') ? `+${normalized}` : `+39${normalized}`,
       normalized.startsWith('39') ? normalized.slice(2) : normalized,
     ])];
+    console.log(`📞 [OVERFLOW-CONFIG] Searching variants: [${uniqueVariants.join(', ')}]`);
 
     const conditions = uniqueVariants.map(v => sql`phone_number = ${v}`);
     const orClause = sql.join(conditions, sql` OR `);
@@ -1376,7 +1379,7 @@ router.get("/overflow-config", async (req: any, res: Response) => {
     `);
 
     if (result.rows.length === 0) {
-      return res.json({
+      const defaults = {
         found: false,
         overflow_enabled: true,
         fallback_number: null,
@@ -1386,11 +1389,13 @@ router.get("/overflow-config", async (req: any, res: Response) => {
         overflow_message: null,
         max_concurrent_calls: 5,
         consultant_id: null,
-      });
+      };
+      console.log(`📞 [OVERFLOW-CONFIG] ⚠️ Number NOT FOUND → returning defaults: overflow_enabled=${defaults.overflow_enabled}, max_concurrent=${defaults.max_concurrent_calls}, timeout=${defaults.overflow_timeout_secs}s`);
+      return res.json(defaults);
     }
 
     const row = result.rows[0] as any;
-    res.json({
+    const response = {
       found: true,
       overflow_enabled: row.overflow_enabled ?? true,
       fallback_number: row.fallback_number || null,
@@ -1400,7 +1405,9 @@ router.get("/overflow-config", async (req: any, res: Response) => {
       overflow_message: row.overflow_message || null,
       max_concurrent_calls: row.max_concurrent_calls ?? 5,
       consultant_id: row.consultant_id,
-    });
+    };
+    console.log(`📞 [OVERFLOW-CONFIG] ✅ Found number ${row.phone_number} → overflow_enabled=${response.overflow_enabled}, max_concurrent=${response.max_concurrent_calls}, timeout=${response.overflow_timeout_secs}s, auto_return=${response.overflow_auto_return}, dtmf=${response.overflow_dtmf_enabled}, fallback=${response.fallback_number ? '***' : 'none'}`);
+    res.json(response);
   } catch (error) {
     console.error("[Voice] Error fetching overflow config:", error);
     res.status(500).json({ error: "Errore nel recupero della configurazione overflow" });

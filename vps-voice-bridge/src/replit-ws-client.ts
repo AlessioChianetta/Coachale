@@ -131,9 +131,14 @@ if (this.scheduledCallId) {
       });
     }
 
-    log.info(`Connecting to Replit WebSocket`, {
+    const maskedUrl = wsUrl.replace(/token=[^&]+/, 'token=***');
+    log.info(`🔗 [REPLIT-WS] Connecting to Replit WebSocket`, {
       sessionId: this.sessionId.slice(0, 8),
-      url: config.replit.wsUrl,
+      url: maskedUrl,
+      callerId: this.callerId,
+      calledNumber: this.options.calledNumber || 'none',
+      scheduledCallId: this.scheduledCallId || 'none',
+      voiceCallId: this.callId || 'none',
       voice,
       isResume: !!resumeHandle,
     });
@@ -143,6 +148,12 @@ if (this.scheduledCallId) {
 
       const connectionTimeout = setTimeout(() => {
         if (!this.isConnected) {
+          log.error(`⏰ [REPLIT-WS] Handshake timeout (15s) — connection never established`, {
+            sessionId: this.sessionId.slice(0, 8),
+            callerId: this.callerId,
+            calledNumber: this.options.calledNumber || 'none',
+            elapsedMs: Date.now() - connectStartTime,
+          });
           this.ws?.close();
           reject(new Error('Replit WebSocket connection timeout'));
         }
@@ -200,7 +211,16 @@ if (this.scheduledCallId) {
         this.isConnected = false;
 
         if (code === 4429) {
-          log.warn(`🔶 Replit rejected with CHANNELS_FULL (4429) — routing to overflow`, { sessionId: this.sessionId.slice(0, 8) });
+          const connDurationMs = this.wsConnectTime ? Date.now() - this.wsConnectTime : 0;
+          log.warn(`🔶 [REPLIT-WS] ━━━ REPLIT REJECTED 4429 CHANNELS_FULL ━━━`, {
+            sessionId: this.sessionId.slice(0, 8),
+            callerId: this.callerId,
+            calledNumber: this.options.calledNumber || 'none',
+            scheduledCallId: this.scheduledCallId || 'none',
+            connDurationMs,
+            reason: reasonStr,
+          });
+          log.warn(`🔶 [REPLIT-WS] Passing 4429 to onClose handler → should trigger routeToOverflow in voice-bridge-server`);
           this.options.onClose(code, reasonStr);
           return;
         }

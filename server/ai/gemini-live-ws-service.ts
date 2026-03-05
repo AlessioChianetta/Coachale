@@ -1238,6 +1238,9 @@ async function getUserIdFromRequest(req: any): Promise<{
 
           const channelCheckStart = Date.now();
           const maxChannels = numberConfig?.max_concurrent_calls || 5;
+          console.log(`📊 [CHANNEL-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`📊 [CHANNEL-CHECK] Checking channels for number=${resolvedCalledNumber} consultant=${resolvedConsultantId?.slice(0,8)}... maxChannels=${maxChannels}`);
+          console.log(`📊 [CHANNEL-CHECK] Query: status='talking' AND (called_number='${resolvedCalledNumber}' OR caller_id='${resolvedCalledNumber}' OR svc.from_number='${resolvedCalledNumber}')`);
           const activeCallsResult = await db.execute(sql`
             SELECT COUNT(DISTINCT vc.id) as active_count 
             FROM voice_calls vc
@@ -1250,10 +1253,36 @@ async function getUserIdFromRequest(req: any): Promise<{
               )
           `);
           const activeCount = parseInt((activeCallsResult.rows[0] as any)?.active_count || '0', 10);
+
+          console.log(`📊 [CHANNEL-CHECK] Result: activeCount(talking)=${activeCount}/${maxChannels} for ${resolvedCalledNumber}`);
           console.log(`⏱️ [AUTH-DETAIL] Channel check: ${Date.now() - channelCheckStart}ms (active: ${activeCount}/${maxChannels}, number: ${resolvedCalledNumber})`);
 
           if (activeCount >= maxChannels) {
-            console.error(`❌ [PHONE SERVICE] Consultant ${resolvedConsultantId} has ${activeCount}/${maxChannels} active calls on ${resolvedCalledNumber} → CHANNELS FULL (4429)`);
+            const allCallsDebug = await db.execute(sql`
+              SELECT vc.id, vc.status, vc.caller_id, vc.called_number, vc.call_direction, vc.created_at,
+                     svc.id as svc_id, svc.from_number as svc_from, svc.target_phone as svc_target
+              FROM voice_calls vc
+              LEFT JOIN scheduled_voice_calls svc ON svc.voice_call_id = vc.id
+              WHERE vc.consultant_id = ${resolvedConsultantId} 
+                AND vc.status IN ('talking', 'calling')
+                AND (
+                  vc.called_number = ${resolvedCalledNumber}
+                  OR vc.caller_id = ${resolvedCalledNumber}
+                  OR svc.from_number = ${resolvedCalledNumber}
+                )
+              ORDER BY vc.created_at DESC
+              LIMIT 10
+            `);
+            console.error(`❌ [CHANNEL-CHECK] CHANNELS FULL! Consultant ${resolvedConsultantId} has ${activeCount}/${maxChannels} active calls on ${resolvedCalledNumber}`);
+            console.error(`❌ [CHANNEL-CHECK] Incoming callerId=${callerId} calledNumber=${resolvedCalledNumber} → REJECTING with 4429`);
+            console.error(`❌ [CHANNEL-CHECK] Calls occupying channels (talking+calling):`);
+            for (const row of (allCallsDebug.rows as any[])) {
+              console.error(`❌ [CHANNEL-CHECK]   → ${row.id} | status=${row.status} | caller=${row.caller_id} | called=${row.called_number} | dir=${row.call_direction} | svc_from=${row.svc_from || '-'} | svc_target=${row.svc_target || '-'} | created=${row.created_at}`);
+            }
+            if (allCallsDebug.rows.length === 0) {
+              console.error(`❌ [CHANNEL-CHECK]   (nessuna chiamata attiva trovata — possibile race condition)`);
+            }
+          console.log(`📊 [CHANNEL-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
             return { channelsFull: true } as any;
           }
         } else {
@@ -1848,7 +1877,13 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       return;
     }
     if (authResult && (authResult as any).channelsFull) {
-      console.error(`🔶 [${connectionId}] Channels full — closing with 4429 CHANNELS_FULL`);
+      const urlParams = new URL(req.url || '', 'http://localhost').searchParams;
+      const rejCalledNumber = urlParams.get('calledNumber') || 'unknown';
+      const rejCallerId = urlParams.get('callerId') || 'unknown';
+      console.error(`🔶 [${connectionId}] ━━━ CHANNELS FULL 4429 ━━━`);
+      console.error(`🔶 [${connectionId}] Rejecting WS: callerId=${rejCallerId} calledNumber=${rejCalledNumber}`);
+      console.error(`🔶 [${connectionId}] The VPS Bridge should catch this 4429 and route to overflow queue`);
+      console.error(`🔶 [${connectionId}] ━━━━━━━━━━━━━━━━━━━━━━━━━`);
       clientWs.close(4429, 'CHANNELS_FULL');
       return;
     }

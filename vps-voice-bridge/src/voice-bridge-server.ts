@@ -295,20 +295,32 @@ export function startVoiceBridgeServer(): void {
         sample_rate: 8000,
       };
 
+      log.info(`📊 [OVERFLOW-PRE-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, { callId });
+      log.info(`📊 [OVERFLOW-PRE-CHECK] Checking limits for calledNumber=${calledNumber} uuid=${uuidFromUrl || callId}`, { callId });
       const overflowCfg = await fetchOverflowConfig(calledNumber);
       const perNumberMax = overflowCfg.max_concurrent_calls || 5;
+      const perNumberCount = sessionManager.activeCountForNumber(calledNumber);
       const perNumberFull = !sessionManager.canAcceptCallForNumber(calledNumber, perNumberMax);
       const globalFull = !sessionManager.canAcceptNewCall();
+      log.info(`📊 [OVERFLOW-PRE-CHECK] perNumber: ${perNumberCount}/${perNumberMax} (full=${perNumberFull}) | global: ${sessionManager.activeCount}/${sessionManager.maxConcurrent} (full=${globalFull})`, { callId });
+      log.info(`📊 [OVERFLOW-PRE-CHECK] overflowCfg: enabled=${overflowCfg.overflow_enabled}, timeout=${overflowCfg.overflow_timeout_secs}s, auto_return=${overflowCfg.overflow_auto_return}, dtmf=${overflowCfg.overflow_dtmf_enabled}, fallback=${overflowCfg.fallback_number ? '***' : 'none'}, max_concurrent=${overflowCfg.max_concurrent_calls}`, { callId });
+      const allSessions = sessionManager.getAllSessions();
+      log.info(`📊 [OVERFLOW-PRE-CHECK] Active sessions (${allSessions.length}):`, { callId });
+      for (const s of allSessions) {
+        log.info(`📊 [OVERFLOW-PRE-CHECK]   → id=${s.id.slice(0,8)} | callId=${s.callId} | caller=${s.callerId} | called=${s.calledNumber} | state=${s.state} | fsUuid=${s.fsUuid?.slice(0,12)}`, { callId });
+      }
+      log.info(`📊 [OVERFLOW-PRE-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, { callId });
 
       if ((perNumberFull || globalFull) && uuidFromUrl) {
         const reason = perNumberFull
-          ? `per-number limit (${sessionManager.activeCountForNumber(calledNumber)}/${perNumberMax})`
+          ? `per-number limit (${perNumberCount}/${perNumberMax})`
           : `global limit (${sessionManager.activeCount}/${sessionManager.maxConcurrent})`;
-        log.warn(`🔶 Max concurrent reached (${reason}) — attempting overflow for ${uuidFromUrl}`);
+        log.warn(`🔶 [OVERFLOW-PRE-CHECK] LIMIT REACHED (${reason}) — routing ${uuidFromUrl} to overflow queue (NOT connecting to Replit)`, { callId });
         ws.close(1011, 'Redirecting to overflow queue');
         await routeToOverflow(uuidFromUrl, calledNumber, overflowCfg);
         return;
       }
+      log.info(`✅ [OVERFLOW-PRE-CHECK] Limits OK — proceeding to connect to Replit`, { callId });
 
       handleCallStart(ws, startMsg, uuidFromUrl || callId).then((sid) => {
         currentSessionId = sid;
@@ -495,12 +507,19 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, 
         sessionManager.resumeInactivityTimeout(session.id);
       },
       onClose: (code?: number, reason?: string) => {
-        log.info(`Replit connection closed`, { sessionId: session.id.slice(0, 8), code, reason });
+        log.info(`📞 [REPLIT-ONCLOSE] Replit connection closed`, { sessionId: session.id.slice(0, 8), code, reason, fsUuid: session.fsUuid, callId: session.callId, calledNumber: message.called_number });
 
         if (code === 4429) {
+          log.warn(`🔶 [OVERFLOW-4429] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, { sessionId: session.id.slice(0, 8) });
+          log.warn(`🔶 [OVERFLOW-4429] Replit rejected with 4429 CHANNELS_FULL`, { sessionId: session.id.slice(0, 8) });
+          log.warn(`🔶 [OVERFLOW-4429] Session: fsUuid=${session.fsUuid} | callId=${session.callId} | caller=${session.callerId} | called=${message.called_number} | state=${session.state}`, { sessionId: session.id.slice(0, 8) });
+          log.warn(`🔶 [OVERFLOW-4429] Active sessions: ${sessionManager.activeCount} | Overflow queue: ${sessionManager.overflowCount}`, { sessionId: session.id.slice(0, 8) });
+
           const wasDequeued = recentlyDequeuedUuids.has(session.fsUuid);
+          log.warn(`🔶 [OVERFLOW-4429] wasDequeued=${wasDequeued} (recentlyDequeuedUuids has ${recentlyDequeuedUuids.size} entries)`, { sessionId: session.id.slice(0, 8) });
+
           if (wasDequeued) {
-            log.error(`🔴 [OVERFLOW-4429] Call ${session.fsUuid} was just dequeued from overflow but Replit rejected again (4429). Ending call to prevent loop.`, { sessionId: session.id.slice(0, 8) });
+            log.error(`🔴 [OVERFLOW-4429] LOOP PREVENTION: Call ${session.fsUuid} was just dequeued but Replit rejected again → killing call`, { sessionId: session.id.slice(0, 8) });
             recentlyDequeuedUuids.delete(session.fsUuid);
             cleanupSession(session.id);
             sessionManager.endSession(session.id, 'channels_full_after_dequeue');
@@ -508,20 +527,22 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, 
             if (eslConn) {
               (eslConn as any).bgapi(`uuid_kill ${session.fsUuid} NORMAL_CLEARING`);
             }
+            log.warn(`🔶 [OVERFLOW-4429] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, { sessionId: session.id.slice(0, 8) });
             return;
           }
 
-          log.warn(`🔶 [OVERFLOW-4429] Replit rejected — channels full. Routing ${session.fsUuid} to overflow (calledNumber: ${message.called_number})`, { sessionId: session.id.slice(0, 8) });
+          log.warn(`🔶 [OVERFLOW-4429] Cleaning up session and routing to overflow queue...`, { sessionId: session.id.slice(0, 8) });
           cleanupSession(session.id);
           sessionManager.endSession(session.id, 'channels_full_overflow');
           routeToOverflow(session.fsUuid, message.called_number).then(ok => {
             if (ok) {
-              log.info(`✅ [OVERFLOW-4429] Call ${session.fsUuid} successfully routed to overflow queue`);
+              log.info(`✅ [OVERFLOW-4429] Call ${session.fsUuid} successfully routed to overflow queue`, { sessionId: session.id.slice(0, 8) });
             } else {
-              log.error(`❌ [OVERFLOW-4429] Failed to route ${session.fsUuid} to overflow — call will be dropped`);
+              log.error(`❌ [OVERFLOW-4429] Failed to route ${session.fsUuid} to overflow — call will be dropped`, { sessionId: session.id.slice(0, 8) });
             }
+            log.warn(`🔶 [OVERFLOW-4429] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, { sessionId: session.id.slice(0, 8) });
           }).catch(err => {
-            log.error(`❌ [OVERFLOW-4429] routeToOverflow error: ${err.message}`);
+            log.error(`❌ [OVERFLOW-4429] routeToOverflow error: ${err.message}`, { sessionId: session.id.slice(0, 8) });
           });
           return;
         }
@@ -617,26 +638,33 @@ function cleanupSession(sessionId: string): void {
 
 async function routeToOverflow(uuid: string, calledNumber: string, overflowCfg?: any): Promise<boolean> {
   try {
+    log.info(`📥 [ROUTE-OVERFLOW] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    log.info(`📥 [ROUTE-OVERFLOW] Starting overflow routing for uuid=${uuid} calledNumber=${calledNumber}`);
     if (!overflowCfg) {
+      log.info(`📥 [ROUTE-OVERFLOW] No overflowCfg provided — fetching from Replit API...`);
       overflowCfg = await fetchOverflowConfig(calledNumber);
     }
+    log.info(`📥 [ROUTE-OVERFLOW] Config: enabled=${overflowCfg.overflow_enabled}, timeout=${overflowCfg.overflow_timeout_secs}s, auto_return=${overflowCfg.overflow_auto_return}, dtmf=${overflowCfg.overflow_dtmf_enabled}, fallback=${overflowCfg.fallback_number ? '***' : 'none'}, max_concurrent=${overflowCfg.max_concurrent_calls}`);
 
     if (!overflowCfg.overflow_enabled) {
-      log.warn(`🔴 Overflow disabled for ${calledNumber} — rejecting call ${uuid}`);
+      log.warn(`🔴 [ROUTE-OVERFLOW] Overflow DISABLED for ${calledNumber} — rejecting call ${uuid}`);
       const eslConn = getEslConnection();
       if (eslConn) {
         (eslConn as any).bgapi(`uuid_kill ${uuid} CALL_REJECTED`, (res: any) => {
-          log.info(`uuid_kill result: ${res?.getBody?.() || 'no response'}`);
+          log.info(`[ROUTE-OVERFLOW] uuid_kill result: ${res?.getBody?.() || 'no response'}`);
         });
       }
+      log.info(`📥 [ROUTE-OVERFLOW] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
       return false;
     }
 
     const eslConn = getEslConnection();
     if (!eslConn) {
-      log.error(`🔴 No ESL connection — cannot transfer to overflow`);
+      log.error(`🔴 [ROUTE-OVERFLOW] No ESL connection — cannot transfer to overflow. Call ${uuid} will be dropped!`);
+      log.info(`📥 [ROUTE-OVERFLOW] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
       return false;
     }
+    log.info(`📥 [ROUTE-OVERFLOW] ESL connection available ✅`);
 
     const queuePosition = sessionManager.overflowCount + 1;
     const setVars: string[] = [
@@ -653,18 +681,21 @@ async function routeToOverflow(uuid: string, calledNumber: string, overflowCfg?:
     if (overflowCfg.overflow_message) {
       setVars.push(`overflow_custom_message=${overflowCfg.overflow_message.replace(/[;=]/g, ' ')}`);
     }
+    log.info(`📥 [ROUTE-OVERFLOW] Setting vars on channel: ${setVars.join(' | ')}`, { uuid });
 
     (eslConn as any).bgapi(`uuid_setvar_multi ${uuid} ${setVars.join(';')}`, (res: any) => {
-      log.info(`Overflow vars set: ${res?.getBody?.() || 'ok'}`);
+      const body = res?.getBody?.() || 'ok';
+      log.info(`📥 [ROUTE-OVERFLOW] uuid_setvar_multi result: ${body}`, { uuid });
     });
 
     setTimeout(() => {
+      log.info(`📥 [ROUTE-OVERFLOW] Transferring ${uuid} → overflow_queue XML default`, { uuid });
       (eslConn as any).bgapi(`uuid_transfer ${uuid} overflow_queue XML default`, (res: any) => {
         const body = res?.getBody?.() || '';
         if (body.includes('+OK')) {
-          log.info(`✅ Call ${uuid} transferred to overflow_queue`);
+          log.info(`✅ [ROUTE-OVERFLOW] Call ${uuid} transferred to overflow_queue SUCCESSFULLY`);
         } else {
-          log.error(`❌ Failed to transfer to overflow_queue: ${body}`);
+          log.error(`❌ [ROUTE-OVERFLOW] Failed to transfer to overflow_queue: ${body} — killing call`);
           (eslConn as any).bgapi(`uuid_kill ${uuid} CALL_REJECTED`);
         }
       });
@@ -672,75 +703,111 @@ async function routeToOverflow(uuid: string, calledNumber: string, overflowCfg?:
 
     const timeoutSecs = overflowCfg.overflow_timeout_secs || 120;
     sessionManager.addToOverflow(uuid, calledNumber, timeoutSecs, (ovUuid) => {
-      log.warn(`⏰ Overflow timeout — transferring call ${ovUuid} to timeout announcement`);
+      log.warn(`⏰ [ROUTE-OVERFLOW] Timeout reached (${timeoutSecs}s) — transferring call ${ovUuid} to timeout announcement`);
       const conn = getEslConnection();
       if (conn) {
         (conn as any).bgapi(`uuid_transfer ${ovUuid} overflow_timeout XML default`, (res: any) => {
           const body = res?.getBody?.() || '';
           if (!body.includes('+OK')) {
-            log.warn(`⚠️ Timeout transfer failed, killing call ${ovUuid}: ${body}`);
+            log.warn(`⚠️ [ROUTE-OVERFLOW] Timeout transfer failed, killing call ${ovUuid}: ${body}`);
             (conn as any).bgapi(`uuid_kill ${ovUuid} NORMAL_CLEARING`);
+          } else {
+            log.info(`✅ [ROUTE-OVERFLOW] Timeout transfer OK for ${ovUuid}`);
           }
         });
+      } else {
+        log.error(`🔴 [ROUTE-OVERFLOW] No ESL connection for timeout transfer of ${ovUuid}`);
       }
     });
 
-    log.info(`📥 Call ${uuid} queued in overflow (timeout=${timeoutSecs}s, dtmf=${overflowCfg.overflow_dtmf_enabled}, fallback=${overflowCfg.fallback_number ? '***' : 'none'})`);
+    log.info(`📥 [ROUTE-OVERFLOW] Call ${uuid} queued in overflow — position=${queuePosition}, timeout=${timeoutSecs}s, current queue size=${sessionManager.overflowCount}`);
+    log.info(`📥 [ROUTE-OVERFLOW] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     return true;
   } catch (overflowErr: any) {
-    log.error(`🔴 Overflow handling failed: ${overflowErr.message}`);
+    log.error(`🔴 [ROUTE-OVERFLOW] EXCEPTION: ${overflowErr.message}`, { uuid, stack: overflowErr.stack?.slice(0, 300) });
     const eslConn = getEslConnection();
     if (eslConn) {
       (eslConn as any).bgapi(`uuid_kill ${uuid} CALL_REJECTED`);
     }
+    log.info(`📥 [ROUTE-OVERFLOW] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     return false;
   }
 }
 
 function handleCallStop(callId: string, reason: string): void {
   const session = sessionManager.getSessionByCallId(callId);
-  if (!session) return;
+  if (!session) {
+    log.info(`📞 [CALL-STOP] No session found for callId=${callId} reason=${reason} — skipping`);
+    return;
+  }
+
+  const duration = Date.now() - session.startTime.getTime();
+  log.info(`📞 [CALL-STOP] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  log.info(`📞 [CALL-STOP] callId=${callId} | reason=${reason} | duration=${Math.round(duration/1000)}s`);
+  log.info(`📞 [CALL-STOP] session: id=${session.id.slice(0,8)} | caller=${session.callerId} | called=${session.calledNumber} | state=${session.state} | fsUuid=${session.fsUuid?.slice(0,12)}`);
+  log.info(`📞 [CALL-STOP] Before cleanup: activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
 
   cleanupSession(session.id);
 
-  const duration = Date.now() - session.startTime.getTime();
   notifyCallEnd(session.id, duration, session.audioStats.bytesIn, session.audioStats.bytesOut, reason);
   sessionManager.endSession(session.id, reason);
+
+  log.info(`📞 [CALL-STOP] After cleanup: activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
+  if (sessionManager.overflowCount > 0) {
+    log.info(`📞 [CALL-STOP] Overflow queue not empty — triggering tryDequeueOverflow...`);
+  }
+  log.info(`📞 [CALL-STOP] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
   tryDequeueOverflow();
 }
 
 async function tryDequeueOverflow(): Promise<void> {
-  if (sessionManager.overflowCount === 0) return;
-  if (sessionManager.dequeueInProgress) return;
+  if (sessionManager.overflowCount === 0) {
+    log.info(`🔄 [DEQUEUE] No overflow callers to dequeue`);
+    return;
+  }
+  if (sessionManager.dequeueInProgress) {
+    log.info(`🔄 [DEQUEUE] Dequeue already in progress — skipping`);
+    return;
+  }
 
   sessionManager.dequeueInProgress = true;
+  log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  log.info(`🔄 [DEQUEUE] Starting dequeue — overflow queue has ${sessionManager.overflowCount} callers`);
 
   try {
     while (sessionManager.overflowCount > 0) {
       const next = sessionManager.getNextOverflow();
-      if (!next) break;
+      if (!next) {
+        log.info(`🔄 [DEQUEUE] getNextOverflow returned null — queue empty`);
+        break;
+      }
+
+      log.info(`🔄 [DEQUEUE] Processing: uuid=${next.uuid} | calledNumber=${next.calledNumber} | waitedMs=${Date.now() - next.enqueuedAt}`);
 
       const eslConn = getEslConnection();
       if (!eslConn) {
-        log.error(`🔴 No ESL connection for dequeue`);
+        log.error(`🔴 [DEQUEUE] No ESL connection for dequeue`);
         break;
       }
 
       const overflowCfg = await fetchOverflowConfig(next.calledNumber);
       const perNumberMax = overflowCfg.max_concurrent_calls || 5;
+      const perNumberCount = sessionManager.activeCountForNumber(next.calledNumber);
       const originalTimeoutMs = (overflowCfg.overflow_timeout_secs || 120) * 1000;
       const elapsedMs = Date.now() - next.enqueuedAt;
       const remainingMs = Math.max(5000, originalTimeoutMs - elapsedMs);
 
+      log.info(`🔄 [DEQUEUE] Limits check: perNumber=${perNumberCount}/${perNumberMax} | global=${sessionManager.activeCount}/${sessionManager.maxConcurrent} | auto_return=${overflowCfg.overflow_auto_return} | elapsed=${Math.round(elapsedMs/1000)}s | remainingTimeout=${Math.round(remainingMs/1000)}s`);
+
       const timeoutCallback = (uuid: string) => {
-        log.warn(`⏰ Overflow timeout — transferring call ${uuid} to timeout announcement`);
+        log.warn(`⏰ [DEQUEUE] Overflow timeout — transferring call ${uuid} to timeout announcement`);
         const conn = getEslConnection();
         if (conn) {
           (conn as any).bgapi(`uuid_transfer ${uuid} overflow_timeout XML default`, (res: any) => {
             const body = res?.getBody?.() || '';
             if (!body.includes('+OK')) {
-              log.warn(`⚠️ Timeout transfer failed, killing call ${uuid}: ${body}`);
+              log.warn(`⚠️ [DEQUEUE] Timeout transfer failed, killing call ${uuid}: ${body}`);
               (conn as any).bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`);
             }
           });
@@ -748,35 +815,38 @@ async function tryDequeueOverflow(): Promise<void> {
       };
 
       if (!sessionManager.canAcceptCallForNumber(next.calledNumber, perNumberMax)) {
-        log.info(`⏭️ Per-number limit still full for ${next.calledNumber} (${sessionManager.activeCountForNumber(next.calledNumber)}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+        log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
         sessionManager.reinsertAtFront(next, remainingMs, timeoutCallback);
         break;
       }
 
       if (!sessionManager.canAcceptNewCall()) {
-        log.info(`⏭️ Global limit full — re-inserting ${next.uuid} at front`);
+        log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
         sessionManager.reinsertAtFront(next, remainingMs, timeoutCallback);
         break;
       }
 
       if (!overflowCfg.overflow_auto_return) {
-        log.info(`⏭️ Auto-return disabled for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+        log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
         continue;
       }
 
+      log.info(`🔄 [DEQUEUE] Checking if call ${next.uuid} still exists in FreeSWITCH...`);
       const exists = await new Promise<boolean>((resolve) => {
         (eslConn as any).bgapi(`uuid_exists ${next.uuid}`, (res: any) => {
           const body = res?.getBody?.() || '';
-          resolve(body.trim() === 'true');
+          const result = body.trim() === 'true';
+          log.info(`🔄 [DEQUEUE] uuid_exists ${next.uuid} = ${result} (raw: "${body.trim()}")`, { uuid: next.uuid });
+          resolve(result);
         });
       });
 
       if (!exists) {
-        log.info(`📞 Overflow call ${next.uuid} no longer exists (hung up) — trying next`);
+        log.info(`📞 [DEQUEUE] Call ${next.uuid} no longer exists (caller hung up) — trying next in queue`);
         continue;
       }
 
-      log.info(`🔄 Dequeuing overflow call ${next.uuid} → transferring back to AI (2s delay for DB sync)`);
+      log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
       recentlyDequeuedUuids.set(next.uuid, Date.now());
       setTimeout(() => recentlyDequeuedUuids.delete(next.uuid), 30000);
 
@@ -788,17 +858,18 @@ async function tryDequeueOverflow(): Promise<void> {
         });
       });
       if (!stillExists) {
-        log.info(`📞 Overflow call ${next.uuid} hung up during dequeue delay — skipping`);
+        log.info(`📞 [DEQUEUE] Call ${next.uuid} hung up during 2s delay — skipping`);
         recentlyDequeuedUuids.delete(next.uuid);
         continue;
       }
 
+      log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
       (eslConn as any).bgapi(`uuid_transfer ${next.uuid} alessia_ai_9999_public XML public`, (res: any) => {
         const body = res?.getBody?.() || '';
         if (body.includes('+OK')) {
-          log.info(`✅ Overflow call ${next.uuid} transferred back to AI`);
+          log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
         } else {
-          log.error(`❌ Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+          log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
         }
       });
 
@@ -808,14 +879,16 @@ async function tryDequeueOverflow(): Promise<void> {
           const newPosition = idx + 1;
           (eslConn as any).bgapi(`uuid_setvar ${entry.uuid} queue_position ${newPosition}`, () => {});
         });
-        log.info(`📊 Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
+        log.info(`📊 [DEQUEUE] Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
       }
 
       break;
     }
   } catch (err: any) {
-    log.error(`🔴 Dequeue overflow error: ${err.message}`);
+    log.error(`🔴 [DEQUEUE] Error: ${err.message}`, { stack: err.stack?.slice(0, 300) });
   } finally {
     sessionManager.dequeueInProgress = false;
+    log.info(`🔄 [DEQUEUE] Finished — activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
+    log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   }
 }

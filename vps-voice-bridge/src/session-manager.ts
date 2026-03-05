@@ -66,23 +66,33 @@ class SessionManager {
   }
 
   canAcceptNewCall(): boolean {
-    return this.sessions.size < config.session.maxConcurrent;
+    const can = this.sessions.size < config.session.maxConcurrent;
+    log.info(`📊 [SM] canAcceptNewCall: ${this.sessions.size}/${config.session.maxConcurrent} → ${can ? 'YES' : 'NO'}`);
+    return can;
   }
 
   activeCountForNumber(calledNumber: string): number {
     const normalized = calledNumber.replace(/\D/g, '');
     let count = 0;
+    const matching: string[] = [];
     for (const session of this.sessions.values()) {
       const sessNorm = session.calledNumber.replace(/\D/g, '');
       if (sessNorm === normalized || session.calledNumber === calledNumber) {
         count++;
+        matching.push(`${session.id.slice(0,8)}(${session.calledNumber},${session.state})`);
       }
+    }
+    if (matching.length > 0) {
+      log.info(`📊 [SM] activeCountForNumber(${calledNumber}): ${count} sessions match → [${matching.join(', ')}]`);
     }
     return count;
   }
 
   canAcceptCallForNumber(calledNumber: string, maxForNumber: number): boolean {
-    return this.activeCountForNumber(calledNumber) < maxForNumber;
+    const activeCount = this.activeCountForNumber(calledNumber);
+    const can = activeCount < maxForNumber;
+    log.info(`📊 [SM] canAcceptCallForNumber(${calledNumber}, max=${maxForNumber}): active=${activeCount} → ${can ? 'YES' : 'NO'}`);
+    return can;
   }
 
   createSession(
@@ -314,10 +324,11 @@ class SessionManager {
   }
 
   addToOverflow(uuid: string, calledNumber: string, timeoutSecs: number, onTimeout: (uuid: string) => void): void {
+    log.info(`📥 [SM-OVERFLOW] addToOverflow: uuid=${uuid} calledNumber=${calledNumber} timeoutSecs=${timeoutSecs} | queueBefore=${this._overflowQueue.length}`);
     this.removeFromOverflow(uuid);
 
     const timeoutHandle = setTimeout(() => {
-      log.warn(`⏰ Overflow timeout reached for ${uuid} after ${timeoutSecs}s`);
+      log.warn(`⏰ [SM-OVERFLOW] Timeout reached for ${uuid} after ${timeoutSecs}s — removing from queue and calling onTimeout`);
       this.removeFromOverflow(uuid);
       onTimeout(uuid);
     }, timeoutSecs * 1000);
@@ -330,7 +341,8 @@ class SessionManager {
     };
 
     this._overflowQueue.push(entry);
-    log.info(`📥 Added to overflow queue`, { uuid, calledNumber, queueSize: this._overflowQueue.length, timeoutSecs });
+    log.info(`📥 [SM-OVERFLOW] Added to overflow queue — queueAfter=${this._overflowQueue.length}`, { uuid, calledNumber, timeoutSecs });
+    this._logQueueState();
   }
 
   removeFromOverflow(uuid: string): void {
@@ -339,27 +351,43 @@ class SessionManager {
       const entry = this._overflowQueue[idx];
       if (entry.timeoutHandle) clearTimeout(entry.timeoutHandle);
       this._overflowQueue.splice(idx, 1);
-      log.info(`📤 Removed from overflow queue`, { uuid, queueSize: this._overflowQueue.length });
+      log.info(`📤 [SM-OVERFLOW] Removed from overflow queue: uuid=${uuid} calledNumber=${entry.calledNumber} | queueAfter=${this._overflowQueue.length}`);
     }
   }
 
   getNextOverflow(): OverflowEntry | null {
-    if (this._overflowQueue.length === 0) return null;
+    if (this._overflowQueue.length === 0) {
+      log.info(`📤 [SM-OVERFLOW] getNextOverflow: queue empty → null`);
+      return null;
+    }
     const entry = this._overflowQueue.shift()!;
     if (entry.timeoutHandle) clearTimeout(entry.timeoutHandle);
-    log.info(`📤 Dequeued from overflow`, { uuid: entry.uuid, calledNumber: entry.calledNumber, remaining: this._overflowQueue.length });
+    const waitedSecs = Math.round((Date.now() - entry.enqueuedAt) / 1000);
+    log.info(`📤 [SM-OVERFLOW] Dequeued: uuid=${entry.uuid} calledNumber=${entry.calledNumber} waitedSecs=${waitedSecs} | remaining=${this._overflowQueue.length}`);
     return entry;
   }
 
   reinsertAtFront(entry: OverflowEntry, remainingTimeoutMs: number, onTimeout: (uuid: string) => void): void {
+    log.info(`🔄 [SM-OVERFLOW] Re-inserting at front: uuid=${entry.uuid} calledNumber=${entry.calledNumber} remainingTimeout=${Math.round(remainingTimeoutMs/1000)}s`);
     const timeoutHandle = setTimeout(() => {
-      log.warn(`⏰ Overflow timeout reached for ${entry.uuid}`);
+      log.warn(`⏰ [SM-OVERFLOW] Timeout reached for ${entry.uuid} (after re-insert)`);
       this.removeFromOverflow(entry.uuid);
       onTimeout(entry.uuid);
     }, remainingTimeoutMs);
     entry.timeoutHandle = timeoutHandle;
     this._overflowQueue.unshift(entry);
-    log.info(`🔄 Re-inserted at front of overflow queue`, { uuid: entry.uuid, calledNumber: entry.calledNumber, remainingMs: remainingTimeoutMs, queueSize: this._overflowQueue.length });
+    log.info(`🔄 [SM-OVERFLOW] Re-inserted — queueSize=${this._overflowQueue.length}`);
+    this._logQueueState();
+  }
+
+  private _logQueueState(): void {
+    if (this._overflowQueue.length === 0) return;
+    const now = Date.now();
+    log.info(`📊 [SM-OVERFLOW] Queue state (${this._overflowQueue.length} entries):`);
+    for (let i = 0; i < this._overflowQueue.length; i++) {
+      const e = this._overflowQueue[i];
+      log.info(`📊 [SM-OVERFLOW]   [${i}] uuid=${e.uuid} | calledNumber=${e.calledNumber} | waiting=${Math.round((now - e.enqueuedAt) / 1000)}s`);
+    }
   }
 
   isInOverflow(uuid: string): boolean {
