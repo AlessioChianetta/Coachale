@@ -112,6 +112,7 @@ import {
   ExternalLink,
   MessagesSquare,
   Shield,
+  Voicemail,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -640,6 +641,7 @@ const OUTBOUND_STATUS_CONFIG: Record<string, { label: string; color: string; ico
   no_answer: { label: "Nessuna Risposta", color: "bg-orange-500", icon: "📵" },
   busy: { label: "Occupato", color: "bg-orange-400", icon: "🔴" },
   short_call: { label: "Staccata", color: "bg-orange-600", icon: "⚡" },
+  voicemail: { label: "Segreteria", color: "bg-purple-400", icon: "📭" },
   retry_scheduled: { label: "Retry Programmato", color: "bg-purple-500", icon: "🔄" },
   failed: { label: "Fallita", color: "bg-red-500", icon: "❌" },
   cancelled: { label: "Cancellata", color: "bg-gray-500", icon: "🚫" },
@@ -1006,7 +1008,16 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow }: {
       case 'talking': return <Badge className="bg-green-500 text-white text-[10px]">In corso</Badge>;
       case 'calling': case 'ringing': return <Badge className="bg-yellow-500 text-white text-[10px]">Connessione...</Badge>;
       case 'in_progress': return <Badge className="bg-blue-500 text-white text-[10px]">In elaborazione</Badge>;
-      case 'retry_scheduled': return <Badge className="bg-orange-500 text-white text-[10px]">Retry {call.attempts || 0}/{call.max_attempts || 3}</Badge>;
+      case 'retry_scheduled': {
+        const reasonMap: Record<string, string> = { no_answer: 'Non ha risposto', busy: 'Occupato', short_call: 'Chiamata breve', voicemail: 'Segreteria' };
+        const reasonLabel = reasonMap[call.retry_reason] || call.retry_reason || '';
+        return (
+          <span className="flex items-center gap-1">
+            <Badge className="bg-orange-500 text-white text-[10px]">Retry {call.attempts || 0}/{call.max_attempts || 3}</Badge>
+            {reasonLabel && <span className="text-[10px] text-orange-600 dark:text-orange-400">{reasonLabel}</span>}
+          </span>
+        );
+      }
       case 'pending': return <Badge variant="outline" className="text-[10px]">In coda</Badge>;
       default: return <Badge variant="outline" className="text-[10px]">{call.status}</Badge>;
     }
@@ -1038,10 +1049,10 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow }: {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {call.scheduled_at && !['talking', 'calling', 'ringing'].includes(call.status) && (
+                {!['talking', 'calling', 'ringing'].includes(call.status) && (call.next_retry_at || call.scheduled_at) && (
                   <div className="flex items-center gap-1 text-blue-600">
                     <Clock className="h-3 w-3" />
-                    <CallQueueCountdown targetDate={call.scheduled_at} />
+                    <CallQueueCountdown targetDate={call.status === 'retry_scheduled' && call.next_retry_at ? call.next_retry_at : call.scheduled_at} />
                   </div>
                 )}
                 {['talking', 'calling'].includes(call.status) && (
@@ -1134,6 +1145,11 @@ export default function ConsultantVoiceCallsPage() {
   const [templateFieldValues, setTemplateFieldValues] = useState<Record<string, string>>({});
   const [retryMaxAttempts, setRetryMaxAttempts] = useState<number>(3);
   const [retryIntervalMinutes, setRetryIntervalMinutes] = useState<number>(5);
+  const [retryOnNoAnswer, setRetryOnNoAnswer] = useState<boolean>(true);
+  const [retryOnBusy, setRetryOnBusy] = useState<boolean>(true);
+  const [retryOnShortCall, setRetryOnShortCall] = useState<boolean>(false);
+  const [retryOnVoicemail, setRetryOnVoicemail] = useState<boolean>(true);
+  const [amdEnabled, setAmdEnabled] = useState<boolean>(true);
 
   // AI Task Queue state
   const [aiTasksFilter, setAITasksFilter] = useState("all");
@@ -1196,7 +1212,7 @@ export default function ConsultantVoiceCallsPage() {
     queryKey: ["/api/voice/settings"],
     queryFn: async () => {
       const res = await fetch("/api/voice/settings", { headers: getAuthHeaders() });
-      if (!res.ok) return { voiceId: 'Kore', vpsBridgeUrl: '', voiceMaxRetryAttempts: 3, voiceRetryIntervalMinutes: 5 };
+      if (!res.ok) return { voiceId: 'Kore', vpsBridgeUrl: '', voiceMaxRetryAttempts: 3, voiceRetryIntervalMinutes: 5, voiceRetryOnNoAnswer: true, voiceRetryOnBusy: true, voiceRetryOnShortCall: false, voiceRetryOnVoicemail: true, voiceAmdEnabled: true };
       return res.json();
     },
   });
@@ -1212,7 +1228,12 @@ export default function ConsultantVoiceCallsPage() {
     if (voiceSettings?.voiceRetryIntervalMinutes !== undefined) {
       setRetryIntervalMinutes(voiceSettings.voiceRetryIntervalMinutes);
     }
-  }, [voiceSettings?.vpsBridgeUrl, voiceSettings?.voiceMaxRetryAttempts, voiceSettings?.voiceRetryIntervalMinutes]);
+    if (voiceSettings?.voiceRetryOnNoAnswer !== undefined) setRetryOnNoAnswer(voiceSettings.voiceRetryOnNoAnswer);
+    if (voiceSettings?.voiceRetryOnBusy !== undefined) setRetryOnBusy(voiceSettings.voiceRetryOnBusy);
+    if (voiceSettings?.voiceRetryOnShortCall !== undefined) setRetryOnShortCall(voiceSettings.voiceRetryOnShortCall);
+    if (voiceSettings?.voiceRetryOnVoicemail !== undefined) setRetryOnVoicemail(voiceSettings.voiceRetryOnVoicemail);
+    if (voiceSettings?.voiceAmdEnabled !== undefined) setAmdEnabled(voiceSettings.voiceAmdEnabled);
+  }, [voiceSettings?.vpsBridgeUrl, voiceSettings?.voiceMaxRetryAttempts, voiceSettings?.voiceRetryIntervalMinutes, voiceSettings?.voiceRetryOnNoAnswer, voiceSettings?.voiceRetryOnBusy, voiceSettings?.voiceRetryOnShortCall, voiceSettings?.voiceRetryOnVoicemail, voiceSettings?.voiceAmdEnabled]);
 
   useEffect(() => {
     if (calendarScrollRef.current) {
@@ -1248,13 +1269,22 @@ export default function ConsultantVoiceCallsPage() {
   });
 
   const saveRetrySettingsMutation = useMutation({
-    mutationFn: async ({ maxAttempts, intervalMinutes }: { maxAttempts: number; intervalMinutes: number }) => {
+    mutationFn: async (params: { 
+      maxAttempts: number; intervalMinutes: number;
+      retryNoAnswer: boolean; retryBusy: boolean; retryShortCall: boolean; retryVoicemail: boolean;
+      amdEnabled: boolean;
+    }) => {
       const res = await fetch("/api/voice/retry-settings", {
         method: "PUT",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          voiceMaxRetryAttempts: maxAttempts, 
-          voiceRetryIntervalMinutes: intervalMinutes 
+          voiceMaxRetryAttempts: params.maxAttempts, 
+          voiceRetryIntervalMinutes: params.intervalMinutes,
+          voiceRetryOnNoAnswer: params.retryNoAnswer,
+          voiceRetryOnBusy: params.retryBusy,
+          voiceRetryOnShortCall: params.retryShortCall,
+          voiceRetryOnVoicemail: params.retryVoicemail,
+          voiceAmdEnabled: params.amdEnabled,
         }),
       });
       if (!res.ok) {
@@ -1267,7 +1297,12 @@ export default function ConsultantVoiceCallsPage() {
       refetchVoice();
       setRetryMaxAttempts(data.voiceMaxRetryAttempts);
       setRetryIntervalMinutes(data.voiceRetryIntervalMinutes);
-      toast({ title: "Salvato", description: "Impostazioni retry aggiornate" });
+      setRetryOnNoAnswer(data.voiceRetryOnNoAnswer);
+      setRetryOnBusy(data.voiceRetryOnBusy);
+      setRetryOnShortCall(data.voiceRetryOnShortCall);
+      setRetryOnVoicemail(data.voiceRetryOnVoicemail);
+      setAmdEnabled(data.voiceAmdEnabled);
+      toast({ title: "Salvato", description: "Impostazioni retry e AMD aggiornate" });
     },
     onError: (err: Error) => {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
@@ -4005,23 +4040,108 @@ export default function ConsultantVoiceCallsPage() {
                   </Card>
                 )}
 
-                {/* Card 2: Impostazioni Retry Chiamate - Visibile a tutti */}
+                {/* Card 2: Impostazioni Retry e Rilevamento Segreteria */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <RotateCcw className="h-5 w-5" />
-                      Impostazioni Retry Chiamate
+                      Retry Chiamate e Rilevamento Segreteria
                     </CardTitle>
                     <CardDescription>
-                      Configura il comportamento dei tentativi automatici per le chiamate in uscita
+                      Configura quando ritentare automaticamente e come gestire le segreterie telefoniche
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                  <CardContent className="space-y-6">
+
+                    <div className="p-4 border rounded-lg bg-purple-50 dark:bg-purple-950/30 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-md bg-purple-100 dark:bg-purple-900">
+                            <Voicemail className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Rilevamento Segreteria (AMD)</p>
+                            <p className="text-xs text-muted-foreground">
+                              Rileva automaticamente se risponde una segreteria telefonica e chiude la chiamata senza passarla all'AI
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={amdEnabled}
+                          onCheckedChange={setAmdEnabled}
+                        />
+                      </div>
+                      {amdEnabled && (
+                        <p className="text-xs text-purple-600 dark:text-purple-400 ml-12">
+                          Richiede mod_amd su FreeSWITCH. Se non disponibile, il sistema usa il rilevamento "chiamata breve" come fallback.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Quando ritentare</p>
+                      
+                      <div className="grid gap-3">
+                        <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <PhoneMissed className="h-4 w-4 text-orange-500" />
+                            <div>
+                              <p className="text-sm font-medium">Non risponde</p>
+                              <p className="text-xs text-muted-foreground">Il destinatario non risponde alla chiamata</p>
+                            </div>
+                          </div>
+                          <Switch checked={retryOnNoAnswer} onCheckedChange={setRetryOnNoAnswer} />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <PhoneOff className="h-4 w-4 text-red-500" />
+                            <div>
+                              <p className="text-sm font-medium">Occupato</p>
+                              <p className="text-xs text-muted-foreground">La linea del destinatario è occupata</p>
+                            </div>
+                          </div>
+                          <Switch checked={retryOnBusy} onCheckedChange={setRetryOnBusy} />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <Timer className="h-4 w-4 text-yellow-500" />
+                            <div>
+                              <p className="text-sm font-medium">Chiamata breve</p>
+                              <p className="text-xs text-muted-foreground">La chiamata dura pochi secondi (es. segreteria non rilevata dall'AMD)</p>
+                            </div>
+                          </div>
+                          <Switch checked={retryOnShortCall} onCheckedChange={setRetryOnShortCall} />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <Voicemail className="h-4 w-4 text-purple-500" />
+                            <div>
+                              <p className="text-sm font-medium">Segreteria rilevata</p>
+                              <p className="text-xs text-muted-foreground">
+                                L'AMD ha rilevato una segreteria telefonica
+                                {!amdEnabled && <span className="text-orange-500 ml-1">(richiede AMD attivo)</span>}
+                              </p>
+                            </div>
+                          </div>
+                          <Switch 
+                            checked={retryOnVoicemail} 
+                            onCheckedChange={setRetryOnVoicemail}
+                            disabled={!amdEnabled}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Come ritentare</p>
+                      
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="retryMaxAttempts" className="text-sm font-medium">
-                            Max tentativi retry (1-5)
+                            Max tentativi (1-5)
                           </Label>
                           <Input
                             id="retryMaxAttempts"
@@ -4032,14 +4152,11 @@ export default function ConsultantVoiceCallsPage() {
                             onChange={(e) => setRetryMaxAttempts(Math.max(1, Math.min(5, parseInt(e.target.value) || 3)))}
                             className="w-full"
                           />
-                          <p className="text-xs text-muted-foreground">
-                            Numero di tentativi se la chiamata non viene risposta
-                          </p>
                         </div>
                         
                         <div className="space-y-2">
                           <Label htmlFor="retryIntervalMinutes" className="text-sm font-medium">
-                            Intervallo base retry (1-30 min)
+                            Intervallo base (1-30 min)
                           </Label>
                           <Input
                             id="retryIntervalMinutes"
@@ -4050,40 +4167,54 @@ export default function ConsultantVoiceCallsPage() {
                             onChange={(e) => setRetryIntervalMinutes(Math.max(1, Math.min(30, parseInt(e.target.value) || 5)))}
                             className="w-full"
                           />
-                          <p className="text-xs text-muted-foreground">
-                            Minuti tra il primo e il secondo tentativo
-                          </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/50 rounded-md">
-                        <div className="flex-1">
-                          <p className="text-sm text-blue-700 dark:text-blue-300">
-                            <strong>Backoff esponenziale:</strong> L'intervallo raddoppia ad ogni tentativo
-                          </p>
-                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                            Es: {retryIntervalMinutes}min → {retryIntervalMinutes * 2}min → {retryIntervalMinutes * 4}min...
-                          </p>
-                        </div>
-                        <Button
-                          onClick={() => saveRetrySettingsMutation.mutate({ 
-                            maxAttempts: retryMaxAttempts, 
-                            intervalMinutes: retryIntervalMinutes 
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/50 rounded-md">
+                        <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">
+                          Timeline backoff esponenziale:
+                        </p>
+                        <div className="flex items-center gap-1 flex-wrap text-xs text-blue-600 dark:text-blue-400">
+                          {Array.from({ length: retryMaxAttempts }, (_, i) => {
+                            const delay = Math.min(retryIntervalMinutes * Math.pow(2, i), 30);
+                            return (
+                              <React.Fragment key={i}>
+                                {i > 0 && (
+                                  <span className="px-1 text-blue-400 dark:text-blue-500">
+                                    → {delay} min →
+                                  </span>
+                                )}
+                                <span className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded font-medium">
+                                  {i + 1}° tentativo
+                                </span>
+                              </React.Fragment>
+                            );
                           })}
-                          disabled={saveRetrySettingsMutation.isPending}
-                          size="sm"
-                        >
-                          {saveRetrySettingsMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Save className="h-4 w-4 mr-2" />
-                              Salva Retry
-                            </>
-                          )}
-                        </Button>
+                        </div>
                       </div>
                     </div>
+
+                    <Button
+                      onClick={() => saveRetrySettingsMutation.mutate({ 
+                        maxAttempts: retryMaxAttempts, 
+                        intervalMinutes: retryIntervalMinutes,
+                        retryNoAnswer: retryOnNoAnswer,
+                        retryBusy: retryOnBusy,
+                        retryShortCall: retryOnShortCall,
+                        retryVoicemail: retryOnVoicemail,
+                        amdEnabled: amdEnabled,
+                      })}
+                      disabled={saveRetrySettingsMutation.isPending}
+                      className="w-full"
+                    >
+                      {saveRetrySettingsMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Salva Configurazione Retry
+                    </Button>
+
                   </CardContent>
                 </Card>
 
@@ -5103,6 +5234,7 @@ export default function ConsultantVoiceCallsPage() {
                                             case 'error':
                                             case 'no_answer':
                                             case 'busy':
+                                            case 'voicemail':
                                               return { color: 'bg-red-400 hover:bg-red-500 border-red-600', extra: 'opacity-70' };
                                             case 'cancelled':
                                               return { color: 'bg-gray-400 hover:bg-gray-500 border-gray-600', extra: 'opacity-60' };

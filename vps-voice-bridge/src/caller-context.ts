@@ -229,3 +229,37 @@ export async function notifyCallEnd(
     });
   }
 }
+
+export async function notifyAmdResult(
+  callId: string,
+  amdResult: string
+): Promise<void> {
+  if (!config.replit.apiUrl || !config.replit.apiToken) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${config.replit.apiUrl}/api/voice/outbound/callback`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.replit.apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        callId,
+        status: 'voicemail',
+        hangup_cause: 'amd_machine_detected',
+        duration_seconds: 0,
+        amd_result: amdResult,
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    log.info(`📬 AMD result notified to Replit callId=${callId} result=${amdResult} httpStatus=${response.status}`);
+  } catch (error) {
+    log.warn(`Failed to notify AMD result`, {
+      callId,
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
+  }
+}

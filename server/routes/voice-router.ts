@@ -1603,7 +1603,9 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     }
 
     const result = await db.execute(sql`
-      SELECT voice_id, vps_bridge_url, voice_max_retry_attempts, voice_retry_interval_minutes 
+      SELECT voice_id, vps_bridge_url, voice_max_retry_attempts, voice_retry_interval_minutes,
+             voice_retry_on_no_answer, voice_retry_on_busy, voice_retry_on_short_call, voice_retry_on_voicemail,
+             voice_amd_enabled
       FROM consultant_availability_settings
       WHERE consultant_id = ${consultantId}
       LIMIT 1
@@ -1614,8 +1616,17 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const vpsBridgeUrl = row?.vps_bridge_url || '';
     const voiceMaxRetryAttempts = row?.voice_max_retry_attempts ?? 3;
     const voiceRetryIntervalMinutes = row?.voice_retry_interval_minutes ?? 5;
+    const voiceRetryOnNoAnswer = row?.voice_retry_on_no_answer ?? true;
+    const voiceRetryOnBusy = row?.voice_retry_on_busy ?? true;
+    const voiceRetryOnShortCall = row?.voice_retry_on_short_call ?? false;
+    const voiceRetryOnVoicemail = row?.voice_retry_on_voicemail ?? true;
+    const voiceAmdEnabled = row?.voice_amd_enabled ?? true;
 
-    res.json({ voiceId, vpsBridgeUrl, voiceMaxRetryAttempts, voiceRetryIntervalMinutes });
+    res.json({ 
+      voiceId, vpsBridgeUrl, voiceMaxRetryAttempts, voiceRetryIntervalMinutes,
+      voiceRetryOnNoAnswer, voiceRetryOnBusy, voiceRetryOnShortCall, voiceRetryOnVoicemail,
+      voiceAmdEnabled
+    });
   } catch (error) {
     console.error("[Voice] Error fetching settings:", error);
     res.status(500).json({ error: "Errore nel recupero delle impostazioni" });
@@ -1752,13 +1763,20 @@ router.put("/sip-settings", authenticateToken, requireAnyRole(["consultant", "su
 router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { voiceMaxRetryAttempts, voiceRetryIntervalMinutes } = req.body;
+    const { 
+      voiceMaxRetryAttempts, voiceRetryIntervalMinutes,
+      voiceRetryOnNoAnswer, voiceRetryOnBusy, voiceRetryOnShortCall, voiceRetryOnVoicemail,
+      voiceAmdEnabled
+    } = req.body;
 
-    // Validate inputs
     const maxRetry = Math.max(1, Math.min(5, parseInt(voiceMaxRetryAttempts) || 3));
     const retryInterval = Math.max(1, Math.min(30, parseInt(voiceRetryIntervalMinutes) || 5));
+    const retryNoAnswer = voiceRetryOnNoAnswer !== undefined ? !!voiceRetryOnNoAnswer : true;
+    const retryBusy = voiceRetryOnBusy !== undefined ? !!voiceRetryOnBusy : true;
+    const retryShortCall = voiceRetryOnShortCall !== undefined ? !!voiceRetryOnShortCall : false;
+    const retryVoicemail = voiceRetryOnVoicemail !== undefined ? !!voiceRetryOnVoicemail : true;
+    const amdEnabled = voiceAmdEnabled !== undefined ? !!voiceAmdEnabled : true;
 
-    // Check if settings exist
     const existing = await db.execute(sql`
       SELECT id FROM consultant_availability_settings
       WHERE consultant_id = ${consultantId}
@@ -1770,6 +1788,11 @@ router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "
         UPDATE consultant_availability_settings
         SET voice_max_retry_attempts = ${maxRetry}, 
             voice_retry_interval_minutes = ${retryInterval},
+            voice_retry_on_no_answer = ${retryNoAnswer},
+            voice_retry_on_busy = ${retryBusy},
+            voice_retry_on_short_call = ${retryShortCall},
+            voice_retry_on_voicemail = ${retryVoicemail},
+            voice_amd_enabled = ${amdEnabled},
             updated_at = NOW()
         WHERE consultant_id = ${consultantId}
       `);
@@ -1777,11 +1800,15 @@ router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "
       await db.execute(sql`
         INSERT INTO consultant_availability_settings (
           id, consultant_id, voice_max_retry_attempts, voice_retry_interval_minutes,
+          voice_retry_on_no_answer, voice_retry_on_busy, voice_retry_on_short_call, voice_retry_on_voicemail,
+          voice_amd_enabled,
           appointment_duration, buffer_before, buffer_after,
           morning_slot_start, morning_slot_end, afternoon_slot_start, afternoon_slot_end,
           max_days_ahead, min_hours_notice, timezone, is_active
         ) VALUES (
           gen_random_uuid(), ${consultantId}, ${maxRetry}, ${retryInterval},
+          ${retryNoAnswer}, ${retryBusy}, ${retryShortCall}, ${retryVoicemail},
+          ${amdEnabled},
           60, 15, 15,
           '09:00', '13:00', '14:00', '18:00',
           30, 24, 'Europe/Rome', true
@@ -1789,8 +1816,17 @@ router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "
       `);
     }
 
-    console.log(`🔄 [Voice] Retry settings updated for consultant ${consultantId}: max=${maxRetry}, interval=${retryInterval}min`);
-    res.json({ success: true, voiceMaxRetryAttempts: maxRetry, voiceRetryIntervalMinutes: retryInterval });
+    console.log(`🔄 [Voice] Retry settings updated for consultant ${consultantId}: max=${maxRetry}, interval=${retryInterval}min, noAnswer=${retryNoAnswer}, busy=${retryBusy}, shortCall=${retryShortCall}, voicemail=${retryVoicemail}, amd=${amdEnabled}`);
+    res.json({ 
+      success: true, 
+      voiceMaxRetryAttempts: maxRetry, 
+      voiceRetryIntervalMinutes: retryInterval,
+      voiceRetryOnNoAnswer: retryNoAnswer,
+      voiceRetryOnBusy: retryBusy,
+      voiceRetryOnShortCall: retryShortCall,
+      voiceRetryOnVoicemail: retryVoicemail,
+      voiceAmdEnabled: amdEnabled
+    });
   } catch (error) {
     console.error("[Voice] Error updating retry settings:", error);
     res.status(500).json({ error: "Errore nell'aggiornamento delle impostazioni retry" });
@@ -2493,6 +2529,13 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     console.log(`📞 [Outbound] Calling VPS: ${outboundUrl} for ${call.target_phone}`);
     
     // 🔍 DEBUG: Log the FULL payload being sent to VPS
+    // Read AMD setting for consultant
+    const amdSettingResult = await db.execute(sql`
+      SELECT voice_amd_enabled FROM consultant_availability_settings
+      WHERE consultant_id = ${consultantId}
+    `);
+    const isAmdEnabled = (amdSettingResult.rows[0] as any)?.voice_amd_enabled !== false;
+
     const vpsPayload: Record<string, any> = {
       targetPhone: call.target_phone,
       callId: callId,
@@ -2500,13 +2543,12 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
       customPrompt: call.custom_prompt,
       callInstruction: call.call_instruction,
       instructionType: call.instruction_type,
-      useDefaultTemplate: call.use_default_template
+      useDefaultTemplate: call.use_default_template,
+      amdEnabled: isAmdEnabled
     };
-    // Manda sempre sipCallerId (numero Telnyx del consulente) come caller ID
     if (sipCallerId) {
       vpsPayload.sipCallerId = sipCallerId;
     }
-    // Non mandare sipGateway quando useVpsNumber=true — il bridge usa telnyx-ip di default
     if (!useVpsNumber && sipGateway) {
       vpsPayload.sipGateway = sipGateway;
     }
@@ -3297,8 +3339,19 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
     // Resolve task ID: use sourceTaskId from payload, or fallback to source_task_id from DB
     const resolvedTaskId = sourceTaskId || call.source_task_id;
     
-    // Handle based on status
-    const retryableStatuses = ['no_answer', 'busy', 'short_call'];
+    // Build dynamic retryable statuses based on consultant settings
+    const retryConfigResult = await db.execute(sql`
+      SELECT voice_retry_on_no_answer, voice_retry_on_busy, voice_retry_on_short_call, voice_retry_on_voicemail
+      FROM consultant_availability_settings 
+      WHERE consultant_id = ${consultantId}
+    `);
+    const retryConfig = retryConfigResult.rows[0] as any;
+    const retryableStatuses: string[] = [];
+    if (retryConfig?.voice_retry_on_no_answer !== false) retryableStatuses.push('no_answer');
+    if (retryConfig?.voice_retry_on_busy !== false) retryableStatuses.push('busy');
+    if (retryConfig?.voice_retry_on_short_call === true) retryableStatuses.push('short_call');
+    if (retryConfig?.voice_retry_on_voicemail !== false) retryableStatuses.push('voicemail');
+    console.log(`🔄 [Callback] Dynamic retryable statuses for consultant ${consultantId}: [${retryableStatuses.join(', ')}]`);
     
     // Use call.id (from DB lookup) instead of callId (from request) to handle fallback scenarios
     const dbCallId = call.id;

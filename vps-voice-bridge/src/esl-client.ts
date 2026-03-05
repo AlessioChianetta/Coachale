@@ -1,6 +1,7 @@
 import { config } from './config.js';
 import { logger } from './logger.js';
 import { setExpectedCallId } from './voice-bridge-server.js';
+import { notifyAmdResult } from './caller-context.js';
 import esl from 'modesl';
 
 const log = logger.child('ESL');
@@ -10,6 +11,8 @@ export const callMetadata = new Map<string, { callerIdNumber: string, callerIdNa
 export const outboundCallIdMap = new Map<string, string>();
 
 const pendingAnswers = new Map<string, number>();
+
+const amdDetectedCalls = new Set<string>();
 
 let eslConn: any = null;
 
@@ -62,7 +65,7 @@ export function startESLController(): void {
   const conn = new esl.Connection(config.esl.host, config.esl.port, config.esl.password, () => {
     log.info('✅ Connected to FreeSWITCH Event Socket!');
     eslConn = conn;
-    conn.subscribe(['CHANNEL_PARK', 'CHANNEL_ANSWER', 'CHANNEL_HANGUP']);
+    conn.subscribe(['CHANNEL_PARK', 'CHANNEL_ANSWER', 'CHANNEL_HANGUP', 'CUSTOM']);
   });
 
   conn.on('esl::event::CHANNEL_PARK::*', (event: any) => {
@@ -168,6 +171,12 @@ export function startESLController(): void {
 
     const tAnswer = Date.now();
     const ringTime = meta.parkTime ? tAnswer - meta.parkTime : 0;
+
+    if (amdDetectedCalls.has(resolvedUuid)) {
+      log.info(`📵 [CHANNEL_ANSWER] Skipping audio stream — AMD detected machine for uuid=${resolvedUuid}`);
+      return;
+    }
+
     log.info(`📞 OUTBOUND call ANSWERED — starting audio stream`, { uuid: resolvedUuid, ringTimeMs: ringTime });
 
     startAudioStream(conn, resolvedUuid, tAnswer);
@@ -181,6 +190,40 @@ export function startESLController(): void {
     }
     outboundCallIdMap.delete(uuid);
     pendingAnswers.delete(uuid);
+    amdDetectedCalls.delete(uuid);
+  });
+
+  conn.on('esl::event::CUSTOM::*', (event: any) => {
+    const subclass = event.getHeader('Event-Subclass') || '';
+    if (subclass !== 'amd::resolve') return;
+
+    const uuid = event.getHeader('Unique-ID');
+    const amdResult = event.getHeader('variable_amd_result') || event.getHeader('amd_result') || 'unknown';
+    const amdCause = event.getHeader('variable_amd_cause') || event.getHeader('amd_cause') || '';
+
+    log.info(`🤖 [AMD] Detection result uuid=${uuid} result=${amdResult} cause=${amdCause}`);
+
+    if (!uuid?.startsWith('outbound-')) return;
+
+    if (amdResult.toLowerCase() === 'machine') {
+      amdDetectedCalls.add(uuid);
+      log.info(`📵 [AMD] Machine/voicemail detected — hanging up call uuid=${uuid}`);
+
+      const callId = outboundCallIdMap.get(uuid);
+      if (callId) {
+        notifyAmdResult(callId, amdResult).catch(err => {
+          log.warn(`[AMD] Failed to notify Replit about AMD result`, { error: err?.message });
+        });
+      }
+
+      if (eslConn) {
+        (eslConn as any).bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`, (res: any) => {
+          log.info(`[AMD] Hangup sent for uuid=${uuid} response=${res?.getBody?.() || res}`);
+        });
+      }
+    } else {
+      log.info(`✅ [AMD] Human detected uuid=${uuid} — proceeding with audio stream`);
+    }
   });
 
   conn.on('error', (err: any) => {

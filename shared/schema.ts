@@ -3465,6 +3465,12 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   voiceVadEndSensitivity: varchar("voice_vad_end_sensitivity", { length: 30 }).default("END_SENSITIVITY_LOW"),
   voiceVadSilenceMs: integer("voice_vad_silence_ms").default(500),
 
+  voiceRetryOnNoAnswer: boolean("voice_retry_on_no_answer").default(true),
+  voiceRetryOnBusy: boolean("voice_retry_on_busy").default(true),
+  voiceRetryOnShortCall: boolean("voice_retry_on_short_call").default(false),
+  voiceRetryOnVoicemail: boolean("voice_retry_on_voicemail").default(true),
+  voiceAmdEnabled: boolean("voice_amd_enabled").default(true),
+
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

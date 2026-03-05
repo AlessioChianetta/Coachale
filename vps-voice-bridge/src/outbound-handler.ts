@@ -19,6 +19,7 @@ interface OutboundCallRequest {
   customPrompt?: string;
   sipCallerId?: string;
   sipGateway?: string;
+  amdEnabled?: boolean;
 }
 
 interface OutboundCallResponse {
@@ -34,7 +35,7 @@ function validatePhoneNumber(phone: string): boolean {
 }
 
 export async function handleOutboundCall(req: OutboundCallRequest): Promise<OutboundCallResponse> {
-  const { targetPhone, callId, aiMode, sipCallerId, sipGateway } = req;
+  const { targetPhone, callId, aiMode, sipCallerId, sipGateway, amdEnabled } = req;
 
   log.info(`[BRIDGE:OUTBOUND] Received outbound call request callId=${callId} targetPhone=${targetPhone} aiMode=${aiMode}`);
 
@@ -55,14 +56,17 @@ export async function handleOutboundCall(req: OutboundCallRequest): Promise<Outb
   const uuid = `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   let dialString: string;
 
+  const amdParam = amdEnabled ? `,execute_on_answer='amd'` : '';
+  log.info(`[BRIDGE:OUTBOUND] AMD enabled=${!!amdEnabled}`);
+
   if (isLocalExtension) {
     log.info(`[BRIDGE:OUTBOUND] Calling LOCAL extension ${targetPhone} (no gateway, no tech prefix)`);
-    dialString = `{origination_caller_id_number=${callerId},effective_caller_id_number=${callerId},originate_timeout=30,origination_uuid=${uuid}}user/${targetPhone} &park()`;
+    dialString = `{origination_caller_id_number=${callerId},effective_caller_id_number=${callerId},originate_timeout=30,origination_uuid=${uuid}${amdParam}}user/${targetPhone} &park()`;
   } else {
     log.info(`[BRIDGE:OUTBOUND] Calling PSTN number via gateway phone=${targetPhone} gateway=${gateway} callerId=${callerId}`);
     const techPrefix = config.sip.techPrefix || '';
     const dialTarget = techPrefix ? `${techPrefix}${targetPhone}` : targetPhone;
-    dialString = `{origination_caller_id_number=${callerId},effective_caller_id_number=${callerId},originate_timeout=30,origination_uuid=${uuid}}sofia/gateway/${gateway}/${dialTarget} &park()`;
+    dialString = `{origination_caller_id_number=${callerId},effective_caller_id_number=${callerId},originate_timeout=30,origination_uuid=${uuid}${amdParam}}sofia/gateway/${gateway}/${dialTarget} &park()`;
   }
 
   log.info(`[BRIDGE:OUTBOUND] Executing originate command uuid=${uuid} dialString=${dialString}`);
