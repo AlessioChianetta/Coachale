@@ -1027,7 +1027,17 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
         ? (taskAdditionalCtx.call_instruction || null)
         : task.ai_instruction;
       
-      const taskVoiceFromNumber = taskAdditionalCtx.voice_from_number || null;
+      let taskVoiceFromNumber = taskAdditionalCtx.voice_from_number || null;
+      if (!taskVoiceFromNumber && task.ai_role) {
+        try {
+          const ocResult = await db.execute(sql`
+            SELECT outreach_config FROM ai_autonomy_settings
+            WHERE consultant_id::text = ${task.consultant_id}::text LIMIT 1
+          `);
+          const oc = (ocResult.rows[0] as any)?.outreach_config || {};
+          taskVoiceFromNumber = oc.role_voice_numbers?.[task.ai_role] || null;
+        } catch {}
+      }
       await db.execute(sql`
         INSERT INTO scheduled_voice_calls (
           id, consultant_id, target_phone, scheduled_at, status, ai_mode,

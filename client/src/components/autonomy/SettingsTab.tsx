@@ -1066,6 +1066,20 @@ function SettingsTab({
   dataCatalogContent,
 }: SettingsTabProps) {
   const [, navigate] = useLocation();
+  const { data: settingsVoiceNumbers = [] } = useQuery<{ phone_number: string; display_name?: string }[]>({
+    queryKey: ["/api/voice/numbers/settings-tab"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/voice/numbers", { headers: getAuthHeaders() });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return (data.numbers || []).filter((n: any) => n.is_active).map((n: any) => ({
+          phone_number: n.phone_number,
+          display_name: n.display_name || n.phone_number,
+        }));
+      } catch { return []; }
+    },
+  });
   const [showArchDetails, setShowArchDetails] = useState(true);
   const [autonomiaStep, setAutonomiaStep] = useState(0);
   const [showPromptForRole, setShowPromptForRole] = useState<string | null>(null);
@@ -2818,6 +2832,63 @@ function SettingsTab({
                                 </TabsContent>
 
                                 <TabsContent value="integrazioni" className="mt-0 space-y-6">
+                                  {role.preferredChannels.includes('voice') && settingsVoiceNumbers.length > 1 && (
+                                    <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-3">
+                                      <p className="text-sm font-semibold flex items-center gap-2">
+                                        <Phone className="h-4 w-4 text-pink-500" />
+                                        Numero chiamante
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        Quale numero usa {role.name} quando effettua chiamate vocali
+                                      </p>
+                                      <Select
+                                        value={settings.outreach_config?.role_voice_numbers?.[role.id] || "auto"}
+                                        onValueChange={(v) => {
+                                          setSettings(prev => {
+                                            const currentRoleNumbers = prev.outreach_config?.role_voice_numbers || {};
+                                            const newRoleNumbers = { ...currentRoleNumbers };
+                                            if (v === "auto") {
+                                              delete newRoleNumbers[role.id];
+                                            } else {
+                                              newRoleNumbers[role.id] = v;
+                                            }
+                                            return {
+                                              ...prev,
+                                              outreach_config: {
+                                                ...prev.outreach_config,
+                                                role_voice_numbers: newRoleNumbers,
+                                              } as any,
+                                            };
+                                          });
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-9 text-xs rounded-xl w-full max-w-xs">
+                                          <SelectValue placeholder="Seleziona numero" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="auto">Automatico (default consulente)</SelectItem>
+                                          {settingsVoiceNumbers.map((n) => (
+                                            <SelectItem key={n.phone_number} value={n.phone_number}>{n.display_name}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <div className="flex justify-end pt-1">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 text-xs px-3 hover:bg-primary/10 hover:text-primary rounded-xl"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onSave();
+                                          }}
+                                          disabled={isSaving}
+                                        >
+                                          {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+                                          Salva
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
                                   <AgentContextEditor roleId={role.id} roleName={role.name} kbDocuments={kbDocuments} />
                                   <TelegramConfig roleId={role.id} roleName={role.name} />
                                 </TabsContent>

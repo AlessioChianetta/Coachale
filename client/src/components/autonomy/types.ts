@@ -55,6 +55,8 @@ export interface OutreachConfig {
   max_new_leads_before_pause?: number;
   lead_source_filter?: "maps" | "search" | "both";
   max_crm_outreach_per_cycle?: number;
+  voice_from_number?: string;
+  role_voice_numbers?: Record<string, string>;
 }
 
 export interface RoleStatus {
