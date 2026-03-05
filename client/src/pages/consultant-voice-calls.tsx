@@ -128,8 +128,19 @@ import { it } from "date-fns/locale";
 
 const ITALY_TZ = "Europe/Rome";
 
+const parseUTCDate = (date: Date | string): Date => {
+  if (date instanceof Date) return date;
+  let raw = date;
+  if (!raw.endsWith('Z') && !raw.includes('+') && !raw.includes('T')) {
+    raw = raw.replace(' ', 'T') + 'Z';
+  } else if (!raw.endsWith('Z') && !raw.includes('+')) {
+    raw = raw + 'Z';
+  }
+  return new Date(raw);
+};
+
 const toItalianTime = (date: Date | string): Date => {
-  return toZonedTime(new Date(date), ITALY_TZ);
+  return toZonedTime(parseUTCDate(date), ITALY_TZ);
 };
 
 interface VoiceCall {
@@ -993,7 +1004,7 @@ function ActiveCallDuration({ startedAt }: { startedAt?: string }) {
   const [elapsed, setElapsed] = useState('');
   useEffect(() => {
     if (!startedAt) return;
-    const start = new Date(startedAt).getTime();
+    const start = parseUTCDate(startedAt).getTime();
     const tick = () => {
       const diff = Math.max(0, Math.floor((Date.now() - start) / 1000));
       const m = Math.floor(diff / 60);
@@ -3180,7 +3191,7 @@ export default function ConsultantVoiceCallsPage() {
                                         {format(toItalianTime(c.started_at), "dd/MM HH:mm", { locale: it })}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        {formatDistanceToNow(new Date(c.started_at), { addSuffix: true, locale: it })}
+                                        {formatDistanceToNow(parseUTCDate(c.started_at), { addSuffix: true, locale: it })}
                                       </div>
                                     </div>
                                   </div>
@@ -3311,7 +3322,7 @@ export default function ConsultantVoiceCallsPage() {
                                         {format(toItalianTime(call.started_at), "dd/MM HH:mm", { locale: it })}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        {formatDistanceToNow(new Date(call.started_at), { addSuffix: true, locale: it })}
+                                        {formatDistanceToNow(parseUTCDate(call.started_at), { addSuffix: true, locale: it })}
                                       </div>
                                     </div>
                                   </div>
@@ -3527,7 +3538,7 @@ export default function ConsultantVoiceCallsPage() {
                           if (contact.statuses.busy) statsLine.push(`${contact.statuses.busy} occupat${contact.statuses.busy === 1 ? 'o' : 'i'}`);
                           if (contact.statuses.short_call) statsLine.push(`${contact.statuses.short_call} brev${contact.statuses.short_call === 1 ? 'e' : 'i'}`);
                           if (contact.lastCallAt) {
-                            statsLine.push(`Ultima: ${formatDistanceToNow(new Date(contact.lastCallAt), { addSuffix: true, locale: it })}`);
+                            statsLine.push(`Ultima: ${formatDistanceToNow(parseUTCDate(contact.lastCallAt), { addSuffix: true, locale: it })}`);
                           }
 
                           return (
@@ -3635,7 +3646,7 @@ export default function ConsultantVoiceCallsPage() {
                                                     <p className="text-xs text-muted-foreground">
                                                       {format(toItalianTime(item.timestamp), "dd/MM/yyyy HH:mm", { locale: it })}
                                                       {' · '}
-                                                      {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true, locale: it })}
+                                                      {formatDistanceToNow(parseUTCDate(item.timestamp), { addSuffix: true, locale: it })}
                                                     </p>
                                                   )}
                                                   {item.type === 'call' && item.transcript_preview && (
