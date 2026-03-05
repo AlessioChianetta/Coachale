@@ -2705,7 +2705,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       FROM ai_scheduled_tasks
       WHERE consultant_id::text = ${cId}
       GROUP BY contact_id
-    ) lt ON lt.contact_id = u.id::text
+    ) lt ON lt.contact_id::text = u.id::text
     WHERE urp.consultant_id::text = ${cId} AND urp.role = 'client'
       AND u.is_active = true
     ORDER BY COALESCE(lt.last_task_at, '1970-01-01'::timestamp) ASC, u.first_name ASC
