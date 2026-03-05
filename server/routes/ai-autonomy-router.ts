@@ -1500,17 +1500,18 @@ export async function scheduleIndividualOutreach(
     const scheduledCallId = `svc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const voiceStatus = mode === 'autonomous' ? 'scheduled' : 'pending';
 
+    const voiceFromNumber = config.outreachConfig?.voice_from_number || null;
     await db.execute(sql`
       INSERT INTO scheduled_voice_calls (
         id, consultant_id, target_phone, scheduled_at, status, ai_mode,
         custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
-        priority, source_task_id, attempts_log, use_default_template, created_at, updated_at
+        priority, source_task_id, attempts_log, use_default_template, from_number, created_at, updated_at
       ) VALUES (
         ${scheduledCallId}, ${consultantId}, ${lead.phone || ''},
         ${scheduledAtIso}, ${voiceStatus}, 'outreach',
         ${callContext}, ${callOperationalInstruction},
         'task', 0, 3,
-        2, ${taskId}, '[]'::jsonb, ${!config.voiceTemplateId}, NOW(), NOW()
+        2, ${taskId}, '[]'::jsonb, ${!config.voiceTemplateId}, ${voiceFromNumber}, NOW(), NOW()
       )
     `);
     console.log(`[HUNTER] Step 2/6: Created scheduled_voice_calls (id=${scheduledCallId}, status=${voiceStatus}, phone=${lead.phone || 'N/A'})`);
@@ -1528,6 +1529,7 @@ export async function scheduleIndividualOutreach(
       voice_template_name: config.voiceTemplateName || null,
       voice_template_id: config.voiceTemplateId || null,
       call_instruction: config.callInstructionTemplate || null,
+      voice_from_number: voiceFromNumber || null,
     });
 
     await db.execute(sql`

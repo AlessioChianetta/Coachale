@@ -625,7 +625,7 @@ export default function ConsultantLeadScraper() {
   const outreachDefaults = {
     enabled: false, require_approval: true, max_searches_per_day: 5, max_calls_per_day: 10, max_whatsapp_per_day: 15,
     max_emails_per_day: 20, score_threshold: 60, channel_priority: ["voice", "whatsapp", "email"],
-    cooldown_hours: 48, whatsapp_config_id: "", voice_template_id: "", email_account_id: "", pool_id: "",
+    cooldown_hours: 48, whatsapp_config_id: "", voice_template_id: "", voice_from_number: "", email_account_id: "", pool_id: "",
     call_instruction_template: "", whatsapp_template_id: "", whatsapp_template_ids: [] as string[],
     cooldown_new_hours: 24, cooldown_contacted_days: 5, cooldown_negotiation_days: 7,
     max_attempts_per_lead: 3, first_contact_channel: "auto", high_score_channel: "voice",
@@ -657,6 +657,21 @@ export default function ConsultantLeadScraper() {
           id: t.id,
           name: t.name,
           description: t.description || "",
+        }));
+      } catch { return []; }
+    },
+  });
+
+  const { data: hunterVoiceNumbers = [] } = useQuery<{ phone_number: string; display_name?: string }[]>({
+    queryKey: ["/api/voice/numbers/hunter"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/voice/numbers", { headers: getAuthHeaders() });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return (data.numbers || []).filter((n: any) => n.is_active).map((n: any) => ({
+          phone_number: n.phone_number,
+          display_name: n.display_name || n.phone_number,
         }));
       } catch { return []; }
     },
@@ -4092,6 +4107,22 @@ export default function ConsultantLeadScraper() {
                                   </SelectContent>
                                 </Select>
                               </div>
+                              {hunterVoiceNumbers.length > 1 && (
+                                <div className="space-y-2">
+                                  <Label className="text-xs text-muted-foreground">Numero chiamante</Label>
+                                  <Select value={outreachConfig.voice_from_number || "auto"} onValueChange={(v) => updateOutreachConfig("voice_from_number", v === "auto" ? "" : v)}>
+                                    <SelectTrigger className="w-full h-10 text-sm">
+                                      <SelectValue placeholder="Seleziona numero" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="auto">Automatico (default)</SelectItem>
+                                      {hunterVoiceNumbers.map((n) => (
+                                        <SelectItem key={n.phone_number} value={n.phone_number}>{n.display_name}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
                               <div className="space-y-2">
                                 <Label className="text-xs text-muted-foreground">Istruzione chiamata</Label>
                                 <Textarea

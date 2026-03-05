@@ -1027,18 +1027,19 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
         ? (taskAdditionalCtx.call_instruction || null)
         : task.ai_instruction;
       
+      const taskVoiceFromNumber = taskAdditionalCtx.voice_from_number || null;
       await db.execute(sql`
         INSERT INTO scheduled_voice_calls (
           id, consultant_id, target_phone, scheduled_at, status, ai_mode,
           custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
-          priority, source_task_id, attempts_log, use_default_template, created_at, updated_at
+          priority, source_task_id, attempts_log, use_default_template, from_number, created_at, updated_at
         ) VALUES (
           ${scheduledCallId}, ${task.consultant_id}, ${task.contact_phone}, 
           NOW(), 'calling', 'assistenza',
           ${voiceLeadContext}, ${voiceOperationalInstruction}, 
           ${task.task_type === 'single_call' ? 'task' : 'reminder'},
           1, ${task.max_attempts || 3},
-          1, ${task.id}, '[]'::jsonb, true, NOW(), NOW()
+          1, ${task.id}, '[]'::jsonb, true, ${taskVoiceFromNumber}, NOW(), NOW()
         )
       `);
       
