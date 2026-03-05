@@ -3331,6 +3331,23 @@ async function cleanupStaleCalling(): Promise<void> {
   } catch (error) {
     console.error("[Outbound] Stale calling cleanup failed:", error);
   }
+
+  try {
+    const stale = await db.execute(sql`
+      UPDATE voice_calls
+      SET status = 'failed',
+          outcome = 'stale_talking_cleanup',
+          ended_at = NOW(),
+          updated_at = NOW()
+      WHERE status = 'talking' AND updated_at < NOW() - INTERVAL '2 hours'
+      RETURNING id, consultant_id
+    `);
+    if (stale.rows.length > 0) {
+      console.log(`🧹 [Cleanup] Cleared ${stale.rows.length} stale talking voice_calls: ${stale.rows.map((r: any) => r.id).join(', ')}`);
+    }
+  } catch (error) {
+    console.error("[Cleanup] Stale talking voice_calls cleanup failed:", error);
+  }
 }
 
 setInterval(() => cleanupStaleCalling(), 2 * 60 * 1000);
