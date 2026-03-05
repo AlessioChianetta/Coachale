@@ -10292,6 +10292,7 @@ export const voiceCalls = pgTable("voice_calls", {
   transcriptChunks: jsonb("transcript_chunks"),
   recordingUrl: text("recording_url"),
   outcome: varchar("outcome", { length: 100 }),
+  callDirection: varchar("call_direction", { length: 20 }),
   transferTarget: varchar("transfer_target", { length: 50 }),
   telephonyMinutes: decimal("telephony_minutes", { precision: 10, scale: 2 }),
   aiTokensUsed: integer("ai_tokens_used"),

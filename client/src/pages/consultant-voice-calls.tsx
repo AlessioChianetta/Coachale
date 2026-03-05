@@ -1165,7 +1165,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
               <Phone className="h-3 w-3 text-green-600 dark:text-green-400 animate-pulse" />
               <span className="text-[10px] font-semibold text-green-700 dark:text-green-400">{call.status === 'talking' ? 'Attiva' : 'Ring...'}</span>
             </div>
-            {call.status === 'talking' && <ActiveCallDuration startedAt={call.voice_call_started_at || call.updated_at} />}
+            <ActiveCallDuration startedAt={call.status === 'talking' ? (call.voice_call_started_at || call.updated_at) : call.updated_at} />
           </div>
         )}
         {variant === 'retry' && (

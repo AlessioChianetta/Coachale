@@ -3549,11 +3549,38 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
       if (ghostIds.length > 0) {
         console.log(`🧹 [ACTIVE-CALLS-DEBUG] Cleaning ${ghostIds.length} ghost calls: ${ghostIds.join(', ')}`);
         for (const ghostId of ghostIds) {
-          await db.execute(sql`
-            UPDATE scheduled_voice_calls 
-            SET status = 'failed', error_message = 'ghost_no_stream', updated_at = NOW()
-            WHERE id = ${ghostId} AND status IN ('calling', 'talking')
-          `);
+          const ghostCall = activeCalls.find((c: any) => c.id === ghostId);
+          let ghostStatus = 'failed';
+          let ghostMsg = 'ghost_no_stream';
+          if (ghostCall?.voice_call_id) {
+            const vcResult = await db.execute(sql`
+              SELECT status, duration_seconds FROM voice_calls WHERE id = ${ghostCall.voice_call_id}
+            `);
+            const vc = vcResult.rows[0] as any;
+            if (vc?.status === 'completed') {
+              ghostStatus = 'completed';
+              ghostMsg = 'ghost_recovered_completed';
+              console.log(`🧹 [GHOST] ${ghostId} → voice_call ${ghostCall.voice_call_id} is completed (${vc.duration_seconds}s) — marking scheduled call as completed`);
+            }
+          }
+          if (ghostStatus === 'completed') {
+            const vc = (await db.execute(sql`SELECT duration_seconds, outcome FROM voice_calls WHERE id = ${ghostCall!.voice_call_id}`)).rows[0] as any;
+            await db.execute(sql`
+              UPDATE scheduled_voice_calls 
+              SET status = 'completed', error_message = ${ghostMsg}, 
+                  voice_call_id = ${ghostCall!.voice_call_id},
+                  duration_seconds = ${vc?.duration_seconds || 0},
+                  hangup_cause = ${vc?.outcome || 'normal_end'},
+                  last_attempt_at = NOW(), updated_at = NOW()
+              WHERE id = ${ghostId} AND status IN ('calling', 'talking')
+            `);
+          } else {
+            await db.execute(sql`
+              UPDATE scheduled_voice_calls 
+              SET status = 'failed', error_message = ${ghostMsg}, updated_at = NOW()
+              WHERE id = ${ghostId} AND status IN ('calling', 'talking')
+            `);
+          }
         }
         const cleanedSet = new Set(ghostIds);
         const filteredCalls = allCalls.filter((c: any) => !cleanedSet.has(c.id));

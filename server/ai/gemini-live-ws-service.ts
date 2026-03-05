@@ -1405,11 +1405,13 @@ async function getUserIdFromRequest(req: any): Promise<{
         // ⚡ FIRE-AND-FORGET: Voice call record creation doesn't block auth completion
         const voiceCallId = `vc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const freeswitchUuid = url.searchParams.get('uuid') || `ws_${Date.now()}`;
+        const detectedDirection = (scheduledCallId && scheduledCallId.startsWith('sc_')) || (voiceCallIdParam && voiceCallIdParam.startsWith('outbound-')) ? 'outbound' : 'inbound';
         
         db.insert(voiceCalls).values({
           id: voiceCallId,
           callerId: normalizedCallerId,
           calledNumber: resolvedCalledNumber,
+          callDirection: detectedDirection,
           clientId: userId || null,
           consultantId: resolvedConsultantId,
           freeswitchUuid: freeswitchUuid,
@@ -10087,6 +10089,7 @@ ${compactFeedback}
             const activeCall = activeVoiceCalls.get(voiceCallId);
             const startTime = activeCall?.startedAt || new Date();
             const durationSeconds = Math.round((endedAt.getTime() - startTime.getTime()) / 1000);
+            const recoveredScheduledCallId = activeCall?.scheduledCallId || null;
             
             // Use conversationMessages directly for final transcript (already accumulated during call)
             let transcriptText = '';
@@ -10141,10 +10144,17 @@ ${compactFeedback}
               }
             }
 
+            // 🔗 SYNC: Resolve effective scheduledCallId (from WS param or activeVoiceCalls map fallback)
+            let effectiveScheduledCallId = phoneScheduledCallId;
+            if (!effectiveScheduledCallId && recoveredScheduledCallId) {
+              effectiveScheduledCallId = recoveredScheduledCallId;
+              console.log(`📞 [LIFECYCLE] WS Close: phoneScheduledCallId was UNDEFINED — recovered scheduledCallId=${effectiveScheduledCallId} from activeVoiceCalls map`);
+            }
+
             if (phoneCallerId && consultantId) {
               try {
                 const { ensureProactiveLead } = await import('../utils/ensure-proactive-lead');
-                const callSource = phoneScheduledCallId ? 'voice_outbound' : 'voice_inbound';
+                const callSource = effectiveScheduledCallId ? 'voice_outbound' : 'voice_inbound';
                 await ensureProactiveLead({
                   consultantId,
                   phoneNumber: phoneCallerId,
@@ -10155,15 +10165,13 @@ ${compactFeedback}
                 console.error(`[${connectionId}] ensureProactiveLead error (non-blocking):`, epErr.message);
               }
             }
-
-            // 🔗 SYNC: Update scheduled_voice_call if this was a scheduled outbound call
-            console.log(`📞 [LIFECYCLE] WS Close: phoneScheduledCallId=${phoneScheduledCallId || 'UNDEFINED'} | voiceCallId=${voiceCallId} | isGoAwayReconnecting=${isGoAwayReconnecting} | duration=${durationSeconds}s | code=${code}`);
-            if (!phoneScheduledCallId) {
-              console.log(`📞 [LIFECYCLE] ⚠️ phoneScheduledCallId is UNDEFINED — scheduled_voice_calls will NOT be marked completed! This call will remain as 'calling' or 'talking' until ghost cleanup catches it.`);
+            console.log(`📞 [LIFECYCLE] WS Close: effectiveScheduledCallId=${effectiveScheduledCallId || 'NONE'} | voiceCallId=${voiceCallId} | isGoAwayReconnecting=${isGoAwayReconnecting} | duration=${durationSeconds}s | code=${code}`);
+            if (!effectiveScheduledCallId) {
+              console.log(`📞 [LIFECYCLE] No scheduledCallId available (inbound call or param missing) — scheduled_voice_calls not updated`);
             }
-            if (phoneScheduledCallId && isGoAwayReconnecting) {
+            if (effectiveScheduledCallId && isGoAwayReconnecting) {
               console.log(`🔄 [${connectionId}] Skipping scheduled_voice_call completion — GoAway reconnect in progress (call still active)`);
-            } else if (phoneScheduledCallId) {
+            } else if (effectiveScheduledCallId) {
               try {
                 await db.execute(sql`
                   UPDATE scheduled_voice_calls 
@@ -10173,12 +10181,12 @@ ${compactFeedback}
                       hangup_cause = ${code === 1000 ? 'normal_end' : `disconnect_${code}`},
                       last_attempt_at = NOW(),
                       updated_at = NOW()
-                  WHERE id = ${phoneScheduledCallId}
+                  WHERE id = ${effectiveScheduledCallId}
                 `);
-                console.log(`🔗 [${connectionId}] Synced scheduled_voice_call ${phoneScheduledCallId} -> completed`);
+                console.log(`🔗 [${connectionId}] Synced scheduled_voice_call ${effectiveScheduledCallId} -> completed`);
                 
                 const svcResult = await db.execute(sql`
-                  SELECT source_task_id FROM scheduled_voice_calls WHERE id = ${phoneScheduledCallId}
+                  SELECT source_task_id FROM scheduled_voice_calls WHERE id = ${effectiveScheduledCallId}
                 `);
                 const sourceTaskId = (svcResult.rows[0] as any)?.source_task_id;
                 
