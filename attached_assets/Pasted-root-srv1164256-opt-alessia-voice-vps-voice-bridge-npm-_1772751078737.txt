@@ -1,0 +1,70 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# npm run build
+
+> alessia-voice-bridge@1.0.0 build
+> tsc
+
+src/esl-client.ts:2:29 - error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './config.js'?
+
+2 import { voiceConfig } from './config';
+                              ~~~~~~~~~~
+
+src/esl-client.ts:95:8 - error TS2345: Argument of type '(err: any) => void' is not assignable to parameter of type '() => void'.
+  Target signature provides too few arguments. Expected 1 or more, but got 0.
+
+95     ], (err) => {
+          ~~~~~~~~~~
+
+src/esl-client.ts:95:9 - error TS7006: Parameter 'err' implicitly has an 'any' type.
+
+95     ], (err) => {
+           ~~~
+
+src/esl-client.ts:216:62 - error TS2345: Argument of type '(res: ESLEvent) => void' is not assignable to parameter of type 'string[]'.
+
+216       this.connection.api(`uuid_getvar ${uuid} ${variable}`, (res: ESLEvent) => {
+                                                                 ~~~~~~~~~~~~~~~~~~~~
+
+src/esl-client.ts:234:36 - error TS2345: Argument of type '(res: ESLEvent) => void' is not assignable to parameter of type 'string[]'.
+
+234       this.connection.api(command, (res: ESLEvent) => {
+                                       ~~~~~~~~~~~~~~~~~~~~
+
+src/index.ts:4:10 - error TS2305: Module '"./esl-client.js"' has no exported member 'startESLController'.
+
+4 import { startESLController } from './esl-client.js';
+           ~~~~~~~~~~~~~~~~~~
+
+src/outbound-handler.ts:11:10 - error TS2305: Module '"./esl-client.js"' has no exported member 'originateOutboundCall'.
+
+11 import { originateOutboundCall, outboundCallIdMap, callMetadata } from './esl-client.js';
+            ~~~~~~~~~~~~~~~~~~~~~
+
+src/outbound-handler.ts:11:33 - error TS2305: Module '"./esl-client.js"' has no exported member 'outboundCallIdMap'.
+
+11 import { originateOutboundCall, outboundCallIdMap, callMetadata } from './esl-client.js';
+                                   ~~~~~~~~~~~~~~~~~
+
+src/outbound-handler.ts:11:52 - error TS2305: Module '"./esl-client.js"' has no exported member 'callMetadata'.
+
+11 import { originateOutboundCall, outboundCallIdMap, callMetadata } from './esl-client.js';
+                                                      ~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:11:10 - error TS2305: Module '"./esl-client.js"' has no exported member 'callMetadata'.
+
+11 import { callMetadata, getEslConnection } from './esl-client.js';
+            ~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:11:24 - error TS2305: Module '"./esl-client.js"' has no exported member 'getEslConnection'.
+
+11 import { callMetadata, getEslConnection } from './esl-client.js';
+                          ~~~~~~~~~~~~~~~~
+
+
+Found 11 errors in 4 files.
+
+Errors  Files
+     5  src/esl-client.ts:2
+     1  src/index.ts:4
+     3  src/outbound-handler.ts:11
+     2  src/voice-bridge-server.ts:11
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
