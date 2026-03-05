@@ -1425,6 +1425,18 @@ async function getUserIdFromRequest(req: any): Promise<{
           status: 'talking',
         });
 
+        if (scheduledCallId) {
+          db.execute(sql`
+            UPDATE scheduled_voice_calls 
+            SET status = 'talking', voice_call_id = ${voiceCallId}, updated_at = NOW()
+            WHERE id = ${scheduledCallId} AND status IN ('calling', 'completed')
+          `).then(() => {
+            console.log(`📞 [PHONE SERVICE] scheduled_voice_calls ${scheduledCallId} → talking`);
+          }).catch(err => {
+            console.error(`❌ [PHONE SERVICE] Failed to update scheduled_voice_calls to talking:`, err);
+          });
+        }
+
         console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - CalledNumber: ${resolvedCalledNumber} - Consultant: ${resolvedConsultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'} - Voice: ${consultantVoice}${callInstruction ? ' - HAS INSTRUCTION' : ''}`);
         console.log(`⏱️ [AUTH-DETAIL] TOTAL auth phase: ${Date.now() - authPhaseStart}ms (JWT: sync, parallelQueries: ${Date.now() - parallelStart}ms, post-query logic: ${Date.now() - authPhaseStart - (Date.now() - parallelStart)}ms)`);
 
@@ -2085,6 +2097,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     // This ensures GO_AWAY always has a handle to share even before first update
     let lastSessionHandle: string | null = validatedResumeHandle;
     let goAwayReceived = false;
+    let isGoAwayReconnecting = false;
     let geminiReconnectAttempts = 0;
     const MAX_GEMINI_RECONNECT_ATTEMPTS = 8;
     
@@ -9064,6 +9077,7 @@ ${compactFeedback}
           console.log(`   → This connection's cleanup will proceed normally below`);
           console.log(`📞━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
           
+          isGoAwayReconnecting = true;
           try {
             clientWs.send(JSON.stringify({
               type: 'gemini_reconnecting',
@@ -10105,9 +10119,10 @@ ${compactFeedback}
             }
 
             // 🔗 SYNC: Update scheduled_voice_call if this was a scheduled outbound call
-            if (phoneScheduledCallId) {
+            if (phoneScheduledCallId && isGoAwayReconnecting) {
+              console.log(`🔄 [${connectionId}] Skipping scheduled_voice_call completion — GoAway reconnect in progress (call still active)`);
+            } else if (phoneScheduledCallId) {
               try {
-                // Update scheduled_voice_call with completion info
                 await db.execute(sql`
                   UPDATE scheduled_voice_calls 
                   SET status = 'completed',
@@ -10120,20 +10135,17 @@ ${compactFeedback}
                 `);
                 console.log(`🔗 [${connectionId}] Synced scheduled_voice_call ${phoneScheduledCallId} -> completed`);
                 
-                // Check if this call originated from an AI task
                 const svcResult = await db.execute(sql`
                   SELECT source_task_id FROM scheduled_voice_calls WHERE id = ${phoneScheduledCallId}
                 `);
                 const sourceTaskId = (svcResult.rows[0] as any)?.source_task_id;
                 
                 if (sourceTaskId) {
-                  // Get task data for recurrence handling
                   const taskResult = await db.execute(sql`
                     SELECT * FROM ai_scheduled_tasks WHERE id = ${sourceTaskId}
                   `);
                   const task = taskResult.rows[0] as any;
                   
-                  // Update AI task status
                   await db.execute(sql`
                     UPDATE ai_scheduled_tasks 
                     SET status = 'completed',
@@ -10145,7 +10157,6 @@ ${compactFeedback}
                   `);
                   console.log(`🔗 [${connectionId}] Synced AI Task ${sourceTaskId} -> completed`);
                   
-                  // Handle recurrence if applicable
                   if (task && task.recurrence_type && task.recurrence_type !== 'once') {
                     try {
                       const { scheduleNextRecurrence } = await import('../cron/ai-task-scheduler');
