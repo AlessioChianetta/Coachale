@@ -1238,9 +1238,15 @@ async function getUserIdFromRequest(req: any): Promise<{
           const channelCheckStart = Date.now();
           const maxChannels = numberConfig?.max_concurrent_calls || 5;
           const activeCallsResult = await db.execute(sql`
-            SELECT COUNT(*) as active_count 
-            FROM voice_calls 
-            WHERE consultant_id = ${resolvedConsultantId} AND called_number = ${resolvedCalledNumber} AND status = 'talking'
+            SELECT COUNT(DISTINCT vc.id) as active_count 
+            FROM voice_calls vc
+            LEFT JOIN scheduled_voice_calls svc ON svc.voice_call_id = vc.id
+            WHERE vc.consultant_id = ${resolvedConsultantId} AND vc.status = 'talking'
+              AND (
+                vc.called_number = ${resolvedCalledNumber}
+                OR vc.caller_id = ${resolvedCalledNumber}
+                OR svc.from_number = ${resolvedCalledNumber}
+              )
           `);
           const activeCount = parseInt((activeCallsResult.rows[0] as any)?.active_count || '0', 10);
           console.log(`⏱️ [AUTH-DETAIL] Channel check: ${Date.now() - channelCheckStart}ms (active: ${activeCount}/${maxChannels}, number: ${resolvedCalledNumber})`);
