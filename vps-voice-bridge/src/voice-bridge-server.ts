@@ -103,7 +103,7 @@ export function setExpectedCallId(callId: string, freeswitchUuid?: string): void
     if (deleted) {
       log.warn(`⏰ Pending call expired: callId=${callId}, uuid=${uuid}`);
     }
-  }, 30000);
+  }, 120000);
 
   pendingCalls.set(uuid, { callId, timer });
   log.info(`✅ Pending calls count: ${pendingCalls.size}`);

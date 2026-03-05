@@ -2783,13 +2783,13 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     const sipCallerId = call.from_number || defaultSipCallerId;
 
     // ═══ PER-NUMBER CONCURRENCY CHECK ═══
-    // Auto-expire stale 'calling' records older than 90 seconds
+    // Auto-expire stale 'calling' records older than 120 seconds
     await db.execute(sql`
       UPDATE scheduled_voice_calls
       SET status = 'failed', error_message = 'stale_calling_timeout', updated_at = NOW()
       WHERE consultant_id = ${consultantId}
         AND status = 'calling'
-        AND updated_at < NOW() - INTERVAL '90 seconds'
+        AND updated_at < NOW() - INTERVAL '120 seconds'
     `);
 
     // Get per-number limit from voice_numbers table
@@ -3036,25 +3036,39 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
       console.warn(`⚠️ [Outbound] VPS did not return a callId for ${callId}. Callback may not work correctly.`);
     }
     
-    // Safety timeout: if no callback arrives within 90s, mark call as failed
+    // Safety timeout: if no callback arrives within 120s, check if call is truly stale
     setTimeout(async () => {
       try {
         const checkResult = await db.execute(sql`
-          SELECT status FROM scheduled_voice_calls WHERE id = ${callId}
+          SELECT svc.status, svc.voice_call_id, vc.status as vc_status
+          FROM scheduled_voice_calls svc
+          LEFT JOIN voice_calls vc ON vc.id = svc.voice_call_id
+          WHERE svc.id = ${callId}
         `);
-        const currentStatus = (checkResult.rows[0] as any)?.status;
-        if (currentStatus === 'calling') {
-          console.warn(`⏰ [Outbound] Safety timeout: call ${callId} still 'calling' after 90s — marking as failed`);
-          await db.execute(sql`
-            UPDATE scheduled_voice_calls
-            SET status = 'failed', error_message = 'no_callback_timeout', updated_at = NOW()
-            WHERE id = ${callId} AND status = 'calling'
-          `);
+        const row = checkResult.rows[0] as any;
+        if (!row) return;
+        
+        if (row.status === 'calling') {
+          if (row.voice_call_id && row.vc_status === 'talking') {
+            console.log(`📞 [Outbound] Safety timeout: call ${callId} still 'calling' in scheduled_voice_calls but voice_call is 'talking' — updating to talking`);
+            await db.execute(sql`
+              UPDATE scheduled_voice_calls
+              SET status = 'talking', updated_at = NOW()
+              WHERE id = ${callId} AND status = 'calling'
+            `);
+          } else {
+            console.warn(`⏰ [Outbound] Safety timeout: call ${callId} still 'calling' after 120s (vc_status=${row.vc_status || 'none'}) — marking as failed`);
+            await db.execute(sql`
+              UPDATE scheduled_voice_calls
+              SET status = 'failed', error_message = 'no_callback_timeout', updated_at = NOW()
+              WHERE id = ${callId} AND status = 'calling'
+            `);
+          }
         }
       } catch (err) {
         console.error(`❌ [Outbound] Safety timeout check failed for ${callId}:`, err);
       }
-    }, 90000);
+    }, 120000);
     
     return { success: true };
   } catch (error: any) {
