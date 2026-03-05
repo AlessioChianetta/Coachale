@@ -3777,73 +3777,6 @@ export default function ConsultantVoiceCallsPage() {
                   </DialogContent>
                 </Dialog>
 
-                <Dialog open={customTemplateDialogOpen} onOpenChange={setCustomTemplateDialogOpen}>
-                  <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-purple-600" />
-                        {editingCustomTemplateId ? 'Modifica Template' : 'Nuovo Template Personalizzato'}
-                      </DialogTitle>
-                      <DialogDescription>
-                        {customTemplateDirection === 'inbound' ? 'Template per chiamate in entrata' : 'Template per chiamate in uscita'}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label className="text-sm font-medium">Nome</Label>
-                        <Input
-                          value={customTemplateName}
-                          onChange={(e) => setCustomTemplateName(e.target.value)}
-                          placeholder="Es. Sales Call Personalizzata"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium">Descrizione (opzionale)</Label>
-                        <Input
-                          value={customTemplateDescription}
-                          onChange={(e) => setCustomTemplateDescription(e.target.value)}
-                          placeholder="Breve descrizione del template"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium">Prompt</Label>
-                        <Textarea
-                          value={customTemplatePrompt}
-                          onChange={(e) => setCustomTemplatePrompt(e.target.value)}
-                          placeholder="Scrivi le istruzioni per l'AI..."
-                          className="mt-1 min-h-[200px] font-mono text-sm"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {'Variabili disponibili: {{consultantName}}, {{businessName}}, {{aiName}}, {{contactName}}'}
-                        </p>
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setCustomTemplateDialogOpen(false)}>Annulla</Button>
-                        <Button
-                          onClick={() => {
-                            saveCustomTemplateMutation.mutate({
-                              id: editingCustomTemplateId || undefined,
-                              name: customTemplateName,
-                              direction: customTemplateDirection,
-                              description: customTemplateDescription,
-                              prompt: customTemplatePrompt,
-                            });
-                          }}
-                          disabled={!customTemplateName || !customTemplatePrompt || saveCustomTemplateMutation.isPending}
-                        >
-                          {saveCustomTemplateMutation.isPending ? (
-                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvataggio...</>
-                          ) : (
-                            <><Save className="h-4 w-4 mr-2" /> {editingCustomTemplateId ? 'Aggiorna' : 'Crea Template'}</>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-
                 {/* HEADER OPERATIVO */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
@@ -9085,6 +9018,74 @@ export default function ConsultantVoiceCallsPage() {
                 <VoipProvisioningTab />
               </TabsContent>
             </Tabs>
+
+            <Dialog open={customTemplateDialogOpen} onOpenChange={setCustomTemplateDialogOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-purple-600" />
+                    {editingCustomTemplateId ? 'Modifica Template' : 'Nuovo Template Personalizzato'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {customTemplateDirection === 'inbound' ? 'Template per chiamate in entrata' : 'Template per chiamate in uscita'}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Nome</Label>
+                    <Input
+                      value={customTemplateName}
+                      onChange={(e) => setCustomTemplateName(e.target.value)}
+                      placeholder="Es. Sales Call Personalizzata"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Descrizione (opzionale)</Label>
+                    <Input
+                      value={customTemplateDescription}
+                      onChange={(e) => setCustomTemplateDescription(e.target.value)}
+                      placeholder="Breve descrizione del template"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Prompt</Label>
+                    <Textarea
+                      value={customTemplatePrompt}
+                      onChange={(e) => setCustomTemplatePrompt(e.target.value)}
+                      placeholder="Scrivi le istruzioni per l'AI..."
+                      className="mt-1 min-h-[200px] font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {'Variabili disponibili: {{consultantName}}, {{businessName}}, {{aiName}}, {{contactName}}'}
+                    </p>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setCustomTemplateDialogOpen(false)}>Annulla</Button>
+                    <Button
+                      onClick={() => {
+                        saveCustomTemplateMutation.mutate({
+                          id: editingCustomTemplateId || undefined,
+                          name: customTemplateName,
+                          direction: customTemplateDirection,
+                          description: customTemplateDescription,
+                          prompt: customTemplatePrompt,
+                        });
+                      }}
+                      disabled={!customTemplateName || !customTemplatePrompt || saveCustomTemplateMutation.isPending}
+                    >
+                      {saveCustomTemplateMutation.isPending ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvataggio...</>
+                      ) : (
+                        <><Save className="h-4 w-4 mr-2" /> {editingCustomTemplateId ? 'Aggiorna' : 'Crea Template'}</>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
           </div>
         </main>
       </div>
