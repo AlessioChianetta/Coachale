@@ -103,7 +103,7 @@ export function setExpectedCallId(callId: string, freeswitchUuid?: string): void
     if (deleted) {
       log.warn(`⏰ Pending call expired: callId=${callId}, uuid=${uuid}`);
     }
-  }, 120000);
+  }, 30000);
 
   pendingCalls.set(uuid, { callId, timer });
   log.info(`✅ Pending calls count: ${pendingCalls.size}`);
@@ -863,9 +863,8 @@ async function tryDequeueOverflow(): Promise<void> {
         continue;
       }
 
-      const transferDest = next.calledNumber || '9999';
-      log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → ${transferDest} XML public`);
-      (eslConn as any).bgapi(`uuid_transfer ${next.uuid} ${transferDest} XML public`, (res: any) => {
+      log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+      (eslConn as any).bgapi(`uuid_transfer ${next.uuid} alessia_ai_9999_public XML public`, (res: any) => {
         const body = res?.getBody?.() || '';
         if (body.includes('+OK')) {
           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);

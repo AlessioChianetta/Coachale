@@ -1,0 +1,42 @@
+6|voice-bridge  | 2026-03-05T22:07:40.555Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ callId=eb709bd2-447e-4595-8d64-aed7ac0099ef
+6|voice-bridge  | 2026-03-05T22:07:40.555Z [INFO ] [BRIDGE:SERVER] ✅ [OVERFLOW-PRE-CHECK] Limits OK — proceeding to connect to Replit callId=eb709bd2-447e-4595-8d64-aed7ac0099ef
+6|voice-bridge  | 2026-03-05T22:07:40.556Z [INFO ] [BRIDGE:SESSION] Session created sessionId=fc463814 callId=eb709bd2-447e-4595-8d64-aed7ac0099ef callerId=1002 calledNumber=9999 codec=L16 sampleRate=8000 activeSessions=2
+6|voice-bridge  | 2026-03-05T22:07:40.559Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] handleCallStart setup: session=1ms, bgInit+queue=3ms sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:40.559Z [INFO ] [BRIDGE:SERVER] 🎵 Adaptive audio timer started (prefill=4) sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:40.559Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Pre-connect overhead: 4ms sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:40.559Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=fc463814 url=wss://4746543d-5b82-4e9e-b0fc-fef4cc83c57e-00-2lrdftkwmtekc.spock.replit.dev/ws/ai-voice voice=Puck isResume=false
+6|voice-bridge  | 2026-03-05T22:07:41.160Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] TLS+HTTP upgrade handshake: 601ms sessionId=fc463814 resumed=false
+6|voice-bridge  | 2026-03-05T22:07:41.160Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Replit WS connected in 601ms (TLS handshake + HTTP upgrade) sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:41.160Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:41.160Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=fc463814 from=connecting to=active
+6|voice-bridge  | 2026-03-05T22:07:41.160Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Total handleCallStart: 605ms (setup=4ms, connect=601ms, post=0ms) sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:41.447Z [INFO ] [BRIDGE:CONTEXT] Number owner found calledNumber=9999 consultant_id=0c73bbe5 display_name=Alessio Test
+6|voice-bridge  | 2026-03-05T22:07:41.448Z [INFO ] [BRIDGE:SERVER] 📞 [NUMBER LOOKUP] Called number 9999 belongs to consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, display=Alessio Test
+6|voice-bridge  | 2026-03-05T22:07:41.612Z [WARN ] [BRIDGE:REPLIT-WS] ⚠️ Audio DISCARDED - connected=true, ws=true, readyState=2 sessionId=fc463814 reconnecting=false
+6|voice-bridge  | 2026-03-05T22:07:41.740Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=fc463814 code=4429 reason=CHANNELS_FULL hasPendingResume=false
+6|voice-bridge  | 2026-03-05T22:07:41.740Z [INFO ] [BRIDGE:SERVER] 📞 [REPLIT-ONCLOSE] Replit connection closed sessionId=fc463814 code=4429 reason=CHANNELS_FULL fsUuid=eb709bd2-447e-4595-8d64-aed7ac0099ef callId=eb709bd2-447e-4595-8d64-aed7ac0099ef calledNumber=9999
+6|voice-bridge  | 2026-03-05T22:07:41.740Z [WARN ] [BRIDGE:REPLIT-WS] 🔶 Replit rejected with CHANNELS_FULL (4429) — routing to overflow sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:41.740Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:41.740Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Replit rejected with 4429 CHANNELS_FULL sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:41.740Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Session: fsUuid=eb709bd2-447e-4595-8d64-aed7ac0099ef | callId=eb709bd2-447e-4595-8d64-aed7ac0099ef | caller=1002 | called=9999 | state=active sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:41.740Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Active sessions: 2 | Overflow queue: 0 sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:41.740Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=fc463814 callId=eb709bd2-447e-4595-8d64-aed7ac0099ef reason=channels_full_overflow duration=1.2s bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+6|voice-bridge  | 2026-03-05T22:07:41.740Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] wasDequeued=false (recentlyDequeuedUuids has 0 entries) sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:41.740Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Cleaning up session and routing to overflow queue... sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:41.741Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-05T22:07:41.741Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Starting overflow routing for uuid=eb709bd2-447e-4595-8d64-aed7ac0099ef calledNumber=9999
+6|voice-bridge  | 2026-03-05T22:07:41.742Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] No overflowCfg provided — fetching from Replit API...
+6|voice-bridge  | 2026-03-05T22:07:42.039Z [INFO ] [BRIDGE:CONTEXT] 📋 Overflow config loaded calledNumber=+9999 found=true overflow_enabled=true fallback_number=null overflow_timeout_secs=120 overflow_dtmf_enabled=true overflow_auto_return=true
+6|voice-bridge  | 2026-03-05T22:07:42.039Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Config: enabled=true, timeout=120s, auto_return=true, dtmf=true, fallback=none, max_concurrent=1
+6|voice-bridge  | 2026-03-05T22:07:42.039Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] ESL connection available ✅
+6|voice-bridge  | 2026-03-05T22:07:42.039Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Setting vars on channel: sip_gateway=telnyx-ip | tech_prefix=0312 | queue_position=1 | overflow_dtmf_enabled=false uuid=eb709bd2-447e-4595-8d64-aed7ac0099ef
+6|voice-bridge  | 2026-03-05T22:07:42.040Z [INFO ] [BRIDGE:SESSION] 📥 Added to overflow queue uuid=eb709bd2-447e-4595-8d64-aed7ac0099ef calledNumber=9999 queueSize=1 timeoutSecs=120
+6|voice-bridge  | 2026-03-05T22:07:42.040Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Call eb709bd2-447e-4595-8d64-aed7ac0099ef queued in overflow — position=1, timeout=120s, current queue size=1
+6|voice-bridge  | 2026-03-05T22:07:42.040Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-05T22:07:42.041Z [INFO ] [BRIDGE:SERVER] ✅ [OVERFLOW-4429] Call eb709bd2-447e-4595-8d64-aed7ac0099ef successfully routed to overflow queue sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:42.041Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ sessionId=fc463814
+6|voice-bridge  | 2026-03-05T22:07:42.082Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] uuid_setvar_multi result: +OK
+6|voice-bridge  |  uuid=eb709bd2-447e-4595-8d64-aed7ac0099ef
+6|voice-bridge  | 2026-03-05T22:07:42.140Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Transferring eb709bd2-447e-4595-8d64-aed7ac0099ef → overflow_queue XML default uuid=eb709bd2-447e-4595-8d64-aed7ac0099ef
+6|voice-bridge  | 2026-03-05T22:07:48.028Z [INFO ] [BRIDGE:SERVER] ✅ [ROUTE-OVERFLOW] Call eb709bd2-447e-4595-8d64-aed7ac0099ef transferred to overflow_queue SUCCESSFULLY
+6|voice-bridge  | 2026-03-05T22:08:01.

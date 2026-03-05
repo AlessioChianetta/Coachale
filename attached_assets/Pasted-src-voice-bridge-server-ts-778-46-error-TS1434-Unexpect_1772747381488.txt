@@ -1,0 +1,1023 @@
+src/voice-bridge-server.ts:778:46 - error TS1434: Unexpected keyword or identifier.
+
+778               (conn as any).bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`);
+                                                 ~
+
+src/voice-bridge-server.ts:778:69 - error TS1443: Module declaration names may only use ' or " quoted strings.
+
+778               (conn as any).bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`);
+                                                                        ~~~
+779             }
+    ~~~~~~~~~~~~~
+... 
+784       if (!sessionManager.canAcceptCallForNumber(next.calledNumber, perNumberMax)) {
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+    ~~~~~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:785:19 - error TS1127: Invalid character.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                      ~
+
+src/voice-bridge-server.ts:785:19 - error TS1128: Declaration or statement expected.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                      ~
+
+src/voice-bridge-server.ts:785:20 - error TS1127: Invalid character.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                       ~
+
+src/voice-bridge-server.ts:785:32 - error TS1005: ';' expected.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                   ~~~
+
+src/voice-bridge-server.ts:785:43 - error TS1005: ';' expected.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                              ~~~~~
+
+src/voice-bridge-server.ts:785:49 - error TS1434: Unexpected keyword or identifier.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                                    ~~~~~
+
+src/voice-bridge-server.ts:785:55 - error TS1434: Unexpected keyword or identifier.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                                          ~~~~
+
+src/voice-bridge-server.ts:785:64 - error TS1005: '(' expected.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                                                   ~
+
+src/voice-bridge-server.ts:785:65 - error TS1005: ';' expected.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                                                    ~
+
+src/voice-bridge-server.ts:785:70 - error TS1005: ',' expected.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                                                         ~
+
+src/voice-bridge-server.ts:785:87 - error TS1005: ',' expected.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                                                                          ~
+
+src/voice-bridge-server.ts:785:105 - error TS1005: ',' expected.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                                                                                            ~
+
+src/voice-bridge-server.ts:785:121 - error TS1127: Invalid character.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                                                                                                            ~
+
+src/voice-bridge-server.ts:785:136 - error TS1005: ';' expected.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                                                                                                                           ~
+
+src/voice-bridge-server.ts:785:149 - error TS1434: Unexpected keyword or identifier.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                                                                                                                                        ~~
+
+src/voice-bridge-server.ts:785:157 - error TS1443: Module declaration names may only use ' or " quoted strings.
+
+785         log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+                                                                                                                                                                ~~~
+786         sessionManager.reinsertAtFront(next, remainingMs, timeoutCallback);
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+... 
+790       if (!sessionManager.canAcceptNewCall()) {
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+    ~~~~~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:791:19 - error TS1127: Invalid character.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                      ~
+
+src/voice-bridge-server.ts:791:19 - error TS1128: Declaration or statement expected.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                      ~
+
+src/voice-bridge-server.ts:791:20 - error TS1127: Invalid character.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                       ~
+
+src/voice-bridge-server.ts:791:32 - error TS1005: ';' expected.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                                   ~~~~~~
+
+src/voice-bridge-server.ts:791:39 - error TS1434: Unexpected keyword or identifier.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                                          ~~~~~
+
+src/voice-bridge-server.ts:791:45 - error TS1434: Unexpected keyword or identifier.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                                                ~~~~~
+
+src/voice-bridge-server.ts:791:58 - error TS1005: ',' expected.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                                                             ~
+
+src/voice-bridge-server.ts:791:73 - error TS1005: ',' expected.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                                                                            ~
+
+src/voice-bridge-server.ts:791:88 - error TS1005: ',' expected.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                                                                                           ~
+
+src/voice-bridge-server.ts:791:103 - error TS1005: ',' expected.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                                                                                                          ~
+
+src/voice-bridge-server.ts:791:120 - error TS1127: Invalid character.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                                                                                                                           ~
+
+src/voice-bridge-server.ts:791:135 - error TS1005: ';' expected.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                                                                                                                                          ~
+
+src/voice-bridge-server.ts:791:148 - error TS1434: Unexpected keyword or identifier.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                                                                                                                                                       ~~
+
+src/voice-bridge-server.ts:791:156 - error TS1443: Module declaration names may only use ' or " quoted strings.
+
+791         log.info(`⏭️ [DEQUEUE] Global limit STILL FULL (${sessionManager.activeCount}/${sessionManager.maxConcurrent}) — re-inserting ${next.uuid} at front`);
+                                                                                                                                                               ~~~
+792         sessionManager.reinsertAtFront(next, remainingMs, timeoutCallback);
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+... 
+796       if (!overflowCfg.overflow_auto_return) {
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+    ~~~~~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:797:19 - error TS1127: Invalid character.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                      ~
+
+src/voice-bridge-server.ts:797:19 - error TS1128: Declaration or statement expected.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                      ~
+
+src/voice-bridge-server.ts:797:20 - error TS1127: Invalid character.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                       ~
+
+src/voice-bridge-server.ts:797:32 - error TS1005: ';' expected.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                                   ~~~~
+
+src/voice-bridge-server.ts:797:37 - error TS1109: Expression expected.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                                        ~~~~~~
+
+src/voice-bridge-server.ts:797:53 - error TS1005: ';' expected.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                                                        ~~~
+
+src/voice-bridge-server.ts:797:57 - error TS1005: '(' expected.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                                                            ~
+
+src/voice-bridge-server.ts:797:58 - error TS1005: ';' expected.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                                                             ~
+
+src/voice-bridge-server.ts:797:63 - error TS1005: ',' expected.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                                                                  ~
+
+src/voice-bridge-server.ts:797:78 - error TS1127: Invalid character.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                                                                                 ~
+
+src/voice-bridge-server.ts:797:80 - error TS1434: Unexpected keyword or identifier.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                                                                                   ~~~~~~~~
+
+src/voice-bridge-server.ts:797:89 - error TS1434: Unexpected keyword or identifier.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                                                                                            ~~~~~~~
+
+src/voice-bridge-server.ts:797:97 - error TS1434: Unexpected keyword or identifier.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                                                                                                    ~~
+
+src/voice-bridge-server.ts:797:100 - error TS1434: Unexpected keyword or identifier.
+
+797         log.info(`⏭️ [DEQUEUE] Auto-return DISABLED for ${next.calledNumber} — skipping dequeue of ${next.uuid}`);
+                                                                                                       ~
+
+src/voice-bridge-server.ts:801:17 - error TS1127: Invalid character.
+
+801       log.info(`🔄 [DEQUEUE] Checking if call ${next.uuid} still exists in FreeSWITCH...`);
+                    ~~
+
+src/voice-bridge-server.ts:801:30 - error TS1005: ';' expected.
+
+801       log.info(`🔄 [DEQUEUE] Checking if call ${next.uuid} still exists in FreeSWITCH...`);
+                                 ~~~~~~~~
+
+src/voice-bridge-server.ts:801:42 - error TS1005: '(' expected.
+
+801       log.info(`🔄 [DEQUEUE] Checking if call ${next.uuid} still exists in FreeSWITCH...`);
+                                             ~~~~
+
+src/voice-bridge-server.ts:801:47 - error TS1005: ')' expected.
+
+801       log.info(`🔄 [DEQUEUE] Checking if call ${next.uuid} still exists in FreeSWITCH...`);
+                                                  ~
+
+src/voice-bridge-server.ts:801:60 - error TS1434: Unexpected keyword or identifier.
+
+801       log.info(`🔄 [DEQUEUE] Checking if call ${next.uuid} still exists in FreeSWITCH...`);
+                                                               ~~~~~
+
+src/voice-bridge-server.ts:801:86 - error TS1005: ';' expected.
+
+801       log.info(`🔄 [DEQUEUE] Checking if call ${next.uuid} still exists in FreeSWITCH...`);
+                                                                                         ~~~
+
+src/voice-bridge-server.ts:803:33 - error TS1005: ';' expected.
+
+803         (eslConn as any).bgapi(`uuid_exists ${next.uuid}`, (res: any) => {
+                                    ~~~~~~~~~~~
+
+src/voice-bridge-server.ts:803:45 - error TS1434: Unexpected keyword or identifier.
+
+803         (eslConn as any).bgapi(`uuid_exists ${next.uuid}`, (res: any) => {
+                                                ~
+
+src/voice-bridge-server.ts:806:21 - error TS1127: Invalid character.
+
+806           log.info(`🔄 [DEQUEUE] uuid_exists ${next.uuid} = ${result} (raw: "${body.trim()}")`, { uuid: next.uuid });
+                        ~~
+
+src/voice-bridge-server.ts:806:34 - error TS1005: ';' expected.
+
+806           log.info(`🔄 [DEQUEUE] uuid_exists ${next.uuid} = ${result} (raw: "${body.trim()}")`, { uuid: next.uuid });
+                                     ~~~~~~~~~~~
+
+src/voice-bridge-server.ts:806:46 - error TS1434: Unexpected keyword or identifier.
+
+806           log.info(`🔄 [DEQUEUE] uuid_exists ${next.uuid} = ${result} (raw: "${body.trim()}")`, { uuid: next.uuid });
+                                                 ~
+
+src/voice-bridge-server.ts:806:59 - error TS2809: Declaration or statement expected. This '=' follows a block of statements, so if you intended to write a destructuring assignment, you might need to wrap the whole assignment in parentheses.
+
+806           log.info(`🔄 [DEQUEUE] uuid_exists ${next.uuid} = ${result} (raw: "${body.trim()}")`, { uuid: next.uuid });
+                                                              ~
+
+src/voice-bridge-server.ts:806:61 - error TS1434: Unexpected keyword or identifier.
+
+806           log.info(`🔄 [DEQUEUE] uuid_exists ${next.uuid} = ${result} (raw: "${body.trim()}")`, { uuid: next.uuid });
+                                                                ~
+
+src/voice-bridge-server.ts:806:94 - error TS1005: '=>' expected.
+
+806           log.info(`🔄 [DEQUEUE] uuid_exists ${next.uuid} = ${result} (raw: "${body.trim()}")`, { uuid: next.uuid });
+                                                                                                 ~~~~~~~~~~~~~~~~~~~~~~~~
+807           resolve(result);
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+... 
+811       if (!exists) {
+    ~~~~~~~~~~~~~~~~~~~~
+812         log.info(`📞 [DEQUEUE] Call ${next.uuid} no longer exists (caller hung up) — trying next in queue`);
+    ~~~~~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:812:19 - error TS1127: Invalid character.
+
+812         log.info(`📞 [DEQUEUE] Call ${next.uuid} no longer exists (caller hung up) — trying next in queue`);
+                      ~~
+
+src/voice-bridge-server.ts:812:32 - error TS1005: ';' expected.
+
+812         log.info(`📞 [DEQUEUE] Call ${next.uuid} no longer exists (caller hung up) — trying next in queue`);
+                                   ~~~~
+
+src/voice-bridge-server.ts:812:37 - error TS1434: Unexpected keyword or identifier.
+
+812         log.info(`📞 [DEQUEUE] Call ${next.uuid} no longer exists (caller hung up) — trying next in queue`);
+                                        ~
+
+src/voice-bridge-server.ts:812:50 - error TS1434: Unexpected keyword or identifier.
+
+812         log.info(`📞 [DEQUEUE] Call ${next.uuid} no longer exists (caller hung up) — trying next in queue`);
+                                                     ~~
+
+src/voice-bridge-server.ts:812:53 - error TS1434: Unexpected keyword or identifier.
+
+812         log.info(`📞 [DEQUEUE] Call ${next.uuid} no longer exists (caller hung up) — trying next in queue`);
+                                                        ~~~~~~
+
+src/voice-bridge-server.ts:812:75 - error TS1005: ',' expected.
+
+812         log.info(`📞 [DEQUEUE] Call ${next.uuid} no longer exists (caller hung up) — trying next in queue`);
+                                                                              ~~~~
+
+src/voice-bridge-server.ts:812:80 - error TS1005: ',' expected.
+
+812         log.info(`📞 [DEQUEUE] Call ${next.uuid} no longer exists (caller hung up) — trying next in queue`);
+                                                                                   ~~
+
+src/voice-bridge-server.ts:812:84 - error TS1127: Invalid character.
+
+812         log.info(`📞 [DEQUEUE] Call ${next.uuid} no longer exists (caller hung up) — trying next in queue`);
+                                                                                       ~
+
+src/voice-bridge-server.ts:812:86 - error TS1435: Unknown keyword or identifier. Did you mean 'string'?
+
+812         log.info(`📞 [DEQUEUE] Call ${next.uuid} no longer exists (caller hung up) — trying next in queue`);
+                                                                                         ~~~~~~
+
+src/voice-bridge-server.ts:816:17 - error TS1127: Invalid character.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                    ~~
+
+src/voice-bridge-server.ts:816:30 - error TS1005: ';' expected.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                                 ~~~~
+
+src/voice-bridge-server.ts:816:35 - error TS1434: Unexpected keyword or identifier.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                                      ~
+
+src/voice-bridge-server.ts:816:55 - error TS1127: Invalid character.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                                                          ~
+
+src/voice-bridge-server.ts:816:77 - error TS1005: ';' expected.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                                                                                ~~~~~~~~
+
+src/voice-bridge-server.ts:816:86 - error TS1434: Unexpected keyword or identifier.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                                                                                         ~~~
+
+src/voice-bridge-server.ts:816:90 - error TS1434: Unexpected keyword or identifier.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                                                                                             ~~~~~~~
+
+src/voice-bridge-server.ts:816:99 - error TS1005: ';' expected.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                                                                                                      ~
+
+src/voice-bridge-server.ts:816:99 - error TS1351: An identifier or keyword cannot immediately follow a numeric literal.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                                                                                                      ~
+
+src/voice-bridge-server.ts:816:105 - error TS1005: '(' expected.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                                                                                                            ~~
+
+src/voice-bridge-server.ts:816:108 - error TS1005: ';' expected.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                                                                                                               ~~~~
+
+src/voice-bridge-server.ts:816:112 - error TS1005: ';' expected.
+
+816       log.info(`🔄 [DEQUEUE] Call ${next.uuid} EXISTS — marking as recently dequeued and waiting 2s for DB sync...`);
+                                                                                                                   ~~~
+
+src/voice-bridge-server.ts:823:33 - error TS1005: ';' expected.
+
+823         (eslConn as any).bgapi(`uuid_exists ${next.uuid}`, (res: any) => {
+                                    ~~~~~~~~~~~
+
+src/voice-bridge-server.ts:823:45 - error TS1434: Unexpected keyword or identifier.
+
+823         (eslConn as any).bgapi(`uuid_exists ${next.uuid}`, (res: any) => {
+                                                ~
+
+src/voice-bridge-server.ts:828:19 - error TS1127: Invalid character.
+
+828         log.info(`📞 [DEQUEUE] Call ${next.uuid} hung up during 2s delay — skipping`);
+                      ~~
+
+src/voice-bridge-server.ts:828:32 - error TS1005: ';' expected.
+
+828         log.info(`📞 [DEQUEUE] Call ${next.uuid} hung up during 2s delay — skipping`);
+                                   ~~~~
+
+src/voice-bridge-server.ts:828:37 - error TS1434: Unexpected keyword or identifier.
+
+828         log.info(`📞 [DEQUEUE] Call ${next.uuid} hung up during 2s delay — skipping`);
+                                        ~
+
+src/voice-bridge-server.ts:828:50 - error TS1434: Unexpected keyword or identifier.
+
+828         log.info(`📞 [DEQUEUE] Call ${next.uuid} hung up during 2s delay — skipping`);
+                                                     ~~~~
+
+src/voice-bridge-server.ts:828:55 - error TS1434: Unexpected keyword or identifier.
+
+828         log.info(`📞 [DEQUEUE] Call ${next.uuid} hung up during 2s delay — skipping`);
+                                                          ~~
+
+src/voice-bridge-server.ts:828:58 - error TS1434: Unexpected keyword or identifier.
+
+828         log.info(`📞 [DEQUEUE] Call ${next.uuid} hung up during 2s delay — skipping`);
+                                                             ~~~~~~
+
+src/voice-bridge-server.ts:828:66 - error TS1005: ';' expected.
+
+828         log.info(`📞 [DEQUEUE] Call ${next.uuid} hung up during 2s delay — skipping`);
+                                                                     ~
+
+src/voice-bridge-server.ts:828:66 - error TS1351: An identifier or keyword cannot immediately follow a numeric literal.
+
+828         log.info(`📞 [DEQUEUE] Call ${next.uuid} hung up during 2s delay — skipping`);
+                                                                     ~
+
+src/voice-bridge-server.ts:828:74 - error TS1127: Invalid character.
+
+828         log.info(`📞 [DEQUEUE] Call ${next.uuid} hung up during 2s delay — skipping`);
+                                                                             ~
+
+src/voice-bridge-server.ts:828:84 - error TS1443: Module declaration names may only use ' or " quoted strings.
+
+828         log.info(`📞 [DEQUEUE] Call ${next.uuid} hung up during 2s delay — skipping`);
+                                                                                       ~~~
+829         recentlyDequeuedUuids.delete(next.uuid);
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+... 
+832 
+    
+833       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+    ~~~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:833:17 - error TS1127: Invalid character.
+
+833       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+                    ~~
+
+src/voice-bridge-server.ts:833:17 - error TS1128: Declaration or statement expected.
+
+833       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+                    ~~
+
+src/voice-bridge-server.ts:833:30 - error TS1005: ';' expected.
+
+833       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+                                 ~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:833:43 - error TS1434: Unexpected keyword or identifier.
+
+833       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+                                              ~
+
+src/voice-bridge-server.ts:833:56 - error TS1434: Unexpected keyword or identifier.
+
+833       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+                                                           ~~~~
+
+src/voice-bridge-server.ts:833:61 - error TS1434: Unexpected keyword or identifier.
+
+833       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+                                                                ~~
+
+src/voice-bridge-server.ts:833:67 - error TS1127: Invalid character.
+
+833       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+                                                                      ~
+
+src/voice-bridge-server.ts:833:69 - error TS1434: Unexpected keyword or identifier.
+
+833       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+                                                                        ~~~~~~~~~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:833:92 - error TS1434: Unexpected keyword or identifier.
+
+833       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+                                                                                               ~~~
+
+src/voice-bridge-server.ts:833:102 - error TS1443: Module declaration names may only use ' or " quoted strings.
+
+833       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → alessia_ai_9999_public XML public`);
+                                                                                                         ~~~
+834       (eslConn as any).bgapi(`uuid_transfer ${next.uuid} alessia_ai_9999_public XML public`, (res: any) => {
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:834:31 - error TS1434: Unexpected keyword or identifier.
+
+834       (eslConn as any).bgapi(`uuid_transfer ${next.uuid} alessia_ai_9999_public XML public`, (res: any) => {
+                                  ~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:834:45 - error TS1434: Unexpected keyword or identifier.
+
+834       (eslConn as any).bgapi(`uuid_transfer ${next.uuid} alessia_ai_9999_public XML public`, (res: any) => {
+                                                ~
+
+src/voice-bridge-server.ts:834:58 - error TS1434: Unexpected keyword or identifier.
+
+834       (eslConn as any).bgapi(`uuid_transfer ${next.uuid} alessia_ai_9999_public XML public`, (res: any) => {
+                                                             ~~~~~~~~~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:834:81 - error TS1434: Unexpected keyword or identifier.
+
+834       (eslConn as any).bgapi(`uuid_transfer ${next.uuid} alessia_ai_9999_public XML public`, (res: any) => {
+                                                                                    ~~~
+
+src/voice-bridge-server.ts:834:91 - error TS1443: Module declaration names may only use ' or " quoted strings.
+
+834       (eslConn as any).bgapi(`uuid_transfer ${next.uuid} alessia_ai_9999_public XML public`, (res: any) => {
+                                                                                              ~~~~~~~~~~~~~~~~~~
+835         const body = res?.getBody?.() || '';
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+836         if (body.includes('+OK')) {
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+837           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
+    ~~~~~~~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:837:21 - error TS1127: Invalid character.
+
+837           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
+                        ~
+
+src/voice-bridge-server.ts:837:21 - error TS1128: Declaration or statement expected.
+
+837           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
+                        ~
+
+src/voice-bridge-server.ts:837:33 - error TS1005: ';' expected.
+
+837           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
+                                    ~~~~
+
+src/voice-bridge-server.ts:837:38 - error TS1434: Unexpected keyword or identifier.
+
+837           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
+                                         ~
+
+src/voice-bridge-server.ts:837:51 - error TS1434: Unexpected keyword or identifier.
+
+837           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
+                                                      ~~~~~~~~~~~
+
+src/voice-bridge-server.ts:837:63 - error TS1434: Unexpected keyword or identifier.
+
+837           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
+                                                                  ~~~~
+
+src/voice-bridge-server.ts:837:68 - error TS1434: Unexpected keyword or identifier.
+
+837           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
+                                                                       ~~
+
+src/voice-bridge-server.ts:837:71 - error TS1434: Unexpected keyword or identifier.
+
+837           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
+                                                                          ~~
+
+src/voice-bridge-server.ts:837:86 - error TS1443: Module declaration names may only use ' or " quoted strings.
+
+837           log.info(`✅ [DEQUEUE] Call ${next.uuid} transferred back to AI SUCCESSFULLY`);
+                                                                                         ~~~
+838         } else {
+    ~~~~~~~~~~~~~~~~
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+    ~~~~~~~~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:839:22 - error TS1127: Invalid character.
+
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+                         ~
+
+src/voice-bridge-server.ts:839:22 - error TS1128: Declaration or statement expected.
+
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+                         ~
+
+src/voice-bridge-server.ts:839:34 - error TS1005: ';' expected.
+
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+                                     ~~~~~~
+
+src/voice-bridge-server.ts:839:41 - error TS1434: Unexpected keyword or identifier.
+
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+                                            ~~
+
+src/voice-bridge-server.ts:839:44 - error TS1434: Unexpected keyword or identifier.
+
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+                                               ~~~~~~~~
+
+src/voice-bridge-server.ts:839:53 - error TS1434: Unexpected keyword or identifier.
+
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+                                                        ~~~~~~~~
+
+src/voice-bridge-server.ts:839:62 - error TS1434: Unexpected keyword or identifier.
+
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+                                                                 ~~~~
+
+src/voice-bridge-server.ts:839:67 - error TS1434: Unexpected keyword or identifier.
+
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+                                                                      ~
+
+src/voice-bridge-server.ts:839:80 - error TS1434: Unexpected keyword or identifier.
+
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+                                                                                   ~~~~
+
+src/voice-bridge-server.ts:839:85 - error TS1434: Unexpected keyword or identifier.
+
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+                                                                                        ~~
+
+src/voice-bridge-server.ts:839:92 - error TS1434: Unexpected keyword or identifier.
+
+839           log.error(`❌ [DEQUEUE] Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
+                                                                                               ~
+
+src/voice-bridge-server.ts:847:35 - error TS1005: ';' expected.
+
+847           (eslConn as any).bgapi(`uuid_setvar ${entry.uuid} queue_position ${newPosition}`, () => {});
+                                      ~~~~~~~~~~~
+
+src/voice-bridge-server.ts:847:47 - error TS1434: Unexpected keyword or identifier.
+
+847           (eslConn as any).bgapi(`uuid_setvar ${entry.uuid} queue_position ${newPosition}`, () => {});
+                                                  ~
+
+src/voice-bridge-server.ts:847:61 - error TS1434: Unexpected keyword or identifier.
+
+847           (eslConn as any).bgapi(`uuid_setvar ${entry.uuid} queue_position ${newPosition}`, () => {});
+                                                                ~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:847:76 - error TS1434: Unexpected keyword or identifier.
+
+847           (eslConn as any).bgapi(`uuid_setvar ${entry.uuid} queue_position ${newPosition}`, () => {});
+                                                                               ~
+
+src/voice-bridge-server.ts:849:19 - error TS1127: Invalid character.
+
+849         log.info(`📊 [DEQUEUE] Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
+                      ~~
+
+src/voice-bridge-server.ts:849:32 - error TS1005: ';' expected.
+
+849         log.info(`📊 [DEQUEUE] Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
+                                   ~~~~~~~
+
+src/voice-bridge-server.ts:849:40 - error TS1434: Unexpected keyword or identifier.
+
+849         log.info(`📊 [DEQUEUE] Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
+                                           ~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:849:59 - error TS1005: '(' expected.
+
+849         log.info(`📊 [DEQUEUE] Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
+                                                              ~
+
+src/voice-bridge-server.ts:849:60 - error TS1005: ';' expected.
+
+849         log.info(`📊 [DEQUEUE] Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
+                                                               ~
+
+src/voice-bridge-server.ts:849:78 - error TS1005: ',' expected.
+
+849         log.info(`📊 [DEQUEUE] Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
+                                                                                 ~
+
+src/voice-bridge-server.ts:849:86 - error TS1005: ';' expected.
+
+849         log.info(`📊 [DEQUEUE] Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
+                                                                                         ~~~~~~~~~
+
+src/voice-bridge-server.ts:849:96 - error TS1005: ')' expected.
+
+849         log.info(`📊 [DEQUEUE] Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
+                                                                                                   ~~~~~~~~
+
+src/voice-bridge-server.ts:849:112 - error TS1443: Module declaration names may only use ' or " quoted strings.
+
+849         log.info(`📊 [DEQUEUE] Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
+                                                                                                                   ~~~
+850       }
+    ~~~~~~~
+... 
+854   } catch (err: any) {
+    ~~~~~~~~~~~~~~~~~~~~~~
+855     log.error(`🔴 [DEQUEUE] Error: ${err.message}`, { stack: err.stack?.slice(0, 300) });
+    ~~~~~~~~~~~~~~~
+
+src/voice-bridge-server.ts:855:16 - error TS1127: Invalid character.
+
+855     log.error(`🔴 [DEQUEUE] Error: ${err.message}`, { stack: err.stack?.slice(0, 300) });
+                   ~~
+
+src/voice-bridge-server.ts:855:16 - error TS1128: Declaration or statement expected.
+
+855     log.error(`🔴 [DEQUEUE] Error: ${err.message}`, { stack: err.stack?.slice(0, 300) });
+                   ~~
+
+src/voice-bridge-server.ts:855:29 - error TS1005: ';' expected.
+
+855     log.error(`🔴 [DEQUEUE] Error: ${err.message}`, { stack: err.stack?.slice(0, 300) });
+                                ~~~~~
+
+src/voice-bridge-server.ts:855:36 - error TS1434: Unexpected keyword or identifier.
+
+855     log.error(`🔴 [DEQUEUE] Error: ${err.message}`, { stack: err.stack?.slice(0, 300) });
+                                       ~
+
+src/voice-bridge-server.ts:858:15 - error TS1127: Invalid character.
+
+858     log.info(`🔄 [DEQUEUE] Finished — activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
+                  ~~
+
+src/voice-bridge-server.ts:858:28 - error TS1005: ';' expected.
+
+858     log.info(`🔄 [DEQUEUE] Finished — activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
+                               ~~~~~~~~
+
+src/voice-bridge-server.ts:858:37 - error TS1127: Invalid character.
+
+858     log.info(`🔄 [DEQUEUE] Finished — activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
+                                        ~
+
+src/voice-bridge-server.ts:858:55 - error TS1005: ';' expected.
+
+858     log.info(`🔄 [DEQUEUE] Finished — activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
+                                                          ~
+
+src/voice-bridge-server.ts:858:84 - error TS1109: Expression expected.
+
+858     log.info(`🔄 [DEQUEUE] Finished — activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
+                                                                                       ~
+
+src/voice-bridge-server.ts:858:99 - error TS1005: ';' expected.
+
+858     log.info(`🔄 [DEQUEUE] Finished — activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
+                                                                                                      ~
+
+src/voice-bridge-server.ts:858:100 - error TS1434: Unexpected keyword or identifier.
+
+858     log.info(`🔄 [DEQUEUE] Finished — activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
+                                                                                                       ~
+
+src/voice-bridge-server.ts:859:15 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                  ~~
+
+src/voice-bridge-server.ts:859:28 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                               ~
+
+src/voice-bridge-server.ts:859:29 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                ~
+
+src/voice-bridge-server.ts:859:30 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                 ~
+
+src/voice-bridge-server.ts:859:31 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                  ~
+
+src/voice-bridge-server.ts:859:32 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                   ~
+
+src/voice-bridge-server.ts:859:33 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                    ~
+
+src/voice-bridge-server.ts:859:34 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                     ~
+
+src/voice-bridge-server.ts:859:35 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                      ~
+
+src/voice-bridge-server.ts:859:36 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                       ~
+
+src/voice-bridge-server.ts:859:37 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                        ~
+
+src/voice-bridge-server.ts:859:38 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                         ~
+
+src/voice-bridge-server.ts:859:39 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                          ~
+
+src/voice-bridge-server.ts:859:40 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                           ~
+
+src/voice-bridge-server.ts:859:41 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                            ~
+
+src/voice-bridge-server.ts:859:42 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                             ~
+
+src/voice-bridge-server.ts:859:43 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                              ~
+
+src/voice-bridge-server.ts:859:44 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                               ~
+
+src/voice-bridge-server.ts:859:45 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                ~
+
+src/voice-bridge-server.ts:859:46 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                 ~
+
+src/voice-bridge-server.ts:859:47 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                  ~
+
+src/voice-bridge-server.ts:859:48 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                   ~
+
+src/voice-bridge-server.ts:859:49 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                    ~
+
+src/voice-bridge-server.ts:859:50 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                     ~
+
+src/voice-bridge-server.ts:859:51 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                      ~
+
+src/voice-bridge-server.ts:859:52 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                       ~
+
+src/voice-bridge-server.ts:859:53 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                        ~
+
+src/voice-bridge-server.ts:859:54 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                         ~
+
+src/voice-bridge-server.ts:859:55 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                          ~
+
+src/voice-bridge-server.ts:859:56 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                           ~
+
+src/voice-bridge-server.ts:859:57 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                            ~
+
+src/voice-bridge-server.ts:859:58 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                             ~
+
+src/voice-bridge-server.ts:859:59 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                              ~
+
+src/voice-bridge-server.ts:859:60 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                               ~
+
+src/voice-bridge-server.ts:859:61 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                                ~
+
+src/voice-bridge-server.ts:859:62 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                                 ~
+
+src/voice-bridge-server.ts:859:63 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                                  ~
+
+src/voice-bridge-server.ts:859:64 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                                   ~
+
+src/voice-bridge-server.ts:859:65 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                                    ~
+
+src/voice-bridge-server.ts:859:66 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                                     ~
+
+src/voice-bridge-server.ts:859:67 - error TS1127: Invalid character.
+
+859     log.info(`🔄 [DEQUEUE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                                                                      ~
+
+src/voice-bridge-server.ts:862:1 - error TS1160: Unterminated template literal.
+
+862 
+    

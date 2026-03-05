@@ -1,0 +1,36 @@
+
+Found 315 errors in the same file, starting at: src/voice-bridge-server.ts:733
+
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# sed -n '760,790p' /opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts
+
+      const overflowCfg = await fetchOverflowConfig(next.calledNumber);
+      const perNumberMax = overflowCfg.max_concurrent_calls || 5;
+      const perNumberCount = sessionManager.activeCountForNumber(next.calledNumber);
+      const originalTimeoutMs = (overflowCfg.overflow_timeout_secs || 120) * 1000;
+      const elapsedMs = Date.now() - next.enqueuedAt;
+      const remainingMs = Math.max(5000, originalTimeoutMs - elapsedMs);
+
+      log.info(`🔄 [DEQUEUE] Limits check: perNumber=${perNumberCount}/${perNumberMax} | global=${sessionManager.activeCount}/${sessionManager.maxConcurrent} | auto_return=${overflowCfg.overflow_auto_return} | elapsed=${Math.round(elapsedMs/1000)}s | remainingTimeout=${Math.round(remainingMs/1000)}s`);
+
+      const timeoutCallback = (uuid: string) => {
+        log.warn(`⏰ [DEQUEUE] Overflow timeout — transferring call ${uuid} to timeout announcement`);
+        const conn = getEslConnection();
+        if (conn) {
+          (conn as any).bgapi(`uuid_transfer ${uuid} overflow_timeout XML default`, (res: any) => {
+            const body = res?.getBody?.() || '';
+            if (!body.includes('+OK')) {
+              log.warn(`⚠️ [DEQUEUE] Timeout transfer failed, killing call ${uuid}: ${body}`);
+              (conn as any).bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`);
+            }
+          });
+        }
+      };
+
+      if (!sessionManager.canAcceptCallForNumber(next.calledNumber, perNumberMax)) {
+        log.info(`⏭️ [DEQUEUE] Per-number limit STILL FULL for ${next.calledNumber} (${perNumberCount}/${perNumberMax}) — re-inserting ${next.uuid} at front`);
+        sessionManager.reinsertAtFront(next, remainingMs, timeoutCallback);
+        break;
+      }
+
+      if (!sessionManager.canAcceptNewCall()) {
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
