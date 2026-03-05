@@ -1150,6 +1150,9 @@ export default function ConsultantVoiceCallsPage() {
   const [retryOnShortCall, setRetryOnShortCall] = useState<boolean>(false);
   const [retryOnVoicemail, setRetryOnVoicemail] = useState<boolean>(true);
   const [amdEnabled, setAmdEnabled] = useState<boolean>(true);
+  const [backoffMode, setBackoffMode] = useState<'exponential' | 'manual'>('exponential');
+  const [manualDelays, setManualDelays] = useState<number[]>([5, 10, 20, 30, 30]);
+  const [maxConcurrentCalls, setMaxConcurrentCalls] = useState<number>(2);
 
   // AI Task Queue state
   const [aiTasksFilter, setAITasksFilter] = useState("all");
@@ -1233,7 +1236,10 @@ export default function ConsultantVoiceCallsPage() {
     if (voiceSettings?.voiceRetryOnShortCall !== undefined) setRetryOnShortCall(voiceSettings.voiceRetryOnShortCall);
     if (voiceSettings?.voiceRetryOnVoicemail !== undefined) setRetryOnVoicemail(voiceSettings.voiceRetryOnVoicemail);
     if (voiceSettings?.voiceAmdEnabled !== undefined) setAmdEnabled(voiceSettings.voiceAmdEnabled);
-  }, [voiceSettings?.vpsBridgeUrl, voiceSettings?.voiceMaxRetryAttempts, voiceSettings?.voiceRetryIntervalMinutes, voiceSettings?.voiceRetryOnNoAnswer, voiceSettings?.voiceRetryOnBusy, voiceSettings?.voiceRetryOnShortCall, voiceSettings?.voiceRetryOnVoicemail, voiceSettings?.voiceAmdEnabled]);
+    if (voiceSettings?.voiceRetryBackoffMode) setBackoffMode(voiceSettings.voiceRetryBackoffMode);
+    if (voiceSettings?.voiceRetryManualDelays) setManualDelays(voiceSettings.voiceRetryManualDelays);
+    if (voiceSettings?.maxConcurrentCalls !== undefined) setMaxConcurrentCalls(voiceSettings.maxConcurrentCalls);
+  }, [voiceSettings?.vpsBridgeUrl, voiceSettings?.voiceMaxRetryAttempts, voiceSettings?.voiceRetryIntervalMinutes, voiceSettings?.voiceRetryOnNoAnswer, voiceSettings?.voiceRetryOnBusy, voiceSettings?.voiceRetryOnShortCall, voiceSettings?.voiceRetryOnVoicemail, voiceSettings?.voiceAmdEnabled, voiceSettings?.voiceRetryBackoffMode, voiceSettings?.voiceRetryManualDelays, voiceSettings?.maxConcurrentCalls]);
 
   useEffect(() => {
     if (calendarScrollRef.current) {
@@ -1272,7 +1278,8 @@ export default function ConsultantVoiceCallsPage() {
     mutationFn: async (params: { 
       maxAttempts: number; intervalMinutes: number;
       retryNoAnswer: boolean; retryBusy: boolean; retryShortCall: boolean; retryVoicemail: boolean;
-      amdEnabled: boolean;
+      amdEnabled: boolean; backoffMode: string; manualDelays: number[];
+      maxConcurrentCalls: number;
     }) => {
       const res = await fetch("/api/voice/retry-settings", {
         method: "PUT",
@@ -1285,6 +1292,9 @@ export default function ConsultantVoiceCallsPage() {
           voiceRetryOnShortCall: params.retryShortCall,
           voiceRetryOnVoicemail: params.retryVoicemail,
           voiceAmdEnabled: params.amdEnabled,
+          voiceRetryBackoffMode: params.backoffMode,
+          voiceRetryManualDelays: params.manualDelays,
+          maxConcurrentCalls: params.maxConcurrentCalls,
         }),
       });
       if (!res.ok) {
@@ -1302,6 +1312,9 @@ export default function ConsultantVoiceCallsPage() {
       setRetryOnShortCall(data.voiceRetryOnShortCall);
       setRetryOnVoicemail(data.voiceRetryOnVoicemail);
       setAmdEnabled(data.voiceAmdEnabled);
+      if (data.voiceRetryBackoffMode) setBackoffMode(data.voiceRetryBackoffMode);
+      if (data.voiceRetryManualDelays) setManualDelays(data.voiceRetryManualDelays);
+      if (data.maxConcurrentCalls !== undefined) setMaxConcurrentCalls(data.maxConcurrentCalls);
       toast({ title: "Salvato", description: "Impostazioni retry e AMD aggiornate" });
     },
     onError: (err: Error) => {
@@ -4155,6 +4168,30 @@ export default function ConsultantVoiceCallsPage() {
                         </div>
                         
                         <div className="space-y-2">
+                          <Label className="text-sm font-medium">Modalità backoff</Label>
+                          <div className="flex gap-2">
+                            <Button
+                              variant={backoffMode === 'exponential' ? 'default' : 'outline'}
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => setBackoffMode('exponential')}
+                            >
+                              Esponenziale
+                            </Button>
+                            <Button
+                              variant={backoffMode === 'manual' ? 'default' : 'outline'}
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => setBackoffMode('manual')}
+                            >
+                              Manuale
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {backoffMode === 'exponential' ? (
+                        <div className="space-y-2">
                           <Label htmlFor="retryIntervalMinutes" className="text-sm font-medium">
                             Intervallo base (1-30 min)
                           </Label>
@@ -4168,15 +4205,40 @@ export default function ConsultantVoiceCallsPage() {
                             className="w-full"
                           />
                         </div>
-                      </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Delay per ogni tentativo (minuti)</Label>
+                          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(retryMaxAttempts, 5)}, 1fr)` }}>
+                            {Array.from({ length: retryMaxAttempts }, (_, i) => (
+                              <div key={i} className="space-y-1">
+                                <p className="text-[10px] text-center text-muted-foreground">{i + 1}° retry</p>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={60}
+                                  value={manualDelays[i] ?? 5}
+                                  onChange={(e) => {
+                                    const newDelays = [...manualDelays];
+                                    newDelays[i] = Math.max(1, Math.min(60, parseInt(e.target.value) || 5));
+                                    setManualDelays(newDelays);
+                                  }}
+                                  className="text-center text-sm h-9"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="p-3 bg-blue-50 dark:bg-blue-950/50 rounded-md">
                         <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">
-                          Timeline backoff esponenziale:
+                          Timeline {backoffMode === 'exponential' ? 'backoff esponenziale' : 'delay manuali'}:
                         </p>
                         <div className="flex items-center gap-1 flex-wrap text-xs text-blue-600 dark:text-blue-400">
                           {Array.from({ length: retryMaxAttempts }, (_, i) => {
-                            const delay = Math.min(retryIntervalMinutes * Math.pow(2, i), 30);
+                            const delay = backoffMode === 'exponential'
+                              ? Math.min(retryIntervalMinutes * Math.pow(2, i), 30)
+                              : (manualDelays[i] ?? 5);
                             return (
                               <React.Fragment key={i}>
                                 {i > 0 && (
@@ -4194,6 +4256,29 @@ export default function ConsultantVoiceCallsPage() {
                       </div>
                     </div>
 
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Chiamate simultanee</p>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Users className="h-4 w-4 text-blue-500" />
+                          <div>
+                            <p className="text-sm font-medium">Max chiamate contemporanee</p>
+                            <p className="text-xs text-muted-foreground">
+                              Se il limite è raggiunto, le nuove chiamate vengono messe in coda automaticamente
+                            </p>
+                          </div>
+                        </div>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={10}
+                          value={maxConcurrentCalls}
+                          onChange={(e) => setMaxConcurrentCalls(Math.max(1, Math.min(10, parseInt(e.target.value) || 2)))}
+                          className="w-20 text-center"
+                        />
+                      </div>
+                    </div>
+
                     <Button
                       onClick={() => saveRetrySettingsMutation.mutate({ 
                         maxAttempts: retryMaxAttempts, 
@@ -4203,6 +4288,9 @@ export default function ConsultantVoiceCallsPage() {
                         retryShortCall: retryOnShortCall,
                         retryVoicemail: retryOnVoicemail,
                         amdEnabled: amdEnabled,
+                        backoffMode: backoffMode,
+                        manualDelays: manualDelays,
+                        maxConcurrentCalls: maxConcurrentCalls,
                       })}
                       disabled={saveRetrySettingsMutation.isPending}
                       className="w-full"

@@ -1605,7 +1605,8 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const result = await db.execute(sql`
       SELECT voice_id, vps_bridge_url, voice_max_retry_attempts, voice_retry_interval_minutes,
              voice_retry_on_no_answer, voice_retry_on_busy, voice_retry_on_short_call, voice_retry_on_voicemail,
-             voice_amd_enabled
+             voice_amd_enabled, voice_retry_backoff_mode, voice_retry_manual_delays,
+             max_concurrent_calls
       FROM consultant_availability_settings
       WHERE consultant_id = ${consultantId}
       LIMIT 1
@@ -1621,11 +1622,14 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const voiceRetryOnShortCall = row?.voice_retry_on_short_call ?? false;
     const voiceRetryOnVoicemail = row?.voice_retry_on_voicemail ?? true;
     const voiceAmdEnabled = row?.voice_amd_enabled ?? true;
+    const voiceRetryBackoffMode = row?.voice_retry_backoff_mode || 'exponential';
+    const voiceRetryManualDelays = row?.voice_retry_manual_delays || null;
+    const maxConcurrentCalls = row?.max_concurrent_calls ?? 2;
 
     res.json({ 
       voiceId, vpsBridgeUrl, voiceMaxRetryAttempts, voiceRetryIntervalMinutes,
       voiceRetryOnNoAnswer, voiceRetryOnBusy, voiceRetryOnShortCall, voiceRetryOnVoicemail,
-      voiceAmdEnabled
+      voiceAmdEnabled, voiceRetryBackoffMode, voiceRetryManualDelays, maxConcurrentCalls
     });
   } catch (error) {
     console.error("[Voice] Error fetching settings:", error);
@@ -1766,7 +1770,8 @@ router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "
     const { 
       voiceMaxRetryAttempts, voiceRetryIntervalMinutes,
       voiceRetryOnNoAnswer, voiceRetryOnBusy, voiceRetryOnShortCall, voiceRetryOnVoicemail,
-      voiceAmdEnabled
+      voiceAmdEnabled, voiceRetryBackoffMode, voiceRetryManualDelays,
+      maxConcurrentCalls
     } = req.body;
 
     const maxRetry = Math.max(1, Math.min(5, parseInt(voiceMaxRetryAttempts) || 3));
@@ -1776,9 +1781,16 @@ router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "
     const retryShortCall = voiceRetryOnShortCall !== undefined ? !!voiceRetryOnShortCall : false;
     const retryVoicemail = voiceRetryOnVoicemail !== undefined ? !!voiceRetryOnVoicemail : true;
     const amdEnabled = voiceAmdEnabled !== undefined ? !!voiceAmdEnabled : true;
+    const backoffMode = voiceRetryBackoffMode === 'manual' ? 'manual' : 'exponential';
+    const manualDelays = Array.isArray(voiceRetryManualDelays) 
+      ? voiceRetryManualDelays.map((d: any) => Math.max(1, Math.min(60, parseInt(d) || 5))).slice(0, 5)
+      : null;
+    const concurrentCalls = maxConcurrentCalls !== undefined 
+      ? Math.max(1, Math.min(10, parseInt(maxConcurrentCalls) || 2))
+      : undefined;
 
     const existing = await db.execute(sql`
-      SELECT id FROM consultant_availability_settings
+      SELECT id, max_concurrent_calls FROM consultant_availability_settings
       WHERE consultant_id = ${consultantId}
       LIMIT 1
     `);
@@ -1793,6 +1805,9 @@ router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "
             voice_retry_on_short_call = ${retryShortCall},
             voice_retry_on_voicemail = ${retryVoicemail},
             voice_amd_enabled = ${amdEnabled},
+            voice_retry_backoff_mode = ${backoffMode},
+            voice_retry_manual_delays = ${manualDelays ? JSON.stringify(manualDelays) : null}::jsonb,
+            max_concurrent_calls = ${concurrentCalls ?? sql`max_concurrent_calls`},
             updated_at = NOW()
         WHERE consultant_id = ${consultantId}
       `);
@@ -1801,14 +1816,16 @@ router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "
         INSERT INTO consultant_availability_settings (
           id, consultant_id, voice_max_retry_attempts, voice_retry_interval_minutes,
           voice_retry_on_no_answer, voice_retry_on_busy, voice_retry_on_short_call, voice_retry_on_voicemail,
-          voice_amd_enabled,
+          voice_amd_enabled, voice_retry_backoff_mode, voice_retry_manual_delays,
+          max_concurrent_calls,
           appointment_duration, buffer_before, buffer_after,
           morning_slot_start, morning_slot_end, afternoon_slot_start, afternoon_slot_end,
           max_days_ahead, min_hours_notice, timezone, is_active
         ) VALUES (
           gen_random_uuid(), ${consultantId}, ${maxRetry}, ${retryInterval},
           ${retryNoAnswer}, ${retryBusy}, ${retryShortCall}, ${retryVoicemail},
-          ${amdEnabled},
+          ${amdEnabled}, ${backoffMode}, ${manualDelays ? JSON.stringify(manualDelays) : null}::jsonb,
+          ${concurrentCalls ?? 2},
           60, 15, 15,
           '09:00', '13:00', '14:00', '18:00',
           30, 24, 'Europe/Rome', true
@@ -1816,7 +1833,11 @@ router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "
       `);
     }
 
-    console.log(`🔄 [Voice] Retry settings updated for consultant ${consultantId}: max=${maxRetry}, interval=${retryInterval}min, noAnswer=${retryNoAnswer}, busy=${retryBusy}, shortCall=${retryShortCall}, voicemail=${retryVoicemail}, amd=${amdEnabled}`);
+    const savedConcurrent = concurrentCalls ?? (existing.rows.length > 0 
+      ? ((existing.rows[0] as any)?.max_concurrent_calls ?? 2) 
+      : 2);
+
+    console.log(`🔄 [Voice] Retry settings updated for consultant ${consultantId}: max=${maxRetry}, interval=${retryInterval}min, backoff=${backoffMode}, noAnswer=${retryNoAnswer}, busy=${retryBusy}, shortCall=${retryShortCall}, voicemail=${retryVoicemail}, amd=${amdEnabled}, concurrent=${savedConcurrent}`);
     res.json({ 
       success: true, 
       voiceMaxRetryAttempts: maxRetry, 
@@ -1825,7 +1846,10 @@ router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "
       voiceRetryOnBusy: retryBusy,
       voiceRetryOnShortCall: retryShortCall,
       voiceRetryOnVoicemail: retryVoicemail,
-      voiceAmdEnabled: amdEnabled
+      voiceAmdEnabled: amdEnabled,
+      voiceRetryBackoffMode: backoffMode,
+      voiceRetryManualDelays: manualDelays,
+      maxConcurrentCalls: savedConcurrent
     });
   } catch (error) {
     console.error("[Voice] Error updating retry settings:", error);
@@ -3453,16 +3477,27 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
     if (retryableStatuses.includes(status)) {
       // Check if should retry
       if (currentAttempts < maxAttempts) {
-        // Get consultant retry interval config
         const retryConfigResult = await db.execute(sql`
-          SELECT voice_retry_interval_minutes FROM consultant_availability_settings 
+          SELECT voice_retry_interval_minutes, voice_retry_backoff_mode, voice_retry_manual_delays 
+          FROM consultant_availability_settings 
           WHERE consultant_id = ${consultantId}
         `);
-        const baseIntervalMinutes = (retryConfigResult.rows[0] as any)?.voice_retry_interval_minutes || 5;
-        const baseIntervalMs = baseIntervalMinutes * 60 * 1000; // Convert to ms
+        const retryRow = retryConfigResult.rows[0] as any;
+        const baseIntervalMinutes = retryRow?.voice_retry_interval_minutes || 5;
+        const backoffMode = retryRow?.voice_retry_backoff_mode || 'exponential';
+        const manualDelays = retryRow?.voice_retry_manual_delays as number[] | null;
         
-        // Calculate retry delay with exponential backoff: baseInterval, 2x, 4x... max 30min
-        const retryDelayMs = Math.min(baseIntervalMs * Math.pow(2, currentAttempts - 1), 1800000);
+        let retryDelayMs: number;
+        if (backoffMode === 'manual' && Array.isArray(manualDelays) && manualDelays.length > 0) {
+          const delayIndex = Math.min(currentAttempts - 1, manualDelays.length - 1);
+          const delayMinutes = Math.max(1, Math.min(60, manualDelays[delayIndex] || 5));
+          retryDelayMs = delayMinutes * 60 * 1000;
+          console.log(`🔄 [Callback] Manual backoff: attempt ${currentAttempts}, delay=${delayMinutes}min (index=${delayIndex})`);
+        } else {
+          const baseIntervalMs = baseIntervalMinutes * 60 * 1000;
+          retryDelayMs = Math.min(baseIntervalMs * Math.pow(2, currentAttempts - 1), 1800000);
+          console.log(`🔄 [Callback] Exponential backoff: attempt ${currentAttempts}, delay=${Math.round(retryDelayMs/60000)}min`);
+        }
         const retryDelaySeconds = Math.floor(retryDelayMs / 1000);
         
         // Update status to retry_scheduled

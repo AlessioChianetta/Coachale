@@ -3470,6 +3470,8 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   voiceRetryOnShortCall: boolean("voice_retry_on_short_call").default(false),
   voiceRetryOnVoicemail: boolean("voice_retry_on_voicemail").default(true),
   voiceAmdEnabled: boolean("voice_amd_enabled").default(true),
+  voiceRetryBackoffMode: varchar("voice_retry_backoff_mode", { length: 20 }).default("exponential"),
+  voiceRetryManualDelays: jsonb("voice_retry_manual_delays"),
 
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
