@@ -1,0 +1,78 @@
+TESTI AUDIO — CODA D'ATTESA
+Per {{businessName}} | Formato: pronti per ElevenLabs / Google TTS
+Tutti i file: WAV 8kHz, 16-bit, mono
+
+📁 announcement.wav
+
+Riprodotto ogni ciclo come messaggio principale. Durata target: 10-15 secondi.
+
+"Sei in linea con {{businessName}}. Tutti i nostri consulenti sono al momento occupati con altri clienti — questo vuol dire che la richiesta è alta, e che stiamo aiutando persone come te a ottenere risultati concreti. Resta in linea, ci sei quasi."
+
+🎵 hold_music.wav
+
+Musica di sottofondo tra un annuncio e l'altro. Nessun testo — carica un brano strumentale energico ma non invadente (es. lo-fi upbeat, jazz moderno, corporate motivational). Durata consigliata: 30-45 secondi in loop.
+
+(nessun testo — solo musica)
+
+📁 position_prefix.wav
+
+Riprodotto prima del numero di posizione in coda. Durata: 2-3 secondi.
+
+"Sei in posizione numero"
+
+📁 position_suffix.wav
+
+Riprodotto dopo il numero di posizione. Durata: 3-4 secondi.
+
+"nella coda d'attesa. Tienimi in linea, ne vale la pena."
+
+📁 transferring.wav
+
+Riprodotto quando il lead preme 1 per essere trasferito. Durata: 5-7 secondi.
+
+"Perfetto, ti sto passando subito a uno dei nostri consulenti. Siamo quasi lì."
+
+📁 transfer_failed.wav
+
+Riprodotto se il trasferimento fallisce. Durata: 8-10 secondi.
+
+"Ops, qualcosa non ha funzionato. Riprova tra qualche secondo oppure richiamaci — siamo qui per te."
+
+📁 timeout.wav
+
+Riprodotto quando scadono tutti i cicli di attesa senza che nessuno risponda. Durata: 12-15 secondi.
+
+"Ci scusiamo per l'attesa — in questo momento tutti i nostri consulenti sono impegnati. Richiamaci tra poco oppure lascia i tuoi dati sul nostro sito: ti ricontatteremo noi il prima possibile. Grazie per aver scelto {{businessName}}."
+
+
+🔄 MESSAGGI ALTERNATIVI PER hold_music.wav
+Se vuoi usare messaggi parlati invece della musica (o in aggiunta, come "radio interna")
+Crea versioni diverse e ruotale — così ogni ciclo suona diverso
+
+Variante A — Social proof
+"Ogni giorno, persone come te scelgono {{businessName}} per cambiare direzione. Non perché siamo i più grandi — ma perché ci prendiamo il tempo di capire davvero la situazione di ognuno. Resta in linea."
+
+Variante B — Urgenza morbida
+"Sappiamo che il tuo tempo è prezioso. Per questo i nostri consulenti dedicano ogni chiamata al cento percento — nessuna fretta, nessuna risposta standard. Sei quasi al tuo turno."
+
+Variante C — Curiosità / hook
+"Ti stai chiedendo se {{businessName}} fa al caso tuo? La risposta è semplice: se sei qui, probabilmente sì. Tra poco un consulente ti spiegherà esattamente come possiamo aiutarti. Tienici in linea."
+
+Variante D — Valore gratuito
+"La chiamata che stai per fare è completamente gratuita e senza impegno. Il nostro obiettivo non è venderti qualcosa — è capire la tua situazione e dirti onestamente se possiamo aiutarti. A tra poco."
+
+Variante E — Identità / chi siamo
+"{{businessName}} nasce con un'idea semplice: le persone meritano consulenti che parlano chiaro, senza giri di parole. Quello che senti tra poco è esattamente questo. Resta con noi."
+
+
+⚙️ ISTRUZIONI TECNICHE
+Ordine consigliato dei messaggi per ciclo:
+
+position_prefix + numero + position_suffix → ~5 sec
+announcement.wav → ~12 sec
+hold_music.wav oppure una Variante A/B/C/D/E → 30-45 sec
+
+Consiglio per suonare meno robotico:
+Usa ElevenLabs con una voce italiana energica (es. "Mateo" o qualsiasi voce maschile/femminile con tono "conversational"). Abbassa la stability al 40-50% e alza la clarity al 75-80% — suona più vivo e meno sintetico.
+Rotazione varianti:
+Se il dialplan lo permette, crea 5 file separati (hold_A.wav, hold_B.wav...) e ruotali nei cicli invece di ripetere sempre lo stesso. L'esperienza di attesa risulta molto meno monotona.
