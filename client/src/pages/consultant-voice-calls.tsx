@@ -1003,12 +1003,13 @@ function ActiveCallDuration({ startedAt }: { startedAt?: string }) {
   return <span className="font-mono text-[11px] font-semibold text-green-600 dark:text-green-400">{elapsed}</span>;
 }
 
-function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch, maxConcurrent }: {
+function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch, maxConcurrent, voiceNumbers }: {
   scheduledCalls: any[];
   onCancel: (id: string) => void;
   onTriggerNow: (id: string) => void;
   onCancelBatch: (status?: string) => void;
   maxConcurrent: number;
+  voiceNumbers: Array<{ id: string; phone_number: string; display_name?: string; is_active: boolean; max_concurrent_calls?: number }>;
 }) {
   const now = Date.now();
   const SOON_THRESHOLD = 5 * 60 * 1000;
@@ -1055,7 +1056,32 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
   if (totalQueued === 0) return null;
 
   const cancellableCount = queuedCalls.length + retryCalls.length + futureCalls.length + approvalCalls.length;
-  const linePercent = maxConcurrent > 0 ? Math.min(100, (activeCalls.length / maxConcurrent) * 100) : 0;
+
+  const numberMap = new Map<string, { displayName: string; maxConcurrent: number }>();
+  voiceNumbers.forEach(n => {
+    numberMap.set(n.phone_number, {
+      displayName: n.display_name && n.display_name !== n.phone_number ? n.display_name : n.phone_number,
+      maxConcurrent: n.max_concurrent_calls ?? 5,
+    });
+  });
+
+  const allNonApprovalCalls = [...activeCalls, ...queuedCalls, ...retryCalls, ...futureCalls];
+  const usedNumbers = new Set<string>();
+  allNonApprovalCalls.forEach(c => {
+    if (c.from_number) usedNumbers.add(c.from_number);
+  });
+  if (usedNumbers.size === 0 && voiceNumbers.length > 0) {
+    usedNumbers.add(voiceNumbers[0].phone_number);
+  }
+  const numberGroups = Array.from(usedNumbers).map(num => {
+    const info = numberMap.get(num) || { displayName: num, maxConcurrent: maxConcurrent };
+    const numActive = activeCalls.filter(c => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number)).length;
+    const numQueued = queuedCalls.filter(c => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number));
+    const numRetry = retryCalls.filter(c => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number));
+    const numFuture = futureCalls.filter(c => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number));
+    return { number: num, ...info, activeCount: numActive, queuedCalls: numQueued, retryCalls: numRetry, futureCalls: numFuture };
+  });
+  const hasMultipleNumbers = numberGroups.length > 1;
 
   const getOriginBadge = (call: any) => {
     if (call.source_task_id) {
@@ -1243,12 +1269,32 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
             </div>
             <div>
               <CardTitle className="text-sm font-semibold">Coda Chiamate</CardTitle>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="w-20 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                  <div className={`h-full rounded-full transition-all duration-500 ${activeCalls.length > 0 ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} style={{ width: `${linePercent}%` }} />
+              {hasMultipleNumbers ? (
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                  {numberGroups.map(g => {
+                    const pct = g.maxConcurrent > 0 ? Math.min(100, (g.activeCount / g.maxConcurrent) * 100) : 0;
+                    return (
+                      <div key={g.number} className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono text-muted-foreground">{g.displayName}</span>
+                        <div className="w-12 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-500 ${g.activeCount > 0 ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{g.activeCount}/{g.maxConcurrent}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-                <span className="text-[11px] text-muted-foreground font-medium">{activeCalls.length}/{maxConcurrent} linee</span>
-              </div>
+              ) : (
+                <div className="flex items-center gap-2 mt-1">
+                  {numberGroups.length > 0 && (
+                    <span className="text-[10px] font-mono text-muted-foreground">{numberGroups[0].displayName}</span>
+                  )}
+                  <div className="w-16 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-500 ${activeCalls.length > 0 ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} style={{ width: `${numberGroups.length > 0 ? Math.min(100, (numberGroups[0].activeCount / numberGroups[0].maxConcurrent) * 100) : 0}%` }} />
+                  </div>
+                  <span className="text-[11px] text-muted-foreground font-medium">{activeCalls.length}/{numberGroups.length > 0 ? numberGroups[0].maxConcurrent : maxConcurrent} linee</span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1268,20 +1314,43 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-0">
-        <div className="space-y-2.5 max-h-[380px] overflow-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
+        <div className="space-y-2.5 max-h-[420px] overflow-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
           {renderSection('active', 'Attive', activeCalls.length, activeCalls, 'active')}
 
           {renderSection('approval', 'In attesa di approvazione', approvalCalls.length, approvalCalls, 'approval')}
 
-          {renderSection('queued', 'In coda', queuedCalls.length, queuedCalls, 'queued',
-            activeCalls.length >= maxConcurrent && queuedCalls.length > 0 ? (
-              <span className="text-[9px] font-normal ml-1 normal-case tracking-normal text-blue-500 dark:text-blue-400">in attesa di linea libera</span>
-            ) : undefined
+          {hasMultipleNumbers ? (
+            numberGroups.map(g => {
+              const allGroupCalls = [...g.queuedCalls, ...g.retryCalls, ...g.futureCalls];
+              if (allGroupCalls.length === 0) return null;
+              return (
+                <div key={g.number} className="space-y-1.5">
+                  <div className="flex items-center gap-2 px-2 py-1 rounded bg-gray-50 dark:bg-gray-800/30 border border-gray-200/50 dark:border-gray-700/30">
+                    <Phone className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-[11px] font-mono font-medium">{g.displayName}</span>
+                    <span className="text-[10px] text-muted-foreground">({g.activeCount}/{g.maxConcurrent} linee attive)</span>
+                  </div>
+                  {g.queuedCalls.length > 0 && renderSection(`queued-${g.number}`, 'In coda', g.queuedCalls.length, g.queuedCalls, 'queued',
+                    g.activeCount >= g.maxConcurrent ? (
+                      <span className="text-[9px] font-normal ml-1 normal-case tracking-normal text-blue-500 dark:text-blue-400">in attesa di linea libera</span>
+                    ) : undefined
+                  )}
+                  {g.retryCalls.length > 0 && renderSection(`retry-${g.number}`, 'Retry', g.retryCalls.length, g.retryCalls, 'retry')}
+                  {g.futureCalls.length > 0 && renderSection(`future-${g.number}`, 'Programmate', g.futureCalls.length, g.futureCalls, 'future', undefined, 5)}
+                </div>
+              );
+            })
+          ) : (
+            <>
+              {renderSection('queued', 'In coda', queuedCalls.length, queuedCalls, 'queued',
+                activeCalls.length >= (numberGroups.length > 0 ? numberGroups[0].maxConcurrent : maxConcurrent) && queuedCalls.length > 0 ? (
+                  <span className="text-[9px] font-normal ml-1 normal-case tracking-normal text-blue-500 dark:text-blue-400">in attesa di linea libera</span>
+                ) : undefined
+              )}
+              {renderSection('retry', 'Retry', retryCalls.length, retryCalls, 'retry')}
+              {renderSection('future', 'Programmate', futureCalls.length, futureCalls, 'future', undefined, 5)}
+            </>
           )}
-
-          {renderSection('retry', 'Retry', retryCalls.length, retryCalls, 'retry')}
-
-          {renderSection('future', 'Programmate', futureCalls.length, futureCalls, 'future', undefined, 5)}
         </div>
       </CardContent>
     </Card>
@@ -1716,7 +1785,7 @@ export default function ConsultantVoiceCallsPage() {
     refetchInterval: 10000,
   });
 
-  const { data: voiceNumbersData } = useQuery<{ numbers: Array<{ id: string; phone_number: string; display_name?: string; is_active: boolean; voice_id?: string }> }>({
+  const { data: voiceNumbersData } = useQuery<{ numbers: Array<{ id: string; phone_number: string; display_name?: string; is_active: boolean; voice_id?: string; max_concurrent_calls?: number }> }>({
     queryKey: ["/api/voice/numbers"],
     queryFn: async () => {
       const res = await fetch("/api/voice/numbers", { headers: getAuthHeaders() });
@@ -3166,6 +3235,7 @@ export default function ConsultantVoiceCallsPage() {
                         refetchScheduledCalls();
                       }).catch(() => toast({ title: "Errore", variant: "destructive" }));
                     }}
+                    voiceNumbers={myVoiceNumbers.map(n => ({ ...n, max_concurrent_calls: (n as any).max_concurrent_calls }))}
                     maxConcurrent={maxConcurrentCalls}
                   />
 
