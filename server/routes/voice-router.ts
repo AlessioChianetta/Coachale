@@ -1196,6 +1196,7 @@ router.patch("/numbers/:id/overflow", authenticateToken, requireAnyRole(["consul
       overflow_dtmf_enabled,
       overflow_auto_return,
       overflow_message,
+      max_concurrent_calls,
     } = req.body;
 
     const ownerCheck = consultantId
@@ -1211,6 +1212,7 @@ router.patch("/numbers/:id/overflow", authenticateToken, requireAnyRole(["consul
         overflow_dtmf_enabled = ${overflow_dtmf_enabled ?? true},
         overflow_auto_return = ${overflow_auto_return ?? true},
         overflow_message = ${overflow_message ?? null},
+        max_concurrent_calls = ${max_concurrent_calls ?? sql`max_concurrent_calls`},
         updated_at = NOW()
       WHERE id = ${id} ${ownerCheck}
       RETURNING *

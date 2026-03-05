@@ -62,6 +62,22 @@ class SessionManager {
     return this.sessions.size < config.session.maxConcurrent;
   }
 
+  activeCountForNumber(calledNumber: string): number {
+    const normalized = calledNumber.replace(/\D/g, '');
+    let count = 0;
+    for (const session of this.sessions.values()) {
+      const sessNorm = session.calledNumber.replace(/\D/g, '');
+      if (sessNorm === normalized || session.calledNumber === calledNumber) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  canAcceptCallForNumber(calledNumber: string, maxForNumber: number): boolean {
+    return this.activeCountForNumber(calledNumber) < maxForNumber;
+  }
+
   createSession(
     callId: string,
     callerId: string,
@@ -299,6 +315,17 @@ class SessionManager {
     if (entry.timeoutHandle) clearTimeout(entry.timeoutHandle);
     log.info(`📤 Dequeued from overflow`, { uuid: entry.uuid, calledNumber: entry.calledNumber, remaining: this._overflowQueue.length });
     return entry;
+  }
+
+  reinsertAtFront(entry: OverflowEntry, remainingTimeoutMs: number, onTimeout: (uuid: string) => void): void {
+    const timeoutHandle = setTimeout(() => {
+      log.warn(`⏰ Overflow timeout reached for ${entry.uuid}`);
+      this.removeFromOverflow(entry.uuid);
+      onTimeout(entry.uuid);
+    }, remainingTimeoutMs);
+    entry.timeoutHandle = timeoutHandle;
+    this._overflowQueue.unshift(entry);
+    log.info(`🔄 Re-inserted at front of overflow queue`, { uuid: entry.uuid, calledNumber: entry.calledNumber, remainingMs: remainingTimeoutMs, queueSize: this._overflowQueue.length });
   }
 
   isInOverflow(uuid: string): boolean {

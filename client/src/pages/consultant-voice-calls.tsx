@@ -1003,12 +1003,11 @@ function ActiveCallDuration({ startedAt }: { startedAt?: string }) {
   return <span className="font-mono text-[11px] font-semibold text-green-600 dark:text-green-400">{elapsed}</span>;
 }
 
-function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch, maxConcurrent, voiceNumbers }: {
+function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch, voiceNumbers }: {
   scheduledCalls: any[];
   onCancel: (id: string) => void;
   onTriggerNow: (id: string) => void;
   onCancelBatch: (status?: string) => void;
-  maxConcurrent: number;
   voiceNumbers: Array<{ id: string; phone_number: string; display_name?: string; is_active: boolean; max_concurrent_calls?: number }>;
 }) {
   const now = Date.now();
@@ -1074,7 +1073,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
     usedNumbers.add(voiceNumbers[0].phone_number);
   }
   const numberGroups = Array.from(usedNumbers).map(num => {
-    const info = numberMap.get(num) || { displayName: num, maxConcurrent: maxConcurrent };
+    const info = numberMap.get(num) || { displayName: num, maxConcurrent: 5 };
     const numActive = activeCalls.filter(c => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number)).length;
     const numQueued = queuedCalls.filter(c => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number));
     const numRetry = retryCalls.filter(c => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number));
@@ -1292,7 +1291,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
                   <div className="w-16 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
                     <div className={`h-full rounded-full transition-all duration-500 ${activeCalls.length > 0 ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} style={{ width: `${numberGroups.length > 0 ? Math.min(100, (numberGroups[0].activeCount / numberGroups[0].maxConcurrent) * 100) : 0}%` }} />
                   </div>
-                  <span className="text-[11px] text-muted-foreground font-medium">{activeCalls.length}/{numberGroups.length > 0 ? numberGroups[0].maxConcurrent : maxConcurrent} linee</span>
+                  <span className="text-[11px] text-muted-foreground font-medium">{activeCalls.length}/{numberGroups.length > 0 ? numberGroups[0].maxConcurrent : 5} linee</span>
                 </div>
               )}
             </div>
@@ -1343,7 +1342,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
           ) : (
             <>
               {renderSection('queued', 'In coda', queuedCalls.length, queuedCalls, 'queued',
-                activeCalls.length >= (numberGroups.length > 0 ? numberGroups[0].maxConcurrent : maxConcurrent) && queuedCalls.length > 0 ? (
+                activeCalls.length >= (numberGroups.length > 0 ? numberGroups[0].maxConcurrent : 5) && queuedCalls.length > 0 ? (
                   <span className="text-[9px] font-normal ml-1 normal-case tracking-normal text-blue-500 dark:text-blue-400">in attesa di linea libera</span>
                 ) : undefined
               )}
@@ -1429,8 +1428,6 @@ export default function ConsultantVoiceCallsPage() {
   const [amdEnabled, setAmdEnabled] = useState<boolean>(true);
   const [backoffMode, setBackoffMode] = useState<'exponential' | 'manual'>('exponential');
   const [manualDelays, setManualDelays] = useState<number[]>([5, 10, 20, 30, 30]);
-  const [maxConcurrentCalls, setMaxConcurrentCalls] = useState<number>(2);
-
   // AI Task Queue state
   const [aiTasksFilter, setAITasksFilter] = useState("all");
   const [aiTasksPage, setAITasksPage] = useState(1);
@@ -1515,8 +1512,7 @@ export default function ConsultantVoiceCallsPage() {
     if (voiceSettings?.voiceAmdEnabled !== undefined) setAmdEnabled(voiceSettings.voiceAmdEnabled);
     if (voiceSettings?.voiceRetryBackoffMode) setBackoffMode(voiceSettings.voiceRetryBackoffMode);
     if (voiceSettings?.voiceRetryManualDelays) setManualDelays(voiceSettings.voiceRetryManualDelays);
-    if (voiceSettings?.maxConcurrentCalls !== undefined) setMaxConcurrentCalls(voiceSettings.maxConcurrentCalls);
-  }, [voiceSettings?.vpsBridgeUrl, voiceSettings?.voiceMaxRetryAttempts, voiceSettings?.voiceRetryIntervalMinutes, voiceSettings?.voiceRetryOnNoAnswer, voiceSettings?.voiceRetryOnBusy, voiceSettings?.voiceRetryOnShortCall, voiceSettings?.voiceRetryOnVoicemail, voiceSettings?.voiceAmdEnabled, voiceSettings?.voiceRetryBackoffMode, voiceSettings?.voiceRetryManualDelays, voiceSettings?.maxConcurrentCalls]);
+  }, [voiceSettings?.vpsBridgeUrl, voiceSettings?.voiceMaxRetryAttempts, voiceSettings?.voiceRetryIntervalMinutes, voiceSettings?.voiceRetryOnNoAnswer, voiceSettings?.voiceRetryOnBusy, voiceSettings?.voiceRetryOnShortCall, voiceSettings?.voiceRetryOnVoicemail, voiceSettings?.voiceAmdEnabled, voiceSettings?.voiceRetryBackoffMode, voiceSettings?.voiceRetryManualDelays]);
 
   useEffect(() => {
     if (calendarScrollRef.current) {
@@ -1556,7 +1552,6 @@ export default function ConsultantVoiceCallsPage() {
       maxAttempts: number; intervalMinutes: number;
       retryNoAnswer: boolean; retryBusy: boolean; retryShortCall: boolean; retryVoicemail: boolean;
       amdEnabled: boolean; backoffMode: string; manualDelays: number[];
-      maxConcurrentCalls: number;
     }) => {
       const res = await fetch("/api/voice/retry-settings", {
         method: "PUT",
@@ -1571,7 +1566,6 @@ export default function ConsultantVoiceCallsPage() {
           voiceAmdEnabled: params.amdEnabled,
           voiceRetryBackoffMode: params.backoffMode,
           voiceRetryManualDelays: params.manualDelays,
-          maxConcurrentCalls: params.maxConcurrentCalls,
         }),
       });
       if (!res.ok) {
@@ -1591,7 +1585,6 @@ export default function ConsultantVoiceCallsPage() {
       setAmdEnabled(data.voiceAmdEnabled);
       if (data.voiceRetryBackoffMode) setBackoffMode(data.voiceRetryBackoffMode);
       if (data.voiceRetryManualDelays) setManualDelays(data.voiceRetryManualDelays);
-      if (data.maxConcurrentCalls !== undefined) setMaxConcurrentCalls(data.maxConcurrentCalls);
       toast({ title: "Salvato", description: "Impostazioni retry e AMD aggiornate" });
     },
     onError: (err: Error) => {
@@ -3258,7 +3251,6 @@ export default function ConsultantVoiceCallsPage() {
                       }).catch(() => toast({ title: "Errore", variant: "destructive" }));
                     }}
                     voiceNumbers={myVoiceNumbers.map(n => ({ ...n, max_concurrent_calls: (n as any).max_concurrent_calls }))}
-                    maxConcurrent={maxConcurrentCalls}
                   />
 
                   <div className="flex gap-4">
@@ -4417,13 +4409,48 @@ export default function ConsultantVoiceCallsPage() {
                         const ovTimeout = n.overflow_timeout_secs ?? 120;
                         const ovFallback = n.fallback_number || '';
                         const ovMessage = n.overflow_message || '';
+                        const ovMaxConcurrent = n.max_concurrent_calls ?? 5;
 
                         return (
-                          <div key={`overflow-${n.id}-${n.overflow_enabled}-${n.overflow_dtmf_enabled}-${n.overflow_auto_return}-${n.overflow_timeout_secs}-${n.fallback_number}-${n.overflow_message}`} className="p-4 border rounded-lg space-y-4">
+                          <div key={`overflow-${n.id}-${n.overflow_enabled}-${n.overflow_dtmf_enabled}-${n.overflow_auto_return}-${n.overflow_timeout_secs}-${n.fallback_number}-${n.overflow_message}-${n.max_concurrent_calls}`} className="p-4 border rounded-lg space-y-4">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 <Phone className="h-4 w-4 text-muted-foreground" />
                                 <p className="text-sm font-medium font-mono">{n.phone_number}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 border rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <Users className="h-4 w-4 text-blue-500" />
+                                <div>
+                                  <p className="text-sm font-medium">Max chiamate contemporanee</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Limite di linee AI attive per questo numero
+                                  </p>
+                                </div>
+                              </div>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={10}
+                                defaultValue={ovMaxConcurrent}
+                                className="w-20 text-center"
+                                onBlur={(e) => {
+                                  const val = Math.max(1, Math.min(10, parseInt(e.target.value) || 5));
+                                  if (val !== ovMaxConcurrent) {
+                                    saveOverflowMutation.mutate({
+                                      numberId: n.id,
+                                      data: { overflow_enabled: ovEnabled, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: val },
+                                    });
+                                  }
+                                }}
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Coda d'attesa quando le linee sono piene</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-xs text-muted-foreground">Coda d'attesa</span>
@@ -4432,7 +4459,7 @@ export default function ConsultantVoiceCallsPage() {
                                   onCheckedChange={(checked) => {
                                     saveOverflowMutation.mutate({
                                       numberId: n.id,
-                                      data: { overflow_enabled: checked, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null },
+                                      data: { overflow_enabled: checked, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
                                     });
                                   }}
                                 />
@@ -4454,7 +4481,7 @@ export default function ConsultantVoiceCallsPage() {
                                     onCheckedChange={(checked) => {
                                       saveOverflowMutation.mutate({
                                         numberId: n.id,
-                                        data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: checked, overflow_message: ovMessage || null },
+                                        data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: checked, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
                                       });
                                     }}
                                   />
@@ -4473,7 +4500,7 @@ export default function ConsultantVoiceCallsPage() {
                                     onCheckedChange={(checked) => {
                                       saveOverflowMutation.mutate({
                                         numberId: n.id,
-                                        data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: checked, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null },
+                                        data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: checked, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
                                       });
                                     }}
                                   />
@@ -4496,7 +4523,7 @@ export default function ConsultantVoiceCallsPage() {
                                           if (val !== ovFallback) {
                                             saveOverflowMutation.mutate({
                                               numberId: n.id,
-                                              data: { overflow_enabled: true, fallback_number: val || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: true, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null },
+                                              data: { overflow_enabled: true, fallback_number: val || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: true, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
                                             });
                                           }
                                         }}
@@ -4532,7 +4559,7 @@ export default function ConsultantVoiceCallsPage() {
                                         if (val !== ovTimeout) {
                                           saveOverflowMutation.mutate({
                                             numberId: n.id,
-                                            data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: val, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null },
+                                            data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: val, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
                                           });
                                         }
                                       }}
@@ -4541,7 +4568,7 @@ export default function ConsultantVoiceCallsPage() {
                                         if (val !== ovTimeout) {
                                           saveOverflowMutation.mutate({
                                             numberId: n.id,
-                                            data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: val, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null },
+                                            data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: val, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
                                           });
                                         }
                                       }}
@@ -4570,7 +4597,7 @@ export default function ConsultantVoiceCallsPage() {
                                       if (val !== ovMessage) {
                                         saveOverflowMutation.mutate({
                                           numberId: n.id,
-                                          data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: val || null },
+                                          data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: val || null, max_concurrent_calls: ovMaxConcurrent },
                                         });
                                       }
                                     }}
@@ -4794,29 +4821,6 @@ export default function ConsultantVoiceCallsPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Chiamate simultanee</p>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Users className="h-4 w-4 text-blue-500" />
-                          <div>
-                            <p className="text-sm font-medium">Max chiamate contemporanee</p>
-                            <p className="text-xs text-muted-foreground">
-                              Se il limite è raggiunto, le nuove chiamate vengono messe in coda automaticamente
-                            </p>
-                          </div>
-                        </div>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={10}
-                          value={maxConcurrentCalls}
-                          onChange={(e) => setMaxConcurrentCalls(Math.max(1, Math.min(10, parseInt(e.target.value) || 2)))}
-                          className="w-20 text-center"
-                        />
-                      </div>
-                    </div>
-
                     <Button
                       onClick={() => saveRetrySettingsMutation.mutate({ 
                         maxAttempts: retryMaxAttempts, 
@@ -4828,7 +4832,6 @@ export default function ConsultantVoiceCallsPage() {
                         amdEnabled: amdEnabled,
                         backoffMode: backoffMode,
                         manualDelays: manualDelays,
-                        maxConcurrentCalls: maxConcurrentCalls,
                       })}
                       disabled={saveRetrySettingsMutation.isPending}
                       className="w-full"
