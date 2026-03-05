@@ -1,0 +1,32 @@
+04\|error" /usr/local/freeswitch/var/log/freeswitch/freeswitch.log | tail -30
+outbound-1772684058916-zy4ydd 2026-03-05 04:14:21.841574 91.07% [NOTICE] switch_core_session.c:1770 Close Channel sofia/internal/1004@109.116.200.59:49809 [CS_DESTROY]
+outbound-1772684058916-zy4ydd 2026-03-05 04:14:21.841574 91.07% [DEBUG] switch_core_state_machine.c:735 (sofia/internal/1004@109.116.200.59:49809) Running State Change CS_DESTROY (Cur 0 Tot 10653)
+outbound-1772684058916-zy4ydd 2026-03-05 04:14:21.841574 91.07% [DEBUG] switch_core_state_machine.c:745 (sofia/internal/1004@109.116.200.59:49809) State DESTROY
+outbound-1772684058916-zy4ydd 2026-03-05 04:14:21.841574 91.07% [DEBUG] mod_sofia.c:380 sofia/internal/1004@109.116.200.59:49809 SOFIA DESTROY
+outbound-1772684058916-zy4ydd 2026-03-05 04:14:21.841574 91.07% [DEBUG] switch_core_state_machine.c:175 sofia/internal/1004@109.116.200.59:49809 Standard DESTROY
+outbound-1772684058916-zy4ydd 2026-03-05 04:14:21.841574 91.07% [DEBUG] switch_core_state_machine.c:745 (sofia/internal/1004@109.116.200.59:49809) State DESTROY going to sleep
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [NOTICE] switch_channel.c:1143 New Channel sofia/internal/1004@109.116.200.59:49809 [outbound-1772684080921-h4yzm4]
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] mod_sofia.c:5123 (sofia/internal/1004@109.116.200.59:49809) State Change CS_NEW -> CS_INIT
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_session.c:641 sofia/internal/1004@109.116.200.59:49809 set UUID=outbound-1772684080921-h4yzm4
+2026-03-05 04:14:40.961549 73.03% [NOTICE] switch_ivr_originate.c:3059 Cannot create outgoing channel of type [error] cause: [USER_NOT_REGISTERED]
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_state_machine.c:581 (sofia/internal/1004@109.116.200.59:49809) Running State Change CS_INIT (Cur 1 Tot 10654)
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_state_machine.c:624 (sofia/internal/1004@109.116.200.59:49809) State INIT
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] mod_sofia.c:97 sofia/internal/1004@109.116.200.59:49809 SOFIA INIT
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [INFO] sofia_glue.c:1656 sofia/internal/1004@109.116.200.59:49809 sending invite call-id: (null)
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] sofia_glue.c:1659 sofia/internal/1004@109.116.200.59:49809 sending invite version: 1.10.13-dev git 88fa1f9 2026-01-16 20:10:23Z 64bit
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_state_machine.c:40 sofia/internal/1004@109.116.200.59:49809 Standard INIT
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_state_machine.c:48 (sofia/internal/1004@109.116.200.59:49809) State Change CS_INIT -> CS_ROUTING
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_state_machine.c:624 (sofia/internal/1004@109.116.200.59:49809) State INIT going to sleep
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_state_machine.c:581 (sofia/internal/1004@109.116.200.59:49809) Running State Change CS_ROUTING (Cur 1 Tot 10654)
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_state_machine.c:640 (sofia/internal/1004@109.116.200.59:49809) State ROUTING
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] mod_sofia.c:158 sofia/internal/1004@109.116.200.59:49809 SOFIA ROUTING
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_ivr_originate.c:67 (sofia/internal/1004@109.116.200.59:49809) State Change CS_ROUTING -> CS_CONSUME_MEDIA
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_state_machine.c:640 (sofia/internal/1004@109.116.200.59:49809) State ROUTING going to sleep
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_state_machine.c:581 (sofia/internal/1004@109.116.200.59:49809) Running State Change CS_CONSUME_MEDIA (Cur 1 Tot 10654)
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_state_machine.c:659 (sofia/internal/1004@109.116.200.59:49809) State CONSUME_MEDIA
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] switch_core_state_machine.c:659 (sofia/internal/1004@109.116.200.59:49809) State CONSUME_MEDIA going to sleep
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:40.961549 73.03% [DEBUG] sofia.c:7493 Channel sofia/internal/1004@109.116.200.59:49809 entering state [calling][0]
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:41.221549 73.03% [DEBUG] sofia.c:7493 Channel sofia/internal/1004@109.116.200.59:49809 entering state [proceeding][180]
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:41.221549 73.03% [NOTICE] sofia.c:7604 Ring-Ready sofia/internal/1004@109.116.200.59:49809!
+outbound-1772684080921-h4yzm4 2026-03-05 04:14:41.221549 73.03% [DEBUG] switch_channel.c:3515 (sofia/internal/1004@109.116.200.59:49809) Callstate Change DOWN -> RINGING
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 

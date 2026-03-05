@@ -1,0 +1,127 @@
+root@srv1164256:/usr/src# # 2. Scarica il modulo
+cd /usr/src
+git clone https://github.com/voipbit/mod_amd.git
+cd mod_amd
+Cloning into 'mod_amd'...
+remote: Enumerating objects: 20, done.
+remote: Counting objects: 100% (20/20), done.
+remote: Compressing objects: 100% (16/16), done.
+remote: Total 20 (delta 5), reused 4 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (20/20), 9.23 KiB | 1.85 MiB/s, done.
+Resolving deltas: 100% (5/5), done.
+root@srv1164256:/usr/src/mod_amd# 
+root@srv1164256:/usr/src/mod_amd# 
+root@srv1164256:/usr/src/mod_amd# # 3. Compila (punta al tuo FreeSWITCH)
+export PKG_CONFIG_PATH=/usr/local/freeswitch/lib/pkgconfig/
+make
+In file included from /usr/local/freeswitch/include/freeswitch/switch.h:121,
+                 from mod_amd.c:1:
+mod_amd.c: In function 'mod_amd_load':
+mod_amd.c:131:17: error: 'amd_stop_function' undeclared (first use in this function); did you mean 'amd_start_function'?
+  131 |                 amd_stop_function,
+      |                 ^~~~~~~~~~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_loadable_module.h:397:41: note: in definition of macro 'SWITCH_ADD_APP'
+  397 |         app_int->application_function = funcptr; \
+      |                                         ^~~~~~~
+mod_amd.c:131:17: note: each undeclared identifier is reported only once for each function it appears in
+  131 |                 amd_stop_function,
+      |                 ^~~~~~~~~~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_loadable_module.h:397:41: note: in definition of macro 'SWITCH_ADD_APP'
+  397 |         app_int->application_function = funcptr; \
+      |                                         ^~~~~~~
+In file included from /usr/local/freeswitch/include/freeswitch/switch.h:113:
+mod_amd.c: In function 'amd_handle_silence_frame':
+mod_amd.c:200:63: error: passing argument 1 of 'switch_core_session_type_check' discards 'const' qualifier from pointer target type [-Werror=discarded-qualifiers]
+  200 |                                 SWITCH_CHANNEL_SESSION_LOG(vad->session),
+      |                                                            ~~~^~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1345:147: note: in definition of macro 'SWITCH_CHANNEL_SESSION_LOG'
+ 1345 | ITCH_CHANNEL_ID_SESSION, __FILE__, __SWITCH_FUNC__, __LINE__, (const char*)switch_core_session_type_check(x)
+      |                                                                                                           ^
+
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1338:92: note: expected 'switch_core_session_t *' {aka 'struct switch_core_session *'} but argument is of type 'const switch_core_session_t *' {aka 'const struct switch_core_session *'}
+ 1338 | static inline switch_core_session_t *switch_core_session_type_check(switch_core_session_t *session) { return session; }
+      |                                                                     ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+mod_amd.c:211:55: error: passing argument 1 of 'switch_core_session_type_check' discards 'const' qualifier from pointer target type [-Werror=discarded-qualifiers]
+  211 |                         SWITCH_CHANNEL_SESSION_LOG(vad->session),
+      |                                                    ~~~^~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1345:147: note: in definition of macro 'SWITCH_CHANNEL_SESSION_LOG'
+ 1345 | ITCH_CHANNEL_ID_SESSION, __FILE__, __SWITCH_FUNC__, __LINE__, (const char*)switch_core_session_type_check(x)
+      |                                                                                                           ^
+
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1338:92: note: expected 'switch_core_session_t *' {aka 'struct switch_core_session *'} but argument is of type 'const switch_core_session_t *' {aka 'const struct switch_core_session *'}
+ 1338 | static inline switch_core_session_t *switch_core_session_type_check(switch_core_session_t *session) { return session; }
+      |                                                                     ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+mod_amd.c:224:55: error: passing argument 1 of 'switch_core_session_type_check' discards 'const' qualifier from pointer target type [-Werror=discarded-qualifiers]
+  224 |                         SWITCH_CHANNEL_SESSION_LOG(vad->session),
+      |                                                    ~~~^~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1345:147: note: in definition of macro 'SWITCH_CHANNEL_SESSION_LOG'
+ 1345 | ITCH_CHANNEL_ID_SESSION, __FILE__, __SWITCH_FUNC__, __LINE__, (const char*)switch_core_session_type_check(x)
+      |                                                                                                           ^
+
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1338:92: note: expected 'switch_core_session_t *' {aka 'struct switch_core_session *'} but argument is of type 'const switch_core_session_t *' {aka 'const struct switch_core_session *'}
+ 1338 | static inline switch_core_session_t *switch_core_session_type_check(switch_core_session_t *session) { return session; }
+      |                                                                     ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+mod_amd.c: In function 'amd_handle_voiced_frame':
+mod_amd.c:246:55: error: passing argument 1 of 'switch_core_session_type_check' discards 'const' qualifier from pointer target type [-Werror=discarded-qualifiers]
+  246 |                         SWITCH_CHANNEL_SESSION_LOG(vad->session),
+      |                                                    ~~~^~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1345:147: note: in definition of macro 'SWITCH_CHANNEL_SESSION_LOG'
+ 1345 | ITCH_CHANNEL_ID_SESSION, __FILE__, __SWITCH_FUNC__, __LINE__, (const char*)switch_core_session_type_check(x)
+      |                                                                                                           ^
+
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1338:92: note: expected 'switch_core_session_t *' {aka 'struct switch_core_session *'} but argument is of type 'const switch_core_session_t *' {aka 'const struct switch_core_session *'}
+ 1338 | static inline switch_core_session_t *switch_core_session_type_check(switch_core_session_t *session) { return session; }
+      |                                                                     ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+mod_amd.c:256:55: error: passing argument 1 of 'switch_core_session_type_check' discards 'const' qualifier from pointer target type [-Werror=discarded-qualifiers]
+  256 |                         SWITCH_CHANNEL_SESSION_LOG(vad->session),
+      |                                                    ~~~^~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1345:147: note: in definition of macro 'SWITCH_CHANNEL_SESSION_LOG'
+ 1345 | ITCH_CHANNEL_ID_SESSION, __FILE__, __SWITCH_FUNC__, __LINE__, (const char*)switch_core_session_type_check(x)
+      |                                                                                                           ^
+
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1338:92: note: expected 'switch_core_session_t *' {aka 'struct switch_core_session *'} but argument is of type 'const switch_core_session_t *' {aka 'const struct switch_core_session *'}
+ 1338 | static inline switch_core_session_t *switch_core_session_type_check(switch_core_session_t *session) { return session; }
+      |                                                                     ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+mod_amd.c:269:55: error: passing argument 1 of 'switch_core_session_type_check' discards 'const' qualifier from pointer target type [-Werror=discarded-qualifiers]
+  269 |                         SWITCH_CHANNEL_SESSION_LOG(vad->session),
+      |                                                    ~~~^~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1345:147: note: in definition of macro 'SWITCH_CHANNEL_SESSION_LOG'
+ 1345 | ITCH_CHANNEL_ID_SESSION, __FILE__, __SWITCH_FUNC__, __LINE__, (const char*)switch_core_session_type_check(x)
+      |                                                                                                           ^
+
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1338:92: note: expected 'switch_core_session_t *' {aka 'struct switch_core_session *'} but argument is of type 'const switch_core_session_t *' {aka 'const struct switch_core_session *'}
+ 1338 | static inline switch_core_session_t *switch_core_session_type_check(switch_core_session_t *session) { return session; }
+      |                                                                     ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+mod_amd.c:282:55: error: passing argument 1 of 'switch_core_session_type_check' discards 'const' qualifier from pointer target type [-Werror=discarded-qualifiers]
+  282 |                         SWITCH_CHANNEL_SESSION_LOG(vad->session),
+      |                                                    ~~~^~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1345:147: note: in definition of macro 'SWITCH_CHANNEL_SESSION_LOG'
+ 1345 | ITCH_CHANNEL_ID_SESSION, __FILE__, __SWITCH_FUNC__, __LINE__, (const char*)switch_core_session_type_check(x)
+      |                                                                                                           ^
+
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1338:92: note: expected 'switch_core_session_t *' {aka 'struct switch_core_session *'} but argument is of type 'const switch_core_session_t *' {aka 'const struct switch_core_session *'}
+ 1338 | static inline switch_core_session_t *switch_core_session_type_check(switch_core_session_t *session) { return session; }
+      |                                                                     ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+mod_amd.c:296:63: error: passing argument 1 of 'switch_core_session_type_check' discards 'const' qualifier from pointer target type [-Werror=discarded-qualifiers]
+  296 |                                 SWITCH_CHANNEL_SESSION_LOG(vad->session),
+      |                                                            ~~~^~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1345:147: note: in definition of macro 'SWITCH_CHANNEL_SESSION_LOG'
+ 1345 | ITCH_CHANNEL_ID_SESSION, __FILE__, __SWITCH_FUNC__, __LINE__, (const char*)switch_core_session_type_check(x)
+      |                                                                                                           ^
+
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1338:92: note: expected 'switch_core_session_t *' {aka 'struct switch_core_session *'} but argument is of type 'const switch_core_session_t *' {aka 'const struct switch_core_session *'}
+ 1338 | static inline switch_core_session_t *switch_core_session_type_check(switch_core_session_t *session) { return session; }
+      |                                                                     ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+mod_amd.c:308:63: error: passing argument 1 of 'switch_core_session_type_check' discards 'const' qualifier from pointer target type [-Werror=discarded-qualifiers]
+  308 |                                 SWITCH_CHANNEL_SESSION_LOG(vad->session),
+      |                                                            ~~~^~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1345:147: note: in definition of macro 'SWITCH_CHANNEL_SESSION_LOG'
+ 1345 | ITCH_CHANNEL_ID_SESSION, __FILE__, __SWITCH_FUNC__, __LINE__, (const char*)switch_core_session_type_check(x)
+      |                                                                                                           ^
+
+/usr/local/freeswitch/include/freeswitch/switch_types.h:1338:92: note: expected 'switch_core_session_t *' {aka 'struct switch_core_session *'} but argument is of type 'const switch_core_session_t *' {aka 'const struct switch_core_session *'}
+ 1338 | static inline switch_core_session_t *switch_core_session_type_check(switch_core_session_t *session) { return session; }
+      |                                                                     ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+cc1: all warnings being treated as errors
+make: *** [Makefile:17: mod_amd.o] Error 1
+root@srv1164256:/usr/src/mod_amd# 

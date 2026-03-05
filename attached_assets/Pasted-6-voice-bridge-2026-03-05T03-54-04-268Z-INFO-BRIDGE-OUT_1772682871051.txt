@@ -1,0 +1,13 @@
+6|voice-bridge  | 2026-03-05T03:54:04.268Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772682842284_3yqen1hru targetPhone=1004 aiMode=assistenza
+6|voice-bridge  | 2026-03-05T03:54:04.269Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] AMD enabled=true
+6|voice-bridge  | 2026-03-05T03:54:04.269Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling LOCAL extension 1004 (no gateway, no tech prefix)
+6|voice-bridge  | 2026-03-05T03:54:04.269Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772682844269-5npxva dialString={origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772682844269-5npxva,execute_on_answer='amd'}user/1004 &park()
+6|voice-bridge  | 2026-03-05T03:54:04.269Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Pre-registered uuid=outbound-1772682844269-5npxva → callId=sc_1772682842284_3yqen1hru + metadata (before originate)
+6|voice-bridge  | 2026-03-05T03:54:04.269Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772682844269-5npxva,execute_on_answer='amd'}user/1004 &park()
+6|voice-bridge  | 2026-03-05T03:54:05.799Z [INFO ] [BRIDGE:ESL] 🔍 [CHANNEL_ANSWER DEBUG] uuid=outbound-1772682844269-5npxva otherLeg= direction=outbound dest=1004 caller=9999 isOutbound=true
+6|voice-bridge  | 2026-03-05T03:54:05.800Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call ANSWERED — starting audio stream uuid=outbound-1772682844269-5npxva ringTimeMs=0
+6|voice-bridge  | 2026-03-05T03:54:05.800Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] Executing uuid_audio_stream after 0ms uuid=outbound-1772682844269-5npxva
+6|voice-bridge  | 2026-03-05T03:54:05.844Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=-ERR DESTINATION_OUT_OF_ORDER
+6|voice-bridge  | 2026-03-05T03:54:05.844Z [ERROR] [BRIDGE:ESL] ❌ Failed to start audio stream uuid=outbound-1772682844269-5npxva error=-ERR Operation Failed
+6|voice-bridge  | 
+6|voice-bridge  | 2026-03-05T03:54:05.844Z [ERROR] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772682842284_3yqen1hru error=FreeSWITCH error: -ERR DESTINATION_OUT_OF_ORDER

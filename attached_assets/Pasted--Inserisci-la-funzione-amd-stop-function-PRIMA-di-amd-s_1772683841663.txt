@@ -1,0 +1,50 @@
+
+# Inserisci la funzione amd_stop_function PRIMA di amd_start_function
+# Prima trova la riga dove inizia amd_start_function
+grep -n "amd_start_function" mod_amd.c | head -5
+9:SWITCH_STANDARD_APP(amd_start_function);
+123:            amd_start_function,
+322:SWITCH_STANDARD_APP(amd_start_function)
+root@srv1164256:/usr/src/mod_amd# 
+root@srv1164256:/usr/src/mod_amd# 
+root@srv1164256:/usr/src/mod_amd# cd /usr/src/mod_amd
+# Inserisci amd_stop_function alla riga 322 (prima di amd_start_function)
+sed -i '321a\
+SWITCH_STANDARD_APP(amd_stop_function)\
+{\
+\tswitch_channel_t *channel = switch_core_session_get_channel(session);\
+\tswitch_channel_set_private(channel, "amd", NULL);\
+}\
+' mod_amd.c
+root@srv1164256:/usr/src/mod_amd# grep -n "amd_stop_function" mod_amd.c
+131:            amd_stop_function,
+322:SWITCH_STANDARD_APP(amd_stop_function)
+root@srv1164256:/usr/src/mod_amd# 
+root@srv1164256:/usr/src/mod_amd# 
+root@srv1164256:/usr/src/mod_amd# make clean && make
+rm -f mod_amd.so mod_amd.o
+In file included from /usr/local/freeswitch/include/freeswitch/switch.h:121,
+                 from mod_amd.c:1:
+mod_amd.c: In function 'mod_amd_load':
+mod_amd.c:131:17: error: 'amd_stop_function' undeclared (first use in this function); did you mean 'amd_start_function'?
+  131 |                 amd_stop_function,
+      |                 ^~~~~~~~~~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_loadable_module.h:397:41: note: in definition of macro 'SWITCH_ADD_APP'
+  397 |         app_int->application_function = funcptr; \
+      |                                         ^~~~~~~
+mod_amd.c:131:17: note: each undeclared identifier is reported only once for each function it appears in
+  131 |                 amd_stop_function,
+      |                 ^~~~~~~~~~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_loadable_module.h:397:41: note: in definition of macro 'SWITCH_ADD_APP'
+  397 |         app_int->application_function = funcptr; \
+      |                                         ^~~~~~~
+In file included from /usr/local/freeswitch/include/freeswitch/switch.h:113:
+mod_amd.c: At top level:
+mod_amd.c:322:21: warning: 'amd_stop_function' defined but not used [-Wunused-function]
+  322 | SWITCH_STANDARD_APP(amd_stop_function)
+      |                     ^~~~~~~~~~~~~~~~~
+/usr/local/freeswitch/include/freeswitch/switch_types.h:2476:47: note: in definition of macro 'SWITCH_STANDARD_APP'
+ 2476 | #define SWITCH_STANDARD_APP(name) static void name (switch_core_session_t *session, const char *data)
+      |                                               ^~~~
+make: *** [Makefile:17: mod_amd.o] Error 1
+root@srv1164256:/usr/src/mod_amd# 

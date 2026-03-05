@@ -1,0 +1,23 @@
+6|voice-br | 2026-03-05T04:12:56.665Z [INFO ] [BRIDGE:MAIN]   Max Concurrent Calls: 10
+6|voice-br | 2026-03-05T04:12:56.665Z [INFO ] [BRIDGE:MAIN]   Session Timeout: 1800000ms
+6|voice-br | 2026-03-05T04:12:56.665Z [INFO ] [BRIDGE:MAIN]   Log Level: debug
+6|voice-br | 2026-03-05T04:12:56.665Z [INFO ] [BRIDGE:MAIN] Starting Voice Bridge System...
+6|voice-br | 2026-03-05T04:12:56.669Z [INFO ] [BRIDGE:ESL] Connecting to FreeSWITCH ESL at 127.0.0.1:8021...
+6|voice-br | 2026-03-05T04:12:56.703Z [INFO ] [BRIDGE:SERVER] Voice Bridge Server started on port 9090
+6|voice-br | 2026-03-05T04:12:56.703Z [INFO ] [BRIDGE:SERVER] Outbound endpoint ready at POST /outbound/call
+6|voice-br | 2026-03-05T04:12:56.706Z [INFO ] [BRIDGE:ESL] ✅ Connected to FreeSWITCH Event Socket!
+6|voice-br | 2026-03-05T04:12:57.301Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 631ms
+6|voice-br | 2026-03-05T04:13:10.083Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772683988032_7z0c8b5nl targetPhone=1004 aiMode=assistenza
+6|voice-br | 2026-03-05T04:13:10.083Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] AMD enabled=true
+6|voice-br | 2026-03-05T04:13:10.083Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling LOCAL extension 1004 (no gateway, no tech prefix)
+6|voice-br | 2026-03-05T04:13:10.083Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772683990083-nbh2yx dialString={origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772683990083-nbh2yx,execute_on_answer='amd'}user/1004 &park()
+6|voice-br | 2026-03-05T04:13:10.083Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Pre-registered uuid=outbound-1772683990083-nbh2yx → callId=sc_1772683988032_7z0c8b5nl + metadata (before originate)
+6|voice-br | 2026-03-05T04:13:10.083Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772683990083-nbh2yx,execute_on_answer='amd'}user/1004 &park()
+
+6|voice-bridge  | 2026-03-05T04:13:16.882Z [INFO ] [BRIDGE:ESL] 🔍 [CHANNEL_ANSWER DEBUG] uuid=outbound-1772683990083-nbh2yx otherLeg= direction=outbound dest=1004 caller=9999 isOutbound=true
+6|voice-bridge  | 2026-03-05T04:13:16.883Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call ANSWERED — starting audio stream uuid=outbound-1772683990083-nbh2yx ringTimeMs=0
+6|voice-bridge  | 2026-03-05T04:13:16.883Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] Executing uuid_audio_stream after 0ms uuid=outbound-1772683990083-nbh2yx
+6|voice-bridge  | 2026-03-05T04:13:16.884Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=-ERR DESTINATION_OUT_OF_ORDER
+6|voice-bridge  | 2026-03-05T04:13:16.885Z [ERROR] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772683988032_7z0c8b5nl error=FreeSWITCH error: -ERR DESTINATION_OUT_OF_ORDER
+6|voice-bridge  | 2026-03-05T04:13:16.928Z [ERROR] [BRIDGE:ESL] ❌ Failed to start audio stream uuid=outbound-1772683990083-nbh2yx error=-ERR Operation Failed
+6|voice-bridge  | 

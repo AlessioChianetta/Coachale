@@ -1,0 +1,52 @@
+ [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔒 [CronLock] Acquired lock for "ai-task-scheduler" (instance: 568878ea)
+🤖 [AI-SCHEDULER] ══════ STEP 1: Starting task processing cycle ══════
+🤖 [AI-SCHEDULER] STEP 1: No approved tasks to move
+3:54:00 AM [express] GET /api/voice/outbound/scheduled 304 in 1012ms :: {"calls":[{"id":"svc_1772574…
+🤖 [AI-SCHEDULER] STEP 2: No tasks to process
+🔓 [CronLock] Released lock for "ai-task-scheduler"
+🔍 [ROUTING-DEBUG] /outbound/trigger called by user:
+🔍 [ROUTING-DEBUG]   req.user.id: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   req.user.email: alessio@gmail.com
+🔍 [ROUTING-DEBUG]   req.user.role: consultant
+🔍 [ROUTING-DEBUG]   req.user.firstName: N/A
+🔍 [ROUTING-DEBUG]   req.user.lastName: N/A
+📞 [Outbound] Trigger immediate call sc_1772682842284_3yqen1hru to 1004
+3:54:02 AM [express] GET /api/voice/gemini-connections 304 in 292ms :: {"success":true,"connections"…
+📋 [ENSURE-LEAD] ↩ Existing proactive lead 6dd96979-5661-449e-92ad-3601933e6cea for 1004 (N/A, source: manual)
+3:54:02 AM [express] POST /api/voice/outbound/trigger 200 in 744ms :: {"success":true,"callId":"sc_1…
+3:54:03 AM [express] GET /api/voice/outbound/scheduled 200 in 1046ms :: {"calls":[{"id":"svc_1772574…
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ROUTING-DEBUG] executeOutboundCall() called with:
+🔍 [ROUTING-DEBUG]   callId: sc_1772682842284_3yqen1hru
+🔍 [ROUTING-DEBUG]   consultantId (param): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   call.consultant_id (from DB): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   token (first 30 chars): eyJhbGciOiJIUzI1NiIsInR5cCI6Ik...
+🔍 [ROUTING-DEBUG]   DECODED global service token:
+🔍 [ROUTING-DEBUG]     consultantId in token: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]     type: phone_service
+🔍 [ROUTING-DEBUG]     scope: MISSING
+🔍 [ROUTING-DEBUG]     iat: 1770067900
+🔍 [ROUTING-DEBUG]     full decoded: {"type":"phone_service","consultantId":"0c73bbe5-51e1-4108-866b-6be7a52fce3b","createdAt":"2026-02-02T21:31:40.240Z","iat":1770067900}
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 [Outbound] Calling VPS: http://72.62.50.40:9090/outbound/call for 1004
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [Outbound] FULL VPS PAYLOAD:
+📋   targetPhone: 1004
+📋   callId: sc_1772682842284_3yqen1hru
+📋   aiMode: assistenza
+📋   customPrompt: null
+📋   callInstruction: null
+📋   instructionType: null
+📋   useDefaultTemplate: false
+📋   sipCallerId: 9999
+📋   sipGateway: non inviato (usa default VPS)
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ [Outbound] Failed to execute call sc_1772682842284_3yqen1hru: Error: VPS error: 500 - {"success":false,"callId":"sc_1772682842284_3yqen1hru","error":"FreeSWITCH error: -ERR DESTINATION_OUT_OF_ORDER\n"}
+    at executeOutboundCall (/home/runner/workspace/server/routes/voice-router.ts:2756:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+3:54:06 AM [express] GET /api/voice/health 304 in 725ms :: {"overall":"healthy","components":{"datab…
+⏰ [Outbound] Scheduled call sc_1772682842284_3yqen1hru for 2026-03-05T03:55:06.207Z (in 60s)
+[Outbound] Call sc_1772682842284_3yqen1hru failed: Retry scheduled in 60s
+3:54:07 AM [express] GET /api/voice/calls 200 in 875ms :: {"calls":[{"id":"vc_1772682825081_8kop37yt…
+3:54:08 AM [express] GET /api/voice/gemini-connections 304 in 29
