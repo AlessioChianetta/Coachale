@@ -230,6 +230,77 @@ export async function notifyCallEnd(
   }
 }
 
+export interface OverflowConfig {
+  found: boolean;
+  overflow_enabled: boolean;
+  fallback_number: string | null;
+  overflow_timeout_secs: number;
+  overflow_dtmf_enabled: boolean;
+  overflow_auto_return: boolean;
+  overflow_message: string | null;
+  max_concurrent_calls: number;
+  consultant_id: string | null;
+}
+
+export async function fetchOverflowConfig(calledNumber: string): Promise<OverflowConfig> {
+  const defaultConfig: OverflowConfig = {
+    found: false,
+    overflow_enabled: true,
+    fallback_number: null,
+    overflow_timeout_secs: 120,
+    overflow_dtmf_enabled: true,
+    overflow_auto_return: true,
+    overflow_message: null,
+    max_concurrent_calls: 5,
+    consultant_id: null,
+  };
+
+  if (!config.replit.apiUrl || !config.replit.apiToken) {
+    log.debug(`Replit API not configured, returning default overflow config`);
+    return defaultConfig;
+  }
+
+  try {
+    const normalized = normalizePhoneNumber(calledNumber);
+    log.debug(`Fetching overflow config`, { calledNumber, normalized });
+
+    const response = await fetch(
+      `${config.replit.apiUrl}/api/voice/overflow-config?called_number=${encodeURIComponent(normalized)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${config.replit.apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json() as OverflowConfig;
+    log.info(`📋 Overflow config loaded`, {
+      calledNumber: normalized,
+      found: data.found,
+      overflow_enabled: data.overflow_enabled,
+      fallback_number: data.fallback_number ? '***' : null,
+      overflow_timeout_secs: data.overflow_timeout_secs,
+      overflow_dtmf_enabled: data.overflow_dtmf_enabled,
+      overflow_auto_return: data.overflow_auto_return,
+    });
+
+    return data;
+  } catch (error) {
+    log.error(`Failed to fetch overflow config`, {
+      calledNumber,
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
+    return defaultConfig;
+  }
+}
+
 export async function notifyAmdResult(
   callId: string,
   amdResult: string

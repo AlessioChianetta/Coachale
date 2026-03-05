@@ -1785,7 +1785,7 @@ export default function ConsultantVoiceCallsPage() {
     refetchInterval: 10000,
   });
 
-  const { data: voiceNumbersData } = useQuery<{ numbers: Array<{ id: string; phone_number: string; display_name?: string; is_active: boolean; voice_id?: string; max_concurrent_calls?: number }> }>({
+  const { data: voiceNumbersData, refetch: refetchVoiceNumbers } = useQuery<{ numbers: Array<{ id: string; phone_number: string; display_name?: string; is_active: boolean; voice_id?: string; max_concurrent_calls?: number; fallback_number?: string; overflow_enabled?: boolean; overflow_timeout_secs?: number; overflow_dtmf_enabled?: boolean; overflow_auto_return?: boolean; overflow_message?: string }> }>({
     queryKey: ["/api/voice/numbers"],
     queryFn: async () => {
       const res = await fetch("/api/voice/numbers", { headers: getAuthHeaders() });
@@ -1811,6 +1811,28 @@ export default function ConsultantVoiceCallsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/voice/numbers"] });
       toast({ title: "Voce aggiornata", description: "La voce per questo numero è stata aggiornata" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const saveOverflowMutation = useMutation({
+    mutationFn: async ({ numberId, data }: { numberId: string; data: any }) => {
+      const res = await fetch(`/api/voice/numbers/${numberId}/overflow`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore salvataggio overflow");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchVoiceNumbers();
+      toast({ title: "Configurazione overflow salvata" });
     },
     onError: (err: Error) => {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
@@ -4372,6 +4394,199 @@ export default function ConsultantVoiceCallsPage() {
                           </select>
                         </div>
                       ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {myVoiceNumbers.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Gestione Overflow / Coda d'Attesa
+                      </CardTitle>
+                      <CardDescription>
+                        Configura cosa succede quando tutte le linee AI sono occupate e qualcuno chiama
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {myVoiceNumbers.map((n) => {
+                        const ovEnabled = n.overflow_enabled ?? true;
+                        const ovDtmf = n.overflow_dtmf_enabled ?? true;
+                        const ovAutoReturn = n.overflow_auto_return ?? true;
+                        const ovTimeout = n.overflow_timeout_secs ?? 120;
+                        const ovFallback = n.fallback_number || '';
+                        const ovMessage = n.overflow_message || '';
+
+                        return (
+                          <div key={`overflow-${n.id}-${n.overflow_enabled}-${n.overflow_dtmf_enabled}-${n.overflow_auto_return}-${n.overflow_timeout_secs}-${n.fallback_number}-${n.overflow_message}`} className="p-4 border rounded-lg space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                <p className="text-sm font-medium font-mono">{n.phone_number}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Coda d'attesa</span>
+                                <Switch
+                                  checked={ovEnabled}
+                                  onCheckedChange={(checked) => {
+                                    saveOverflowMutation.mutate({
+                                      numberId: n.id,
+                                      data: { overflow_enabled: checked, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null },
+                                    });
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {ovEnabled && (
+                              <div className="space-y-4 pl-7">
+                                <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <RotateCcw className="h-4 w-4 text-blue-500" />
+                                    <div>
+                                      <p className="text-sm font-medium">Ritorno automatico all'AI</p>
+                                      <p className="text-xs text-muted-foreground">Quando una linea si libera, il primo in coda viene collegato automaticamente all'AI</p>
+                                    </div>
+                                  </div>
+                                  <Switch
+                                    checked={ovAutoReturn}
+                                    onCheckedChange={(checked) => {
+                                      saveOverflowMutation.mutate({
+                                        numberId: n.id,
+                                        data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: checked, overflow_message: ovMessage || null },
+                                      });
+                                    }}
+                                  />
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <PhoneForwarded className="h-4 w-4 text-green-500" />
+                                    <div>
+                                      <p className="text-sm font-medium">Premi 1 per trasferimento</p>
+                                      <p className="text-xs text-muted-foreground">Il chiamante può premere 1 per parlare con te</p>
+                                    </div>
+                                  </div>
+                                  <Switch
+                                    checked={ovDtmf}
+                                    onCheckedChange={(checked) => {
+                                      saveOverflowMutation.mutate({
+                                        numberId: n.id,
+                                        data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: checked, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null },
+                                      });
+                                    }}
+                                  />
+                                </div>
+
+                                {ovDtmf && (
+                                  <div className="space-y-2 p-3 border rounded-lg bg-green-50/50 dark:bg-green-950/20">
+                                    <Label className="text-sm font-medium flex items-center gap-2">
+                                      <Phone className="h-3.5 w-3.5 text-green-600" />
+                                      Numero di trasferimento
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground">Il tuo cellulare o fisso dove il chiamante viene trasferito quando preme 1</p>
+                                    <div className="flex gap-2">
+                                      <Input
+                                        placeholder="+39 333 1234567"
+                                        defaultValue={ovFallback}
+                                        className="flex-1 font-mono"
+                                        onBlur={(e) => {
+                                          const val = e.target.value.trim();
+                                          if (val !== ovFallback) {
+                                            saveOverflowMutation.mutate({
+                                              numberId: n.id,
+                                              data: { overflow_enabled: true, fallback_number: val || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: true, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null },
+                                            });
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                    {!ovFallback && (
+                                      <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3" />
+                                        Inserisci un numero per abilitare il trasferimento
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div className="space-y-2 p-3 border rounded-lg">
+                                  <Label className="text-sm font-medium flex items-center gap-2">
+                                    <Timer className="h-3.5 w-3.5 text-orange-500" />
+                                    Timeout coda d'attesa
+                                  </Label>
+                                  <p className="text-xs text-muted-foreground">
+                                    Dopo quanto tempo il chiamante viene disconnesso se nessuna linea si libera
+                                  </p>
+                                  <div className="flex items-center gap-4">
+                                    <input
+                                      type="range"
+                                      min={30}
+                                      max={300}
+                                      step={10}
+                                      defaultValue={ovTimeout}
+                                      className="flex-1 h-2 accent-orange-500"
+                                      onMouseUp={(e) => {
+                                        const val = parseInt((e.target as HTMLInputElement).value);
+                                        if (val !== ovTimeout) {
+                                          saveOverflowMutation.mutate({
+                                            numberId: n.id,
+                                            data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: val, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null },
+                                          });
+                                        }
+                                      }}
+                                      onTouchEnd={(e) => {
+                                        const val = parseInt((e.target as HTMLInputElement).value);
+                                        if (val !== ovTimeout) {
+                                          saveOverflowMutation.mutate({
+                                            numberId: n.id,
+                                            data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: val, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null },
+                                          });
+                                        }
+                                      }}
+                                    />
+                                    <span className="text-sm font-mono font-medium w-20 text-right">
+                                      {Math.floor(ovTimeout / 60) > 0 ? `${Math.floor(ovTimeout / 60)} min` : ''}{ovTimeout % 60 > 0 ? ` ${ovTimeout % 60}s` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2 p-3 border rounded-lg">
+                                  <Label className="text-sm font-medium flex items-center gap-2">
+                                    <MessageSquare className="h-3.5 w-3.5 text-violet-500" />
+                                    Messaggio personalizzato (opzionale)
+                                  </Label>
+                                  <p className="text-xs text-muted-foreground">
+                                    Testo letto al chiamante in attesa. Lascia vuoto per il messaggio predefinito.
+                                  </p>
+                                  <textarea
+                                    placeholder="Tutti i nostri operatori sono al momento occupati. Rimani in linea oppure premi 1 per parlare con un consulente."
+                                    defaultValue={ovMessage}
+                                    rows={2}
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                    onBlur={(e) => {
+                                      const val = e.target.value.trim();
+                                      if (val !== ovMessage) {
+                                        saveOverflowMutation.mutate({
+                                          numberId: n.id,
+                                          data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: val || null },
+                                        });
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {!ovEnabled && (
+                              <p className="text-xs text-muted-foreground pl-7">
+                                Coda d'attesa disabilitata: le chiamate in eccesso verranno rifiutate immediatamente.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </CardContent>
                   </Card>
                 )}

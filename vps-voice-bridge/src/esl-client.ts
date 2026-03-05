@@ -2,6 +2,7 @@ import { config } from './config.js';
 import { logger } from './logger.js';
 import { setExpectedCallId } from './voice-bridge-server.js';
 import { notifyAmdResult } from './caller-context.js';
+import { sessionManager } from './session-manager.js';
 import esl from 'modesl';
 
 const log = logger.child('ESL');
@@ -191,6 +192,11 @@ export function startESLController(): void {
     outboundCallIdMap.delete(uuid);
     pendingAnswers.delete(uuid);
     amdDetectedCalls.delete(uuid);
+
+    if (sessionManager.isInOverflow(uuid)) {
+      log.info(`📤 [OVERFLOW] Call ${uuid} hung up while in overflow queue — removing`);
+      sessionManager.removeFromOverflow(uuid);
+    }
   });
 
   conn.on('esl::event::CUSTOM::*', (event: any) => {

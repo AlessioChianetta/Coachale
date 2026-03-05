@@ -1136,7 +1136,12 @@ router.get("/numbers", authenticateToken, requireAnyRole(["consultant", "super_a
         true AS is_active,
         cn.created_at,
         cn.updated_at,
-        'Kore'::varchar AS voice_id
+        'Kore'::varchar AS voice_id,
+        true AS overflow_enabled,
+        120 AS overflow_timeout_secs,
+        true AS overflow_dtmf_enabled,
+        true AS overflow_auto_return,
+        NULL::text AS overflow_message
       FROM consultant_numbers cn
       WHERE cn.status = 'active'
         ${consultantId ? sql`AND cn.consultant_id = ${consultantId}` : sql``}
@@ -1176,6 +1181,117 @@ router.get("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "sup
   } catch (error) {
     console.error("[Voice] Error fetching number detail:", error);
     res.status(500).json({ error: "Errore nel recupero del numero" });
+  }
+});
+
+// PATCH /api/voice/numbers/:id/overflow - Aggiorna config overflow per un numero
+router.patch("/numbers/:id/overflow", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
+    const {
+      fallback_number,
+      overflow_enabled,
+      overflow_timeout_secs,
+      overflow_dtmf_enabled,
+      overflow_auto_return,
+      overflow_message,
+    } = req.body;
+
+    const ownerCheck = consultantId
+      ? sql`AND consultant_id = ${consultantId}`
+      : sql``;
+
+    const result = await db.execute(sql`
+      UPDATE voice_numbers
+      SET
+        fallback_number = ${fallback_number ?? null},
+        overflow_enabled = ${overflow_enabled ?? true},
+        overflow_timeout_secs = ${overflow_timeout_secs ?? 120},
+        overflow_dtmf_enabled = ${overflow_dtmf_enabled ?? true},
+        overflow_auto_return = ${overflow_auto_return ?? true},
+        overflow_message = ${overflow_message ?? null},
+        updated_at = NOW()
+      WHERE id = ${id} ${ownerCheck}
+      RETURNING *
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Numero non trovato" });
+    }
+
+    res.json({ success: true, number: result.rows[0] });
+  } catch (error) {
+    console.error("[Voice] Error updating overflow config:", error);
+    res.status(500).json({ error: "Errore nell'aggiornamento della configurazione overflow" });
+  }
+});
+
+// GET /api/voice/overflow-config - Config overflow per il Voice Bridge (autenticazione via service token)
+router.get("/overflow-config", async (req: any, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const calledNumber = req.query.called_number as string;
+    if (!calledNumber) {
+      return res.status(400).json({ error: "called_number required" });
+    }
+
+    const normalized = calledNumber.replace(/\D/g, '');
+    const uniqueVariants = [...new Set([
+      calledNumber,
+      `+${normalized}`,
+      normalized,
+      normalized.startsWith('39') ? `+${normalized}` : `+39${normalized}`,
+      normalized.startsWith('39') ? normalized.slice(2) : normalized,
+    ])];
+
+    const conditions = uniqueVariants.map(v => sql`phone_number = ${v}`);
+    const orClause = sql.join(conditions, sql` OR `);
+
+    const result = await db.execute(sql`
+      SELECT 
+        id, phone_number, consultant_id, fallback_number,
+        overflow_enabled, overflow_timeout_secs, overflow_dtmf_enabled,
+        overflow_auto_return, overflow_message, max_concurrent_calls
+      FROM voice_numbers
+      WHERE (${orClause})
+        AND is_active = true
+      LIMIT 1
+    `);
+
+    if (result.rows.length === 0) {
+      return res.json({
+        found: false,
+        overflow_enabled: true,
+        fallback_number: null,
+        overflow_timeout_secs: 120,
+        overflow_dtmf_enabled: true,
+        overflow_auto_return: true,
+        overflow_message: null,
+        max_concurrent_calls: 5,
+        consultant_id: null,
+      });
+    }
+
+    const row = result.rows[0] as any;
+    res.json({
+      found: true,
+      overflow_enabled: row.overflow_enabled ?? true,
+      fallback_number: row.fallback_number || null,
+      overflow_timeout_secs: row.overflow_timeout_secs ?? 120,
+      overflow_dtmf_enabled: row.overflow_dtmf_enabled ?? true,
+      overflow_auto_return: row.overflow_auto_return ?? true,
+      overflow_message: row.overflow_message || null,
+      max_concurrent_calls: row.max_concurrent_calls ?? 5,
+      consultant_id: row.consultant_id,
+    });
+  } catch (error) {
+    console.error("[Voice] Error fetching overflow config:", error);
+    res.status(500).json({ error: "Errore nel recupero della configurazione overflow" });
   }
 });
 

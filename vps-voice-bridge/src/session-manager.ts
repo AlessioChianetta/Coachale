@@ -37,9 +37,18 @@ export interface CallSession {
   timeoutHandle: NodeJS.Timeout | null;
 }
 
+export interface OverflowEntry {
+  uuid: string;
+  calledNumber: string;
+  enqueuedAt: number;
+  timeoutHandle: NodeJS.Timeout | null;
+}
+
 class SessionManager {
   private sessions: Map<string, CallSession> = new Map();
   private callIdToSessionId: Map<string, string> = new Map();
+  private _overflowQueue: OverflowEntry[] = [];
+  private _dequeueInProgress = false;
 
   get activeCount(): number {
     return this.sessions.size;
@@ -240,6 +249,60 @@ class SessionManager {
 
   private resetInactivityTimeout(session: CallSession): void {
     this.startInactivityTimeout(session);
+  }
+
+  get overflowCount(): number {
+    return this._overflowQueue.length;
+  }
+
+  get dequeueInProgress(): boolean {
+    return this._dequeueInProgress;
+  }
+
+  set dequeueInProgress(v: boolean) {
+    this._dequeueInProgress = v;
+  }
+
+  addToOverflow(uuid: string, calledNumber: string, timeoutSecs: number, onTimeout: (uuid: string) => void): void {
+    this.removeFromOverflow(uuid);
+
+    const timeoutHandle = setTimeout(() => {
+      log.warn(`⏰ Overflow timeout reached for ${uuid} after ${timeoutSecs}s`);
+      this.removeFromOverflow(uuid);
+      onTimeout(uuid);
+    }, timeoutSecs * 1000);
+
+    const entry: OverflowEntry = {
+      uuid,
+      calledNumber,
+      enqueuedAt: Date.now(),
+      timeoutHandle,
+    };
+
+    this._overflowQueue.push(entry);
+    log.info(`📥 Added to overflow queue`, { uuid, calledNumber, queueSize: this._overflowQueue.length, timeoutSecs });
+  }
+
+  removeFromOverflow(uuid: string): void {
+    const idx = this._overflowQueue.findIndex(e => e.uuid === uuid);
+    if (idx >= 0) {
+      const entry = this._overflowQueue[idx];
+      if (entry.timeoutHandle) clearTimeout(entry.timeoutHandle);
+      this._overflowQueue.splice(idx, 1);
+      log.info(`📤 Removed from overflow queue`, { uuid, queueSize: this._overflowQueue.length });
+    }
+  }
+
+  getNextOverflow(): OverflowEntry | null {
+    if (this._overflowQueue.length === 0) return null;
+    const entry = this._overflowQueue.shift()!;
+    if (entry.timeoutHandle) clearTimeout(entry.timeoutHandle);
+    log.info(`📤 Dequeued from overflow`, { uuid: entry.uuid, calledNumber: entry.calledNumber, remaining: this._overflowQueue.length });
+    return entry;
+  }
+
+  isInOverflow(uuid: string): boolean {
+    return this._overflowQueue.some(e => e.uuid === uuid);
   }
 
   getAllSessions(): CallSession[] {

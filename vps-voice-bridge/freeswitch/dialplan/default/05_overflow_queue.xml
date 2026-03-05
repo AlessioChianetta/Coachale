@@ -1,0 +1,92 @@
+<!--
+  ================================================================
+  Dialplan: Overflow Queue - Alessia AI Voice Platform
+  ================================================================
+  
+  Gestisce le chiamate inbound quando tutte le linee AI sono occupate.
+  Il Voice Bridge trasferisce la chiamata qui via uuid_transfer quando
+  il limite max_concurrent viene raggiunto.
+  
+  VARIABILI CHANNEL (impostate dal Voice Bridge via uuid_setvar):
+  - fallback_transfer_number: numero di trasferimento del consulente
+  - overflow_dtmf_enabled: true/false - abilita "premi 1"
+  - sip_gateway: gateway SIP da usare per il trasferimento
+  - tech_prefix: prefisso tecnico per il gateway (es. 0312 per Telnyx)
+  
+  FLUSSO:
+  1. Annuncio vocale ciclico + musica d'attesa
+  2. Se overflow_dtmf_enabled=true → bind DTMF "1" per trasferimento
+  3. Il Voice Bridge gestisce il timeout (uuid_kill dopo N secondi)
+  4. Il Voice Bridge può trasferire back all'AI (uuid_transfer)
+  
+  FILE AUDIO RICHIESTI in /opt/sounds/overflow/:
+  - announcement.wav: messaggio d'attesa
+  - announcement_no_dtmf.wav: messaggio senza opzione "premi 1"
+  - hold_music.wav: musica d'attesa (~30 sec)
+  - transferring.wav: "Ti stiamo trasferendo..."
+  - transfer_failed.wav: "Il trasferimento non è riuscito"
+  
+  PERCORSO DEPLOY:
+  /usr/local/freeswitch/etc/freeswitch/dialplan/default/05_overflow_queue.xml
+  ================================================================
+-->
+
+<include>
+
+  <extension name="overflow_queue">
+    <condition field="destination_number" expression="^overflow_queue$">
+
+      <action application="log" data="INFO [OVERFLOW] Chiamata ${uuid} entrata in coda overflow (fallback=${fallback_transfer_number}, dtmf=${overflow_dtmf_enabled})"/>
+      
+      <action application="set" data="playback_terminators=none"/>
+      
+      <action application="bind_digit_action" data="overflow,1,exec:transfer,transfer_to_fallback XML default"/>
+      <action application="digit_action_set_realm" data="overflow"/>
+
+      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
+
+      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
+
+      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
+
+      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
+
+      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
+
+      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
+
+      <action application="log" data="WARNING [OVERFLOW] Chiamata ${uuid} - loop completato senza dequeue, parking"/>
+      <action application="park"/>
+
+    </condition>
+  </extension>
+
+  <extension name="transfer_to_fallback">
+    <condition field="destination_number" expression="^transfer_to_fallback$">
+      
+      <action application="log" data="INFO [OVERFLOW-TRANSFER] Chiamata ${uuid} - trasferimento a ${fallback_transfer_number} via ${sip_gateway}"/>
+      
+      <action application="clear_digit_action" data="overflow"/>
+      
+      <action application="playback" data="/opt/sounds/overflow/transferring.wav"/>
+      
+      <action application="set" data="hangup_after_bridge=true"/>
+      <action application="set" data="call_timeout=30"/>
+      <action application="set" data="absolute_codec_string=PCMU,PCMA,G722"/>
+      
+      <action application="bridge" data="sofia/gateway/${sip_gateway}/${tech_prefix}${fallback_transfer_number}"/>
+      
+      <action application="log" data="WARNING [OVERFLOW-TRANSFER] Bridge fallito per ${fallback_transfer_number} - riproduco messaggio errore"/>
+      <action application="playback" data="/opt/sounds/overflow/transfer_failed.wav"/>
+      <action application="hangup" data="NORMAL_CLEARING"/>
+
+    </condition>
+  </extension>
+
+</include>
