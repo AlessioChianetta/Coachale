@@ -1671,7 +1671,7 @@ export default function ConsultantVoiceCallsPage() {
       if (!res.ok) throw new Error("Errore nel caricamento stato");
       return res.json();
     },
-    refetchInterval: 30000,
+    refetchInterval: 10000,
   });
 
   // Gemini connections tracker
@@ -4411,6 +4411,21 @@ export default function ConsultantVoiceCallsPage() {
                         const ovMessage = n.overflow_message || '';
                         const ovMaxConcurrent = n.max_concurrent_calls ?? 5;
 
+                        const vpsData = healthData?.vps;
+                        const normalizedNum = n.phone_number.replace(/\D/g, '');
+                        let liveActiveCount = 0;
+                        if (vpsData?.activeByNumber) {
+                          for (const [num, count] of Object.entries(vpsData.activeByNumber)) {
+                            if (num.replace(/\D/g, '') === normalizedNum) {
+                              liveActiveCount = count as number;
+                              break;
+                            }
+                          }
+                        }
+                        const liveOverflowForNumber = (vpsData?.overflowEntries || []).filter((e: any) => {
+                          return e.calledNumber?.replace(/\D/g, '') === normalizedNum;
+                        });
+
                         return (
                           <div key={`overflow-${n.id}-${n.overflow_enabled}-${n.overflow_dtmf_enabled}-${n.overflow_auto_return}-${n.overflow_timeout_secs}-${n.fallback_number}-${n.overflow_message}-${n.max_concurrent_calls}`} className="p-4 border rounded-lg space-y-4">
                             <div className="flex items-center justify-between">
@@ -4418,7 +4433,37 @@ export default function ConsultantVoiceCallsPage() {
                                 <Phone className="h-4 w-4 text-muted-foreground" />
                                 <p className="text-sm font-medium font-mono">{n.phone_number}</p>
                               </div>
+                              <div className="flex items-center gap-2">
+                                {vpsData && (
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50">
+                                      <div className={`w-2 h-2 rounded-full ${liveActiveCount > 0 ? (liveActiveCount >= ovMaxConcurrent ? 'bg-red-500' : 'bg-green-500') : 'bg-gray-400'}`} />
+                                      <span className="text-xs font-mono font-medium">{liveActiveCount}/{ovMaxConcurrent}</span>
+                                      <span className="text-xs text-muted-foreground">linee</span>
+                                    </div>
+                                    {liveOverflowForNumber.length > 0 && (
+                                      <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-orange-100 dark:bg-orange-950/30">
+                                        <Clock className="h-3 w-3 text-orange-500" />
+                                        <span className="text-xs font-medium text-orange-600 dark:text-orange-400">
+                                          {liveOverflowForNumber.length} in coda
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
+
+                            {liveOverflowForNumber.length > 0 && (
+                              <div className="pl-7 space-y-1">
+                                {liveOverflowForNumber.map((entry: any, idx: number) => (
+                                  <div key={idx} className="flex items-center gap-2 text-xs text-orange-600 dark:text-orange-400">
+                                    <PhoneIncoming className="h-3 w-3" />
+                                    <span>Chiamante #{idx + 1} — in attesa da {entry.waitingSecs}s</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
 
                             <div className="flex items-center justify-between p-3 border rounded-lg">
                               <div className="flex items-center gap-3">

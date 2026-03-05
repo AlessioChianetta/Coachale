@@ -186,11 +186,18 @@ export function startVoiceBridgeServer(): void {
   });
 
   app.get('/health', (req, res) => {
+    const overflow = sessionManager.getOverflowDetails();
+    const stats = sessionManager.getStats();
     res.json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
       pendingCalls: pendingCalls.size,
       blockedIps: blockedIps.size,
+      activeSessions: stats.activeSessions,
+      maxSessions: stats.maxSessions,
+      activeByNumber: sessionManager.getActiveCountByNumber(),
+      overflowCount: overflow.count,
+      overflowEntries: overflow.entries,
     });
   });
 
@@ -306,15 +313,20 @@ export function startVoiceBridgeServer(): void {
             return;
           }
 
+          const queuePosition = sessionManager.overflowCount + 1;
           const setVars: string[] = [
             `sip_gateway=${config.sip.gateway}`,
             `tech_prefix=${config.sip.techPrefix}`,
+            `queue_position=${queuePosition}`,
           ];
           if (overflowCfg.fallback_number && overflowCfg.overflow_dtmf_enabled) {
             setVars.push(`fallback_transfer_number=${overflowCfg.fallback_number}`);
             setVars.push(`overflow_dtmf_enabled=true`);
           } else {
             setVars.push(`overflow_dtmf_enabled=false`);
+          }
+          if (overflowCfg.overflow_message) {
+            setVars.push(`overflow_custom_message=${overflowCfg.overflow_message.replace(/[;=]/g, ' ')}`);
           }
 
           (eslConn as any).bgapi(`uuid_setvar_multi ${uuidFromUrl} ${setVars.join(';')}`, (res: any) => {
@@ -335,10 +347,16 @@ export function startVoiceBridgeServer(): void {
 
           const timeoutSecs = overflowCfg.overflow_timeout_secs || 120;
           sessionManager.addToOverflow(uuidFromUrl, calledNumber, timeoutSecs, (uuid) => {
-            log.warn(`⏰ Overflow timeout — killing call ${uuid}`);
+            log.warn(`⏰ Overflow timeout — transferring call ${uuid} to timeout announcement`);
             const conn = getEslConnection();
             if (conn) {
-              (conn as any).bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`);
+              (conn as any).bgapi(`uuid_transfer ${uuid} overflow_timeout XML default`, (res: any) => {
+                const body = res?.getBody?.() || '';
+                if (!body.includes('+OK')) {
+                  log.warn(`⚠️ Timeout transfer failed, killing call ${uuid}: ${body}`);
+                  (conn as any).bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`);
+                }
+              });
             }
           });
 
@@ -660,10 +678,16 @@ async function tryDequeueOverflow(): Promise<void> {
       const remainingMs = Math.max(5000, originalTimeoutMs - elapsedMs);
 
       const timeoutCallback = (uuid: string) => {
-        log.warn(`⏰ Overflow timeout — killing call ${uuid}`);
+        log.warn(`⏰ Overflow timeout — transferring call ${uuid} to timeout announcement`);
         const conn = getEslConnection();
         if (conn) {
-          (conn as any).bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`);
+          (conn as any).bgapi(`uuid_transfer ${uuid} overflow_timeout XML default`, (res: any) => {
+            const body = res?.getBody?.() || '';
+            if (!body.includes('+OK')) {
+              log.warn(`⚠️ Timeout transfer failed, killing call ${uuid}: ${body}`);
+              (conn as any).bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`);
+            }
+          });
         }
       };
 
@@ -706,6 +730,15 @@ async function tryDequeueOverflow(): Promise<void> {
           log.error(`❌ Failed to transfer overflow call ${next.uuid} back to AI: ${body}`);
         }
       });
+
+      const remainingOverflow = sessionManager.getOverflowDetails();
+      if (remainingOverflow.count > 0) {
+        remainingOverflow.entries.forEach((entry, idx) => {
+          const newPosition = idx + 1;
+          (eslConn as any).bgapi(`uuid_setvar ${entry.uuid} queue_position ${newPosition}`, () => {});
+        });
+        log.info(`📊 Updated queue_position for ${remainingOverflow.count} remaining overflow callers`);
+      }
 
       break;
     }

@@ -2530,69 +2530,6 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
       return { success: false, error: `Call already ${call.status}` };
     }
     
-    // ═══ CONCURRENCY CHECK: verify line availability before calling ═══
-    // Only count 'calling' status if recent (< 5 min) to auto-expire stale records
-    const activeCallsResult = await db.execute(sql`
-      SELECT COUNT(*)::int as active_count FROM scheduled_voice_calls
-      WHERE consultant_id = ${consultantId}
-        AND id != ${callId}
-        AND (
-          (status = 'talking')
-          OR (status = 'calling' AND updated_at > NOW() - INTERVAL '5 minutes')
-        )
-    `);
-    const activeVoiceResult = await db.execute(sql`
-      SELECT COUNT(*)::int as active_count FROM voice_calls
-      WHERE consultant_id = ${consultantId}
-        AND status = 'active'
-    `);
-    const activeScheduled = (activeCallsResult.rows[0] as any)?.active_count || 0;
-    const activeLive = (activeVoiceResult.rows[0] as any)?.active_count || 0;
-    const totalActive = Math.max(activeScheduled, activeLive);
-    
-    // Auto-expire stale 'calling' records older than 5 minutes
-    await db.execute(sql`
-      UPDATE scheduled_voice_calls
-      SET status = 'failed', error_message = 'stale_calling_timeout', updated_at = NOW()
-      WHERE consultant_id = ${consultantId}
-        AND status = 'calling'
-        AND updated_at < NOW() - INTERVAL '5 minutes'
-    `);
-    
-    const concurrencyResult = await db.execute(sql`
-      SELECT max_concurrent_calls FROM consultant_availability_settings
-      WHERE consultant_id = ${consultantId}
-    `);
-    const maxConcurrent = (concurrencyResult.rows[0] as any)?.max_concurrent_calls || 2;
-    
-    if (totalActive >= maxConcurrent) {
-      // Exponential backoff for busy requeues: 3min, 6min, 12min (capped at 15min)
-      const currentAttempts = call.attempts || 0;
-      const busyDelayMs = Math.min(3 * 60 * 1000 * Math.pow(2, currentAttempts), 15 * 60 * 1000);
-      const requeueAt = new Date(Date.now() + busyDelayMs);
-      await db.execute(sql`
-        UPDATE scheduled_voice_calls
-        SET status = 'pending',
-            scheduled_at = ${requeueAt.toISOString()},
-            updated_at = NOW()
-        WHERE id = ${callId}
-      `);
-      _scheduleTimerFromManager(callId, consultantId, requeueAt);
-      console.log(`⏳ [Outbound] Call ${callId} re-queued: line busy (${totalActive}/${maxConcurrent} active). Next try in ${Math.round(busyDelayMs/1000)}s at ${requeueAt.toISOString()}`);
-      return { success: false, error: 'line_busy_requeued' };
-    }
-    // ═══ END CONCURRENCY CHECK ═══
-    
-    // Update status to 'calling'
-    await db.execute(sql`
-      UPDATE scheduled_voice_calls 
-      SET status = 'calling', 
-          attempts = attempts + 1,
-          last_attempt_at = NOW(),
-          updated_at = NOW()
-      WHERE id = ${callId}
-    `);
-    
     // Get VPS URL and service token from global superadmin config
     const globalVoiceResult = await db.execute(sql`
       SELECT vps_bridge_url, service_token FROM superadmin_voice_config WHERE id = 'default' AND enabled = true LIMIT 1
@@ -2615,8 +2552,106 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     const defaultSipCallerId = (sipResult.rows[0] as any)?.sip_caller_id || consultantActiveNumber;
     const sipGateway = (sipResult.rows[0] as any)?.sip_gateway;
     const useVpsNumber = (sipResult.rows[0] as any)?.use_vps_number ?? false;
-    // Override caller ID with from_number if explicitly chosen by the consultant
     const sipCallerId = call.from_number || defaultSipCallerId;
+
+    // ═══ PER-NUMBER CONCURRENCY CHECK ═══
+    // Auto-expire stale 'calling' records older than 5 minutes
+    await db.execute(sql`
+      UPDATE scheduled_voice_calls
+      SET status = 'failed', error_message = 'stale_calling_timeout', updated_at = NOW()
+      WHERE consultant_id = ${consultantId}
+        AND status = 'calling'
+        AND updated_at < NOW() - INTERVAL '5 minutes'
+    `);
+
+    // Get per-number limit from voice_numbers table
+    let maxConcurrentForNumber = 5;
+    if (sipCallerId) {
+      const vnResult = await db.execute(sql`
+        SELECT max_concurrent_calls FROM voice_numbers
+        WHERE phone_number = ${sipCallerId} AND is_active = true
+        LIMIT 1
+      `);
+      if (vnResult.rows.length > 0) {
+        maxConcurrentForNumber = (vnResult.rows[0] as any)?.max_concurrent_calls || 5;
+      }
+    }
+
+    // Count active outbound calls for this specific number
+    const activeCallsResult = await db.execute(sql`
+      SELECT COUNT(*)::int as active_count FROM scheduled_voice_calls
+      WHERE consultant_id = ${consultantId}
+        AND id != ${callId}
+        AND from_number = ${sipCallerId || ''}
+        AND (
+          (status = 'talking')
+          OR (status = 'calling' AND updated_at > NOW() - INTERVAL '5 minutes')
+        )
+    `);
+    const activeVoiceResult = await db.execute(sql`
+      SELECT COUNT(*)::int as active_count FROM voice_calls
+      WHERE consultant_id = ${consultantId}
+        AND status = 'active'
+    `);
+    const activeScheduledForNumber = (activeCallsResult.rows[0] as any)?.active_count || 0;
+    const activeLive = (activeVoiceResult.rows[0] as any)?.active_count || 0;
+
+    // Fetch inbound active count from VPS for this number (best-effort)
+    let vpsActiveForNumber = 0;
+    if (vpsUrl && sipCallerId) {
+      try {
+        const controller = new AbortController();
+        const vpsTimeout = setTimeout(() => controller.abort(), 3000);
+        const healthRes = await fetch(`${vpsUrl}/health`, {
+          signal: controller.signal,
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        });
+        clearTimeout(vpsTimeout);
+        if (healthRes.ok) {
+          const healthData = await healthRes.json() as any;
+          const activeByNumber = healthData.activeByNumber || {};
+          const normalizedCaller = sipCallerId.replace(/\D/g, '');
+          for (const [num, count] of Object.entries(activeByNumber)) {
+            if (num.replace(/\D/g, '') === normalizedCaller) {
+              vpsActiveForNumber = count as number;
+              break;
+            }
+          }
+        }
+      } catch (vpsErr: any) {
+        console.log(`⚠️ [Outbound] VPS health check failed (using local count only): ${vpsErr.message}`);
+      }
+    }
+
+    const totalActiveForNumber = activeScheduledForNumber + vpsActiveForNumber;
+    const totalActiveGlobal = Math.max(activeScheduledForNumber, activeLive) + vpsActiveForNumber;
+    
+    if (totalActiveForNumber >= maxConcurrentForNumber) {
+      const currentAttempts = call.attempts || 0;
+      const busyDelayMs = Math.min(3 * 60 * 1000 * Math.pow(2, currentAttempts), 15 * 60 * 1000);
+      const requeueAt = new Date(Date.now() + busyDelayMs);
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls
+        SET status = 'pending',
+            scheduled_at = ${requeueAt.toISOString()},
+            updated_at = NOW()
+        WHERE id = ${callId}
+      `);
+      _scheduleTimerFromManager(callId, consultantId, requeueAt);
+      console.log(`⏳ [Outbound] Call ${callId} re-queued: per-number limit (${totalActiveForNumber}/${maxConcurrentForNumber} on ${sipCallerId}, VPS inbound=${vpsActiveForNumber}). Next try in ${Math.round(busyDelayMs/1000)}s`);
+      return { success: false, error: 'line_busy_requeued' };
+    }
+    // ═══ END PER-NUMBER CONCURRENCY CHECK ═══
+    
+    // Update status to 'calling'
+    await db.execute(sql`
+      UPDATE scheduled_voice_calls 
+      SET status = 'calling', 
+          attempts = attempts + 1,
+          last_attempt_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ${callId}
+    `);
 
     // Se use_vps_number è OFF (default), il consulente DEVE avere un numero configurato
     if (!useVpsNumber && !sipCallerId) {
@@ -3304,20 +3339,48 @@ setTimeout(() => cleanupStaleCalling(), 10000);
 // GET /api/voice/health - Health check (placeholder)
 router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    // Verifica DB
     const dbCheck = await db.execute(sql`SELECT 1 as ok`);
     const dbOk = dbCheck.rows.length > 0;
 
-    // Placeholder per VPS health
+    let vpsHealth: any = null;
+    try {
+      const globalVoiceResult = await db.execute(sql`
+        SELECT vps_bridge_url, service_token FROM superadmin_voice_config WHERE id = 'default' AND enabled = true LIMIT 1
+      `);
+      const globalVoice = globalVoiceResult.rows[0] as any;
+      const vpsUrl = globalVoice?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
+      const vpsToken = globalVoice?.service_token;
+      if (vpsUrl) {
+        const controller = new AbortController();
+        const vpsTimeout = setTimeout(() => controller.abort(), 3000);
+        const healthRes = await fetch(`${vpsUrl}/health`, {
+          signal: controller.signal,
+          headers: vpsToken ? { 'Authorization': `Bearer ${vpsToken}` } : {},
+        });
+        clearTimeout(vpsTimeout);
+        if (healthRes.ok) {
+          vpsHealth = await healthRes.json();
+        }
+      }
+    } catch (vpsErr: any) {
+      console.log(`[Voice Health] VPS health fetch failed: ${vpsErr.message}`);
+    }
+
     res.json({
       overall: dbOk ? "healthy" : "degraded",
       components: {
         database: { status: dbOk ? "up" : "down", latencyMs: 0 },
-        esl: { status: "unknown", note: "VPS component - check via VPS API" },
-        freeswitch: { status: "unknown", note: "VPS component - check via VPS API" },
-        gemini: { status: "unknown", note: "VPS component - check via VPS API" }
+        esl: { status: vpsHealth ? "up" : "unknown", note: vpsHealth ? undefined : "VPS unreachable" },
+        freeswitch: { status: vpsHealth ? "up" : "unknown", note: vpsHealth ? undefined : "VPS unreachable" },
       },
-      note: "ESL, FreeSWITCH, Gemini health managed by VPS backend"
+      vps: vpsHealth ? {
+        status: vpsHealth.status,
+        activeSessions: vpsHealth.activeSessions || 0,
+        maxSessions: vpsHealth.maxSessions || 0,
+        activeByNumber: vpsHealth.activeByNumber || {},
+        overflowCount: vpsHealth.overflowCount || 0,
+        overflowEntries: vpsHealth.overflowEntries || [],
+      } : null,
     });
   } catch (error) {
     console.error("[Voice] Health check error:", error);

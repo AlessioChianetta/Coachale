@@ -12,19 +12,25 @@
   - overflow_dtmf_enabled: true/false - abilita "premi 1"
   - sip_gateway: gateway SIP da usare per il trasferimento
   - tech_prefix: prefisso tecnico per il gateway (es. 0312 per Telnyx)
+  - queue_position: posizione nella coda (1, 2, 3...)
+  - overflow_custom_message: messaggio personalizzato (opzionale)
   
   FLUSSO:
-  1. Annuncio vocale ciclico + musica d'attesa
-  2. Se overflow_dtmf_enabled=true → bind DTMF "1" per trasferimento
-  3. Il Voice Bridge gestisce il timeout (uuid_kill dopo N secondi)
-  4. Il Voice Bridge può trasferire back all'AI (uuid_transfer)
+  1. Annuncio posizione in coda (se queue_position impostata)
+  2. Annuncio vocale ciclico + musica d'attesa
+  3. Se overflow_dtmf_enabled=true → bind DTMF "1" per trasferimento
+  4. Il Voice Bridge gestisce il timeout (uuid_transfer a overflow_timeout)
+  5. Il Voice Bridge può trasferire back all'AI (uuid_transfer)
   
   FILE AUDIO RICHIESTI in /opt/sounds/overflow/:
-  - announcement.wav: messaggio d'attesa
+  - announcement.wav: messaggio d'attesa (con DTMF)
   - announcement_no_dtmf.wav: messaggio senza opzione "premi 1"
   - hold_music.wav: musica d'attesa (~30 sec)
   - transferring.wav: "Ti stiamo trasferendo..."
   - transfer_failed.wav: "Il trasferimento non è riuscito"
+  - timeout.wav: messaggio pre-disconnessione per timeout
+  - position_prefix.wav: "Sei in posizione numero"
+  - position_suffix.wav: "nella coda d'attesa"
   
   PERCORSO DEPLOY:
   /usr/local/freeswitch/etc/freeswitch/dialplan/default/05_overflow_queue.xml
@@ -36,34 +42,70 @@
   <extension name="overflow_queue">
     <condition field="destination_number" expression="^overflow_queue$">
 
-      <action application="log" data="INFO [OVERFLOW] Chiamata ${uuid} entrata in coda overflow (fallback=${fallback_transfer_number}, dtmf=${overflow_dtmf_enabled})"/>
+      <action application="log" data="INFO [OVERFLOW] Chiamata ${uuid} entrata in coda overflow (fallback=${fallback_transfer_number}, dtmf=${overflow_dtmf_enabled}, pos=${queue_position})"/>
       
       <action application="set" data="playback_terminators=none"/>
       
       <action application="bind_digit_action" data="overflow,1,exec:transfer,transfer_to_fallback XML default"/>
       <action application="digit_action_set_realm" data="overflow"/>
 
-      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <!-- Ciclo 1: posizione + annuncio + musica -->
+      <action application="execute_extension" data="announce_position XML default" inline="true"/>
+      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
       <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
 
-      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <!-- Ciclo 2-6: annuncio + musica -->
+      <action application="execute_extension" data="announce_position XML default" inline="true"/>
+      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
       <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
 
-      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <action application="execute_extension" data="announce_position XML default" inline="true"/>
+      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
       <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
 
-      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <action application="execute_extension" data="announce_position XML default" inline="true"/>
+      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
       <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
 
-      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <action application="execute_extension" data="announce_position XML default" inline="true"/>
+      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
       <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
 
-      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+      <action application="execute_extension" data="announce_position XML default" inline="true"/>
+      <action application="execute_extension" data="play_announcement XML default" inline="true"/>
       <action application="playback" data="/opt/sounds/overflow/hold_music.wav"/>
 
       <action application="log" data="WARNING [OVERFLOW] Chiamata ${uuid} - loop completato senza dequeue, parking"/>
       <action application="park"/>
 
+    </condition>
+  </extension>
+
+  <!-- Sub-extension: annuncia posizione in coda -->
+  <extension name="announce_position">
+    <condition field="destination_number" expression="^announce_position$">
+      <condition field="${queue_position}" expression="^[1-9]\d*$">
+        <action application="playback" data="/opt/sounds/overflow/position_prefix.wav"/>
+        <action application="say" data="it NUMBER PRONOUNCED ${queue_position}"/>
+        <action application="playback" data="/opt/sounds/overflow/position_suffix.wav"/>
+      </condition>
+    </condition>
+  </extension>
+
+  <!-- Sub-extension: riproduce annuncio (personalizzato o default) -->
+  <extension name="play_announcement">
+    <condition field="destination_number" expression="^play_announcement$">
+      <action application="playback" data="/opt/sounds/overflow/announcement.wav"/>
+    </condition>
+  </extension>
+
+  <!-- Extension: messaggio timeout prima del disconnect -->
+  <extension name="overflow_timeout">
+    <condition field="destination_number" expression="^overflow_timeout$">
+      <action application="log" data="INFO [OVERFLOW-TIMEOUT] Chiamata ${uuid} - timeout raggiunto, riproduco messaggio"/>
+      <action application="clear_digit_action" data="overflow"/>
+      <action application="playback" data="/opt/sounds/overflow/timeout.wav"/>
+      <action application="hangup" data="NORMAL_CLEARING"/>
     </condition>
   </extension>
 

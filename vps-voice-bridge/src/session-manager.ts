@@ -336,6 +336,27 @@ class SessionManager {
     return Array.from(this.sessions.values());
   }
 
+  getActiveCountByNumber(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const session of this.sessions.values()) {
+      const num = session.calledNumber || 'unknown';
+      counts[num] = (counts[num] || 0) + 1;
+    }
+    return counts;
+  }
+
+  getOverflowDetails(): { count: number; entries: Array<{ calledNumber: string; waitingSecs: number; uuid: string }> } {
+    const now = Date.now();
+    return {
+      count: this._overflowQueue.length,
+      entries: this._overflowQueue.map(e => ({
+        calledNumber: e.calledNumber,
+        waitingSecs: Math.round((now - e.enqueuedAt) / 1000),
+        uuid: e.uuid,
+      })),
+    };
+  }
+
   getStats(): {
     activeSessions: number;
     maxSessions: number;

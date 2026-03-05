@@ -46,27 +46,42 @@ generate_tts() {
     echo ""
 }
 
-echo "[1/5] Messaggio annuncio (con DTMF)..."
+echo "[1/8] Messaggio annuncio (con DTMF)..."
 generate_tts \
     "Tutti i nostri operatori sono al momento occupati. Rimani in linea per parlare con il nostro assistente, oppure premi 1 per essere trasferito a un consulente." \
     "announcement.wav"
 
-echo "[2/5] Messaggio annuncio (senza DTMF)..."
+echo "[2/8] Messaggio annuncio (senza DTMF)..."
 generate_tts \
     "Tutti i nostri operatori sono al momento occupati. Rimani in linea, sarai collegato al primo operatore disponibile." \
     "announcement_no_dtmf.wav"
 
-echo "[3/5] Messaggio trasferimento..."
+echo "[3/8] Messaggio trasferimento..."
 generate_tts \
     "Ti stiamo trasferendo a un consulente. Attendi un momento." \
     "transferring.wav"
 
-echo "[4/5] Messaggio trasferimento fallito..."
+echo "[4/8] Messaggio trasferimento fallito..."
 generate_tts \
     "Il trasferimento non è riuscito. Riprova più tardi. Arrivederci." \
     "transfer_failed.wav"
 
-echo "[5/5] Musica d'attesa (30 secondi)..."
+echo "[5/8] Messaggio timeout..."
+generate_tts \
+    "Ci scusiamo, al momento tutti i nostri operatori sono ancora occupati. Ti invitiamo a riprovare più tardi. Arrivederci." \
+    "timeout.wav"
+
+echo "[6/8] Prefisso posizione coda..."
+generate_tts \
+    "Sei in posizione numero" \
+    "position_prefix.wav"
+
+echo "[7/8] Suffisso posizione coda..."
+generate_tts \
+    "nella coda d'attesa." \
+    "position_suffix.wav"
+
+echo "[8/8] Musica d'attesa (30 secondi)..."
 sox -n -r ${SAMPLE_RATE} -c 1 -b 16 "${OUTPUT_DIR}/hold_music.wav" \
     synth 30 sine 440:880 sine 330:660 \
     remix - \
