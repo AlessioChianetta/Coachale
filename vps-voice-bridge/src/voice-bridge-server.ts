@@ -22,6 +22,7 @@ import {
 const log = logger.child('SERVER');
 
 const bgTimers = new Map<string, NodeJS.Timeout>();
+const recentlyDequeuedUuids = new Map<string, number>();
 
 const audioOutputQueues = new Map<string, Buffer[]>();
 const AUDIO_QUEUE_MAX = 2500;
@@ -493,8 +494,38 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, 
         sessionManager.updateSessionState(session.id, 'active');
         sessionManager.resumeInactivityTimeout(session.id);
       },
-      onClose: () => {
-        log.info(`Replit connection closed`, { sessionId: session.id.slice(0, 8) });
+      onClose: (code?: number, reason?: string) => {
+        log.info(`Replit connection closed`, { sessionId: session.id.slice(0, 8), code, reason });
+
+        if (code === 4429) {
+          const wasDequeued = recentlyDequeuedUuids.has(session.fsUuid);
+          if (wasDequeued) {
+            log.error(`🔴 [OVERFLOW-4429] Call ${session.fsUuid} was just dequeued from overflow but Replit rejected again (4429). Ending call to prevent loop.`, { sessionId: session.id.slice(0, 8) });
+            recentlyDequeuedUuids.delete(session.fsUuid);
+            cleanupSession(session.id);
+            sessionManager.endSession(session.id, 'channels_full_after_dequeue');
+            const eslConn = getEslConnection();
+            if (eslConn) {
+              (eslConn as any).bgapi(`uuid_kill ${session.fsUuid} NORMAL_CLEARING`);
+            }
+            return;
+          }
+
+          log.warn(`🔶 [OVERFLOW-4429] Replit rejected — channels full. Routing ${session.fsUuid} to overflow (calledNumber: ${message.called_number})`, { sessionId: session.id.slice(0, 8) });
+          cleanupSession(session.id);
+          sessionManager.endSession(session.id, 'channels_full_overflow');
+          routeToOverflow(session.fsUuid, message.called_number).then(ok => {
+            if (ok) {
+              log.info(`✅ [OVERFLOW-4429] Call ${session.fsUuid} successfully routed to overflow queue`);
+            } else {
+              log.error(`❌ [OVERFLOW-4429] Failed to route ${session.fsUuid} to overflow — call will be dropped`);
+            }
+          }).catch(err => {
+            log.error(`❌ [OVERFLOW-4429] routeToOverflow error: ${err.message}`);
+          });
+          return;
+        }
+
         const s = sessionManager.getSession(session.id);
         if (s && (s.state === 'active' || s.state === 'reconnecting')) {
           log.info(`📞 Replit closed permanently - ending call`, { sessionId: session.id.slice(0, 8) });
@@ -745,7 +776,22 @@ async function tryDequeueOverflow(): Promise<void> {
         continue;
       }
 
-      log.info(`🔄 Dequeuing overflow call ${next.uuid} → transferring back to AI`);
+      log.info(`🔄 Dequeuing overflow call ${next.uuid} → transferring back to AI (2s delay for DB sync)`);
+      recentlyDequeuedUuids.set(next.uuid, Date.now());
+      setTimeout(() => recentlyDequeuedUuids.delete(next.uuid), 30000);
+
+      await new Promise(r => setTimeout(r, 2000));
+
+      const stillExists = await new Promise<boolean>((resolve) => {
+        (eslConn as any).bgapi(`uuid_exists ${next.uuid}`, (res: any) => {
+          resolve((res?.getBody?.() || '').trim() === 'true');
+        });
+      });
+      if (!stillExists) {
+        log.info(`📞 Overflow call ${next.uuid} hung up during dequeue delay — skipping`);
+        recentlyDequeuedUuids.delete(next.uuid);
+        continue;
+      }
 
       (eslConn as any).bgapi(`uuid_transfer ${next.uuid} alessia_ai_9999_public XML public`, (res: any) => {
         const body = res?.getBody?.() || '';

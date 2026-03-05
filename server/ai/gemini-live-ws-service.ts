@@ -1252,8 +1252,8 @@ async function getUserIdFromRequest(req: any): Promise<{
           console.log(`⏱️ [AUTH-DETAIL] Channel check: ${Date.now() - channelCheckStart}ms (active: ${activeCount}/${maxChannels}, number: ${resolvedCalledNumber})`);
 
           if (activeCount >= maxChannels) {
-            console.error(`❌ [PHONE SERVICE] Consultant ${resolvedConsultantId} has ${activeCount}/${maxChannels} active calls → CHANNELS FULL, REJECTING`);
-            return null;
+            console.error(`❌ [PHONE SERVICE] Consultant ${resolvedConsultantId} has ${activeCount}/${maxChannels} active calls on ${resolvedCalledNumber} → CHANNELS FULL (4429)`);
+            return { channelsFull: true } as any;
           }
         } else {
           console.log(`🔍 [ROUTING-DEBUG] No calledNumber provided → FALLING BACK to JWT consultantId: ${decoded.consultantId}`);
@@ -1265,8 +1265,8 @@ async function getUserIdFromRequest(req: any): Promise<{
           `);
           const fallbackActiveCount = parseInt((fallbackChannelResult.rows[0] as any)?.active_count || '0', 10);
           if (fallbackActiveCount >= 5) {
-            console.error(`❌ [PHONE SERVICE] Consultant ${resolvedConsultantId} has ${fallbackActiveCount}/5 active calls (fallback limit) → CHANNELS FULL, REJECTING`);
-            return null;
+            console.error(`❌ [PHONE SERVICE] Consultant ${resolvedConsultantId} has ${fallbackActiveCount}/5 active calls (fallback limit) → CHANNELS FULL (4429)`);
+            return { channelsFull: true } as any;
           }
         }
 
@@ -1837,6 +1837,11 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     if (!authResult) {
       console.error(`❌ [${connectionId}] Authentication failed`);
       clientWs.close(4401, 'Unauthorized - Valid JWT token required');
+      return;
+    }
+    if (authResult && (authResult as any).channelsFull) {
+      console.error(`🔶 [${connectionId}] Channels full — closing with 4429 CHANNELS_FULL`);
+      clientWs.close(4429, 'CHANNELS_FULL');
       return;
     }
 
@@ -10117,6 +10122,18 @@ ${compactFeedback}
             activeVoiceCalls.delete(voiceCallId);
             
             console.log(`📞 [${connectionId}] Voice call ${voiceCallId} completed - Duration: ${durationSeconds}s`);
+
+            if (consultantId) {
+              try {
+                const drainFn = (globalThis as any).__drainCallQueue;
+                if (drainFn) {
+                  console.log(`🔄 [${connectionId}] Channel freed — draining call queue for consultant ${consultantId.substring(0, 8)}...`);
+                  drainFn(consultantId).catch((err: any) => console.error(`[${connectionId}] drainCallQueue error:`, err.message));
+                }
+              } catch (drainErr: any) {
+                console.error(`[${connectionId}] drainCallQueue error:`, drainErr.message);
+              }
+            }
 
             if (phoneCallerId && consultantId) {
               try {

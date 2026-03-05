@@ -2735,7 +2735,10 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     
     const call = callResult.rows[0] as any;
     
-    if (call.status === 'cancelled' || call.status === 'completed') {
+    if (['cancelled', 'completed', 'calling', 'talking', 'failed'].includes(call.status)) {
+      if (call.status === 'calling' || call.status === 'talking') {
+        console.log(`⏭️ [Outbound] Call ${callId} already in '${call.status}' — skipping (likely old timer firing late)`);
+      }
       return { success: false, error: `Call already ${call.status}` };
     }
     
@@ -3771,22 +3774,28 @@ router.get("/number-lookup", async (req: Request, res: Response) => {
 async function drainCallQueue(consultantId: string): Promise<void> {
   try {
     const queuedResult = await db.execute(sql`
-      SELECT id, consultant_id, scheduled_at FROM scheduled_voice_calls
+      SELECT id, consultant_id, status, scheduled_at, next_retry_at FROM scheduled_voice_calls
       WHERE consultant_id = ${consultantId}
-        AND status = 'pending'
-        AND scheduled_at <= NOW()
-      ORDER BY scheduled_at ASC
+        AND (
+          (status = 'pending' AND scheduled_at <= NOW())
+          OR status = 'retry_scheduled'
+        )
+      ORDER BY 
+        CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
+        COALESCE(next_retry_at, scheduled_at) ASC
       LIMIT 1
     `);
     if (queuedResult.rows.length > 0) {
       const next = queuedResult.rows[0] as any;
-      console.log(`🔄 [Queue Drain] Triggering queued call ${next.id} for consultant ${consultantId.substring(0, 8)}...`);
+      const isEarlyRetry = next.status === 'retry_scheduled';
+      console.log(`🔄 [Queue Drain] Triggering ${isEarlyRetry ? 'EARLY RETRY' : 'queued'} call ${next.id} for consultant ${consultantId.substring(0, 8)}...${isEarlyRetry ? ` (was scheduled for ${next.next_retry_at})` : ''}`);
       executeOutboundCall(next.id, next.consultant_id);
     }
   } catch (err: any) {
     console.error(`[Queue Drain] Error:`, err.message);
   }
 }
+(globalThis as any).__drainCallQueue = drainCallQueue;
 
 // POST /api/voice/outbound/callback - VPS reports call result
 router.post("/outbound/callback", async (req: Request, res: Response) => {

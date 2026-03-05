@@ -48,7 +48,7 @@ scheduledCallId?: string;
   onTextResponse?: (text: string) => void;
   onInterrupted?: () => void;
   onError: (error: Error) => void;
-  onClose: () => void;
+  onClose: (code?: number, reason?: string) => void;
   onReconnecting?: () => void;
   onReconnected?: () => void;
 }
@@ -190,13 +190,20 @@ if (this.scheduledCallId) {
       });
 
       this.ws.on('close', (code, reason) => {
+        const reasonStr = reason.toString();
         log.info(`Replit WebSocket closed`, {
           sessionId: this.sessionId.slice(0, 8),
           code,
-          reason: reason.toString(),
+          reason: reasonStr,
           hasPendingResume: !!this.pendingResumeHandle,
         });
         this.isConnected = false;
+
+        if (code === 4429) {
+          log.warn(`🔶 Replit rejected with CHANNELS_FULL (4429) — routing to overflow`, { sessionId: this.sessionId.slice(0, 8) });
+          this.options.onClose(code, reasonStr);
+          return;
+        }
 
         if (this.pendingResumeHandle) {
           const handle = this.pendingResumeHandle;
@@ -211,7 +218,7 @@ if (this.scheduledCallId) {
           return;
         }
 
-        this.options.onClose();
+        this.options.onClose(code, reasonStr);
       });
     });
   }
