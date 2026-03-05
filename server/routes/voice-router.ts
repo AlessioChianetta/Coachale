@@ -955,11 +955,11 @@ router.get("/contact/:phone", authenticateToken, requireAnyRole(["consultant", "
     }
 
     const contact = contactResult.rows[0] as any || null;
-    const calls = callsResult.rows;
-    const scheduledCalls = scheduledResult.rows;
+    const calls = callsResult.rows as any[];
+    const scheduledCalls = scheduledResult.rows as any[];
     const proactiveLead = proactiveResult.rows[0] as any || null;
 
-    const nextRetry = (scheduledResult.rows as any[]).find(
+    const nextRetry = scheduledCalls.find(
       (s: any) => s.status === 'retry_scheduled' || s.status === 'pending'
     ) || null;
 
@@ -972,6 +972,109 @@ router.get("/contact/:phone", authenticateToken, requireAnyRole(["consultant", "
       : calls.length > 0 || scheduledCalls.length > 0 ? 'known'
       : 'unknown';
 
+    const callIds = calls.map((c: any) => c.id).filter(Boolean);
+    let callEvents: any[] = [];
+    if (callIds.length > 0) {
+      const eventsResult = await db.execute(sql`
+        SELECT vce.id, vce.call_id, vce.event_type, vce.event_data, vce.created_at
+        FROM voice_call_events vce
+        WHERE vce.call_id = ANY(${callIds})
+        ORDER BY vce.created_at DESC
+      `);
+      callEvents = eventsResult.rows as any[];
+    }
+
+    const timeline: any[] = [];
+
+    for (const c of calls) {
+      timeline.push({
+        type: 'call',
+        id: c.id,
+        direction: c.call_direction || (c.caller_id === phone ? 'inbound' : 'outbound'),
+        status: c.status,
+        timestamp: c.started_at,
+        duration_seconds: c.duration_seconds,
+        outcome: c.outcome,
+        hangup_cause: c.hangup_cause,
+        transcript_preview: c.full_transcript ? c.full_transcript.substring(0, 150) : null,
+        has_transcript: !!c.full_transcript,
+        has_recording: !!c.recording_url,
+        ai_mode: c.ai_mode,
+        client_name: c.client_name,
+      });
+    }
+
+    for (const sc of scheduledCalls) {
+      timeline.push({
+        type: 'scheduled',
+        id: sc.id,
+        status: sc.status,
+        timestamp: sc.scheduled_at || sc.created_at,
+        scheduled_at: sc.scheduled_at,
+        instruction: sc.call_instruction,
+        instruction_type: sc.instruction_type,
+        attempts: sc.attempts,
+        max_attempts: sc.max_attempts,
+        retry_reason: sc.retry_reason,
+        next_retry_at: sc.next_retry_at,
+        hangup_cause: sc.hangup_cause,
+        duration_seconds: sc.duration_seconds,
+      });
+
+      const attemptsLog = sc.attempts_log;
+      if (Array.isArray(attemptsLog)) {
+        for (const entry of attemptsLog) {
+          timeline.push({
+            type: 'retry_event',
+            scheduled_call_id: sc.id,
+            attempt: entry.attempt,
+            status: entry.status,
+            timestamp: entry.timestamp,
+            hangup_cause: entry.hangup_cause,
+            duration_seconds: entry.duration_seconds,
+            event: entry.event,
+          });
+        }
+      }
+    }
+
+    for (const ev of callEvents) {
+      timeline.push({
+        type: 'call_event',
+        id: ev.id,
+        call_id: ev.call_id,
+        eventType: ev.event_type,
+        eventData: ev.event_data,
+        timestamp: ev.created_at,
+      });
+    }
+
+    timeline.sort((a, b) => {
+      const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return tb - ta;
+    });
+
+    const stats = {
+      totalCalls: calls.length,
+      completed: calls.filter((c: any) => c.status === 'completed').length,
+      failed: calls.filter((c: any) => c.status === 'failed').length,
+      noAnswer: calls.filter((c: any) => c.status === 'no_answer').length,
+      busy: calls.filter((c: any) => c.status === 'busy').length,
+      shortCall: calls.filter((c: any) => c.status === 'short_call').length,
+      voicemail: calls.filter((c: any) => c.status === 'voicemail').length,
+      totalDuration: calls.reduce((sum: number, c: any) => sum + (c.duration_seconds || 0), 0),
+      avgDuration: calls.length > 0
+        ? Math.round(calls.reduce((sum: number, c: any) => sum + (c.duration_seconds || 0), 0) / calls.length)
+        : 0,
+      firstContact: calls.length > 0 ? calls[calls.length - 1]?.started_at : null,
+      lastContact: calls.length > 0 ? calls[0]?.started_at : null,
+      totalScheduled: scheduledCalls.length,
+      retryEvents: scheduledCalls.reduce((sum: number, sc: any) => {
+        return sum + (Array.isArray(sc.attempts_log) ? sc.attempts_log.length : 0);
+      }, 0),
+    };
+
     res.json({
       contact: {
         phone,
@@ -983,6 +1086,8 @@ router.get("/contact/:phone", authenticateToken, requireAnyRole(["consultant", "
       },
       calls,
       scheduledCalls,
+      timeline,
+      stats,
       hunterContext,
       proactiveLead,
       nextRetry: nextRetry ? {
@@ -3657,6 +3762,15 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
     // Use call.id (from DB lookup) instead of callId (from request) to handle fallback scenarios
     const dbCallId = call.id;
     
+    const attemptLogEntry = JSON.stringify({
+      attempt: currentAttempts,
+      status,
+      hangup_cause: hangup_cause || null,
+      duration_seconds: duration_seconds || 0,
+      timestamp: new Date().toISOString(),
+      event: 'callback_received',
+    });
+    
     // Accept both 'completed' and 'normal_end' as successful completion
     if (status === 'completed' || status === 'normal_end') {
       // Call completed successfully - no retry needed
@@ -3667,6 +3781,7 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
             hangup_cause = ${hangup_cause || null},
             voice_call_id = ${voiceCallId || null},
             last_attempt_at = NOW(),
+            attempts_log = COALESCE(attempts_log, '[]'::jsonb) || ${attemptLogEntry}::jsonb,
             updated_at = NOW()
         WHERE id = ${dbCallId}
       `);
@@ -3728,6 +3843,7 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
             voice_call_id = ${voiceCallId || null},
             error_message = ${hangup_cause || 'Call failed'},
             last_attempt_at = NOW(),
+            attempts_log = COALESCE(attempts_log, '[]'::jsonb) || ${attemptLogEntry}::jsonb,
             updated_at = NOW()
         WHERE id = ${dbCallId}
       `);
@@ -3788,6 +3904,7 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
               voice_call_id = ${voiceCallId || null},
               last_attempt_at = NOW(),
               next_retry_at = NOW() + INTERVAL '${sql.raw(String(retryDelaySeconds))} seconds',
+              attempts_log = COALESCE(attempts_log, '[]'::jsonb) || ${attemptLogEntry}::jsonb,
               updated_at = NOW()
           WHERE id = ${dbCallId}
         `);
@@ -3829,6 +3946,7 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
               voice_call_id = ${voiceCallId || null},
               error_message = ${'Max attempts reached: ' + status},
               last_attempt_at = NOW(),
+              attempts_log = COALESCE(attempts_log, '[]'::jsonb) || ${attemptLogEntry}::jsonb,
               updated_at = NOW()
           WHERE id = ${dbCallId}
         `);

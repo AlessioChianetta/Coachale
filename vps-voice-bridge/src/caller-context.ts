@@ -334,3 +334,40 @@ export async function notifyAmdResult(
     });
   }
 }
+
+export async function notifyOutboundCallResult(
+  callId: string,
+  status: string,
+  hangupCause: string,
+  durationSeconds: number
+): Promise<void> {
+  if (!config.replit.apiUrl || !config.replit.apiToken) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${config.replit.apiUrl}/api/voice/outbound/callback`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.replit.apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        callId,
+        status,
+        hangup_cause: hangupCause,
+        duration_seconds: durationSeconds,
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    log.info(`📬 [HANGUP-CALLBACK] Notified Replit callId=${callId} status=${status} cause=${hangupCause} duration=${durationSeconds}s httpStatus=${response.status}`);
+  } catch (error) {
+    log.warn(`[HANGUP-CALLBACK] Failed to notify call result`, {
+      callId,
+      status,
+      hangupCause,
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
+  }
+}

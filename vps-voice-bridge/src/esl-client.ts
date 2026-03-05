@@ -1,7 +1,7 @@
 import { config } from './config.js';
 import { logger } from './logger.js';
 import { setExpectedCallId } from './voice-bridge-server.js';
-import { notifyAmdResult } from './caller-context.js';
+import { notifyAmdResult, notifyOutboundCallResult } from './caller-context.js';
 import { sessionManager } from './session-manager.js';
 import esl from 'modesl';
 
@@ -14,6 +14,8 @@ export const outboundCallIdMap = new Map<string, string>();
 const pendingAnswers = new Map<string, number>();
 
 const amdDetectedCalls = new Set<string>();
+
+const SHORT_CALL_THRESHOLD = 15;
 
 let eslConn: any = null;
 
@@ -208,8 +210,58 @@ export function startESLController(): void {
 
   conn.on('esl::event::CHANNEL_HANGUP::*', (event: any) => {
     const uuid = event.getHeader('Unique-ID');
+    const hangupCause = event.getHeader('Hangup-Cause') || 'UNKNOWN';
+    const billsec = parseInt(event.getHeader('variable_billsec') || '0', 10);
+    const duration = parseInt(event.getHeader('variable_duration') || '0', 10);
+
+    if (uuid?.startsWith('outbound-')) {
+      const callId = outboundCallIdMap.get(uuid);
+
+      if (callId) {
+        const hasAmd = amdDetectedCalls.has(uuid);
+        const hasActiveSession = !!sessionManager.getSessionByCallId(uuid);
+
+        if (hasAmd) {
+          log.info(`[HANGUP-CALLBACK] Skipping outbound uuid=${uuid} — AMD already notified`);
+        } else if (hasActiveSession) {
+          log.info(`[HANGUP-CALLBACK] Skipping outbound uuid=${uuid} — active audio session (gemini-live-ws handles completion)`);
+        } else if (hangupCause === 'ORIGINATOR_CANCEL') {
+          log.info(`[HANGUP-CALLBACK] Skipping outbound uuid=${uuid} — ORIGINATOR_CANCEL (we killed it)`);
+        } else {
+          let callbackStatus: string | null = null;
+
+          if (['NO_ANSWER', 'NO_USER_RESPONSE', 'RECOVERY_ON_TIMER_EXPIRE'].includes(hangupCause)) {
+            callbackStatus = 'no_answer';
+          } else if (['USER_BUSY', 'CALL_REJECTED'].includes(hangupCause)) {
+            callbackStatus = 'busy';
+          } else if (hangupCause === 'NORMAL_CLEARING') {
+            const effectiveDuration = billsec > 0 ? billsec : duration;
+            if (effectiveDuration > 0 && effectiveDuration < SHORT_CALL_THRESHOLD) {
+              callbackStatus = 'short_call';
+            } else if (effectiveDuration >= SHORT_CALL_THRESHOLD) {
+              log.info(`[HANGUP-CALLBACK] Skipping outbound uuid=${uuid} — NORMAL_CLEARING with effectiveDuration=${effectiveDuration}s >= threshold (completed call handled by gemini)`);
+            } else {
+              log.info(`[HANGUP-CALLBACK] Skipping outbound uuid=${uuid} — NORMAL_CLEARING with effectiveDuration=0 (likely handled elsewhere)`);
+            }
+          } else {
+            callbackStatus = 'failed';
+          }
+
+          if (callbackStatus) {
+            const effectiveDurationForCallback = billsec > 0 ? billsec : duration;
+            log.info(`[HANGUP-CALLBACK] Outbound call uuid=${uuid} callId=${callId} cause=${hangupCause} billsec=${billsec} duration=${duration} → status=${callbackStatus} effectiveDuration=${effectiveDurationForCallback}`);
+            notifyOutboundCallResult(callId, callbackStatus, hangupCause, effectiveDurationForCallback).catch(err => {
+              log.warn(`[HANGUP-CALLBACK] Failed to send callback`, { uuid, callId, error: err?.message });
+            });
+          }
+        }
+      } else {
+        log.debug(`[HANGUP-CALLBACK] No callId mapping for outbound uuid=${uuid} — cannot send callback`);
+      }
+    }
+
     if (callMetadata.has(uuid)) {
-      log.debug(`🛑 Call ended`, { uuid });
+      log.debug(`🛑 Call ended`, { uuid, hangupCause });
       callMetadata.delete(uuid);
     }
     outboundCallIdMap.delete(uuid);

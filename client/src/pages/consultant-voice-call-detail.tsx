@@ -15,7 +15,7 @@ import {
   MessageSquare, FileText, Calendar, Activity, CheckCircle,
   AlertCircle, Ban, Volume2, CalendarCheck, ExternalLink,
   Globe, Target, Zap, Timer, ChevronDown, ChevronRight,
-  Search, Building2, Mail, Hash,
+  Search, Building2, Mail, Hash, BarChart3, History,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -71,6 +71,7 @@ interface ScheduledCall {
   next_retry_at: string | null;
   custom_prompt: string | null;
   created_at: string;
+  attempts_log?: any[];
 }
 
 interface HunterContext {
@@ -106,10 +107,57 @@ interface NextRetry {
   scheduled_at: string;
 }
 
+interface TimelineEvent {
+  type: "call" | "scheduled" | "retry_event" | "call_event";
+  id?: string;
+  status?: string;
+  timestamp?: string;
+  direction?: string;
+  duration_seconds?: number | null;
+  outcome?: string | null;
+  hangup_cause?: string | null;
+  transcript_preview?: string | null;
+  has_transcript?: boolean;
+  has_recording?: boolean;
+  ai_mode?: string | null;
+  client_name?: string | null;
+  scheduled_at?: string;
+  instruction?: string | null;
+  instruction_type?: string | null;
+  attempts?: number;
+  max_attempts?: number;
+  retry_reason?: string | null;
+  next_retry_at?: string | null;
+  attempt?: number;
+  event?: string;
+  scheduled_call_id?: string;
+  call_id?: string;
+  eventType?: string;
+  eventData?: any;
+}
+
+interface ContactStats {
+  totalCalls: number;
+  completed: number;
+  failed: number;
+  noAnswer: number;
+  busy: number;
+  shortCall: number;
+  voicemail: number;
+  totalDuration: number;
+  avgDuration: number;
+  firstContact: string | null;
+  lastContact: string | null;
+  totalScheduled: number;
+  retryEvents: number;
+}
+
 interface ContactData {
   contact: ContactProfile;
   calls: CallRecord[];
   scheduledCalls: ScheduledCall[];
+  timeline?: TimelineEvent[];
+  stats?: ContactStats;
   hunterContext: HunterContext | null;
   proactiveLead: ProactiveLead | null;
   nextRetry: NextRetry | null;
@@ -128,7 +176,9 @@ const CALL_STATUS: Record<string, { label: string; icon: typeof Phone; color: st
   calling: { label: "In Chiamata", icon: PhoneOutgoing, color: "bg-cyan-500" },
   retry_scheduled: { label: "Retry Programmato", icon: Timer, color: "bg-orange-500" },
   no_answer: { label: "Nessuna Risposta", icon: PhoneMissed, color: "bg-red-400" },
-  busy: { label: "Occupato", icon: PhoneOff, color: "bg-red-300" },
+  busy: { label: "Occupato", icon: PhoneOff, color: "bg-orange-400" },
+  short_call: { label: "Breve", icon: AlertCircle, color: "bg-yellow-500" },
+  voicemail: { label: "Segreteria", icon: Volume2, color: "bg-purple-500" },
   cancelled: { label: "Annullata", icon: Ban, color: "bg-gray-400" },
 };
 
@@ -137,6 +187,20 @@ const CONTACT_TYPE_BADGES: Record<string, { label: string; variant: "default" | 
   lead: { label: "Lead", variant: "secondary" },
   known: { label: "Conosciuto", variant: "outline" },
   unknown: { label: "Sconosciuto", variant: "outline" },
+};
+
+const TIMELINE_CONFIG: Record<string, { icon: typeof Phone; color: string; bgColor: string }> = {
+  completed: { icon: CheckCircle, color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-950/40" },
+  no_answer: { icon: PhoneMissed, color: "text-red-500", bgColor: "bg-red-100 dark:bg-red-950/40" },
+  busy: { icon: PhoneOff, color: "text-orange-500", bgColor: "bg-orange-100 dark:bg-orange-950/40" },
+  voicemail: { icon: Volume2, color: "text-purple-500", bgColor: "bg-purple-100 dark:bg-purple-950/40" },
+  short_call: { icon: AlertCircle, color: "text-yellow-600", bgColor: "bg-yellow-100 dark:bg-yellow-950/40" },
+  failed: { icon: PhoneMissed, color: "text-red-600", bgColor: "bg-red-100 dark:bg-red-950/40" },
+  retry_scheduled: { icon: Timer, color: "text-blue-500", bgColor: "bg-blue-100 dark:bg-blue-950/40" },
+  scheduled: { icon: Calendar, color: "text-gray-500", bgColor: "bg-gray-100 dark:bg-gray-800/40" },
+  pending: { icon: Clock, color: "text-amber-500", bgColor: "bg-amber-100 dark:bg-amber-950/40" },
+  calling: { icon: PhoneOutgoing, color: "text-cyan-500", bgColor: "bg-cyan-100 dark:bg-cyan-950/40" },
+  ended: { icon: PhoneOff, color: "text-gray-500", bgColor: "bg-gray-100 dark:bg-gray-800/40" },
 };
 
 function formatDuration(seconds: number | null) {
@@ -153,6 +217,31 @@ function getInitials(name: string | null, phone: string): string {
   return phone.slice(-2);
 }
 
+function getTimelineEventConfig(event: TimelineEvent) {
+  const status = event.status || "ended";
+  return TIMELINE_CONFIG[status] || TIMELINE_CONFIG.ended;
+}
+
+function getTimelineEventDescription(event: TimelineEvent): string {
+  if (event.type === "call") {
+    const dir = event.direction === "inbound" ? "in entrata" : "in uscita";
+    const statusLabel = CALL_STATUS[event.status || ""]?.label || event.status || "";
+    return `Chiamata ${dir} · ${statusLabel}`;
+  }
+  if (event.type === "scheduled") {
+    const statusLabel = CALL_STATUS[event.status || ""]?.label || event.status || "";
+    return `Chiamata programmata · ${statusLabel}`;
+  }
+  if (event.type === "retry_event") {
+    const statusLabel = CALL_STATUS[event.status || ""]?.label || event.status || "";
+    return `Tentativo ${event.attempt || "?"} · ${statusLabel}`;
+  }
+  if (event.type === "call_event") {
+    return `Evento: ${event.eventType || "sconosciuto"}`;
+  }
+  return "Evento";
+}
+
 export default function ConsultantVoiceCallDetailPage() {
   const { id } = useParams<{ id: string }>();
   const isMobile = useIsMobile();
@@ -160,6 +249,7 @@ export default function ConsultantVoiceCallDetailPage() {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const [expandedCalls, setExpandedCalls] = useState<Set<string>>(new Set());
+  const [expandedTimelineEvents, setExpandedTimelineEvents] = useState<Set<string>>(new Set());
 
   const isContactMode = location.includes('/contact/');
 
@@ -217,6 +307,15 @@ export default function ConsultantVoiceCallDetailPage() {
     });
   };
 
+  const toggleTimelineExpanded = (eventKey: string) => {
+    setExpandedTimelineEvents(prev => {
+      const next = new Set(prev);
+      if (next.has(eventKey)) next.delete(eventKey);
+      else next.add(eventKey);
+      return next;
+    });
+  };
+
   const isLoading = resolvingPhone || loadingContact;
 
   if (isLoading) {
@@ -246,7 +345,7 @@ export default function ConsultantVoiceCallDetailPage() {
 
   if (!contactData) return null;
 
-  const { contact, calls, scheduledCalls, hunterContext, proactiveLead, nextRetry } = contactData;
+  const { contact, calls, scheduledCalls, timeline, stats, hunterContext, proactiveLead, nextRetry } = contactData;
   const typeBadge = CONTACT_TYPE_BADGES[contact.type] || CONTACT_TYPE_BADGES.unknown;
   const displayName = contact.name || contact.phone;
 
@@ -343,6 +442,26 @@ export default function ConsultantVoiceCallDetailPage() {
     );
   }
 
+  const safeStats = stats || {
+    totalCalls: calls.length,
+    completed: calls.filter(c => c.status === "completed").length,
+    failed: calls.filter(c => c.status === "failed").length,
+    noAnswer: calls.filter(c => c.status === "no_answer").length,
+    busy: calls.filter(c => c.status === "busy").length,
+    shortCall: calls.filter(c => c.status === "short_call").length,
+    voicemail: calls.filter(c => c.status === "voicemail").length,
+    totalDuration: calls.reduce((sum, c) => sum + (c.duration_seconds || 0), 0),
+    avgDuration: calls.length > 0 ? Math.round(calls.reduce((sum, c) => sum + (c.duration_seconds || 0), 0) / calls.length) : 0,
+    firstContact: calls.length > 0 ? calls[calls.length - 1]?.started_at : null,
+    lastContact: calls.length > 0 ? calls[0]?.started_at : null,
+    totalScheduled: scheduledCalls.length,
+    retryEvents: 0,
+  };
+
+  const safeTimeline = timeline || [];
+
+  const recentTimelineEvents = safeTimeline.slice(0, 3);
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} role="consultant" />
@@ -351,7 +470,6 @@ export default function ConsultantVoiceCallDetailPage() {
         <main className="flex-1 p-4 lg:p-6 lg:px-8 overflow-auto">
           <div className="max-w-6xl mx-auto space-y-6">
 
-            {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
                 <Link href="/consultant/voice-calls">
@@ -367,8 +485,19 @@ export default function ConsultantVoiceCallDetailPage() {
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                       {displayName}
                       <Badge variant={typeBadge.variant}>{typeBadge.label}</Badge>
+                      {hunterContext?.leadStatus && (
+                        <Badge variant="secondary" className="capitalize">{hunterContext.leadStatus}</Badge>
+                      )}
                     </h1>
                     <p className="text-muted-foreground font-mono text-sm">{contact.phone}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {safeStats.totalCalls} chiamate · {safeStats.completed} completate
+                      {safeStats.noAnswer > 0 && ` · ${safeStats.noAnswer} non risponde`}
+                      {safeStats.voicemail > 0 && ` · ${safeStats.voicemail} segreteria`}
+                      {safeStats.busy > 0 && ` · ${safeStats.busy} occupato`}
+                      {safeStats.shortCall > 0 && ` · ${safeStats.shortCall} brevi`}
+                      {safeStats.totalDuration > 0 && ` · Durata tot: ${formatDuration(safeStats.totalDuration)}`}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -393,13 +522,15 @@ export default function ConsultantVoiceCallDetailPage() {
               </div>
             </div>
 
-            {/* Main Layout: sidebar right + main area */}
             <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
 
-              {/* Main Area */}
               <div className="space-y-4">
-                <Tabs defaultValue="history" className="w-full">
+                <Tabs defaultValue="timeline" className="w-full">
                   <TabsList className="w-full justify-start">
+                    <TabsTrigger value="timeline" className="flex items-center gap-1.5">
+                      <History className="h-4 w-4" />
+                      Timeline
+                    </TabsTrigger>
                     <TabsTrigger value="history" className="flex items-center gap-1.5">
                       <Phone className="h-4 w-4" />
                       Storico ({calls.length})
@@ -414,7 +545,129 @@ export default function ConsultantVoiceCallDetailPage() {
                     </TabsTrigger>
                   </TabsList>
 
-                  {/* Storico Chiamate */}
+                  <TabsContent value="timeline" className="mt-4">
+                    {safeTimeline.length === 0 ? (
+                      <Card>
+                        <CardContent className="py-12 text-center text-muted-foreground">
+                          <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>Nessun evento nella timeline per questo contatto</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="relative">
+                        <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-border" />
+                        <div className="space-y-1">
+                          {safeTimeline.map((event, idx) => {
+                            const eventKey = `${event.type}-${event.id || event.scheduled_call_id || idx}-${event.attempt || 0}`;
+                            const cfg = getTimelineEventConfig(event);
+                            const EventIcon = cfg.icon;
+                            const description = getTimelineEventDescription(event);
+                            const isExpanded = expandedTimelineEvents.has(eventKey);
+                            const isCallWithDetails = event.type === "call" && (event.has_transcript || event.has_recording);
+
+                            return (
+                              <div key={eventKey} className="relative pl-12">
+                                <div className={`absolute left-3 top-3 w-5 h-5 rounded-full flex items-center justify-center ${cfg.bgColor} z-10`}>
+                                  <EventIcon className={`h-3 w-3 ${cfg.color}`} />
+                                </div>
+
+                                <div
+                                  className={`rounded-lg border p-3 ${isCallWithDetails ? "cursor-pointer hover:bg-muted/30 transition-colors" : ""}`}
+                                  onClick={() => isCallWithDetails && toggleTimelineExpanded(eventKey)}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-sm font-medium">{description}</span>
+                                        {event.outcome && <Badge variant="secondary" className="text-xs">{event.outcome}</Badge>}
+                                        {event.duration_seconds != null && event.duration_seconds > 0 && (
+                                          <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                            <Clock className="h-3 w-3" />
+                                            {formatDuration(event.duration_seconds)}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {event.type === "call" && event.transcript_preview && (
+                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{event.transcript_preview}</p>
+                                      )}
+
+                                      {event.type === "retry_event" && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          Tentativo {event.attempt}/{event.max_attempts || "?"}
+                                          {event.hangup_cause && ` · ${event.hangup_cause}`}
+                                          {event.event && ` · ${event.event}`}
+                                        </p>
+                                      )}
+
+                                      {event.type === "scheduled" && (
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                          {event.instruction && <p className="truncate">{event.instruction}</p>}
+                                          {event.instruction_type && <span className="capitalize">Tipo: {event.instruction_type}</span>}
+                                          {event.attempts != null && event.max_attempts != null && (
+                                            <span className="ml-2">· Tentativi: {event.attempts}/{event.max_attempts}</span>
+                                          )}
+                                          {event.retry_reason && <p className="text-orange-600 mt-0.5">{event.retry_reason}</p>}
+                                        </div>
+                                      )}
+
+                                      {event.type === "call_event" && event.eventData && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {typeof event.eventData === "string" ? event.eventData : JSON.stringify(event.eventData).substring(0, 100)}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      {event.timestamp && (
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                          {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true, locale: it })}
+                                        </span>
+                                      )}
+                                      {isCallWithDetails && (
+                                        isExpanded
+                                          ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                          : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                      {event.type === "call" && event.id && (
+                                        <Link href={`/consultant/voice-calls/${event.id}`}>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => e.stopPropagation()}>
+                                            <ExternalLink className="h-3 w-3" />
+                                          </Button>
+                                        </Link>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {isExpanded && event.type === "call" && event.id && (
+                                    <div className="mt-3 pt-3 border-t space-y-3">
+                                      {event.has_transcript && (
+                                        <div>
+                                          <div className="text-sm font-medium mb-1 flex items-center gap-1.5">
+                                            <MessageSquare className="h-3.5 w-3.5" />Trascrizione
+                                          </div>
+                                          <TimelineCallTranscript callId={event.id} />
+                                        </div>
+                                      )}
+                                      {event.has_recording && (
+                                        <div>
+                                          <div className="text-sm font-medium mb-1 flex items-center gap-1.5">
+                                            <Volume2 className="h-3.5 w-3.5" />Registrazione
+                                          </div>
+                                          <TimelineCallRecording callId={event.id} />
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+
                   <TabsContent value="history" className="mt-4">
                     {calls.length === 0 ? (
                       <Card>
@@ -531,7 +784,6 @@ export default function ConsultantVoiceCallDetailPage() {
                     )}
                   </TabsContent>
 
-                  {/* Chiamate Programmate */}
                   <TabsContent value="scheduled" className="mt-4">
                     {scheduledCalls.length === 0 ? (
                       <Card>
@@ -545,6 +797,7 @@ export default function ConsultantVoiceCallDetailPage() {
                         {scheduledCalls.map((sc) => {
                           const st = CALL_STATUS[sc.status] || CALL_STATUS.pending;
                           const StIcon = st.icon;
+                          const attemptsLog = sc.attempts_log || [];
                           return (
                             <Card key={sc.id}>
                               <div className="flex items-center gap-3 p-3">
@@ -571,6 +824,33 @@ export default function ConsultantVoiceCallDetailPage() {
                                   {sc.retry_reason && (
                                     <p className="text-xs text-orange-600 mt-1">{sc.retry_reason}</p>
                                   )}
+
+                                  {attemptsLog.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t">
+                                      <p className="text-xs font-medium text-muted-foreground mb-1">Log tentativi:</p>
+                                      <div className="flex flex-wrap items-center gap-1">
+                                        {attemptsLog.map((entry: any, i: number) => {
+                                          const entryCfg = TIMELINE_CONFIG[entry.status] || TIMELINE_CONFIG.ended;
+                                          const EntryIcon = entryCfg.icon;
+                                          const entryLabel = CALL_STATUS[entry.status]?.label || entry.status;
+                                          return (
+                                            <span key={i} className="inline-flex items-center gap-1">
+                                              {i > 0 && <span className="text-muted-foreground mx-0.5">→</span>}
+                                              <span className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded ${entryCfg.bgColor}`}>
+                                                <EntryIcon className={`h-3 w-3 ${entryCfg.color}`} />
+                                                <span>Tent. {entry.attempt}: {entryLabel}</span>
+                                                {entry.timestamp && (
+                                                  <span className="text-muted-foreground">
+                                                    ({format(new Date(entry.timestamp), "HH:mm", { locale: it })})
+                                                  </span>
+                                                )}
+                                              </span>
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                                 <Link href={`/consultant/voice-calls/${sc.id}`}>
                                   <Button variant="ghost" size="sm">
@@ -585,7 +865,6 @@ export default function ConsultantVoiceCallDetailPage() {
                     )}
                   </TabsContent>
 
-                  {/* Dettagli Tecnici */}
                   <TabsContent value="technical" className="mt-4">
                     <Card>
                       <CardHeader>
@@ -642,10 +921,8 @@ export default function ConsultantVoiceCallDetailPage() {
                 </Tabs>
               </div>
 
-              {/* Sidebar Right */}
               <div className="space-y-4">
 
-                {/* Card Profilo */}
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
@@ -681,7 +958,6 @@ export default function ConsultantVoiceCallDetailPage() {
                   </CardContent>
                 </Card>
 
-                {/* Card Hunter */}
                 {hunterContext && (
                   <Card className="border-blue-200 dark:border-blue-800">
                     <CardHeader className="pb-2">
@@ -736,7 +1012,6 @@ export default function ConsultantVoiceCallDetailPage() {
                   </Card>
                 )}
 
-                {/* Card Proactive Lead */}
                 {proactiveLead && (
                   <Card className="border-violet-200 dark:border-violet-800">
                     <CardHeader className="pb-2">
@@ -780,7 +1055,6 @@ export default function ConsultantVoiceCallDetailPage() {
                   </Card>
                 )}
 
-                {/* Card Prossimo Retry */}
                 {nextRetry && (
                   <Card className="border-orange-200 dark:border-orange-800">
                     <CardHeader className="pb-2">
@@ -817,7 +1091,6 @@ export default function ConsultantVoiceCallDetailPage() {
                   </Card>
                 )}
 
-                {/* Statistiche rapide */}
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
@@ -828,32 +1101,104 @@ export default function ConsultantVoiceCallDetailPage() {
                   <CardContent className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Chiamate</span>
-                      <span className="font-medium">{calls.length}</span>
+                      <span className="font-medium">{safeStats.totalCalls}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Completate</span>
-                      <span className="font-medium">{calls.filter(c => c.status === "completed").length}</span>
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3 text-green-600" /> Completate
+                      </span>
+                      <span className="font-medium">{safeStats.completed}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Fallite</span>
-                      <span className="font-medium">{calls.filter(c => c.status === "failed").length}</span>
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <PhoneMissed className="h-3 w-3 text-red-500" /> Non risponde
+                      </span>
+                      <span className="font-medium">{safeStats.noAnswer}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <PhoneOff className="h-3 w-3 text-orange-500" /> Occupato
+                      </span>
+                      <span className="font-medium">{safeStats.busy}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3 text-yellow-600" /> Brevi
+                      </span>
+                      <span className="font-medium">{safeStats.shortCall}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Volume2 className="h-3 w-3 text-purple-500" /> Segreteria
+                      </span>
+                      <span className="font-medium">{safeStats.voicemail}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <PhoneMissed className="h-3 w-3 text-red-600" /> Fallite
+                      </span>
+                      <span className="font-medium">{safeStats.failed}</span>
+                    </div>
+                    <Separator />
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Tempo totale</span>
-                      <span className="font-medium">
-                        {formatDuration(calls.reduce((sum, c) => sum + (c.duration_seconds || 0), 0))}
-                      </span>
+                      <span className="font-medium">{formatDuration(safeStats.totalDuration)}</span>
                     </div>
-                    {calls.length > 0 && calls[0].started_at && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Durata media</span>
+                      <span className="font-medium">{formatDuration(safeStats.avgDuration)}</span>
+                    </div>
+                    {safeStats.lastContact && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Ultima</span>
+                        <span className="text-muted-foreground">Ultimo contatto</span>
                         <span className="text-xs">
-                          {formatDistanceToNow(new Date(calls[0].started_at), { addSuffix: true, locale: it })}
+                          {formatDistanceToNow(new Date(safeStats.lastContact), { addSuffix: true, locale: it })}
+                        </span>
+                      </div>
+                    )}
+                    {safeStats.firstContact && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Primo contatto</span>
+                        <span className="text-xs">
+                          {format(new Date(safeStats.firstContact), "dd/MM/yyyy", { locale: it })}
                         </span>
                       </div>
                     )}
                   </CardContent>
                 </Card>
+
+                {recentTimelineEvents.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <History className="h-4 w-4" />
+                        Attività Recente
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {recentTimelineEvents.map((event, idx) => {
+                        const cfg = getTimelineEventConfig(event);
+                        const EventIcon = cfg.icon;
+                        const desc = getTimelineEventDescription(event);
+                        return (
+                          <div key={idx} className="flex items-start gap-2 text-xs">
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.bgColor}`}>
+                              <EventIcon className={`h-3 w-3 ${cfg.color}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{desc}</p>
+                              {event.timestamp && (
+                                <p className="text-muted-foreground">
+                                  {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true, locale: it })}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                )}
 
               </div>
             </div>
@@ -862,4 +1207,42 @@ export default function ConsultantVoiceCallDetailPage() {
       </div>
     </div>
   );
+}
+
+function TimelineCallTranscript({ callId }: { callId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/voice/call-transcript", callId],
+    queryFn: async () => {
+      const res = await fetch(`/api/voice/calls/${callId}`, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      const call = await res.json();
+      return call?.full_transcript || null;
+    },
+  });
+
+  if (isLoading) return <div className="text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin inline mr-1" />Caricamento...</div>;
+  if (!data) return <div className="text-xs text-muted-foreground">Trascrizione non disponibile</div>;
+
+  return (
+    <ScrollArea className="h-[200px]">
+      <div className="whitespace-pre-wrap font-mono text-xs bg-muted/50 p-2 rounded">{data}</div>
+    </ScrollArea>
+  );
+}
+
+function TimelineCallRecording({ callId }: { callId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/voice/call-recording", callId],
+    queryFn: async () => {
+      const res = await fetch(`/api/voice/calls/${callId}`, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      const call = await res.json();
+      return call?.recording_url || null;
+    },
+  });
+
+  if (isLoading) return <div className="text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin inline mr-1" />Caricamento...</div>;
+  if (!data) return <div className="text-xs text-muted-foreground">Registrazione non disponibile</div>;
+
+  return <audio controls className="w-full h-8"><source src={data} type="audio/wav" /></audio>;
 }

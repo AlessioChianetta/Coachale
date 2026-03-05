@@ -113,6 +113,7 @@ import {
   MessagesSquare,
   Shield,
   Voicemail,
+  Volume2,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -630,6 +631,10 @@ const STATUS_CONFIG: Record<string, { label: string; icon: typeof Phone; color: 
   failed: { label: "Fallita", icon: PhoneMissed, color: "bg-red-500" },
   transferred: { label: "Trasferita", icon: PhoneForwarded, color: "bg-purple-500" },
   ended: { label: "Terminata", icon: PhoneOff, color: "bg-gray-500" },
+  no_answer: { label: "Non Risponde", icon: PhoneMissed, color: "bg-red-400" },
+  busy: { label: "Occupato", icon: PhoneOff, color: "bg-orange-500" },
+  short_call: { label: "Chiamata Breve", icon: AlertCircle, color: "bg-yellow-500" },
+  voicemail: { label: "Segreteria", icon: Voicemail, color: "bg-purple-500" },
 };
 
 const OUTBOUND_STATUS_CONFIG: Record<string, { label: string; color: string; icon?: string }> = {
@@ -1463,6 +1468,13 @@ export default function ConsultantVoiceCallsPage() {
   
   // Wizard step state (1: Chi, 2: Cosa, 3: Quando)
   const [wizardStep, setWizardStep] = useState(1);
+
+  const [crmSearch, setCrmSearch] = useState("");
+  const [crmLeadFilter, setCrmLeadFilter] = useState("all");
+  const [crmOutcomeFilter, setCrmOutcomeFilter] = useState("all");
+  const [crmExpandedContacts, setCrmExpandedContacts] = useState<Set<string>>(new Set());
+  const [crmTimelineData, setCrmTimelineData] = useState<Record<string, any>>({});
+  const [crmTimelineLoading, setCrmTimelineLoading] = useState<Set<string>>(new Set());
   
   const [newTaskData, setNewTaskData] = useState({
     contact_phone: '',
@@ -2567,6 +2579,188 @@ export default function ConsultantVoiceCallsPage() {
     return matchesSearch && matchesClientType;
   });
 
+  const crmContacts = useMemo(() => {
+    const contactMap: Record<string, {
+      phone: string;
+      name: string | null;
+      clientId: string | null;
+      type: 'client' | 'lead' | 'unknown';
+      totalCalls: number;
+      statuses: Record<string, number>;
+      totalDuration: number;
+      lastCallAt: string | null;
+      latestStatus: string;
+    }> = {};
+
+    for (const call of calls) {
+      const phone = (call as any).call_direction === 'outbound'
+        ? (call.called_number || call.caller_id || '')
+        : (call.caller_id || '');
+      if (!phone) continue;
+
+      if (!contactMap[phone]) {
+        contactMap[phone] = {
+          phone,
+          name: call.client_name || null,
+          clientId: call.client_id || null,
+          type: call.client_id ? 'client' : 'unknown',
+          totalCalls: 0,
+          statuses: {},
+          totalDuration: 0,
+          lastCallAt: null,
+          latestStatus: call.status,
+        };
+      }
+      const ct = contactMap[phone];
+      ct.totalCalls++;
+      ct.totalDuration += (call.duration_seconds || 0);
+      const st = call.status || 'unknown';
+      ct.statuses[st] = (ct.statuses[st] || 0) + 1;
+      if (!ct.name && call.client_name) ct.name = call.client_name;
+      if (!ct.clientId && call.client_id) {
+        ct.clientId = call.client_id;
+        ct.type = 'client';
+      }
+      if (!ct.lastCallAt || new Date(call.started_at) > new Date(ct.lastCallAt)) {
+        ct.lastCallAt = call.started_at;
+        ct.latestStatus = call.status;
+      }
+    }
+
+    let result = Object.values(contactMap);
+
+    if (crmSearch) {
+      const q = crmSearch.toLowerCase();
+      result = result.filter(c =>
+        c.phone.includes(q) ||
+        (c.name && c.name.toLowerCase().includes(q))
+      );
+    }
+
+    if (crmLeadFilter !== 'all') {
+      result = result.filter(c => {
+        if (crmLeadFilter === 'client') return c.type === 'client';
+        if (crmLeadFilter === 'lead') return c.type === 'lead';
+        if (crmLeadFilter === 'unknown') return c.type === 'unknown';
+        return true;
+      });
+    }
+
+    if (crmOutcomeFilter !== 'all') {
+      result = result.filter(c => {
+        const statusMap: Record<string, string> = {
+          completed: 'completed',
+          no_answer: 'no_answer',
+          busy: 'busy',
+          voicemail: 'voicemail',
+          short_call: 'short_call',
+        };
+        const targetStatus = statusMap[crmOutcomeFilter];
+        return targetStatus && c.latestStatus === targetStatus;
+      });
+    }
+
+    return result.sort((a, b) => {
+      const ta = a.lastCallAt ? new Date(a.lastCallAt).getTime() : 0;
+      const tb = b.lastCallAt ? new Date(b.lastCallAt).getTime() : 0;
+      return tb - ta;
+    });
+  }, [calls, crmSearch, crmLeadFilter, crmOutcomeFilter]);
+
+  const toggleCrmContact = async (phone: string) => {
+    const newSet = new Set(crmExpandedContacts);
+    if (newSet.has(phone)) {
+      newSet.delete(phone);
+      setCrmExpandedContacts(newSet);
+      return;
+    }
+    newSet.add(phone);
+    setCrmExpandedContacts(newSet);
+
+    if (!crmTimelineData[phone]) {
+      setCrmTimelineLoading(prev => new Set(prev).add(phone));
+      try {
+        const res = await fetch(`/api/voice/contact/${encodeURIComponent(phone)}`, { headers: getAuthHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          setCrmTimelineData(prev => ({ ...prev, [phone]: data }));
+        }
+      } catch (err) {
+        console.error('[CRM] Error loading timeline:', err);
+      } finally {
+        setCrmTimelineLoading(prev => {
+          const s = new Set(prev);
+          s.delete(phone);
+          return s;
+        });
+      }
+    }
+  };
+
+  const getCrmTimelineIcon = (item: any) => {
+    if (item.type === 'call') {
+      switch (item.status) {
+        case 'completed': return { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50' };
+        case 'no_answer': return { icon: PhoneMissed, color: 'text-red-500', bg: 'bg-red-50' };
+        case 'busy': return { icon: PhoneOff, color: 'text-orange-500', bg: 'bg-orange-50' };
+        case 'voicemail': return { icon: Volume2, color: 'text-purple-500', bg: 'bg-purple-50' };
+        case 'short_call': return { icon: AlertCircle, color: 'text-yellow-500', bg: 'bg-yellow-50' };
+        case 'failed': return { icon: PhoneMissed, color: 'text-red-600', bg: 'bg-red-50' };
+        default: return { icon: Phone, color: 'text-gray-500', bg: 'bg-gray-50' };
+      }
+    }
+    if (item.type === 'retry_event') return { icon: Timer, color: 'text-blue-500', bg: 'bg-blue-50' };
+    if (item.type === 'scheduled') return { icon: Calendar, color: 'text-gray-500', bg: 'bg-gray-50' };
+    return { icon: Circle, color: 'text-gray-400', bg: 'bg-gray-50' };
+  };
+
+  const getCrmTimelineLabel = (item: any) => {
+    if (item.type === 'call') {
+      const dirLabel = item.direction === 'outbound' ? 'Outbound' : 'Inbound';
+      const statusLabels: Record<string, string> = {
+        completed: 'Completata',
+        no_answer: 'Non risponde',
+        busy: 'Occupato',
+        voicemail: 'Segreteria',
+        short_call: 'Chiamata breve',
+        failed: 'Fallita',
+        ringing: 'In arrivo',
+        answered: 'Connessa',
+        talking: 'In corso',
+        ended: 'Terminata',
+        transferred: 'Trasferita',
+      };
+      return `${dirLabel} · ${statusLabels[item.status] || item.status}`;
+    }
+    if (item.type === 'retry_event') {
+      const statusLabels: Record<string, string> = {
+        no_answer: 'non risponde',
+        busy: 'occupato',
+        voicemail: 'segreteria',
+        short_call: 'chiamata breve',
+        failed: 'fallita',
+        completed: 'completata',
+      };
+      return `Tentativo ${item.attempt || '?'} · ${statusLabels[item.status] || item.status}`;
+    }
+    if (item.type === 'scheduled') {
+      const typeLabel = item.instruction_type === 'task' ? 'Task' : item.instruction_type === 'reminder' ? 'Reminder' : 'Schedulata';
+      return `${typeLabel} · ${item.status}`;
+    }
+    if (item.type === 'call_event') {
+      return `Evento: ${item.eventType}`;
+    }
+    return 'Evento';
+  };
+
+  const getCrmContactTypeLabel = (type: string) => {
+    switch (type) {
+      case 'client': return { label: 'Cliente', color: 'bg-green-100 text-green-800' };
+      case 'lead': return { label: 'Lead', color: 'bg-blue-100 text-blue-800' };
+      default: return { label: 'Sconosciuto', color: 'bg-gray-100 text-gray-800' };
+    }
+  };
+
   const groupedCalls = useMemo(() => {
     const groups: Record<string, { latest: any; count: number; allCalls: any[]; totalDuration: number; statuses: Record<string, number> }> = {};
     for (const call of filteredCalls) {
@@ -2675,6 +2869,13 @@ export default function ConsultantVoiceCallsPage() {
                 >
                   <Phone className="h-4 w-4" />
                   <span className="hidden sm:inline">Storico</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="crm" 
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-indigo-700 transition-all duration-200 text-xs sm:text-sm"
+                >
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">CRM</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="outbound" 
@@ -2985,6 +3186,10 @@ export default function ConsultantVoiceCallsPage() {
 
                           const completedCount = group.statuses['completed'] || 0;
                           const failedCount = group.statuses['failed'] || 0;
+                          const noAnswerCount = group.statuses['no_answer'] || 0;
+                          const busyCount = group.statuses['busy'] || 0;
+                          const shortCallCount = group.statuses['short_call'] || 0;
+                          const voicemailCount = group.statuses['voicemail'] || 0;
                           
                           return (
                             <React.Fragment key={groupKey}>
@@ -3041,6 +3246,26 @@ export default function ConsultantVoiceCallsPage() {
                                     {failedCount > 0 && (
                                       <Badge className="bg-red-500/20 text-red-700 text-[10px] px-1.5 py-0">
                                         {failedCount} fallite
+                                      </Badge>
+                                    )}
+                                    {noAnswerCount > 0 && (
+                                      <Badge className="bg-red-400/20 text-red-600 text-[10px] px-1.5 py-0">
+                                        {noAnswerCount} non risponde
+                                      </Badge>
+                                    )}
+                                    {busyCount > 0 && (
+                                      <Badge className="bg-orange-500/20 text-orange-700 text-[10px] px-1.5 py-0">
+                                        {busyCount} occupato
+                                      </Badge>
+                                    )}
+                                    {shortCallCount > 0 && (
+                                      <Badge className="bg-yellow-500/20 text-yellow-700 text-[10px] px-1.5 py-0">
+                                        {shortCallCount} brevi
+                                      </Badge>
+                                    )}
+                                    {voicemailCount > 0 && (
+                                      <Badge className="bg-purple-500/20 text-purple-700 text-[10px] px-1.5 py-0">
+                                        {voicemailCount} segreteria
                                       </Badge>
                                     )}
                                   </div>
@@ -3129,6 +3354,255 @@ export default function ConsultantVoiceCallsPage() {
                 )}
               </CardContent>
             </Card>
+              </TabsContent>
+
+              <TabsContent value="crm" className="space-y-6">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                      <Users className="h-5 w-5 text-indigo-600" />
+                      Contatti CRM
+                    </CardTitle>
+                    <CardDescription>Timeline unificata per ogni contatto</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Cerca nome o telefono..."
+                          value={crmSearch}
+                          onChange={(e) => setCrmSearch(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                      <Select value={crmLeadFilter} onValueChange={setCrmLeadFilter}>
+                        <SelectTrigger className="w-full sm:w-[160px]">
+                          <SelectValue placeholder="Tipo contatto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutti</SelectItem>
+                          <SelectItem value="client">Cliente</SelectItem>
+                          <SelectItem value="lead">Lead</SelectItem>
+                          <SelectItem value="unknown">Sconosciuto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={crmOutcomeFilter} onValueChange={setCrmOutcomeFilter}>
+                        <SelectTrigger className="w-full sm:w-[170px]">
+                          <SelectValue placeholder="Ultimo esito" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutti</SelectItem>
+                          <SelectItem value="completed">Completata</SelectItem>
+                          <SelectItem value="no_answer">Non risponde</SelectItem>
+                          <SelectItem value="busy">Occupato</SelectItem>
+                          <SelectItem value="voicemail">Segreteria</SelectItem>
+                          <SelectItem value="short_call">Breve</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {crmContacts.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">Nessun contatto trovato</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {crmContacts.map((contact) => {
+                          const isExpanded = crmExpandedContacts.has(contact.phone);
+                          const isLoading = crmTimelineLoading.has(contact.phone);
+                          const timelineData = crmTimelineData[contact.phone];
+                          const initials = contact.name
+                            ? contact.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+                            : contact.phone.slice(-2);
+                          const typeBadge = getCrmContactTypeLabel(contact.type);
+
+                          const statsLine: string[] = [];
+                          statsLine.push(`${contact.totalCalls} chiamat${contact.totalCalls === 1 ? 'a' : 'e'}`);
+                          if (contact.statuses.completed) statsLine.push(`${contact.statuses.completed} completat${contact.statuses.completed === 1 ? 'a' : 'e'}`);
+                          if (contact.statuses.no_answer) statsLine.push(`${contact.statuses.no_answer} non risp.`);
+                          if (contact.statuses.voicemail) statsLine.push(`${contact.statuses.voicemail} segreteria`);
+                          if (contact.statuses.busy) statsLine.push(`${contact.statuses.busy} occupat${contact.statuses.busy === 1 ? 'o' : 'i'}`);
+                          if (contact.statuses.short_call) statsLine.push(`${contact.statuses.short_call} brev${contact.statuses.short_call === 1 ? 'e' : 'i'}`);
+                          if (contact.lastCallAt) {
+                            statsLine.push(`Ultima: ${formatDistanceToNow(new Date(contact.lastCallAt), { addSuffix: true, locale: it })}`);
+                          }
+
+                          return (
+                            <Card
+                              key={contact.phone}
+                              className={`transition-all duration-200 ${isExpanded ? 'ring-1 ring-indigo-200 shadow-md' : 'hover:shadow-sm'}`}
+                            >
+                              <div
+                                className="flex items-center gap-3 p-3 sm:p-4 cursor-pointer"
+                                onClick={() => toggleCrmContact(contact.phone)}
+                              >
+                                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold shrink-0">
+                                  {initials}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-semibold text-sm truncate">
+                                      {contact.name || contact.phone}
+                                    </span>
+                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${typeBadge.color}`}>
+                                      {typeBadge.label}
+                                    </Badge>
+                                  </div>
+                                  {contact.name && (
+                                    <p className="text-xs text-muted-foreground font-mono">{contact.phone}</p>
+                                  )}
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                    {statsLine.join(' · ')}
+                                  </p>
+                                </div>
+                                <div className="shrink-0">
+                                  {isExpanded ? (
+                                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                  )}
+                                </div>
+                              </div>
+
+                              {isExpanded && (
+                                <div className="border-t px-3 sm:px-4 py-3 bg-muted/30">
+                                  {isLoading ? (
+                                    <div className="flex items-center justify-center py-8">
+                                      <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
+                                      <span className="ml-2 text-sm text-muted-foreground">Caricamento timeline...</span>
+                                    </div>
+                                  ) : timelineData?.timeline && timelineData.timeline.length > 0 ? (
+                                    <div className="space-y-3">
+                                      {timelineData.stats && (
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                          <Badge variant="outline" className="bg-green-50 text-green-700 text-[10px]">
+                                            <CheckCircle className="h-3 w-3 mr-1" />{timelineData.stats.completed} completate
+                                          </Badge>
+                                          {timelineData.stats.noAnswer > 0 && (
+                                            <Badge variant="outline" className="bg-red-50 text-red-700 text-[10px]">
+                                              <PhoneMissed className="h-3 w-3 mr-1" />{timelineData.stats.noAnswer} non risp.
+                                            </Badge>
+                                          )}
+                                          {timelineData.stats.busy > 0 && (
+                                            <Badge variant="outline" className="bg-orange-50 text-orange-700 text-[10px]">
+                                              <PhoneOff className="h-3 w-3 mr-1" />{timelineData.stats.busy} occupato
+                                            </Badge>
+                                          )}
+                                          {timelineData.stats.voicemail > 0 && (
+                                            <Badge variant="outline" className="bg-purple-50 text-purple-700 text-[10px]">
+                                              <Volume2 className="h-3 w-3 mr-1" />{timelineData.stats.voicemail} segreteria
+                                            </Badge>
+                                          )}
+                                          {timelineData.stats.shortCall > 0 && (
+                                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-[10px]">
+                                              <AlertCircle className="h-3 w-3 mr-1" />{timelineData.stats.shortCall} brevi
+                                            </Badge>
+                                          )}
+                                          {timelineData.stats.totalDuration > 0 && (
+                                            <Badge variant="outline" className="bg-blue-50 text-blue-700 text-[10px]">
+                                              <Clock className="h-3 w-3 mr-1" />Tot: {formatDuration(timelineData.stats.totalDuration)}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      <div className="relative">
+                                        <div className="absolute left-[19px] top-2 bottom-2 w-px bg-border" />
+                                        <div className="space-y-3">
+                                          {timelineData.timeline.slice(0, 15).map((item: any, idx: number) => {
+                                            const iconConfig = getCrmTimelineIcon(item);
+                                            const TlIcon = iconConfig.icon;
+                                            const label = getCrmTimelineLabel(item);
+
+                                            return (
+                                              <div key={`${item.type}-${item.id || idx}`} className="relative flex gap-3 pl-0">
+                                                <div className={`w-10 h-10 rounded-full ${iconConfig.bg} flex items-center justify-center shrink-0 z-10 border-2 border-background`}>
+                                                  <TlIcon className={`h-4 w-4 ${iconConfig.color}`} />
+                                                </div>
+                                                <div className="flex-1 min-w-0 pt-1">
+                                                  <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="text-sm font-medium">{label}</span>
+                                                    {item.type === 'call' && item.duration_seconds > 0 && (
+                                                      <span className="text-xs text-muted-foreground">
+                                                        {formatDuration(item.duration_seconds)}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  {item.timestamp && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                      {format(toItalianTime(item.timestamp), "dd/MM/yyyy HH:mm", { locale: it })}
+                                                      {' · '}
+                                                      {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true, locale: it })}
+                                                    </p>
+                                                  )}
+                                                  {item.type === 'call' && item.transcript_preview && (
+                                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2 italic">
+                                                      "{item.transcript_preview}..."
+                                                    </p>
+                                                  )}
+                                                  {item.type === 'retry_event' && (
+                                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                                      {item.hangup_cause && `Causa: ${item.hangup_cause}`}
+                                                      {item.duration_seconds !== undefined && item.duration_seconds !== null && ` · Durata: ${formatDuration(item.duration_seconds)}`}
+                                                    </p>
+                                                  )}
+                                                  {item.type === 'scheduled' && item.instruction && (
+                                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                                      {item.instruction}
+                                                    </p>
+                                                  )}
+                                                  {item.type === 'scheduled' && item.attempts !== undefined && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                      Tentativi: {item.attempts}/{item.max_attempts}
+                                                      {item.retry_reason && ` · Motivo: ${item.retry_reason}`}
+                                                      {item.next_retry_at && ` · Prossimo: ${format(toItalianTime(item.next_retry_at), "HH:mm", { locale: it })}`}
+                                                    </p>
+                                                  )}
+                                                  {item.type === 'call' && item.has_transcript && (
+                                                    <Link href={`/consultant/voice-calls/${item.id}`}>
+                                                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs mt-1 text-indigo-600">
+                                                        <Eye className="h-3 w-3 mr-1" />
+                                                        Vedi tutto
+                                                      </Button>
+                                                    </Link>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+
+                                      {timelineData.timeline.length > 15 && (
+                                        <p className="text-xs text-center text-muted-foreground pt-2">
+                                          +{timelineData.timeline.length - 15} altri eventi
+                                        </p>
+                                      )}
+
+                                      <div className="pt-2 border-t">
+                                        <Link href={`/consultant/voice-calls/contact/${encodeURIComponent(contact.phone)}`}>
+                                          <Button variant="ghost" size="sm" className="text-xs text-indigo-600 w-full">
+                                            Apri profilo completo →
+                                          </Button>
+                                        </Link>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-center py-6 text-muted-foreground">
+                                      <p className="text-sm">Nessun evento nella timeline</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="outbound" className="space-y-6">
