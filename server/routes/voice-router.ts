@@ -2735,11 +2735,20 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     
     const call = callResult.rows[0] as any;
     
-    if (['cancelled', 'completed', 'calling', 'talking', 'failed'].includes(call.status)) {
-      if (call.status === 'calling' || call.status === 'talking') {
-        console.log(`⏭️ [Outbound] Call ${callId} already in '${call.status}' — skipping (likely old timer firing late)`);
-      }
+    if (['cancelled', 'completed', 'talking', 'failed'].includes(call.status)) {
       return { success: false, error: `Call already ${call.status}` };
+    }
+    if (call.status === 'talking') {
+      return { success: false, error: `Call already talking` };
+    }
+    if (call.status === 'calling') {
+      const updatedAt = new Date(call.updated_at).getTime();
+      const ageMs = Date.now() - updatedAt;
+      if (ageMs < 30000) {
+        console.log(`⏭️ [Outbound] Call ${callId} already in 'calling' (${Math.round(ageMs/1000)}s ago) — skipping duplicate`);
+        return { success: false, error: `Call already calling` };
+      }
+      console.log(`🔄 [Outbound] Call ${callId} was 'calling' but stale (${Math.round(ageMs/1000)}s ago) — re-executing`);
     }
     
     // Get VPS URL and service token from global superadmin config
@@ -3198,7 +3207,7 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
       INSERT INTO scheduled_voice_calls (
         id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, call_instruction, instruction_type, use_default_template, max_attempts, from_number
       ) VALUES (
-        ${callId}, ${consultantId}, ${cleanPhone}, NOW(), 'calling', ${aiMode}, ${customPrompt || null}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}, ${maxAttempts}, ${fromNumber || null}
+        ${callId}, ${consultantId}, ${cleanPhone}, NOW(), 'pending', ${aiMode}, ${customPrompt || null}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}, ${maxAttempts}, ${fromNumber || null}
       )
     `);
     
