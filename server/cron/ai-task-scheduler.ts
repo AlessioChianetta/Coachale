@@ -2782,7 +2782,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   }
 
   const recentCompletedResult = await db.execute(sql`
-    SELECT contact_id::text as contact_id, ai_role, completed_at, execution_log::text as exec_log FROM ai_scheduled_tasks
+    SELECT contact_id::text as contact_id, ai_role, completed_at, attempts_log::text as exec_log FROM ai_scheduled_tasks
     WHERE consultant_id::text = ${cId}
       AND status = 'completed'
       AND completed_at > NOW() - INTERVAL '24 hours'
