@@ -1070,21 +1070,24 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
     });
   });
 
+  const allConfiguredNumbers = new Set<string>();
+  voiceNumbers.forEach(n => allConfiguredNumbers.add(n.phone_number));
   const allNonApprovalCalls = [...activeCalls, ...queuedCalls, ...retryCalls, ...futureCalls];
-  const usedNumbers = new Set<string>();
   allNonApprovalCalls.forEach(c => {
-    if (c.from_number) usedNumbers.add(c.from_number);
+    if (c.from_number) allConfiguredNumbers.add(c.from_number);
   });
-  if (usedNumbers.size === 0 && voiceNumbers.length > 0) {
-    usedNumbers.add(voiceNumbers[0].phone_number);
+  if (allConfiguredNumbers.size === 0 && voiceNumbers.length > 0) {
+    allConfiguredNumbers.add(voiceNumbers[0].phone_number);
   }
-  const numberGroups = Array.from(usedNumbers).map(num => {
+  const numberGroups = Array.from(allConfiguredNumbers).map(num => {
     const info = numberMap.get(num) || { displayName: num, maxConcurrent: 5 };
-    const numActive = activeCalls.filter(c => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number)).length;
-    const numQueued = queuedCalls.filter(c => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number));
-    const numRetry = retryCalls.filter(c => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number));
-    const numFuture = futureCalls.filter(c => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number));
-    return { number: num, ...info, activeCount: numActive, queuedCalls: numQueued, retryCalls: numRetry, futureCalls: numFuture };
+    const matchesNum = (c: any) => c.from_number === num || (!c.from_number && num === voiceNumbers[0]?.phone_number);
+    const numActive = activeCalls.filter(matchesNum).length;
+    const numQueued = queuedCalls.filter(matchesNum);
+    const numRetry = retryCalls.filter(matchesNum);
+    const numFuture = futureCalls.filter(matchesNum);
+    const numApproval = approvalCalls.filter(matchesNum);
+    return { number: num, ...info, activeCount: numActive, queuedCalls: numQueued, retryCalls: numRetry, futureCalls: numFuture, approvalCalls: numApproval };
   });
   const hasMultipleNumbers = numberGroups.length > 1;
 
@@ -1326,16 +1329,13 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-0">
         <div className="space-y-2.5 max-h-[420px] overflow-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
-          {renderSection('active', 'Attive', activeCalls.length, activeCalls, 'active')}
-
-          {renderSection('approval', 'In attesa di approvazione', approvalCalls.length, approvalCalls, 'approval')}
-
           {hasMultipleNumbers ? (
             <>
+              {renderSection('active', 'Attive', activeCalls.length, activeCalls, 'active')}
               <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700/50 pb-1 mb-2">
                 {numberGroups.map((g, idx) => {
                   const isActive = g.number === selectedNumberTab;
-                  const groupTotal = g.queuedCalls.length + g.retryCalls.length + g.futureCalls.length;
+                  const groupTotal = g.approvalCalls.length + g.queuedCalls.length + g.retryCalls.length + g.futureCalls.length;
                   return (
                     <button
                       key={g.number}
@@ -1362,6 +1362,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
               </div>
               {activeGroup && (
                 <div className="space-y-1.5">
+                  {activeGroup.approvalCalls.length > 0 && renderSection(`approval-${activeGroup.number}`, 'In attesa di approvazione', activeGroup.approvalCalls.length, activeGroup.approvalCalls, 'approval')}
                   {activeGroup.queuedCalls.length > 0 && renderSection(`queued-${activeGroup.number}`, 'In coda', activeGroup.queuedCalls.length, activeGroup.queuedCalls, 'queued',
                     activeGroup.activeCount >= activeGroup.maxConcurrent ? (
                       <span className="text-[9px] font-normal ml-1 normal-case tracking-normal text-blue-500 dark:text-blue-400">in attesa di linea libera</span>
@@ -1369,7 +1370,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
                   )}
                   {activeGroup.retryCalls.length > 0 && renderSection(`retry-${activeGroup.number}`, 'Retry', activeGroup.retryCalls.length, activeGroup.retryCalls, 'retry')}
                   {activeGroup.futureCalls.length > 0 && renderSection(`future-${activeGroup.number}`, 'Programmate', activeGroup.futureCalls.length, activeGroup.futureCalls, 'future', undefined, 5)}
-                  {activeGroup.queuedCalls.length === 0 && activeGroup.retryCalls.length === 0 && activeGroup.futureCalls.length === 0 && (
+                  {activeGroup.approvalCalls.length === 0 && activeGroup.queuedCalls.length === 0 && activeGroup.retryCalls.length === 0 && activeGroup.futureCalls.length === 0 && (
                     <div className="text-center py-4 text-[12px] text-muted-foreground">
                       Nessuna chiamata in coda per questo numero
                     </div>
@@ -1379,6 +1380,8 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
             </>
           ) : (
             <>
+              {renderSection('active', 'Attive', activeCalls.length, activeCalls, 'active')}
+              {renderSection('approval', 'In attesa di approvazione', approvalCalls.length, approvalCalls, 'approval')}
               {renderSection('queued', 'In coda', queuedCalls.length, queuedCalls, 'queued',
                 activeCalls.length >= (numberGroups.length > 0 ? numberGroups[0].maxConcurrent : 5) && queuedCalls.length > 0 ? (
                   <span className="text-[9px] font-normal ml-1 normal-case tracking-normal text-blue-500 dark:text-blue-400">in attesa di linea libera</span>
