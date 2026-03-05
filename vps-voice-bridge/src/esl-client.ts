@@ -53,20 +53,30 @@ function startAmdViaEsl(conn: any, uuid: string, source: string): void {
 function startAudioStream(conn: any, uuid: string, tStart: number): void {
   (conn as any).bgapi(`uuid_setvar_multi ${uuid} STREAM_PLAYBACK=true;STREAM_SAMPLE_RATE=8000;mod_audio_stream_bidirectional=true;jitterbuffer_msec=60:120`);
 
-  const wsUrl = `ws://172.17.0.1:${config.ws.port}/stream/${uuid}`;
-  const streamCmd = `uuid_audio_stream ${uuid} start ${wsUrl} mono 8000`;
+  const stopCmd = `uuid_audio_stream ${uuid} stop`;
+  log.info(`🔄 [AUDIO-STREAM] Sending preventive STOP before START`, { uuid });
 
-  const tStreamCmd = Date.now();
-  log.info(`⏱️ [ESL-TIMING] Executing uuid_audio_stream after ${tStreamCmd - tStart}ms`, { uuid });
+  (conn as any).bgapi(stopCmd, (stopRes: any) => {
+    const stopBody = stopRes?.getBody?.() || '';
+    log.info(`🔄 [AUDIO-STREAM] Preventive STOP result: ${stopBody.trim()}`, { uuid });
 
-  (conn as any).bgapi(streamCmd, (res: any) => {
-    const tStreamDone = Date.now();
-    const body = res.getBody();
-    if (body && body.includes('+OK')) {
-      log.info(`✅ Audio stream started in ${tStreamDone - tStreamCmd}ms (total: ${tStreamDone - tStart}ms)`, { uuid });
-    } else {
-      log.error(`❌ Failed to start audio stream`, { uuid, error: body || 'Unknown error' });
-    }
+    setTimeout(() => {
+      const wsUrl = `ws://172.17.0.1:${config.ws.port}/stream/${uuid}`;
+      const streamCmd = `uuid_audio_stream ${uuid} start ${wsUrl} mono 8000`;
+
+      const tStreamCmd = Date.now();
+      log.info(`⏱️ [ESL-TIMING] Executing uuid_audio_stream after ${tStreamCmd - tStart}ms`, { uuid });
+
+      (conn as any).bgapi(streamCmd, (res: any) => {
+        const tStreamDone = Date.now();
+        const body = res.getBody();
+        if (body && body.includes('+OK')) {
+          log.info(`✅ Audio stream started in ${tStreamDone - tStreamCmd}ms (total: ${tStreamDone - tStart}ms)`, { uuid });
+        } else {
+          log.error(`❌ Failed to start audio stream`, { uuid, error: body || 'Unknown error' });
+        }
+      });
+    }, 100);
   });
 }
 

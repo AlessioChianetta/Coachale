@@ -101,7 +101,13 @@ export function setExpectedCallId(callId: string, freeswitchUuid?: string): void
   const timer = setTimeout(() => {
     const deleted = pendingCalls.delete(uuid);
     if (deleted) {
-      log.warn(`⏰ Pending call expired: callId=${callId}, uuid=${uuid}`);
+      log.warn(`⏰ Pending call expired: callId=${callId}, uuid=${uuid} — killing FreeSWITCH call`);
+      const eslConn = getEslConnection();
+      if (eslConn) {
+        (eslConn as any).bgapi(`uuid_kill ${uuid} NO_ANSWER`, (res: any) => {
+          log.info(`⏰ [PENDING-EXPIRED] uuid_kill result for ${uuid}: ${res?.getBody?.() || 'no response'}`);
+        });
+      }
     }
   }, 120000);
 

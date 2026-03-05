@@ -3040,7 +3040,7 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     setTimeout(async () => {
       try {
         const checkResult = await db.execute(sql`
-          SELECT svc.status, svc.voice_call_id, vc.status as vc_status
+          SELECT svc.status, svc.voice_call_id, svc.target_phone, svc.consultant_id, vc.status as vc_status
           FROM scheduled_voice_calls svc
           LEFT JOIN voice_calls vc ON vc.id = svc.voice_call_id
           WHERE svc.id = ${callId}
@@ -3057,12 +3057,33 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
               WHERE id = ${callId} AND status = 'calling'
             `);
           } else {
-            console.warn(`⏰ [Outbound] Safety timeout: call ${callId} still 'calling' after 120s (vc_status=${row.vc_status || 'none'}) — marking as failed`);
-            await db.execute(sql`
-              UPDATE scheduled_voice_calls
-              SET status = 'failed', error_message = 'no_callback_timeout', updated_at = NOW()
-              WHERE id = ${callId} AND status = 'calling'
+            const fallbackCheck = await db.execute(sql`
+              SELECT id, status FROM voice_calls
+              WHERE called_number = ${row.target_phone}
+                AND consultant_id = ${row.consultant_id}
+                AND call_direction = 'outbound'
+                AND status IN ('talking', 'in_progress')
+                AND started_at > NOW() - INTERVAL '5 minutes'
+              ORDER BY started_at DESC
+              LIMIT 1
             `);
+            const activeVc = fallbackCheck.rows[0] as any;
+
+            if (activeVc) {
+              console.log(`📞 [Outbound] Safety timeout: call ${callId} — voice_call_id not linked but found active voice_call ${activeVc.id} for ${row.target_phone} — updating to talking`);
+              await db.execute(sql`
+                UPDATE scheduled_voice_calls
+                SET status = 'talking', voice_call_id = ${activeVc.id}, updated_at = NOW()
+                WHERE id = ${callId} AND status = 'calling'
+              `);
+            } else {
+              console.warn(`⏰ [Outbound] Safety timeout: call ${callId} still 'calling' after 120s (vc_status=${row.vc_status || 'none'}, voice_call_id=${row.voice_call_id || 'null'}) — marking as failed`);
+              await db.execute(sql`
+                UPDATE scheduled_voice_calls
+                SET status = 'failed', error_message = 'no_callback_timeout', updated_at = NOW()
+                WHERE id = ${callId} AND status = 'calling'
+              `);
+            }
           }
         }
       } catch (err) {
