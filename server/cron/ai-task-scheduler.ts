@@ -2641,7 +2641,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   // included in file search by fetchAgentKbContext, and we need the instruction in each agent's prompt
   let consultantParentId: string | null = null;
   try {
-    const parentLookup = await db.execute(sql`SELECT consultant_id FROM users WHERE id = ${consultantId} LIMIT 1`);
+    const parentLookup = await db.execute(sql`SELECT consultant_id FROM users WHERE id::text = ${consultantId} LIMIT 1`);
     const parentId = (parentLookup.rows[0] as any)?.consultant_id;
     if (parentId && parentId !== consultantId) {
       consultantParentId = parentId;
@@ -4466,7 +4466,7 @@ export async function checkEmailFollowUps(consultantId: string, configOverride?:
         he.subject, he.from_email, he.to_recipients, he.sent_at, he.created_at,
         he.body_text, he.snippet
       FROM hub_emails he
-      WHERE he.consultant_id = ${consultantId}
+      WHERE he.consultant_id::text = ${consultantId}
         AND he.direction = 'outbound'
         AND he.processing_status = 'sent'
         AND he.sent_at IS NOT NULL
@@ -4496,7 +4496,7 @@ export async function checkEmailFollowUps(consultantId: string, configOverride?:
 
         const replyCheck = await db.execute(sql`
           SELECT id FROM hub_emails
-          WHERE consultant_id = ${consultantId}
+          WHERE consultant_id::text = ${consultantId}
             AND direction = 'inbound'
             AND from_email = ${recipientEmail}
             AND (
@@ -4511,7 +4511,7 @@ export async function checkEmailFollowUps(consultantId: string, configOverride?:
           await db.execute(sql`
             UPDATE lead_scraper_results
             SET lead_status = 'responded'
-            WHERE consultant_id = ${consultantId}
+            WHERE consultant_id::text = ${consultantId}
               AND email = ${recipientEmail}
               AND lead_status IN ('nuovo', 'in_outreach', 'contattato')
           `);
@@ -4521,7 +4521,7 @@ export async function checkEmailFollowUps(consultantId: string, configOverride?:
 
         const existingFollowUps = await db.execute(sql`
           SELECT id, result_data, additional_context FROM ai_scheduled_tasks
-          WHERE consultant_id = ${consultantId}
+          WHERE consultant_id::text = ${consultantId}
             AND ai_role = 'hunter'
             AND preferred_channel = 'email'
             AND status IN ('scheduled', 'waiting_approval', 'approved', 'in_progress', 'completed')
@@ -4577,7 +4577,7 @@ export async function checkEmailFollowUps(consultantId: string, configOverride?:
 
         const smtpResult = await db.execute(sql`
           SELECT id FROM email_accounts
-          WHERE id = ${outEmail.account_id} AND consultant_id = ${consultantId} AND smtp_host IS NOT NULL
+          WHERE id = ${outEmail.account_id} AND consultant_id::text = ${consultantId} AND smtp_host IS NOT NULL
           LIMIT 1
         `);
         if (smtpResult.rows.length === 0) {
