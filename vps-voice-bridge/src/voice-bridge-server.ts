@@ -386,8 +386,7 @@ export function startVoiceBridgeServer(): void {
               });
             }
           }
-        }
-      });
+        });
     } else {
       log.warn('⚠️ No pending call found for this WebSocket connection');
     }
