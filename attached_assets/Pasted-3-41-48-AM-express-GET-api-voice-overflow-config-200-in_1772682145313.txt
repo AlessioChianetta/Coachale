@@ -1,0 +1,33 @@
+3:41:48 AM [express] GET /api/voice/overflow-config 200 in 146ms :: {"found":true,"overflow_enabled"…
+🎤 [5tnu5t] Client connected to Live API
+⏱️ [LATENCY-E2E] WebSocket arrival: 2026-03-05T03:41:49.446Z
+⏱️ [AUTH-DETAIL] JWT verify: 1ms
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:
+🔍 [ROUTING-DEBUG]   decoded.consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   decoded.type: phone_service
+🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+🔍 [ROUTING-DEBUG]   calledNumber: 9999
+🔍 [ROUTING-DEBUG]   callerId: 1004
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3:41:49 AM [express] POST /api/voice/call-start 200 in 16ms
+⏱️ [AUTH-DETAIL] voice_numbers lookup: 145ms (tried: 9999, +9999, 9999)
+🔍 [ROUTING-DEBUG] voice_numbers lookup result:
+🔍 [ROUTING-DEBUG]   BEFORE: resolvedConsultantId = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   voice_numbers.consultant_id = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   AFTER: resolvedConsultantId = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [PHONE SERVICE] Number 9999 → consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (Alessio Test)
+🔍 [ROUTING-DEBUG] Cross-consultant token check:
+🔍 [ROUTING-DEBUG]   decoded.consultantId (from JWT): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   resolvedConsultantId (from voice_numbers): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+🔍 [ROUTING-DEBUG]   match? true
+⏱️ [AUTH-DETAIL] Channel check: 145ms (active: 3/1)
+❌ [PHONE SERVICE] Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b has 3/1 active calls → CHANNELS FULL, REJECTING
+❌ [5tnu5t] Authentication failed
+📞 [Number Lookup] Found: 9999 → consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, display=Alessio Test
+3:41:49 AM [express] GET /api/voice/number-lookup 200 in 289ms :: {"found":true,"consultant_id":"0c7…
+3:41:50 AM [express] POST /api/voice/call-end 200 in 8ms
+3:41:54 AM [express] GET /api/voice/calls 304 in 868ms :: {"calls":[{"id":"vc_1772666409890_xlztddop…
+3:41:54 AM [express] GET /api/voice/gemini-connections 304 in 293ms :: {"success":true,"connections"…
+3:41:54 AM

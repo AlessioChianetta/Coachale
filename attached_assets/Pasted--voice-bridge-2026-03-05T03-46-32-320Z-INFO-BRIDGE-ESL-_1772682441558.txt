@@ -1,0 +1,46 @@
+|voice-bridge  | 2026-03-05T03:46:32.320Z [INFO ] [BRIDGE:ESL] 🔍 [CHANNEL_ANSWER DEBUG] uuid=fcba6f8c-2128-4c50-a64d-204b471c9005 otherLeg= direction=inbound dest=9999 caller=1004 isOutbound=false
+6|voice-bridge  | 2026-03-05T03:46:33.046Z [INFO ] [BRIDGE:ESL] 🅿️  Call parked type=INBOUND uuid=fcba6f8c-2128-4c50-a64d-204b471c9005 callerIdNumber=1004 calledNumber=9999
+6|voice-bridge  | 2026-03-05T03:46:33.046Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] CHANNEL_PARK at 1772682393046 uuid=fcba6f8c-2128-4c50-a64d-204b471c9005
+6|voice-bridge  | 2026-03-05T03:46:33.046Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=fcba6f8c-2128-4c50-a64d-204b471c9005, uuid=fcba6f8c-2128-4c50-a64d-204b471c9005
+6|voice-bridge  | 2026-03-05T03:46:33.046Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
+6|voice-bridge  | 2026-03-05T03:46:33.046Z [INFO ] [BRIDGE:ESL] 📞 INBOUND call parked — uuid=fcba6f8c-2128-4c50-a64d-204b471c9005
+6|voice-bridge  | 2026-03-05T03:46:33.046Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] Executing uuid_audio_stream after 0ms uuid=fcba6f8c-2128-4c50-a64d-204b471c9005
+6|voice-bridge  | 2026-03-05T03:46:33.095Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+6|voice-bridge  | 2026-03-05T03:46:33.095Z [INFO ] [BRIDGE:SERVER] 🔍 WEBSOCKET CONNECTION path=/stream/fcba6f8c-2128-4c50-a64d-204b471c9005 uuidFromUrl=fcba6f8c-2128-4c50-a64d-204b471c9005 pendingCallsCount=1 pendingIds=[{"uuid":"fcba6f8c-2128-4c50-a64d-204b471c9005","callId":"fcba6f8c-2128-4c50-a64d-204b471c9005"}] timestamp=1772682393095
+6|voice-bridge  | 2026-03-05T03:46:33.095Z [INFO ] [BRIDGE:SERVER] ✅ Consumed pending call: callId=fcba6f8c-2128-4c50-a64d-204b471c9005, uuid=fcba6f8c-2128-4c50-a64d-204b471c9005
+6|voice-bridge  | 2026-03-05T03:46:33.095Z [INFO ] [BRIDGE:SERVER] 📞 INBOUND call matched: callId=fcba6f8c-2128-4c50-a64d-204b471c9005 (same as uuid)
+6|voice-bridge  | 2026-03-05T03:46:33.095Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] CHANNEL_PARK → WebSocket connection: 49ms (FreeSWITCH audio_stream setup + WS open) callId=fcba6f8c-2128-4c50-a64d-204b471c9005
+6|voice-bridge  | 2026-03-05T03:46:33.095Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=fcba6f8c-2128-4c50-a64d-204b471c9005 | CallerId=1004 | CallerName=Alessio
+6|voice-bridge  | 2026-03-05T03:46:33.110Z [INFO ] [BRIDGE:ESL] ✅ Audio stream started in 64ms (total: 64ms) uuid=fcba6f8c-2128-4c50-a64d-204b471c9005
+6|voice-bridge  | 2026-03-05T03:46:33.868Z [INFO ] [BRIDGE:CONTEXT] 📋 Overflow config loaded calledNumber=+9999 found=true overflow_enabled=true fallback_number=null overflow_timeout_secs=120 overflow_dtmf_enabled=true overflow_auto_return=true
+6|voice-bridge  | 2026-03-05T03:46:33.868Z [INFO ] [BRIDGE:SESSION] Session created sessionId=16311c50 callId=fcba6f8c-2128-4c50-a64d-204b471c9005 callerId=1004 calledNumber=9999 codec=L16 sampleRate=8000 activeSessions=1
+6|voice-bridge  | 2026-03-05T03:46:33.870Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] handleCallStart setup: session=0ms, bgInit+queue=2ms sessionId=16311c50
+6|voice-bridge  | 2026-03-05T03:46:33.870Z [INFO ] [BRIDGE:SERVER] 🎵 Adaptive audio timer started (prefill=4) sessionId=16311c50
+6|voice-bridge  | 2026-03-05T03:46:33.870Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Pre-connect overhead: 2ms sessionId=16311c50
+6|voice-bridge  | 2026-03-05T03:46:33.870Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=16311c50 url=wss://4746543d-5b82-4e9e-b0fc-fef4cc83c57e-00-2lrdftkwmtekc.spock.replit.dev/ws/ai-voice voice=Puck isResume=false
+6|voice-bridge  | 2026-03-05T03:46:34.473Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] TLS+HTTP upgrade handshake: 603ms sessionId=16311c50 resumed=false
+6|voice-bridge  | 2026-03-05T03:46:34.473Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Replit WS connected in 603ms (TLS handshake + HTTP upgrade) sessionId=16311c50
+6|voice-bridge  | 2026-03-05T03:46:34.473Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=16311c50
+6|voice-bridge  | 2026-03-05T03:46:34.473Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=16311c50 from=connecting to=active
+6|voice-bridge  | 2026-03-05T03:46:34.473Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Total handleCallStart: 605ms (setup=2ms, connect=603ms, post=0ms) sessionId=16311c50
+6|voice-bridge  | 2026-03-05T03:46:34.633Z [WARN ] [BRIDGE:REPLIT-WS] ⚠️ Audio DISCARDED - connected=true, ws=true, readyState=2 sessionId=16311c50 reconnecting=false
+6|voice-bridge  | 2026-03-05T03:46:34.751Z [INFO ] [BRIDGE:CONTEXT] Number owner found calledNumber=9999 consultant_id=0c73bbe5 display_name=Alessio Test
+6|voice-bridge  | 2026-03-05T03:46:34.751Z [INFO ] [BRIDGE:SERVER] 📞 [NUMBER LOOKUP] Called number 9999 belongs to consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, display=Alessio Test
+6|voice-bridge  | 2026-03-05T03:46:34.769Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=16311c50 code=4401 reason=Unauthorized - Valid JWT token required hasPendingResume=false
+6|voice-bridge  | 2026-03-05T03:46:34.769Z [INFO ] [BRIDGE:SERVER] Replit connection closed sessionId=16311c50
+6|voice-bridge  | 2026-03-05T03:46:34.769Z [INFO ] [BRIDGE:SERVER] 📞 Replit closed permanently - ending call sessionId=16311c50
+6|voice-bridge  | 2026-03-05T03:46:34.770Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=16311c50 callId=fcba6f8c-2128-4c50-a64d-204b471c9005 reason=replit_disconnected duration=902ms bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+6|voice-bridge  | 2026-03-05T03:46:40.530Z [INFO ] [BRIDGE:SERVER] WebSocket closed (Session: 16311c50-6bda-4887-a88f-4ef9c97fa59a)
+6|voice-bridge  | 2026-03-05T03:46:51.313Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772682409285_bkecx1dpy targetPhone=1004 aiMode=assistenza
+6|voice-bridge  | 2026-03-05T03:46:51.313Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] AMD enabled=true
+6|voice-bridge  | 2026-03-05T03:46:51.313Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling LOCAL extension 1004 (no gateway, no tech prefix)
+6|voice-bridge  | 2026-03-05T03:46:51.313Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772682411313-0j97by dialString={origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772682411313-0j97by,execute_on_answer='amd'}user/1004 &park()
+6|voice-bridge  | 2026-03-05T03:46:51.313Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Pre-registered uuid=outbound-1772682411313-0j97by → callId=sc_1772682409285_bkecx1dpy + metadata (before originate)
+6|voice-bridge  | 2026-03-05T03:46:51.313Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=9999,effective_caller_id_number=9999,originate_timeout=30,origination_uuid=outbound-1772682411313-0j97by,execute_on_answer='amd'}user/1004 &park()
+6|voice-bridge  | 2026-03-05T03:46:54.150Z [INFO ] [BRIDGE:ESL] 🔍 [CHANNEL_ANSWER DEBUG] uuid=outbound-1772682411313-0j97by otherLeg= direction=outbound dest=1004 caller=9999 isOutbound=true
+6|voice-bridge  | 2026-03-05T03:46:54.150Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call ANSWERED — starting audio stream uuid=outbound-1772682411313-0j97by ringTimeMs=0
+6|voice-bridge  | 2026-03-05T03:46:54.150Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] Executing uuid_audio_stream after 0ms uuid=outbound-1772682411313-0j97by
+6|voice-bridge  | 2026-03-05T03:46:54.151Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=-ERR DESTINATION_OUT_OF_ORDER
+6|voice-bridge  | 2026-03-05T03:46:54.151Z [ERROR] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Failed to originate call callId=sc_1772682409285_bkecx1dpy error=FreeSWITCH error: -ERR DESTINATION_OUT_OF_ORDER
+6|voice-bridge  | 2026-03-05T03:46:54.194Z [ERROR] [BRIDGE:ESL] ❌ Failed to start audio stream uuid=outbound-1772682411313-0j97by error=-ERR Operation Failed
+6|voice-bridge  | 
