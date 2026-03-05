@@ -1240,10 +1240,10 @@ async function getUserIdFromRequest(req: any): Promise<{
           const activeCallsResult = await db.execute(sql`
             SELECT COUNT(*) as active_count 
             FROM voice_calls 
-            WHERE consultant_id = ${resolvedConsultantId} AND status = 'talking'
+            WHERE consultant_id = ${resolvedConsultantId} AND called_number = ${resolvedCalledNumber} AND status = 'talking'
           `);
           const activeCount = parseInt((activeCallsResult.rows[0] as any)?.active_count || '0', 10);
-          console.log(`⏱️ [AUTH-DETAIL] Channel check: ${Date.now() - channelCheckStart}ms (active: ${activeCount}/${maxChannels})`);
+          console.log(`⏱️ [AUTH-DETAIL] Channel check: ${Date.now() - channelCheckStart}ms (active: ${activeCount}/${maxChannels}, number: ${resolvedCalledNumber})`);
 
           if (activeCount >= maxChannels) {
             console.error(`❌ [PHONE SERVICE] Consultant ${resolvedConsultantId} has ${activeCount}/${maxChannels} active calls → CHANNELS FULL, REJECTING`);
@@ -4419,13 +4419,18 @@ ${brandVoicePrompt}` : ''}`;
             } else {
               console.warn(`⚠️ [${connectionId}] Agent ${agentId} not found, falling back to template`);
               // Fall back to template
-              const template = getTemplateById(templateId);
+              let template = getTemplateById(templateId);
+              if (!template && templateId?.startsWith('custom:')) {
+                const customId = templateId.replace('custom:', '');
+                const ctRes = await db.execute(sql`SELECT name, prompt FROM consultant_voice_templates WHERE id = ${customId} LIMIT 1`);
+                if (ctRes.rows.length > 0) template = { id: templateId, name: (ctRes.rows[0] as any).name, direction: isOutbound ? 'outbound' : 'inbound', description: '', prompt: (ctRes.rows[0] as any).prompt };
+              }
               if (template) {
                 contentPrompt = resolveTemplateVariables(template.prompt, {
                   consultantName: consultantName,
                   businessName: consultantBusinessName || '',
                   aiName: 'Alessia',
-                  contactName: extractedContactName || '' // 🆕 Usa nome estratto dallo storico
+                  contactName: extractedContactName || ''
                 });
                 console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using template: ${template.name} (${contentPrompt.length} chars) - contactName: "${extractedContactName || '(none)'}"`);
               } else {
@@ -4440,8 +4445,12 @@ ${brandVoicePrompt}` : ''}`;
           contentPrompt = interpolatePlaceholders(manualPrompt);
           console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using manual prompt (${contentPrompt.length} chars)`);
         } else {
-          // Default: Use template from voice-templates.ts
-          const template = getTemplateById(templateId);
+          let template = getTemplateById(templateId);
+          if (!template && templateId?.startsWith('custom:')) {
+            const customId = templateId.replace('custom:', '');
+            const ctRes = await db.execute(sql`SELECT name, prompt FROM consultant_voice_templates WHERE id = ${customId} LIMIT 1`);
+            if (ctRes.rows.length > 0) template = { id: templateId, name: (ctRes.rows[0] as any).name, direction: isOutbound ? 'outbound' : 'inbound', description: '', prompt: (ctRes.rows[0] as any).prompt };
+          }
           if (template) {
             let profileServices = '';
             let profileTarget = '';

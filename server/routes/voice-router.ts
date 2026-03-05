@@ -2390,7 +2390,18 @@ ${brandVoice}`;
         status: agent.status
       };
     });
-    
+
+    const customTemplatesResult = await db.execute(sql`
+      SELECT id, name, direction, description, prompt FROM consultant_voice_templates
+      WHERE consultant_id = ${consultantId} ORDER BY name ASC
+    `);
+    const customInboundTemplates = (customTemplatesResult.rows as any[])
+      .filter(t => t.direction === 'inbound')
+      .map(t => ({ id: `custom:${t.id}`, name: t.name, description: t.description || '', prompt: t.prompt, isCustom: true }));
+    const customOutboundTemplates = (customTemplatesResult.rows as any[])
+      .filter(t => t.direction === 'outbound')
+      .map(t => ({ id: `custom:${t.id}`, name: t.name, description: t.description || '', prompt: t.prompt, isCustom: true }));
+
     res.json({
       voiceDirectives: settings?.voice_directives || DEFAULT_VOICE_DIRECTIVES,
       nonClientPromptSource: settings?.non_client_prompt_source || 'default',
@@ -2416,8 +2427,14 @@ ${brandVoice}`;
       voice_vad_silence_ms: settings?.voice_vad_silence_ms ?? 500,
       defaultVoiceDirectives: DEFAULT_VOICE_DIRECTIVES,
       defaultNonClientPrompt: DEFAULT_NON_CLIENT_PROMPT,
-      availableInboundTemplates: getTemplateOptions('inbound'),
-      availableOutboundTemplates: getTemplateOptions('outbound'),
+      availableInboundTemplates: [
+        ...getTemplateOptions('inbound'),
+        ...customInboundTemplates
+      ],
+      availableOutboundTemplates: [
+        ...getTemplateOptions('outbound'),
+        ...customOutboundTemplates
+      ],
       agents: agentsWithFullPrompt,
       availableAgents: agentsWithFullPrompt // Legacy field for backwards compatibility
     });
@@ -2489,16 +2506,25 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       }
     }
 
-    // If template source, validate template exists
     if (inboundPromptSource === 'template' && inboundTemplateId) {
-      if (!INBOUND_TEMPLATES[inboundTemplateId]) {
+      if (!INBOUND_TEMPLATES[inboundTemplateId] && !inboundTemplateId.startsWith('custom:')) {
         return res.status(400).json({ error: `Invalid inbound template ID: ${inboundTemplateId}` });
+      }
+      if (inboundTemplateId.startsWith('custom:')) {
+        const customId = inboundTemplateId.replace('custom:', '');
+        const check = await db.execute(sql`SELECT 1 FROM consultant_voice_templates WHERE id = ${customId} AND consultant_id = ${consultantId}`);
+        if (check.rows.length === 0) return res.status(400).json({ error: `Custom inbound template not found` });
       }
     }
 
     if (outboundPromptSource === 'template' && outboundTemplateId) {
-      if (!OUTBOUND_TEMPLATES[outboundTemplateId]) {
+      if (!OUTBOUND_TEMPLATES[outboundTemplateId] && !outboundTemplateId.startsWith('custom:')) {
         return res.status(400).json({ error: `Invalid outbound template ID: ${outboundTemplateId}` });
+      }
+      if (outboundTemplateId.startsWith('custom:')) {
+        const customId = outboundTemplateId.replace('custom:', '');
+        const check = await db.execute(sql`SELECT 1 FROM consultant_voice_templates WHERE id = ${customId} AND consultant_id = ${consultantId}`);
+        if (check.rows.length === 0) return res.status(400).json({ error: `Custom outbound template not found` });
       }
     }
 
@@ -2578,6 +2604,79 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
   } catch (error) {
     console.error("[Voice] Error updating non-client settings:", error);
     res.status(500).json({ error: "Errore nell'aggiornamento delle impostazioni" });
+  }
+});
+
+// GET /api/voice/custom-templates
+router.get("/custom-templates", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "consultant" ? req.user.id : req.query.consultantId as string;
+    if (!consultantId) return res.status(400).json({ error: "consultantId required" });
+    const result = await db.execute(sql`
+      SELECT * FROM consultant_voice_templates WHERE consultant_id = ${consultantId} ORDER BY name ASC
+    `);
+    res.json({ templates: result.rows });
+  } catch (error) {
+    console.error("[Voice] Error fetching custom templates:", error);
+    res.status(500).json({ error: "Errore nel recupero dei template" });
+  }
+});
+
+// POST /api/voice/custom-templates
+router.post("/custom-templates", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "consultant" ? req.user.id : req.body.consultantId;
+    if (!consultantId) return res.status(400).json({ error: "consultantId required" });
+    const { name, direction, description, prompt } = req.body;
+    if (!name || !direction || !prompt) return res.status(400).json({ error: "name, direction, prompt required" });
+    if (!['inbound', 'outbound'].includes(direction)) return res.status(400).json({ error: "direction must be 'inbound' or 'outbound'" });
+    const result = await db.execute(sql`
+      INSERT INTO consultant_voice_templates (consultant_id, name, direction, description, prompt)
+      VALUES (${consultantId}, ${name}, ${direction}, ${description || null}, ${prompt})
+      RETURNING *
+    `);
+    res.json({ template: result.rows[0] });
+  } catch (error) {
+    console.error("[Voice] Error creating custom template:", error);
+    res.status(500).json({ error: "Errore nella creazione del template" });
+  }
+});
+
+// PUT /api/voice/custom-templates/:id
+router.put("/custom-templates/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "consultant" ? req.user.id : req.body.consultantId;
+    if (!consultantId) return res.status(400).json({ error: "consultantId required" });
+    const { id } = req.params;
+    const { name, direction, description, prompt } = req.body;
+    const check = await db.execute(sql`SELECT 1 FROM consultant_voice_templates WHERE id = ${id} AND consultant_id = ${consultantId}`);
+    if (check.rows.length === 0) return res.status(404).json({ error: "Template non trovato" });
+    const result = await db.execute(sql`
+      UPDATE consultant_voice_templates 
+      SET name = ${name}, direction = ${direction}, description = ${description || null}, prompt = ${prompt}, updated_at = NOW()
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+      RETURNING *
+    `);
+    res.json({ template: result.rows[0] });
+  } catch (error) {
+    console.error("[Voice] Error updating custom template:", error);
+    res.status(500).json({ error: "Errore nell'aggiornamento del template" });
+  }
+});
+
+// DELETE /api/voice/custom-templates/:id
+router.delete("/custom-templates/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "consultant" ? req.user.id : req.query.consultantId as string;
+    if (!consultantId) return res.status(400).json({ error: "consultantId required" });
+    const { id } = req.params;
+    const check = await db.execute(sql`SELECT 1 FROM consultant_voice_templates WHERE id = ${id} AND consultant_id = ${consultantId}`);
+    if (check.rows.length === 0) return res.status(404).json({ error: "Template non trovato" });
+    await db.execute(sql`DELETE FROM consultant_voice_templates WHERE id = ${id} AND consultant_id = ${consultantId}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[Voice] Error deleting custom template:", error);
+    res.status(500).json({ error: "Errore nell'eliminazione del template" });
   }
 });
 
@@ -3318,8 +3417,11 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
           CONCAT(u.first_name, ' ', u.last_name) as client_name
         FROM scheduled_voice_calls svc
         INNER JOIN voice_calls vc ON (
-          vc.caller_id = svc.target_phone
-          AND vc.started_at BETWEEN svc.scheduled_at - INTERVAL '30 minutes' AND svc.scheduled_at + INTERVAL '30 minutes'
+          vc.id = svc.voice_call_id
+          OR (
+            vc.caller_id = svc.target_phone
+            AND vc.started_at BETWEEN svc.scheduled_at - INTERVAL '30 minutes' AND svc.scheduled_at + INTERVAL '30 minutes'
+          )
         )
         LEFT JOIN users u ON vc.client_id = u.id
         ORDER BY svc.id, ABS(EXTRACT(EPOCH FROM (vc.started_at - svc.scheduled_at)))

@@ -1460,6 +1460,12 @@ export default function ConsultantVoiceCallsPage() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateItem | null>(null);
   const [templateFieldValues, setTemplateFieldValues] = useState<Record<string, string>>({});
+  const [customTemplateDialogOpen, setCustomTemplateDialogOpen] = useState(false);
+  const [customTemplateDirection, setCustomTemplateDirection] = useState<'inbound' | 'outbound'>('inbound');
+  const [editingCustomTemplateId, setEditingCustomTemplateId] = useState<string | null>(null);
+  const [customTemplateName, setCustomTemplateName] = useState('');
+  const [customTemplateDescription, setCustomTemplateDescription] = useState('');
+  const [customTemplatePrompt, setCustomTemplatePrompt] = useState('');
   const [retryMaxAttempts, setRetryMaxAttempts] = useState<number>(3);
   const [retryIntervalMinutes, setRetryIntervalMinutes] = useState<number>(5);
   const [retryOnNoAnswer, setRetryOnNoAnswer] = useState<boolean>(true);
@@ -1665,6 +1671,50 @@ export default function ConsultantVoiceCallsPage() {
     onError: (err: Error) => {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
     },
+  });
+
+  const saveCustomTemplateMutation = useMutation({
+    mutationFn: async (data: { id?: string; name: string; direction: string; description: string; prompt: string }) => {
+      const url = data.id ? `/api/voice/custom-templates/${data.id}` : '/api/voice/custom-templates';
+      const method = data.id ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Errore"); }
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/non-client-settings"] });
+      setCustomTemplateDialogOpen(false);
+      setEditingCustomTemplateId(null);
+      setCustomTemplateName('');
+      setCustomTemplateDescription('');
+      setCustomTemplatePrompt('');
+      const templateId = _.template?.id;
+      if (templateId) {
+        const newId = `custom:${templateId}`;
+        if (variables.direction === 'inbound' && !variables.id) setInboundTemplateId(newId);
+        if (variables.direction === 'outbound' && !variables.id) setOutboundTemplateId(newId);
+      }
+      setHasChanges(true);
+      toast({ title: variables.id ? "Template aggiornato" : "Template creato", description: variables.name });
+    },
+    onError: (err: Error) => { toast({ title: "Errore", description: err.message, variant: "destructive" }); },
+  });
+
+  const deleteCustomTemplateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/voice/custom-templates/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Errore"); }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/non-client-settings"] });
+      toast({ title: "Template eliminato" });
+    },
+    onError: (err: Error) => { toast({ title: "Errore", description: err.message, variant: "destructive" }); },
   });
 
   const improveInstructionMutation = useMutation({
@@ -3727,6 +3777,73 @@ export default function ConsultantVoiceCallsPage() {
                   </DialogContent>
                 </Dialog>
 
+                <Dialog open={customTemplateDialogOpen} onOpenChange={setCustomTemplateDialogOpen}>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-purple-600" />
+                        {editingCustomTemplateId ? 'Modifica Template' : 'Nuovo Template Personalizzato'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {customTemplateDirection === 'inbound' ? 'Template per chiamate in entrata' : 'Template per chiamate in uscita'}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium">Nome</Label>
+                        <Input
+                          value={customTemplateName}
+                          onChange={(e) => setCustomTemplateName(e.target.value)}
+                          placeholder="Es. Sales Call Personalizzata"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium">Descrizione (opzionale)</Label>
+                        <Input
+                          value={customTemplateDescription}
+                          onChange={(e) => setCustomTemplateDescription(e.target.value)}
+                          placeholder="Breve descrizione del template"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium">Prompt</Label>
+                        <Textarea
+                          value={customTemplatePrompt}
+                          onChange={(e) => setCustomTemplatePrompt(e.target.value)}
+                          placeholder="Scrivi le istruzioni per l'AI..."
+                          className="mt-1 min-h-[200px] font-mono text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {'Variabili disponibili: {{consultantName}}, {{businessName}}, {{aiName}}, {{contactName}}'}
+                        </p>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setCustomTemplateDialogOpen(false)}>Annulla</Button>
+                        <Button
+                          onClick={() => {
+                            saveCustomTemplateMutation.mutate({
+                              id: editingCustomTemplateId || undefined,
+                              name: customTemplateName,
+                              direction: customTemplateDirection,
+                              description: customTemplateDescription,
+                              prompt: customTemplatePrompt,
+                            });
+                          }}
+                          disabled={!customTemplateName || !customTemplatePrompt || saveCustomTemplateMutation.isPending}
+                        >
+                          {saveCustomTemplateMutation.isPending ? (
+                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Salvataggio...</>
+                          ) : (
+                            <><Save className="h-4 w-4 mr-2" /> {editingCustomTemplateId ? 'Aggiorna' : 'Crea Template'}</>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
                 {/* HEADER OPERATIVO */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
@@ -4213,39 +4330,93 @@ export default function ConsultantVoiceCallsPage() {
                                   </Label>
                                   {inboundPromptSource === 'template' && (
                                     <div className="pt-1 w-full">
-                                      <Select
-                                        value={inboundTemplateId}
-                                        onValueChange={(value) => {
-                                          setInboundTemplateId(value);
-                                          setHasChanges(true);
-                                        }}
-                                      >
-                                        <SelectTrigger className="w-full">
-                                          <SelectValue placeholder="Seleziona template..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {(nonClientSettingsData?.availableInboundTemplates || [
-                                            { id: 'mini-discovery', name: 'Mini Discovery', description: 'Scopri chi chiama e proponi appuntamento' },
-                                            { id: 'receptionist', name: 'Receptionist', description: 'Risposta professionale e smistamento' },
-                                            { id: 'support-basic', name: 'Supporto Base', description: 'Assistenza clienti generica' },
-                                          ]).map((template) => (
-                                            <SelectItem key={template.id} value={template.id}>
-                                              <div className="flex flex-col">
-                                                <span className="font-medium">{template.name}</span>
-                                                <span className="text-xs text-muted-foreground">{template.description}</span>
-                                              </div>
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                      <div className="flex gap-2">
+                                        <Select
+                                          value={inboundTemplateId}
+                                          onValueChange={(value) => {
+                                            setInboundTemplateId(value);
+                                            setHasChanges(true);
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Seleziona template..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {(nonClientSettingsData?.availableInboundTemplates || [
+                                              { id: 'mini-discovery', name: 'Mini Discovery', description: 'Scopri chi chiama e proponi appuntamento' },
+                                              { id: 'receptionist', name: 'Receptionist', description: 'Risposta professionale e smistamento' },
+                                              { id: 'support-basic', name: 'Supporto Base', description: 'Assistenza clienti generica' },
+                                            ]).map((template: any) => (
+                                              <SelectItem key={template.id} value={template.id}>
+                                                <div className="flex items-center gap-2">
+                                                  <span className="font-medium">{template.name}</span>
+                                                  {template.isCustom && <Badge variant="outline" className="text-[9px] px-1 py-0">Personalizzato</Badge>}
+                                                </div>
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="icon"
+                                          className="shrink-0 h-10 w-10"
+                                          title="Crea template personalizzato"
+                                          onClick={() => {
+                                            setCustomTemplateDirection('inbound');
+                                            setEditingCustomTemplateId(null);
+                                            setCustomTemplateName('');
+                                            setCustomTemplateDescription('');
+                                            setCustomTemplatePrompt('');
+                                            setCustomTemplateDialogOpen(true);
+                                          }}
+                                        >
+                                          <Plus className="h-4 w-4" />
+                                        </Button>
+                                      </div>
                                       {(() => {
-                                        const selectedTemplate = nonClientSettingsData?.availableInboundTemplates?.find(t => t.id === inboundTemplateId);
+                                        const selectedTemplate = nonClientSettingsData?.availableInboundTemplates?.find((t: any) => t.id === inboundTemplateId);
                                         if (selectedTemplate?.prompt) {
                                           return (
                                             <div className="mt-3 p-3 bg-muted rounded-md border w-full overflow-hidden">
                                               <div className="flex items-center gap-2 mb-2">
                                                 <FileText className="h-4 w-4 text-green-600 shrink-0" />
                                                 <span className="text-xs font-medium truncate">Anteprima Template: {selectedTemplate.name}</span>
+                                                {(selectedTemplate as any).isCustom && (
+                                                  <div className="flex gap-1 ml-auto shrink-0">
+                                                    <button
+                                                      type="button"
+                                                      className="p-1 rounded hover:bg-background"
+                                                      title="Modifica"
+                                                      onClick={() => {
+                                                        const realId = inboundTemplateId.replace('custom:', '');
+                                                        setEditingCustomTemplateId(realId);
+                                                        setCustomTemplateDirection('inbound');
+                                                        setCustomTemplateName(selectedTemplate.name);
+                                                        setCustomTemplateDescription(selectedTemplate.description || '');
+                                                        setCustomTemplatePrompt(selectedTemplate.prompt);
+                                                        setCustomTemplateDialogOpen(true);
+                                                      }}
+                                                    >
+                                                      <Pencil className="h-3 w-3" />
+                                                    </button>
+                                                    <button
+                                                      type="button"
+                                                      className="p-1 rounded hover:bg-destructive/10 text-destructive"
+                                                      title="Elimina"
+                                                      onClick={() => {
+                                                        if (confirm('Eliminare questo template?')) {
+                                                          const realId = inboundTemplateId.replace('custom:', '');
+                                                          deleteCustomTemplateMutation.mutate(realId);
+                                                          setInboundTemplateId('mini-discovery');
+                                                          setHasChanges(true);
+                                                        }
+                                                      }}
+                                                    >
+                                                      <Trash2 className="h-3 w-3" />
+                                                    </button>
+                                                  </div>
+                                                )}
                                               </div>
                                               <div className="text-xs whitespace-pre-wrap max-h-[200px] overflow-y-auto overflow-x-hidden text-muted-foreground break-all w-full">
                                                 {selectedTemplate.prompt}
@@ -4444,39 +4615,93 @@ export default function ConsultantVoiceCallsPage() {
                                   </Label>
                                   {outboundPromptSource === 'template' && (
                                     <div className="pt-1 w-full">
-                                      <Select
-                                        value={outboundTemplateId}
-                                        onValueChange={(value) => {
-                                          setOutboundTemplateId(value);
-                                          setHasChanges(true);
-                                        }}
-                                      >
-                                        <SelectTrigger className="w-full">
-                                          <SelectValue placeholder="Seleziona template..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {(nonClientSettingsData?.availableOutboundTemplates || [
-                                            { id: 'sales-orbitale', name: 'Sales Orbitale', description: 'Script vendita con metodo Orbitale' },
-                                            { id: 'lead-qualification', name: 'Qualifica Lead', description: 'Qualificazione e raccolta informazioni' },
-                                            { id: 'appointment-setter', name: 'Fissa Appuntamento', description: 'Focus su prenotazione meeting' },
-                                          ]).map((template) => (
-                                            <SelectItem key={template.id} value={template.id}>
-                                              <div className="flex flex-col">
-                                                <span className="font-medium">{template.name}</span>
-                                                <span className="text-xs text-muted-foreground">{template.description}</span>
-                                              </div>
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                      <div className="flex gap-2">
+                                        <Select
+                                          value={outboundTemplateId}
+                                          onValueChange={(value) => {
+                                            setOutboundTemplateId(value);
+                                            setHasChanges(true);
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Seleziona template..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {(nonClientSettingsData?.availableOutboundTemplates || [
+                                              { id: 'sales-orbitale', name: 'Sales Orbitale', description: 'Script vendita con metodo Orbitale' },
+                                              { id: 'lead-qualification', name: 'Qualifica Lead', description: 'Qualificazione e raccolta informazioni' },
+                                              { id: 'appointment-setter', name: 'Fissa Appuntamento', description: 'Focus su prenotazione meeting' },
+                                            ]).map((template: any) => (
+                                              <SelectItem key={template.id} value={template.id}>
+                                                <div className="flex items-center gap-2">
+                                                  <span className="font-medium">{template.name}</span>
+                                                  {template.isCustom && <Badge variant="outline" className="text-[9px] px-1 py-0">Personalizzato</Badge>}
+                                                </div>
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="icon"
+                                          className="shrink-0 h-10 w-10"
+                                          title="Crea template personalizzato"
+                                          onClick={() => {
+                                            setCustomTemplateDirection('outbound');
+                                            setEditingCustomTemplateId(null);
+                                            setCustomTemplateName('');
+                                            setCustomTemplateDescription('');
+                                            setCustomTemplatePrompt('');
+                                            setCustomTemplateDialogOpen(true);
+                                          }}
+                                        >
+                                          <Plus className="h-4 w-4" />
+                                        </Button>
+                                      </div>
                                       {(() => {
-                                        const selectedTemplate = nonClientSettingsData?.availableOutboundTemplates?.find(t => t.id === outboundTemplateId);
+                                        const selectedTemplate = nonClientSettingsData?.availableOutboundTemplates?.find((t: any) => t.id === outboundTemplateId);
                                         if (selectedTemplate?.prompt) {
                                           return (
                                             <div className="mt-3 p-3 bg-muted rounded-md border w-full overflow-hidden">
                                               <div className="flex items-center gap-2 mb-2">
                                                 <FileText className="h-4 w-4 text-blue-600 shrink-0" />
                                                 <span className="text-xs font-medium truncate">Anteprima Template: {selectedTemplate.name}</span>
+                                                {(selectedTemplate as any).isCustom && (
+                                                  <div className="flex gap-1 ml-auto shrink-0">
+                                                    <button
+                                                      type="button"
+                                                      className="p-1 rounded hover:bg-background"
+                                                      title="Modifica"
+                                                      onClick={() => {
+                                                        const realId = outboundTemplateId.replace('custom:', '');
+                                                        setEditingCustomTemplateId(realId);
+                                                        setCustomTemplateDirection('outbound');
+                                                        setCustomTemplateName(selectedTemplate.name);
+                                                        setCustomTemplateDescription(selectedTemplate.description || '');
+                                                        setCustomTemplatePrompt(selectedTemplate.prompt);
+                                                        setCustomTemplateDialogOpen(true);
+                                                      }}
+                                                    >
+                                                      <Pencil className="h-3 w-3" />
+                                                    </button>
+                                                    <button
+                                                      type="button"
+                                                      className="p-1 rounded hover:bg-destructive/10 text-destructive"
+                                                      title="Elimina"
+                                                      onClick={() => {
+                                                        if (confirm('Eliminare questo template?')) {
+                                                          const realId = outboundTemplateId.replace('custom:', '');
+                                                          deleteCustomTemplateMutation.mutate(realId);
+                                                          setOutboundTemplateId('sales-orbitale');
+                                                          setHasChanges(true);
+                                                        }
+                                                      }}
+                                                    >
+                                                      <Trash2 className="h-3 w-3" />
+                                                    </button>
+                                                  </div>
+                                                )}
                                               </div>
                                               <div className="text-xs whitespace-pre-wrap max-h-[200px] overflow-y-auto overflow-x-hidden text-muted-foreground break-all w-full">
                                                 {selectedTemplate.prompt}
