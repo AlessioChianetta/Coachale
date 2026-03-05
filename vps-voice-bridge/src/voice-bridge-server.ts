@@ -205,7 +205,7 @@ export function startVoiceBridgeServer(): void {
 
   const wss = new WebSocketServer({ server });
 
-  wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+  wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     const rawIp = req.socket.remoteAddress || 'unknown';
     const clientIp = normalizeIp(rawIp);
 
