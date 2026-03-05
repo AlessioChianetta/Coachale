@@ -257,6 +257,7 @@ interface ActiveVoiceCall {
 
 const activeSessionsCache = new Map<string, ActiveSessionEntry>();
 const activeVoiceCalls = new Map<string, ActiveVoiceCall>();
+(globalThis as any).__geminiLiveService = { activeVoiceCalls };
 const SESSION_TTL_MS = 3 * 60 * 1000; // 3 minuti
 
 /**

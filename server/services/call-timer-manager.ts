@@ -16,6 +16,11 @@ export function registerCallFunctions(
 }
 
 export function scheduleTimer(callId: string, consultantId: string, scheduledAt: Date): void {
+  const existing = scheduledCallTimers.get(callId);
+  if (existing) {
+    clearTimeout(existing);
+    scheduledCallTimers.delete(callId);
+  }
   const now = new Date();
   const delayMs = scheduledAt.getTime() - now.getTime();
 

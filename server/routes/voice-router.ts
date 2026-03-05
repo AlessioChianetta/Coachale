@@ -2798,7 +2798,41 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
       }
     }
 
-    // Count active outbound calls for this specific number
+    // Ghost cleanup: find 'calling' rows with no active Gemini stream for this consultant
+    const callingGhostsResult = await db.execute(sql`
+      SELECT id, target_phone, updated_at FROM scheduled_voice_calls
+      WHERE consultant_id = ${consultantId}
+        AND id != ${callId}
+        AND status = 'calling'
+        AND updated_at > NOW() - INTERVAL '5 minutes'
+    `);
+    const callingGhosts = callingGhostsResult.rows as any[];
+    if (callingGhosts.length > 0) {
+      const geminiService = (globalThis as any).__geminiLiveService;
+      const activeVoiceCallsMap: Map<string, any> | undefined = geminiService?.activeVoiceCalls;
+      const activeIdsForConsultant = new Set<string>();
+      if (activeVoiceCallsMap) {
+        for (const [vcId, vc] of activeVoiceCallsMap) {
+          if (vc.consultantId === consultantId) {
+            activeIdsForConsultant.add(vcId);
+          }
+        }
+      }
+      if (activeIdsForConsultant.size === 0) {
+        for (const ghost of callingGhosts) {
+          const ageMs = Date.now() - new Date(ghost.updated_at).getTime();
+          console.log(`👻 [Outbound] Ghost cleanup: ${ghost.id} was 'calling' for ${Math.round(ageMs/1000)}s with no active Gemini stream → marking failed`);
+          await db.execute(sql`
+            UPDATE scheduled_voice_calls
+            SET status = 'failed', error_message = 'ghost_calling_no_stream', updated_at = NOW()
+            WHERE id = ${ghost.id} AND status = 'calling'
+          `);
+        }
+      } else {
+        console.log(`✅ [Outbound] Consultant has ${activeIdsForConsultant.size} active Gemini streams — ${callingGhosts.length} 'calling' rows are legit`);
+      }
+    }
+
     const activeCallsResult = await db.execute(sql`
       SELECT COUNT(*)::int as active_count FROM scheduled_voice_calls
       WHERE consultant_id = ${consultantId}
