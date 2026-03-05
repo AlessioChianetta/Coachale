@@ -18,6 +18,7 @@ export interface ClientContext {
 export interface CallSession {
   id: string;
   callId: string;
+  fsUuid: string;
   callerId: string;
   calledNumber: string;
   codec: 'PCMU' | 'L16';
@@ -47,8 +48,14 @@ export interface OverflowEntry {
 class SessionManager {
   private sessions: Map<string, CallSession> = new Map();
   private callIdToSessionId: Map<string, string> = new Map();
+  private fsUuidToSessionId: Map<string, string> = new Map();
   private _overflowQueue: OverflowEntry[] = [];
   private _dequeueInProgress = false;
+  private _onTimeoutCallback: ((sessionId: string, callId: string, fsUuid: string) => void) | null = null;
+
+  setOnTimeoutCallback(cb: (sessionId: string, callId: string, fsUuid: string) => void): void {
+    this._onTimeoutCallback = cb;
+  }
 
   get activeCount(): number {
     return this.sessions.size;
@@ -84,7 +91,8 @@ class SessionManager {
     calledNumber: string,
     codec: 'PCMU' | 'L16' = 'PCMU',
     sampleRate: number = 8000,
-    fsWebSocket: WebSocket
+    fsWebSocket: WebSocket,
+    fsUuid?: string
   ): CallSession {
     if (!this.canAcceptNewCall()) {
       throw new Error(`Max concurrent calls reached (${config.session.maxConcurrent})`);
@@ -92,10 +100,12 @@ class SessionManager {
 
     const sessionId = uuidv4();
     const now = new Date();
+    const resolvedFsUuid = fsUuid || callId;
 
     const session: CallSession = {
       id: sessionId,
       callId,
+      fsUuid: resolvedFsUuid,
       callerId,
       calledNumber,
       codec,
@@ -117,6 +127,9 @@ class SessionManager {
 
     this.sessions.set(sessionId, session);
     this.callIdToSessionId.set(callId, sessionId);
+    if (resolvedFsUuid !== callId) {
+      this.fsUuidToSessionId.set(resolvedFsUuid, sessionId);
+    }
 
     this.startInactivityTimeout(session);
 
@@ -141,6 +154,18 @@ class SessionManager {
     const sessionId = this.callIdToSessionId.get(callId);
     if (sessionId) {
       return this.sessions.get(sessionId);
+    }
+    return undefined;
+  }
+
+  getSessionByFsUuid(fsUuid: string): CallSession | undefined {
+    const sessionId = this.fsUuidToSessionId.get(fsUuid);
+    if (sessionId) {
+      return this.sessions.get(sessionId);
+    }
+    const sessionIdByCallId = this.callIdToSessionId.get(fsUuid);
+    if (sessionIdByCallId) {
+      return this.sessions.get(sessionIdByCallId);
     }
     return undefined;
   }
@@ -194,6 +219,7 @@ class SessionManager {
       session.audioStats.bytesOut += bytes;
       session.audioStats.packetsOut++;
       session.audioStats.lastActivityTime = new Date();
+      this.resetInactivityTimeout(session);
     }
   }
 
@@ -247,6 +273,9 @@ class SessionManager {
 
     this.sessions.delete(sessionId);
     this.callIdToSessionId.delete(session.callId);
+    if (session.fsUuid !== session.callId) {
+      this.fsUuidToSessionId.delete(session.fsUuid);
+    }
   }
 
   private startInactivityTimeout(session: CallSession): void {
@@ -257,9 +286,14 @@ class SessionManager {
     session.timeoutHandle = setTimeout(() => {
       log.warn(`Session timeout (no activity)`, {
         sessionId: session.id.slice(0, 8),
+        callId: session.callId,
         timeoutMs: config.session.timeoutMs,
       });
-      this.endSession(session.id, 'timeout');
+      if (this._onTimeoutCallback) {
+        this._onTimeoutCallback(session.id, session.callId, session.fsUuid);
+      } else {
+        this.endSession(session.id, 'timeout');
+      }
     }, config.session.timeoutMs);
   }
 

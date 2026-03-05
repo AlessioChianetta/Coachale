@@ -76,7 +76,7 @@ export function startESLController(): void {
   const conn = new esl.Connection(config.esl.host, config.esl.port, config.esl.password, () => {
     log.info('✅ Connected to FreeSWITCH Event Socket!');
     eslConn = conn;
-    conn.subscribe(['CHANNEL_PARK', 'CHANNEL_ANSWER', 'CHANNEL_HANGUP', 'CUSTOM']);
+    conn.subscribe(['CHANNEL_PARK', 'CHANNEL_ANSWER', 'CHANNEL_HANGUP', 'CHANNEL_HOLD', 'CHANNEL_UNHOLD', 'CUSTOM']);
   });
 
   conn.on('esl::event::CHANNEL_PARK::*', (event: any) => {
@@ -219,7 +219,7 @@ export function startESLController(): void {
 
       if (callId) {
         const hasAmd = amdDetectedCalls.has(uuid);
-        const hasActiveSession = !!sessionManager.getSessionByCallId(uuid);
+        const hasActiveSession = !!sessionManager.getSessionByFsUuid(uuid);
 
         if (hasAmd) {
           log.info(`[HANGUP-CALLBACK] Skipping outbound uuid=${uuid} — AMD already notified`);
@@ -271,6 +271,30 @@ export function startESLController(): void {
     if (sessionManager.isInOverflow(uuid)) {
       log.info(`📤 [OVERFLOW] Call ${uuid} hung up while in overflow queue — removing`);
       sessionManager.removeFromOverflow(uuid);
+    }
+  });
+
+  conn.on('esl::event::CHANNEL_HOLD::*', (event: any) => {
+    const uuid = event.getHeader('Unique-ID');
+    if (!uuid) return;
+    const session = sessionManager.getSessionByFsUuid(uuid);
+    if (session) {
+      log.info(`⏸️  [HOLD] Call put on hold — pausing inactivity timeout`, { uuid, callId: session.callId, sessionId: session.id.slice(0, 8) });
+      sessionManager.pauseInactivityTimeout(session.id);
+    } else {
+      log.debug(`[HOLD] No active session for uuid=${uuid}`);
+    }
+  });
+
+  conn.on('esl::event::CHANNEL_UNHOLD::*', (event: any) => {
+    const uuid = event.getHeader('Unique-ID');
+    if (!uuid) return;
+    const session = sessionManager.getSessionByFsUuid(uuid);
+    if (session) {
+      log.info(`▶️  [UNHOLD] Call resumed — restarting inactivity timeout`, { uuid, callId: session.callId, sessionId: session.id.slice(0, 8) });
+      sessionManager.resumeInactivityTimeout(session.id);
+    } else {
+      log.debug(`[UNHOLD] No active session for uuid=${uuid}`);
     }
   });
 

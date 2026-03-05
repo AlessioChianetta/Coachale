@@ -148,6 +148,17 @@ function validateServiceToken(token: string | undefined): boolean {
 }
 
 export function startVoiceBridgeServer(): void {
+  sessionManager.setOnTimeoutCallback((sessionId, callId, fsUuid) => {
+    log.warn(`⏰ [TIMEOUT-CALLBACK] Session ${sessionId.slice(0, 8)} timed out — cleaning up and hanging up FreeSWITCH call`, { callId, fsUuid });
+    handleCallStop(callId, 'timeout');
+    const eslConn = getEslConnection();
+    if (eslConn) {
+      (eslConn as any).bgapi(`uuid_kill ${fsUuid} NORMAL_CLEARING`, (res: any) => {
+        log.info(`⏰ [TIMEOUT-CALLBACK] uuid_kill result for fsUuid=${fsUuid}: ${res?.getBody?.() || 'no response'}`);
+      });
+    }
+  });
+
   const app = express();
   app.use(express.json());
 
@@ -294,96 +305,29 @@ export function startVoiceBridgeServer(): void {
           : `global limit (${sessionManager.activeCount}/${sessionManager.maxConcurrent})`;
         log.warn(`🔶 Max concurrent reached (${reason}) — attempting overflow for ${uuidFromUrl}`);
         ws.close(1011, 'Redirecting to overflow queue');
-
-        try {
-          if (!overflowCfg.overflow_enabled) {
-            log.warn(`🔴 Overflow disabled for ${calledNumber} — rejecting call ${uuidFromUrl}`);
-            const eslConn = getEslConnection();
-            if (eslConn) {
-              (eslConn as any).bgapi(`uuid_kill ${uuidFromUrl} CALL_REJECTED`, (res: any) => {
-                log.info(`uuid_kill result: ${res?.getBody?.() || 'no response'}`);
-              });
-            }
-            return;
-          }
-
-          const eslConn = getEslConnection();
-          if (!eslConn) {
-            log.error(`🔴 No ESL connection — cannot transfer to overflow`);
-            return;
-          }
-
-          const queuePosition = sessionManager.overflowCount + 1;
-          const setVars: string[] = [
-            `sip_gateway=${config.sip.gateway}`,
-            `tech_prefix=${config.sip.techPrefix}`,
-            `queue_position=${queuePosition}`,
-          ];
-          if (overflowCfg.fallback_number && overflowCfg.overflow_dtmf_enabled) {
-            setVars.push(`fallback_transfer_number=${overflowCfg.fallback_number}`);
-            setVars.push(`overflow_dtmf_enabled=true`);
-          } else {
-            setVars.push(`overflow_dtmf_enabled=false`);
-          }
-          if (overflowCfg.overflow_message) {
-            setVars.push(`overflow_custom_message=${overflowCfg.overflow_message.replace(/[;=]/g, ' ')}`);
-          }
-
-          (eslConn as any).bgapi(`uuid_setvar_multi ${uuidFromUrl} ${setVars.join(';')}`, (res: any) => {
-            log.info(`Overflow vars set: ${res?.getBody?.() || 'ok'}`);
-          });
-
-          setTimeout(() => {
-            (eslConn as any).bgapi(`uuid_transfer ${uuidFromUrl} overflow_queue XML default`, (res: any) => {
-              const body = res?.getBody?.() || '';
-              if (body.includes('+OK')) {
-                log.info(`✅ Call ${uuidFromUrl} transferred to overflow_queue`);
-              } else {
-                log.error(`❌ Failed to transfer to overflow_queue: ${body}`);
-                (eslConn as any).bgapi(`uuid_kill ${uuidFromUrl} CALL_REJECTED`);
-              }
-            });
-          }, 100);
-
-          const timeoutSecs = overflowCfg.overflow_timeout_secs || 120;
-          sessionManager.addToOverflow(uuidFromUrl, calledNumber, timeoutSecs, (uuid) => {
-            log.warn(`⏰ Overflow timeout — transferring call ${uuid} to timeout announcement`);
-            const conn = getEslConnection();
-            if (conn) {
-              (conn as any).bgapi(`uuid_transfer ${uuid} overflow_timeout XML default`, (res: any) => {
-                const body = res?.getBody?.() || '';
-                if (!body.includes('+OK')) {
-                  log.warn(`⚠️ Timeout transfer failed, killing call ${uuid}: ${body}`);
-                  (conn as any).bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`);
-                }
-              });
-            }
-          });
-
-          log.info(`📥 Call ${uuidFromUrl} queued in overflow (timeout=${timeoutSecs}s, dtmf=${overflowCfg.overflow_dtmf_enabled}, fallback=${overflowCfg.fallback_number ? '***' : 'none'})`);
-
-        } catch (overflowErr: any) {
-          log.error(`🔴 Overflow handling failed: ${overflowErr.message}`);
-          const eslConn = getEslConnection();
-          if (eslConn) {
-            (eslConn as any).bgapi(`uuid_kill ${uuidFromUrl} CALL_REJECTED`);
-          }
-        }
+        await routeToOverflow(uuidFromUrl, calledNumber, overflowCfg);
         return;
       }
 
-      handleCallStart(ws, startMsg).then((sid) => {
+      handleCallStart(ws, startMsg, uuidFromUrl || callId).then((sid) => {
         currentSessionId = sid;
       }).catch(async (e) => {
           log.error(`Session init error: ${e.message}`);
           ws.close(1011, 'Session init failed');
           if (uuidFromUrl) {
-            const eslConn = getEslConnection();
-            if (eslConn) {
-              log.warn(`🔴 Killing FreeSWITCH call ${uuidFromUrl} after auth rejection`);
-              (eslConn as any).bgapi(`uuid_kill ${uuidFromUrl} CALL_REJECTED`, (res: any) => {
-                log.info(`uuid_kill result: ${res?.getBody?.() || 'no response'}`);
-              });
+            const isOutbound = uuidFromUrl.startsWith('outbound-');
+            if (!isOutbound) {
+              log.info(`📥 [OVERFLOW-FALLBACK] Inbound call ${uuidFromUrl} rejected by server — routing to overflow queue`);
+              const rejOverflowCfg = await fetchOverflowConfig(calledNumber);
+              await routeToOverflow(uuidFromUrl, calledNumber, rejOverflowCfg);
+            } else {
+              log.warn(`🔴 Outbound call ${uuidFromUrl} rejected by server — killing (callback retry will handle)`);
+              const eslConn = getEslConnection();
+              if (eslConn) {
+                (eslConn as any).bgapi(`uuid_kill ${uuidFromUrl} CALL_REJECTED`, (res: any) => {
+                  log.info(`uuid_kill result: ${res?.getBody?.() || 'no response'}`);
+                });
+              }
             }
           }
         });
@@ -412,12 +356,12 @@ export function startVoiceBridgeServer(): void {
   });
 }
 
-async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage): Promise<string> {
+async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, fsUuid?: string): Promise<string> {
   const t0 = Date.now();
 
   const session = sessionManager.createSession(
     message.call_id, message.caller_id, message.called_number,
-    message.codec, message.sample_rate, ws
+    message.codec, message.sample_rate, ws, fsUuid
   );
   const tSession = Date.now();
 
@@ -638,6 +582,88 @@ function cleanupSession(sessionId: string): void {
   audioOutputQueues.delete(sessionId);
   lastQueueHadAudio.delete(sessionId);
   bgDestroySession(sessionId);
+}
+
+async function routeToOverflow(uuid: string, calledNumber: string, overflowCfg?: any): Promise<boolean> {
+  try {
+    if (!overflowCfg) {
+      overflowCfg = await fetchOverflowConfig(calledNumber);
+    }
+
+    if (!overflowCfg.overflow_enabled) {
+      log.warn(`🔴 Overflow disabled for ${calledNumber} — rejecting call ${uuid}`);
+      const eslConn = getEslConnection();
+      if (eslConn) {
+        (eslConn as any).bgapi(`uuid_kill ${uuid} CALL_REJECTED`, (res: any) => {
+          log.info(`uuid_kill result: ${res?.getBody?.() || 'no response'}`);
+        });
+      }
+      return false;
+    }
+
+    const eslConn = getEslConnection();
+    if (!eslConn) {
+      log.error(`🔴 No ESL connection — cannot transfer to overflow`);
+      return false;
+    }
+
+    const queuePosition = sessionManager.overflowCount + 1;
+    const setVars: string[] = [
+      `sip_gateway=${config.sip.gateway}`,
+      `tech_prefix=${config.sip.techPrefix}`,
+      `queue_position=${queuePosition}`,
+    ];
+    if (overflowCfg.fallback_number && overflowCfg.overflow_dtmf_enabled) {
+      setVars.push(`fallback_transfer_number=${overflowCfg.fallback_number}`);
+      setVars.push(`overflow_dtmf_enabled=true`);
+    } else {
+      setVars.push(`overflow_dtmf_enabled=false`);
+    }
+    if (overflowCfg.overflow_message) {
+      setVars.push(`overflow_custom_message=${overflowCfg.overflow_message.replace(/[;=]/g, ' ')}`);
+    }
+
+    (eslConn as any).bgapi(`uuid_setvar_multi ${uuid} ${setVars.join(';')}`, (res: any) => {
+      log.info(`Overflow vars set: ${res?.getBody?.() || 'ok'}`);
+    });
+
+    setTimeout(() => {
+      (eslConn as any).bgapi(`uuid_transfer ${uuid} overflow_queue XML default`, (res: any) => {
+        const body = res?.getBody?.() || '';
+        if (body.includes('+OK')) {
+          log.info(`✅ Call ${uuid} transferred to overflow_queue`);
+        } else {
+          log.error(`❌ Failed to transfer to overflow_queue: ${body}`);
+          (eslConn as any).bgapi(`uuid_kill ${uuid} CALL_REJECTED`);
+        }
+      });
+    }, 100);
+
+    const timeoutSecs = overflowCfg.overflow_timeout_secs || 120;
+    sessionManager.addToOverflow(uuid, calledNumber, timeoutSecs, (ovUuid) => {
+      log.warn(`⏰ Overflow timeout — transferring call ${ovUuid} to timeout announcement`);
+      const conn = getEslConnection();
+      if (conn) {
+        (conn as any).bgapi(`uuid_transfer ${ovUuid} overflow_timeout XML default`, (res: any) => {
+          const body = res?.getBody?.() || '';
+          if (!body.includes('+OK')) {
+            log.warn(`⚠️ Timeout transfer failed, killing call ${ovUuid}: ${body}`);
+            (conn as any).bgapi(`uuid_kill ${ovUuid} NORMAL_CLEARING`);
+          }
+        });
+      }
+    });
+
+    log.info(`📥 Call ${uuid} queued in overflow (timeout=${timeoutSecs}s, dtmf=${overflowCfg.overflow_dtmf_enabled}, fallback=${overflowCfg.fallback_number ? '***' : 'none'})`);
+    return true;
+  } catch (overflowErr: any) {
+    log.error(`🔴 Overflow handling failed: ${overflowErr.message}`);
+    const eslConn = getEslConnection();
+    if (eslConn) {
+      (eslConn as any).bgapi(`uuid_kill ${uuid} CALL_REJECTED`);
+    }
+    return false;
+  }
 }
 
 function handleCallStop(callId: string, reason: string): void {
