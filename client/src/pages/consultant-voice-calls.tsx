@@ -2558,33 +2558,48 @@ export default function ConsultantVoiceCallsPage() {
   const selectedInboundAgent = nonClientSettingsData?.availableAgents.find(a => a.id === inboundAgentId);
   const selectedOutboundAgent = nonClientSettingsData?.availableAgents.find(a => a.id === outboundAgentId);
 
-  const voiceCalls: VoiceCall[] = callsData?.calls || [];
+  const voiceCalls: VoiceCall[] = (callsData?.calls || []).map((c: any) => {
+    if (c.svc_retry_reason && ['no_answer', 'busy', 'voicemail', 'short_call'].includes(c.svc_retry_reason)) {
+      return { ...c, status: c.svc_retry_reason };
+    }
+    if (c.status === 'completed' && c.duration_seconds !== null && c.duration_seconds < 10) {
+      return { ...c, status: 'short_call' };
+    }
+    return c;
+  });
   
   // Trasforma i callAttempts (scheduled_voice_calls con tentativi che NON hanno generato voice_call)
   // La deduplicazione è già fatta nel backend (voice_call_id IS NULL)
-  const callAttempts = (callsData?.callAttempts || []).map((attempt: any) => ({
-    id: attempt.id,
-    caller_id: attempt.target_phone,
-    called_number: attempt.target_phone,
-    client_id: null,
-    client_name: attempt.contact_name || null,
-    consultant_id: attempt.consultant_id,
-    started_at: attempt.scheduled_at,
-    ended_at: attempt.updated_at,
-    duration_seconds: null,
-    status: attempt.status,
-    direction: 'outbound' as const,
-    hangup_cause: attempt.error_message,
-    instruction_type: attempt.instruction_type,
-    call_instruction: attempt.call_instruction,
-    source_task_id: attempt.source_task_id,
-    ai_task_type: attempt.ai_task_type,
-    ai_task_recurrence: attempt.ai_task_recurrence,
-    svc_attempts: attempt.attempts,
-    svc_max_attempts: attempt.max_attempts,
-    attempts_log: attempt.attempts_log,
-    is_attempt: true, // Flag per distinguere dai voice_calls reali
-  }));
+  const callAttempts = (callsData?.callAttempts || []).map((attempt: any) => {
+    const granularStatus = attempt.retry_reason || attempt.hangup_cause;
+    const displayStatus = ['no_answer', 'busy', 'voicemail', 'short_call'].includes(granularStatus)
+      ? granularStatus
+      : attempt.status === 'retry_scheduled' ? (granularStatus || 'no_answer')
+      : attempt.status;
+    return {
+      id: attempt.id,
+      caller_id: attempt.target_phone,
+      called_number: attempt.target_phone,
+      client_id: null,
+      client_name: attempt.contact_name || null,
+      consultant_id: attempt.consultant_id,
+      started_at: attempt.scheduled_at,
+      ended_at: attempt.updated_at,
+      duration_seconds: null,
+      status: displayStatus,
+      direction: 'outbound' as const,
+      hangup_cause: attempt.error_message,
+      instruction_type: attempt.instruction_type,
+      call_instruction: attempt.call_instruction,
+      source_task_id: attempt.source_task_id,
+      ai_task_type: attempt.ai_task_type,
+      ai_task_recurrence: attempt.ai_task_recurrence,
+      svc_attempts: attempt.attempts,
+      svc_max_attempts: attempt.max_attempts,
+      attempts_log: attempt.attempts_log,
+      is_attempt: true,
+    };
+  });
   
   // Combina chiamate reali e tentativi, ordinando per data
   const calls: VoiceCall[] = [...voiceCalls, ...callAttempts].sort((a, b) => 

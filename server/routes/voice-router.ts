@@ -209,7 +209,8 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
           svc.attempts,
           svc.max_attempts,
           svc.scheduled_at,
-          svc.status as svc_status
+          svc.status as svc_status,
+          svc.retry_reason
         FROM voice_calls vc
         INNER JOIN scheduled_voice_calls svc ON (
           svc.target_phone = vc.caller_id
@@ -232,6 +233,7 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
         COALESCE(svc_direct.max_attempts, closest.max_attempts) as svc_max_attempts,
         COALESCE(svc_direct.scheduled_at, closest.scheduled_at) as svc_scheduled_at,
         COALESCE(svc_direct.status, closest.svc_status) as svc_status,
+        COALESCE(svc_direct.retry_reason, closest.retry_reason) as svc_retry_reason,
         ast.task_type as ai_task_type,
         ast.recurrence_type as ai_task_recurrence
       FROM voice_calls vc
@@ -298,6 +300,8 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
         svc.max_attempts,
         svc.attempts_log,
         svc.error_message,
+        svc.retry_reason,
+        svc.hangup_cause,
         svc.source_task_id,
         svc.voice_call_id,
         svc.created_at,
