@@ -1,0 +1,32 @@
+und":true,"overflow_enabled"…
+8:12:31 PM [express] GET /api/voice/gemini-connections 200 in 290ms :: {"success":true,"connections"…
+🎤 [lv6btz] Client connected to Live API
+⏱️ [LATENCY-E2E] WebSocket arrival: 2026-03-05T20:12:31.672Z
+⏱️ [AUTH-DETAIL] JWT verify: 0ms
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:
+🔍 [ROUTING-DEBUG]   decoded.consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   decoded.type: phone_service
+🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+🔍 [ROUTING-DEBUG]   calledNumber: 9999
+🔍 [ROUTING-DEBUG]   callerId: 1003
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8:12:31 PM [express] POST /api/voice/call-start 200 in 11ms
+⏱️ [AUTH-DETAIL] voice_numbers lookup: 143ms (tried: 9999, +9999, 9999)
+🔍 [ROUTING-DEBUG] voice_numbers lookup result:
+🔍 [ROUTING-DEBUG]   BEFORE: resolvedConsultantId = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   voice_numbers.consultant_id = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   AFTER: resolvedConsultantId = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [PHONE SERVICE] Number 9999 → consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (Alessio Test)
+🔍 [ROUTING-DEBUG] Cross-consultant token check:
+🔍 [ROUTING-DEBUG]   decoded.consultantId (from JWT): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   resolvedConsultantId (from voice_numbers): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+🔍 [ROUTING-DEBUG]   match? true
+📞 [Number Lookup] Found: 9999 → consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, display=Alessio Test
+8:12:31 PM [express] GET /api/voice/number-lookup 200 in 288ms :: {"found":true,"consultant_id":"0c7…
+⏱️ [AUTH-DETAIL] Channel check: 148ms (active: 1/1, number: 9999)
+❌ [PHONE SERVICE] Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b has 1/1 active calls on 9999 → CHANNELS FULL (4429)
+🔶 [lv6btz] Channels full — closing with 4429 CHANNELS_FULL
+8:12:32 PM [express] GET /api/voice/overflow-config 200 in 147ms :: {"found":true,"overflow_enabled"…
+8:12:32 PM [express] GET /api/voice/health 304 in 911ms :: {"overall":"healthy","components":{"datab…
