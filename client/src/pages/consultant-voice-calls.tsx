@@ -984,43 +984,169 @@ function CallQueueCountdown({ targetDate }: { targetDate: string }) {
   return <span className="font-mono text-sm font-medium">{remaining}</span>;
 }
 
-function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow }: {
+function ActiveCallDuration({ startedAt }: { startedAt?: string }) {
+  const [elapsed, setElapsed] = useState('');
+  useEffect(() => {
+    if (!startedAt) return;
+    const start = new Date(startedAt).getTime();
+    const tick = () => {
+      const diff = Math.max(0, Math.floor((Date.now() - start) / 1000));
+      const m = Math.floor(diff / 60);
+      const s = diff % 60;
+      setElapsed(`${m}:${s.toString().padStart(2, '0')}`);
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [startedAt]);
+  if (!elapsed) return null;
+  return <span className="font-mono text-[10px] text-green-700 dark:text-green-400">{elapsed}</span>;
+}
+
+function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch, maxConcurrent }: {
   scheduledCalls: any[];
   onCancel: (id: string) => void;
   onTriggerNow: (id: string) => void;
+  onCancelBatch: (status?: string) => void;
+  maxConcurrent: number;
 }) {
-  const queuedCalls = scheduledCalls
-    .filter((c: any) => ['pending', 'calling', 'talking', 'retry_scheduled', 'in_progress', 'ringing'].includes(c.status))
+  const now = Date.now();
+  const SOON_THRESHOLD = 5 * 60 * 1000;
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggleSection = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const activeCalls = scheduledCalls.filter((c: any) => ['talking', 'calling', 'ringing', 'in_progress'].includes(c.status));
+  const retryCalls = scheduledCalls.filter((c: any) => c.status === 'retry_scheduled')
     .sort((a: any, b: any) => {
-      const statusOrder: Record<string, number> = { talking: 0, calling: 1, ringing: 2, in_progress: 3, pending: 4, retry_scheduled: 5 };
-      const oa = statusOrder[a.status] ?? 6;
-      const ob = statusOrder[b.status] ?? 6;
-      if (oa !== ob) return oa - ob;
-      const da = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
-      const db = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0;
-      return da - db;
+      const ta = a.next_retry_at ? new Date(a.next_retry_at).getTime() : 0;
+      const tb = b.next_retry_at ? new Date(b.next_retry_at).getTime() : 0;
+      return ta - tb;
     });
+  const queuedCalls = scheduledCalls.filter((c: any) => {
+    if (c.status !== 'pending' && c.status !== 'scheduled') return false;
+    const scheduledTime = c.scheduled_at ? new Date(c.scheduled_at).getTime() : 0;
+    return scheduledTime <= now + SOON_THRESHOLD;
+  }).sort((a: any, b: any) => {
+    const da = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
+    const db2 = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0;
+    return da - db2;
+  });
+  const futureCalls = scheduledCalls.filter((c: any) => {
+    if (c.status !== 'pending' && c.status !== 'scheduled') return false;
+    const scheduledTime = c.scheduled_at ? new Date(c.scheduled_at).getTime() : 0;
+    return scheduledTime > now + SOON_THRESHOLD;
+  }).sort((a: any, b: any) => {
+    const da = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
+    const db2 = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0;
+    return da - db2;
+  });
 
-  if (queuedCalls.length === 0) return null;
+  const totalQueued = activeCalls.length + queuedCalls.length + retryCalls.length + futureCalls.length;
+  if (totalQueued === 0) return null;
 
-  const getStatusBadge = (call: any) => {
-    switch (call.status) {
-      case 'talking': return <Badge className="bg-green-500 text-white text-[10px]">In corso</Badge>;
-      case 'calling': case 'ringing': return <Badge className="bg-yellow-500 text-white text-[10px]">Connessione...</Badge>;
-      case 'in_progress': return <Badge className="bg-blue-500 text-white text-[10px]">In elaborazione</Badge>;
-      case 'retry_scheduled': {
-        const reasonMap: Record<string, string> = { no_answer: 'Non ha risposto', busy: 'Occupato', short_call: 'Chiamata breve', voicemail: 'Segreteria' };
-        const reasonLabel = reasonMap[call.retry_reason] || call.retry_reason || '';
-        return (
-          <span className="flex items-center gap-1">
-            <Badge className="bg-orange-500 text-white text-[10px]">Retry {call.attempts || 0}/{call.max_attempts || 3}</Badge>
-            {reasonLabel && <span className="text-[10px] text-orange-600 dark:text-orange-400">{reasonLabel}</span>}
-          </span>
-        );
-      }
-      case 'pending': return <Badge variant="outline" className="text-[10px]">In coda</Badge>;
-      default: return <Badge variant="outline" className="text-[10px]">{call.status}</Badge>;
+  const cancellableCount = queuedCalls.length + retryCalls.length + futureCalls.length;
+
+  const getOriginBadge = (call: any) => {
+    if (call.source_task_id) {
+      return <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-medium">Hunter</span>;
     }
+    if (call.call_instruction?.includes('auto-call') || call.call_instruction?.includes('Auto-call')) {
+      return <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300 font-medium">Auto</span>;
+    }
+    return <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 font-medium">Manuale</span>;
+  };
+
+  const reasonMap: Record<string, string> = { no_answer: 'Non ha risposto', busy: 'Occupato', short_call: 'Chiamata breve', voicemail: 'Segreteria' };
+
+  const renderCallRow = (call: any, variant: 'active' | 'queued' | 'retry' | 'future') => (
+    <div key={call.id} className="flex items-center gap-2 p-2 rounded-md bg-background/80 border text-sm">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono text-xs truncate">{call.target_phone}</span>
+          {call.contact_name && <span className="text-[10px] text-muted-foreground truncate">({call.contact_name})</span>}
+          {getOriginBadge(call)}
+        </div>
+        {call.call_instruction && (
+          <p className="text-[10px] text-muted-foreground truncate mt-0.5">{call.call_instruction}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {variant === 'active' && (
+          <div className="flex items-center gap-1.5 text-green-600">
+            <Phone className="h-3 w-3 animate-pulse" />
+            <span className="text-[10px] font-medium">{call.status === 'talking' ? 'Attiva' : 'Connessione...'}</span>
+            {call.status === 'talking' && <ActiveCallDuration startedAt={call.voice_call_started_at || call.updated_at} />}
+          </div>
+        )}
+        {variant === 'retry' && (
+          <div className="flex items-center gap-1">
+            <Badge className="bg-orange-500 text-white text-[9px] px-1.5">{call.attempts || 0}/{call.max_attempts || 3}</Badge>
+            <span className="text-[10px] text-orange-600 dark:text-orange-400">{reasonMap[call.retry_reason] || ''}</span>
+          </div>
+        )}
+        {(variant === 'queued' || variant === 'retry') && (call.next_retry_at || call.scheduled_at) && (
+          <div className="flex items-center gap-1 text-blue-600">
+            <Clock className="h-3 w-3" />
+            <CallQueueCountdown targetDate={variant === 'retry' && call.next_retry_at ? call.next_retry_at : call.scheduled_at} />
+          </div>
+        )}
+        {variant === 'future' && call.scheduled_at && (
+          <span className="text-[10px] text-muted-foreground font-mono">
+            {new Date(call.scheduled_at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
+        {(variant === 'queued' || variant === 'retry') && (
+          <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => onTriggerNow(call.id)} title="Chiama subito">
+            <PhoneOutgoing className="h-3 w-3" />
+          </Button>
+        )}
+        {variant !== 'active' && (
+          <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-destructive hover:text-destructive" onClick={() => onCancel(call.id)} title="Annulla">
+            <X className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderSection = (
+    key: string,
+    label: string,
+    count: number,
+    color: string,
+    dotColor: string,
+    calls: any[],
+    variant: 'active' | 'queued' | 'retry' | 'future',
+    extra?: React.ReactNode,
+    maxVisible?: number
+  ) => {
+    if (count === 0) return null;
+    const isCollapsed = collapsed[key];
+    const visibleCalls = maxVisible && !isCollapsed ? calls.slice(0, maxVisible) : calls;
+    const hiddenCount = maxVisible ? Math.max(0, calls.length - maxVisible) : 0;
+
+    return (
+      <div className="space-y-1">
+        <button
+          onClick={() => toggleSection(key)}
+          className="w-full text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1 hover:opacity-80 transition-opacity"
+          style={{ color }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
+          {label} ({count})
+          {extra}
+          {isCollapsed ? <ChevronRight className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
+        </button>
+        {!isCollapsed && (
+          <>
+            {visibleCalls.map((c: any) => renderCallRow(c, variant))}
+            {hiddenCount > 0 && (
+              <p className="text-[10px] text-muted-foreground text-center">...e altre {hiddenCount} {label.toLowerCase()}</p>
+            )}
+          </>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -1029,51 +1155,33 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow }: {
         <CardTitle className="text-sm flex items-center gap-2">
           <Timer className="h-4 w-4 text-blue-600" />
           Coda Chiamate
-          <Badge variant="outline" className="text-[10px] ml-auto">{queuedCalls.length} in coda</Badge>
+          <div className="flex items-center gap-1.5 ml-2">
+            <div className={`h-2 w-2 rounded-full ${activeCalls.length > 0 ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+            <span className="text-[11px] text-muted-foreground font-medium">{activeCalls.length}/{maxConcurrent} linee</span>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px]">{totalQueued} totali</Badge>
+            {cancellableCount > 0 && (
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-destructive hover:text-destructive" onClick={() => onCancelBatch('all')}>
+                Annulla tutti ({cancellableCount})
+              </Button>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="px-4 pb-3 pt-0">
-        <div className="space-y-2 max-h-[240px] overflow-auto">
-          {queuedCalls.map((call: any) => (
-            <div key={call.id} className="flex items-center gap-3 p-2 rounded-lg bg-background border text-sm">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs truncate">{call.target_phone}</span>
-                  {(call as any).contact_name && <span className="text-xs text-muted-foreground truncate">({(call as any).contact_name})</span>}
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {getStatusBadge(call)}
-                  {call.call_instruction && (
-                    <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">{call.call_instruction}</span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {!['talking', 'calling', 'ringing'].includes(call.status) && (call.next_retry_at || call.scheduled_at) && (
-                  <div className="flex items-center gap-1 text-blue-600">
-                    <Clock className="h-3 w-3" />
-                    <CallQueueCountdown targetDate={call.status === 'retry_scheduled' && call.next_retry_at ? call.next_retry_at : call.scheduled_at} />
-                  </div>
-                )}
-                {['talking', 'calling'].includes(call.status) && (
-                  <div className="flex items-center gap-1 text-green-600">
-                    <Phone className="h-3 w-3 animate-pulse" />
-                    <span className="text-xs font-medium">Attiva</span>
-                  </div>
-                )}
-                {['pending', 'retry_scheduled'].includes(call.status) && (
-                  <>
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => onTriggerNow(call.id)} title="Chiama subito">
-                      <PhoneOutgoing className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-destructive hover:text-destructive" onClick={() => onCancel(call.id)} title="Annulla">
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="space-y-3 max-h-[320px] overflow-auto">
+          {renderSection('active', 'Attive', activeCalls.length, 'rgb(22 163 74)', 'rgb(34 197 94)', activeCalls, 'active')}
+
+          {renderSection('queued', 'In coda', queuedCalls.length, 'rgb(37 99 235)', 'rgb(59 130 246)', queuedCalls, 'queued',
+            activeCalls.length >= maxConcurrent ? (
+              <span className="text-[9px] font-normal ml-1 normal-case tracking-normal" style={{ color: 'rgb(96 165 250)' }}>in attesa di linea libera</span>
+            ) : undefined
+          )}
+
+          {renderSection('retry', 'Retry', retryCalls.length, 'rgb(234 88 12)', 'rgb(249 115 22)', retryCalls, 'retry')}
+
+          {renderSection('future', 'Programmate', futureCalls.length, 'rgb(107 114 128)', 'rgb(156 163 175)', futureCalls, 'future', undefined, 5)}
         </div>
       </CardContent>
     </Card>
@@ -2940,6 +3048,18 @@ export default function ConsultantVoiceCallsPage() {
                         body: JSON.stringify({ callId: id, immediate: true })
                       }).then(() => refetchScheduledCalls());
                     }}
+                    onCancelBatch={(status) => {
+                      if (!confirm(`Annullare tutte le chiamate${status === 'all' ? '' : ` con status "${status}"`}?`)) return;
+                      fetch('/api/voice/outbound/cancel-batch', {
+                        method: 'POST',
+                        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: status || 'all' })
+                      }).then(r => r.json()).then(data => {
+                        toast({ title: "Annullate", description: `${data.cancelled} chiamate cancellate` });
+                        refetchScheduledCalls();
+                      }).catch(() => toast({ title: "Errore", variant: "destructive" }));
+                    }}
+                    maxConcurrent={maxConcurrentCalls}
                   />
 
                   <div className="flex gap-4">

@@ -3077,6 +3077,64 @@ router.delete("/outbound/:id", authenticateToken, requireAnyRole(["consultant", 
   }
 });
 
+router.post("/outbound/cancel-batch", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "super_admin" ? req.body.consultant_id : req.user?.id;
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID mancante" });
+    
+    const { status } = req.body;
+    
+    const validStatuses = ['pending', 'retry_scheduled', 'scheduled'];
+    let statusFilter: string[];
+    if (status === 'all' || !status) {
+      statusFilter = validStatuses;
+    } else if (validStatuses.includes(status)) {
+      statusFilter = [status];
+    } else {
+      return res.status(400).json({ error: "Status non valido" });
+    }
+
+    const callsToCancel = await db.execute(sql`
+      SELECT id, source_task_id FROM scheduled_voice_calls
+      WHERE consultant_id = ${consultantId}
+        AND status = ANY(${statusFilter})
+    `);
+    
+    const callIds = callsToCancel.rows.map((r: any) => r.id);
+    const taskIds = callsToCancel.rows.map((r: any) => r.source_task_id).filter(Boolean);
+
+    if (callIds.length === 0) {
+      return res.json({ success: true, cancelled: 0 });
+    }
+
+    for (const cid of callIds) {
+      cancelCallTimer(cid);
+    }
+
+    await db.execute(sql`
+      UPDATE scheduled_voice_calls
+      SET status = 'cancelled', updated_at = NOW()
+      WHERE consultant_id = ${consultantId}
+        AND status = ANY(${statusFilter})
+    `);
+
+    if (taskIds.length > 0) {
+      await db.execute(sql`
+        UPDATE ai_scheduled_tasks
+        SET status = 'cancelled', updated_at = NOW()
+        WHERE id = ANY(${taskIds})
+          AND status NOT IN ('completed', 'failed', 'cancelled')
+      `);
+    }
+
+    console.log(`🚫 [Outbound] Batch cancelled ${callIds.length} calls (status filter: ${statusFilter.join(',')}) for consultant ${consultantId}`);
+    res.json({ success: true, cancelled: callIds.length });
+  } catch (error: any) {
+    console.error("[Outbound] Batch cancel error:", error);
+    res.status(500).json({ error: "Errore nella cancellazione batch" });
+  }
+});
+
 // Reload pending calls on server restart
 async function reloadPendingCalls(): Promise<void> {
   try {
