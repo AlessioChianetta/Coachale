@@ -5316,6 +5316,158 @@ export default function ConsultantVoiceCallsPage() {
                   </TabsContent>
 
                   <TabsContent value="coda-attesa" className="space-y-6">
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Music className="h-5 w-5" />
+                      Audio Coda d'Attesa
+                    </CardTitle>
+                    <CardDescription>
+                      Personalizza i messaggi audio che i chiamanti sentono durante l'attesa in coda. Puoi generarli con AI o caricare file WAV.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {configuredAudioSlots.size}/{overflowAudioDefaults?.defaults?.length || 10} configurati
+                        </Badge>
+                      </div>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        disabled={generatingAll}
+                        onClick={handleGenerateAll}
+                      >
+                        {generatingAll ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4 mr-2" />
+                        )}
+                        Genera tutti con AI
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {(overflowAudioDefaults?.defaults || []).map((slot) => {
+                        const fileInfo = (overflowAudioFiles?.files || []).find(f => f.slotName === slot.slot);
+                        const isConfigured = !!fileInfo;
+                        const isGenerating = generatingSlots[slot.slot] || false;
+                        const slotIcon = slot.slot.startsWith('hold_') ? Volume2
+                          : slot.slot.startsWith('position_') ? List
+                          : slot.slot === 'transferring' ? PhoneForwarded
+                          : slot.slot === 'transfer_failed' ? PhoneOff
+                          : slot.slot === 'timeout' ? Timer
+                          : Music;
+
+                        return (
+                          <div key={slot.slot} className="p-4 border rounded-lg space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {React.createElement(slotIcon, { className: "h-4 w-4 text-muted-foreground" })}
+                                <div>
+                                  <p className="text-sm font-medium">{slot.title}</p>
+                                  <p className="text-xs text-muted-foreground">{slot.description}</p>
+                                </div>
+                              </div>
+                              <Badge variant={isConfigured ? "default" : "secondary"} className={isConfigured ? "bg-green-600" : ""}>
+                                {isConfigured ? "Personalizzato" : "Non configurato"}
+                              </Badge>
+                            </div>
+
+                            {isConfigured && fileInfo && (
+                              <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg">
+                                <audio controls preload="none" className="h-8 flex-1" style={{ maxHeight: '32px' }}>
+                                  <source src={`${fileInfo.previewUrl}`} type="audio/wav" />
+                                </audio>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                  onClick={() => deleteOverflowAudioMutation.mutate(slot.slot)}
+                                  disabled={deleteOverflowAudioMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+
+                            <div className="space-y-2">
+                              <Textarea
+                                placeholder="Testo per la generazione AI..."
+                                value={overflowAudioTexts[slot.slot] || ""}
+                                onChange={(e) => setOverflowAudioTexts(prev => ({ ...prev, [slot.slot]: e.target.value }))}
+                                rows={2}
+                                className="text-sm resize-none"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="default"
+                                size="sm"
+                                disabled={isGenerating || !overflowAudioTexts[slot.slot]}
+                                onClick={() => {
+                                  setGeneratingSlots(prev => ({ ...prev, [slot.slot]: true }));
+                                  generateOverflowAudioMutation.mutate({
+                                    slotName: slot.slot,
+                                    text: overflowAudioTexts[slot.slot] || "",
+                                    voiceName: overflowAudioVoices[slot.slot] || "Achernar",
+                                  });
+                                }}
+                              >
+                                {isGenerating ? (
+                                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                ) : (
+                                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                                )}
+                                Genera con AI
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => overflowFileInputRefs.current[slot.slot]?.click()}
+                              >
+                                <Upload className="h-3.5 w-3.5 mr-1.5" />
+                                Carica WAV
+                              </Button>
+                              <input
+                                type="file"
+                                accept=".wav,audio/wav"
+                                className="hidden"
+                                ref={(el) => { overflowFileInputRefs.current[slot.slot] = el; }}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    uploadOverflowAudioMutation.mutate({ slotName: slot.slot, file });
+                                    e.target.value = "";
+                                  }
+                                }}
+                              />
+                              <Select
+                                value={overflowAudioVoices[slot.slot] || "Achernar"}
+                                onValueChange={(val) => setOverflowAudioVoices(prev => ({ ...prev, [slot.slot]: val }))}
+                              >
+                                <SelectTrigger className="w-36 h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {VOICES.map((v) => (
+                                    <SelectItem key={v.value} value={v.value}>
+                                      {v.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {myVoiceNumbers.length > 0 && (
                   <Card>
                     <CardHeader>
@@ -5589,156 +5741,6 @@ export default function ConsultantVoiceCallsPage() {
                   </Card>
                 )}
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Music className="h-5 w-5" />
-                      Audio Coda d'Attesa
-                    </CardTitle>
-                    <CardDescription>
-                      Personalizza i messaggi audio che i chiamanti sentono durante l'attesa in coda. Puoi generarli con AI o caricare file WAV.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {configuredAudioSlots.size}/{overflowAudioDefaults?.defaults?.length || 10} configurati
-                        </Badge>
-                      </div>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        disabled={generatingAll}
-                        onClick={handleGenerateAll}
-                      >
-                        {generatingAll ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Sparkles className="h-4 w-4 mr-2" />
-                        )}
-                        Genera tutti con AI
-                      </Button>
-                    </div>
-
-                    <div className="space-y-3">
-                      {(overflowAudioDefaults?.defaults || []).map((slot) => {
-                        const fileInfo = (overflowAudioFiles?.files || []).find(f => f.slotName === slot.slot);
-                        const isConfigured = !!fileInfo;
-                        const isGenerating = generatingSlots[slot.slot] || false;
-                        const slotIcon = slot.slot.startsWith('hold_') ? Volume2
-                          : slot.slot.startsWith('position_') ? List
-                          : slot.slot === 'transferring' ? PhoneForwarded
-                          : slot.slot === 'transfer_failed' ? PhoneOff
-                          : slot.slot === 'timeout' ? Timer
-                          : Music;
-
-                        return (
-                          <div key={slot.slot} className="p-4 border rounded-lg space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                {React.createElement(slotIcon, { className: "h-4 w-4 text-muted-foreground" })}
-                                <div>
-                                  <p className="text-sm font-medium">{slot.title}</p>
-                                  <p className="text-xs text-muted-foreground">{slot.description}</p>
-                                </div>
-                              </div>
-                              <Badge variant={isConfigured ? "default" : "secondary"} className={isConfigured ? "bg-green-600" : ""}>
-                                {isConfigured ? "Personalizzato" : "Non configurato"}
-                              </Badge>
-                            </div>
-
-                            {isConfigured && fileInfo && (
-                              <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg">
-                                <audio controls preload="none" className="h-8 flex-1" style={{ maxHeight: '32px' }}>
-                                  <source src={`${fileInfo.previewUrl}`} type="audio/wav" />
-                                </audio>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                  onClick={() => deleteOverflowAudioMutation.mutate(slot.slot)}
-                                  disabled={deleteOverflowAudioMutation.isPending}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-
-                            <div className="space-y-2">
-                              <Textarea
-                                placeholder="Testo per la generazione AI..."
-                                value={overflowAudioTexts[slot.slot] || ""}
-                                onChange={(e) => setOverflowAudioTexts(prev => ({ ...prev, [slot.slot]: e.target.value }))}
-                                rows={2}
-                                className="text-sm resize-none"
-                              />
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="default"
-                                size="sm"
-                                disabled={isGenerating || !overflowAudioTexts[slot.slot]}
-                                onClick={() => {
-                                  setGeneratingSlots(prev => ({ ...prev, [slot.slot]: true }));
-                                  generateOverflowAudioMutation.mutate({
-                                    slotName: slot.slot,
-                                    text: overflowAudioTexts[slot.slot] || "",
-                                    voiceName: overflowAudioVoices[slot.slot] || "Achernar",
-                                  });
-                                }}
-                              >
-                                {isGenerating ? (
-                                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                                ) : (
-                                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                                )}
-                                Genera con AI
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => overflowFileInputRefs.current[slot.slot]?.click()}
-                              >
-                                <Upload className="h-3.5 w-3.5 mr-1.5" />
-                                Carica WAV
-                              </Button>
-                              <input
-                                type="file"
-                                accept=".wav,audio/wav"
-                                className="hidden"
-                                ref={(el) => { overflowFileInputRefs.current[slot.slot] = el; }}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    uploadOverflowAudioMutation.mutate({ slotName: slot.slot, file });
-                                    e.target.value = "";
-                                  }
-                                }}
-                              />
-                              <Select
-                                value={overflowAudioVoices[slot.slot] || "Achernar"}
-                                onValueChange={(val) => setOverflowAudioVoices(prev => ({ ...prev, [slot.slot]: val }))}
-                              >
-                                <SelectTrigger className="w-36 h-8 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {VOICES.map((v) => (
-                                    <SelectItem key={v.value} value={v.value}>
-                                      {v.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
                   </TabsContent>
 
                   <TabsContent value="chiamate-uscita" className="space-y-6">
