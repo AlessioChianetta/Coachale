@@ -114,6 +114,7 @@ import {
   Shield,
   Voicemail,
   Volume2,
+  Headphones,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -1019,12 +1020,13 @@ function ActiveCallDuration({ startedAt }: { startedAt?: string }) {
   return <span className="font-mono text-[11px] font-semibold text-green-600 dark:text-green-400">{elapsed}</span>;
 }
 
-function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch, voiceNumbers }: {
+function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch, voiceNumbers, overflowEntries = [] }: {
   scheduledCalls: any[];
   onCancel: (id: string) => void;
   onTriggerNow: (id: string) => void;
   onCancelBatch: (status?: string) => void;
   voiceNumbers: Array<{ id: string; phone_number: string; display_name?: string; is_active: boolean; max_concurrent_calls?: number }>;
+  overflowEntries?: Array<{ calledNumber: string; waitingSecs: number; uuid: string }>;
 }) {
   const now = Date.now();
   const SOON_THRESHOLD = 5 * 60 * 1000;
@@ -1068,7 +1070,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
     return da - db2;
   });
 
-  const totalQueued = activeCalls.length + queuedCalls.length + retryCalls.length + futureCalls.length + approvalCalls.length;
+  const totalQueued = activeCalls.length + queuedCalls.length + retryCalls.length + futureCalls.length + approvalCalls.length + overflowEntries.length;
   if (totalQueued === 0) return null;
 
   const cancellableCount = queuedCalls.length + retryCalls.length + futureCalls.length + approvalCalls.length;
@@ -1241,6 +1243,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
 
   const sectionStyles: Record<string, { headerBg: string; textColor: string; dotColor: string }> = {
     active: { headerBg: 'bg-green-50 dark:bg-green-950/30', textColor: 'text-green-700 dark:text-green-400', dotColor: 'bg-green-500' },
+    overflow: { headerBg: 'bg-purple-50 dark:bg-purple-950/30', textColor: 'text-purple-700 dark:text-purple-400', dotColor: 'bg-purple-500' },
     approval: { headerBg: 'bg-amber-50 dark:bg-amber-950/30', textColor: 'text-amber-700 dark:text-amber-400', dotColor: 'bg-amber-500' },
     queued: { headerBg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-700 dark:text-blue-400', dotColor: 'bg-blue-500' },
     retry: { headerBg: 'bg-orange-50 dark:bg-orange-950/30', textColor: 'text-orange-700 dark:text-orange-400', dotColor: 'bg-orange-500' },
@@ -1278,6 +1281,60 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
             {hiddenCount > 0 && (
               <p className="text-[11px] text-muted-foreground text-center py-1">...e altre {hiddenCount} {label.toLowerCase()}</p>
             )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const formatWaitTime = (secs: number) => {
+    if (secs < 60) return `${secs}s`;
+    const min = Math.floor(secs / 60);
+    const sec = secs % 60;
+    return sec > 0 ? `${min}m ${sec}s` : `${min}m`;
+  };
+
+  const renderOverflowSection = (entries: typeof overflowEntries, forNumber?: string) => {
+    const filtered = forNumber ? entries.filter(e => e.calledNumber === forNumber || e.calledNumber === forNumber.replace(/^\+/, '')) : entries;
+    if (filtered.length === 0) return null;
+    const style = sectionStyles['overflow'];
+    const key = forNumber ? `overflow-${forNumber}` : 'overflow';
+    const isCollapsedSection = collapsed[key];
+    const rawNum = filtered[0]?.calledNumber || '';
+    const numberInfo = numberMap.get(rawNum) || numberMap.get(rawNum.replace(/^\+/, '')) || numberMap.get(`+${rawNum}`) || { displayName: rawNum, maxConcurrent: 5 };
+    return (
+      <div>
+        <button
+          onClick={() => toggleSection(key)}
+          className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide transition-colors ${style.headerBg} ${style.textColor} hover:opacity-90`}
+        >
+          <span className={`w-2 h-2 rounded-full shrink-0 ${style.dotColor} animate-pulse`} />
+          <Headphones className="h-3.5 w-3.5" />
+          In attesa — centralino ({filtered.length})
+          {isCollapsedSection ? <ChevronRight className="h-3.5 w-3.5 ml-auto" /> : <ChevronDown className="h-3.5 w-3.5 ml-auto" />}
+        </button>
+        {!isCollapsedSection && (
+          <div className="mt-1.5 space-y-1">
+            {filtered.map((entry) => (
+              <div key={entry.uuid} className="flex items-center gap-3 px-3 py-2.5 rounded-md border text-sm transition-colors border-l-[3px] border-l-purple-500 bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/40">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5 text-purple-500 dark:text-purple-400 shrink-0" />
+                    <span className="font-mono text-[13px] font-medium text-foreground">Chiamante in attesa</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-sm font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60">Inbound</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Linea {numberInfo.displayName} occupata — in coda con musica d'attesa
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40">
+                    <Timer className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                    <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-400">{formatWaitTime(Math.max(0, entry.waitingSecs || 0))}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -1373,6 +1430,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
               </div>
               {activeGroup && (
                 <div className="space-y-1.5">
+                  {renderOverflowSection(overflowEntries, activeGroup.number)}
                   {activeGroup.approvalCalls.length > 0 && renderSection(`approval-${activeGroup.number}`, 'In attesa di approvazione', activeGroup.approvalCalls.length, activeGroup.approvalCalls, 'approval')}
                   {activeGroup.queuedCalls.length > 0 && renderSection(`queued-${activeGroup.number}`, 'In coda', activeGroup.queuedCalls.length, activeGroup.queuedCalls, 'queued',
                     activeGroup.activeCount >= activeGroup.maxConcurrent ? (
@@ -1381,7 +1439,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
                   )}
                   {activeGroup.retryCalls.length > 0 && renderSection(`retry-${activeGroup.number}`, 'Retry', activeGroup.retryCalls.length, activeGroup.retryCalls, 'retry')}
                   {activeGroup.futureCalls.length > 0 && renderSection(`future-${activeGroup.number}`, 'Programmate', activeGroup.futureCalls.length, activeGroup.futureCalls, 'future', undefined, 5)}
-                  {activeGroup.approvalCalls.length === 0 && activeGroup.queuedCalls.length === 0 && activeGroup.retryCalls.length === 0 && activeGroup.futureCalls.length === 0 && (
+                  {activeGroup.approvalCalls.length === 0 && activeGroup.queuedCalls.length === 0 && activeGroup.retryCalls.length === 0 && activeGroup.futureCalls.length === 0 && overflowEntries.filter(e => e.calledNumber === activeGroup.number || e.calledNumber === activeGroup.number.replace(/^\+/, '')).length === 0 && (
                     <div className="text-center py-4 text-[12px] text-muted-foreground">
                       Nessuna chiamata in coda per questo numero
                     </div>
@@ -1392,6 +1450,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
           ) : (
             <>
               {renderSection('active', 'Attive', activeCalls.length, activeCalls, 'active')}
+              {renderOverflowSection(overflowEntries)}
               {renderSection('approval', 'In attesa di approvazione', approvalCalls.length, approvalCalls, 'approval')}
               {renderSection('queued', 'In coda', queuedCalls.length, queuedCalls, 'queued',
                 activeCalls.length >= (numberGroups.length > 0 ? numberGroups[0].maxConcurrent : 5) && queuedCalls.length > 0 ? (
@@ -3837,6 +3896,7 @@ export default function ConsultantVoiceCallsPage() {
                       }).catch(() => toast({ title: "Errore", variant: "destructive" }));
                     }}
                     voiceNumbers={myVoiceNumbers.map(n => ({ ...n, max_concurrent_calls: (n as any).max_concurrent_calls }))}
+                    overflowEntries={healthData?.vps?.overflowEntries || []}
                   />
 
                   <div className="flex gap-4">
