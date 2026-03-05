@@ -1019,6 +1019,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
   const SOON_THRESHOLD = 5 * 60 * 1000;
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ future: true });
   const toggleSection = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+  const [activeNumberTab, setActiveNumberTab] = useState<string | null>(null);
 
   const activeCalls = scheduledCalls.filter((c: any) => ['talking', 'calling', 'ringing', 'in_progress'].includes(c.status));
   const retryCalls = scheduledCalls.filter((c: any) => c.status === 'retry_scheduled')
@@ -1086,6 +1087,12 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
     return { number: num, ...info, activeCount: numActive, queuedCalls: numQueued, retryCalls: numRetry, futureCalls: numFuture };
   });
   const hasMultipleNumbers = numberGroups.length > 1;
+
+  const selectedNumberTab = activeNumberTab && numberGroups.some(g => g.number === activeNumberTab)
+    ? activeNumberTab
+    : numberGroups.length > 0 ? numberGroups[0].number : null;
+
+  const activeGroup = numberGroups.find(g => g.number === selectedNumberTab) || null;
 
   const getOriginBadge = (call: any) => {
     if (call.source_task_id) {
@@ -1324,26 +1331,52 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
           {renderSection('approval', 'In attesa di approvazione', approvalCalls.length, approvalCalls, 'approval')}
 
           {hasMultipleNumbers ? (
-            numberGroups.map(g => {
-              const allGroupCalls = [...g.queuedCalls, ...g.retryCalls, ...g.futureCalls];
-              if (allGroupCalls.length === 0) return null;
-              return (
-                <div key={g.number} className="space-y-1.5">
-                  <div className="flex items-center gap-2 px-2 py-1 rounded bg-gray-50 dark:bg-gray-800/30 border border-gray-200/50 dark:border-gray-700/30">
-                    <Phone className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-[11px] font-mono font-medium">{g.displayName}</span>
-                    <span className="text-[10px] text-muted-foreground">({g.activeCount}/{g.maxConcurrent} linee attive)</span>
-                  </div>
-                  {g.queuedCalls.length > 0 && renderSection(`queued-${g.number}`, 'In coda', g.queuedCalls.length, g.queuedCalls, 'queued',
-                    g.activeCount >= g.maxConcurrent ? (
+            <>
+              <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700/50 pb-1 mb-2">
+                {numberGroups.map((g, idx) => {
+                  const isActive = g.number === selectedNumberTab;
+                  const groupTotal = g.queuedCalls.length + g.retryCalls.length + g.futureCalls.length;
+                  return (
+                    <button
+                      key={g.number}
+                      onClick={() => setActiveNumberTab(g.number)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-t-md text-[11px] font-medium transition-all border border-b-0 ${
+                        isActive
+                          ? 'bg-white dark:bg-[#161b26] border-gray-200 dark:border-gray-700/50 text-foreground shadow-sm -mb-[1px] z-10'
+                          : 'bg-gray-50 dark:bg-gray-800/30 border-transparent text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800/60'
+                      }`}
+                    >
+                      <Phone className="h-3 w-3" />
+                      <span className="font-mono">{g.displayName || `Numero ${idx + 1}`}</span>
+                      <div className="flex items-center gap-1 ml-0.5">
+                        <span className={`text-[9px] px-1 py-0.5 rounded ${g.activeCount > 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500'}`}>
+                          {g.activeCount}/{g.maxConcurrent}
+                        </span>
+                        {groupTotal > 0 && (
+                          <span className="text-[9px] px-1 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">{groupTotal}</span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {activeGroup && (
+                <div className="space-y-1.5">
+                  {activeGroup.queuedCalls.length > 0 && renderSection(`queued-${activeGroup.number}`, 'In coda', activeGroup.queuedCalls.length, activeGroup.queuedCalls, 'queued',
+                    activeGroup.activeCount >= activeGroup.maxConcurrent ? (
                       <span className="text-[9px] font-normal ml-1 normal-case tracking-normal text-blue-500 dark:text-blue-400">in attesa di linea libera</span>
                     ) : undefined
                   )}
-                  {g.retryCalls.length > 0 && renderSection(`retry-${g.number}`, 'Retry', g.retryCalls.length, g.retryCalls, 'retry')}
-                  {g.futureCalls.length > 0 && renderSection(`future-${g.number}`, 'Programmate', g.futureCalls.length, g.futureCalls, 'future', undefined, 5)}
+                  {activeGroup.retryCalls.length > 0 && renderSection(`retry-${activeGroup.number}`, 'Retry', activeGroup.retryCalls.length, activeGroup.retryCalls, 'retry')}
+                  {activeGroup.futureCalls.length > 0 && renderSection(`future-${activeGroup.number}`, 'Programmate', activeGroup.futureCalls.length, activeGroup.futureCalls, 'future', undefined, 5)}
+                  {activeGroup.queuedCalls.length === 0 && activeGroup.retryCalls.length === 0 && activeGroup.futureCalls.length === 0 && (
+                    <div className="text-center py-4 text-[12px] text-muted-foreground">
+                      Nessuna chiamata in coda per questo numero
+                    </div>
+                  )}
                 </div>
-              );
-            })
+              )}
+            </>
           ) : (
             <>
               {renderSection('queued', 'In coda', queuedCalls.length, queuedCalls, 'queued',
