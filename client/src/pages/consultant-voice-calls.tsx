@@ -5363,7 +5363,9 @@ export default function ConsultantVoiceCallsPage() {
                               <React.Fragment key={i}>
                                 {i > 0 && (
                                   <span className="px-1 text-blue-400 dark:text-blue-500">
-                                    → {delay} min →
+                                    → {backoffMode === 'exponential'
+                                      ? Math.min(retryIntervalMinutes * Math.pow(2, i - 1), 30)
+                                      : (manualDelays[i - 1] ?? 5)} min →
                                   </span>
                                 )}
                                 <span className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded font-medium">

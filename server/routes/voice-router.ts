@@ -2902,6 +2902,14 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
   } catch (error: any) {
     console.error(`❌ [Outbound] Failed to execute call ${callId}:`, error);
     
+    const vpsHangupCauses = ['NO_ANSWER', 'USER_BUSY', 'CALL_REJECTED', 'NO_USER_RESPONSE', 'RECOVERY_ON_TIMER_EXPIRE', 'NORMAL_CLEARING'];
+    const isVpsHangupError = vpsHangupCauses.some(cause => error.message?.includes(cause));
+    
+    if (isVpsHangupError) {
+      console.log(`⏳ [Outbound] Call ${callId} got VPS hangup error (${error.message.slice(0, 60)}...) — skipping retry here, VPS callback will handle it`);
+      return { success: false, error: `VPS hangup — callback will handle retry` };
+    }
+    
     const callResult = await db.execute(sql`
       SELECT attempts, max_attempts FROM scheduled_voice_calls WHERE id = ${callId}
     `);
