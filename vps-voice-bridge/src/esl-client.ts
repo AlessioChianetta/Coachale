@@ -7,7 +7,7 @@ import esl from 'modesl';
 
 const log = logger.child('ESL');
 
-export const callMetadata = new Map<string, { callerIdNumber: string, callerIdName: string, calledNumber?: string, parkTime?: number }>();
+export const callMetadata = new Map<string, { callerIdNumber: string, callerIdName: string, calledNumber?: string, parkTime?: number, amdEnabled?: boolean }>();
 
 export const outboundCallIdMap = new Map<string, string>();
 
@@ -37,6 +37,14 @@ export function originateOutboundCall(dialString: string): Promise<string> {
         reject(new Error(`FreeSWITCH error: ${body}`));
       }
     });
+  });
+}
+
+function startAmdViaEsl(conn: any, uuid: string, source: string): void {
+  log.info(`🤖 [AMD] Starting AMD detection via ESL (${source}) for uuid=${uuid}`);
+  (conn as any).bgapi(`uuid_execute ${uuid} amd`, (res: any) => {
+    const body = res?.getBody?.() || String(res);
+    log.info(`🤖 [AMD] uuid_execute result uuid=${uuid} response=${body}`);
   });
 }
 
@@ -116,6 +124,10 @@ export function startESLController(): void {
         pendingAnswers.delete(uuid);
         log.info(`🔄 [CHANNEL_PARK] CHANNEL_ANSWER already arrived for uuid=${uuid} — starting audio stream now`);
         startAudioStream(conn, uuid, tAnswer);
+        const parkMeta = callMetadata.get(uuid);
+        if (parkMeta?.amdEnabled) {
+          startAmdViaEsl(conn, uuid, 'PARK-pendingAnswer');
+        }
       }
     } else {
       setExpectedCallId(uuid);
@@ -155,6 +167,9 @@ export function startESLController(): void {
             pendingAnswers.delete(resolvedUuid);
             log.info(`🔄 [CHANNEL_ANSWER] Retry found metadata for uuid=${resolvedUuid} — starting audio stream`);
             startAudioStream(conn, resolvedUuid, Date.now());
+            if (retryMeta.amdEnabled) {
+              startAmdViaEsl(conn, resolvedUuid, 'ANSWER-retry');
+            }
           } else {
             log.warn(`⚠️ [CHANNEL_ANSWER] Retry still no metadata for uuid=${resolvedUuid} after 200ms`);
             pendingAnswers.delete(resolvedUuid);
@@ -163,6 +178,10 @@ export function startESLController(): void {
               log.info(`🔄 [CHANNEL_ANSWER] Using pre-registered callId=${preRegistered}, starting audio stream anyway`);
               setExpectedCallId(preRegistered, resolvedUuid);
               startAudioStream(conn, resolvedUuid, Date.now());
+              const fallbackMeta = callMetadata.get(resolvedUuid);
+              if (fallbackMeta?.amdEnabled) {
+                startAmdViaEsl(conn, resolvedUuid, 'ANSWER-preRegistered');
+              }
             }
           }
         }
@@ -181,6 +200,10 @@ export function startESLController(): void {
     log.info(`📞 OUTBOUND call ANSWERED — starting audio stream`, { uuid: resolvedUuid, ringTimeMs: ringTime });
 
     startAudioStream(conn, resolvedUuid, tAnswer);
+
+    if (meta.amdEnabled) {
+      startAmdViaEsl(conn, resolvedUuid, 'ANSWER-direct');
+    }
   });
 
   conn.on('esl::event::CHANNEL_HANGUP::*', (event: any) => {
