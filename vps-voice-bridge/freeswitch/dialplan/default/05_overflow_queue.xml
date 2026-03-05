@@ -42,6 +42,9 @@
   - position_prefix.wav: "Sei in posizione numero"
   - position_suffix.wav: "nella coda d'attesa"
   
+  VARIABILI CHANNEL AGGIUNTIVE:
+  - overflow_audio_dir: directory audio per-consulente (default: /opt/sounds/overflow/default)
+  
   PERCORSO DEPLOY:
   /usr/local/freeswitch/etc/freeswitch/dialplan/default/05_overflow_queue.xml
   ================================================================
@@ -57,6 +60,7 @@
       <!-- Answer difensivo: se il canale non e gia answered, lo risponde -->
       <action application="answer"/>
 
+      <action application="set" data="overflow_audio_dir=${overflow_audio_dir:-/opt/sounds/overflow/default}"/>
       <action application="set" data="playback_terminators=none"/>
 
       <!-- Bind DTMF "1" per trasferimento manuale -->
@@ -103,9 +107,9 @@
       <action application="log" data="INFO [OVERFLOW] announce_position chiamato, queue_position=${queue_position}"/>
     </condition>
     <condition field="destination_number" expression="^announce_position$" field2="${queue_position}" expression2="^[1-9]\d*$">
-      <action application="playback" data="/opt/sounds/overflow/position_prefix.wav"/>
+      <action application="playback" data="${overflow_audio_dir}/position_prefix.wav"/>
       <action application="say" data="it NUMBER PRONOUNCED ${queue_position}"/>
-      <action application="playback" data="/opt/sounds/overflow/position_suffix.wav"/>
+      <action application="playback" data="${overflow_audio_dir}/position_suffix.wav"/>
       <anti-action application="log" data="INFO [OVERFLOW] Skipping position: queue_position non valida o WAV assenti"/>
     </condition>
   </extension>
@@ -116,7 +120,7 @@
   ============================================================ -->
   <extension name="play_hold_A">
     <condition field="destination_number" expression="^play_hold_A$">
-      <action application="playback" data="/opt/sounds/overflow/hold_A.wav"/>
+      <action application="playback" data="${overflow_audio_dir}/hold_A.wav"/>
       <anti-action application="playback" data="local_stream://moh"/>
     </condition>
   </extension>
@@ -127,7 +131,7 @@
   ============================================================ -->
   <extension name="play_hold_B">
     <condition field="destination_number" expression="^play_hold_B$">
-      <action application="playback" data="/opt/sounds/overflow/hold_B.wav"/>
+      <action application="playback" data="${overflow_audio_dir}/hold_B.wav"/>
       <anti-action application="playback" data="local_stream://moh"/>
     </condition>
   </extension>
@@ -138,7 +142,7 @@
   ============================================================ -->
   <extension name="play_hold_C">
     <condition field="destination_number" expression="^play_hold_C$">
-      <action application="playback" data="/opt/sounds/overflow/hold_C.wav"/>
+      <action application="playback" data="${overflow_audio_dir}/hold_C.wav"/>
       <anti-action application="playback" data="local_stream://moh"/>
     </condition>
   </extension>
@@ -149,7 +153,7 @@
   ============================================================ -->
   <extension name="play_hold_D">
     <condition field="destination_number" expression="^play_hold_D$">
-      <action application="playback" data="/opt/sounds/overflow/hold_D.wav"/>
+      <action application="playback" data="${overflow_audio_dir}/hold_D.wav"/>
       <anti-action application="playback" data="local_stream://moh"/>
     </condition>
   </extension>
@@ -160,7 +164,7 @@
   ============================================================ -->
   <extension name="play_hold_E">
     <condition field="destination_number" expression="^play_hold_E$">
-      <action application="playback" data="/opt/sounds/overflow/hold_E.wav"/>
+      <action application="playback" data="${overflow_audio_dir}/hold_E.wav"/>
       <anti-action application="playback" data="local_stream://moh"/>
     </condition>
   </extension>
@@ -173,7 +177,7 @@
     <condition field="destination_number" expression="^overflow_timeout$">
       <action application="log" data="INFO [OVERFLOW-TIMEOUT] Chiamata ${uuid} - timeout raggiunto"/>
       <action application="clear_digit_action" data="overflow"/>
-      <action application="playback" data="/opt/sounds/overflow/timeout.wav"/>
+      <action application="playback" data="${overflow_audio_dir}/timeout.wav"/>
       <anti-action application="playback" data="tone_stream://%(500,100,400);%(500,100,300);%(1000,0,200)"/>
       <action application="hangup" data="NORMAL_CLEARING"/>
     </condition>
@@ -190,7 +194,7 @@
 
       <action application="clear_digit_action" data="overflow"/>
 
-      <action application="playback" data="/opt/sounds/overflow/transferring.wav"/>
+      <action application="playback" data="${overflow_audio_dir}/transferring.wav"/>
       <anti-action application="playback" data="tone_stream://%(200,100,600);%(200,100,500)"/>
 
       <action application="set" data="hangup_after_bridge=true"/>
@@ -201,7 +205,7 @@
 
       <!-- Se il bridge fallisce, arriva qui -->
       <action application="log" data="WARNING [OVERFLOW-TRANSFER] Bridge fallito per ${fallback_transfer_number}"/>
-      <action application="playback" data="/opt/sounds/overflow/transfer_failed.wav"/>
+      <action application="playback" data="${overflow_audio_dir}/transfer_failed.wav"/>
       <anti-action application="playback" data="tone_stream://%(300,200,400)"/>
       <action application="hangup" data="NORMAL_CLEARING"/>
 

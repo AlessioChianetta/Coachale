@@ -1,10 +1,134 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { WebSocket } from 'ws';
+import fs from 'fs';
+import path from 'path';
 import { logger, formatBytes, formatDuration } from './logger.js';
 import { config } from './config.js';
 import type { ReplitWSClient } from './replit-ws-client.js';
 
 const log = logger.child('SESSION');
+const syncLog = logger.child('OVERFLOW-SYNC');
+
+const OVERFLOW_BASE_DIR = '/opt/sounds/overflow';
+const OVERFLOW_DEFAULT_DIR = path.join(OVERFLOW_BASE_DIR, 'default');
+const SYNC_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const lastSyncTimes = new Map<string, number>();
+
+function ensureDir(dir: string): void {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    syncLog.info(`📁 Created directory: ${dir}`);
+  }
+}
+
+export async function syncOverflowAudio(consultantId: string): Promise<string> {
+  const consultantDir = path.join(OVERFLOW_BASE_DIR, consultantId);
+
+  const lastSync = lastSyncTimes.get(consultantId) || 0;
+  const elapsed = Date.now() - lastSync;
+  if (elapsed < SYNC_CACHE_TTL_MS && fs.existsSync(consultantDir)) {
+    const files = fs.readdirSync(consultantDir).filter(f => f.endsWith('.wav'));
+    if (files.length > 0) {
+      syncLog.info(`⏩ [SYNC] Skipping sync for ${consultantId.slice(0, 8)} — cached (${Math.round(elapsed / 60000)}min ago, ${files.length} files)`);
+      return consultantDir;
+    }
+  }
+
+  if (!config.replit.apiUrl || !config.serviceToken) {
+    syncLog.warn(`⚠️ [SYNC] Replit API or service token not configured — using default audio`);
+    ensureDir(OVERFLOW_DEFAULT_DIR);
+    return OVERFLOW_DEFAULT_DIR;
+  }
+
+  try {
+    syncLog.info(`🔄 [SYNC] Fetching manifest for consultant ${consultantId.slice(0, 8)}...`);
+    const manifestUrl = `${config.replit.apiUrl}/api/voice/overflow-audio/download/${consultantId}/manifest`;
+    const manifestRes = await fetch(manifestUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${config.serviceToken}`,
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!manifestRes.ok) {
+      throw new Error(`Manifest fetch failed: ${manifestRes.status} ${manifestRes.statusText}`);
+    }
+
+    const manifestData = await manifestRes.json() as { success: boolean; files: Array<{ slotName: string; fileName: string; size: number; updatedAt: string }> };
+
+    if (!manifestData.success || !manifestData.files || manifestData.files.length === 0) {
+      syncLog.info(`📭 [SYNC] No custom audio files for consultant ${consultantId.slice(0, 8)} — using default`);
+      ensureDir(OVERFLOW_DEFAULT_DIR);
+      return OVERFLOW_DEFAULT_DIR;
+    }
+
+    ensureDir(consultantDir);
+
+    let downloaded = 0;
+    let skipped = 0;
+
+    for (const file of manifestData.files) {
+      const localPath = path.join(consultantDir, file.fileName);
+
+      if (fs.existsSync(localPath)) {
+        const localStats = fs.statSync(localPath);
+        const localMtime = localStats.mtime.getTime();
+        const remoteMtime = new Date(file.updatedAt).getTime();
+        if (localStats.size === file.size && localMtime >= remoteMtime - 1000) {
+          skipped++;
+          continue;
+        }
+      }
+
+      try {
+        const downloadUrl = `${config.replit.apiUrl}/api/voice/overflow-audio/download/${consultantId}/${file.fileName}`;
+        const dlRes = await fetch(downloadUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${config.serviceToken}`,
+          },
+          signal: AbortSignal.timeout(30000),
+        });
+
+        if (!dlRes.ok) {
+          syncLog.warn(`⚠️ [SYNC] Failed to download ${file.fileName}: ${dlRes.status}`);
+          continue;
+        }
+
+        const arrayBuffer = await dlRes.arrayBuffer();
+        fs.writeFileSync(localPath, Buffer.from(arrayBuffer));
+        downloaded++;
+        syncLog.info(`✅ [SYNC] Downloaded ${file.fileName} (${file.size} bytes)`);
+      } catch (dlErr: any) {
+        syncLog.warn(`⚠️ [SYNC] Error downloading ${file.fileName}: ${dlErr.message}`);
+      }
+    }
+
+    const manifestFileNames = new Set(manifestData.files.map(f => f.fileName));
+    const localFiles = fs.readdirSync(consultantDir).filter(f => f.endsWith('.wav'));
+    let removed = 0;
+    for (const localFile of localFiles) {
+      if (!manifestFileNames.has(localFile)) {
+        try {
+          fs.unlinkSync(path.join(consultantDir, localFile));
+          removed++;
+          syncLog.info(`🗑️ [SYNC] Removed stale file ${localFile}`);
+        } catch {}
+      }
+    }
+
+    lastSyncTimes.set(consultantId, Date.now());
+    syncLog.info(`🔄 [SYNC] Sync complete for ${consultantId.slice(0, 8)}: ${downloaded} downloaded, ${skipped} skipped, ${removed} removed, ${manifestData.files.length} total`);
+    return consultantDir;
+
+  } catch (err: any) {
+    syncLog.error(`❌ [SYNC] Sync failed for ${consultantId.slice(0, 8)}: ${err.message}`);
+    ensureDir(OVERFLOW_DEFAULT_DIR);
+    return OVERFLOW_DEFAULT_DIR;
+  }
+}
 
 export interface ClientContext {
   userId?: string;

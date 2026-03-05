@@ -17,11 +17,13 @@ import { consultantAvailabilitySettings, users } from "@shared/schema";
 import { getActiveVoiceCallsForConsultant, getActiveGeminiConnections, getActiveGeminiConnectionCount, forceCloseAllGeminiConnections, invalidateVoiceCache, invalidateVoiceNumberCache } from "../ai/gemini-live-ws-service";
 import { getTemplateOptions, getTemplateById, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
 import { scheduleNextRecurrence } from '../cron/ai-task-scheduler';
-import { quickGenerate } from '../ai/provider-factory';
+import { quickGenerate, getAIProvider } from '../ai/provider-factory';
+import { generateSpeech } from '../ai/tts-service';
 import { initCallTimerManager, scheduleTimer as _scheduleTimerFromManager, cancelTimer as _cancelTimerFromManager, registerCallFunctions, getTimerCount } from '../services/call-timer-manager';
 import { resolveHunterContext } from '../services/hunter-context-resolver';
 import * as telnyxProvisioning from '../services/telnyx-provisioning';
 import { upload } from '../middleware/upload';
+import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 
@@ -6160,6 +6162,463 @@ router.delete("/voip-provisioning/kyc-doc/:id", authenticateToken, requireAnyRol
   } catch (error: any) {
     console.error("[VOIP] Error deleting KYC doc:", error);
     res.status(500).json({ error: "Errore nell'eliminazione del documento" });
+  }
+});
+
+const OVERFLOW_AUDIO_SLOTS = [
+  { slot: 'hold_A', title: 'Musica Attesa A', description: 'Primo messaggio di attesa' },
+  { slot: 'hold_B', title: 'Musica Attesa B', description: 'Secondo messaggio di attesa' },
+  { slot: 'hold_C', title: 'Musica Attesa C', description: 'Terzo messaggio di attesa' },
+  { slot: 'hold_D', title: 'Musica Attesa D', description: 'Quarto messaggio di attesa' },
+  { slot: 'hold_E', title: 'Musica Attesa E', description: 'Quinto messaggio di attesa' },
+  { slot: 'position_prefix', title: 'Prefisso Posizione', description: 'Messaggio prima del numero di posizione in coda' },
+  { slot: 'position_suffix', title: 'Suffisso Posizione', description: 'Messaggio dopo il numero di posizione in coda' },
+  { slot: 'transferring', title: 'Trasferimento', description: 'Messaggio durante il trasferimento al consulente' },
+  { slot: 'transfer_failed', title: 'Trasferimento Fallito', description: 'Messaggio quando il trasferimento non riesce' },
+  { slot: 'timeout', title: 'Timeout', description: 'Messaggio quando il tempo di attesa è scaduto' },
+];
+
+const OVERFLOW_AUDIO_DEFAULTS: Record<string, { text: string; voiceName: string }> = {
+  hold_A: { text: "Grazie per la sua pazienza. Il nostro consulente sarà con lei a breve. La preghiamo di restare in linea.", voiceName: "Achernar" },
+  hold_B: { text: "La ringraziamo per l'attesa. Stiamo cercando di metterla in contatto con il primo consulente disponibile.", voiceName: "Achernar" },
+  hold_C: { text: "Apprezziamo la sua pazienza. Il suo tempo è importante per noi. Un consulente la assisterà il prima possibile.", voiceName: "Achernar" },
+  hold_D: { text: "Grazie per rimanere in linea. Ci stiamo occupando della sua richiesta e saremo con lei a momenti.", voiceName: "Achernar" },
+  hold_E: { text: "La ringraziamo per la sua attesa. Ci scusiamo per il ritardo, un consulente sarà disponibile a breve.", voiceName: "Achernar" },
+  position_prefix: { text: "Lei è attualmente in posizione numero", voiceName: "Achernar" },
+  position_suffix: { text: "nella coda di attesa. La preghiamo di restare in linea.", voiceName: "Achernar" },
+  transferring: { text: "Stiamo trasferendo la sua chiamata al consulente. Un momento per favore.", voiceName: "Achernar" },
+  transfer_failed: { text: "Ci scusiamo, al momento non è possibile completare il trasferimento. La preghiamo di riprovare più tardi.", voiceName: "Achernar" },
+  timeout: { text: "Ci scusiamo, il tempo di attesa è stato superato. La preghiamo di richiamare più tardi o lasciare un messaggio.", voiceName: "Achernar" },
+};
+
+function getOverflowAudioDir(consultantId: string): string {
+  return path.join(process.cwd(), 'uploads', 'overflow-audio', consultantId);
+}
+
+function ensureOverflowDir(consultantId: string): string {
+  const dir = getOverflowAudioDir(consultantId);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+function parseWavHeader(buf: Buffer): { sampleRate: number; channels: number; bitsPerSample: number; dataOffset: number; dataSize: number } | null {
+  if (buf.length < 44) return null;
+  const riff = buf.toString('ascii', 0, 4);
+  const wave = buf.toString('ascii', 8, 12);
+  if (riff !== 'RIFF' || wave !== 'WAVE') return null;
+
+  let offset = 12;
+  while (offset + 8 < buf.length) {
+    const chunkId = buf.toString('ascii', offset, offset + 4);
+    const chunkSize = buf.readUInt32LE(offset + 4);
+    if (chunkId === 'fmt ') {
+      const channels = buf.readUInt16LE(offset + 10);
+      const sampleRate = buf.readUInt32LE(offset + 12);
+      const bitsPerSample = buf.readUInt16LE(offset + 22);
+      let dataOffset = offset + 8 + chunkSize;
+      while (dataOffset + 8 < buf.length) {
+        const dId = buf.toString('ascii', dataOffset, dataOffset + 4);
+        const dSize = buf.readUInt32LE(dataOffset + 4);
+        if (dId === 'data') {
+          return { sampleRate, channels, bitsPerSample, dataOffset: dataOffset + 8, dataSize: dSize };
+        }
+        dataOffset += 8 + dSize;
+      }
+      return { sampleRate, channels, bitsPerSample, dataOffset: 44, dataSize: buf.length - 44 };
+    }
+    offset += 8 + chunkSize;
+  }
+  return null;
+}
+
+function buildWav8kMono(pcm8k: Buffer): Buffer {
+  const wavHeader = Buffer.alloc(44);
+  const dataSize = pcm8k.length;
+  const fileSize = 36 + dataSize;
+  wavHeader.write('RIFF', 0);
+  wavHeader.writeUInt32LE(fileSize, 4);
+  wavHeader.write('WAVE', 8);
+  wavHeader.write('fmt ', 12);
+  wavHeader.writeUInt32LE(16, 16);
+  wavHeader.writeUInt16LE(1, 20);
+  wavHeader.writeUInt16LE(1, 22);
+  wavHeader.writeUInt32LE(8000, 24);
+  wavHeader.writeUInt32LE(16000, 28);
+  wavHeader.writeUInt16LE(2, 32);
+  wavHeader.writeUInt16LE(16, 34);
+  wavHeader.write('data', 36);
+  wavHeader.writeUInt32LE(dataSize, 40);
+  return Buffer.concat([wavHeader, pcm8k]);
+}
+
+function convertWavTo8kMono(wavBuffer: Buffer): Buffer {
+  const info = parseWavHeader(wavBuffer);
+  if (!info) throw new Error('Formato WAV non valido');
+  if (info.bitsPerSample !== 16) throw new Error(`Bit depth ${info.bitsPerSample} non supportato, richiesto 16-bit`);
+
+  const pcmData = wavBuffer.subarray(info.dataOffset, info.dataOffset + info.dataSize);
+  const bytesPerSample = info.bitsPerSample / 8;
+  const frameSize = bytesPerSample * info.channels;
+  const totalFrames = Math.floor(pcmData.length / frameSize);
+
+  let monoFrames: Buffer;
+  if (info.channels > 1) {
+    monoFrames = Buffer.alloc(totalFrames * 2);
+    for (let i = 0; i < totalFrames; i++) {
+      let sum = 0;
+      for (let ch = 0; ch < info.channels; ch++) {
+        sum += pcmData.readInt16LE(i * frameSize + ch * 2);
+      }
+      monoFrames.writeInt16LE(Math.round(sum / info.channels), i * 2);
+    }
+  } else {
+    monoFrames = pcmData;
+  }
+
+  if (info.sampleRate === 8000) {
+    return buildWav8kMono(monoFrames);
+  }
+
+  const ratio = info.sampleRate / 8000;
+  const outFrames = Math.floor(totalFrames / ratio);
+  const pcm8k = Buffer.alloc(outFrames * 2);
+  for (let i = 0; i < outFrames; i++) {
+    const srcIndex = Math.floor(i * ratio);
+    const clampedIdx = Math.min(srcIndex, totalFrames - 1);
+    pcm8k.writeInt16LE(monoFrames.readInt16LE(clampedIdx * 2), i * 2);
+  }
+
+  return buildWav8kMono(pcm8k);
+}
+
+const overflowUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (file.mimetype === 'audio/wav' || file.mimetype === 'audio/wave' || file.mimetype === 'audio/x-wav') {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo file WAV sono supportati'));
+    }
+  }
+});
+
+router.get("/overflow-audio/defaults", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (_req: AuthRequest, res: Response) => {
+  try {
+    const defaults = OVERFLOW_AUDIO_SLOTS.map(slot => ({
+      ...slot,
+      defaultText: OVERFLOW_AUDIO_DEFAULTS[slot.slot]?.text || '',
+      defaultVoice: OVERFLOW_AUDIO_DEFAULTS[slot.slot]?.voiceName || 'Achernar',
+    }));
+    res.json({ success: true, defaults });
+  } catch (error: any) {
+    console.error("[OVERFLOW-AUDIO] Error fetching defaults:", error);
+    res.status(500).json({ error: "Errore nel recupero dei testi predefiniti" });
+  }
+});
+
+router.get("/overflow-audio", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = await resolveConsultantId(req.user, req.query.consultantId as string);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID richiesto" });
+
+    const dir = getOverflowAudioDir(consultantId);
+    const files: any[] = [];
+
+    if (fs.existsSync(dir)) {
+      const entries = fs.readdirSync(dir);
+      for (const entry of entries) {
+        if (!entry.endsWith('.wav')) continue;
+        const slotName = entry.replace('.wav', '');
+        const filePath = path.join(dir, entry);
+        const stats = fs.statSync(filePath);
+        let meta: any = null;
+        const metaPath = path.join(dir, `${slotName}.meta.json`);
+        if (fs.existsSync(metaPath)) {
+          try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8')); } catch {}
+        }
+        files.push({
+          slotName,
+          fileName: entry,
+          size: stats.size,
+          createdAt: stats.birthtime,
+          updatedAt: stats.mtime,
+          previewUrl: `/api/voice/overflow-audio/play/${slotName}`,
+          meta,
+        });
+      }
+    }
+
+    res.json({ success: true, files });
+  } catch (error: any) {
+    console.error("[OVERFLOW-AUDIO] Error listing files:", error);
+    res.status(500).json({ error: "Errore nel recupero dei file audio" });
+  }
+});
+
+router.post("/overflow-audio/generate", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = await resolveConsultantId(req.user, req.body.consultantId);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID richiesto" });
+
+    const { slotName, text, voiceName } = req.body;
+    if (!slotName || !text) {
+      return res.status(400).json({ error: "slotName e text sono richiesti" });
+    }
+
+    const validSlots = OVERFLOW_AUDIO_SLOTS.map(s => s.slot);
+    if (!validSlots.includes(slotName)) {
+      return res.status(400).json({ error: `Slot non valido. Validi: ${validSlots.join(', ')}` });
+    }
+
+    console.log(`[OVERFLOW-AUDIO] Generating TTS for slot "${slotName}" consultant ${consultantId}`);
+
+    const aiProvider = await getAIProvider(consultantId, consultantId);
+    aiProvider.setFeature?.('overflow-audio-tts');
+
+    if (!aiProvider.vertexClient) {
+      return res.status(500).json({ error: "VertexAI client non disponibile per TTS" });
+    }
+
+    const wav24kBuffer = await generateSpeech({
+      text,
+      vertexClient: aiProvider.vertexClient,
+      projectId: aiProvider.metadata.projectId || process.env.VERTEX_PROJECT_ID || '',
+      location: aiProvider.metadata.location || process.env.VERTEX_LOCATION || 'us-central1',
+      consultantId,
+    });
+
+    const wav8kBuffer = convertWavTo8kMono(wav24kBuffer);
+
+    const dir = ensureOverflowDir(consultantId);
+    const filePath = path.join(dir, `${slotName}.wav`);
+    fs.writeFileSync(filePath, wav8kBuffer);
+
+    const metaPath = path.join(dir, `${slotName}.meta.json`);
+    fs.writeFileSync(metaPath, JSON.stringify({
+      text,
+      voiceName: voiceName || 'Achernar',
+      generatedAt: new Date().toISOString(),
+      source: 'tts',
+      originalSize: wav24kBuffer.length,
+      convertedSize: wav8kBuffer.length,
+    }, null, 2));
+
+    console.log(`[OVERFLOW-AUDIO] Generated ${slotName}.wav (${wav8kBuffer.length} bytes) for consultant ${consultantId}`);
+
+    res.json({
+      success: true,
+      slotName,
+      fileName: `${slotName}.wav`,
+      size: wav8kBuffer.length,
+      previewUrl: `/api/voice/overflow-audio/play/${slotName}`,
+    });
+  } catch (error: any) {
+    console.error("[OVERFLOW-AUDIO] Error generating audio:", error);
+    res.status(500).json({ error: `Errore nella generazione audio: ${error.message}` });
+  }
+});
+
+router.post("/overflow-audio/upload", authenticateToken, requireAnyRole(["consultant", "super_admin"]), overflowUpload.single('file'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = await resolveConsultantId(req.user, req.body.consultantId);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID richiesto" });
+
+    const { slotName } = req.body;
+    if (!slotName) return res.status(400).json({ error: "slotName richiesto" });
+
+    const validSlots = OVERFLOW_AUDIO_SLOTS.map(s => s.slot);
+    if (!validSlots.includes(slotName)) {
+      return res.status(400).json({ error: `Slot non valido. Validi: ${validSlots.join(', ')}` });
+    }
+
+    if (!req.file) return res.status(400).json({ error: "File WAV richiesto" });
+
+    let convertedBuffer: Buffer;
+    try {
+      convertedBuffer = convertWavTo8kMono(req.file.buffer);
+    } catch (convErr: any) {
+      return res.status(400).json({ error: `File WAV non valido: ${convErr.message}` });
+    }
+
+    const dir = ensureOverflowDir(consultantId);
+    const filePath = path.join(dir, `${slotName}.wav`);
+    fs.writeFileSync(filePath, convertedBuffer);
+
+    const metaPath = path.join(dir, `${slotName}.meta.json`);
+    fs.writeFileSync(metaPath, JSON.stringify({
+      text: '',
+      voiceName: '',
+      generatedAt: new Date().toISOString(),
+      source: 'upload',
+      originalName: req.file.originalname,
+      originalSize: req.file.size,
+      convertedSize: convertedBuffer.length,
+    }, null, 2));
+
+    console.log(`[OVERFLOW-AUDIO] Uploaded ${slotName}.wav (${req.file.size} bytes) for consultant ${consultantId}`);
+
+    res.json({
+      success: true,
+      slotName,
+      fileName: `${slotName}.wav`,
+      size: req.file.size,
+      previewUrl: `/api/voice/overflow-audio/play/${slotName}`,
+    });
+  } catch (error: any) {
+    console.error("[OVERFLOW-AUDIO] Error uploading audio:", error);
+    res.status(500).json({ error: `Errore nell'upload audio: ${error.message}` });
+  }
+});
+
+router.delete("/overflow-audio/:slotName", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = await resolveConsultantId(req.user, req.query.consultantId as string);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID richiesto" });
+
+    const { slotName } = req.params;
+    const dir = getOverflowAudioDir(consultantId);
+    const filePath = path.join(dir, `${slotName}.wav`);
+    const metaPath = path.join(dir, `${slotName}.meta.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "File audio non trovato" });
+    }
+
+    fs.unlinkSync(filePath);
+    if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
+
+    console.log(`[OVERFLOW-AUDIO] Deleted ${slotName}.wav for consultant ${consultantId}`);
+    res.json({ success: true, message: `Audio ${slotName} eliminato` });
+  } catch (error: any) {
+    console.error("[OVERFLOW-AUDIO] Error deleting audio:", error);
+    res.status(500).json({ error: `Errore nell'eliminazione audio: ${error.message}` });
+  }
+});
+
+router.get("/overflow-audio/play/:slotName", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = await resolveConsultantId(req.user, req.query.consultantId as string);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID richiesto" });
+
+    const { slotName } = req.params;
+    const filePath = path.join(getOverflowAudioDir(consultantId), `${slotName}.wav`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "File audio non trovato" });
+    }
+
+    const stat = fs.statSync(filePath);
+    res.set({
+      'Content-Type': 'audio/wav',
+      'Content-Length': stat.size.toString(),
+      'Content-Disposition': `inline; filename="${slotName}.wav"`,
+    });
+    fs.createReadStream(filePath).pipe(res);
+  } catch (error: any) {
+    console.error("[OVERFLOW-AUDIO] Error playing audio:", error);
+    res.status(500).json({ error: `Errore nella riproduzione audio: ${error.message}` });
+  }
+});
+
+router.get("/overflow-audio/download/:consultantId/manifest", async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: "Bearer token richiesto" });
+    }
+
+    const { consultantId } = req.params;
+
+    const globalTokenResult = await db.execute(sql`
+      SELECT service_token FROM superadmin_voice_config WHERE id = 'default' AND enabled = true AND service_token = ${token} LIMIT 1
+    `);
+    if (globalTokenResult.rows.length === 0) {
+      const tokenResult = await db.execute(sql`
+        SELECT consultant_id FROM voice_service_tokens
+        WHERE token = ${token} AND revoked_at IS NULL
+        LIMIT 1
+      `);
+      if (tokenResult.rows.length === 0) {
+        return res.status(401).json({ error: "Token non valido o revocato" });
+      }
+      const tokenConsultantId = (tokenResult.rows[0] as any).consultant_id;
+      if (tokenConsultantId !== consultantId) {
+        return res.status(403).json({ error: "Accesso non autorizzato a questo consulente" });
+      }
+    }
+    const dir = getOverflowAudioDir(consultantId);
+    const manifest: any[] = [];
+
+    if (fs.existsSync(dir)) {
+      const entries = fs.readdirSync(dir);
+      for (const entry of entries) {
+        if (!entry.endsWith('.wav')) continue;
+        const slotName = entry.replace('.wav', '');
+        const stats = fs.statSync(path.join(dir, entry));
+        manifest.push({
+          slotName,
+          fileName: entry,
+          size: stats.size,
+          updatedAt: stats.mtime.toISOString(),
+        });
+      }
+    }
+
+    res.json({ success: true, consultantId, files: manifest });
+  } catch (error: any) {
+    console.error("[OVERFLOW-AUDIO] Error fetching manifest:", error);
+    res.status(500).json({ error: "Errore nel recupero del manifest" });
+  }
+});
+
+router.get("/overflow-audio/download/:consultantId/:filename", async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: "Bearer token richiesto" });
+    }
+
+    const { consultantId, filename } = req.params;
+
+    const globalTokenResult = await db.execute(sql`
+      SELECT service_token FROM superadmin_voice_config WHERE id = 'default' AND enabled = true AND service_token = ${token} LIMIT 1
+    `);
+    if (globalTokenResult.rows.length === 0) {
+      const tokenResult = await db.execute(sql`
+        SELECT consultant_id FROM voice_service_tokens
+        WHERE token = ${token} AND revoked_at IS NULL
+        LIMIT 1
+      `);
+      if (tokenResult.rows.length === 0) {
+        return res.status(401).json({ error: "Token non valido o revocato" });
+      }
+      const tokenConsultantId = (tokenResult.rows[0] as any).consultant_id;
+      if (tokenConsultantId !== consultantId) {
+        return res.status(403).json({ error: "Accesso non autorizzato a questo consulente" });
+      }
+    }
+    const safeName = path.basename(filename);
+    const filePath = path.join(getOverflowAudioDir(consultantId), safeName);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "File non trovato" });
+    }
+
+    const stat = fs.statSync(filePath);
+    res.set({
+      'Content-Type': 'audio/wav',
+      'Content-Length': stat.size.toString(),
+      'Content-Disposition': `attachment; filename="${safeName}"`,
+    });
+    fs.createReadStream(filePath).pipe(res);
+  } catch (error: any) {
+    console.error("[OVERFLOW-AUDIO] Error downloading audio:", error);
+    res.status(500).json({ error: "Errore nel download audio" });
   }
 });
 

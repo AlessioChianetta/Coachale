@@ -4,7 +4,7 @@ import express from 'express';
 import { parse as parseUrl } from 'url';
 import { config } from './config.js';
 import { logger } from './logger.js';
-import { sessionManager } from './session-manager.js';
+import { sessionManager, syncOverflowAudio } from './session-manager.js';
 import { ReplitWSClient } from './replit-ws-client.js';
 import { convertForGemini, convertFromGemini } from './audio-converter.js';
 import { fetchCallerContext, fetchNumberOwner, notifyCallStart, notifyCallEnd, fetchOverflowConfig } from './caller-context.js';
@@ -672,11 +672,24 @@ async function routeToOverflow(uuid: string, calledNumber: string, overflowCfg?:
     }
     log.info(`📥 [ROUTE-OVERFLOW] ESL connection available ✅`);
 
+    let overflowAudioDir = '/opt/sounds/overflow/default';
+    if (overflowCfg.consultant_id) {
+      try {
+        overflowAudioDir = await syncOverflowAudio(overflowCfg.consultant_id);
+        log.info(`📥 [ROUTE-OVERFLOW] Audio dir resolved: ${overflowAudioDir}`);
+      } catch (syncErr: any) {
+        log.warn(`⚠️ [ROUTE-OVERFLOW] Audio sync failed, using default: ${syncErr.message}`);
+      }
+    } else {
+      log.info(`📥 [ROUTE-OVERFLOW] No consultant_id in overflow config — using default audio dir`);
+    }
+
     const queuePosition = sessionManager.overflowCount + 1;
     const setVars: string[] = [
       `sip_gateway=${config.sip.gateway}`,
       `tech_prefix=${config.sip.techPrefix}`,
       `queue_position=${queuePosition}`,
+      `overflow_audio_dir=${overflowAudioDir}`,
     ];
     if (overflowCfg.fallback_number && overflowCfg.overflow_dtmf_enabled) {
       setVars.push(`fallback_transfer_number=${overflowCfg.fallback_number}`);
