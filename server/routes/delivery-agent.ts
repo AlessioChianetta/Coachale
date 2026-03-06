@@ -1029,7 +1029,7 @@ router.get('/reports/:sessionId/pdf', authenticateToken, requireRole('consultant
   }
 });
 
-const activeSimulators = new Map<string, { running: boolean }>();
+const activeSimulators = new Map<string, { running: boolean; turn: number; status: string }>();
 
 router.post('/simulator/run', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   const consultantId = req.user!.id;
@@ -1039,114 +1039,91 @@ router.post('/simulator/run', authenticateToken, requireRole('consultant'), asyn
     return res.status(400).json({ success: false, error: 'Valid sessionId required' });
   }
 
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders();
-
-  const sendSSE = (type: string, data: any) => {
-    res.write(`data: ${JSON.stringify({ type, ...data })}\n\n`);
-  };
-
   try {
     const sessionRes = await db.execute(sql`
       SELECT * FROM delivery_agent_sessions
       WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId} AND mode = 'simulator'
     `);
     if (sessionRes.rows.length === 0) {
-      sendSSE('error', { error: 'Simulator session not found' });
-      res.end();
-      return;
+      return res.status(404).json({ success: false, error: 'Simulator session not found' });
     }
     const session = sessionRes.rows[0] as any;
     const simulatorData = session.client_profile_json?.simulator;
     if (!simulatorData?.niche || !simulatorData?.attitude) {
-      sendSSE('error', { error: 'Invalid simulator config' });
-      res.end();
-      return;
+      return res.status(400).json({ success: false, error: 'Invalid simulator config' });
     }
 
-    const simState = { running: true };
+    if (activeSimulators.has(sessionId)) {
+      return res.status(409).json({ success: false, error: 'Simulation already running' });
+    }
+
+    const simState = { running: true, turn: 0, status: 'starting' };
     activeSimulators.set(sessionId, simState);
 
-    req.on('close', () => {
-      simState.running = false;
-      activeSimulators.delete(sessionId);
-      console.log(`[Simulator] Client disconnected for session ${sessionId}`);
-    });
+    res.json({ success: true, message: 'Simulation started' });
 
-    const provider = await getAIProvider(consultantId);
-    if (provider.setFeature) provider.setFeature('delivery-agent-simulator', 'consultant');
-    const { model } = getModelWithThinking(provider.metadata?.providerName);
+    (async () => {
+      try {
+        const provider = await getAIProvider(consultantId);
+        if (provider.setFeature) provider.setFeature('delivery-agent-simulator', 'consultant');
+        const { model } = getModelWithThinking(provider.metadata?.providerName);
 
-    const { getDeliveryAgentSystemPrompt, getSimulatedClientPrompt } = await import('../prompts/delivery-agent-prompt');
+        const { getDeliveryAgentSystemPrompt, getSimulatedClientPrompt } = await import('../prompts/delivery-agent-prompt');
 
-    const MAX_TURNS = 30;
-    let turnNumber = 0;
-    let discoveryComplete = false;
+        const MAX_TURNS = 30;
+        let turnNumber = 0;
+        let discoveryComplete = false;
 
-    const existingMsgs = await db.execute(sql`
-      SELECT role, content FROM delivery_agent_messages
-      WHERE session_id = ${sessionId} ORDER BY created_at ASC
-    `);
-    const history = (existingMsgs.rows as any[]).map(m => ({
-      role: m.role === 'assistant' ? 'model' as const : 'user' as const,
-      parts: [{ text: m.content }],
-    }));
-    turnNumber = Math.floor(history.length / 2);
-
-    if (history.length === 0) {
-      sendSSE('status', { message: 'Luca sta iniziando la conversazione...' });
-
-      const lucaSystemPrompt = getDeliveryAgentSystemPrompt('simulator', 'discovery', session.client_profile_json);
-
-      const lucaGreetingResult = await provider.client.generateContent({
-        model,
-        contents: [{ role: 'user', parts: [{ text: 'Ciao' }] }],
-        generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
-        systemInstruction: { role: 'system', parts: [{ text: lucaSystemPrompt }] },
-      });
-
-      let lucaGreeting = '';
-      try { lucaGreeting = (lucaGreetingResult as any).response.text(); } catch {}
-      if (!lucaGreeting) {
-        const parts = (lucaGreetingResult as any).response?.candidates?.[0]?.content?.parts || [];
-        lucaGreeting = parts.filter((p: any) => p.text && !p.thought).map((p: any) => p.text).join('');
-      }
-      console.log(`[Simulator] Luca greeting length: ${lucaGreeting.length}`);
-
-      if (lucaGreeting) {
-        await db.execute(sql`
-          INSERT INTO delivery_agent_messages (session_id, role, content) VALUES (${sessionId}, 'assistant', ${lucaGreeting})
+        const existingMsgs = await db.execute(sql`
+          SELECT role, content FROM delivery_agent_messages
+          WHERE session_id = ${sessionId} ORDER BY created_at ASC
         `);
-        history.push({ role: 'model', parts: [{ text: lucaGreeting }] });
-        sendSSE('luca_message', { content: lucaGreeting });
-      } else {
-        const fallbackGreeting = 'Ciao! Sono Luca, il tuo consulente. Raccontami un po\' della tua attività — cosa fai e come lavori oggi?';
-        await db.execute(sql`
-          INSERT INTO delivery_agent_messages (session_id, role, content) VALUES (${sessionId}, 'assistant', ${fallbackGreeting})
-        `);
-        history.push({ role: 'model', parts: [{ text: fallbackGreeting }] });
-        sendSSE('luca_message', { content: fallbackGreeting });
-      }
-    }
+        const history = (existingMsgs.rows as any[]).map(m => ({
+          role: m.role === 'assistant' ? 'model' as const : 'user' as const,
+          parts: [{ text: m.content }],
+        }));
+        turnNumber = Math.floor(history.length / 2);
 
-    sendSSE('simulation_started', { turns: 0, maxTurns: MAX_TURNS });
+        if (history.length === 0) {
+          simState.status = 'Luca sta iniziando la conversazione...';
 
-    while (simState.running && turnNumber < MAX_TURNS && !discoveryComplete) {
-      turnNumber++;
+          const lucaSystemPrompt = getDeliveryAgentSystemPrompt('simulator', 'discovery', session.client_profile_json);
 
-      sendSSE('status', { message: `Turno ${turnNumber} — Il cliente sta rispondendo...`, turn: turnNumber });
+          const lucaGreetingResult = await provider.client.generateContent({
+            model,
+            contents: [{ role: 'user', parts: [{ text: 'Ciao' }] }],
+            generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+            systemInstruction: { role: 'system', parts: [{ text: lucaSystemPrompt }] },
+          });
 
-      const clientSystemPrompt = getSimulatedClientPrompt(simulatorData.niche, simulatorData.attitude, turnNumber);
+          let lucaGreeting = '';
+          try { lucaGreeting = (lucaGreetingResult as any).response.text(); } catch {}
+          if (!lucaGreeting) {
+            const parts = (lucaGreetingResult as any).response?.candidates?.[0]?.content?.parts || [];
+            lucaGreeting = parts.filter((p: any) => p.text && !p.thought).map((p: any) => p.text).join('');
+          }
+          console.log(`[Simulator] Luca greeting length: ${lucaGreeting.length}`);
 
-      const clientHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
-      for (const m of history) {
-        const swappedRole = m.role === 'model' ? 'user' : 'model';
-        if (clientHistory.length > 0 && clientHistory[clientHistory.length - 1].role === swappedRole) {
-          clientHistory[clientHistory.length - 1].parts = [
-            ...clientHistory[clientHistory.length - 1].parts,
+          const greetingText = lucaGreeting || 'Ciao! Sono Luca, il tuo consulente. Raccontami un po\' della tua attività — cosa fai e come lavori oggi?';
+          await db.execute(sql`
+            INSERT INTO delivery_agent_messages (session_id, role, content) VALUES (${sessionId}, 'assistant', ${greetingText})
+          `);
+          history.push({ role: 'model', parts: [{ text: greetingText }] });
+        }
+
+        while (simState.running && turnNumber < MAX_TURNS && !discoveryComplete) {
+          turnNumber++;
+          simState.turn = turnNumber;
+          simState.status = `Turno ${turnNumber} — Il cliente sta rispondendo...`;
+
+          const clientSystemPrompt = getSimulatedClientPrompt(simulatorData.niche, simulatorData.attitude, turnNumber);
+
+          const clientHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
+          for (const m of history) {
+            const swappedRole = m.role === 'model' ? 'user' : 'model';
+            if (clientHistory.length > 0 && clientHistory[clientHistory.length - 1].role === swappedRole) {
+              clientHistory[clientHistory.length - 1].parts = [
+                ...clientHistory[clientHistory.length - 1].parts,
             ...m.parts,
           ];
         } else {
@@ -1181,13 +1158,11 @@ router.post('/simulator/run', authenticateToken, requireRole('consultant'), asyn
         INSERT INTO delivery_agent_messages (session_id, role, content) VALUES (${sessionId}, 'user', ${clientMsg})
       `);
       history.push({ role: 'user', parts: [{ text: clientMsg }] });
-      sendSSE('client_message', { content: clientMsg, turn: turnNumber });
-
       if (!simState.running) break;
 
       await new Promise(r => setTimeout(r, 1500));
 
-      sendSSE('status', { message: `Turno ${turnNumber} — Luca sta rispondendo...`, turn: turnNumber });
+      simState.status = `Turno ${turnNumber} — Luca sta rispondendo...`;
 
       const lucaSessionRes = await db.execute(sql`
         SELECT status, client_profile_json FROM delivery_agent_sessions WHERE id = ${sessionId}::uuid
@@ -1224,14 +1199,13 @@ router.post('/simulator/run', authenticateToken, requireRole('consultant'), asyn
         INSERT INTO delivery_agent_messages (session_id, role, content) VALUES (${sessionId}, 'assistant', ${lucaMsg})
       `);
       history.push({ role: 'model', parts: [{ text: lucaMsg }] });
-      sendSSE('luca_message', { content: lucaMsg, turn: turnNumber });
 
       if (lucaMsg.includes('[DISCOVERY_COMPLETE]')) {
         discoveryComplete = true;
         const jsonMatch = lucaMsg.match(/```json\s*([\s\S]*?)```/);
         let profileJson = null;
         if (jsonMatch) {
-          try { profileJson = JSON.parse(jsonMatch[1]); } catch { /* ignore */ }
+          try { profileJson = JSON.parse(jsonMatch[1]); } catch {}
         }
         await db.execute(sql`
           UPDATE delivery_agent_sessions
@@ -1240,7 +1214,6 @@ router.post('/simulator/run', authenticateToken, requireRole('consultant'), asyn
               updated_at = NOW()
           WHERE id = ${sessionId}::uuid
         `);
-        sendSSE('discovery_complete', { profile: profileJson, turn: turnNumber });
       }
 
       await db.execute(sql`
@@ -1251,15 +1224,33 @@ router.post('/simulator/run', authenticateToken, requireRole('consultant'), asyn
       await new Promise(r => setTimeout(r, 1000));
     }
 
+    console.log(`[Simulator] Finished session ${sessionId} after ${turnNumber} turns. Reason: ${discoveryComplete ? 'discovery_complete' : !simState.running ? 'stopped' : 'max_turns'}`);
     activeSimulators.delete(sessionId);
-    sendSSE('simulation_ended', { turns: turnNumber, reason: discoveryComplete ? 'discovery_complete' : !simState.running ? 'stopped' : 'max_turns' });
-    res.end();
+      } catch (err: any) {
+        console.error('[DeliveryAgent] Simulator background error:', err);
+        activeSimulators.delete(sessionId);
+      }
+    })();
   } catch (err: any) {
     console.error('[DeliveryAgent] Simulator run error:', err);
     activeSimulators.delete(sessionId);
-    sendSSE('error', { error: err.message || 'Simulator error' });
-    res.end();
+    res.status(500).json({ success: false, error: err.message });
   }
+});
+
+router.get('/simulator/status/:sessionId', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  const consultantId = req.user!.id;
+  const { sessionId } = req.params;
+  if (!sessionId || !isValidUUID(sessionId)) {
+    return res.status(400).json({ success: false, error: 'Valid sessionId required' });
+  }
+  const sim = activeSimulators.get(sessionId);
+  res.json({
+    success: true,
+    running: !!sim?.running,
+    turn: sim?.turn || 0,
+    status: sim?.status || '',
+  });
 });
 
 router.post('/simulator/stop', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {

@@ -218,15 +218,19 @@ function SessionItem({
             })}
           </p>
         </div>
-        <button
+        <span
+          role="button"
+          tabIndex={0}
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             onDelete();
           }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30"
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onDelete(); } }}
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 cursor-pointer"
         >
           <Trash2 className="w-3.5 h-3.5 text-red-500" />
-        </button>
+        </span>
       </div>
     </button>
   );

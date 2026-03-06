@@ -114,7 +114,6 @@ export function DeliveryChat({
   const [isSimRunning, setIsSimRunning] = useState(false);
   const [simStatus, setSimStatus] = useState("");
   const [simTurn, setSimTurn] = useState(0);
-  const simAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -356,91 +355,99 @@ export function DeliveryChat({
     }
   }, [session.id, onStatusChange, onViewReport, toast]);
 
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastMsgCountRef = useRef(0);
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  }, []);
+
+  const startPolling = useCallback(() => {
+    stopPolling();
+    lastMsgCountRef.current = messages.length;
+
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const [msgsRes, statusRes] = await Promise.all([
+          fetch(`/api/consultant/delivery-agent/sessions/${session.id}`, { headers: getAuthHeaders() }),
+          fetch(`/api/consultant/delivery-agent/simulator/status/${session.id}`, { headers: getAuthHeaders() }),
+        ]);
+
+        if (msgsRes.ok) {
+          const data = await msgsRes.json();
+          const msgs = data.data?.messages || data.messages || [];
+          if (msgs.length > lastMsgCountRef.current) {
+            lastMsgCountRef.current = msgs.length;
+            setMessages(
+              msgs.map((m: any) => ({
+                id: m.id,
+                role: m.role,
+                content: m.content,
+                thinking: m.metadata_json?.thinking,
+                status: "completed" as const,
+                created_at: m.created_at,
+              }))
+            );
+          }
+
+          const sessionData = data.data || data;
+          if (sessionData.status === "elaborating") {
+            onStatusChange("elaborating");
+          }
+        }
+
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          setSimTurn(statusData.turn || 0);
+          setSimStatus(statusData.status || "");
+
+          if (!statusData.running) {
+            stopPolling();
+            setIsSimRunning(false);
+            setSimStatus("");
+          }
+        }
+      } catch (err) {
+        console.error("[Simulator] Polling error:", err);
+      }
+    }, 2000);
+  }, [session.id, messages.length, onStatusChange, stopPolling]);
+
   const handleStartSimulation = useCallback(async () => {
     if (isSimRunning) return;
     setIsSimRunning(true);
     setSimStatus("Avvio simulazione...");
     setSimTurn(0);
 
-    const controller = new AbortController();
-    simAbortRef.current = controller;
-
     try {
       const response = await fetch("/api/consultant/delivery-agent/simulator/run", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ sessionId: session.id }),
-        signal: controller.signal,
       });
 
-      if (!response.ok || !response.body) {
-        throw new Error("Errore nell'avvio della simulazione");
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Errore nell'avvio della simulazione");
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === "client_message") {
-              setMessages(prev => [...prev, {
-                id: `sim-client-${Date.now()}`,
-                role: "user",
-                content: data.content,
-                status: "completed",
-              }]);
-              setSimTurn(data.turn || 0);
-            } else if (data.type === "luca_message") {
-              setMessages(prev => [...prev, {
-                id: `sim-luca-${Date.now()}`,
-                role: "assistant",
-                content: data.content,
-                status: "completed",
-              }]);
-            } else if (data.type === "status") {
-              setSimStatus(data.message || "");
-            } else if (data.type === "discovery_complete") {
-              onStatusChange("elaborating");
-              setSimStatus("Discovery completata!");
-            } else if (data.type === "simulation_ended") {
-              setSimStatus("");
-            } else if (data.type === "error") {
-              toast({
-                title: "Errore simulazione",
-                description: data.error || "Si è verificato un errore",
-                variant: "destructive",
-              });
-            }
-          } catch {}
-        }
-      }
+      startPolling();
     } catch (err: any) {
-      if (err?.name !== "AbortError") {
-        toast({
-          title: "Errore",
-          description: err.message || "Simulazione interrotta",
-          variant: "destructive",
-        });
-      }
-    } finally {
+      toast({
+        title: "Errore",
+        description: err.message || "Simulazione interrotta",
+        variant: "destructive",
+      });
       setIsSimRunning(false);
       setSimStatus("");
-      simAbortRef.current = null;
     }
-  }, [isSimRunning, session.id, onStatusChange, toast]);
+  }, [isSimRunning, session.id, toast, startPolling]);
 
   const handleStopSimulation = useCallback(async () => {
-    if (simAbortRef.current) simAbortRef.current.abort();
+    stopPolling();
     try {
       await fetch("/api/consultant/delivery-agent/simulator/stop", {
         method: "POST",
@@ -450,18 +457,16 @@ export function DeliveryChat({
     } catch {}
     setIsSimRunning(false);
     setSimStatus("");
-  }, [session.id]);
+  }, [session.id, stopPolling]);
 
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      if (simAbortRef.current) {
-        simAbortRef.current.abort();
-      }
+      stopPolling();
     };
-  }, []);
+  }, [stopPolling]);
 
   if (loadingMessages) {
     return (
