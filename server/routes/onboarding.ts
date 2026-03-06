@@ -672,10 +672,11 @@ router.post('/test/vertex-ai', authenticateToken, requireRole('consultant'), asy
     
     try {
       const provider = await getAIProvider(consultantId, consultantId);
-      const model = provider.client.getGenerativeModel({ model: 'gemini-2.0-flash' });
-      const result = await model.generateContent('Rispondi solo "OK" se funziona.');
-      const response = result.response;
-      const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const result = await provider.client.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: [{ role: 'user', parts: [{ text: 'Rispondi solo "OK" se funziona.' }] }],
+      });
+      const text = result.response.text();
       
       const source = (provider as any).source || 'unknown';
       const providerName = provider.metadata?.name || 'AI Engine';
@@ -1100,10 +1101,11 @@ router.post('/test/whatsapp-ai', authenticateToken, requireRole('consultant'), a
     
     try {
       const provider = await getAIProvider(consultantId, consultantId);
-      const model = provider.client.getGenerativeModel({ model: 'gemini-2.0-flash' });
-      const result = await model.generateContent('Rispondi solo "OK" se funziona.');
-      const response = result.response;
-      const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const result = await provider.client.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: [{ role: 'user', parts: [{ text: 'Rispondi solo "OK" se funziona.' }] }],
+      });
+      const text = result.response.text();
       
       const providerName = provider.metadata?.name || 'AI Engine';
       
