@@ -30,6 +30,7 @@ async function ensureTables() {
       module_id VARCHAR NOT NULL REFERENCES academy_modules(id) ON DELETE CASCADE,
       title VARCHAR NOT NULL,
       description TEXT NOT NULL DEFAULT '',
+      content TEXT DEFAULT NULL,
       duration VARCHAR NOT NULL DEFAULT '5 min',
       video_url TEXT,
       video_type VARCHAR DEFAULT 'iframe',
@@ -79,6 +80,16 @@ async function seedIfEmpty() {
       { slug: 'automazioni_ai', title: 'Automazioni AI', emoji: '🤖', tagline: 'La piattaforma lavora per te 24/7', color: 'indigo', sort_order: 3 },
       { slug: 'contenuti_corsi', title: 'Contenuti & Corsi', emoji: '📚', tagline: 'Educa i clienti e posizionati come esperto', color: 'amber', sort_order: 4 },
       { slug: 'avanzato', title: 'Avanzato', emoji: '🚀', tagline: 'Funzionalità premium per massimizzare i risultati', color: 'rose', sort_order: 5 },
+      { slug: 'pkg_setter_ai', title: 'Setter AI', emoji: '📡', tagline: 'Acquisizione & Primo Contatto automatico', color: 'blue', sort_order: 6 },
+      { slug: 'pkg_dipendenti_ai', title: 'Dipendenti AI', emoji: '🤖', tagline: 'Il team AI che lavora per te 24/7', color: 'indigo', sort_order: 7 },
+      { slug: 'pkg_hunter', title: 'Hunter', emoji: '🎯', tagline: 'Lead Generation & Outreach automatico', color: 'green', sort_order: 8 },
+      { slug: 'pkg_email_journey', title: 'Email Journey', emoji: '📧', tagline: 'Comunicazione continuativa e nurturing', color: 'violet', sort_order: 9 },
+      { slug: 'pkg_lavoro_quotidiano', title: 'Lavoro Quotidiano', emoji: '📋', tagline: 'Operatività e gestione giornaliera', color: 'slate', sort_order: 10 },
+      { slug: 'pkg_formazione', title: 'Formazione & Corsi', emoji: '🎓', tagline: 'Educa i clienti e posizionati come esperto', color: 'amber', sort_order: 11 },
+      { slug: 'pkg_content_studio', title: 'Content Studio', emoji: '🎨', tagline: 'Marketing & Contenuti creativi con AI', color: 'orange', sort_order: 12 },
+      { slug: 'pkg_voce_ai', title: 'Voce AI', emoji: '📞', tagline: 'Centralino & Chiamate vocali intelligenti', color: 'red', sort_order: 13 },
+      { slug: 'pkg_pagamenti', title: 'Pagamenti & Stripe', emoji: '💳', tagline: 'Monetizzazione e rivendita licenze', color: 'teal', sort_order: 14 },
+      { slug: 'pkg_team', title: 'Team & Dipendenti', emoji: '👥', tagline: 'Gestione team umano e licenze', color: 'rose', sort_order: 15 },
     ];
 
     for (const m of modules) {
@@ -123,6 +134,36 @@ async function seedIfEmpty() {
       { lesson_id: 'agent_ideas', module: 'contenuti_corsi', title: 'Idee AI per gli Agenti', description: "Usa l'AI per generare idee creative su come personalizzare i tuoi agenti e migliorare le conversioni.", duration: '8 min', config_link: '/consultant/whatsapp?tab=ideas', sort_order: 3 },
       { lesson_id: 'more_templates', module: 'contenuti_corsi', title: 'Libreria Template WhatsApp', description: 'Espandi la tua libreria di template WhatsApp per coprire tutti gli scenari di comunicazione automatica.', duration: '8 min', config_link: '/consultant/whatsapp-templates', sort_order: 4 },
       { lesson_id: 'turn_config', module: 'avanzato', title: 'Video Meeting (TURN Server)', description: 'Configura Metered.ca per videochiamate WebRTC affidabili e sicure con i tuoi clienti, senza dipendenze esterne.', duration: '8 min', config_link: '/consultant/api-keys-unified?tab=video-meeting', sort_order: 0 },
+      { lesson_id: 'pkg_setter_come_funziona', module: 'pkg_setter_ai', title: 'Come funziona il Setter AI', description: 'Il Setter AI è il tuo primo punto di contatto automatico. Risponde ai lead WhatsApp e Instagram 24/7, qualifica e prenota appuntamenti.', duration: '10 min', config_link: '/consultant/whatsapp', sort_order: 0 },
+      { lesson_id: 'pkg_setter_primo_agente', module: 'pkg_setter_ai', title: 'Configurare il primo agente inbound', description: 'Passo-passo per creare il tuo primo agente: System Prompt, Knowledge Base, test e link pubblico.', duration: '15 min', config_link: '/consultant/whatsapp', sort_order: 1 },
+      { lesson_id: 'pkg_setter_qualifica', module: 'pkg_setter_ai', title: 'Strategia di qualifica lead', description: "Come configurare l'agente per qualificare i lead con il framework BANT e integrarsi con il funnel di vendita.", duration: '10 min', config_link: '/consultant/whatsapp', sort_order: 2 },
+      { lesson_id: 'pkg_dip_chi_sono', module: 'pkg_dipendenti_ai', title: 'I 9 Dipendenti AI — Chi sono e cosa fanno', description: 'Panoramica completa di Stella, Marco, Millie, Luna, Alex, Sara, Tomas, Nina e Hunter.', duration: '12 min', config_link: '/consultant/ai-autonomy', sort_order: 0 },
+      { lesson_id: 'pkg_dip_attivare', module: 'pkg_dipendenti_ai', title: "Attivare e configurare l'AI Autonomo", description: "Come attivare l'autonomia, configurare orari lavorativi, modalità approvazione e personalizzare ogni dipendente.", duration: '10 min', config_link: '/consultant/ai-autonomy', sort_order: 1 },
+      { lesson_id: 'pkg_dip_monitorare', module: 'pkg_dipendenti_ai', title: 'Monitorare e gestire i task AI', description: 'Leggere la dashboard task, approvare o rifiutare azioni, capire il ragionamento dei dipendenti.', duration: '8 min', config_link: '/consultant/ai-autonomy', sort_order: 2 },
+      { lesson_id: 'pkg_hunter_come_funziona', module: 'pkg_hunter', title: 'Come funziona il Lead Scraper', description: 'Il Lead Scraper cerca su Google Maps, arricchisce con dati web, assegna un punteggio AI e presenta i lead in un CRM dedicato.', duration: '10 min', config_link: '/consultant/lead-scraper', sort_order: 0 },
+      { lesson_id: 'pkg_hunter_ricerca', module: 'pkg_hunter', title: 'Configurare una ricerca lead', description: 'Come definire il target, scegliere la zona, impostare i filtri e lanciare ricerche efficaci.', duration: '8 min', config_link: '/consultant/lead-scraper', sort_order: 1 },
+      { lesson_id: 'pkg_hunter_contatto', module: 'pkg_hunter', title: 'Gestire i lead e avviare il contatto', description: 'Pipeline multi-canale: WhatsApp via Hunter, campagne batch, chiamate vocali, email nurturing.', duration: '10 min', config_link: '/consultant/lead-scraper', sort_order: 2 },
+      { lesson_id: 'pkg_email_nurturing', module: 'pkg_email_journey', title: 'Come funziona il Nurturing Email', description: 'Il nurturing mantiene viva la relazione con i lead nel tempo con email personalizzate AI.', duration: '10 min', config_link: '/consultant/ai-config?tab=lead-nurturing', sort_order: 0 },
+      { lesson_id: 'pkg_email_sequenza', module: 'pkg_email_journey', title: 'Creare la prima sequenza email', description: 'Configurare Email Journey post-consulenza e Nurturing 365: settore, tono, obiettivo, generazione.', duration: '12 min', config_link: '/consultant/ai-config?tab=ai-email', sort_order: 1 },
+      { lesson_id: 'pkg_email_hub', module: 'pkg_email_journey', title: 'Email Hub — Inbox e risposte AI', description: 'Inbox unificata, classificazione AI con Millie, risposte suggerite e collegamento CRM.', duration: '10 min', config_link: '/consultant/email-hub', sort_order: 2 },
+      { lesson_id: 'pkg_lq_dashboard', module: 'pkg_lavoro_quotidiano', title: 'Dashboard e KPI', description: 'Il cruscotto quotidiano: clienti attivi, appuntamenti, lead in pipeline, task AI, email, revenue.', duration: '8 min', config_link: '/consultant/dashboard', sort_order: 0 },
+      { lesson_id: 'pkg_lq_appuntamenti', module: 'pkg_lavoro_quotidiano', title: 'Gestire appuntamenti e calendario', description: 'Sincronizzazione Google Calendar, booking AI automatico, reminder WhatsApp, riepilogo post-consulenza.', duration: '10 min', config_link: '/consultant/appointments', sort_order: 1 },
+      { lesson_id: 'pkg_lq_crm', module: 'pkg_lavoro_quotidiano', title: 'CRM — Gestire clienti e contatti', description: 'Clienti attivi vs contatti CRM, profilo cliente, azioni rapide, filtri, conversione CRM→Cliente.', duration: '10 min', config_link: '/consultant/clients', sort_order: 2 },
+      { lesson_id: 'pkg_form_corso', module: 'pkg_formazione', title: 'Creare un corso per i tuoi clienti', description: 'Struttura Anno→Trimestre→Modulo→Lezione, generazione AI dei corsi, tracciamento e certificati.', duration: '12 min', config_link: '/consultant/university', sort_order: 0 },
+      { lesson_id: 'pkg_form_esercizi', module: 'pkg_formazione', title: 'Esercizi pratici e valutazione', description: 'Tipi di esercizi, correzione AI, feedback, voti e gamification.', duration: '10 min', config_link: '/consultant/exercises', sort_order: 1 },
+      { lesson_id: 'pkg_form_gamification', module: 'pkg_formazione', title: 'Gamification e motivazione', description: 'Punti XP, livelli, badge, classifica, streak. Come configurarli per i clienti Gold.', duration: '8 min', config_link: '/consultant/gamification', sort_order: 2 },
+      { lesson_id: 'pkg_cs_advisage', module: 'pkg_content_studio', title: 'AdVisage AI — La fabbrica creativa', description: 'Genera concept pubblicitari: brief, Multi-Style Engine, Pitch Mode e Batch Analysis.', duration: '10 min', config_link: '/consultant/advisage', sort_order: 0 },
+      { lesson_id: 'pkg_cs_ideas', module: 'pkg_content_studio', title: 'Ideas Generator e calendario editoriale', description: 'Brainstorming AI per contenuti: idee per post, articoli, video. Calendario editoriale.', duration: '8 min', config_link: '/consultant/ideas', sort_order: 1 },
+      { lesson_id: 'pkg_cs_publer', module: 'pkg_content_studio', title: 'Pubblicare e monitorare con Publer', description: 'Export verso Publer, schedulazione multi-piattaforma, sync delle metriche.', duration: '8 min', config_link: '/consultant/ideas', sort_order: 2 },
+      { lesson_id: 'pkg_voce_alessia', module: 'pkg_voce_ai', title: 'Alessia AI — Le chiamate vocali', description: 'Chiamate outbound, centralino AI, prenotazione appuntamenti vocale, follow-up automatici.', duration: '10 min', config_link: '/consultant/voice-calls', sort_order: 0 },
+      { lesson_id: 'pkg_voce_centralino', module: 'pkg_voce_ai', title: "Centralino AI e coda d'attesa", description: 'Risposta automatica, riconoscimento intento, routing intelligente, messaggi fuori orario.', duration: '8 min', config_link: '/consultant/voice-calls', sort_order: 1 },
+      { lesson_id: 'pkg_voce_numeri', module: 'pkg_voce_ai', title: 'Provisioning numeri VoIP', description: 'Acquistare e configurare numeri Telnyx: ricerca, acquisto, configurazione automatica e test.', duration: '8 min', config_link: '/consultant/phone-numbers', sort_order: 2 },
+      { lesson_id: 'pkg_pay_modello', module: 'pkg_pagamenti', title: 'Il modello di business — Diamond, Gold, Silver', description: 'Come funziona la rivendita licenze: tu hai Diamond, vendi Gold/Silver ai clienti, revenue share 50/50.', duration: '12 min', config_link: '/consultant/stripe-connect', sort_order: 0 },
+      { lesson_id: 'pkg_pay_stripe', module: 'pkg_pagamenti', title: 'Configurare Stripe Connect', description: 'Wizard di onboarding a 3 step: account Express, webhook, API keys.', duration: '10 min', config_link: '/consultant/stripe-connect', sort_order: 1 },
+      { lesson_id: 'pkg_pay_vendere', module: 'pkg_pagamenti', title: 'Vendere licenze ai clienti', description: 'Flusso completo: creare contatto CRM → generare link pagamento → conversione automatica.', duration: '10 min', config_link: '/consultant/clients', sort_order: 2 },
+      { lesson_id: 'pkg_team_reparti', module: 'pkg_team', title: 'Creare reparti e organizzare il team', description: 'Struttura organizzativa: reparti, dipendenti umani, ruoli e permessi. Ogni membro ha il suo AI.', duration: '10 min', config_link: '/consultant/clients?tab=employees', sort_order: 0 },
+      { lesson_id: 'pkg_team_licenze', module: 'pkg_team', title: 'Gestire le licenze', description: "Come funzionano le licenze, contatore, piani, strategia d'uso con contatti CRM.", duration: '8 min', config_link: '/consultant/plan', sort_order: 1 },
+      { lesson_id: 'pkg_team_multiprofilo', module: 'pkg_team', title: 'Multi-profilo e accesso multi-consulente', description: 'Un utente può essere cliente di più consulenti: come funziona e come lo gestisce il sistema.', duration: '6 min', config_link: '/consultant/clients', sort_order: 2 },
     ];
 
     for (const l of lessons) {
@@ -135,7 +176,7 @@ async function seedIfEmpty() {
       `);
     }
 
-    console.log('[Academy] Seed complete: 6 modules, 27 lessons');
+    console.log('[Academy] Seed complete: 16 modules, 57 lessons');
   } catch (err) {
     console.error('[Academy] Seed error:', err);
   }

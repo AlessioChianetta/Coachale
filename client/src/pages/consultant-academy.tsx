@@ -39,6 +39,7 @@ interface AcademyLesson {
   module_id: string;
   title: string;
   description: string;
+  content?: string | null;
   duration: string;
   video_url: string | null;
   video_type: string;
@@ -397,6 +398,26 @@ function LessonDetail({
           <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
             {lesson.description}
           </p>
+
+          {lesson.content && (
+            <div className="pt-3 border-t border-border/40">
+              <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-a:text-blue-600 dark:prose-a:text-blue-400">
+                {lesson.content.split('\n').map((line, i) => {
+                  const trimmed = line.trim();
+                  if (!trimmed) return <br key={i} />;
+                  if (trimmed.startsWith('**') && trimmed.endsWith('**'))
+                    return <h4 key={i} className="text-base font-bold mt-4 mb-2 text-foreground">{trimmed.slice(2, -2)}</h4>;
+                  if (trimmed.startsWith('**') && trimmed.includes(':**'))
+                    return <h4 key={i} className="text-base font-bold mt-4 mb-2 text-foreground" dangerouslySetInnerHTML={{ __html: trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />;
+                  if (/^\d+\.\s/.test(trimmed))
+                    return <div key={i} className="flex gap-2 ml-1 my-1"><span className="text-blue-500 font-bold flex-shrink-0">{trimmed.match(/^(\d+\.)/)?.[1]}</span><span dangerouslySetInnerHTML={{ __html: trimmed.replace(/^\d+\.\s*/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} /></div>;
+                  if (trimmed.startsWith('- '))
+                    return <div key={i} className="flex gap-2 ml-3 my-1"><span className="text-muted-foreground">•</span><span dangerouslySetInnerHTML={{ __html: trimmed.slice(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} /></div>;
+                  return <p key={i} className="my-1.5" dangerouslySetInnerHTML={{ __html: trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />;
+                })}
+              </div>
+            </div>
+          )}
 
           {lesson.documents && lesson.documents.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-border/40">

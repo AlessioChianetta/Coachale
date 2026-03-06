@@ -84,3 +84,12 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 *   **SerpAPI**: Google Maps business data extraction for Lead Scraper.
 *   **Firecrawl**: Website scraping for email/contact extraction in Lead Scraper.
 *   **Telnyx API v2**: VoIP number provisioning, SIP connections, managed accounts for multi-tenant telephony.
+
+# Academy Modules
+The Academy system (`/consultant/academy`) has 16 modules total:
+- 6 original setup/workflow modules (setup_base, acquisisci_lead, vendi_converti, automazioni_ai, contenuti_corsi, avanzato)
+- 10 service package modules (pkg_setter_ai, pkg_dipendenti_ai, pkg_hunter, pkg_email_journey, pkg_lavoro_quotidiano, pkg_formazione, pkg_content_studio, pkg_voce_ai, pkg_pagamenti, pkg_team) with 30 lessons containing deep tutorial content
+- Content stored in `academy_lessons.content` column (TEXT), rendered with markdown-like formatting in LessonDetail component
+- Master content source: `GUIDA-PACCHETTI-SERVIZIO.md`
+- Seed in `server/routes/academy.ts` covers modules + lessons (content populated via direct SQL from guide)
+- API uses `SELECT *` so content field is auto-included
