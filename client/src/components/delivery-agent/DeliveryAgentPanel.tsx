@@ -383,11 +383,11 @@ export function DeliveryAgentPanel() {
   );
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-border/60">
+    <div className="flex flex-col h-full bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-900/80 dark:to-slate-950">
+      <div className="p-3 border-b border-border/40">
         <Button
           onClick={() => setShowModeDialog(true)}
-          className="w-full gap-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white"
+          className="w-full gap-2 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-700 hover:via-violet-700 hover:to-purple-700 text-white shadow-md shadow-violet-500/20 hover:shadow-lg hover:shadow-violet-500/30 transition-all duration-300"
           size="sm"
         >
           <Plus className="w-4 h-4" />
@@ -399,12 +399,14 @@ export function DeliveryAgentPanel() {
         <div className="p-2 space-y-1">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
             </div>
           ) : sessions.length === 0 ? (
-            <div className="text-center py-8 px-3">
-              <Bot className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Nessuna sessione</p>
+            <div className="text-center py-10 px-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/30 dark:to-indigo-900/30 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <Bot className="w-6 h-6 text-violet-400 dark:text-violet-500" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">Nessuna sessione</p>
               <p className="text-xs text-muted-foreground/60 mt-1">
                 Crea una nuova sessione per iniziare
               </p>
@@ -529,27 +531,55 @@ export function DeliveryAgentPanel() {
 
         <div className="flex-1 overflow-hidden min-h-0">
           {!activeSession ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center max-w-md px-6">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Rocket className="w-8 h-8 text-white" />
+            <div className="flex items-center justify-center h-full relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/40 via-white to-violet-50/40 dark:from-indigo-950/20 dark:via-slate-950 dark:to-violet-950/20" />
+              <div className="absolute top-1/4 -left-20 w-64 h-64 bg-violet-200/20 dark:bg-violet-800/10 rounded-full blur-3xl" />
+              <div className="absolute bottom-1/4 -right-20 w-72 h-72 bg-indigo-200/20 dark:bg-indigo-800/10 rounded-full blur-3xl" />
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-center max-w-lg px-6 relative z-10"
+              >
+                <div className="relative mx-auto mb-6 w-20 h-20">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl rotate-6 opacity-20" />
+                  <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 flex items-center justify-center shadow-xl shadow-violet-500/25">
+                    <Rocket className="w-9 h-9 text-white drop-shadow-sm" />
+                  </div>
                 </div>
-                <h2 className="text-xl font-bold text-foreground mb-2">
+
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-700 via-violet-700 to-purple-700 dark:from-indigo-300 dark:via-violet-300 dark:to-purple-300 bg-clip-text text-transparent mb-3">
                   Delivery AI Agent
                 </h2>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Il tuo assistente AI per l'onboarding e la discovery dei
-                  clienti. Analizza la situazione, genera un report
-                  personalizzato e resta come assistente permanente.
+                <p className="text-sm text-muted-foreground mb-2 leading-relaxed max-w-sm mx-auto">
+                  Il tuo assistente AI per l'onboarding e la discovery dei clienti.
                 </p>
+
+                <div className="grid grid-cols-3 gap-3 mb-8 max-w-sm mx-auto">
+                  <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/60 dark:bg-white/5 border border-indigo-100/60 dark:border-indigo-800/30">
+                    <Search className="w-4 h-4 text-indigo-500" />
+                    <span className="text-[10px] font-medium text-muted-foreground">Analisi</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/60 dark:bg-white/5 border border-violet-100/60 dark:border-violet-800/30">
+                    <FileText className="w-4 h-4 text-violet-500" />
+                    <span className="text-[10px] font-medium text-muted-foreground">Report</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/60 dark:bg-white/5 border border-purple-100/60 dark:border-purple-800/30">
+                    <Bot className="w-4 h-4 text-purple-500" />
+                    <span className="text-[10px] font-medium text-muted-foreground">Assistente</span>
+                  </div>
+                </div>
+
                 <Button
                   onClick={() => setShowModeDialog(true)}
-                  className="gap-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white"
+                  size="lg"
+                  className="gap-2.5 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-700 hover:via-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25 hover:shadow-xl hover:shadow-violet-500/35 transition-all duration-300 px-8"
                 >
                   <Plus className="w-4 h-4" />
                   Inizia una Sessione
                 </Button>
-              </div>
+              </motion.div>
             </div>
           ) : viewMode === "report" ? (
             <DeliveryReport
@@ -596,9 +626,9 @@ export function DeliveryAgentPanel() {
             <div className="grid gap-3 py-4">
               <button
                 onClick={() => createSession("onboarding")}
-                className="flex items-start gap-4 p-4 rounded-xl border border-border hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-all text-left"
+                className="group flex items-start gap-4 p-4 rounded-xl border border-border hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-all duration-200 text-left hover:shadow-md hover:shadow-emerald-500/5"
               >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-emerald-500/20 group-hover:shadow-lg group-hover:shadow-emerald-500/30 transition-shadow duration-200">
                   <Rocket className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -610,9 +640,9 @@ export function DeliveryAgentPanel() {
               </button>
               <button
                 onClick={() => createSession("discovery")}
-                className="flex items-start gap-4 p-4 rounded-xl border border-border hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all text-left"
+                className="group flex items-start gap-4 p-4 rounded-xl border border-border hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all duration-200 text-left hover:shadow-md hover:shadow-blue-500/5"
               >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-blue-500/20 group-hover:shadow-lg group-hover:shadow-blue-500/30 transition-shadow duration-200">
                   <Users className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -624,9 +654,9 @@ export function DeliveryAgentPanel() {
               </button>
               <button
                 onClick={() => setSimulatorStep("niche")}
-                className="flex items-start gap-4 p-4 rounded-xl border border-border hover:border-orange-300 dark:hover:border-orange-700 hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-all text-left"
+                className="group flex items-start gap-4 p-4 rounded-xl border border-border hover:border-orange-300 dark:hover:border-orange-700 hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-all duration-200 text-left hover:shadow-md hover:shadow-orange-500/5"
               >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-orange-500/20 group-hover:shadow-lg group-hover:shadow-orange-500/30 transition-shadow duration-200">
                   <FlaskConical className="w-5 h-5 text-white" />
                 </div>
                 <div>
