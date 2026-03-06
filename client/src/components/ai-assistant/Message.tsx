@@ -162,8 +162,23 @@ const CodeRenderer: Components['code'] = ({ className, children }) => {
   if (isBlock) {
     return <code className="text-slate-100 font-mono text-sm">{children}</code>;
   }
+  const text = String(children);
+  const isNavPath = text.includes('→') || text.includes('>');
+  if (isNavPath) {
+    const segments = text.split(/\s*[→>]\s*/);
+    return (
+      <code className="inline-flex items-center gap-0.5 px-2 py-1 mx-0.5 bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border border-violet-200/80 dark:border-violet-700/50 rounded-lg text-xs font-semibold text-violet-700 dark:text-violet-300 shadow-sm">
+        {segments.map((seg, i) => (
+          <span key={i} className="inline-flex items-center gap-0.5">
+            {i > 0 && <span className="text-violet-400 dark:text-violet-500 mx-0.5">›</span>}
+            <span className="px-1 py-0.5 bg-white/60 dark:bg-white/5 rounded">{seg.trim()}</span>
+          </span>
+        ))}
+      </code>
+    );
+  }
   return (
-    <code className="px-1.5 py-0.5 mx-0.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded text-sm font-mono text-indigo-700 dark:text-indigo-300">
+    <code className="px-2 py-0.5 mx-0.5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-200/80 dark:border-indigo-700/50 rounded-md text-[13px] font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm ring-1 ring-indigo-100/50 dark:ring-indigo-800/30">
       {children}
     </code>
   );
