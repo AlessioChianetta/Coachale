@@ -12,6 +12,8 @@ import {
   BarChart3,
   Pencil,
   CheckCircle2,
+  Play,
+  Square,
 } from "lucide-react";
 import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea } from "@/components/ai-assistant/InputArea";
@@ -109,6 +111,10 @@ export function DeliveryChat({
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [isSimRunning, setIsSimRunning] = useState(false);
+  const [simStatus, setSimStatus] = useState("");
+  const [simTurn, setSimTurn] = useState(0);
+  const simAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -350,10 +356,109 @@ export function DeliveryChat({
     }
   }, [session.id, onStatusChange, onViewReport, toast]);
 
+  const handleStartSimulation = useCallback(async () => {
+    if (isSimRunning) return;
+    setIsSimRunning(true);
+    setSimStatus("Avvio simulazione...");
+    setSimTurn(0);
+
+    const controller = new AbortController();
+    simAbortRef.current = controller;
+
+    try {
+      const response = await fetch("/api/consultant/delivery-agent/simulator/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ sessionId: session.id }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error("Errore nell'avvio della simulazione");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === "client_message") {
+              setMessages(prev => [...prev, {
+                id: `sim-client-${Date.now()}`,
+                role: "user",
+                content: data.content,
+                status: "completed",
+              }]);
+              setSimTurn(data.turn || 0);
+            } else if (data.type === "luca_message") {
+              setMessages(prev => [...prev, {
+                id: `sim-luca-${Date.now()}`,
+                role: "assistant",
+                content: data.content,
+                status: "completed",
+              }]);
+            } else if (data.type === "status") {
+              setSimStatus(data.message || "");
+            } else if (data.type === "discovery_complete") {
+              onStatusChange("elaborating");
+              setSimStatus("Discovery completata!");
+            } else if (data.type === "simulation_ended") {
+              setSimStatus("");
+            } else if (data.type === "error") {
+              toast({
+                title: "Errore simulazione",
+                description: data.error || "Si è verificato un errore",
+                variant: "destructive",
+              });
+            }
+          } catch {}
+        }
+      }
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        toast({
+          title: "Errore",
+          description: err.message || "Simulazione interrotta",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSimRunning(false);
+      setSimStatus("");
+      simAbortRef.current = null;
+    }
+  }, [isSimRunning, session.id, onStatusChange, toast]);
+
+  const handleStopSimulation = useCallback(async () => {
+    if (simAbortRef.current) simAbortRef.current.abort();
+    try {
+      await fetch("/api/consultant/delivery-agent/simulator/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ sessionId: session.id }),
+      });
+    } catch {}
+    setIsSimRunning(false);
+    setSimStatus("");
+  }, [session.id]);
+
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+      }
+      if (simAbortRef.current) {
+        simAbortRef.current.abort();
       }
     };
   }, []);
@@ -413,16 +518,25 @@ export function DeliveryChat({
               {session.mode === "onboarding"
                 ? "Benvenuto nell'Onboarding!"
                 : session.mode === "simulator"
-                ? "Modalità Simulatore"
+                ? "Campo di Battaglia"
                 : "Iniziamo la Discovery"}
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-4">
               {session.mode === "onboarding"
                 ? "Raccontami della tua attività. Ti guiderò nella configurazione ottimale della piattaforma."
                 : session.mode === "simulator"
-                ? "Interpreta il cliente e scrivi come farebbe lui. Luca condurrà la discovery completa."
+                ? "Un AI interpreterà il cliente e Luca condurrà la discovery completa. Guarda la conversazione svolgersi in automatico."
                 : "Descrivi il cliente che vuoi analizzare. Esplorerò ogni aspetto per creare un piano su misura."}
             </p>
+            {session.mode === "simulator" && !isSimRunning && (
+              <Button
+                onClick={handleStartSimulation}
+                className="gap-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white"
+              >
+                <Play className="w-4 h-4" />
+                Avvia Simulazione
+              </Button>
+            )}
           </div>
         </div>
       ) : (
@@ -459,13 +573,49 @@ export function DeliveryChat({
         <GeneratingReportProgress />
       )}
 
-      <div className="p-3 border-t border-border/60 flex-shrink-0">
-        <InputArea
-          onSend={(msg) => handleSend(msg)}
-          disabled={isGeneratingReport}
-          isProcessing={isTyping}
-        />
-      </div>
+      {isSimRunning && (
+        <div className="px-4 py-3 border-t border-orange-200 dark:border-orange-800/40 bg-orange-50/60 dark:bg-orange-900/10 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
+              <span className="text-sm font-medium text-orange-700 dark:text-orange-400">
+                {simStatus || `Simulazione in corso — Turno ${simTurn}`}
+              </span>
+            </div>
+            <Button
+              onClick={handleStopSimulation}
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+            >
+              <Square className="w-3.5 h-3.5" />
+              Ferma
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {session.mode !== "simulator" && (
+        <div className="p-3 border-t border-border/60 flex-shrink-0">
+          <InputArea
+            onSend={(msg) => handleSend(msg)}
+            disabled={isGeneratingReport}
+            isProcessing={isTyping}
+          />
+        </div>
+      )}
+
+      {session.mode === "simulator" && !isSimRunning && messages.length > 0 && session.status !== "elaborating" && (
+        <div className="p-3 border-t border-border/60 flex-shrink-0">
+          <Button
+            onClick={handleStartSimulation}
+            className="w-full gap-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white"
+          >
+            <Play className="w-4 h-4" />
+            Riprendi Simulazione
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
