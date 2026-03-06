@@ -363,8 +363,8 @@ function LessonDetail({
       })()}
 
       <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
-        <div className={cn("h-1 bg-gradient-to-r", gradientClass)} />
-        <div className="p-5 md:p-6 space-y-4">
+        <div className={cn("h-1.5 bg-gradient-to-r", gradientClass)} />
+        <div className="p-5 md:p-6 space-y-5">
           <div className="flex flex-wrap items-start gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -395,53 +395,13 @@ function LessonDetail({
             )}
           </div>
 
-          <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
-            {lesson.description}
-          </p>
+          <div className="rounded-xl bg-gradient-to-br from-muted/50 to-muted/30 border border-border/40 p-4">
+            <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
+              {lesson.description}
+            </p>
+          </div>
 
-          {lesson.content && (
-            <div className="pt-3 border-t border-border/40">
-              <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground prose-li:text-muted-foreground prose-a:text-blue-600 dark:prose-a:text-blue-400">
-                {lesson.content.split('\n').map((line, i) => {
-                  const trimmed = line.trim();
-                  if (!trimmed) return <br key={i} />;
-                  if (trimmed.startsWith('**') && trimmed.endsWith('**'))
-                    return <h4 key={i} className="text-base font-bold mt-4 mb-2 text-foreground">{trimmed.slice(2, -2)}</h4>;
-                  if (trimmed.startsWith('**') && trimmed.includes(':**'))
-                    return <h4 key={i} className="text-base font-bold mt-4 mb-2 text-foreground" dangerouslySetInnerHTML={{ __html: trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />;
-                  if (/^\d+\.\s/.test(trimmed))
-                    return <div key={i} className="flex gap-2 ml-1 my-1"><span className="text-blue-500 font-bold flex-shrink-0">{trimmed.match(/^(\d+\.)/)?.[1]}</span><span dangerouslySetInnerHTML={{ __html: trimmed.replace(/^\d+\.\s*/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} /></div>;
-                  if (trimmed.startsWith('- '))
-                    return <div key={i} className="flex gap-2 ml-3 my-1"><span className="text-muted-foreground">•</span><span dangerouslySetInnerHTML={{ __html: trimmed.slice(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} /></div>;
-                  return <p key={i} className="my-1.5" dangerouslySetInnerHTML={{ __html: trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />;
-                })}
-              </div>
-            </div>
-          )}
-
-          {lesson.documents && lesson.documents.length > 0 && (
-            <div className="space-y-2 pt-2 border-t border-border/40">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Documenti allegati</p>
-              <div className="space-y-1.5">
-                {lesson.documents.map(doc => (
-                  <a
-                    key={doc.id}
-                    href={doc.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                  >
-                    <FileText className="w-4 h-4 flex-shrink-0" />
-                    <span className="flex-1 truncate">{doc.title}</span>
-                    <Badge variant="outline" className="text-[10px]">{doc.file_type}</Badge>
-                    <ExternalLink className="w-3 h-3 opacity-50" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <Link href={lesson.config_link}>
               <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto">
                 <Settings className="w-4 h-4" />
@@ -469,6 +429,125 @@ function LessonDetail({
           </div>
         </div>
       </div>
+
+      {lesson.content && (() => {
+        const sections: Array<{ heading: string | null; items: Array<{ type: 'p' | 'ol' | 'ul'; lines: string[] }> }> = [];
+        let currentSection: (typeof sections)[0] = { heading: null, items: [] };
+        let currentList: { type: 'ol' | 'ul'; lines: string[] } | null = null;
+
+        const flushList = () => {
+          if (currentList) { currentSection.items.push(currentList); currentList = null; }
+        };
+
+        lesson.content!.split('\n').forEach(rawLine => {
+          const line = rawLine.trim();
+          if (!line) { flushList(); return; }
+
+          if ((line.startsWith('**') && line.endsWith('**')) ||
+              (line.startsWith('**') && line.includes(':**'))) {
+            flushList();
+            if (currentSection.heading !== null || currentSection.items.length > 0) {
+              sections.push(currentSection);
+            }
+            currentSection = { heading: line.replace(/\*\*/g, ''), items: [] };
+            return;
+          }
+
+          if (/^\d+\.\s/.test(line)) {
+            if (currentList?.type !== 'ol') { flushList(); currentList = { type: 'ol', lines: [] }; }
+            currentList!.lines.push(line.replace(/^\d+\.\s*/, ''));
+            return;
+          }
+          if (line.startsWith('- ')) {
+            if (currentList?.type !== 'ul') { flushList(); currentList = { type: 'ul', lines: [] }; }
+            currentList!.lines.push(line.slice(2));
+            return;
+          }
+
+          flushList();
+          currentSection.items.push({ type: 'p', lines: [line] });
+        });
+        flushList();
+        if (currentSection.heading !== null || currentSection.items.length > 0) {
+          sections.push(currentSection);
+        }
+
+        const renderInline = (text: string) => text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-foreground font-semibold">$1</strong>');
+
+        return (
+          <div className="space-y-4">
+            {sections.map((section, si) => (
+              <div key={si} className="bg-card rounded-xl border border-border/60 shadow-sm overflow-hidden">
+                {section.heading && (
+                  <div className="px-4 py-3 border-b border-border/40 bg-muted/40">
+                    <h3 className="text-sm md:text-base font-bold text-foreground flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-indigo-500" />
+                      {section.heading}
+                    </h3>
+                  </div>
+                )}
+                <div className="p-4 space-y-3">
+                  {section.items.map((item, ii) => {
+                    if (item.type === 'p') {
+                      return (
+                        <p key={ii} className="text-sm md:text-[15px] text-muted-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: renderInline(item.lines[0]) }} />
+                      );
+                    }
+                    if (item.type === 'ol') {
+                      return (
+                        <div key={ii} className="space-y-2">
+                          {item.lines.map((ol, oi) => (
+                            <div key={oi} className="flex gap-3 items-start">
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">
+                                {oi + 1}
+                              </span>
+                              <span className="text-sm md:text-[15px] text-muted-foreground leading-relaxed flex-1 min-w-0" dangerouslySetInnerHTML={{ __html: renderInline(ol) }} />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={ii} className="space-y-1.5 pl-1">
+                        {item.lines.map((ul, ui) => (
+                          <div key={ui} className="flex gap-2.5 items-start">
+                            <ChevronRight className="w-3.5 h-3.5 text-indigo-500 mt-1 flex-shrink-0" />
+                            <span className="text-sm md:text-[15px] text-muted-foreground leading-relaxed flex-1 min-w-0" dangerouslySetInnerHTML={{ __html: renderInline(ul) }} />
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {lesson.documents && lesson.documents.length > 0 && (
+        <div className="bg-card rounded-xl border border-border/60 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-border/40 bg-muted/30">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Documenti allegati</p>
+          </div>
+          <div className="p-3 space-y-1.5">
+            {lesson.documents.map(doc => (
+              <a
+                key={doc.id}
+                href={doc.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              >
+                <FileText className="w-4 h-4 flex-shrink-0" />
+                <span className="flex-1 truncate">{doc.title}</span>
+                <Badge variant="outline" className="text-[10px]">{doc.file_type}</Badge>
+                <ExternalLink className="w-3 h-3 opacity-50" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-3">
         <Button
@@ -787,7 +866,7 @@ export default function ConsultantAcademy() {
               </div>
             )}
 
-            <div className="flex gap-6 lg:gap-8">
+            <div className="flex gap-6 lg:gap-8 overflow-hidden">
               {!isMobile && (
                 <aside className="w-72 flex-shrink-0">
                   <div className="sticky top-6 max-h-[calc(100vh-120px)] overflow-y-auto pr-1 space-y-1 scrollbar-thin">
@@ -796,7 +875,7 @@ export default function ConsultantAcademy() {
                 </aside>
               )}
 
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 {activeLesson ? (
                   <AnimatePresence mode="wait">
                     <motion.div
