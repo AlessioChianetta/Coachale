@@ -345,153 +345,263 @@ export default function ConsultantCatalogSettings() {
     });
   }
 
+  const activeCount = items.filter(i => i.isActive).length;
+  const draftCount = items.filter(i => !i.isActive).length;
+  const totalRevenue = sales.reduce((sum, s) => sum + s.amountCents, 0);
+
+  const CATEGORY_COLORS: Record<string, { bg: string; text: string; gradient: string; border: string }> = {
+    ai: { bg: "bg-violet-100 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-300", gradient: "from-violet-500 to-purple-600", border: "border-violet-200 dark:border-violet-800" },
+    marketing: { bg: "bg-pink-100 dark:bg-pink-900/30", text: "text-pink-700 dark:text-pink-300", gradient: "from-pink-500 to-rose-600", border: "border-pink-200 dark:border-pink-800" },
+    automation: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-300", gradient: "from-amber-500 to-orange-600", border: "border-amber-200 dark:border-amber-800" },
+    communication: { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300", gradient: "from-emerald-500 to-teal-600", border: "border-emerald-200 dark:border-emerald-800" },
+    analytics: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300", gradient: "from-blue-500 to-indigo-600", border: "border-blue-200 dark:border-blue-800" },
+    other: { bg: "bg-slate-100 dark:bg-slate-900/30", text: "text-slate-700 dark:text-slate-300", gradient: "from-slate-500 to-gray-600", border: "border-slate-200 dark:border-slate-800" },
+  };
+
+  const getCatColor = (cat: string) => CATEGORY_COLORS[cat] || CATEGORY_COLORS.other;
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar role="consultant" />
       <main className="flex-1 overflow-auto">
-        <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Catalogo Servizi</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Gestisci i prodotti e servizi che vendi ai tuoi clienti
-              </p>
+        <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-6 md:p-8">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+            <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4" />
+            <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
+                    <ShoppingCart className="w-5 h-5 text-white" />
+                  </div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-white">Catalogo Servizi</h1>
+                </div>
+                <p className="text-white/70 text-sm md:text-base">
+                  Gestisci i prodotti e servizi che vendi ai tuoi clienti
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-6 mr-4">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-white">{items.length}</p>
+                    <p className="text-[10px] text-white/60 uppercase tracking-wider">Prodotti</p>
+                  </div>
+                  <div className="w-px h-10 bg-white/20" />
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-emerald-300">{activeCount}</p>
+                    <p className="text-[10px] text-white/60 uppercase tracking-wider">Attivi</p>
+                  </div>
+                  <div className="w-px h-10 bg-white/20" />
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-amber-300">{draftCount}</p>
+                    <p className="text-[10px] text-white/60 uppercase tracking-wider">Bozze</p>
+                  </div>
+                  {sales.length > 0 && (
+                    <>
+                      <div className="w-px h-10 bg-white/20" />
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-white">{formatPrice(totalRevenue)}</p>
+                        <p className="text-[10px] text-white/60 uppercase tracking-wider">Ricavi</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <Button onClick={openCreateModal} className="bg-white text-violet-700 hover:bg-white/90 font-semibold gap-2 shadow-lg">
+                  <Plus className="w-4 h-4" />
+                  {isMobile ? "Nuovo" : "Nuovo Prodotto"}
+                </Button>
+              </div>
             </div>
-            <Button onClick={openCreateModal} className="gap-2">
-              <Plus className="w-4 h-4" />
-              {isMobile ? "Nuovo" : "Nuovo Prodotto"}
-            </Button>
           </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[1,2,3,4,5,6,7,8].map(i => (
+                <div key={i} className="rounded-xl border border-border/50 p-4 space-y-3 animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-muted" />
+                    <div className="space-y-1.5 flex-1">
+                      <div className="h-4 w-24 bg-muted rounded" />
+                      <div className="h-3 w-16 bg-muted/60 rounded" />
+                    </div>
+                  </div>
+                  <div className="h-3 w-full bg-muted/40 rounded" />
+                  <div className="h-3 w-3/4 bg-muted/30 rounded" />
+                  <div className="h-8 w-full bg-muted/20 rounded-lg mt-2" />
+                </div>
+              ))}
             </div>
           ) : items.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 flex items-center justify-center mb-4">
-                  <Package className="w-8 h-8 text-indigo-500" />
+            <Card className="border-dashed border-2">
+              <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-600 rounded-3xl rotate-6 opacity-20 blur-sm scale-110" />
+                  <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                    <Package className="w-9 h-9 text-white" />
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Nessun prodotto nel catalogo</h3>
-                <p className="text-sm text-muted-foreground max-w-md mb-6">
+                <h3 className="text-xl font-bold mb-2">Nessun prodotto nel catalogo</h3>
+                <p className="text-sm text-muted-foreground max-w-md mb-8">
                   Crea il tuo primo prodotto o servizio. Puoi farlo manualmente, con l'aiuto dell'AI,
                   o lasciare che l'AI generi tutto da un semplice prompt.
                 </p>
-                <Button onClick={openCreateModal} size="lg" className="gap-2">
+                <Button onClick={openCreateModal} size="lg" className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25">
                   <Sparkles className="w-4 h-4" />
                   Crea il tuo primo prodotto
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {items.map(item => (
-                <Card
-                  key={item.id}
-                  className={cn(
-                    "relative group transition-all hover:shadow-md",
-                    !item.isActive && "opacity-60"
-                  )}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{item.icon}</span>
-                        <div>
-                          <h3 className="font-semibold text-sm leading-tight">{item.name}</h3>
-                          <p className="text-xs text-muted-foreground">{categoryLabel(item.category)}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {items.map(item => {
+                const catColor = getCatColor(item.category);
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "group relative rounded-xl border overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 bg-card",
+                      item.isActive
+                        ? "border-border/60 hover:border-violet-300 dark:hover:border-violet-700"
+                        : "border-dashed border-border/40 opacity-65"
+                    )}
+                  >
+                    <div className={cn("h-1.5 bg-gradient-to-r", catColor.gradient)} />
+
+                    <div className="absolute top-3.5 right-3 flex items-center gap-1 z-10">
+                      {item.isFeatured && (
+                        <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                          <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                        </div>
+                      )}
+                      <div className={cn(
+                        "px-2 py-0.5 rounded-full text-[9px] font-semibold",
+                        item.isActive
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                          : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                      )}>
+                        {item.isActive ? "Attivo" : "Bozza"}
+                      </div>
+                    </div>
+
+                    <div className="p-4 pt-3">
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className={cn(
+                          "w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0",
+                          catColor.bg, catColor.border, "border"
+                        )}>
+                          {item.icon}
+                        </div>
+                        <div className="flex-1 min-w-0 pr-14">
+                          <h3 className="font-semibold text-sm leading-tight truncate">{item.name}</h3>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className={cn("text-[10px] font-medium", catColor.text)}>
+                              {categoryLabel(item.category)}
+                            </span>
+                            {item.itemType === "bundle" && (
+                              <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400">
+                                Bundle
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        {item.isFeatured && (
-                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                        )}
-                        {item.itemType === "bundle" && (
-                          <Badge variant="outline" className="text-[10px] px-1.5">Bundle</Badge>
-                        )}
+
+                      {item.shortDescription && (
+                        <p className="text-[11px] text-muted-foreground mb-3 line-clamp-2 leading-relaxed min-h-[2rem]">
+                          {item.shortDescription}
+                        </p>
+                      )}
+
+                      {item.badgeText && (
+                        <Badge className="mb-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-semibold shadow-sm">
+                          {item.badgeText}
+                        </Badge>
+                      )}
+
+                      <div className="flex items-end justify-between mb-3">
+                        <div>
+                          {item.originalPriceCents && item.originalPriceCents > item.priceCents && (
+                            <span className="text-[11px] text-muted-foreground/60 line-through block">
+                              {formatPrice(item.originalPriceCents)}
+                            </span>
+                          )}
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xl font-bold">{formatPrice(item.priceCents)}</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {item.billingType !== "one_time" ? `/${billingLabel(item.billingType)}` : ""}
+                            </span>
+                          </div>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "text-[8px] font-semibold",
+                            item.paymentMode === "connect"
+                              ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+                              : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          )}
+                        >
+                          {item.paymentMode === "connect" ? "Connect 50%" : "Diretto 100%"}
+                        </Badge>
                       </div>
-                    </div>
 
-                    {item.shortDescription && (
-                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{item.shortDescription}</p>
-                    )}
-
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-lg font-bold">{formatPrice(item.priceCents)}</span>
-                        {item.originalPriceCents && item.originalPriceCents > item.priceCents && (
-                          <span className="text-xs text-muted-foreground line-through">
-                            {formatPrice(item.originalPriceCents)}
-                          </span>
-                        )}
-                        <span className="text-xs text-muted-foreground">/{billingLabel(item.billingType)}</span>
-                      </div>
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          "text-[10px]",
-                          item.paymentMode === "connect"
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                        )}
-                      >
-                        {item.paymentMode === "connect" ? "Connect 50%" : "Diretto 100%"}
-                      </Badge>
-                    </div>
-
-                    {item.badgeText && (
-                      <Badge className="mb-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px]">
-                        {item.badgeText}
-                      </Badge>
-                    )}
-
-                    <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 pt-2.5 border-t border-border/40">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0"
+                          className="h-8 flex-1 text-xs gap-1.5 hover:bg-violet-50 dark:hover:bg-violet-950/30"
+                          onClick={() => openEditModal(item)}
+                        >
+                          <Pencil className="w-3 h-3" />
+                          Modifica
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "h-8 flex-1 text-xs gap-1.5",
+                            item.isActive
+                              ? "hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-600"
+                              : "hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-emerald-600"
+                          )}
                           onClick={() => toggleMutation.mutate(item.id)}
-                          title={item.isActive ? "Disattiva" : "Attiva"}
                         >
                           {item.isActive ? (
-                            <Eye className="w-3.5 h-3.5 text-emerald-500" />
+                            <><EyeOff className="w-3 h-3" /> Nascondi</>
                           ) : (
-                            <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />
+                            <><Eye className="w-3 h-3" /> Pubblica</>
                           )}
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => openEditModal(item)}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                          className="h-8 w-8 p-0 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                           onClick={() => {
                             if (window.confirm("Disattivare questo prodotto?")) {
                               deleteMutation.mutate(item.id);
                             }
                           }}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
-                      <span className={cn(
-                        "text-[10px] font-medium",
-                        item.isActive ? "text-emerald-600" : "text-muted-foreground"
-                      )}>
-                        {item.isActive ? "Attivo" : "Inattivo"}
-                      </span>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                );
+              })}
+
+              <button
+                onClick={openCreateModal}
+                className="rounded-xl border-2 border-dashed border-border/50 hover:border-violet-300 dark:hover:border-violet-700 flex flex-col items-center justify-center p-8 transition-all hover:bg-violet-50/50 dark:hover:bg-violet-950/20 group min-h-[240px]"
+              >
+                <div className="w-12 h-12 rounded-xl bg-muted/60 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 flex items-center justify-center transition-colors mb-3">
+                  <Plus className="w-6 h-6 text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors" />
+                </div>
+                <span className="text-sm font-medium text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                  Aggiungi prodotto
+                </span>
+              </button>
             </div>
           )}
 
