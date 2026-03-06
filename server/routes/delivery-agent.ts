@@ -1122,6 +1122,13 @@ router.post('/simulator/run', authenticateToken, requireRole('consultant'), asyn
         `);
         history.push({ role: 'model', parts: [{ text: lucaGreeting }] });
         sendSSE('luca_message', { content: lucaGreeting });
+      } else {
+        const fallbackGreeting = 'Ciao! Sono Luca, il tuo consulente. Raccontami un po\' della tua attività — cosa fai e come lavori oggi?';
+        await db.execute(sql`
+          INSERT INTO delivery_agent_messages (session_id, role, content) VALUES (${sessionId}, 'assistant', ${fallbackGreeting})
+        `);
+        history.push({ role: 'model', parts: [{ text: fallbackGreeting }] });
+        sendSSE('luca_message', { content: fallbackGreeting });
       }
     }
 
@@ -1133,10 +1140,22 @@ router.post('/simulator/run', authenticateToken, requireRole('consultant'), asyn
       sendSSE('status', { message: `Turno ${turnNumber} — Il cliente sta rispondendo...`, turn: turnNumber });
 
       const clientSystemPrompt = getSimulatedClientPrompt(simulatorData.niche, simulatorData.attitude, turnNumber);
-      const clientHistory = history.map(m => ({
-        role: (m.role === 'model' ? 'user' : 'model') as 'user' | 'model',
-        parts: m.parts,
-      }));
+
+      const clientHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
+      for (const m of history) {
+        const swappedRole = m.role === 'model' ? 'user' : 'model';
+        if (clientHistory.length > 0 && clientHistory[clientHistory.length - 1].role === swappedRole) {
+          clientHistory[clientHistory.length - 1].parts = [
+            ...clientHistory[clientHistory.length - 1].parts,
+            ...m.parts,
+          ];
+        } else {
+          clientHistory.push({ role: swappedRole, parts: [...m.parts] });
+        }
+      }
+      if (clientHistory.length === 0 || clientHistory[0].role !== 'user') {
+        clientHistory.unshift({ role: 'user', parts: [{ text: 'Ciao, ho sentito parlare di voi e vorrei capire come potete aiutarmi.' }] });
+      }
 
       const clientResult = await provider.client.generateContent({
         model,
@@ -1176,9 +1195,14 @@ router.post('/simulator/run', authenticateToken, requireRole('consultant'), asyn
       const freshSession = lucaSessionRes.rows[0] as any;
       const lucaSystemPrompt = getDeliveryAgentSystemPrompt('simulator', freshSession?.status || 'discovery', freshSession?.client_profile_json || session.client_profile_json);
 
+      const lucaContents = [...history];
+      if (lucaContents.length > 0 && lucaContents[0].role !== 'user') {
+        lucaContents.unshift({ role: 'user', parts: [{ text: 'Ciao' }] });
+      }
+
       const lucaResult = await provider.client.generateContent({
         model,
-        contents: history,
+        contents: lucaContents,
         generationConfig: { maxOutputTokens: 8192, temperature: 0.7 },
         systemInstruction: { role: 'system', parts: [{ text: lucaSystemPrompt }] },
       });
