@@ -601,7 +601,7 @@ export function DeliveryChat({
         </div>
       )}
 
-      {session.mode !== "simulator" && (
+      {(session.mode !== "simulator" || session.status === "assistant" || session.status === "completed") && (
         <div className="p-3 border-t border-border/60 flex-shrink-0">
           <InputArea
             onSend={(msg) => handleSend(msg)}
@@ -611,7 +611,7 @@ export function DeliveryChat({
         </div>
       )}
 
-      {session.mode === "simulator" && !isSimRunning && messages.length > 0 && session.status !== "elaborating" && (
+      {session.mode === "simulator" && !isSimRunning && messages.length > 0 && session.status !== "elaborating" && session.status !== "assistant" && session.status !== "completed" && (
         <div className="p-3 border-t border-border/60 flex-shrink-0">
           <Button
             onClick={handleStartSimulation}
