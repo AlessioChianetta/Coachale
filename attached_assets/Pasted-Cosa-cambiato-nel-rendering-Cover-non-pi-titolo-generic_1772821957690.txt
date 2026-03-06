@@ -1,0 +1,31 @@
+Cosa è cambiato nel rendering
+Cover — non più titolo generico centrato con gradienti. Ora mostra il nome reale della persona ("Il piano di Marco") e in basso una riga dedicata al gap principale, che è la prima cosa utile che leggi.
+Profilo — invece di grid di badge, una tabella a righe con label | valore — leggibile come un brief. Più denso, più consultabile.
+Diagnosi — "Oggi vs Tra 60 giorni" affiancati, senza box colorate. La tabella diagnostica ha ora una colonna priorità con dot colorati invece di badge invadenti. Molto più compatta.
+Pacchetti — aggiunto il campo "Cosa non fa" (honest_warning) perché è la sezione che costruisce più fiducia. I moduli ora sono espandibili: clicchi su un modulo e appaiono primo passo concreto e segnale di successo — rendendo ogni modulo azionabile.
+Roadmap — ricostruita con timeline verticale numerata (stile documento tecnico), con per ogni fase: cosa fai, obiettivo, e la riga "Vita dopo" — cioè come cambia la vita lavorativa dopo aver completato la fase.
+Quick Wins — aggiunto il campo "Testo da copiare" (copy_paste) — se la quick win prevede uno script, un messaggio, un template, il testo appare letteralmente pronto per fare copia-incolla.
+Segnali di successo — sezione nuova (success_signals) più specifica delle metriche: timeframe / dove guardare / cosa cerchi. Risponde alla domanda "come so che funziona davvero?" con indicatori navigabili nella piattaforma.
+Avvertimento onesto — sezione nuova (honest_warning a livello report) — il paragrafo che dice dove farai fatica e perché vale la pena. È la sezione che rende il report credibile.
+
+Nuovi campi JSON da popolare nel prompt
+json"flusso_completo": "paragrafo narrativo su come i moduli si parlano",
+"avvertimento_onesto": "dove farai fatica, cosa richiede effort vero",
+"segnali_successo": [
+  {
+    "timeframe": "Entro 2 settimane",
+    "dove_guardare": "Dashboard → Dipendenti AI → Stella",
+    "cosa_cerchi": "almeno 20 conversazioni gestite in autonomia",
+    "cosa_significa": "Stella è attiva e funziona"
+  }
+],
+"quick_wins": [
+  {
+    "titolo": "...",
+    "istruzioni": ["..."],
+    "testo_da_copiare": "Ciao [Nome], ti riscrivo perché...",
+    "tempo_stimato": "15 min",
+    "cosa_cambia": "..."
+  }
+]
+Vuoi che aggiorni anche il REPORT_TEMPLATE nel file delivery-agent-prompt.ts con questi nuovi campi?
