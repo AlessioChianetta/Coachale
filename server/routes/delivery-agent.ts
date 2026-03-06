@@ -183,7 +183,7 @@ router.post('/chat', authenticateToken, requireRole('consultant'), async (req: A
     const { model, useThinking, thinkingLevel } = getModelWithThinking(provider.metadata?.providerName);
 
     const generationConfig: any = {
-      maxOutputTokens: 8192,
+      maxOutputTokens: 12288,
       temperature: 0.7,
     };
     if (useThinking) {

@@ -10,7 +10,7 @@ import {
   Share2,
   User,
   Stethoscope,
-  Layers,
+  Package,
   Calendar,
   Zap,
   BarChart3,
@@ -21,14 +21,45 @@ import {
   TrendingUp,
   ExternalLink,
   Star,
+  ChevronDown,
+  ChevronUp,
+  Layers,
+  ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+
+interface PackageModule {
+  name: string;
+  complexity: string;
+  setup_time: string;
+  config_link?: string;
+}
+
+interface RecommendedPackage {
+  package_name: string;
+  subtitle: string;
+  priority: "fondamenta" | "core" | "avanzato";
+  reason: string;
+  modules: PackageModule[];
+  timeline: string;
+  connection: string;
+}
+
+interface RecommendedModule {
+  name: string;
+  priority: "fondamenta" | "core" | "avanzato";
+  complexity: "bassa" | "media" | "alta";
+  reason: string;
+  config_link?: string;
+}
 
 interface ReportData {
   client_profile?: {
     business_type?: string;
     sector?: string;
+    niche?: string;
+    years?: number;
     scale?: string;
     team_size?: string;
     main_pain_point?: string;
@@ -36,6 +67,9 @@ interface ReportData {
     digital_maturity?: string;
     current_tools?: string[];
     budget?: string;
+    communication_channels?: string[];
+    sales_method?: string;
+    has_training?: boolean;
   };
   diagnosis?: {
     current_state?: string;
@@ -43,17 +77,12 @@ interface ReportData {
     gap_analysis?: string;
     key_challenges?: string[];
   };
-  recommended_modules?: Array<{
-    name: string;
-    priority: "fondamenta" | "core" | "avanzato";
-    complexity: "bassa" | "media" | "alta";
-    reason: string;
-    config_link?: string;
-  }>;
+  recommended_packages?: RecommendedPackage[];
+  recommended_modules?: RecommendedModule[];
   roadmap?: {
-    week1?: Array<{ module: string; action: string }>;
-    weeks2_4?: Array<{ module: string; action: string }>;
-    month2_plus?: Array<{ module: string; action: string }>;
+    week1?: any;
+    weeks2_4?: any;
+    month2_plus?: any;
   };
   quick_wins?: Array<{
     title: string;
@@ -73,6 +102,7 @@ function normalizeReport(raw: any): ReportData {
   if (!raw) return {};
   const p = raw.profilo_cliente || raw.client_profile;
   const d = raw.diagnosi || raw.diagnosis;
+  const pkg = raw.pacchetti_consigliati || raw.recommended_packages;
   const m = raw.moduli_consigliati || raw.recommended_modules;
   const r = raw.roadmap;
   const q = raw.quick_wins;
@@ -84,13 +114,18 @@ function normalizeReport(raw: any): ReportData {
     result.client_profile = {
       business_type: p.tipo_business || p.business_type,
       sector: p.settore || p.sector,
+      niche: p.nicchia || p.niche,
+      years: p.anni_attivita || p.years,
       scale: p.scala_descrizione || p.scale || (p.scala ? `${p.scala.clienti_attivi || 0} clienti` : undefined),
       team_size: String(p.team_size || ''),
       main_pain_point: p.pain_point_badge || p.main_pain_point || p.pain_point_principale,
-      goals: p.obiettivi_3_6_mesi || p.goals || [],
+      goals: p.obiettivi_chiave || p.obiettivi_3_6_mesi || p.goals || [],
       digital_maturity: p.maturita_digitale || p.digital_maturity,
       current_tools: p.strumenti_attuali || p.current_tools || [],
       budget: p.budget,
+      communication_channels: p.canali_comunicazione || p.communication_channels || [],
+      sales_method: p.metodo_vendita || p.sales_method,
+      has_training: p.ha_formazione ?? p.has_training,
     };
   }
 
@@ -103,7 +138,24 @@ function normalizeReport(raw: any): ReportData {
     };
   }
 
-  if (m && Array.isArray(m)) {
+  if (pkg && Array.isArray(pkg) && pkg.length > 0) {
+    result.recommended_packages = pkg.map((pk: any) => ({
+      package_name: pk.nome_pacchetto || pk.package_name,
+      subtitle: pk.sottotitolo || pk.subtitle || '',
+      priority: pk.priorita || pk.priority || 'core',
+      reason: pk.perche_per_te || pk.reason || '',
+      modules: (pk.moduli_inclusi || pk.modules || []).map((mod: any) => ({
+        name: mod.nome || mod.name,
+        complexity: mod.complessita_setup || mod.complexity || 'media',
+        setup_time: mod.tempo_setup || mod.setup_time || '',
+        config_link: mod.config_link,
+      })),
+      timeline: pk.timeline_setup || pk.timeline || '',
+      connection: pk.connessione_altri_pacchetti || pk.connection || '',
+    }));
+  }
+
+  if (m && Array.isArray(m) && !result.recommended_packages) {
     result.recommended_modules = m.map((mod: any) => ({
       name: mod.nome || mod.name,
       priority: mod.priorita || mod.priority || 'core',
@@ -117,6 +169,13 @@ function normalizeReport(raw: any): ReportData {
     const mapPhase = (phase: any) => {
       if (!phase) return undefined;
       if (Array.isArray(phase)) return phase;
+      if (phase.azioni && Array.isArray(phase.azioni)) {
+        return phase.azioni.map((a: string) => ({
+          module: a,
+          action: phase.obiettivo || '',
+          packages: phase.pacchetti || [],
+        }));
+      }
       if (phase.moduli && Array.isArray(phase.moduli)) {
         return phase.moduli.map((m: string) => ({ module: m, action: phase.obiettivo || '' }));
       }
@@ -155,7 +214,16 @@ interface DeliveryReportProps {
   onBackToChat: () => void;
 }
 
-const SECTION_ICONS = [
+const SECTION_ICONS_PACKAGES = [
+  { icon: User, label: "Profilo Cliente", gradient: "from-blue-500 to-cyan-600" },
+  { icon: Stethoscope, label: "La Diagnosi", gradient: "from-rose-500 to-pink-600" },
+  { icon: Package, label: "Pacchetti Consigliati", gradient: "from-violet-500 to-purple-600" },
+  { icon: Calendar, label: "Roadmap", gradient: "from-amber-500 to-orange-600" },
+  { icon: Zap, label: "Quick Wins", gradient: "from-emerald-500 to-teal-600" },
+  { icon: BarChart3, label: "Metriche di Successo", gradient: "from-indigo-500 to-blue-600" },
+];
+
+const SECTION_ICONS_MODULES = [
   { icon: User, label: "Profilo Cliente", gradient: "from-blue-500 to-cyan-600" },
   { icon: Stethoscope, label: "La Diagnosi", gradient: "from-rose-500 to-pink-600" },
   { icon: Layers, label: "Moduli Consigliati", gradient: "from-violet-500 to-purple-600" },
@@ -192,6 +260,9 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
   const { toast } = useToast();
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const usePackages = !!(report?.recommended_packages && report.recommended_packages.length > 0);
+  const SECTION_ICONS = usePackages ? SECTION_ICONS_PACKAGES : SECTION_ICONS_MODULES;
 
   useEffect(() => {
     const loadReport = async () => {
@@ -285,13 +356,16 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <SectionCard index={0}>
+            <SectionCard index={0} icons={SECTION_ICONS}>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {report.client_profile.business_type && (
                   <InfoField label="Tipo Attività" value={report.client_profile.business_type} />
                 )}
                 {report.client_profile.sector && (
                   <InfoField label="Settore" value={report.client_profile.sector} />
+                )}
+                {report.client_profile.niche && (
+                  <InfoField label="Nicchia" value={report.client_profile.niche} />
                 )}
                 {report.client_profile.scale && (
                   <InfoField label="Scala" value={report.client_profile.scale} />
@@ -302,10 +376,23 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
                 {report.client_profile.digital_maturity && (
                   <InfoField label="Maturità Digitale" value={report.client_profile.digital_maturity} />
                 )}
+                {report.client_profile.sales_method && (
+                  <InfoField label="Metodo Vendita" value={report.client_profile.sales_method} />
+                )}
                 {report.client_profile.budget && (
                   <InfoField label="Budget" value={report.client_profile.budget} />
                 )}
               </div>
+              {report.client_profile.communication_channels && report.client_profile.communication_channels.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mr-1 self-center">Canali:</span>
+                  {report.client_profile.communication_channels.map((ch, i) => (
+                    <Badge key={i} variant="outline" className="text-[10px]">
+                      {ch}
+                    </Badge>
+                  ))}
+                </div>
+              )}
               {report.client_profile.main_pain_point && (
                 <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
                   <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">
@@ -336,7 +423,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <SectionCard index={1}>
+            <SectionCard index={1} icons={SECTION_ICONS}>
               <div className="grid md:grid-cols-2 gap-4">
                 {report.diagnosis.current_state && (
                   <div className="p-4 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-200/50 dark:border-red-800/30">
@@ -383,13 +470,29 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
           </motion.div>
         )}
 
-        {report.recommended_modules && report.recommended_modules.length > 0 && (
+        {report.recommended_packages && report.recommended_packages.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <SectionCard index={2}>
+            <SectionCard index={2} icons={SECTION_ICONS}>
+              <div className="space-y-4">
+                {report.recommended_packages.map((pkg, i) => (
+                  <PackageCard key={i} pkg={pkg} index={i} />
+                ))}
+              </div>
+            </SectionCard>
+          </motion.div>
+        )}
+
+        {!report.recommended_packages && report.recommended_modules && report.recommended_modules.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <SectionCard index={2} icons={SECTION_ICONS}>
               <div className="grid md:grid-cols-2 gap-3">
                 {report.recommended_modules.map((mod, i) => {
                   const prio = PRIORITY_COLORS[mod.priority] || PRIORITY_COLORS.core;
@@ -468,7 +571,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <SectionCard index={3}>
+            <SectionCard index={3} icons={SECTION_ICONS}>
               <div className="grid md:grid-cols-3 gap-4">
                 {report.roadmap.week1 && report.roadmap.week1.length > 0 && (
                   <RoadmapColumn
@@ -505,7 +608,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
           >
-            <SectionCard index={4}>
+            <SectionCard index={4} icons={SECTION_ICONS}>
               <div className="space-y-3">
                 {report.quick_wins.map((qw, i) => (
                   <div
@@ -565,7 +668,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
           >
-            <SectionCard index={5}>
+            <SectionCard index={5} icons={SECTION_ICONS}>
               <div className="grid md:grid-cols-2 gap-3">
                 {report.success_metrics.map((metric, i) => (
                   <div
@@ -621,14 +724,157 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
   );
 }
 
+function PackageCard({ pkg, index }: { pkg: RecommendedPackage; index: number }) {
+  const [expanded, setExpanded] = useState(index === 0);
+  const prio = PRIORITY_COLORS[pkg.priority] || PRIORITY_COLORS.core;
+
+  return (
+    <div className={cn("rounded-xl border overflow-hidden transition-all", prio.border)}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className={cn(
+          "w-full p-4 flex items-center gap-3 text-left transition-colors",
+          prio.bg,
+          "hover:opacity-90"
+        )}
+      >
+        <div className={cn(
+          "w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center flex-shrink-0 text-white font-bold text-sm",
+          pkg.priority === 'fondamenta' ? 'from-emerald-500 to-emerald-600' :
+          pkg.priority === 'avanzato' ? 'from-violet-500 to-violet-600' :
+          'from-blue-500 to-blue-600'
+        )}>
+          {index + 1}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h4 className={cn("font-bold text-sm", prio.text)}>
+              {pkg.package_name}
+            </h4>
+            <Badge
+              variant="outline"
+              className={cn("text-[10px] capitalize flex-shrink-0", prio.text, prio.border)}
+            >
+              {pkg.priority}
+            </Badge>
+          </div>
+          {pkg.subtitle && (
+            <p className="text-xs text-muted-foreground mt-0.5">{pkg.subtitle}</p>
+          )}
+        </div>
+        {pkg.timeline && (
+          <Badge variant="outline" className="text-[10px] flex-shrink-0 hidden sm:flex">
+            <Clock className="w-2.5 h-2.5 mr-1" />
+            {pkg.timeline}
+          </Badge>
+        )}
+        {expanded ? (
+          <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="p-4 border-t border-border/40 space-y-4 bg-card">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+              Perché per te
+            </p>
+            <p className="text-sm text-foreground leading-relaxed">
+              {pkg.reason}
+            </p>
+          </div>
+
+          {pkg.modules && pkg.modules.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Moduli Inclusi ({pkg.modules.length})
+              </p>
+              <div className="space-y-2">
+                {pkg.modules.map((mod, j) => {
+                  const complexityLevel = COMPLEXITY_BARS[mod.complexity] || 1;
+                  return (
+                    <div
+                      key={j}
+                      className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-border/40"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {mod.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="flex items-center gap-1">
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3].map((level) => (
+                              <div
+                                key={level}
+                                className={cn(
+                                  "w-2.5 h-1 rounded-full",
+                                  level <= complexityLevel
+                                    ? "bg-current opacity-60"
+                                    : "bg-slate-200 dark:bg-slate-700"
+                                )}
+                                style={{
+                                  color:
+                                    complexityLevel === 1
+                                      ? "#22c55e"
+                                      : complexityLevel === 2
+                                      ? "#f59e0b"
+                                      : "#ef4444",
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {mod.setup_time && (
+                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                            {mod.setup_time}
+                          </span>
+                        )}
+                        {mod.config_link && (
+                          <a
+                            href={mod.config_link}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[10px] text-indigo-500 hover:underline flex items-center gap-0.5"
+                          >
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {pkg.connection && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-200/50 dark:border-indigo-800/30">
+              <ArrowRight className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                {pkg.connection}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SectionCard({
   index,
   children,
+  icons,
 }: {
   index: number;
   children: React.ReactNode;
+  icons: typeof SECTION_ICONS_PACKAGES;
 }) {
-  const section = SECTION_ICONS[index];
+  const section = icons[index];
   const Icon = section.icon;
 
   return (
@@ -671,7 +917,7 @@ function RoadmapColumn({
 }: {
   title: string;
   subtitle: string;
-  items: Array<{ module: string; action: string }>;
+  items: Array<{ module: string; action: string; packages?: string[] }>;
   color: "emerald" | "blue" | "violet";
 }) {
   const colorMap = {

@@ -47,6 +47,21 @@
 - Capitolo 24: Integrazione tra i Quattro Sistemi
 - Capitolo 25: Clienti CRM – Contatti Senza Accesso e Link di Pagamento Stripe
 
+## PARTE SESTA: PACCHETTI SERVIZI
+- Capitolo 36: Pacchetti Servizi della Piattaforma
+  - 36.1 SETTER AI – Acquisizione & Primo Contatto
+  - 36.2 DIPENDENTI AI AUTONOMI – Team AI 24/7
+  - 36.3 HUNTER – Lead Generation & Outreach Proattivo
+  - 36.4 EMAIL JOURNEY & NURTURING – Comunicazione Continuativa
+  - 36.5 LAVORO QUOTIDIANO & CONSULENZE – Operatività
+  - 36.6 FORMAZIONE & CORSI – Academy
+  - 36.7 CONTENT STUDIO – Marketing & Contenuti
+  - 36.8 VOCE AI – Centralino & Chiamate
+  - 36.9 PAGAMENTI & STRIPE – Monetizzazione
+  - 36.10 TEAM & DIPENDENTI UMANI – Gestione Team
+  - 36.11 FAQ – Domande Frequenti sui Pacchetti
+  - 36.12 Casi d'Uso Dettagliati
+
 ---
 
 # PARTE PRIMA: INTRODUZIONE
@@ -5564,9 +5579,431 @@ I lead vengono registrati automaticamente tramite `ensureProactiveLead`:
 
 ---
 
+# PARTE SESTA: PACCHETTI SERVIZI
+
+---
+
+## Capitolo 36: Pacchetti Servizi della Piattaforma
+
+La piattaforma offre un ecosistema completo di strumenti e funzionalità. Per facilitare l'orientamento e la configurazione progressiva, abbiamo organizzato tutte le funzionalità in **10 Pacchetti Servizi**. Ogni pacchetto raggruppa moduli correlati che lavorano insieme per raggiungere un obiettivo specifico.
+
+**Come usare questa guida:**
+- Identifica i pacchetti più rilevanti per il tuo business
+- Segui l'ordine di priorità consigliato (fondamenta → core → avanzato)
+- Ogni pacchetto indica i prerequisiti e i capitoli di riferimento per approfondire
+
+---
+
+### 36.1 SETTER AI – Acquisizione & Primo Contatto
+
+**Descrizione:** Il pacchetto fondamentale per acquisire nuovi clienti e gestire il primo contatto in modo automatizzato. Trasforma lead freddi in appuntamenti qualificati grazie agli agenti AI su WhatsApp, email di outreach e presa appuntamento automatica.
+
+**Per chi è pensato:** Qualsiasi professionista che vuole automatizzare l'acquisizione clienti e non perdere mai un lead.
+
+**Prerequisiti:** Fase 1 del Setup Wizard completata (API Key Gemini, SMTP, Twilio/WhatsApp).
+
+**Moduli inclusi:**
+
+| Modulo | Descrizione | Capitolo di Riferimento |
+|--------|-------------|------------------------|
+| **Agenti WhatsApp** | Dipendenti virtuali che rispondono ai lead su WhatsApp 24/7, qualificano e prenotano appuntamenti | Cap. 8 |
+| **Template WhatsApp** | Template pre-approvati da Meta per iniziare conversazioni con i lead | Cap. 8 (§8.2) |
+| **Email Hub (Outreach)** | Invio email di primo contatto e follow-up automatico ai lead | Cap. 11 |
+| **Presa Appuntamento** | Booking automatico integrato con il calendario del consulente | Cap. 12 |
+| **Weekly Check-in** | Sistema automatico di contatto settimanale via WhatsApp per mantenere il rapporto | Cap. 20 |
+| **Campagne Marketing** | Invio massivo di template WhatsApp a liste di contatti segmentate | Cap. 7 (§7.3) |
+| **Venditori Autonomi AI** | Agenti AI per conversazioni di vendita su landing page pubblica | Cap. 18 |
+
+---
+
+### 36.2 DIPENDENTI AI AUTONOMI – Team AI 24/7
+
+**Descrizione:** Un team completo di 9 dipendenti AI che lavorano autonomamente 24 ore su 24. Ogni dipendente ha un ruolo specifico: dalla gestione email alla ricerca lead, dall'analisi executive al supporto clienti. Configurali una volta e lascia che lavorino per te.
+
+**Per chi è pensato:** Consulenti e professionisti che vogliono delegare attività operative all'AI senza supervisione costante.
+
+**Prerequisiti:** API Key Gemini configurata. Per alcuni dipendenti: SMTP (Millie), Twilio (Stella), Lead Scraper attivo (Hunter).
+
+**Moduli inclusi:**
+
+| Modulo | Descrizione | Capitolo di Riferimento |
+|--------|-------------|------------------------|
+| **Sistema AI Autonomy** | Piattaforma centrale per gestire i 9 dipendenti AI con task, scheduling e monitoraggio | Cap. 22 |
+| **Alessia** | Receptionist virtuale e assistente principale | Cap. 22 (§22.2) |
+| **Millie** | Gestione email automatizzata con risposte AI | Cap. 22 (§22.2), Cap. 11 |
+| **Stella** | Assistente WhatsApp per follow-up e nurturing | Cap. 22 (§22.2) |
+| **Echo** | Riepilogatore e analista — genera sommari e dashboard insights | Cap. 31 |
+| **Nova** | Social media manager AI per contenuti e pubblicazione | Cap. 22 (§22.2) |
+| **Marco** | Executive Coach AI — analisi strategica e suggerimenti operativi | Cap. 22 (§22.2) |
+| **Personalizza** | Dipendenti AI personalizzabili con ruolo e istruzioni custom | Cap. 22 (§22.3) |
+| **Telegram Bot** | Integrazione Telegram per ricevere notifiche e interagire con i dipendenti AI | Cap. 30 |
+
+---
+
+### 36.3 HUNTER – Lead Generation & Outreach Proattivo
+
+**Descrizione:** Il sistema completo per trovare nuovi lead, arricchirli con informazioni, e contattarli in modo proattivo tramite chiamate, email e WhatsApp. Hunter lavora in 4 modalità (Ricerca, Strutturato, Outreach, People) per coprire ogni fase del prospecting.
+
+**Per chi è pensato:** Consulenti, agenzie e venditori che fanno cold outreach e vogliono automatizzare la ricerca e il contatto di nuovi clienti.
+
+**Prerequisiti:** API Key Gemini, Lead Scraper configurato, per Auto-Call: VoIP/Telnyx configurato.
+
+**Moduli inclusi:**
+
+| Modulo | Descrizione | Capitolo di Riferimento |
+|--------|-------------|------------------------|
+| **Lead Scraper** | Ricerca lead su Google Maps e Google Search con arricchimento AI | Cap. 23 (§23.1) |
+| **Sales Agent Config** | Configurazione dello script di vendita e del comportamento dell'agente AI durante le chiamate | Cap. 23 (§23.3) |
+| **CRM Lead** | Gestione completa dei lead trovati con stati, note e storico interazioni | Cap. 23 (§23.2), Cap. 25 |
+| **Hunter (4 modalità)** | Ricerca autonoma, contatto strutturato, outreach multicanale, ricerca persone | Cap. 22 (§22.4), Cap. 23 (§23.4) |
+| **Auto-Call** | Sistema di chiamate automatiche ai lead con coda intelligente e retry | Cap. 35 |
+| **Outreach Pipeline** | Pipeline completa dal lead trovato al contatto effettuato, con tracking di ogni step | Cap. 23, Cap. 35 |
+
+---
+
+### 36.4 EMAIL JOURNEY & NURTURING – Comunicazione Continuativa
+
+**Descrizione:** Gestisci tutta la comunicazione email in modo intelligente. Dall'email journey automatico che accompagna i clienti nel percorso, alle email post-consulenza, fino al nurturing continuativo dei lead. Millie, la dipendente AI, gestisce le risposte automaticamente.
+
+**Per chi è pensato:** Professionisti che vogliono mantenere un contatto costante con clienti e lead senza scrivere ogni email manualmente.
+
+**Prerequisiti:** SMTP configurato, API Key Gemini. Per Email Hub completo: account IMAP configurato.
+
+**Moduli inclusi:**
+
+| Modulo | Descrizione | Capitolo di Riferimento |
+|--------|-------------|------------------------|
+| **Email Hub (Millie)** | Centro di gestione email con risposte AI automatiche, inbox unificata | Cap. 11 |
+| **Email Journey** | Sequenze email automatiche personalizzate per ogni fase del percorso cliente | Cap. 11 (§11.4) |
+| **Email post-consulenza** | Email di follow-up automatiche dopo ogni consulenza con riepilogo e azioni | Cap. 11 (§11.3) |
+| **Lead nurturing** | Sequenze di email per mantenere caldi i lead non ancora convertiti | Cap. 11, Cap. 7 |
+| **Profilo Commerciale** | Configurazione del tono di voce, firma e stile comunicativo per tutte le email AI | Cap. 13 |
+
+---
+
+### 36.5 LAVORO QUOTIDIANO & CONSULENZE – Operatività
+
+**Descrizione:** Gli strumenti per la gestione operativa quotidiana: dashboard con KPI, gestione clienti, calendario appuntamenti, consulenze AI-assisted e analisi dati. Tutto ciò che serve per lavorare ogni giorno in modo efficiente.
+
+**Per chi è pensato:** Tutti i consulenti e professionisti — è il pacchetto base operativo.
+
+**Prerequisiti:** Account attivo con almeno un cliente. API Key Gemini per funzionalità AI.
+
+**Moduli inclusi:**
+
+| Modulo | Descrizione | Capitolo di Riferimento |
+|--------|-------------|------------------------|
+| **Dashboard** | Panoramica KPI, attività recenti, accesso rapido a tutte le funzioni | Cap. 5 |
+| **Gestione Clienti** | Profili clienti completi con progressi, storico, note e analisi AI | Cap. 6 |
+| **Consulenze AI** | Consulenze video con preparazione AI, brief automatici e trascrizioni | Cap. 26, Cap. 12 |
+| **Echo Riepiloghi** | Dashboard con insights automatici generati da Echo su clienti e attività | Cap. 31 |
+| **Calendario/Booking** | Gestione appuntamenti, disponibilità, prenotazione automatica | Cap. 12 |
+
+---
+
+### 36.6 FORMAZIONE & CORSI – Academy
+
+**Descrizione:** Crea un'accademia professionale per i tuoi clienti. Dai corsi manuali ai corsi generati automaticamente dall'AI partendo da video YouTube, con esercizi, template e percorsi strutturati. I clienti imparano al loro ritmo con supporto AI 24/7.
+
+**Per chi è pensato:** Formatori, coach, consulenti che offrono percorsi formativi strutturati ai propri clienti.
+
+**Prerequisiti:** Almeno un cliente attivo. API Key Gemini per AI Course Builder.
+
+**Moduli inclusi:**
+
+| Modulo | Descrizione | Capitolo di Riferimento |
+|--------|-------------|------------------------|
+| **Corsi manuali** | Creazione corsi con moduli, lezioni, contenuti multimediali | Cap. 9 |
+| **AI Course Builder** | Generazione automatica di corsi completi partendo da URL di video YouTube | Cap. 9 (§9.5) |
+| **Esercizi/Template** | Creazione e gestione di esercizi pratici con template riutilizzabili e sistema di consegna/revisione | Cap. 9 (§9.3, §9.4) |
+| **Università** | Portale formativo completo per i clienti con progressi tracciati e certificati | Cap. 9, Cap. 16, Cap. 28 |
+
+---
+
+### 36.7 CONTENT STUDIO – Marketing & Contenuti
+
+**Descrizione:** La suite creativa completa per generare contenuti marketing. Dalla generazione di idee AI al calendario editoriale, dalla gestione brand assets alla creazione di concept pubblicitari con AdVisage AI. Tutto per alimentare la tua presenza online.
+
+**Per chi è pensato:** Consulenti e agenzie che producono contenuti marketing, gestiscono social media o creano campagne pubblicitarie.
+
+**Prerequisiti:** API Key Gemini. Per AdVisage AI: piano PRO attivo.
+
+**Moduli inclusi:**
+
+| Modulo | Descrizione | Capitolo di Riferimento |
+|--------|-------------|------------------------|
+| **Dashboard Content** | Centro di controllo per tutti i contenuti creati e programmati | Content Studio (sidebar) |
+| **Idee AI** | Generatore di idee per contenuti basato su AI, settore e trend | Content Studio (sidebar) |
+| **Calendario** | Calendario editoriale per programmare e organizzare la pubblicazione | Content Studio (sidebar) |
+| **Brand Assets** | Gestione centralizzata di loghi, colori, font e linee guida del brand | Content Studio (sidebar) |
+| **AdVisage AI** | Creative Factory per generare concept pubblicitari multi-piattaforma con mood e stili diversi | Cap. 32 |
+
+---
+
+### 36.8 VOCE AI – Centralino & Chiamate
+
+**Descrizione:** Il sistema vocale AI completo. Alessia risponde al telefono come receptionist virtuale, gestisce la coda d'attesa, qualifica le chiamate in ingresso e effettua chiamate in uscita. Configurabile con template vocali e Brand Voice per parlare con il tuo tono.
+
+**Per chi è pensato:** Professionisti e studi che ricevono chiamate e vogliono un centralino AI intelligente, o che fanno cold calling automatizzato.
+
+**Prerequisiti:** VoIP/Telnyx configurato, API Key Gemini, configurazione Brand Voice.
+
+**Moduli inclusi:**
+
+| Modulo | Descrizione | Capitolo di Riferimento |
+|--------|-------------|------------------------|
+| **Alessia Voice** | Assistente vocale AI che gestisce chiamate in ingresso e uscita con conversazione naturale | Cap. 21 |
+| **Centralino AI** | Routing intelligente delle chiamate con riconoscimento intento e trasferimento | Cap. 21 (§21.3) |
+| **Coda d'Attesa** | Sistema di overflow per gestire più chiamate simultanee con musica d'attesa e callback | Cap. 21 (§21.4) |
+| **Template Vocali** | Script e template per le conversazioni vocali AI personalizzabili per scenario | Cap. 21 (§21.2) |
+| **VoIP Provisioning** | Configurazione e gestione dei numeri telefonici VoIP (Telnyx) | Cap. 13, Cap. 21 |
+| **Brand Voice** | Configurazione del tono di voce, personalità e stile comunicativo dell'AI vocale | Cap. 13 |
+
+---
+
+### 36.9 PAGAMENTI & STRIPE – Monetizzazione
+
+**Descrizione:** Gestisci i pagamenti dei clienti direttamente dalla piattaforma tramite Stripe Connect. Crea piani di abbonamento (Silver, Gold, Custom), genera link di pagamento, attiva automaticamente gli account clienti dopo il pagamento e gestisci il revenue sharing.
+
+**Per chi è pensato:** Consulenti che vendono servizi ricorrenti, abbonamenti o percorsi formativi a pagamento.
+
+**Prerequisiti:** Account Stripe, Stripe Connect configurato nella piattaforma.
+
+**Moduli inclusi:**
+
+| Modulo | Descrizione | Capitolo di Riferimento |
+|--------|-------------|------------------------|
+| **Stripe Connect** | Connessione account Stripe Express per ricevere pagamenti | Cap. 33 (§33.1) |
+| **Payment Automations** | Automazioni post-pagamento: attivazione account, welcome journey, assegnazione livello | Cap. 33 (§33.4) |
+| **Revenue Sharing** | Configurazione della ripartizione automatica dei ricavi tra consulente e piattaforma | Cap. 33 (§33.2) |
+| **Piani/Tier** | Creazione e gestione di piani Silver, Gold e Custom con prezzi e funzionalità differenziate | Cap. 33 (§33.3) |
+
+---
+
+### 36.10 TEAM & DIPENDENTI UMANI – Gestione Team
+
+**Descrizione:** Per chi non lavora da solo. Gestisci il tuo team con reparti, licenze multi-utente, AI Assistant dedicato per ogni dipendente e supporto multi-profilo. Ogni membro del team ha il proprio accesso con permessi configurabili.
+
+**Per chi è pensato:** Studi professionali, agenzie e team con più di una persona che utilizza la piattaforma.
+
+**Prerequisiti:** Piano che supporta multi-utente, almeno 2 licenze attive.
+
+**Moduli inclusi:**
+
+| Modulo | Descrizione | Capitolo di Riferimento |
+|--------|-------------|------------------------|
+| **Reparti** | Organizzazione del team in reparti con responsabili e permessi specifici | Cap. 6 (§6.4) |
+| **Licenze** | Gestione delle licenze utente con attivazione/disattivazione e monitoraggio utilizzo | Cap. 13 |
+| **AI Assistant per dipendente** | Ogni membro del team ha il proprio AI Assistant con contesto e memoria dedicati | Cap. 15 |
+| **Multi-profilo** | Supporto per più profili consulente sotto lo stesso account con switching rapido | Cap. 13 |
+
+---
+
+### 36.11 FAQ – Domande Frequenti sui Pacchetti
+
+**1. Devo attivare tutti i pacchetti subito?**
+No. Inizia con i pacchetti "fondamenta" (LAVORO QUOTIDIANO e SETTER AI), poi aggiungi progressivamente quelli più avanzati. La configurazione graduale è più efficace.
+
+**2. Qual è l'ordine consigliato di attivazione?**
+1. LAVORO QUOTIDIANO & CONSULENZE (operatività base)
+2. SETTER AI (acquisizione clienti)
+3. EMAIL JOURNEY & NURTURING (comunicazione)
+4. DIPENDENTI AI AUTONOMI (automazione)
+5. Gli altri in base alle tue esigenze specifiche
+
+**3. Posso usare solo alcuni moduli di un pacchetto?**
+Sì. I pacchetti sono raggruppamenti logici, non vincoli tecnici. Puoi attivare singoli moduli indipendentemente.
+
+**4. Quanto tempo serve per configurare un pacchetto?**
+Dipende dal pacchetto. LAVORO QUOTIDIANO richiede poche ore. HUNTER e VOCE AI richiedono 1-2 settimane per la configurazione completa e l'ottimizzazione.
+
+**5. Ho bisogno di competenze tecniche?**
+No. Ogni modulo ha un wizard di configurazione guidato. Per i moduli più avanzati (VoIP, Stripe), il Setup Wizard ti accompagna passo-passo.
+
+**6. Quanto costano i pacchetti?**
+I pacchetti sono inclusi nel tuo piano (Silver, Gold, Custom). Alcuni moduli hanno costi esterni: Twilio per WhatsApp/SMS, Telnyx per VoIP, Stripe per pagamenti (commissioni). Vedi Cap. 27 per i dettagli sui costi AI.
+
+**7. Posso far gestire la configurazione al mio team?**
+Sì, con il pacchetto TEAM & DIPENDENTI UMANI puoi assegnare la configurazione a membri del team con i permessi appropriati.
+
+**8. I dipendenti AI lavorano anche di notte e nei weekend?**
+Sì. I dipendenti AI del pacchetto DIPENDENTI AI AUTONOMI lavorano 24/7 senza interruzioni. Puoi configurare orari specifici per le chiamate vocali nel pacchetto VOCE AI.
+
+**9. Come faccio a sapere se un pacchetto funziona correttamente?**
+Ogni pacchetto ha metriche di monitoraggio nella Dashboard (Cap. 5) e Echo genera report automatici sulle performance (Cap. 31).
+
+**10. Posso disattivare un pacchetto dopo averlo configurato?**
+Sì. Puoi disattivare singoli moduli o interi pacchetti senza perdere i dati. La riattivazione ripristina tutto.
+
+**11. I pacchetti comunicano tra loro?**
+Sì. I pacchetti sono progettati per integrarsi. Ad esempio: HUNTER trova lead → SETTER AI li contatta → EMAIL JOURNEY li nutre → VOCE AI li chiama. Vedi Cap. 24 per l'integrazione tra sistemi.
+
+**12. Qual è la differenza tra SETTER AI e HUNTER?**
+SETTER AI gestisce lead che arrivano a te (inbound): risposte WhatsApp, booking automatico. HUNTER cerca attivamente nuovi lead (outbound): scraping, cold outreach, auto-call.
+
+**13. Posso usare la piattaforma senza WhatsApp?**
+Sì. WhatsApp è fondamentale per SETTER AI e alcuni dipendenti AI, ma puoi lavorare solo con email (EMAIL JOURNEY) e telefono (VOCE AI).
+
+**14. Come funziona il Brand Voice nei diversi pacchetti?**
+Il Brand Voice è una configurazione centralizzata (Cap. 13) che si applica a tutti i pacchetti: email, WhatsApp, chiamate vocali e contenuti. Configuralo una volta e tutti gli AI parlano con il tuo tono.
+
+**15. Posso personalizzare i dipendenti AI?**
+Sì. Oltre ai 9 dipendenti pre-configurati, puoi creare dipendenti AI personalizzati con ruolo, istruzioni e obiettivi custom (Cap. 22, §22.3).
+
+**16. Cosa succede se un cliente paga tramite Stripe e poi annulla?**
+Il sistema gestisce automaticamente i webhook di Stripe: in caso di annullamento o pagamento fallito, il cliente viene notificato e il livello di accesso viene aggiornato (Cap. 33, §33.4).
+
+**17. Posso esportare i dati dei lead e dei clienti?**
+Sì. I dati del CRM Lead e dei clienti sono esportabili in CSV. Le conversazioni WhatsApp e email sono archiviate e consultabili.
+
+**18. Il pacchetto FORMAZIONE funziona anche per corsi in diretta?**
+I corsi sono asincroni (video, testi, esercizi). Per le sessioni live, usa il pacchetto LAVORO QUOTIDIANO & CONSULENZE con il sistema di consulenze video integrate.
+
+**19. Quanti agenti WhatsApp posso creare?**
+Non c'è un limite tecnico al numero di agenti. Puoi creare agenti diversi per scenari diversi (vendita, supporto, follow-up). Il costo dipende dal volume di messaggi Twilio.
+
+**20. Dove trovo supporto se ho problemi con un pacchetto?**
+Usa l'AI Assistant (Cap. 15) per domande operative, il Centro Guide (sidebar → GUIDE) per la documentazione, o contatta il supporto tecnico del tuo fornitore.
+
+---
+
+### 36.12 Casi d'Uso Dettagliati
+
+Di seguito 6 scenari reali con i pacchetti consigliati in ordine di priorità per ciascuno.
+
+---
+
+#### Caso 1: Consulente Finanziario Solo
+
+**Profilo:** Marco è un consulente finanziario indipendente con 45 clienti attivi. Lavora da solo, gestisce tutto manualmente e perde lead perché non riesce a rispondere in tempo.
+
+**Obiettivo:** Automatizzare l'acquisizione clienti e ridurre il tempo dedicato ad attività operative.
+
+**Pacchetti consigliati (in ordine di priorità):**
+
+| Priorità | Pacchetto | Perché |
+|-----------|-----------|--------|
+| 🔴 Fondamenta | **LAVORO QUOTIDIANO & CONSULENZE** | Dashboard per monitorare 45 clienti, calendario per gestire consulenze, brief AI pre-consulenza |
+| 🔴 Fondamenta | **SETTER AI** | Agente WhatsApp che risponde ai lead 24/7, booking automatico, stop ai lead persi |
+| 🟡 Core | **EMAIL JOURNEY & NURTURING** | Email journey per onboarding nuovi clienti, follow-up post-consulenza automatico |
+| 🟡 Core | **DIPENDENTI AI AUTONOMI** | Marco (Executive Coach) per analisi strategica, Echo per report settimanali |
+| 🟢 Avanzato | **PAGAMENTI & STRIPE** | Pagamenti ricorrenti per consulenze e piani di abbonamento |
+
+**Timeline stimata:** 4-6 settimane per setup completo.
+
+---
+
+#### Caso 2: Coach con Team
+
+**Profilo:** Giulia è una coach aziendale con un team di 4 persone (2 coach junior, 1 admin, 1 commerciale). Gestisce programmi formativi per aziende con 200+ partecipanti.
+
+**Obiettivo:** Scalare i programmi formativi, coordinare il team e automatizzare la gestione dei partecipanti.
+
+**Pacchetti consigliati (in ordine di priorità):**
+
+| Priorità | Pacchetto | Perché |
+|-----------|-----------|--------|
+| 🔴 Fondamenta | **LAVORO QUOTIDIANO & CONSULENZE** | Dashboard team, gestione clienti aziendali, calendario condiviso |
+| 🔴 Fondamenta | **FORMAZIONE & CORSI** | AI Course Builder per creare corsi da video, esercizi, percorsi strutturati per 200+ partecipanti |
+| 🔴 Fondamenta | **TEAM & DIPENDENTI UMANI** | Reparti, licenze per 4 persone, AI Assistant per ogni membro del team |
+| 🟡 Core | **EMAIL JOURNEY & NURTURING** | Email journey per ogni programma formativo, nurturing tra un modulo e l'altro |
+| 🟡 Core | **SETTER AI** | Agente WhatsApp per gestire richieste dei partecipanti e nuove adesioni |
+| 🟢 Avanzato | **PAGAMENTI & STRIPE** | Piani di abbonamento per programmi formativi ricorrenti |
+
+**Timeline stimata:** 6-8 settimane per setup completo (include formazione team).
+
+---
+
+#### Caso 3: Agenzia Marketing
+
+**Profilo:** Digital Agency con 5 persone. Gestiscono marketing e comunicazione per 15 clienti. Devono produrre contenuti, gestire social media e acquisire nuovi clienti per le aziende clienti.
+
+**Obiettivo:** Aumentare la produttività nella creazione contenuti, automatizzare l'acquisizione lead per i clienti e centralizzare la gestione.
+
+**Pacchetti consigliati (in ordine di priorità):**
+
+| Priorità | Pacchetto | Perché |
+|-----------|-----------|--------|
+| 🔴 Fondamenta | **LAVORO QUOTIDIANO & CONSULENZE** | Dashboard multi-cliente, gestione 15 clienti con progressi e KPI |
+| 🔴 Fondamenta | **CONTENT STUDIO** | Generazione contenuti AI, calendario editoriale, AdVisage AI per concept pubblicitari |
+| 🟡 Core | **TEAM & DIPENDENTI UMANI** | 5 licenze, reparti (creativo, account, commerciale), AI per ogni membro |
+| 🟡 Core | **HUNTER** | Lead generation per i clienti dell'agenzia, outreach automatizzato |
+| 🟡 Core | **SETTER AI** | Agenti WhatsApp personalizzati per ogni cliente dell'agenzia |
+| 🟡 Core | **DIPENDENTI AI AUTONOMI** | Nova per social media, Millie per email, Echo per report performance |
+| 🟢 Avanzato | **EMAIL JOURNEY & NURTURING** | Journey email per i funnel dei clienti dell'agenzia |
+| 🟢 Avanzato | **PAGAMENTI & STRIPE** | Gestione abbonamenti e pagamenti ricorrenti dei clienti |
+
+**Timeline stimata:** 8-10 settimane per setup completo (configurazione per-cliente).
+
+---
+
+#### Caso 4: Studio Professionale (Commercialista/Avvocato/Architetto)
+
+**Profilo:** Studio professionale con 3 professionisti e 2 segretarie. Ricevono molte chiamate, devono gestire appuntamenti e mantenere il contatto con i clienti.
+
+**Obiettivo:** Ridurre il carico sulla segreteria, non perdere chiamate e automatizzare la comunicazione con i clienti.
+
+**Pacchetti consigliati (in ordine di priorità):**
+
+| Priorità | Pacchetto | Perché |
+|-----------|-----------|--------|
+| 🔴 Fondamenta | **LAVORO QUOTIDIANO & CONSULENZE** | Dashboard, gestione clienti, calendario appuntamenti |
+| 🔴 Fondamenta | **VOCE AI** | Centralino AI (Alessia) che risponde al telefono, qualifica chiamate, prenota appuntamenti |
+| 🟡 Core | **SETTER AI** | WhatsApp per conferme appuntamento e comunicazioni rapide con i clienti |
+| 🟡 Core | **TEAM & DIPENDENTI UMANI** | 5 licenze (3 professionisti + 2 segretarie), reparti |
+| 🟡 Core | **EMAIL JOURNEY & NURTURING** | Email automatiche per scadenze, promemoria e comunicazioni periodiche |
+| 🟢 Avanzato | **PAGAMENTI & STRIPE** | Pagamento consulenze e parcelle online |
+
+**Timeline stimata:** 4-6 settimane (focus su VOCE AI nella prima settimana).
+
+---
+
+#### Caso 5: Formatore Online
+
+**Profilo:** Luca è un formatore che vende corsi online. Ha 500 iscritti alla newsletter, fa webinar settimanali e vende percorsi formativi da 997€ a 2.997€.
+
+**Obiettivo:** Automatizzare la vendita dei corsi, creare contenuti formativi più velocemente e gestire gli studenti senza lavoro manuale.
+
+**Pacchetti consigliati (in ordine di priorità):**
+
+| Priorità | Pacchetto | Perché |
+|-----------|-----------|--------|
+| 🔴 Fondamenta | **FORMAZIONE & CORSI** | AI Course Builder per creare corsi da video, università con progressi, esercizi |
+| 🔴 Fondamenta | **PAGAMENTI & STRIPE** | Vendita corsi online con piani Silver/Gold, pagamenti ricorrenti |
+| 🟡 Core | **EMAIL JOURNEY & NURTURING** | Funnel email per convertire iscritti in clienti, nurturing post-acquisto |
+| 🟡 Core | **SETTER AI** | Agente WhatsApp per rispondere a chi chiede info sui corsi e chiudere vendite |
+| 🟡 Core | **CONTENT STUDIO** | Generazione contenuti per social media, promozione corsi |
+| 🟢 Avanzato | **DIPENDENTI AI AUTONOMI** | Millie per gestire email degli studenti, Echo per report engagement |
+| 🟢 Avanzato | **HUNTER** | Trovare nuovi potenziali studenti e fare outreach proattivo |
+
+**Timeline stimata:** 6-8 settimane (focus su FORMAZIONE e PAGAMENTI nelle prime 2 settimane).
+
+---
+
+#### Caso 6: Commerciale / Venditore
+
+**Profilo:** Sara è una commerciale che vende servizi B2B. Ha bisogno di trovare lead, contattarli e gestire il follow-up. Lavora con un CRM esterno e fatica a tenere traccia di tutto.
+
+**Obiettivo:** Trovare più lead qualificati, automatizzare il primo contatto e non perdere mai un follow-up.
+
+**Pacchetti consigliati (in ordine di priorità):**
+
+| Priorità | Pacchetto | Perché |
+|-----------|-----------|--------|
+| 🔴 Fondamenta | **HUNTER** | Lead Scraper per trovare aziende target, CRM Lead integrato, outreach automatizzato |
+| 🔴 Fondamenta | **SETTER AI** | Agente WhatsApp per primo contatto e booking appuntamenti di vendita |
+| 🟡 Core | **VOCE AI** | Auto-call per contattare i lead telefonicamente con script di vendita AI |
+| 🟡 Core | **EMAIL JOURNEY & NURTURING** | Sequenze email di follow-up post-chiamata, nurturing lead freddi |
+| 🟡 Core | **LAVORO QUOTIDIANO & CONSULENZE** | Dashboard vendite, gestione pipeline, calendario appuntamenti |
+| 🟢 Avanzato | **DIPENDENTI AI AUTONOMI** | Hunter autonomo che cerca lead di notte, Marco per strategia vendita |
+
+**Timeline stimata:** 3-4 settimane (focus su HUNTER e SETTER AI nella prima settimana).
+
+---
+
 # FINE DEL MANUALE
 
-**Versione:** 4.0 – Aggiornamento completo: 17 sezioni aggiunte, sistema API Key Gemini, Delivery AI, Stripe Connect, Email Hub Millie, Echo Dashboard, AdVisage AI, Orbitale Tools, Proactive Leads
+**Versione:** 5.0 – Aggiornamento completo: 17 sezioni aggiunte, sistema API Key Gemini, Delivery AI, Stripe Connect, Email Hub Millie, Echo Dashboard, AdVisage AI, Orbitale Tools, Proactive Leads, Pacchetti Servizi (10 pacchetti), FAQ, Casi d'Uso
 **Data:** Marzo 2026
 **Autore:** Sistema AI + Team Piattaforma
 
