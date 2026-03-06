@@ -140,6 +140,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "Dashboard", href: "/consultant", icon: Home, color: "violet" },
       { name: "AI Assistant", href: "/consultant/ai-assistant", icon: Sparkles, color: "fuchsia" },
       { name: "Setup Iniziale", href: "/consultant/setup-wizard", icon: Zap, color: "cyan" },
+      { name: "Accademia", href: "/consultant/academy", icon: GraduationCap, color: "indigo" },
     ]
   },
   {
@@ -218,7 +219,6 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: BookOpen,
     defaultExpanded: false,
     items: [
-      { name: "Accademia", href: "/consultant/academy", icon: GraduationCap, color: "indigo" },
       { name: "Centro Guide", href: "/consultant/guides", icon: BookOpen, color: "orange" },
     ]
   },
