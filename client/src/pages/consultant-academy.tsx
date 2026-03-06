@@ -589,17 +589,17 @@ export default function ConsultantAcademy() {
   );
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className={cn("flex flex-col bg-background", activeTab === "delivery" ? "h-screen max-h-screen" : "min-h-screen")}>
       <Navbar onMenuClick={() => setSidebarOpen(true)} />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
         <Sidebar
           role="consultant"
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
 
-        <main className={cn("flex-1", activeTab === "delivery" ? "overflow-hidden flex flex-col" : "overflow-auto")}>
+        <main className={cn("flex-1 min-h-0", activeTab === "delivery" ? "overflow-hidden flex flex-col" : "overflow-auto")}>
           {activeTab === "delivery" ? (
             <>
               <div className="flex items-center gap-3 px-4 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
@@ -626,7 +626,7 @@ export default function ConsultantAcademy() {
                   </button>
                 </div>
               </div>
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 overflow-hidden">
                 <DeliveryAgentPanel />
               </div>
             </>
