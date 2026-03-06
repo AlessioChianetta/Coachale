@@ -1485,26 +1485,11 @@ export default function ConsultantSetupWizard({ embedded = false }: { embedded?:
           id: "stripe_connect",
           stepNumber: 8,
           priority: 2,
-          title: "Stripe — API Keys",
-          description: "Collega il tuo account Stripe per gestire pagamenti e abbonamenti dei clienti",
+          title: "Stripe Connect",
+          description: "Collega il tuo account Stripe per ricevere pagamenti direttamente sul tuo conto bancario",
           icon: <CreditCard className="h-4 w-4" />,
           status: getStripeStatus(status?.stripeAccountStatus, status?.hasStripeAccount),
-          configLink: "/consultant/whatsapp?tab=licenses",
-          inlineConfig: {
-            getEndpoint: "/api/consultant/stripe-settings",
-            saveEndpoint: "/api/consultant/stripe-settings",
-            saveMethod: "POST",
-            dataMapper: (d) => ({
-              stripeSecretKey: d.settings?.hasSecretKey ? "••••" : "",
-              stripeWebhookSecret: d.settings?.hasWebhookSecret ? "••••" : "",
-            }),
-            payloadMapper: (s) => ({ stripeSecretKey: s.stripeSecretKey, stripeWebhookSecret: s.stripeWebhookSecret }),
-            fields: [
-              { key: "stripeSecretKey", label: "Secret Key Stripe", type: "password", sensitive: true, placeholder: "sk_live_... o sk_test_...", hint: "Trovala su dashboard.stripe.com → Sviluppatori → Chiavi API" },
-              { key: "stripeWebhookSecret", label: "Webhook Secret", type: "password", sensitive: true, placeholder: "whsec_...", hint: "Generalo su dashboard.stripe.com → Sviluppatori → Webhook → Aggiungi endpoint" },
-            ],
-            usedBySteps: ["first_campaign"],
-          },
+          configLink: "/consultant/api-keys-unified?tab=stripe",
         },
         {
           id: "outbound_agent",
@@ -1910,7 +1895,7 @@ export default function ConsultantSetupWizard({ embedded = false }: { embedded?:
     twilio_config: "Configurazione Twilio + WhatsApp",
     approved_template: "Template WhatsApp Approvato",
     first_campaign: "Prima Campagna",
-    stripe_connect: "Stripe — API Keys",
+    stripe_connect: "Stripe Connect",
     email_journey: "Email Journey",
     inbound_agent: "Agente Inbound",
     outbound_agent: "Agente Outbound",
@@ -2567,7 +2552,7 @@ export default function ConsultantSetupWizard({ embedded = false }: { embedded?:
                                 instagram_dm: "Come collego Instagram per ricevere e rispondere ai messaggi diretti con l'AI?",
                                 whatsapp_template: "Come creo template WhatsApp personalizzati per i messaggi automatici?",
                                 first_campaign: "Come creo la mia prima campagna marketing collegando fonti lead, template e agente AI?",
-                                stripe_connect: "Come collego Stripe per ricevere pagamenti e gestire le licenze dei clienti?",
+                                stripe_connect: "Come collego il mio account Stripe Connect per ricevere pagamenti direttamente sul mio conto bancario?",
                                 email_journey: "Come configuro l'automazione email journey per i miei clienti? Quali sono i template disponibili?",
                                 nurturing_emails: "Come funziona Email Nurturing 365? Come genero le 365 email automatiche per nutrire i lead?",
                                 email_hub: "Come configuro l'Email Hub per gestire inbox, invii automatici e risposte AI?",
@@ -2799,22 +2784,24 @@ export default function ConsultantSetupWizard({ embedded = false }: { embedded?:
                         <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <CreditCard className="h-4 w-4 text-indigo-600" />
-                            Due modi per configurare Stripe
+                            Stripe Connect — Ricevi Pagamenti
                           </h4>
                           <div className="text-sm text-muted-foreground space-y-3">
-                            <div className="p-3 bg-card rounded-lg border border-border">
-                              <p className="font-medium text-foreground mb-1">🔑 Opzione 1 — API Keys (qui sopra)</p>
-                              <p>Inserisci la Secret Key e il Webhook Secret per abilitare i pagamenti via API. È il metodo più rapido per iniziare.</p>
-                            </div>
-                            <div className="p-3 bg-card rounded-lg border border-border">
-                              <p className="font-medium text-foreground mb-1">🏦 Opzione 2 — Stripe Connect (pagina Licenze)</p>
-                              <p>Per ricevere pagamenti direttamente sul tuo conto bancario dai clienti finali, usa "Apri impostazioni complete" → Collega Stripe.</p>
-                            </div>
-                            <p className="font-medium text-foreground mt-2">📊 Stati account Stripe Connect:</p>
+                            <p>Stripe Connect ti permette di ricevere pagamenti direttamente sul tuo conto bancario dai clienti finali, con il revenue share gestito automaticamente.</p>
+                            
+                            <p className="font-medium text-foreground mt-4">🔧 Come collegare Stripe:</p>
+                            <ol className="list-decimal list-inside ml-2 space-y-2">
+                              <li>Clicca <strong>"Configura"</strong> qui sopra per andare alla pagina Stripe</li>
+                              <li>Clicca <strong>"Collega Stripe"</strong> e segui la procedura guidata</li>
+                              <li>Verifica il tuo account con i dati richiesti da Stripe</li>
+                              <li>Una volta attivo, configura il <strong>Webhook</strong> per attivare le licenze automaticamente</li>
+                            </ol>
+
+                            <p className="font-medium text-foreground mt-4">📊 Stati account:</p>
                             <ul className="list-disc list-inside ml-2 space-y-1">
                               <li><strong>Pending</strong>: In attesa di verifica</li>
                               <li><strong>Restricted</strong>: Servono altri documenti</li>
-                              <li><strong>Active</strong>: Tutto ok, puoi ricevere pagamenti! ✅</li>
+                              <li><strong>Active</strong>: Tutto ok, puoi ricevere pagamenti!</li>
                             </ul>
                           </div>
                         </div>
