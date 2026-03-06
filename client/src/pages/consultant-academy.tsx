@@ -631,7 +631,10 @@ export default function ConsultantAcademy() {
       const isSetupLesson = setupModules.some(m => m.id === lesson.module_id);
       setSidebarTab(isSetupLesson ? "setup" : "corsi");
     }
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => {
+      const panel = document.getElementById('academy-content-panel');
+      if (panel) panel.scrollTop = 0;
+    }, 50);
   }, [lessonById, setupModules]);
 
   const handleToggleComplete = useCallback(async () => {
@@ -739,7 +742,7 @@ export default function ConsultantAcademy() {
   );
 
   return (
-    <div className={cn("flex flex-col bg-background", activeTab === "delivery" ? "h-screen max-h-screen" : "min-h-screen")}>
+    <div className="flex flex-col bg-background h-screen max-h-screen">
       <Navbar onMenuClick={() => setSidebarOpen(true)} />
 
       <div className="flex flex-1 overflow-hidden min-h-0">
@@ -873,7 +876,7 @@ export default function ConsultantAcademy() {
                 </aside>
               )}
 
-              <div className="flex-1 min-w-0 overflow-y-auto">
+              <div id="academy-content-panel" className="flex-1 min-w-0 overflow-y-auto">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
                   {activeLesson ? (
                     <AnimatePresence mode="wait">
