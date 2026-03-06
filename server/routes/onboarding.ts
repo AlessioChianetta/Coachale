@@ -33,7 +33,7 @@ import {
 import { eq, and, count, sql, inArray, isNotNull, ne } from 'drizzle-orm';
 import { ensureGeminiFileValid } from '../services/gemini-file-manager';
 import { getCalendarClient, getAgentCalendarClient } from '../google-calendar-service';
-import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
+import { getAIProvider, getModelWithThinking, GEMINI_3_MODEL } from '../ai/provider-factory';
 import nodemailer from 'nodemailer';
 import { decrypt, decryptForConsultant } from '../encryption';
 import { upload } from '../middleware/upload';
@@ -673,7 +673,7 @@ router.post('/test/vertex-ai', authenticateToken, requireRole('consultant'), asy
     try {
       const provider = await getAIProvider(consultantId, consultantId);
       const result = await provider.client.generateContent({
-        model: 'gemini-2.0-flash',
+        model: GEMINI_3_MODEL,
         contents: [{ role: 'user', parts: [{ text: 'Rispondi solo "OK" se funziona.' }] }],
       });
       const text = result.response.text();
@@ -1102,7 +1102,7 @@ router.post('/test/whatsapp-ai', authenticateToken, requireRole('consultant'), a
     try {
       const provider = await getAIProvider(consultantId, consultantId);
       const result = await provider.client.generateContent({
-        model: 'gemini-2.0-flash',
+        model: GEMINI_3_MODEL,
         contents: [{ role: 'user', parts: [{ text: 'Rispondi solo "OK" se funziona.' }] }],
       });
       const text = result.response.text();
