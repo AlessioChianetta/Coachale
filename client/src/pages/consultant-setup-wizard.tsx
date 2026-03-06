@@ -189,6 +189,13 @@ interface OnboardingStatus {
   hasStripeAccount?: boolean;
   stripeAccountStatus?: string | null;
   hasEmailJourneyConfigured?: boolean;
+  hasCompletedVoiceCall?: boolean;
+  completedVoiceCallsCount?: number;
+  hasCompletedAiTask?: boolean;
+  completedAiTasksCount?: number;
+  hasAgentCalendarConnected?: boolean;
+  agentCalendarsConnectedCount?: number;
+  totalAgentsCount?: number;
 }
 
 const statusConfig = {
@@ -1834,10 +1841,14 @@ export default function ConsultantSetupWizard({ embedded = false }: { embedded?:
           stepNumber: 25,
           priority: 2,
           title: "Google Calendar Agenti WhatsApp",
-          description: "Collega Google Calendar a ciascun agente WhatsApp per la prenotazione automatica degli appuntamenti",
+          description: status?.totalAgentsCount
+            ? `${status.agentCalendarsConnectedCount || 0}/${status.totalAgentsCount} agenti connessi a Google Calendar`
+            : "Collega Google Calendar a ciascun agente WhatsApp per la prenotazione automatica degli appuntamenti",
           icon: <Calendar className="h-4 w-4" />,
-          status: "pending",
+          status: status?.hasAgentCalendarConnected ? "verified" : "pending",
           configLink: "/consultant/whatsapp",
+          count: status?.agentCalendarsConnectedCount,
+          countLabel: `calendari connessi su ${status?.totalAgentsCount || 0} agenti`,
         },
         {
           id: "vertex_ai",

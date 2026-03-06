@@ -244,6 +244,23 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
     const completedAiTasksCount = Number(completedAiTasksResult[0]?.count || 0);
     const hasCompletedAiTask = completedAiTasksCount > 0;
     
+    // Count agents with Google Calendar connected
+    const agentCalendarResult = await db.select({ id: consultantWhatsappConfig.id })
+      .from(consultantWhatsappConfig)
+      .where(and(
+        eq(consultantWhatsappConfig.consultantId, consultantId),
+        isNotNull(consultantWhatsappConfig.googleAccessToken),
+        ne(consultantWhatsappConfig.googleAccessToken, '')
+      ));
+    const agentCalendarsConnectedCount = agentCalendarResult.length;
+    const hasAgentCalendarConnected = agentCalendarsConnectedCount > 0;
+
+    // Count total agents for calendar context
+    const totalAgentsResult = await db.select({ count: count() })
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.consultantId, consultantId));
+    const totalAgentsCount = Number(totalAgentsResult[0]?.count || 0);
+    
     // Update the status record with calculated values
     await db.update(consultantOnboardingStatus)
       .set({
@@ -303,6 +320,9 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
       completedVoiceCallsCount,
       hasCompletedAiTask,
       completedAiTasksCount,
+      hasAgentCalendarConnected,
+      agentCalendarsConnectedCount,
+      totalAgentsCount,
     };
     
     res.json({
