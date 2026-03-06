@@ -149,21 +149,115 @@ export function ServiceStore({ role }: ServiceStoreProps) {
   }
 
   if (catalogItems.length === 0) {
+    const placeholderCards = [
+      { icon: "🤖", name: "Assistente AI", cat: "ai", gradient: "from-violet-500 to-purple-600" },
+      { icon: "📱", name: "WhatsApp AI", cat: "communication", gradient: "from-emerald-500 to-teal-600" },
+      { icon: "📊", name: "Analytics Pro", cat: "analytics", gradient: "from-blue-500 to-indigo-600" },
+      { icon: "⚡", name: "Automazione", cat: "automation", gradient: "from-amber-500 to-orange-600" },
+      { icon: "📣", name: "Marketing Suite", cat: "marketing", gradient: "from-pink-500 to-rose-600" },
+      { icon: "🎯", name: "Lead Manager", cat: "ai", gradient: "from-violet-500 to-purple-600" },
+    ];
+
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-6">
-        <div className="relative mb-6">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-600 rounded-3xl rotate-6 opacity-20 blur-sm" />
-          <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-500/25">
-            <ShoppingBag className="w-9 h-9 text-white" />
+      <div className="space-y-8">
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20">
+            <Sparkles className="w-4 h-4 text-violet-500" />
+            <span className="text-sm font-medium text-violet-700 dark:text-violet-300">
+              Servizi Premium
+            </span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-violet-700 via-purple-700 to-indigo-700 dark:from-violet-300 dark:via-purple-300 dark:to-indigo-300 bg-clip-text text-transparent">
+            Catalogo Servizi
+          </h1>
+          <p className="text-muted-foreground max-w-xl mx-auto">
+            Scopri i servizi e le soluzioni AI pensate per far crescere la tua attività
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 justify-center">
+          {CATEGORIES.map((cat) => {
+            const Icon = cat.icon;
+            return (
+              <div
+                key={cat.key}
+                className={cn(
+                  "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium",
+                  cat.key === "all"
+                    ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md shadow-violet-500/25"
+                    : "bg-muted/60 text-muted-foreground"
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                {cat.label}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="relative">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {placeholderCards.map((card, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.08 }}
+                className="group relative"
+              >
+                <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-card/50">
+                  <div className={cn("h-2 bg-gradient-to-r opacity-40", card.gradient)} />
+                  <div className="p-5">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="w-12 h-12 rounded-xl bg-muted/60 flex items-center justify-center text-2xl">
+                        {card.icon}
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <div className="h-4 w-28 rounded-md bg-muted/80" />
+                        <div className="h-3 w-16 rounded-md bg-muted/50" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 mb-4">
+                      <div className="h-3 w-full rounded bg-muted/40" />
+                      <div className="h-3 w-3/4 rounded bg-muted/30" />
+                    </div>
+                    <div className="space-y-1.5 mb-4">
+                      {[1, 2, 3].map((f) => (
+                        <div key={f} className="flex items-center gap-2">
+                          <div className="w-3.5 h-3.5 rounded-full bg-muted/40" />
+                          <div className="h-2.5 rounded bg-muted/30" style={{ width: `${50 + f * 12}%` }} />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-end justify-between pt-3 border-t border-border/30">
+                      <div className="h-5 w-20 rounded bg-muted/50" />
+                      <div className="h-8 w-24 rounded-md bg-muted/40" />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-background via-background/80 to-transparent rounded-2xl">
+            <div className="text-center space-y-4 -mt-8">
+              <div className="relative mx-auto w-fit">
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl rotate-6 opacity-20 blur-sm scale-110" />
+                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-500/25">
+                  <ShoppingBag className="w-7 h-7 text-white" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-foreground mb-1.5">
+                  Il catalogo è in preparazione
+                </h3>
+                <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+                  I servizi saranno disponibili non appena il tuo consulente pubblicherà il suo catalogo personalizzato.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">
-          Nessun servizio disponibile
-        </h2>
-        <p className="text-muted-foreground text-center max-w-md">
-          Il catalogo servizi è attualmente vuoto. I servizi saranno disponibili
-          non appena il tuo consulente li pubblicherà.
-        </p>
       </div>
     );
   }
