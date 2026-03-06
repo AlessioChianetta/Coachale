@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, ChevronDown, ChevronRight, ExternalLink,
   ArrowLeft, ArrowRight, GraduationCap, Settings, Clock,
-  ChevronUp, FileText, Loader2, Rocket, BookOpen, Sparkles,
+  ChevronUp, FileText, Loader2, Rocket, BookOpen, Sparkles, Wrench,
 } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
@@ -584,9 +584,9 @@ function LessonDetail({
 export default function ConsultantAcademy() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"academy" | "delivery" | "setup-assistant">("academy");
+  const [activeTab, setActiveTab] = useState<"academy" | "delivery" | "setup-assistant" | "setup-wizard">("academy");
   const [setupChatStarted, setSetupChatStarted] = useState(false);
   const [setupAutoMessage, setSetupAutoMessage] = useState<string | null>(null);
   const [setupChatKey, setSetupChatKey] = useState(0);
@@ -763,10 +763,17 @@ export default function ConsultantAcademy() {
                 { key: "academy" as const, label: "Accademia", icon: <GraduationCap className="w-4 h-4" />, gradient: "from-indigo-500 to-blue-600" },
                 { key: "delivery" as const, label: "Delivery AI", icon: <Rocket className="w-4 h-4" />, gradient: "from-violet-500 to-purple-600" },
                 { key: "setup-assistant" as const, label: "Assistente Setup", icon: <Sparkles className="w-4 h-4" />, gradient: "from-emerald-500 to-teal-600" },
+                { key: "setup-wizard" as const, label: "Setup Wizard", icon: <Wrench className="w-4 h-4" />, gradient: "from-amber-500 to-orange-600" },
               ] as const).map(tab => (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => {
+                    if (tab.key === "setup-wizard") {
+                      navigate("/consultant/setup-wizard");
+                    } else {
+                      setActiveTab(tab.key);
+                    }
+                  }}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
                     activeTab === tab.key
@@ -791,12 +798,6 @@ export default function ConsultantAcademy() {
                   </div>
                   <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
                 </div>
-                <Link href="/consultant/setup-wizard">
-                  <Button variant="outline" size="sm" className="gap-2 text-xs">
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    Setup Wizard
-                  </Button>
-                </Link>
               </div>
             )}
           </div>
