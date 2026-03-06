@@ -599,18 +599,16 @@ export default function ConsultantAcademy() {
           onClose={() => setSidebarOpen(false)}
         />
 
-        <main className="flex-1 overflow-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8">
-            <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-3">
+        <main className={cn("flex-1", activeTab === "delivery" ? "overflow-hidden flex flex-col" : "overflow-auto")}>
+          {activeTab === "delivery" ? (
+            <>
+              <div className="flex items-center gap-3 px-4 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
                 <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
                   <button
                     onClick={() => setActiveTab("academy")}
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                      activeTab === "academy"
-                        ? "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-md"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      "text-muted-foreground hover:text-foreground hover:bg-muted"
                     )}
                   >
                     <GraduationCap className="w-4 h-4" />
@@ -620,9 +618,38 @@ export default function ConsultantAcademy() {
                     onClick={() => setActiveTab("delivery")}
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                      activeTab === "delivery"
-                        ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md"
+                    )}
+                  >
+                    <Rocket className="w-4 h-4" />
+                    Delivery AI
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 min-h-0">
+                <DeliveryAgentPanel />
+              </div>
+            </>
+          ) : (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8">
+            <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
+                  <button
+                    onClick={() => setActiveTab("academy")}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                      "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-md"
+                    )}
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    Accademia
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("delivery")}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                      "text-muted-foreground hover:text-foreground hover:bg-muted"
                     )}
                   >
                     <Rocket className="w-4 h-4" />
@@ -631,31 +658,26 @@ export default function ConsultantAcademy() {
                 </div>
               </div>
 
-              {activeTab === "academy" && (
-                <div className="flex items-center gap-3">
-                  <div className="hidden sm:flex items-center gap-2">
-                    <div className="w-32 h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-500"
-                        style={{ width: `${progressPct}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-2">
+                  <div className="w-32 h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-500"
+                      style={{ width: `${progressPct}%` }}
+                    />
                   </div>
-
-                  <Link href="/consultant/setup-wizard">
-                    <Button variant="outline" size="sm" className="gap-2 text-xs">
-                      <ArrowLeft className="w-3.5 h-3.5" />
-                      Setup Wizard
-                    </Button>
-                  </Link>
+                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
                 </div>
-              )}
+
+                <Link href="/consultant/setup-wizard">
+                  <Button variant="outline" size="sm" className="gap-2 text-xs">
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Setup Wizard
+                  </Button>
+                </Link>
+              </div>
             </div>
 
-            {activeTab === "delivery" ? (
-              <DeliveryAgentPanel />
-            ) : (
             <>
 
             {isMobile && (
@@ -735,8 +757,8 @@ export default function ConsultantAcademy() {
               </div>
             </div>
             </>
-            )}
           </div>
+          )}
         </main>
       </div>
     </div>

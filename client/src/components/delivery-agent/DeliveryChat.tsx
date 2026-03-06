@@ -1,23 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
-  Send,
   Loader2,
   Bot,
   FileText,
   Sparkles,
-  ChevronDown,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ChatMarkdown } from "@/components/shared/ChatMarkdown";
-import { ThinkingBubble } from "@/components/ai-assistant/ThinkingBubble";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MessageList } from "@/components/ai-assistant/MessageList";
+import { InputArea } from "@/components/ai-assistant/InputArea";
 
 interface DeliveryMessage {
   id: string;
@@ -47,24 +39,10 @@ export function DeliveryChat({
 }: DeliveryChatProps) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<DeliveryMessage[]>([]);
-  const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(scrollToBottom, 100);
-    return () => clearTimeout(timer);
-  }, [messages, scrollToBottom]);
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -84,7 +62,7 @@ export function DeliveryChat({
                 role: m.role,
                 content: m.content,
                 thinking: m.metadata_json?.thinking,
-                status: "completed",
+                status: "completed" as const,
                 created_at: m.created_at,
               }))
             );
@@ -99,8 +77,8 @@ export function DeliveryChat({
     loadMessages();
   }, [session.id]);
 
-  const handleSend = useCallback(async () => {
-    const trimmed = input.trim();
+  const handleSend = useCallback(async (message: string) => {
+    const trimmed = message.trim();
     if (!trimmed || isTyping) return;
 
     const userMsgId = Date.now().toString();
@@ -114,7 +92,6 @@ export function DeliveryChat({
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    setInput("");
     setIsTyping(true);
 
     if (abortControllerRef.current) {
@@ -273,7 +250,7 @@ export function DeliveryChat({
         variant: "destructive",
       });
     }
-  }, [input, isTyping, session.id, onStatusChange, toast]);
+  }, [isTyping, session.id, onStatusChange, toast]);
 
   const handleGenerateReport = useCallback(async () => {
     setIsGeneratingReport(true);
@@ -315,13 +292,6 @@ export function DeliveryChat({
     };
   }, []);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
   if (loadingMessages) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -333,7 +303,7 @@ export function DeliveryChat({
   return (
     <div className="flex flex-col h-full">
       {session.status === "assistant" && (
-        <div className="px-4 py-2 bg-violet-50/50 dark:bg-violet-900/10 border-b border-violet-200/50 dark:border-violet-800/30 flex items-center justify-between">
+        <div className="px-4 py-2 bg-violet-50/50 dark:bg-violet-900/10 border-b border-violet-200/50 dark:border-violet-800/30 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2">
             <Bot className="w-4 h-4 text-violet-500" />
             <span className="text-xs font-medium text-violet-700 dark:text-violet-400">
@@ -355,105 +325,35 @@ export function DeliveryChat({
         </div>
       )}
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center max-w-sm">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-3">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-1">
-                {session.mode === "onboarding"
-                  ? "Benvenuto nell'Onboarding!"
-                  : "Iniziamo la Discovery"}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {session.mode === "onboarding"
-                  ? "Raccontami della tua attività. Ti guiderò nella configurazione ottimale della piattaforma."
-                  : "Descrivi il cliente che vuoi analizzare. Esplorerò ogni aspetto per creare un piano su misura."}
-              </p>
+      {messages.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center max-w-sm">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-3">
+              <Sparkles className="w-6 h-6 text-white" />
             </div>
+            <h3 className="font-semibold text-foreground mb-1">
+              {session.mode === "onboarding"
+                ? "Benvenuto nell'Onboarding!"
+                : "Iniziamo la Discovery"}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {session.mode === "onboarding"
+                ? "Raccontami della tua attività. Ti guiderò nella configurazione ottimale della piattaforma."
+                : "Descrivi il cliente che vuoi analizzare. Esplorerò ogni aspetto per creare un piano su misura."}
+            </p>
           </div>
-        )}
-
-        {messages.map((msg) => (
-          <div key={msg.id}>
-            {msg.role === "user" ? (
-              <div className="flex justify-end">
-                <div className="max-w-[80%]">
-                  <div className="bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-700 dark:to-slate-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-br-md px-4 py-3 shadow-sm border border-slate-200/50 dark:border-slate-600/30">
-                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                      {msg.content}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col max-w-[90%]">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0">
-                    <Bot className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">
-                    Delivery Agent
-                  </span>
-                  <span className="text-xs text-indigo-500">AI Consultant</span>
-                </div>
-
-                {(msg.thinking || msg.isThinking) && (
-                  <ThinkingBubble
-                    thinking={msg.thinking}
-                    isThinking={msg.isThinking}
-                    className="mb-2"
-                  />
-                )}
-
-                {msg.content && (
-                  <div className="pl-9">
-                    <ChatMarkdown
-                      content={msg.content}
-                      className="text-sm leading-relaxed text-foreground prose prose-sm dark:prose-invert max-w-none"
-                    />
-                  </div>
-                )}
-
-                {msg.status === "error" && (
-                  <div className="pl-9 mt-2">
-                    <Badge variant="destructive" className="text-xs">
-                      Errore
-                    </Badge>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-
-        {isTyping && (
-          <div className="flex items-center gap-2 pl-9">
-            <div className="flex gap-1">
-              <div
-                className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
-                style={{ animationDelay: "0ms" }}
-              />
-              <div
-                className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
-                style={{ animationDelay: "150ms" }}
-              />
-              <div
-                className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
-                style={{ animationDelay: "300ms" }}
-              />
-            </div>
-            <span className="text-xs text-muted-foreground">
-              Delivery Agent sta scrivendo...
-            </span>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0">
+          <MessageList
+            messages={messages}
+            isTyping={isTyping}
+          />
+        </div>
+      )}
 
       {session.status === "elaborating" && !isGeneratingReport && (
-        <div className="px-4 py-3 border-t border-border/60 bg-amber-50/50 dark:bg-amber-900/10">
+        <div className="px-4 py-3 border-t border-border/60 bg-amber-50/50 dark:bg-amber-900/10 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-500" />
@@ -474,7 +374,7 @@ export function DeliveryChat({
       )}
 
       {isGeneratingReport && (
-        <div className="px-4 py-3 border-t border-border/60 bg-indigo-50/50 dark:bg-indigo-900/10">
+        <div className="px-4 py-3 border-t border-border/60 bg-indigo-50/50 dark:bg-indigo-900/10 flex-shrink-0">
           <div className="flex items-center gap-3">
             <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
             <div>
@@ -489,45 +389,12 @@ export function DeliveryChat({
         </div>
       )}
 
-      <div className="p-3 border-t border-border/60">
-        <div className="relative bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/70 dark:border-slate-700 shadow-sm focus-within:border-indigo-300 dark:focus-within:border-indigo-700 transition-all">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              isTyping
-                ? "Attendi la risposta..."
-                : session.status === "assistant"
-                ? "Chiedi qualsiasi cosa sulla configurazione..."
-                : "Rispondi alle domande del Delivery Agent..."
-            }
-            disabled={isTyping || isGeneratingReport}
-            className="resize-none min-h-[48px] max-h-[120px] bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 pr-12 shadow-none"
-            rows={1}
-          />
-          <Button
-            onClick={handleSend}
-            disabled={!input.trim() || isTyping || isGeneratingReport}
-            size="sm"
-            className="absolute right-2 bottom-2 h-8 w-8 p-0 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 disabled:from-slate-200 disabled:to-slate-300 dark:disabled:from-slate-700 dark:disabled:to-slate-600 transition-all"
-          >
-            {isTyping ? (
-              <Loader2 className="w-4 h-4 text-white animate-spin" />
-            ) : (
-              <Send className="w-4 h-4 text-white" />
-            )}
-          </Button>
-        </div>
-        <div className="flex items-center justify-between mt-1.5 px-1">
-          <span className="text-[10px] text-muted-foreground/60">
-            Shift+Invio per nuova riga
-          </span>
-          <span className="text-[10px] text-muted-foreground/60">
-            {input.length}/4000
-          </span>
-        </div>
+      <div className="p-3 border-t border-border/60 flex-shrink-0">
+        <InputArea
+          onSend={(msg) => handleSend(msg)}
+          disabled={isGeneratingReport}
+          isProcessing={isTyping}
+        />
       </div>
     </div>
   );

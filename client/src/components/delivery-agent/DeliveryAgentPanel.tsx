@@ -369,7 +369,7 @@ export function DeliveryAgentPanel() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-200px)] min-h-[500px] rounded-2xl border border-border/60 bg-card overflow-hidden shadow-sm">
+    <div className="flex h-full bg-card overflow-hidden">
       {!isMobile && (
         <div
           className={cn(
