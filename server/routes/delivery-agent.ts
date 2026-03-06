@@ -1109,12 +1109,18 @@ router.post('/simulator/run', authenticateToken, requireRole('consultant'), asyn
       });
 
       let lucaGreeting = '';
-      if (lucaGreetingResult.candidates?.[0]?.content?.parts) {
-        lucaGreeting = lucaGreetingResult.candidates[0].content.parts
-          .filter((p: any) => !p.thought && p.text)
-          .map((p: any) => p.text)
-          .join('');
+      try {
+        lucaGreeting = typeof lucaGreetingResult.text === 'string' ? lucaGreetingResult.text :
+          (typeof lucaGreetingResult.text === 'function' ? lucaGreetingResult.text() : '');
+      } catch {
+        if (lucaGreetingResult.candidates?.[0]?.content?.parts) {
+          lucaGreeting = lucaGreetingResult.candidates[0].content.parts
+            .filter((p: any) => p.text && !(p as any).thought)
+            .map((p: any) => p.text)
+            .join('');
+        }
       }
+      console.log(`[Simulator] Luca greeting length: ${lucaGreeting.length}`);
 
       if (lucaGreeting) {
         await db.execute(sql`
@@ -1165,16 +1171,42 @@ router.post('/simulator/run', authenticateToken, requireRole('consultant'), asyn
       });
 
       let clientMsg = '';
-      if (clientResult.candidates?.[0]?.content?.parts) {
-        clientMsg = clientResult.candidates[0].content.parts
-          .filter((p: any) => !p.thought && p.text)
-          .map((p: any) => p.text)
-          .join('');
+      try {
+        clientMsg = typeof clientResult.text === 'string' ? clientResult.text :
+          (typeof clientResult.text === 'function' ? clientResult.text() : '');
+      } catch {
+        if (clientResult.candidates?.[0]?.content?.parts) {
+          clientMsg = clientResult.candidates[0].content.parts
+            .filter((p: any) => p.text && !(p as any).thought)
+            .map((p: any) => p.text)
+            .join('');
+        }
       }
+      console.log(`[Simulator] Turn ${turnNumber} client raw response length: ${clientMsg.length}, preview: "${clientMsg.substring(0, 80)}..."`);
 
       if (!clientMsg.trim()) {
-        console.log(`[Simulator] Empty client response at turn ${turnNumber}, stopping`);
-        break;
+        console.log(`[Simulator] Empty client response at turn ${turnNumber}, retrying once...`);
+        const retryResult = await provider.client.generateContent({
+          model,
+          contents: [...clientHistory, { role: 'model', parts: [{ text: 'Raccontami un po\' di te e della tua attività.' }] }],
+          generationConfig: { maxOutputTokens: 2048, temperature: 0.9 },
+          systemInstruction: { role: 'system', parts: [{ text: clientSystemPrompt }] },
+        });
+        try {
+          clientMsg = typeof retryResult.text === 'string' ? retryResult.text :
+            (typeof retryResult.text === 'function' ? retryResult.text() : '');
+        } catch {
+          if (retryResult.candidates?.[0]?.content?.parts) {
+            clientMsg = retryResult.candidates[0].content.parts
+              .filter((p: any) => p.text && !(p as any).thought)
+              .map((p: any) => p.text)
+              .join('');
+          }
+        }
+        if (!clientMsg.trim()) {
+          console.log(`[Simulator] Still empty after retry at turn ${turnNumber}, stopping`);
+          break;
+        }
       }
 
       await db.execute(sql`
@@ -1208,12 +1240,18 @@ router.post('/simulator/run', authenticateToken, requireRole('consultant'), asyn
       });
 
       let lucaMsg = '';
-      if (lucaResult.candidates?.[0]?.content?.parts) {
-        lucaMsg = lucaResult.candidates[0].content.parts
-          .filter((p: any) => !p.thought && p.text)
-          .map((p: any) => p.text)
-          .join('');
+      try {
+        lucaMsg = typeof lucaResult.text === 'string' ? lucaResult.text :
+          (typeof lucaResult.text === 'function' ? lucaResult.text() : '');
+      } catch {
+        if (lucaResult.candidates?.[0]?.content?.parts) {
+          lucaMsg = lucaResult.candidates[0].content.parts
+            .filter((p: any) => p.text && !(p as any).thought)
+            .map((p: any) => p.text)
+            .join('');
+        }
       }
+      console.log(`[Simulator] Turn ${turnNumber} Luca raw response length: ${lucaMsg.length}`);
 
       if (!lucaMsg.trim()) {
         console.log(`[Simulator] Empty Luca response at turn ${turnNumber}, stopping`);
