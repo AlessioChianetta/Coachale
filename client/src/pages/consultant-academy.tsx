@@ -743,7 +743,7 @@ export default function ConsultantAcademy() {
 
   return (
     <div className="flex flex-col bg-background h-screen max-h-screen">
-      <Navbar onMenuClick={() => setSidebarOpen(true)} />
+      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
 
       <div className="flex flex-1 overflow-hidden min-h-0">
         <Sidebar
