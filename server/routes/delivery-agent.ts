@@ -279,17 +279,17 @@ router.post('/generate-report/:sessionId', authenticateToken, requireRole('consu
     `);
 
     const conversationText = (messagesRes.rows as any[])
-      .map(m => `${m.role === 'assistant' ? 'Agente' : 'Consulente'}: ${m.content}`)
+      .map(m => `${m.role === 'assistant' ? 'Luca' : 'Consulente'}: ${m.content}`)
       .join('\n\n');
 
-    const profileJson = session.client_profile_json ? JSON.stringify(session.client_profile_json) : 'Non disponibile';
+    const profileJson = session.client_profile_json ? JSON.stringify(session.client_profile_json, null, 2) : 'Non disponibile';
 
     let reportPrompt = '';
     try {
       const { getReportGenerationPrompt } = await import('../prompts/delivery-agent-prompt');
       reportPrompt = getReportGenerationPrompt();
     } catch {
-      reportPrompt = `Generate a structured onboarding report in JSON format with these 6 sections: profilo_cliente, diagnosi, moduli_consigliati, roadmap, quick_wins, metriche_successo.`;
+      reportPrompt = `Generate a structured onboarding report in JSON format with these 6 sections: profilo_cliente, diagnosi, pacchetti_consigliati, roadmap, quick_wins, metriche_successo.`;
     }
 
     const provider = await getAIProvider(consultantId);
@@ -297,36 +297,207 @@ router.post('/generate-report/:sessionId', authenticateToken, requireRole('consu
       provider.setFeature('delivery-agent-report', 'consultant');
     }
 
-    const { model } = getModelWithThinking(provider.metadata?.providerName);
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(provider.metadata?.providerName);
 
-    const result = await provider.client.generateContent({
-      model,
-      contents: [
+    const thinkingConfig: any = {};
+    if (useThinking) {
+      thinkingConfig.thinkingConfig = { thinkingBudget: thinkingLevel === 'high' ? 16384 : thinkingLevel === 'medium' ? 8192 : 4096 };
+    }
+
+    const multiTurnContents = (messagesRes.rows as any[]).map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+
+    console.log(`[DeliveryAgent] Report generation START — session: ${sessionId}, messages: ${messagesRes.rows.length}, conversation length: ${conversationText.length} chars`);
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 1: ANALISI — Ragiona sulla conversazione e identifica pattern
+    // ═══════════════════════════════════════════════════════════════
+    let analysisText = '';
+    console.log('[DeliveryAgent] STEP 1: Analisi della conversazione...');
+    try {
+      const step1Contents = [
+        ...multiTurnContents,
         {
           role: 'user',
           parts: [{
-            text: `Profilo Cliente Estratto:\n${profileJson}\n\nConversazione Completa:\n${conversationText}\n\nGenera il report strutturato.`,
+            text: `La discovery è conclusa. Profilo Estratto:\n${profileJson}\n\nCOMPITO: Analizza in profondità questa conversazione. NON generare ancora il report. Fai un'analisi critica:
+
+1. **Pattern chiave emersi**: Quali sono i 3-5 pattern più importanti che hai notato? (es. "il consulente ha un business solido ma dipende completamente da lui", "ha molti clienti ma li perde per mancanza di follow-up")
+
+2. **Contraddizioni o lacune**: Ci sono cose che non tornano? Risposte vaghe che non hai potuto approfondire? Informazioni mancanti?
+
+3. **Urgenza reale vs percepita**: Cosa dice il consulente di volere vs cosa emerge come bisogno reale dalla conversazione?
+
+4. **Pacchetti candidati**: Quali pacchetti servizio sono chiaramente rilevanti? Quali sono borderline? Quali sono sicuramente da escludere? Motiva ogni scelta con riferimenti specifici alla conversazione.
+
+5. **Rischi e dipendenze**: Quali sono i rischi principali nell'implementazione? Ci sono prerequisiti tecnici che potrebbero bloccare il consulente?
+
+6. **Ordine di priorità**: Se il consulente potesse attivare solo 2 pacchetti nei prossimi 30 giorni, quali sarebbero e perché?
+
+Ragiona in modo strutturato e critico. Questa analisi servirà come base per il report finale.`,
           }],
         },
-      ],
-      generationConfig: {
-        maxOutputTokens: 16384,
-        temperature: 0.5,
-      },
-      systemInstruction: { role: 'system', parts: [{ text: reportPrompt }] },
-    });
+      ];
 
-    const responseText = result.response.text();
+      const analysisResult = await provider.client.generateContent({
+        model,
+        contents: step1Contents,
+        generationConfig: {
+          maxOutputTokens: 8192,
+          temperature: 0.6,
+          ...thinkingConfig,
+        },
+        systemInstruction: { role: 'system', parts: [{ text: reportPrompt }] },
+      });
+
+      analysisText = analysisResult.response.text();
+      console.log(`[DeliveryAgent] STEP 1 DONE — Analysis: ${analysisText.length} chars`);
+    } catch (step1Err: any) {
+      console.error('[DeliveryAgent] STEP 1 FAILED, continuing without analysis:', step1Err.message);
+      analysisText = `Analisi non disponibile a causa di un errore. Genera il report basandoti direttamente sulla conversazione e sul profilo estratto.`;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 2: DRAFT — Genera il report JSON basato sull'analisi
+    // ═══════════════════════════════════════════════════════════════
+    let draftJson: any = null;
+    let draftText = '';
+    console.log('[DeliveryAgent] STEP 2: Generazione draft report...');
+    try {
+      const draftResult = await provider.client.generateContent({
+        model,
+        contents: [
+          {
+            role: 'user',
+            parts: [{
+              text: `Profilo Cliente Estratto:\n${profileJson}\n\nConversazione Completa:\n${conversationText}`,
+            }],
+          },
+          {
+            role: 'model',
+            parts: [{
+              text: `Ho analizzato la conversazione in profondità. Ecco la mia analisi:\n\n${analysisText}`,
+            }],
+          },
+          {
+            role: 'user',
+            parts: [{
+              text: `Perfetto. Ora basandoti sulla tua analisi, genera il report JSON strutturato completo. Segui esattamente il template nel system prompt. Ricorda:
+- Includi SOLO i pacchetti che servono davvero (tipicamente 4-7, non tutti e 10)
+- Ogni "perche_per_te" deve citare cose specifiche dette dal consulente durante la conversazione
+- La roadmap deve rispettare le dipendenze
+- I quick_wins devono essere azioni concrete sotto i 30 minuti
+- Le metriche devono essere misurabili nella piattaforma
+
+Rispondi SOLO con il JSON nel formato richiesto.`,
+            }],
+          },
+        ],
+        generationConfig: {
+          maxOutputTokens: 16384,
+          temperature: 0.4,
+          ...thinkingConfig,
+        },
+        systemInstruction: { role: 'system', parts: [{ text: reportPrompt }] },
+      });
+
+      draftText = draftResult.response.text();
+      console.log(`[DeliveryAgent] STEP 2 DONE — Draft: ${draftText.length} chars`);
+
+      const draftMatch = draftText.match(/```json\s*([\s\S]*?)```/);
+      if (draftMatch) {
+        try { draftJson = JSON.parse(draftMatch[1]); } catch { /* continue */ }
+      }
+      if (!draftJson) {
+        try { draftJson = JSON.parse(draftText); } catch { /* continue */ }
+      }
+    } catch (step2Err: any) {
+      console.error('[DeliveryAgent] STEP 2 FAILED:', step2Err.message);
+      throw new Error(`Report draft generation failed: ${step2Err.message}`);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 3: REVISIONE — Rileggi, critica e migliora il report
+    // ═══════════════════════════════════════════════════════════════
     let reportJson: any = null;
-    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      try { reportJson = JSON.parse(jsonMatch[1]); } catch { /* ignore */ }
+    console.log('[DeliveryAgent] STEP 3: Revisione critica del report...');
+    try {
+      const reviewResult = await provider.client.generateContent({
+        model,
+        contents: [
+          {
+            role: 'user',
+            parts: [{
+              text: `Sei Luca. Hai generato questo report per un consulente dopo una discovery approfondita.
+
+REPORT DRAFT:
+\`\`\`json
+${JSON.stringify(draftJson || draftText, null, 2)}
+\`\`\`
+
+PROFILO ORIGINALE:
+${profileJson}
+
+ANALISI ORIGINALE:
+${analysisText}
+
+CONVERSAZIONE COMPLETA (per verificare coerenza):
+${conversationText}
+
+COMPITO DI REVISIONE CRITICA: Rileggi il report e valuta:
+
+1. **Coerenza con la conversazione**: I "perche_per_te" citano davvero cose dette dal consulente o sono generici? Se sono generici, riscrivili con riferimenti specifici.
+
+2. **Pacchetti mancanti o superflui**: C'è un pacchetto che dovrebbe esserci ma manca? C'è un pacchetto consigliato che non serve davvero?
+
+3. **Roadmap realistica**: L'ordine delle settimane rispetta le dipendenze? Le azioni sono concrete e fattibili nei tempi indicati?
+
+4. **Quick wins**: Sono davvero rapidi (sotto 30 min)? Sono ad alto impatto per QUESTO consulente specifico?
+
+5. **Metriche**: Sono misurabili nella piattaforma o sono metriche astratte?
+
+6. **Diagnosi**: La sezione "dove_sei_ora" e "gap_analysis" riflettono davvero la situazione emersa?
+
+Se trovi problemi, genera il report JSON CORRETTO e COMPLETO. Se il report è già buono, restituiscilo invariato.
+Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
+            }],
+          },
+        ],
+        generationConfig: {
+          maxOutputTokens: 16384,
+          temperature: 0.3,
+          ...thinkingConfig,
+        },
+        systemInstruction: { role: 'system', parts: [{ text: reportPrompt }] },
+      });
+
+      const reviewText = reviewResult.response.text();
+      console.log(`[DeliveryAgent] STEP 3 DONE — Review: ${reviewText.length} chars`);
+
+      const reviewMatch = reviewText.match(/```json\s*([\s\S]*?)```/);
+      if (reviewMatch) {
+        try { reportJson = JSON.parse(reviewMatch[1]); } catch { /* fallback to draft */ }
+      }
+      if (!reportJson) {
+        try { reportJson = JSON.parse(reviewText); } catch { /* fallback to draft */ }
+      }
+    } catch (step3Err: any) {
+      console.warn('[DeliveryAgent] STEP 3 FAILED, using draft:', step3Err.message);
+    }
+
+    if (!reportJson && draftJson) {
+      console.log('[DeliveryAgent] Using draft report (review unavailable or parse failed)');
+      reportJson = draftJson;
     }
     if (!reportJson) {
-      try { reportJson = JSON.parse(responseText); } catch {
-        reportJson = { raw_text: responseText };
+      try { reportJson = JSON.parse(draftText); } catch {
+        reportJson = { raw_text: draftText };
       }
     }
+
+    console.log(`[DeliveryAgent] Report generation COMPLETE — final report has ${reportJson?.pacchetti_consigliati?.length || 0} packages`);
 
     await db.execute(sql`
       INSERT INTO delivery_agent_reports (session_id, consultant_id, report_json)
