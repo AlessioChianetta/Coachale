@@ -111,6 +111,7 @@ import clientGoogleDriveRouter from "./routes/client/client-google-drive";
 import adminRouter from "./routes/admin";
 import onboardingRouter from "./routes/onboarding";
 import academyRouter from "./routes/academy";
+import deliveryAgentRouter from "./routes/delivery-agent";
 import followupApiRouter from "./routes/followup-api";
 import weeklyCheckinRouter from "./routes/weekly-checkin-router";
 import fileSearchRouter from "./routes/file-search";
@@ -14154,6 +14155,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Consultant Academy routes
   app.use("/api/consultant/academy", academyRouter);
+
+  // Consultant Delivery Agent routes
+  app.use("/api/consultant/delivery-agent", deliveryAgentRouter);
 
   // Consultant Credential Notes - GET and PUT for account reference and notes per step
   app.get("/api/consultant/credential-notes/:stepId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {

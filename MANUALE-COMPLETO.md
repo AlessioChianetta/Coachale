@@ -318,7 +318,7 @@ Hai appena ricevuto le credenziali. Cosa fai? Segui questa checklist:
 
 - [ ] **Fai login** e familiarizza con la dashboard
 - [ ] **Vai al Setup Wizard** (`Sidebar → PRINCIPALE → Setup Iniziale`)
-- [ ] **Configura Vertex AI** - senza questo l'AI non funziona
+- [ ] **Configura API Key Gemini** - senza questo l'AI non funziona
 - [ ] **Configura SMTP** - senza questo non puoi inviare email
 - [ ] **Esplora l'AI Assistant** - prova a fargli delle domande
 - [ ] **Crea il tuo primo cliente** (anche di test)
@@ -410,69 +410,65 @@ Ogni step può avere uno di questi stati:
 
 Questa è la fase CRITICA. Senza completarla, la maggior parte delle funzionalità non funziona.
 
-#### 4.2.1 Configurare Vertex AI (OBBLIGATORIO)
+#### 4.2.1 Configurare le API Key Gemini (OBBLIGATORIO)
 
 **Dove:** `Sidebar → IMPOSTAZIONI → API Keys → Tab "AI"`
 
-**Cos'è Vertex AI:**
-Vertex AI è il servizio di intelligenza artificiale di Google Cloud. È il "cervello" che alimenta:
+**Cos'è la Configurazione AI:**
+Le API Key Gemini sono il "cervello" che alimenta tutta l'intelligenza artificiale della piattaforma:
 - L'AI Assistant (chat)
 - La generazione di email
 - L'analisi dei clienti
 - Gli agenti WhatsApp
 - La generazione di corsi
+- I dipendenti AI autonomi
+- Le chiamate vocali AI
 - E molto altro...
 
-**Cosa ti serve prima di iniziare:**
+**Come funziona il sistema API Key:**
+In base al piano che hai acquistato, hai due opzioni:
+
+| Opzione | Come Funziona | Per Chi È |
+|---------|---------------|-----------|
+| **API Key del fornitore** | Chi ti ha venduto la piattaforma ti fornisce le API key già configurate. Non devi fare nulla — sono già attive. | Chi vuole partire subito senza configurazione tecnica |
+| **API Key proprie** | Crei le tue API key su Google AI Studio e le inserisci nella piattaforma. Hai pieno controllo sui costi e i limiti. | Chi preferisce gestire direttamente i propri costi AI |
+
+**Opzione A: Usare le API Key del fornitore**
+Se il tuo piano include le API key fornite, sono già configurate. Vai su `Sidebar → IMPOSTAZIONI → API Keys → Tab "AI"` per verificare che lo stato sia "✅ Connessione attiva".
+
+**Opzione B: Configurare le proprie API Key (Google AI Studio)**
+
+**Cosa ti serve:**
 1. Un account Google (puoi usare quello personale)
-2. Accesso a Google Cloud Platform (console.cloud.google.com)
-3. Una carta di credito per attivare la billing (Google offre $300 di credito gratuito)
+2. Accesso a Google AI Studio (aistudio.google.com)
 
 **Procedura Passo-Passo:**
 
-**Step 1: Creare un progetto Google Cloud**
-1. Vai su console.cloud.google.com
-2. Clicca sul selettore progetti in alto
-3. Clicca "NUOVO PROGETTO"
-4. Nome: scegli qualcosa come "MiaPiattaforma-AI"
-5. Clicca "CREA"
-6. Attendi 30 secondi per la creazione
+**Step 1: Accedere a Google AI Studio**
+1. Vai su aistudio.google.com
+2. Accedi con il tuo account Google
+3. Accetta i termini di servizio se richiesto
 
-**Step 2: Abilitare Vertex AI**
-1. Nel menu laterale, vai su "API e servizi" → "Libreria"
-2. Cerca "Vertex AI API"
-3. Clicca sul risultato
-4. Clicca "ABILITA"
-5. Attendi l'abilitazione (1-2 minuti)
+**Step 2: Creare una API Key**
+1. Nel menu laterale, clicca su "Get API Key"
+2. Clicca "Create API Key"
+3. Seleziona un progetto esistente o creane uno nuovo
+4. Copia la API Key generata (inizia con "AIza...")
 
-**Step 3: Creare le credenziali**
-1. Vai su "API e servizi" → "Credenziali"
-2. Clicca "CREA CREDENZIALI" → "Account di servizio"
-3. Nome: "piattaforma-ai-service"
-4. Clicca "CREA E CONTINUA"
-5. Ruolo: "Vertex AI User" (cerca nella lista)
-6. Clicca "CONTINUA" → "FATTO"
-7. Ora clicca sull'account appena creato
-8. Tab "CHIAVI" → "AGGIUNGI CHIAVE" → "Crea nuova chiave"
-9. Formato: JSON
-10. Clicca "CREA" → il file viene scaricato automaticamente
-
-**Step 4: Caricare le credenziali nella piattaforma**
+**Step 3: Inserire la API Key nella piattaforma**
 1. Vai su `Sidebar → IMPOSTAZIONI → API Keys`
 2. Seleziona il tab "AI"
-3. Clicca "Carica JSON Credenziali"
-4. Seleziona il file scaricato
-5. Clicca "Salva e Testa"
-6. Se tutto è ok, vedrai "✅ Connessione riuscita"
+3. Incolla la API Key nel campo dedicato
+4. Clicca "Salva e Testa"
+5. Se tutto è ok, vedrai "✅ Connessione riuscita"
 
 **Problemi Comuni:**
 
 | Problema | Soluzione |
 |----------|-----------|
-| "API non abilitata" | Torna su Google Cloud e verifica che Vertex AI sia abilitato |
-| "Credenziali non valide" | Ricrea il file JSON delle credenziali |
-| "Quota exceeded" | Hai finito i crediti gratuiti, configura la billing |
-| "Permission denied" | Verifica che l'account di servizio abbia il ruolo "Vertex AI User" |
+| "API Key non valida" | Verifica di aver copiato l'intera chiave da Google AI Studio |
+| "Quota exceeded" | Hai raggiunto il limite gratuito, verifica i tuoi limiti su aistudio.google.com |
+| "Connessione fallita" | Controlla la connessione internet e riprova |
 
 #### 4.2.2 Configurare SMTP Email (OBBLIGATORIO)
 
@@ -941,7 +937,66 @@ Grafici e statistiche:
 5. Aggiungi note specifiche (opzionale)
 6. Conferma
 
-### 6.5 Best Practices Gestione Clienti
+### 6.5 I 3 Tipi di Contatto nella Piattaforma
+
+La piattaforma gestisce **tre tipi distinti** di contatti, ognuno con caratteristiche e costi diversi:
+
+| Tipo | Credenziali Login | Consuma Licenza | Accesso Piattaforma | Costo |
+|------|:-:|:-:|:-:|:-:|
+| **Clienti** | ✅ Sì | ✅ Sì | Completo (corsi, esercizi, consulenze, chat) | Incluso nel piano licenze |
+| **Dipendenti** | ✅ Sì | ✅ Sì | Limitato al loro ruolo, organizzati in Reparti/Dipartimenti | Incluso nel piano licenze |
+| **Clienti CRM** | ❌ No | ❌ No | Nessuno — solo tracking nel CRM, nessun login | Gratuiti, illimitati |
+
+**Clienti** — Utenti con accesso completo alla piattaforma. Hanno email, password, possono fare login e accedere a corsi, esercizi, chat, consulenze.
+
+**Dipendenti** — Utenti con credenziali che fanno parte del team del consulente. Organizzabili in **Reparti (Departments)** per strutturare il team. Consumano licenza come i clienti.
+
+**Clienti CRM** — Contatti commerciali senza accesso alla piattaforma. Non hanno password, non possono fare login. Servono per tracking CRM (pipeline vendita, outreach, lead scoring). Sono **gratuiti e illimitati** — non contano nel limite licenze. Possono essere convertiti in Clienti dopo il pagamento tramite Stripe Connect (Cap. 33).
+
+#### Filtri per Tipo
+
+La lista clienti supporta filtri per tipo:
+- **Tutti** — Mostra tutti i contatti
+- **Clienti** — Solo clienti con accesso completo
+- **Dipendenti** — Solo dipendenti del team
+- **CRM** — Solo contatti CRM (senza login)
+
+#### Gestione Reparti (Departments)
+
+I Dipendenti possono essere organizzati in Reparti:
+- Ogni reparto ha un nome e una descrizione
+- I dipendenti vengono assegnati a un reparto
+- Utile per organizzare team grandi (es. "Vendite", "Supporto", "Marketing")
+
+#### Sistema Licenze
+
+- I **Clienti** e i **Dipendenti** contano verso il limite licenze del piano
+- I **Clienti CRM** sono esclusi dal conteggio
+- Il limite dipende dal piano acquistato dal consulente
+
+#### Multi-Profilo
+
+Uno stesso utente può essere **cliente di più consulenti** contemporaneamente. Ogni relazione consulente-cliente è indipendente: corsi diversi, progressi diversi, comunicazioni separate.
+
+#### Flusso CRM → Cliente Attivo
+
+```
+Contatto CRM (no login, gratuito)
+        ↓
+Consulente genera link pagamento Stripe
+        ↓
+Il contatto paga → Webhook Stripe
+        ↓
+Auto-provisioning:
+  - is_crm_only → false
+  - Password temporanea generata
+  - Credenziali inviate via email
+  - Livello utente assegnato
+        ↓
+Ora è un Cliente (con login, consuma licenza)
+```
+
+### 6.6 Best Practices Gestione Clienti
 
 **✅ Cosa fare:**
 - Revisiona esercizi entro 24-48 ore
@@ -1911,43 +1966,121 @@ Puoi abilitare/disabilitare il journey per singolo cliente:
 - Cliente già avanzato nel percorso
 - Pausa temporanea
 
-### 11.5 Email Hub
+### 11.5 Email Hub (Millie)
 
 **Dove trovarlo:** `Sidebar → COMUNICAZIONE → Email Hub`
+**URL:** `/consultant/email-hub`
 
-Gestisci tutte le email in un'unica interfaccia con risposte AI.
+L'Email Hub è la casella email unificata con intelligenza artificiale integrata. Gestisce tutti gli account email del consulente in un'unica interfaccia, con risposte AI automatiche brandizzate come "Millie" e classificazione intelligente delle email.
 
-#### Interfaccia
+#### Interfaccia Principale
 
-**Pulsanti** (alto a destra):
+**Barra superiore** (alto a destra):
 - **Nuova Email** - Apre il composer per scrivere email
-- **Sincronizza** - Aggiorna le email dagli account collegati
+- **Sincronizza** - Forza la sincronizzazione IMAP di tutti gli account
 
-**Sidebar sinistra** - Cartelle:
-- **Inbox** - Email in arrivo
-- **AI Drafts** - Bozze generate dall'AI
-- **Starred** - Email con stella
-- **Sent** - Email inviate
-- **Drafts** - Bozze manuali
-- **Trash** - Cestino
+**Sidebar sinistra** - Navigazione:
 
-#### AI Drafts: Risposte Automatiche
+| Cartella | Contenuto |
+|----------|-----------|
+| **Inbox** | Email in arrivo da tutti gli account collegati |
+| **AI Drafts** | Bozze di risposta generate automaticamente da Millie |
+| **Starred** | Email contrassegnate come importanti |
+| **Sent** | Email inviate |
+| **Drafts** | Bozze salvate manualmente |
+| **Trash** | Cestino |
+| **Outreach** | Pipeline di email in uscita per campagne di outreach (lead, follow-up) |
 
-L'AI genera automaticamente bozze di risposta per le email ricevute.
+#### Classificazione Automatica delle Email
+
+Millie classifica automaticamente ogni email in arrivo in una di queste categorie:
+
+| Tipo | Significato | Azione Suggerita |
+|------|-------------|------------------|
+| **hunter_reply** | Risposta da un lead contattato via Hunter/scraper | Qualifica il lead, rispondi con proposta |
+| **client_inquiry** | Domanda da un cliente esistente | Rispondi con supporto contestuale |
+| **lead_inquiry** | Richiesta da un potenziale cliente nuovo | Qualifica e rispondi con offerta |
+| **system_notification** | Notifica di sistema (Stripe, Twilio, ecc.) | Nessuna azione richiesta |
+| **unknown** | Non classificabile | Revisione manuale |
+
+Il sistema applica un **filtro no-reply** automatico: email da indirizzi no-reply@, noreply@, mailer-daemon@ vengono escluse dalla generazione di bozze AI.
+
+#### AI Drafts: Risposte Automatiche di Millie
+
+Millie genera automaticamente bozze di risposta per ogni email ricevuta che richiede una risposta. Le bozze sono arricchite con:
+
+- **Contesto CRM**: Millie accede ai dati del mittente nella piattaforma (se è un cliente, un lead, storico interazioni)
+- **Contesto cross-canale**: tiene conto delle conversazioni su altri canali (WhatsApp, chiamate vocali, task AI) per dare risposte coerenti
+- **Profilo Commerciale**: usa il tono e le informazioni definite nel Profilo Commerciale dell'account email
 
 Per ogni bozza puoi:
+
 | Azione | Cosa Fa |
 |--------|---------|
-| **Approva** | Accetta la bozza così com'è |
+| **Approva** | Accetta la bozza così com'è e la invia |
 | **Modifica** | Edita il testo prima di inviare |
-| **Rifiuta** | Scarta la bozza generata |
-| **Invia** | Invia direttamente la risposta |
+| **Rifiuta** | Scarta la bozza generata dall'AI |
+| **Rigenera** | Chiedi a Millie di generare una versione alternativa |
+
+#### Profilo Commerciale (per account email)
+
+Ogni account email collegato ha un **Profilo Commerciale** con 9 campi configurabili che guidano il tono e il contenuto delle risposte AI:
+
+| Campo | Esempio |
+|-------|---------|
+| Nome azienda | "Studio Consulenza Rossi" |
+| Settore | "Consulenza finanziaria" |
+| Tono di voce | "Professionale ma cordiale" |
+| Servizi principali | "Pianificazione finanziaria, gestione patrimonio" |
+| Proposta di valore | "Aiutiamo PMI a crescere con strategie su misura" |
+| Orari di lavoro | "Lun-Ven 9:00-18:00" |
+| Firma email | "[Personalizzabile]" |
+| Istruzioni speciali | "Non menzionare mai i prezzi nelle prime email" |
+| Lingua preferita | "Italiano" |
+
+#### Tab Outreach (Pipeline Email)
+
+La tab Outreach gestisce le email in uscita per campagne automatizzate. Mostra lo stato di ogni email nella pipeline:
+
+| Stato | Significato |
+|-------|-------------|
+| **In Coda** | Email programmata, in attesa di invio |
+| **Inviata** | Email inviata con successo |
+| **Risposta** | Il destinatario ha risposto |
+| **Bounce** | Email non consegnata |
+| **Follow-up** | Follow-up automatico programmato |
+
+#### Sistema Ticket ed Email Notifications
+
+L'Email Hub include un sistema di **ticket** automatico:
+- Ogni conversazione email viene raggruppata in un thread (ticket)
+- Le notifiche email importanti generano alert nella dashboard
+- Le azioni automatiche includono: aggiornamento stato CRM, creazione task, annullamento follow-up se il lead risponde, escalation per email urgenti
+
+#### Smart Non-Response Rules
+
+Millie applica regole intelligenti per evitare risposte inutili:
+- Non risponde a email automatiche (notifiche, newsletter)
+- Non risponde se l'email è già stata gestita su un altro canale
+- Non risponde a conversazioni chiuse/risolte
+- Rispetta il cooldown (non invia più email allo stesso contatto entro un intervallo configurabile)
+
+#### Tracking Email Inviate
+
+Ogni email inviata viene tracciata con:
+- Stato di consegna (inviata, consegnata, bounce)
+- Apertura (se supportata dal provider)
+- Click su link (se presenti)
+- Risposte ricevute
 
 #### Collegare Account Email
 
-1. Clicca "Aggiungi Account" nella sidebar
-2. Inserisci credenziali IMAP/SMTP
-3. L'AI inizierà a sincronizzare le email
+1. Clicca "Aggiungi Account" nella sidebar Email Hub
+2. Inserisci le credenziali IMAP (server, porta, utente, password)
+3. Inserisci le credenziali SMTP (server, porta, utente, password)
+4. Configura il Profilo Commerciale (9 campi)
+5. Clicca "Salva e Testa Connessione"
+6. Millie inizierà a sincronizzare le email e generare bozze AI
 
 ---
 
@@ -2617,7 +2750,7 @@ Analizza dataset Excel/CSV con l'intelligenza artificiale.
 Centro unificato per tutte le configurazioni tecniche:
 
 #### Tab AI
-- Vertex AI (Google Cloud)
+- API Key Gemini (proprie o fornite dal venditore)
 - Modello predefinito
 - Parametri generazione
 
@@ -2641,7 +2774,7 @@ Centro unificato per tutte le configurazioni tecniche:
 **Dove trovarlo:** `Sidebar → IMPOSTAZIONI → Automazioni Pagamento`
 **URL:** `/consultant/payment-automations`
 
-Configura pagamenti ricorrenti e abbonamenti per i clienti.
+Sistema avanzato per gestire pagamenti, abbonamenti e provisioning automatico dei clienti tramite Stripe.
 
 #### Funzionalità
 
@@ -2651,13 +2784,45 @@ Configura pagamenti ricorrenti e abbonamenti per i clienti.
 | **Piani Abbonamento** | Crea piani mensili/annuali per i tuoi servizi |
 | **Fatturazione Automatica** | I clienti vengono addebitati automaticamente |
 | **Gestione Clienti** | Vedi chi paga, chi è in ritardo, chi ha cancellato |
+| **Auto-Provisioning** | Quando un cliente paga, il suo account viene attivato automaticamente |
+| **Link di Pagamento** | Genera link diretti con sconti e scadenza personalizzati |
+
+#### Auto-Provisioning (Attivazione Automatica)
+
+Quando un cliente paga tramite Stripe, il sistema automaticamente:
+
+1. **Attiva l'account** del cliente (o lo crea se è un contatto CRM)
+2. **Assegna il livello utente** corrispondente al piano acquistato (Silver, Gold, ecc.)
+3. **Attiva gli agenti AI** associati al piano (WhatsApp, Email, Voce)
+4. **Lancia il Welcome Journey** — sequenza email di benvenuto automatica
+5. **Registra l'attività** nel log audit del consulente
+
+#### Link di Pagamento con Upgrade Diretto
+
+Puoi generare link di pagamento personalizzati:
+
+| Parametro | Descrizione |
+|-----------|-------------|
+| **Piano** | Il livello/abbonamento da acquistare |
+| **Sconto** | Percentuale di sconto applicata (0-100%) |
+| **Scadenza** | Data dopo la quale il link non è più valido |
+| **Auto-attivazione** | Se attivo, il cliente viene attivato automaticamente al pagamento |
+
+#### Sincronizzazione Stripe
+
+Il sistema si sincronizza bidirezionalmente con Stripe:
+- **Webhook processing**: riceve eventi da Stripe (pagamento completato, abbonamento cancellato, pagamento fallito)
+- **Stato in tempo reale**: lo stato del pagamento del cliente si aggiorna automaticamente
+- **Gestione scadenze**: avvisi automatici per pagamenti in scadenza o falliti
 
 #### Come Configurare
 
 1. Clicca "Collega Stripe"
 2. Segui il flusso di autorizzazione Stripe
-3. Crea il tuo primo piano abbonamento
-4. Assegna il piano ai clienti
+3. Configura il webhook Stripe (l'URL viene generato automaticamente)
+4. Crea il tuo primo piano abbonamento (nome, prezzo, durata, livello utente)
+5. Genera link di pagamento per i tuoi clienti
+6. Il sistema gestirà tutto automaticamente
 
 ### 13.3 Venditori Autonomi AI
 
@@ -3039,7 +3204,7 @@ Carica documenti che solo tu e l'AI potete vedere.
 | **Twilio** | Servizio per inviare/ricevere messaggi WhatsApp |
 | **Uncino** | Frase di apertura che cattura l'attenzione |
 | **Venditore Autonomo** | Agente AI configurabile che conduce autonomamente conversazioni di vendita tramite una landing page pubblica (URL `/public/sales-agent/[token]`). Il visitatore interagisce direttamente con l'AI senza login. Gestito da `/consultant/sales-agents`. |
-| **Vertex AI** | Servizio AI di Google che alimenta la piattaforma |
+| **Gemini API Key** | Chiave API di Google AI Studio che alimenta l'intelligenza artificiale della piattaforma |
 | **Webhook** | Meccanismo per ricevere notifiche automatiche |
 | **WebRTC** | Tecnologia per videochiamate nel browser |
 
@@ -3050,13 +3215,13 @@ Carica documenti che solo tu e l'AI potete vedere.
 ### B.1 L'AI non risponde alle domande
 
 **Verifica:**
-1. Vertex AI è configurato? (`Sidebar → IMPOSTAZIONI → API Keys → Tab AI`)
+1. API Key Gemini configurata? (`Sidebar → IMPOSTAZIONI → API Keys → Tab AI`)
 2. Le credenziali sono valide? (stato verde ✅)
-3. Hai crediti Google Cloud disponibili?
+3. Hai raggiunto i limiti di utilizzo?
 
 **Soluzione:**
-- Riconfigura Vertex AI seguendo le istruzioni del Capitolo 4
-- Verifica la billing su Google Cloud
+- Riconfigura le API Key Gemini seguendo le istruzioni del Capitolo 4
+- Verifica i limiti su Google AI Studio (aistudio.google.com)
 - Contatta supporto se persiste
 
 ### B.2 WhatsApp non invia messaggi
@@ -3169,8 +3334,8 @@ Carica documenti che solo tu e l'AI potete vedere.
 
 ### Consulenti
 
-**D: Quanto costa usare Vertex AI?**
-R: Google offre $300 di crediti gratuiti. Dopo, circa $0.001-0.01 per richiesta. Un uso normale costa €10-50/mese.
+**D: Quanto costa usare l'AI (Gemini)?**
+R: Dipende dal tuo piano: se usi le API Key fornite dal venditore della piattaforma, i costi sono inclusi nel tuo abbonamento. Se usi le tue API Key Gemini (Google AI Studio), Google offre un livello gratuito generoso. L'uso oltre il livello gratuito ha costi molto contenuti (circa €10-50/mese per uso normale).
 
 **D: Posso avere più agenti WhatsApp?**
 R: Sì, puoi creare quanti agenti vuoi. Ogni agente può avere personalità e script diversi.
@@ -3655,7 +3820,169 @@ Il sistema monitora in tempo reale:
 
 ---
 
-### 21.9 Risoluzione Problemi Chiamate Vocali
+### 21.9 Provisioning Numeri VoIP
+
+**Dove trovarlo:** `Sidebar → COMUNICAZIONE → Chiamate Vocali → Scheda Configurazione → Sub-tab "Numeri & Voce"`
+
+Il sistema permette di acquistare e gestire numeri di telefono VoIP per le chiamate in entrata e uscita.
+
+#### Inventario Numeri
+
+La sezione mostra tutti i numeri VoIP associati al consulente con:
+- Numero di telefono
+- Stato attuale (vedi sotto)
+- Paese di provenienza
+- Data di attivazione
+
+#### Flusso KYC (Know Your Customer) Multi-Step
+
+Per acquistare un nuovo numero VoIP è necessario un processo di verifica identità:
+
+```
+Step 1: Ricerca e Selezione
+  → Cerca numeri disponibili per paese/prefisso
+  → Seleziona il numero desiderato
+        ↓
+Step 2: Form Dati Aziendali
+  → Nome azienda / persona fisica
+  → Indirizzo fiscale
+  → Codice fiscale / P.IVA
+  → Tipo di utilizzo (business/personal)
+        ↓
+Step 3: Upload Documenti
+  → Documento di identità (fronte e retro)
+  → Documento aziendale (visura camerale o equivalente)
+  → Prova di indirizzo (bolletta o estratto conto)
+        ↓
+Step 4: Sottomissione per Verifica
+  → Il sistema invia i documenti al provider VoIP
+  → Stato: in attesa di approvazione
+```
+
+#### Stati del Numero
+
+| Stato | Significato |
+|-------|-------------|
+| `pending` | Richiesta inviata, in attesa |
+| `documents_uploaded` | Documenti caricati, in verifica |
+| `kyc_submitted` | KYC sottomesso al provider |
+| `kyc_approved` | KYC approvato, numero in fase di attivazione |
+| `number_ordered` | Numero ordinato dal provider |
+| `number_active` | Numero attivo e pronto per l'uso |
+
+---
+
+### 21.10 Coda d'Attesa (Overflow Queue)
+
+Quando tutte le linee sono occupate, le chiamate in entrata vengono gestite dalla coda d'attesa:
+
+| Funzionalità | Descrizione |
+|-------------|-------------|
+| **Hold Music** | Musica d'attesa personalizzabile (fino a 5 tracce) |
+| **Position Announcement** | Annuncio vocale della posizione in coda ("Sei il numero 3 in attesa") |
+| **Timeout Management** | Dopo X secondi di attesa, la chiamata viene gestita diversamente |
+| **Dequeue Automatico** | Appena una linea si libera, il prossimo in coda viene connesso |
+
+---
+
+### 21.11 Audio Personalizzato per Coda
+
+Il sistema supporta **10 slot audio** personalizzabili per la coda d'attesa:
+
+| Slot | Utilizzo |
+|------|----------|
+| `hold_A` — `hold_E` | 5 tracce di musica d'attesa (rotazione) |
+| `position_prefix` | Audio prima del numero posizione ("Sei il numero...") |
+| `position_suffix` | Audio dopo il numero posizione ("...in coda") |
+| `transferring` | Audio durante il trasferimento ("Ti sto collegando...") |
+| `transfer_failed` | Audio se il trasferimento fallisce |
+| `timeout` | Audio quando il tempo d'attesa è scaduto |
+
+**Come personalizzare:**
+- **Generazione TTS via Gemini**: scrivi il testo e l'AI genera l'audio con voce naturale
+- **Upload Manuale**: carica il tuo file audio
+- **Formato**: tutti gli audio vengono convertiti automaticamente in 8kHz mono WAV (formato compatibile con FreeSWITCH)
+
+---
+
+### 21.12 Tab Conversazioni (Dettaglio)
+
+**Dove trovarlo:** `Sidebar → COMUNICAZIONE → Chiamate Vocali → Scheda Conversazioni`
+
+Per ogni chiamata completata:
+- **Trascrizione real-time**: testo parola per parola della conversazione
+- **Analisi Profonda AI**: analisi automatica del tono, sentiment, punti chiave, azioni emerse
+- **Replay audio**: ascolto della registrazione (se disponibile)
+- **Export**: scarica trascrizione in formato testo
+
+---
+
+### 21.13 Centralino AI Avanzato
+
+Il centralino AI opera con una **logica a fasi** strutturata:
+
+#### Le 4 Fasi della Conversazione
+
+| Fase | Obiettivo |
+|------|-----------|
+| **Accoglienza** | Saluto professionale, identificazione del chiamante |
+| **Qualifica** | Capire il motivo della chiamata, esigenze, urgenza |
+| **Proposta** | Presentare la soluzione più adatta, fissare appuntamento |
+| **Chiusura** | Riepilogo, prossimi passi, saluto |
+
+#### Protocollo "Gentle Pitbull" (Anti-Divagazione)
+
+Protocollo a 3 livelli per mantenere la conversazione focalizzata:
+
+| Livello | Trigger | Azione |
+|---------|---------|--------|
+| **Livello 1** | Il chiamante divaga per la prima volta | Riformula gentilmente e riporta al punto |
+| **Livello 2** | Divagazione ripetuta | Riassume i punti ancora da discutere e propone di procedere |
+| **Livello 3** | Divagazione persistente | Fissa un obiettivo concreto ("Allora, per procedere mi serve sapere X") |
+
+#### No-Price Policy
+
+L'AI è istruita a **non fornire mai prezzi al telefono**. Se il chiamante chiede un prezzo:
+- Spiega che i prezzi dipendono dalle esigenze specifiche
+- Propone un appuntamento per un preventivo personalizzato
+- Registra la richiesta nelle note della chiamata
+
+#### Brand Voice Integration
+
+Le chiamate utilizzano automaticamente il **Brand Voice** del consulente (se configurato) per:
+- Tono di voce coerente con il brand
+- Terminologia specifica del settore
+- Frasi chiave e value proposition
+
+---
+
+### 21.14 Scheda Contatto Unificata
+
+**URL:** `/consultant/voice-calls/contact/:phone`
+
+Per ogni numero di telefono, una scheda unificata che mostra:
+- **Storico completo** di tutte le chiamate (entranti e uscenti)
+- **Dati Hunter**: se il contatto è un lead dal scraper, mostra score, settore, note
+- **Stato retry**: se ci sono retry programmati per questo numero
+- **Note**: note manuali del consulente su questo contatto
+- **Azioni rapide**: richiama, invia WhatsApp, invia email
+
+---
+
+### 21.15 Sub-tab Configurazione
+
+Le impostazioni delle chiamate vocali sono organizzate in 4 sub-tab:
+
+| Sub-tab | Contenuto |
+|---------|-----------|
+| **Numeri & Voce** | Provisioning numeri VoIP, selezione voce AI, KYC |
+| **Coda d'Attesa** | Configurazione overflow queue, hold music, timeout |
+| **Chiamate Uscita** | Impostazioni default per le chiamate in uscita (retry, template, orari) |
+| **Connessione** | URL VPS, token, stato connessione, debug |
+
+---
+
+### 21.16 Risoluzione Problemi Chiamate Vocali
 
 | Problema | Causa Probabile | Soluzione |
 |---|---|---|
@@ -3699,7 +4026,7 @@ Ogni 30 minuti → Il sistema valuta ogni dipendente attivo
 | **Echo** | Summarizer | 📧 Email | 2 | Consulenze completate senza riepilogo → genera e invia riepiloghi strutturati |
 | **Nova** | Social Media Manager | – Nessuno | 1 | Calendario contenuti e gap → suggerisce post e strategie social (non lavora sui clienti ma sul brand) |
 | **Stella** | WhatsApp Assistant | 💬 WhatsApp | 2 | Conversazioni WhatsApp → identifica lead da qualificare e clienti in attesa di risposta |
-| **Iris** | Email Hub Manager | 📧 Email | 2 | Email in arrivo e ticket → identifica comunicazioni che richiedono risposta o escalation |
+| **Iris** | *(Rimosso — funzionalità integrata in Millie)* | – | – | – |
 | **Marco** | Executive Coach | 📞/– Voce o Nessuno | 2 | Agenda e carico lavoro del consulente → coaching operativo e preparazione consulenze |
 | **Hunter** | Lead Hunter | 📞💬📧 Multicanale | 5 | Lead del CRM scraper (Google Maps/Search) → li contatta con voice, WhatsApp ed email in modalità automatica o supervisionata |
 | **Personalizza** | Assistente Custom | 📞📧💬 Tutti | 3 | Completamente configurabile dal consulente: dati, istruzioni, canali, categorie |
@@ -4004,10 +4331,8 @@ Il sistema implementa più livelli di protezione per evitare comportamenti indes
 - **Cerca**: Conversazioni con messaggi non letti; lead non qualificati; clienti senza messaggi da >5 giorni
 - **Crea**: Task WhatsApp con contesto dell'ultima conversazione, tipo messaggio, punti chiave e tono
 
-#### Iris – Email Hub Manager 📨
-- **Analizza**: Email in arrivo non lette degli ultimi 7 giorni + ticket aperti/pendenti con priorità e classificazione AI
-- **Cerca**: Email urgenti non lette; ticket con alta priorità; comunicazioni che richiedono escalation
-- **Crea**: Task per rispondere a email, gestire ticket o segnalare al consulente
+#### Iris – *(Rimosso)*
+Le funzionalità di Email Hub Manager sono state integrate in Millie. Iris non è più un dipendente attivo.
 
 #### Marco – Executive Coach 🎯
 - **Analizza**: Agenda prossimi 7 giorni + carico lavoro (task completati 7/30gg, pendenti) + monitoraggio limiti consulenze mensili + gap schedulazione futura + eventi Google Calendar
@@ -4125,6 +4450,68 @@ Questo è utilissimo per:
 | Dipendente sbaglia analisi | Istruzioni troppo vaghe | Aggiungi istruzioni personalizzate più dettagliate; usa documenti KB per contesto |
 | Marco non chiama il consulente | Contatti non configurati | Configura telefono/email/WhatsApp del consulente nelle impostazioni di Marco |
 | Task creato fuori orario | Fuso orario non allineato | Il sistema usa Europa/Roma; verifica le impostazioni orari di lavoro |
+
+---
+
+### 22.12 Funzionalità Avanzate AI Autonomy
+
+#### Rotazione Equa dei Clienti (Fair Rotation)
+
+Il sistema usa un algoritmo **least-recently-processed** per garantire che tutti i clienti ricevano attenzione equa:
+- Ad ogni ciclo, i clienti vengono ordinati per "ultimo contatto AI" (dal più vecchio al più recente)
+- I clienti mai contattati hanno priorità massima
+- Questo evita che l'AI si concentri sempre sugli stessi clienti
+
+#### Pulizia Task Stantii (Stale Task Cleanup)
+
+| Regola | Azione |
+|--------|--------|
+| Task in `waiting_approval` da >72 ore | Marcato come `expired` automaticamente |
+| Task in `scheduled` da >7 giorni | Marcato come `auto_expired` |
+| Task `failed` senza retry | Chiuso definitivamente dopo 48 ore |
+
+#### Cooldown Differenziato
+
+| Situazione | Cooldown |
+|-----------|----------|
+| Task completato con successo | 24 ore prima del prossimo task per lo stesso cliente |
+| Task fallito | 4 ore prima di ritentare |
+| Task rifiutato dal consulente | 48 ore (l'AI adatta la strategia) |
+
+#### Modalità Assistita (Assisted Mode)
+
+Per autonomia livello 2-3, il sistema opera in modalità assistita:
+- I task vengono creati con stato `waiting_approval`
+- Il consulente riceve una notifica
+- Può approvare, modificare le istruzioni, o rifiutare
+- Se approva con modifiche, l'AI incorpora il feedback per i cicli futuri (context injection)
+
+#### Visualizzazione Piano di Esecuzione
+
+Nella scheda Attività, ogni task mostra il suo **piano di esecuzione step-by-step**:
+```
+Step 1/5: fetch_client_data    ✅ Completato (2.3s)
+Step 2/5: search_private_stores ✅ Completato (1.8s)
+Step 3/5: analyze_patterns      🔄 In corso...
+Step 4/5: prepare_call          ⬜ In attesa
+Step 5/5: voice_call            ⬜ In attesa
+```
+
+#### Deep Research Tasks
+
+Alcuni dipendenti (Marco, Personalizza) possono generare **task di ricerca approfondita**:
+- Raccolgono dati da più fonti (CRM, documenti, web)
+- Producono un report strutturato con analisi e raccomandazioni
+- Il report viene salvato e reso disponibile nel profilo del consulente
+
+#### Configurazione Avanzata per Dipendente
+
+| Parametro | Descrizione |
+|-----------|-------------|
+| **Temperatura AI** | Controllabile per ruolo (0.1 = molto preciso, 0.9 = molto creativo) |
+| **Modello AI** | Selezione tra Flash (veloce, economico) e Pro (preciso, costoso) |
+| **Anti-duplicazione post** | Per Nova: evita di generare post troppo simili a quelli recenti |
+| **Messaggi Spontanei Telegram** | Toggle per abilitare/disabilitare i messaggi spontanei via Telegram durante i cicli task |
 
 ---
 
@@ -4331,6 +4718,102 @@ Dopo la creazione, il lead appare nel CRM con status `found` e può essere gesti
 - **Aggiorna gli status**: tieni il CRM aggiornato (qualified_waiting, not_interested, converted). Hunter usa gli status per decidere chi contattare.
 - **Inizia con "Approvazione Manuale"**: le prime settimane, approva ogni task per capire la qualità dei messaggi generati dall'AI. Poi passa ad "Automatico Batch".
 - **GDPR**: assicurati di avere una base giuridica valida per il contatto. I dati devono essere trattati in conformità con la normativa sulla privacy.
+
+---
+
+### 23.9 Le 3 Modalità di Ricerca
+
+Quando avvii una ricerca, puoi scegliere tra 3 modalità operative:
+
+| Modalità | Cosa Fa | Quando Usarla |
+|----------|---------|---------------|
+| **Solo Cerca** | Trova le aziende e mostra i risultati. Stop. | Vuoi esplorare senza impegno |
+| **Predefinito** (default) | Cerca + Arricchisci automaticamente con score AI | Il flusso standard, bilancia velocità e qualità |
+| **Cerca + Outreach** | Cerca + Arricchisci + Avvia automaticamente l'outreach Hunter | Automazione completa: dall'azienda trovata al primo contatto |
+
+---
+
+### 23.10 AI Keyword Suggestions
+
+Quando scrivi una query nella tab Ricerca, l'AI suggerisce keyword correlate per migliorare i risultati:
+- Basate sul contesto del Sales Agent configurato
+- Suggerisce sinonimi, specializzazioni, varianti geografiche
+- Esempio: "commercialista Milano" → suggerisce anche "studio tributario Milano", "consulente fiscale zona Navigli", "ragioniere partita IVA Milano"
+
+#### Autocomplete e Location Normalization
+
+- Il campo Location normalizza automaticamente le località (es. "MI" → "Milano, Italia")
+- Autocomplete suggerisce località in base alla digitazione
+- Supporta ricerche per CAP, provincia, regione
+
+---
+
+### 23.11 Analisi AI Massiva (Batch)
+
+Dalla tab CRM, il pulsante "Analisi AI Massiva" permette di:
+1. Selezionare tutti i lead (o un sottogruppo filtrato)
+2. Lanciare un'analisi batch che calcola lo score AI per tutti i lead senza score
+3. La barra di progresso mostra lo stato in tempo reale (SSE streaming)
+
+---
+
+### 23.12 Segmentazione CRM Avanzata
+
+La tab CRM supporta filtri avanzati per segmentare i lead:
+
+**Filtri per Outreach State:**
+
+| Stato | Significato |
+|-------|-------------|
+| **In Approvazione** | Task Hunter creati, in attesa di approvazione del consulente |
+| **Schedulati** | Task Hunter approvati, in coda per l'esecuzione |
+| **In Corso** | Outreach attivo (chiamata/messaggio in corso) |
+| **Contattati** | Almeno un contatto effettuato |
+
+**Filtri per Canale:**
+- Multi-canale (lead contattabile su più canali)
+- Con Telefono (ha almeno un numero di telefono)
+- Con Email (ha un indirizzo email)
+
+---
+
+### 23.13 Hunter — 5 Sub-tab di Configurazione
+
+Il pannello impostazioni di Hunter nella Tab Hunter è organizzato in 5 sub-tab:
+
+| Sub-tab | Contenuto |
+|---------|-----------|
+| **Limiti** | Max ricerche, chiamate, WhatsApp, email al giorno; max lead per batch |
+| **Orari** | Fascia oraria di lavoro di Hunter (es. 09:00-18:00), giorni della settimana |
+| **Stile** | Tono di comunicazione (formale/informale/diretto), lingua, personalità |
+| **Account** | Account email da usare per l'outreach, template WhatsApp, numero voice |
+| **Follow-up** | Numero di follow-up automatici, intervallo tra i tentativi, messaggio di follow-up |
+
+---
+
+### 23.14 AI Chat Integrata (AI Sales Agent)
+
+Dalla tab CRM, il pulsante "Analizza CRM con Hunter AI" apre una **chat interattiva** con l'AI Sales Agent:
+- L'AI analizza tutti i lead nel CRM
+- Risponde a domande sui lead ("Quali sono i 5 lead migliori?", "Chi dovrei contattare prima?")
+- Genera piani di outreach personalizzati
+- Può avviare direttamente i task Hunter dalla chat
+
+---
+
+### 23.15 Progress Real-Time (SSE)
+
+Tutte le operazioni lunghe (scraping, arricchimento, analisi batch, scheduling) mostrano progresso in tempo reale tramite **Server-Sent Events (SSE)**:
+
+| Stato | Significato |
+|-------|-------------|
+| `running` | Ricerca in corso (scraping da Google) |
+| `enriching` | Arricchimento AI in corso (calcolo score) |
+| `analyzing` | Analisi batch dei lead |
+| `scheduling` | Creazione task Hunter per l'outreach |
+| `complete` | Operazione completata |
+
+La barra di progresso mostra: percentuale, lead processati / totali, tempo stimato.
 
 ---
 
@@ -4574,9 +5057,516 @@ Cliente fa login → cambia password al primo accesso
 
 ---
 
+## Capitolo 26: Consulenze AI
+
+**Dove trovarlo:** `Sidebar → LAVORO QUOTIDIANO → Consulenze AI`
+**URL:** `/consultant/ai-consultations`
+
+Le Consulenze AI permettono di programmare sessioni vocali automatiche con i clienti, condotte dall'intelligenza artificiale. L'AI conduce una consulenza strutturata al posto del consulente (o come supporto), raccogliendo informazioni e fornendo guida.
+
+### 26.1 Creare una Consulenza AI
+
+1. Vai su `Consulenze AI`
+2. Clicca "Nuova Consulenza AI"
+3. Configura i parametri:
+
+| Campo | Descrizione |
+|-------|-------------|
+| **Cliente** | Seleziona il cliente dalla lista (con ricerca) |
+| **Data e Ora** | Quando deve avvenire la chiamata |
+| **Durata Massima** | Limite di tempo per la sessione (es. 15, 30, 45 minuti) |
+| **Modalità Test** | Toggle per provare la consulenza senza chiamare realmente il cliente |
+| **Argomento/Istruzioni** | Indicazioni specifiche su cosa discutere durante la sessione |
+
+4. Clicca "Programma Consulenza"
+
+### 26.2 Monitoraggio in Tempo Reale
+
+Quando una consulenza è in corso, la dashboard mostra:
+- **Badge "In Corso"** con indicatore verde pulsante
+- **Durata trascorsa** in tempo reale
+- **Stato della chiamata** (connessione, in conversazione, conclusione)
+- **Trascrizione live** (se disponibile)
+
+### 26.3 Risultati
+
+Dopo la consulenza, il sistema genera:
+- Trascrizione completa della sessione
+- Riepilogo AI con punti chiave
+- Action items estratti dalla conversazione
+- Suggerimenti per il follow-up
+
+---
+
+## Capitolo 27: Costi AI
+
+**Dove trovarlo:** `Sidebar → IMPOSTAZIONI → Costi AI`
+**URL:** `/consultant/ai-usage`
+
+Dashboard di monitoraggio dei costi e dell'utilizzo dell'intelligenza artificiale nella piattaforma.
+
+### 27.1 Panoramica
+
+La pagina mostra in tempo reale:
+
+| Metrica | Descrizione |
+|---------|-------------|
+| **Token Totali** | Numero totale di token consumati (input + output) |
+| **Costo Stimato** | Stima del costo in base ai token consumati |
+| **Richieste AI** | Numero di chiamate AI effettuate |
+| **Periodo** | Filtro temporale (oggi, settimana, mese, personalizzato) |
+
+### 27.2 Breakdown per Funzionalità
+
+Il consumo è suddiviso per area della piattaforma:
+
+| Funzionalità | Cosa Include |
+|--------------|-------------|
+| **AI Assistant** | Chat con l'assistente AI in ogni pagina |
+| **Email AI (Millie)** | Generazione bozze email, classificazione |
+| **WhatsApp AI** | Risposte automatiche agli agenti WhatsApp |
+| **Dipendenti AI** | Cicli di analisi e generazione task autonomi |
+| **Chiamate Vocali** | Conversazioni vocali AI (Alessia) |
+| **Content Studio** | Generazione idee, post, campagne |
+| **Corsi AI** | Generazione automatica di corsi e lezioni |
+| **Lead Scraper** | Arricchimento e analisi lead |
+
+### 27.3 Sistema Crediti
+
+Se usi le API key fornite dal venditore della piattaforma, il consumo è gestito tramite un sistema di crediti:
+- I crediti vengono scalati automaticamente ad ogni utilizzo AI
+- Un avviso appare quando i crediti stanno per esaurirsi
+- Puoi acquistare crediti aggiuntivi dal tuo fornitore
+
+Se usi le tue API key Gemini, il costo è gestito direttamente da Google AI Studio e non viene tracciato nella piattaforma (puoi verificarlo su aistudio.google.com).
+
+---
+
+## Capitolo 28: Accademia di Formazione
+
+**Dove trovarlo:** `Sidebar → LAVORO QUOTIDIANO → Accademia`
+**URL:** `/consultant/academy`
+
+L'Accademia è il centro di formazione integrato nella piattaforma con due funzionalità principali:
+
+### 28.1 Tab Accademia
+
+Moduli di formazione strutturati per imparare a usare la piattaforma e sviluppare competenze professionali.
+
+#### Struttura dei Moduli
+
+Ogni modulo è organizzato in:
+```
+Modulo (es. "Gestione Clienti Avanzata")
+  └── Lezione 1: Titolo (video + testo)
+  └── Lezione 2: Titolo (video + testo)
+  └── Lezione 3: Titolo (video + testo)
+  └── Quiz finale (opzionale)
+```
+
+#### Funzionalità
+
+| Funzione | Descrizione |
+|----------|-------------|
+| **Progresso** | Barra di avanzamento per ogni modulo e lezione |
+| **Video integrati** | Player video integrato (GuiddePlayer) per tutorial visivi |
+| **Setup Wizard** | Wizard guidato che aiuta a configurare la piattaforma passo-passo |
+| **Completamento** | Spunta automatica al completamento di ogni lezione |
+
+### 28.2 Tab Delivery AI (Dipendente Delivery)
+
+Agente AI dedicato all'onboarding e al supporto continuo. Conduce una conversazione di discovery approfondita, genera un report personalizzato con i moduli consigliati, e poi resta come assistente permanente per guidare la configurazione.
+
+Funzionalità dettagliate:
+
+| Fase | Cosa Fa |
+|------|---------|
+| **Discovery** | Fa domande mirate sul business del consulente (settore, scala, problemi, obiettivi) |
+| **Elaborazione** | Analizza il profilo emerso e lo incrocia con le funzionalità della piattaforma |
+| **Report** | Genera un documento a 6 sezioni: Profilo, Diagnosi, Moduli Consigliati, Roadmap, Quick Wins, Metriche |
+| **Assistente** | Dopo il report, diventa un compagno permanente per domande, configurazione guidata, troubleshooting |
+
+Due modalità disponibili:
+- **Onboarding**: il consulente analizza sé stesso e il proprio business
+- **Discovery**: il consulente analizza un cliente terzo
+
+---
+
+## Capitolo 29: File Search vs System Prompt
+
+### 29.1 System Prompt (Istruzioni Personalizzate)
+
+**Dove trovarlo:** `Sidebar → AI SUITE → System Prompt`
+
+Il System Prompt sono le **istruzioni personalizzate** che vengono iniettate in OGNI chiamata AI come "personalità e regole". Definiscono:
+
+- Il tono di voce dell'AI (formale, informale, tecnico)
+- Le regole da seguire sempre (es. "non menzionare mai i competitor")
+- Le informazioni sull'azienda da includere sempre
+- Il formato preferito delle risposte
+- Le limitazioni (argomenti da evitare)
+
+**Quando usarlo:**
+- Per dare una personalità coerente a TUTTI gli output AI
+- Per regole che devono valere SEMPRE, indipendentemente dal contesto
+- Per informazioni brevi e costanti (nome azienda, settore, valori)
+
+**Esempio:**
+```
+Sei l'assistente di Studio Rossi Consulenza.
+Parla sempre in italiano formale.
+Non menzionare mai prezzi nelle prime interazioni.
+Firma sempre come "Team Studio Rossi".
+```
+
+### 29.2 File Search (Ricerca Documentale RAG)
+
+**Dove trovarlo:** `Sidebar → AI SUITE → File Search`
+
+Il File Search è un sistema di **ricerca vettoriale (RAG)** che carica documenti e li rende disponibili all'AI. A differenza del System Prompt, il File Search:
+
+- NON viene incluso in ogni chiamata (risparmio token)
+- Viene attivato SOLO quando l'AI rileva che la domanda riguarda un argomento coperto dai documenti
+- Recupera solo i **chunk rilevanti** (non l'intero documento)
+
+**Quando usarlo:**
+- Per grandi volumi di informazioni (cataloghi prodotti, manuali, FAQ)
+- Per informazioni che servono solo in contesti specifici
+- Per documenti che cambiano frequentemente
+
+**Formati supportati:** PDF, TXT, DOCX, CSV
+
+#### Come Funziona
+
+```
+L'utente fa una domanda
+        ↓
+L'AI analizza: è rilevante per i documenti caricati?
+        ↓
+Sì → Ricerca vettoriale nei chunk → Trova i 3-5 più rilevanti → Li inietta nel contesto
+No → Risponde con il solo System Prompt
+```
+
+### 29.3 Quando Usare Quale
+
+| Scenario | System Prompt | File Search |
+|----------|:---:|:---:|
+| Personalità AI e tono di voce | ✅ | ❌ |
+| Regole fisse (non menzionare X) | ✅ | ❌ |
+| Info brevi sull'azienda (nome, settore) | ✅ | ❌ |
+| Catalogo prodotti (50+ prodotti) | ❌ | ✅ |
+| Manuale operativo (100+ pagine) | ❌ | ✅ |
+| FAQ dettagliate (50+ domande) | ❌ | ✅ |
+| Listino prezzi aggiornato | ❌ | ✅ |
+| Risposte a domande tecniche specifiche | ❌ | ✅ |
+
+### 29.4 File Search Analytics
+
+**Dove trovarlo:** `Sidebar → AI SUITE → File Search → Tab Analytics`
+
+La pagina analytics mostra:
+
+| Metrica | Descrizione |
+|---------|-------------|
+| **Health Score** | Punteggio 0-100 della qualità dei documenti caricati |
+| **Sync Operativa** | Stato della sincronizzazione dei file con il motore vettoriale |
+| **Audit** | Log delle ricerche effettuate, hit rate, query senza risultato |
+| **Token Savings** | Stima del risparmio token rispetto a includere tutto nel System Prompt |
+
+---
+
+## Capitolo 30: Integrazione Telegram per Dipendenti AI
+
+### 30.1 Panoramica
+
+Ogni dipendente AI (Cap. 22) può avere un **bot Telegram** associato per comunicare direttamente con il consulente. Telegram diventa un canale bidirezionale: il dipendente invia aggiornamenti e il consulente può rispondere/interagire.
+
+### 30.2 Creazione Bot per Dipendente
+
+1. Vai su `AI Autonomy → Impostazioni → [Dipendente] → Telegram`
+2. Crea un bot Telegram tramite @BotFather
+3. Copia il token del bot
+4. Incollalo nel campo "Token Telegram"
+5. Inserisci il tuo Chat ID Telegram
+6. Clicca "Salva e Testa"
+
+### 30.3 Modalità di Invio
+
+| Modalità | Descrizione |
+|----------|-------------|
+| **Streaming** | Il messaggio appare progressivamente (come una persona che scrive in tempo reale) |
+| **Invio Singolo** | Il messaggio viene inviato tutto insieme quando è completo |
+
+Toggle per scegliere la modalità preferita nelle impostazioni del dipendente.
+
+### 30.4 Open Mode (Modalità Conversazionale)
+
+L'Open Mode trasforma il bot Telegram in un **assistente conversazionale** interattivo. Quando attivato:
+
+- Il dipendente non si limita a inviare notifiche, ma **conversa** con il consulente
+- Stile ispirato a Marco: domande mirate, commenta le risposte, scava in profondità
+- Utile per onboarding, coaching strategico, brainstorming
+
+**Flusso Open Mode:**
+1. Il dipendente invia una domanda via Telegram
+2. Il consulente risponde direttamente nella chat Telegram
+3. Il dipendente elabora e risponde con un'altra domanda o un commento
+4. La conversazione continua finché il dipendente raccoglie tutte le informazioni necessarie
+5. Quando l'onboarding è completo, il dipendente invia il tag `[ONBOARDING_COMPLETE]` e salva il profilo estratto in formato JSON
+
+**Memoria Conversazionale:**
+- Tutte le conversazioni vengono salvate nel campo `open_mode_messages` del dipendente
+- Nelle sessioni successive, il dipendente ha accesso allo storico completo
+- La continuità del contesto è garantita tra sessioni diverse
+
+### 30.5 Messaggi Spontanei
+
+Durante i cicli task automatici, i dipendenti possono inviare messaggi **spontanei** via Telegram:
+- Aggiornamenti su task completati
+- Avvisi su situazioni che richiedono attenzione
+- Report periodici (se configurati)
+
+### 30.6 Supporto Chat di Gruppo
+
+I bot Telegram supportano anche le **chat di gruppo**:
+- Il bot può essere aggiunto a un gruppo Telegram
+- Usa un meccanismo di **buffer** per raccogliere messaggi multipli prima di rispondere
+- Risponde solo quando menzionato (@nomebot) o dopo un timeout di inattività
+- Utile per team che vogliono interagire con un dipendente AI condiviso
+
+### 30.7 Gatekeeper Mode
+
+Quando l'Open Mode è **disabilitato**, il bot opera in modalità "gatekeeper":
+- Riceve messaggi dal consulente ma risponde solo con messaggi predefiniti
+- Non avvia conversazioni autonome
+- Utile per dipendenti che devono solo inviare notifiche senza interazione
+
+---
+
+## Capitolo 31: Echo Dashboard
+
+**Dove trovarlo:** `Sidebar → COMUNICAZIONE → Echo Dashboard`
+**URL:** `/consultant/echo-dashboard`
+
+Echo è il dipendente AI specializzato nel riepilogo delle consulenze. La sua dashboard dedicata permette di monitorare e gestire i riepiloghi generati.
+
+### 31.1 Funzionalità Principali
+
+| Funzionalità | Descrizione |
+|-------------|-------------|
+| **Monitoraggio Trascrizioni** | Visualizza le trascrizioni delle consulenze (via Fathom o altri strumenti) |
+| **Generazione Riepiloghi AI** | Echo genera automaticamente un riepilogo strutturato di ogni consulenza |
+| **Email di Riepilogo** | Invio automatico del riepilogo al cliente via email |
+| **Estrazione Action Items** | Identifica le azioni da fare emerse dalla consulenza |
+| **Task per Approvazione** | I task estratti vengono presentati al consulente per approvazione prima dell'esecuzione |
+
+### 31.2 Flusso di Lavoro
+
+```
+Consulenza completata (con trascrizione Fathom)
+        ↓
+Echo analizza la trascrizione
+        ↓
+Genera riepilogo strutturato:
+  - Punti chiave discussi
+  - Decisioni prese
+  - Action items (con responsabile e scadenza)
+  - Prossimi passi
+        ↓
+Il consulente approva/modifica il riepilogo
+        ↓
+Email di riepilogo inviata al cliente
+        ↓
+Task creati nella piattaforma (se approvati)
+```
+
+---
+
+## Capitolo 32: AdVisage AI — Creative Factory
+
+**Dove trovarlo:** `Sidebar → CONTENT STUDIO → AdVisage AI`
+**URL:** `/consultant/advisage`
+
+AdVisage AI è la fabbrica creativa AI per generare concept pubblicitari e contenuti visivi per i social media.
+
+### 32.1 Funzionalità Principali
+
+| Funzionalità | Descrizione |
+|-------------|-------------|
+| **Generazione Concept** | Crea concept pubblicitari completi (copy + visual direction) |
+| **Pitch Mode** | Modalità presentazione per mostrare i concept ai clienti |
+| **Batch Analysis** | Analisi massiva di post esistenti per identificare pattern di successo |
+| **Multi-Style Engine** | Genera varianti usando diverse combinazioni di mood e stile artistico |
+| **Platform-Specific** | Concetti ottimizzati per piattaforme specifiche (Instagram, Facebook, LinkedIn, TikTok) |
+| **Publer Export** | Esportazione diretta verso Publer per la pubblicazione |
+
+### 32.2 Multi-Style Engine
+
+Il motore creativo combina:
+
+**Mood (stati d'animo):** Energico, Elegante, Provocatorio, Rassicurante, Urgente, Minimalista, Lusso, Giocoso
+
+**Stili Artistici:** Fotorealistico, Illustrazione, Flat Design, Vintage, Neon, Acquerello, 3D Render, Collage
+
+Ogni combinazione mood + stile genera un concept unico.
+
+### 32.3 Pitch Mode
+
+La modalità Pitch crea una presentazione professionale dei concept per i clienti:
+- Slideshow navigabile con concept + razionale creativo
+- Possibilità di commentare e approvare singoli concept
+- Export in formato presentazione
+
+---
+
+## Capitolo 33: Stripe Connect
+
+**Dove trovarlo:** `Sidebar → IMPOSTAZIONI → Stripe Connect`
+**URL:** `/consultant/stripe-connect`
+
+Stripe Connect permette ai consulenti di ricevere pagamenti direttamente dai propri clienti, con revenue sharing automatico.
+
+### 33.1 Onboarding (Wizard a 3 Step)
+
+**Step 1 — Connetti Account Stripe Express:**
+1. Clicca "Connetti Stripe"
+2. Verrai reindirizzato a Stripe per creare un account Express
+3. Completa la verifica identità richiesta da Stripe
+4. Torna alla piattaforma — account connesso
+
+**Step 2 — Configura Webhook:**
+1. Il sistema genera automaticamente un URL webhook
+2. Copialo e incollalo nelle impostazioni del tuo account Stripe
+3. Seleziona gli eventi: `checkout.session.completed`, `customer.subscription.updated`, `invoice.payment_failed`
+4. Clicca "Testa Webhook"
+
+**Step 3 — Inserisci API Keys:**
+1. Dal dashboard Stripe, copia le API keys (Publishable + Secret)
+2. Incollale nei campi dedicati
+3. Clicca "Salva e Verifica"
+
+### 33.2 Revenue Sharing
+
+Il sistema supporta revenue sharing automatico tra venditore della piattaforma e consulente:
+
+| Parametro | Descrizione |
+|-----------|-------------|
+| **Percentuale Consulente** | Quota del pagamento che va al consulente (default: 50%) |
+| **Percentuale Piattaforma** | Quota che va al venditore della piattaforma |
+| **Configurabile** | Ogni venditore può impostare percentuali diverse per consulente |
+
+### 33.3 Gestione Piani (Tier)
+
+I piani disponibili per i clienti:
+
+| Piano | Livello | Tipo Abbonamento |
+|-------|---------|-----------------|
+| **Silver** | Base | Mensile o Annuale |
+| **Gold** | Premium | Mensile o Annuale |
+| **Custom** | Personalizzato | Mensile, Annuale, Una Tantum, Lifetime |
+
+Per ogni piano si configura: prezzo, descrizione, funzionalità incluse, agenti AI attivi.
+
+### 33.4 Flusso Pagamento Completo
+
+```
+Consulente genera link pagamento per lead CRM
+        ↓
+Lead clicca il link → Stripe Checkout
+        ↓
+Pagamento completato → Webhook `checkout.session.completed`
+        ↓
+Sistema auto-attiva:
+  - Account cliente (is_crm_only → false)
+  - Password temporanea generata
+  - Livello utente assegnato (Silver/Gold)
+  - Agenti AI attivati
+  - Welcome Journey avviato
+        ↓
+Cliente fa login → Cambia password al primo accesso
+```
+
+### 33.5 Payouts
+
+I pagamenti vengono trasferiti automaticamente al consulente tramite Stripe Express:
+- I trasferimenti avvengono secondo la cadenza configurata (giornaliera, settimanale, mensile)
+- Il consulente può verificare i payout dal proprio dashboard Stripe
+
+---
+
+## Capitolo 34: Orbitale Tools — Integrazioni Esterne
+
+**Dove trovarlo:** Nella sidebar sotto la sezione **ORBITALE**
+
+Gli Orbitale Tools sono integrazioni esterne caricate tramite iframe nella piattaforma. Permettono di accedere a strumenti esterni senza uscire dall'interfaccia.
+
+### 34.1 Strumenti Disponibili
+
+| Strumento | Descrizione | URL Sidebar |
+|-----------|-------------|-------------|
+| **Finanza** | Strumenti di gestione finanziaria | `/consultant/orbital-finance` |
+| **CRM** | CRM esterno integrato | `/consultant/orbital-crm` |
+| **Contratti** | Gestione contratti e documenti legali | `/consultant/orbital-contracts` |
+| **Locale** | Strumenti locali personalizzati | `/consultant/orbital-local` |
+
+### 34.2 Come Funzionano
+
+- Ogni strumento carica un'applicazione web esterna all'interno di un iframe
+- L'interfaccia della piattaforma rimane visibile (sidebar, header)
+- Le URL esterne sono configurate dall'amministratore della piattaforma
+- L'autenticazione (se necessaria) viene gestita dallo strumento esterno
+
+---
+
+## Capitolo 35: Proactive Leads & Sistema Auto-Call
+
+### 35.1 Panoramica
+
+Il sistema Proactive Leads automatizza il contatto con i lead estratti dal Lead Scraper (Cap. 23). Quando un lead viene identificato e arricchito, può essere inserito automaticamente in una pipeline di contatto multicanale.
+
+### 35.2 Auto-Registrazione Lead
+
+I lead vengono registrati automaticamente tramite `ensureProactiveLead`:
+- Quando Hunter (dipendente AI) identifica un lead da contattare
+- Quando il consulente importa lead da CSV
+- Quando arriva un lead da webhook esterno
+- Quando Google Sheets viene sincronizzato (polling periodico)
+
+### 35.3 Trigger di Auto-Call
+
+| Trigger | Descrizione |
+|---------|-------------|
+| **Manuale** | Il consulente clicca "Chiama" sul lead |
+| **Import CSV** | I lead importati vengono messi in coda automaticamente |
+| **Google Sheets Polling** | Nuovi lead dal foglio Google vengono aggiunti alla coda |
+| **Webhook** | Lead da sistemi esterni (landing page, form) |
+| **Hunter Automatico** | Il dipendente Hunter programma chiamate in autonomia |
+
+### 35.4 Gestione Coda Chiamate
+
+| Parametro | Descrizione |
+|-----------|-------------|
+| **Batch Staggering** | 5 minuti tra un lead e l'altro per evitare sovraccarico |
+| **Concorrenza Massima** | `max_concurrent_calls` — numero massimo di chiamate simultanee |
+| **Queue Drain** | Quando una chiamata termina, il prossimo lead in coda parte automaticamente |
+| **Validazione SIP** | Il numero viene verificato prima della chiamata |
+
+### 35.5 Stati delle Chiamate
+
+| Stato | Significato |
+|-------|-------------|
+| **Schedulata** | Chiamata programmata, in attesa |
+| **Programmata** | Confermata e nella coda |
+| **In Corso** | Chiamata attiva |
+| **Completata** | Chiamata terminata con successo |
+| **Fallita** | Chiamata non riuscita (numero errato, non risponde) |
+| **Retry** | Tentativo fallito, riprogrammata automaticamente |
+
+---
+
 # FINE DEL MANUALE
 
-**Versione:** 3.2 – Aggiunto Capitolo 25: Clienti CRM e Link di Pagamento Stripe
+**Versione:** 4.0 – Aggiornamento completo: 17 sezioni aggiunte, sistema API Key Gemini, Delivery AI, Stripe Connect, Email Hub Millie, Echo Dashboard, AdVisage AI, Orbitale Tools, Proactive Leads
 **Data:** Marzo 2026
 **Autore:** Sistema AI + Team Piattaforma
 

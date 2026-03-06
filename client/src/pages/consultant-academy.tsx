@@ -11,12 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, ChevronDown, ChevronRight, ExternalLink,
   ArrowLeft, ArrowRight, GraduationCap, Settings, Clock,
-  ChevronUp, FileText, Loader2,
+  ChevronUp, FileText, Loader2, Rocket,
 } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { DeliveryAgentPanel } from "@/components/delivery-agent/DeliveryAgentPanel";
 
 interface AcademyDocument {
   id: string;
@@ -484,6 +485,7 @@ export default function ConsultantAcademy() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [location] = useLocation();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<"academy" | "delivery">("academy");
   const { modules, lessonsFlat, lessonById, wizardCompleted, manualCompleted, allCompleted, markMutation, modulesLoading } = useAcademyData();
 
   const totalLessons = lessonsFlat.length;
@@ -601,34 +603,60 @@ export default function ConsultantAcademy() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8">
             <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-md">
-                  <GraduationCap className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl md:text-2xl font-bold text-foreground">Accademia di Formazione</h1>
-                  <p className="text-sm text-muted-foreground">{totalLessons} lezioni per padroneggiare la piattaforma</p>
+                <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
+                  <button
+                    onClick={() => setActiveTab("academy")}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                      activeTab === "academy"
+                        ? "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-md"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    Accademia
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("delivery")}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                      activeTab === "delivery"
+                        ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    <Rocket className="w-4 h-4" />
+                    Delivery AI
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="hidden sm:flex items-center gap-2">
-                  <div className="w-32 h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-500"
-                      style={{ width: `${progressPct}%` }}
-                    />
+              {activeTab === "academy" && (
+                <div className="flex items-center gap-3">
+                  <div className="hidden sm:flex items-center gap-2">
+                    <div className="w-32 h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-500"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
                   </div>
-                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
-                </div>
 
-                <Link href="/consultant/setup-wizard">
-                  <Button variant="outline" size="sm" className="gap-2 text-xs">
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    Setup Wizard
-                  </Button>
-                </Link>
-              </div>
+                  <Link href="/consultant/setup-wizard">
+                    <Button variant="outline" size="sm" className="gap-2 text-xs">
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      Setup Wizard
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
+
+            {activeTab === "delivery" ? (
+              <DeliveryAgentPanel />
+            ) : (
+            <>
 
             {isMobile && (
               <div className="mb-4">
@@ -706,6 +734,8 @@ export default function ConsultantAcademy() {
                 )}
               </div>
             </div>
+            </>
+            )}
           </div>
         </main>
       </div>
