@@ -325,7 +325,22 @@ interface Chapter {
   id: string;
   number: string;
   title: string;
+  subtitle?: string;
   icon: any;
+}
+
+function RichText({ text, className }: { text: string; className?: string }) {
+  if (!text || !text.includes('**')) return <span className={className}>{text}</span>;
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <span className={className}>
+      {parts.map((part, i) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={i} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>
+          : <span key={i}>{part}</span>
+      )}
+    </span>
+  );
 }
 
 export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps) {
@@ -366,19 +381,30 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
 
   const chapters: Chapter[] = [];
   if (report) {
-    if (report.personal_letter) chapters.push({ id: "lettera", number: "", title: "Lettera Personale", icon: FileText });
-    if (report.client_profile) chapters.push({ id: "profilo", number: "01", title: "Profilo Cliente", icon: User });
-    if (report.diagnosis) chapters.push({ id: "diagnosi", number: "02", title: "La Diagnosi", icon: Stethoscope });
+    if (report.personal_letter) chapters.push({ id: "lettera", number: "", title: "Lettera Personale", subtitle: "Introduzione personalizzata", icon: FileText });
+    if (report.client_profile) chapters.push({ id: "profilo", number: "01", title: "Profilo Cliente", subtitle: report.client_profile.business_type || "Dati e contesto", icon: User });
+    if (report.diagnosis) {
+      const diagCount = report.diagnosis?.diagnostic_table?.length;
+      chapters.push({ id: "diagnosi", number: "02", title: "La Diagnosi", subtitle: diagCount ? `${diagCount} aree analizzate` : "Analisi completa", icon: Stethoscope });
+    }
     if (report.recommended_packages) {
       report.recommended_packages.forEach((pkg, i) => {
-        chapters.push({ id: `pkg-${i}`, number: String(i + 3).padStart(2, '0'), title: pkg.package_name, icon: Package });
+        const modCount = pkg.modules?.length;
+        const sub = pkg.subtitle || [modCount ? `${modCount} moduli` : null, pkg.priority].filter(Boolean).join(' · ') || undefined;
+        chapters.push({
+          id: `pkg-${i}`,
+          number: String(i + 3).padStart(2, '0'),
+          title: pkg.package_name,
+          subtitle: sub,
+          icon: Package,
+        });
       });
     }
     const nextNum = (report.recommended_packages?.length || 0) + 3;
-    if (report.roadmap) chapters.push({ id: "roadmap", number: String(nextNum).padStart(2, '0'), title: "Roadmap Operativa", icon: Calendar });
-    if (report.quick_wins?.length) chapters.push({ id: "quickwins", number: String(nextNum + 1).padStart(2, '0'), title: "Quick Wins", icon: Zap });
-    if (report.success_metrics?.length) chapters.push({ id: "metriche", number: String(nextNum + 2).padStart(2, '0'), title: "Metriche di Successo", icon: BarChart3 });
-    if (report.priority_actions?.length) chapters.push({ id: "azioni", number: String(nextNum + 3).padStart(2, '0'), title: "Le Azioni di Questa Settimana", icon: Lightbulb });
+    if (report.roadmap) chapters.push({ id: "roadmap", number: String(nextNum).padStart(2, '0'), title: "Roadmap Operativa", subtitle: "Piano settimana per settimana", icon: Calendar });
+    if (report.quick_wins?.length) chapters.push({ id: "quickwins", number: String(nextNum + 1).padStart(2, '0'), title: "Quick Wins", subtitle: `${report.quick_wins.length} azioni rapide`, icon: Zap });
+    if (report.success_metrics?.length) chapters.push({ id: "metriche", number: String(nextNum + 2).padStart(2, '0'), title: "Metriche di Successo", subtitle: `${report.success_metrics.length} KPI da monitorare`, icon: BarChart3 });
+    if (report.priority_actions?.length) chapters.push({ id: "azioni", number: String(nextNum + 3).padStart(2, '0'), title: "Azioni Immediate", subtitle: "Cosa fare nei prossimi 5 giorni", icon: Lightbulb });
     if (report.closing_message) chapters.push({ id: "chiusura", number: "", title: "Chiusura", icon: BookOpen });
   }
 
@@ -493,17 +519,46 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
                   key={ch.id}
                   onClick={() => scrollToChapter(ch.id)}
                   className={cn(
-                    "w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center gap-2",
+                    "w-full text-left px-3 py-2.5 rounded-lg transition-colors group",
                     activeChapter === ch.id
-                      ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 font-semibold"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      ? "bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40"
+                      : "hover:bg-muted/50 border border-transparent"
                   )}
                 >
-                  {ch.number && (
-                    <span className="text-[10px] font-bold opacity-50 w-4 flex-shrink-0">{ch.number}</span>
-                  )}
-                  {!ch.number && <ch.icon className="w-3 h-3 flex-shrink-0 opacity-50" />}
-                  <span className="truncate">{ch.title}</span>
+                  <div className="flex items-center gap-2">
+                    {ch.number && (
+                      <span className={cn(
+                        "text-[10px] font-bold w-5 h-5 rounded flex items-center justify-center flex-shrink-0",
+                        activeChapter === ch.id
+                          ? "bg-indigo-500 text-white"
+                          : "bg-muted/80 text-muted-foreground"
+                      )}>{ch.number}</span>
+                    )}
+                    {!ch.number && (
+                      <span className={cn(
+                        "w-5 h-5 rounded flex items-center justify-center flex-shrink-0",
+                        activeChapter === ch.id ? "bg-indigo-500 text-white" : "bg-muted/80 text-muted-foreground"
+                      )}>
+                        <ch.icon className="w-3 h-3" />
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className={cn(
+                        "text-xs truncate leading-tight",
+                        activeChapter === ch.id
+                          ? "font-semibold text-indigo-700 dark:text-indigo-400"
+                          : "text-foreground/80 group-hover:text-foreground"
+                      )}>{ch.title}</p>
+                      {ch.subtitle && (
+                        <p className={cn(
+                          "text-[10px] truncate leading-tight mt-0.5",
+                          activeChapter === ch.id
+                            ? "text-indigo-500/70 dark:text-indigo-400/60"
+                            : "text-muted-foreground/60"
+                        )}>{ch.subtitle}</p>
+                      )}
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
@@ -572,7 +627,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
                 <ChapterHeader icon={FileText} title="Lettera Personale" />
                 <div className="mt-6 space-y-4">
                   {report.personal_letter.split('\n\n').map((paragraph, i) => (
-                    <p key={i} className="text-[15px] leading-7 text-foreground/90">{paragraph}</p>
+                    <p key={i} className="text-[15px] leading-7 text-foreground/90"><RichText text={paragraph} /></p>
                   ))}
                 </div>
               </div>
@@ -721,29 +776,52 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
                   />
                   <div className="mt-6 space-y-6">
                     {pkg.reason && (
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Perché per te</p>
-                        <p className="text-[15px] leading-7 text-foreground/90">{pkg.reason}</p>
+                      <div className="p-5 rounded-xl bg-gradient-to-br from-slate-50 to-indigo-50/30 dark:from-slate-800/40 dark:to-indigo-900/10 border border-slate-200/80 dark:border-slate-700/50 print:break-inside-avoid">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-1 h-6 rounded-full bg-indigo-500" />
+                          <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Perché per te</p>
+                        </div>
+                        <div className="space-y-3">
+                          {pkg.reason.split('\n\n').map((p, j) => (
+                            <p key={j} className="text-[15px] leading-7 text-foreground/90">
+                              <RichText text={p} />
+                            </p>
+                          ))}
+                        </div>
                       </div>
                     )}
 
                     {pkg.whats_good && (
-                      <div className="p-5 rounded-xl bg-emerald-50/60 dark:bg-emerald-900/10 border border-emerald-200/60 dark:border-emerald-800/30 print:break-inside-avoid">
-                        <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-3">Cosa Hai Fatto Bene</p>
-                        <div className="space-y-3">
+                      <div className="p-5 rounded-xl bg-emerald-50/80 dark:bg-emerald-900/10 border border-emerald-200/80 dark:border-emerald-800/30 shadow-sm print:break-inside-avoid">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Cosa Hai Fatto Bene</p>
+                        </div>
+                        <div className="space-y-3 pl-1">
                           {pkg.whats_good.split('\n\n').map((p, j) => (
-                            <p key={j} className="text-sm text-emerald-900 dark:text-emerald-200 leading-relaxed">{p}</p>
+                            <p key={j} className="text-sm text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                              <RichText text={p} />
+                            </p>
                           ))}
                         </div>
                       </div>
                     )}
 
                     {pkg.whats_wrong && (
-                      <div className="p-5 rounded-xl bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200/60 dark:border-amber-800/30 print:break-inside-avoid">
-                        <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-3">Cosa Non Funziona</p>
-                        <div className="space-y-3">
+                      <div className="p-5 rounded-xl bg-amber-50/80 dark:bg-amber-900/10 border border-amber-200/80 dark:border-amber-800/30 shadow-sm print:break-inside-avoid">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-7 h-7 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                          </div>
+                          <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Cosa Non Funziona</p>
+                        </div>
+                        <div className="space-y-3 pl-1">
                           {pkg.whats_wrong.split('\n\n').map((p, j) => (
-                            <p key={j} className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">{p}</p>
+                            <p key={j} className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
+                              <RichText text={p} />
+                            </p>
                           ))}
                         </div>
                       </div>
@@ -751,12 +829,21 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
 
                     {pkg.how_to_fix && pkg.how_to_fix.length > 0 && (
                       <div className="print:break-inside-avoid">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Come Correggere — Azioni Concrete</p>
-                        <div className="space-y-3">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center">
+                            <Lightbulb className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                          <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Come Correggere — Azioni Concrete</p>
+                        </div>
+                        <div className="space-y-2.5">
                           {pkg.how_to_fix.map((action, j) => (
-                            <div key={j} className="flex items-start gap-3 p-3 rounded-lg bg-indigo-50/40 dark:bg-indigo-900/10 border border-indigo-200/40 dark:border-indigo-800/20">
-                              <ArrowRight className="w-4 h-4 text-indigo-500 mt-0.5 flex-shrink-0" />
-                              <p className="text-sm text-foreground leading-relaxed">{action.replace(/^→\s*/, '')}</p>
+                            <div key={j} className="flex items-start gap-3 p-4 rounded-xl bg-white dark:bg-slate-800/60 border border-indigo-100 dark:border-indigo-800/30 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-[10px] font-bold text-white">{j + 1}</span>
+                              </div>
+                              <p className="text-sm text-foreground leading-relaxed flex-1">
+                                <RichText text={action.replace(/^→\s*/, '')} />
+                              </p>
                             </div>
                           ))}
                         </div>
@@ -769,32 +856,49 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
 
                     {pkg.modules && pkg.modules.length > 0 && (
                       <div className="print:break-inside-avoid">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                          Moduli Inclusi ({pkg.modules.length})
-                        </p>
-                        <div className="space-y-1.5">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                              <Layers className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                            </div>
+                            <p className="text-xs font-bold text-foreground uppercase tracking-wider">
+                              Moduli Inclusi
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-[10px] font-semibold">{pkg.modules.length} moduli</Badge>
+                        </div>
+                        <div className="space-y-2">
                           {pkg.modules.map((mod, j) => {
                             const cl = COMPLEXITY_BARS[mod.complexity] || 1;
+                            const complexityLabel = cl === 1 ? "Semplice" : cl === 2 ? "Medio" : "Avanzato";
+                            const complexityColor = cl === 1 ? "text-emerald-600 dark:text-emerald-400" : cl === 2 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
                             return (
-                              <div key={j} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-border/40">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                                  <span className="text-sm font-medium text-foreground truncate">{mod.name}</span>
+                              <div key={j} className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800/50 border border-border/60 shadow-sm">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500/10 to-violet-500/10 dark:from-indigo-500/20 dark:to-violet-500/20 flex items-center justify-center flex-shrink-0">
+                                    <CheckCircle2 className="w-4 h-4 text-indigo-500" />
+                                  </div>
+                                  <span className="text-sm font-semibold text-foreground truncate">{mod.name}</span>
                                 </div>
                                 <div className="flex items-center gap-3 flex-shrink-0">
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1.5">
                                     <div className="flex gap-0.5">
                                       {[1, 2, 3].map((level) => (
-                                        <div key={level} className={cn("w-2.5 h-1 rounded-full", level <= cl ? "bg-current opacity-60" : "bg-slate-200 dark:bg-slate-700")}
+                                        <div key={level} className={cn("w-3 h-1.5 rounded-full", level <= cl ? "bg-current opacity-70" : "bg-slate-200 dark:bg-slate-700")}
                                           style={{ color: cl === 1 ? "#22c55e" : cl === 2 ? "#f59e0b" : "#ef4444" }}
                                         />
                                       ))}
                                     </div>
+                                    <span className={cn("text-[10px] font-medium", complexityColor)}>{complexityLabel}</span>
                                   </div>
-                                  {mod.setup_time && <span className="text-[10px] text-muted-foreground">{mod.setup_time}</span>}
+                                  {mod.setup_time && (
+                                    <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                      <Clock className="w-2.5 h-2.5" />{mod.setup_time}
+                                    </span>
+                                  )}
                                   {mod.config_link && (
-                                    <a href={mod.config_link} onClick={(e) => e.stopPropagation()} className="text-[10px] text-indigo-500 hover:underline flex items-center gap-0.5">
-                                      <ExternalLink className="w-2.5 h-2.5" />
+                                    <a href={mod.config_link} onClick={(e) => e.stopPropagation()} className="text-[10px] text-indigo-500 hover:text-indigo-700 hover:underline flex items-center gap-0.5">
+                                      <ExternalLink className="w-3 h-3" />
                                     </a>
                                   )}
                                 </div>
@@ -805,14 +909,24 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
                       </div>
                     )}
 
-                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                      {pkg.timeline && (
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Setup: {pkg.timeline}</span>
-                      )}
-                      {pkg.connection && (
-                        <span className="flex items-center gap-1"><ArrowRight className="w-3 h-3 text-indigo-500" /> {pkg.connection}</span>
-                      )}
-                    </div>
+                    {(pkg.timeline || pkg.connection) && (
+                      <div className="flex flex-wrap gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-border/40">
+                        {pkg.timeline && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Clock className="w-4 h-4 text-indigo-500" />
+                            <span className="text-muted-foreground">Setup:</span>
+                            <span className="font-semibold text-foreground">{pkg.timeline}</span>
+                          </div>
+                        )}
+                        {pkg.timeline && pkg.connection && <div className="w-px h-5 bg-border/60 self-center" />}
+                        {pkg.connection && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <ArrowRight className="w-4 h-4 text-violet-500" />
+                            <span className="font-medium text-foreground">{pkg.connection}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))
@@ -946,7 +1060,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
                         </div>
                         <div className="flex-1">
                           <h4 className="font-bold text-base text-foreground mb-2">{action.titolo}</h4>
-                          <p className="text-sm text-foreground/80 leading-relaxed mb-3">{action.descrizione}</p>
+                          <p className="text-sm text-foreground/80 leading-relaxed mb-3"><RichText text={action.descrizione} /></p>
                           <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {action.tempo}</span>
                             <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3 text-emerald-500" /> {action.impatto}</span>
@@ -965,7 +1079,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
                   <div className="max-w-2xl mx-auto text-center">
                     <div className="space-y-4">
                       {report.closing_message.split('\n\n').map((p, i) => (
-                        <p key={i} className="text-[15px] leading-7 text-foreground/80 italic">{p}</p>
+                        <p key={i} className="text-[15px] leading-7 text-foreground/80 italic"><RichText text={p} /></p>
                       ))}
                     </div>
                   </div>
@@ -1072,7 +1186,7 @@ function InsightBox({ text, variant = "insight" }: { text: string; variant?: "in
           <p className={cn("text-xs font-bold uppercase tracking-wider mb-1.5", isC ? "text-red-700 dark:text-red-400" : "text-amber-700 dark:text-amber-400")}>
             {isC ? "Diagnosi Critica" : "Insight Chiave"}
           </p>
-          <p className={cn("text-sm leading-relaxed", isC ? "text-red-800 dark:text-red-200" : "text-amber-800 dark:text-amber-200")}>{text}</p>
+          <p className={cn("text-sm leading-relaxed", isC ? "text-red-800 dark:text-red-200" : "text-amber-800 dark:text-amber-200")}><RichText text={text} /></p>
         </div>
       </div>
     </div>
