@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, ChevronDown, ChevronRight, ExternalLink,
   ArrowLeft, ArrowRight, GraduationCap, Settings, Clock,
-  ChevronUp, FileText, Loader2, Rocket,
+  ChevronUp, FileText, Loader2, Rocket, BookOpen,
 } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
@@ -507,7 +507,15 @@ export default function ConsultantAcademy() {
   const [location] = useLocation();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"academy" | "delivery">("academy");
+  const [sidebarTab, setSidebarTab] = useState<"setup" | "corsi">("setup");
   const { modules, lessonsFlat, lessonById, wizardCompleted, manualCompleted, allCompleted, markMutation, modulesLoading } = useAcademyData();
+
+  const setupModules = useMemo(() => modules.filter(m => !m.slug.startsWith('pkg_')), [modules]);
+  const corsiModules = useMemo(() => modules.filter(m => m.slug.startsWith('pkg_')), [modules]);
+  const setupLessons = useMemo(() => lessonsFlat.filter(l => setupModules.some(m => m.id === l.module_id)), [lessonsFlat, setupModules]);
+  const corsiLessons = useMemo(() => lessonsFlat.filter(l => corsiModules.some(m => m.id === l.module_id)), [lessonsFlat, corsiModules]);
+  const filteredModules = sidebarTab === "setup" ? setupModules : corsiModules;
+  const filteredLessons = sidebarTab === "setup" ? setupLessons : corsiLessons;
 
   const totalLessons = lessonsFlat.length;
 
@@ -539,8 +547,13 @@ export default function ConsultantAcademy() {
   const handleSelect = useCallback((id: string) => {
     setActiveId(id);
     setMobileSidebarOpen(false);
+    const lesson = lessonById[id];
+    if (lesson) {
+      const isSetupLesson = setupModules.some(m => m.id === lesson.module_id);
+      setSidebarTab(isSetupLesson ? "setup" : "corsi");
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
+  }, [lessonById, setupModules]);
 
   const handleToggleComplete = useCallback(async () => {
     const isCurrentlyCompleted = manualCompleted.has(activeId);
@@ -574,28 +587,65 @@ export default function ConsultantAcademy() {
     );
   }
 
+  const filteredCompleted = filteredLessons.filter(l => allCompleted.has(l.lesson_id)).length;
+  const filteredTotal = filteredLessons.length;
+  const filteredPct = filteredTotal > 0 ? Math.round((filteredCompleted / filteredTotal) * 100) : 0;
+
   const sidebarContent = (
     <div className="flex flex-col gap-3">
+      <div className="flex items-center bg-muted/60 rounded-lg p-0.5 gap-0.5">
+        <button
+          onClick={() => setSidebarTab("setup")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+            sidebarTab === "setup"
+              ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Settings className="w-3.5 h-3.5" />
+          Setup
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 ml-0.5">
+            {setupLessons.filter(l => allCompleted.has(l.lesson_id)).length}/{setupLessons.length}
+          </Badge>
+        </button>
+        <button
+          onClick={() => setSidebarTab("corsi")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+            sidebarTab === "corsi"
+              ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          Accademia
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 ml-0.5">
+            {corsiLessons.filter(l => allCompleted.has(l.lesson_id)).length}/{corsiLessons.length}
+          </Badge>
+        </button>
+      </div>
+
       <div className="space-y-1 pb-3 border-b border-border/60">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-foreground">{totalCompleted}/{totalLessons} lezioni</span>
-          <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
+          <span className="text-sm font-semibold text-foreground">{filteredCompleted}/{filteredTotal} lezioni</span>
+          <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{filteredPct}%</span>
         </div>
         <div className="h-2.5 rounded-full bg-muted overflow-hidden">
           <motion.div
             className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500"
             initial={{ width: 0 }}
-            animate={{ width: `${progressPct}%` }}
+            animate={{ width: `${filteredPct}%` }}
             transition={{ duration: 0.6, ease: "easeOut" }}
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          {totalCompleted === totalLessons ? "🎉 Corso completato!" : `Ancora ${totalLessons - totalCompleted} da completare`}
+          {filteredCompleted === filteredTotal ? "🎉 Sezione completata!" : `Ancora ${filteredTotal - filteredCompleted} da completare`}
         </p>
       </div>
 
       <div className="space-y-2">
-        {modules.map(mod => (
+        {filteredModules.map(mod => (
           <ModuleAccordion
             key={mod.id}
             module={mod}
