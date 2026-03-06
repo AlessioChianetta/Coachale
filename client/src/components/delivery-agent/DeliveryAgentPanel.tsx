@@ -416,7 +416,7 @@ export function DeliveryAgentPanel() {
         </AnimatePresence>
       )}
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
           <div className="flex items-center gap-2">
             <Button
@@ -461,7 +461,7 @@ export function DeliveryAgentPanel() {
             )}
         </div>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden min-h-0">
           {!activeSession ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-md px-6">
