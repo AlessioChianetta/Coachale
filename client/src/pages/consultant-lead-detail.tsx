@@ -69,7 +69,16 @@ import {
   MessageCircle,
   Users,
   Tag,
+  Shield,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -97,6 +106,14 @@ interface LeadResult {
   aiSalesSummary: string | null;
   aiCompatibilityScore: number | null;
   aiSalesSummaryGeneratedAt: string | null;
+  emailVerified: boolean | null;
+  emailVerificationStatus: string | null;
+  allContacts: {
+    emails?: Array<{ address: string; verified: boolean; status: string; priority: number; source: string }>;
+    phones?: Array<{ number: string; type: string; source: string; priority: number }>;
+  } | null;
+  primaryEmail: string | null;
+  primaryPhone: string | null;
   createdAt: string;
 }
 
@@ -174,6 +191,24 @@ function getDirectionBadge(type: string): { label: string; color: string } | nul
 function getOutcomeInfo(outcome: string | null) {
   if (!outcome) return null;
   return OUTCOMES.find(o => o.value === outcome);
+}
+
+function getEmailVerificationIcon(status: string | null, verified: boolean | null) {
+  if (!status && !verified) return null;
+  switch (status) {
+    case "valid":
+      return { icon: CheckCircle2, color: "text-emerald-500", label: "Verificata" };
+    case "invalid":
+      return { icon: XCircle, color: "text-red-500", label: "Non valida" };
+    case "catch_all":
+      return { icon: AlertCircle, color: "text-orange-500", label: "Catch-all" };
+    case "disposable":
+      return { icon: AlertTriangle, color: "text-orange-500", label: "Disposable" };
+    case "unknown":
+    default:
+      if (verified) return { icon: CheckCircle2, color: "text-emerald-500", label: "Verificata" };
+      return { icon: AlertCircle, color: "text-yellow-500", label: "Sconosciuto" };
+  }
 }
 
 function formatDateIT(dateStr: string | null) {
@@ -395,6 +430,43 @@ export default function ConsultantLeadDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/results", leadId] });
       toast({ title: "Sito analizzato" });
+    },
+  });
+
+  const verifyEmailMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/lead-scraper/results/${leadId}/verify-email`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Errore verifica email");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/results", leadId] });
+      toast({ title: "Verifica completata", description: "Lo stato dell'email è stato aggiornato" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile verificare l'email", variant: "destructive" });
+    },
+  });
+
+  const setPrimaryContactMutation = useMutation({
+    mutationFn: async (data: { primaryEmail?: string; primaryPhone?: string }) => {
+      const res = await fetch(`/api/lead-scraper/results/${leadId}/set-primary`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Errore aggiornamento contatto");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/results", leadId] });
+      toast({ title: "Contatto principale aggiornato" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile aggiornare il contatto", variant: "destructive" });
     },
   });
 
@@ -627,8 +699,16 @@ export default function ConsultantLeadDetail() {
     : "";
 
   const wd = lead.websiteData as any;
-  const allEmails = wd ? [...new Set([...(lead.email ? [lead.email] : []), ...(wd.emails || [])])] : (lead.email ? [lead.email] : []);
-  const allPhones = wd ? [...new Set([...(lead.phone ? [lead.phone] : []), ...(wd.phones || [])])] : (lead.phone ? [lead.phone] : []);
+  const contactEmails = lead.allContacts?.emails;
+  const contactPhones = lead.allContacts?.phones;
+  const allEmails = contactEmails && contactEmails.length > 0
+    ? contactEmails.sort((a, b) => a.priority - b.priority)
+    : wd ? [...new Set([...(lead.email ? [lead.email] : []), ...(wd.emails || [])])].map(e => ({ address: e, verified: false, status: "unknown", priority: 99, source: "scraped" }))
+    : (lead.email ? [{ address: lead.email, verified: false, status: "unknown", priority: 0, source: "primary" }] : []);
+  const allPhones = contactPhones && contactPhones.length > 0
+    ? contactPhones.sort((a, b) => a.priority - b.priority)
+    : wd ? [...new Set([...(lead.phone ? [lead.phone] : []), ...(wd.phones || [])])].map(p => ({ number: p, type: "unknown", source: "scraped", priority: 99 }))
+    : (lead.phone ? [{ number: lead.phone, type: "unknown", source: "primary", priority: 0 }] : []);
 
   return (
     <PageLayout role="consultant">
@@ -708,24 +788,121 @@ export default function ConsultantLeadDetail() {
                 )}
                 {allEmails.length > 0 && (
                   <div className="space-y-1.5">
-                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Email</p>
-                    {allEmails.map((email: string, i: number) => (
-                      <div key={i} className="flex items-center gap-2.5 cursor-pointer group" onClick={() => copyToClipboard(email)}>
-                        <Mail className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                        <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-600 transition-colors truncate">{email}</span>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Email</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] px-2 text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                        onClick={() => verifyEmailMutation.mutate()}
+                        disabled={verifyEmailMutation.isPending}
+                      >
+                        {verifyEmailMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Shield className="h-3 w-3 mr-1" />}
+                        Verifica Email
+                      </Button>
+                    </div>
+                    {allEmails.map((emailObj, i: number) => {
+                      const isPrimary = lead.primaryEmail === emailObj.address || (i === 0 && !lead.primaryEmail);
+                      const verInfo = getEmailVerificationIcon(emailObj.status, emailObj.verified);
+                      return (
+                        <div
+                          key={i}
+                          className={cn(
+                            "flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer group transition-all",
+                            isPrimary
+                              ? "bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800"
+                              : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0" onClick={() => copyToClipboard(emailObj.address)}>
+                            {verInfo ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <verInfo.icon className={cn("h-3.5 w-3.5 shrink-0", verInfo.color)} />
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>{verInfo.label}</p></TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              <Mail className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                            )}
+                            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-600 transition-colors truncate">{emailObj.address}</span>
+                            {isPrimary && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-300 text-blue-600 shrink-0">Primaria</Badge>}
+                          </div>
+                          {!isPrimary && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                              title="Imposta come email primaria"
+                              onClick={(e) => { e.stopPropagation(); setPrimaryContactMutation.mutate({ primaryEmail: emailObj.address }); }}
+                              disabled={setPrimaryContactMutation.isPending}
+                            >
+                              <Star className="h-3 w-3 text-gray-400 hover:text-amber-500" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {lead.emailVerificationStatus && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[10px] text-gray-400">Stato verifica:</span>
+                        <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4",
+                          lead.emailVerificationStatus === "valid" ? "border-emerald-300 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" :
+                          lead.emailVerificationStatus === "invalid" ? "border-red-300 text-red-600 bg-red-50 dark:bg-red-950/30" :
+                          lead.emailVerificationStatus === "catch_all" ? "border-orange-300 text-orange-600 bg-orange-50 dark:bg-orange-950/30" :
+                          lead.emailVerificationStatus === "disposable" ? "border-orange-300 text-orange-600 bg-orange-50 dark:bg-orange-950/30" :
+                          "border-yellow-300 text-yellow-600 bg-yellow-50 dark:bg-yellow-950/30"
+                        )}>
+                          {lead.emailVerificationStatus === "valid" ? "Valida" :
+                           lead.emailVerificationStatus === "invalid" ? "Non valida" :
+                           lead.emailVerificationStatus === "catch_all" ? "Catch-all" :
+                           lead.emailVerificationStatus === "disposable" ? "Disposable" :
+                           "Sconosciuto"}
+                        </Badge>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
                 {allPhones.length > 0 && (
                   <div className="space-y-1.5">
                     <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Telefoni</p>
-                    {(showAllPhones ? allPhones : allPhones.slice(0, 2)).map((phone: string, i: number) => (
-                      <div key={i} className="flex items-center gap-2.5 cursor-pointer group" onClick={() => copyToClipboard(phone)}>
-                        <Phone className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                        <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-emerald-600 transition-colors">{phone}</span>
-                      </div>
-                    ))}
+                    {(showAllPhones ? allPhones : allPhones.slice(0, 2)).map((phoneObj, i: number) => {
+                      const isPrimary = lead.primaryPhone === phoneObj.number || (i === 0 && !lead.primaryPhone);
+                      return (
+                        <div
+                          key={i}
+                          className={cn(
+                            "flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer group transition-all",
+                            isPrimary
+                              ? "bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800"
+                              : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0" onClick={() => copyToClipboard(phoneObj.number)}>
+                            <Phone className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-emerald-600 transition-colors">{phoneObj.number}</span>
+                            {isPrimary && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-emerald-300 text-emerald-600 shrink-0">Primario</Badge>}
+                            {phoneObj.type && phoneObj.type !== "unknown" && (
+                              <span className="text-[9px] text-gray-400 shrink-0">({phoneObj.type})</span>
+                            )}
+                          </div>
+                          {!isPrimary && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                              title="Imposta come telefono primario"
+                              onClick={(e) => { e.stopPropagation(); setPrimaryContactMutation.mutate({ primaryPhone: phoneObj.number }); }}
+                              disabled={setPrimaryContactMutation.isPending}
+                            >
+                              <Star className="h-3 w-3 text-gray-400 hover:text-amber-500" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
                     {allPhones.length > 2 && (
                       <button
                         onClick={() => setShowAllPhones(!showAllPhones)}

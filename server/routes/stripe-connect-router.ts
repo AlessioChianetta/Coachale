@@ -1,7 +1,7 @@
 import express, { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { db } from "../db";
-import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers, consultantWhatsappConfig, managerConversations, managerMessages, whatsappAgentConsultantConversations, consultantDirectLinks, partnerWebhookConfigs, partnerWebhookLogs } from "@shared/schema";
+import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers, consultantWhatsappConfig, managerConversations, managerMessages, whatsappAgentConsultantConversations, consultantDirectLinks, partnerWebhookConfigs, partnerWebhookLogs, clientPurchasedItems } from "@shared/schema";
 import { eq, sql, isNotNull, desc, and } from "drizzle-orm";
 import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth";
 import { decrypt } from "../encryption";
@@ -1071,6 +1071,49 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
       case "checkout.session.completed": {
         const session = event.data.object as any;
         const metadata = session.metadata || {};
+        
+        if (metadata.type === "service_catalog_purchase") {
+          const { catalogItemId, buyerUserId, sellerConsultantId } = metadata;
+          console.log(`[Stripe Webhook] Service catalog purchase: item=${catalogItemId}, buyer=${buyerUserId}, seller=${sellerConsultantId}`);
+
+          if (!catalogItemId || !buyerUserId || !sellerConsultantId) {
+            console.error("[Stripe Webhook] Missing required service catalog metadata");
+            break;
+          }
+
+          const stripePaymentId = session.payment_intent || session.subscription || session.id;
+          const existingPurchase = await db.select({ id: clientPurchasedItems.id })
+            .from(clientPurchasedItems)
+            .where(and(
+              eq(clientPurchasedItems.stripeCheckoutSessionId, session.id)
+            ))
+            .limit(1);
+
+          if (existingPurchase.length > 0) {
+            console.log(`[Stripe Webhook] Service catalog purchase already processed: ${session.id}`);
+            break;
+          }
+
+          const { serviceCatalogItems: catalogTable } = await import("@shared/schema");
+          const [catalogItem] = await db.select({ priceCents: catalogTable.priceCents, paymentMode: catalogTable.paymentMode })
+            .from(catalogTable)
+            .where(eq(catalogTable.id, catalogItemId))
+            .limit(1);
+
+          await db.insert(clientPurchasedItems).values({
+            buyerUserId,
+            catalogItemId,
+            sellerConsultantId,
+            stripePaymentId: stripePaymentId || null,
+            stripeCheckoutSessionId: session.id,
+            paymentMode: catalogItem?.paymentMode || "connect",
+            amountCents: catalogItem?.priceCents || Math.round((session.amount_total || 0)),
+            status: "active",
+          });
+
+          console.log(`[Stripe Webhook] Service catalog purchase recorded for buyer=${buyerUserId}, item=${catalogItemId}`);
+          break;
+        }
         
         if (metadata.type === "employee_licenses") {
           const { purchaseId } = metadata;

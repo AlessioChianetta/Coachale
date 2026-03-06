@@ -2,6 +2,8 @@ import { db } from "../db";
 import { eq, sql, and, isNull, inArray } from "drizzle-orm";
 import { leadScraperSearches, leadScraperResults, leadScraperSalesContext } from "../../shared/schema";
 import { quickGenerate } from "../ai/provider-factory";
+import { verifyEmails } from "./email-verification-service";
+import { selectBestContacts, shouldAllowAutomatedOutreach } from "./contact-selector";
 
 interface SerpApiResult {
   title?: string;
@@ -1046,15 +1048,12 @@ export async function enrichSearchResults(
         websiteData = await scrapeWebsiteWithFirecrawl(url, firecrawlApiKey);
       }
 
-      const primaryEmail = websiteData.emails?.length > 0 ? websiteData.emails[0] : result.email;
-      const primaryPhone = (!result.phone && websiteData.phones?.length > 0) ? websiteData.phones[0] : result.phone;
-
       await db
         .update(leadScraperResults)
         .set({
           websiteData: websiteData as any,
-          email: primaryEmail,
-          phone: primaryPhone,
+          email: websiteData.emails?.length > 0 ? websiteData.emails[0] : result.email,
+          phone: (!result.phone && websiteData.phones?.length > 0) ? websiteData.phones[0] : result.phone,
           scrapeStatus: "scraped",
         })
         .where(eq(leadScraperResults.id, result.id));
@@ -1083,15 +1082,13 @@ export async function enrichSearchResults(
         if (contactPageData.emails.length === 0 && contactPageData.phones.length === 0 && contactPageData.teamMembers.length === 0) continue;
 
         const merged = mergeScrapedData(batchData as any, contactPageData);
-        const primaryEmail = merged.emails.length > 0 ? merged.emails[0] : result.email;
-        const primaryPhone = (!result.phone && merged.phones.length > 0) ? merged.phones[0] : result.phone;
 
         await db
           .update(leadScraperResults)
           .set({
             websiteData: { ...merged, contactPageUrl: batchData.contactPageUrl } as any,
-            email: primaryEmail,
-            phone: primaryPhone,
+            email: merged.emails.length > 0 ? merged.emails[0] : result.email,
+            phone: (!result.phone && merged.phones.length > 0) ? merged.phones[0] : result.phone,
           })
           .where(eq(leadScraperResults.id, result.id));
 
@@ -1106,9 +1103,141 @@ export async function enrichSearchResults(
     }
   }
 
+  await runVerificationAndSmartSelection(searchId);
+
   console.log(`[LEAD-SCRAPER] Enrichment complete for search ${searchId}: ${enriched} scraped (${useBatch ? 'batch' : 'sequential'}), ${cached} from cache, ${failed} failed`);
   return { enriched, failed, cached };
 }
+
+async function runVerificationAndSmartSelection(searchId: string): Promise<void> {
+  try {
+    const results = await db
+      .select()
+      .from(leadScraperResults)
+      .where(
+        and(
+          eq(leadScraperResults.searchId, searchId),
+          sql`(${leadScraperResults.scrapeStatus} = 'scraped' OR ${leadScraperResults.scrapeStatus} = 'scraped_cached')`,
+          isNull(leadScraperResults.primaryEmail)
+        )
+      );
+
+    if (results.length === 0) {
+      console.log(`[LEAD-SCRAPER] No results need verification for search ${searchId}`);
+      return;
+    }
+
+    console.log(`[LEAD-SCRAPER] Running email verification + smart selection for ${results.length} results`);
+
+    for (const result of results) {
+      try {
+        const wd = (result.websiteData as any) || {};
+        const allEmails: string[] = [];
+        if (result.email) allEmails.push(result.email);
+        if (wd.emails) allEmails.push(...wd.emails);
+        if (wd.teamMembers) {
+          for (const m of wd.teamMembers) {
+            if (m.email && m.email.includes("@")) allEmails.push(m.email);
+          }
+        }
+        const uniqueEmails = [...new Set(allEmails.filter(e => e && e.includes("@")))];
+
+        const allPhones: string[] = [];
+        if (result.phone) allPhones.push(result.phone);
+        if (wd.phones) allPhones.push(...wd.phones);
+        const uniquePhones = [...new Set(allPhones.filter(p => p && p.trim()))];
+
+        let verificationResults = new Map();
+        if (uniqueEmails.length > 0) {
+          try {
+            verificationResults = await verifyEmails(uniqueEmails);
+            console.log(`[LEAD-SCRAPER] Verified ${uniqueEmails.length} emails for ${result.businessName}`);
+          } catch (verifyError) {
+            console.warn(`[LEAD-SCRAPER] Email verification failed for ${result.businessName}, using defaults:`, verifyError);
+          }
+        }
+
+        const selection = selectBestContacts(
+          uniqueEmails,
+          uniquePhones,
+          verificationResults,
+          result.phone || null,
+          wd.teamMembers || []
+        );
+
+        await db
+          .update(leadScraperResults)
+          .set({
+            allContacts: selection.allContacts as any,
+            primaryEmail: selection.primaryEmail,
+            primaryPhone: selection.primaryPhone || result.phone,
+            emailVerified: selection.emailVerified,
+            emailVerificationStatus: selection.emailVerificationStatus,
+            email: selection.primaryEmail || result.email,
+            phone: selection.primaryPhone || result.phone,
+          })
+          .where(eq(leadScraperResults.id, result.id));
+
+        console.log(`[LEAD-SCRAPER] Smart selection for ${result.businessName}: primary_email=${selection.primaryEmail}, verified=${selection.emailVerified}, status=${selection.emailVerificationStatus}, primary_phone=${selection.primaryPhone}`);
+      } catch (err) {
+        console.warn(`[LEAD-SCRAPER] Smart selection failed for ${result.businessName}:`, err);
+      }
+    }
+
+    console.log(`[LEAD-SCRAPER] Verification + smart selection complete for search ${searchId}`);
+  } catch (error) {
+    console.error(`[LEAD-SCRAPER] Verification + smart selection error for search ${searchId}:`, error);
+  }
+}
+
+export async function verifyAndSelectContactsForResult(resultId: string): Promise<any> {
+  const [result] = await db.select().from(leadScraperResults).where(eq(leadScraperResults.id, resultId));
+  if (!result) throw new Error("Result not found");
+
+  const wd = (result.websiteData as any) || {};
+  const allEmails: string[] = [];
+  if (result.email) allEmails.push(result.email);
+  if (wd.emails) allEmails.push(...wd.emails);
+  if (wd.teamMembers) {
+    for (const m of wd.teamMembers) {
+      if (m.email && m.email.includes("@")) allEmails.push(m.email);
+    }
+  }
+  const uniqueEmails = [...new Set(allEmails.filter(e => e && e.includes("@")))];
+
+  const allPhones: string[] = [];
+  if (result.phone) allPhones.push(result.phone);
+  if (wd.phones) allPhones.push(...wd.phones);
+  const uniquePhones = [...new Set(allPhones.filter(p => p && p.trim()))];
+
+  const verificationResults = await verifyEmails(uniqueEmails);
+
+  const selection = selectBestContacts(
+    uniqueEmails,
+    uniquePhones,
+    verificationResults,
+    result.phone || null,
+    wd.teamMembers || []
+  );
+
+  const [updated] = await db
+    .update(leadScraperResults)
+    .set({
+      allContacts: selection.allContacts as any,
+      primaryEmail: selection.primaryEmail,
+      primaryPhone: selection.primaryPhone || result.phone,
+      emailVerified: selection.emailVerified,
+      emailVerificationStatus: selection.emailVerificationStatus,
+      email: selection.primaryEmail || result.email,
+      phone: selection.primaryPhone || result.phone,
+    })
+    .where(eq(leadScraperResults.id, resultId))
+    .returning();
+
+  return updated;
+}
+
+export { shouldAllowAutomatedOutreach };
 
 export async function generateSalesSummary(resultId: string, consultantId: string): Promise<any> {
   const [result] = await db.select().from(leadScraperResults).where(eq(leadScraperResults.id, resultId));

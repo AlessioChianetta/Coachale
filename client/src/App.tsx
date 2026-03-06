@@ -145,6 +145,9 @@ const ClientFileSearchDocuments = lazy(() => import("./pages/client-file-search-
 const TrainingMapPage = lazy(() => import("@/pages/training-map"));
 const ManagerLogin = lazy(() => import("@/pages/manager-login"));
 const ConsultantPaymentAutomations = lazy(() => import("@/pages/consultant-payment-automations"));
+const ConsultantCatalogSettings = lazy(() => import("@/pages/consultant-catalog-settings"));
+const ConsultantStore = lazy(() => import("@/pages/consultant-store"));
+const ClientStore = lazy(() => import("@/pages/client-store"));
 const ConsultantOrbitaleTool = lazy(() => import("@/pages/consultant-orbitale-tool"));
 const ManagerChat = lazy(() => import("@/pages/manager-chat"));
 const PublicAIChat = lazy(() => import("@/pages/public-ai-chat"));
@@ -602,6 +605,18 @@ function Router() {
             </AuthGuard>
           </Route>
 
+          <Route path="/consultant/catalog-settings">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantCatalogSettings />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/store">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantStore />
+            </AuthGuard>
+          </Route>
+
           <Route path="/consultant/tools/:toolId">
             <AuthGuard requiredRole="consultant">
               <ConsultantOrbitaleTool />
@@ -992,6 +1007,12 @@ function Router() {
           <Route path="/training/:agentId/:conversationId">
             <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <TrainingMapPage />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/client/store">
+            <AuthGuard requiredRole="client">
+              <ClientStore />
             </AuthGuard>
           </Route>
 

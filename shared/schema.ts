@@ -10828,6 +10828,14 @@ export const leadScraperResults = pgTable("lead_scraper_results", {
   aiSalesSummaryGeneratedAt: timestamp("ai_sales_summary_generated_at"),
   outreachTaskId: varchar("outreach_task_id", { length: 100 }),
   contactedChannels: text("contacted_channels").array().default(sql`'{}'::text[]`),
+  emailVerified: boolean("email_verified").default(false),
+  emailVerificationStatus: varchar("email_verification_status", { length: 50 }),
+  allContacts: jsonb("all_contacts").$type<{
+    emails?: Array<{ address: string; verified: boolean; status: string; priority: number; source: string }>;
+    phones?: Array<{ number: string; type: string; source: string; priority: number }>;
+  }>(),
+  primaryEmail: varchar("primary_email", { length: 255 }),
+  primaryPhone: varchar("primary_phone", { length: 50 }),
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 });
 
@@ -10887,5 +10895,51 @@ export const hunterActions = pgTable("hunter_actions", {
   resultNote: text("result_note"),
   createdAt: timestamp("created_at").default(sql`now()`),
 });
+
+export const serviceCatalogItems = pgTable("service_catalog_items", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  shortDescription: varchar("short_description", { length: 500 }),
+  icon: varchar("icon", { length: 10 }).default("📦"),
+  category: varchar("category", { length: 50 }).default("other"),
+  itemType: varchar("item_type", { length: 20 }).default("single"),
+  bundleItems: jsonb("bundle_items").$type<string[]>(),
+  priceCents: integer("price_cents").notNull().default(0),
+  originalPriceCents: integer("original_price_cents"),
+  currency: varchar("currency", { length: 10 }).default("eur"),
+  billingType: varchar("billing_type", { length: 20 }).default("monthly"),
+  paymentMode: varchar("payment_mode", { length: 20 }).default("connect"),
+  stripePriceId: varchar("stripe_price_id", { length: 255 }),
+  stripeDirectLink: varchar("stripe_direct_link", { length: 500 }),
+  featuresUnlocked: jsonb("features_unlocked").$type<string[]>().default(sql`'[]'::jsonb`),
+  isActive: boolean("is_active").default(true),
+  isFeatured: boolean("is_featured").default(false),
+  sortOrder: integer("sort_order").default(0),
+  badgeText: varchar("badge_text", { length: 100 }),
+  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
+});
+
+export type ServiceCatalogItem = typeof serviceCatalogItems.$inferSelect;
+export type InsertServiceCatalogItem = typeof serviceCatalogItems.$inferInsert;
+
+export const clientPurchasedItems = pgTable("client_purchased_items", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  buyerUserId: varchar("buyer_user_id").notNull(),
+  catalogItemId: uuid("catalog_item_id").notNull().references(() => serviceCatalogItems.id, { onDelete: "cascade" }),
+  sellerConsultantId: varchar("seller_consultant_id").notNull(),
+  stripePaymentId: varchar("stripe_payment_id", { length: 255 }),
+  stripeCheckoutSessionId: varchar("stripe_checkout_session_id", { length: 255 }),
+  paymentMode: varchar("payment_mode", { length: 20 }).default("connect"),
+  amountCents: integer("amount_cents").default(0),
+  status: varchar("status", { length: 20 }).default("active"),
+  purchasedAt: timestamp("purchased_at").default(sql`now()`).notNull(),
+  expiresAt: timestamp("expires_at"),
+});
+
+export type ClientPurchasedItem = typeof clientPurchasedItems.$inferSelect;
+export type InsertClientPurchasedItem = typeof clientPurchasedItems.$inferInsert;
 
 export type HunterAction = typeof hunterActions.$inferSelect;

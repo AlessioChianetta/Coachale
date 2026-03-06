@@ -146,6 +146,7 @@ import aiAutonomyRouter from "./routes/ai-autonomy-router";
 import roundRobinRouter from "./routes/round-robin-router";
 import skillsStoreRouter from "./routes/skills-store-router";
 import leadScraperRouter from "./routes/lead-scraper-router";
+import serviceCatalogRouter from "./routes/service-catalog-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -14065,6 +14066,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Lead Scraper routes
   app.use("/api/lead-scraper", leadScraperRouter);
+
+  // Service Catalog routes
+  app.use("/api", serviceCatalogRouter);
 
   // Client Sales Agent Configuration routes (requires authentication)
   app.use("/api/client/sales-agent/config", salesAgentConfigRouter);

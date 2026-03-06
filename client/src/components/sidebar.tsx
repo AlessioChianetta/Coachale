@@ -56,6 +56,7 @@ import {
   Search,
   MapPin,
   UserCheck,
+  ShoppingBag,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -212,6 +213,8 @@ const consultantCategories: SidebarCategoryExtended[] = [
     items: [
       { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key, color: "slate" },
       { name: "Automazioni Pagamento", href: "/consultant/payment-automations", icon: CreditCard, color: "emerald" },
+      { name: "Catalogo Servizi", href: "/consultant/catalog-settings", icon: Star, color: "amber" },
+      { name: "Servizi", href: "/consultant/store", icon: ShoppingBag, color: "purple" },
     ]
   },
   {
@@ -274,6 +277,7 @@ const clientItems: SidebarItemWithChildren[] = [
     ]
   },
   { name: "Le Mie Analisi", href: "/client/my-data-analysis", icon: BarChart3, color: "text-cyan-600" },
+  { name: "Servizi", href: "/client/store", icon: ShoppingBag, color: "text-purple-600" },
 ];
 
 const proToolsItems: SidebarItemWithChildren[] = [

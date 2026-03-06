@@ -3,7 +3,7 @@ import { db } from "../db";
 import { eq, and, desc, sql, ilike, gte, inArray } from "drizzle-orm";
 import { leadScraperSearches, leadScraperResults, superadminLeadScraperConfig, leadScraperSalesContext, leadScraperActivities } from "../../shared/schema";
 import { AuthRequest, authenticateToken, requireAnyRole } from "../middleware/auth";
-import { searchGoogleMaps, searchGoogleWeb, scrapeWebsiteWithFirecrawl, enrichSearchResults, generateSalesSummary, generateBatchSalesSummaries, searchItalianLocations, normalizeLocation } from "../services/lead-scraper-service";
+import { searchGoogleMaps, searchGoogleWeb, scrapeWebsiteWithFirecrawl, enrichSearchResults, generateSalesSummary, generateBatchSalesSummaries, searchItalianLocations, normalizeLocation, verifyAndSelectContactsForResult, shouldAllowAutomatedOutreach } from "../services/lead-scraper-service";
 import { decrypt } from "../encryption";
 import { generateOutreachContent, scheduleIndividualOutreach, loadSelectedWaTemplates, titleCaseName } from "./ai-autonomy-router";
 
@@ -619,17 +619,62 @@ router.post("/results/:id/scrape-website", authenticateToken, requireAnyRole(["c
 
     const websiteData = await scrapeWebsiteWithFirecrawl(websiteUrl, firecrawlKey);
 
-    const primaryEmail = websiteData.emails.length > 0 ? websiteData.emails[0] : result.email;
-    const primaryPhone = (!result.phone && websiteData.phones.length > 0) ? websiteData.phones[0] : result.phone;
-
-    const [updated] = await db
+    const [scraped] = await db
       .update(leadScraperResults)
       .set({
         websiteData: websiteData as any,
-        email: primaryEmail,
-        phone: primaryPhone,
+        email: websiteData.emails.length > 0 ? websiteData.emails[0] : result.email,
+        phone: (!result.phone && websiteData.phones.length > 0) ? websiteData.phones[0] : result.phone,
         scrapeStatus: "scraped",
       })
+      .where(eq(leadScraperResults.id, req.params.id))
+      .returning();
+
+    try {
+      const verified = await verifyAndSelectContactsForResult(req.params.id);
+      res.json(verified);
+    } catch (verifyErr) {
+      console.warn(`[LEAD-SCRAPER] Post-scrape verification failed, returning scraped result:`, verifyErr);
+      res.json(scraped);
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/results/:id/verify-email", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const updated = await verifyAndSelectContactsForResult(req.params.id);
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/results/:id/set-primary", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { primaryEmail, primaryPhone } = req.body;
+
+    const [result] = await db
+      .select()
+      .from(leadScraperResults)
+      .where(eq(leadScraperResults.id, req.params.id));
+
+    if (!result) return res.status(404).json({ error: "Result not found" });
+
+    const updateData: any = {};
+    if (primaryEmail !== undefined) {
+      updateData.primaryEmail = primaryEmail;
+      updateData.email = primaryEmail;
+    }
+    if (primaryPhone !== undefined) {
+      updateData.primaryPhone = primaryPhone;
+      updateData.phone = primaryPhone;
+    }
+
+    const [updated] = await db
+      .update(leadScraperResults)
+      .set(updateData)
       .where(eq(leadScraperResults.id, req.params.id))
       .returning();
 

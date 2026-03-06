@@ -29,6 +29,8 @@ import {
   Star,
   GraduationCap,
   PlayCircle,
+  ShoppingBag,
+  Package,
 } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { getAuthHeaders, getAuthUser } from "@/lib/auth";
@@ -197,6 +199,19 @@ export default function ConsultantDashboard() {
       return res.json();
     },
   });
+
+  const hasUpline = !!user?.consultantId;
+  const { data: purchasesData } = useQuery({
+    queryKey: ["/api/store/my-purchases"],
+    queryFn: async () => {
+      const res = await fetch("/api/store/my-purchases", { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return json.data || [];
+    },
+    enabled: hasUpline,
+  });
+  const activePurchases = purchasesData || [];
 
   const { data: aiInsights, isLoading: loadingInsights, refetch: refetchInsights } = useQuery<{
     summary: string;
@@ -986,6 +1001,69 @@ export default function ConsultantDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── I TUOI SERVIZI (only if consultant has upline) ── */}
+      {hasUpline && (
+        <Card className="afu-6 border-0 shadow-lg bg-gradient-to-br from-violet-500/5 to-transparent">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <ShoppingBag className="h-4 w-4 text-violet-500" />
+                I tuoi Servizi
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs"
+                onClick={() => setLocation("/consultant/store")}
+              >
+                Vai allo Store
+                <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {activePurchases.length > 0 ? (
+              activePurchases.slice(0, 4).map((purchase: any) => (
+                <div
+                  key={purchase.id}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center text-xl">
+                    {purchase.itemIcon || "📦"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {purchase.itemName}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {purchase.itemDescription || purchase.itemCategory}
+                    </p>
+                  </div>
+                  <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">
+                    Attivo
+                  </Badge>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-6">
+                <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground mb-3">
+                  Nessun servizio acquistato
+                </p>
+                <Button
+                  size="sm"
+                  className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white gap-1.5"
+                  onClick={() => setLocation("/consultant/store")}
+                >
+                  <ShoppingBag className="h-3.5 w-3.5" />
+                  Esplora il Catalogo
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── REFERRAL BANNER ──────────────────────────────── */}
       <button

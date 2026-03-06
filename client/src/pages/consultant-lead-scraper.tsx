@@ -139,6 +139,14 @@ interface SearchResult {
   contactedChannels: string[] | null;
   outreachTaskStatus: string | null;
   outreachTaskChannel: string | null;
+  emailVerified: boolean | null;
+  emailVerificationStatus: string | null;
+  allContacts: {
+    emails?: Array<{ address: string; verified: boolean; status: string; priority: number; source: string }>;
+    phones?: Array<{ number: string; type: string; source: string; priority: number }>;
+  } | null;
+  primaryEmail: string | null;
+  primaryPhone: string | null;
   createdAt: string;
 }
 
@@ -192,6 +200,80 @@ const LEAD_STATUSES = [
 
 function getLeadStatusInfo(status: string | null) {
   return LEAD_STATUSES.find(s => s.value === (status || "nuovo")) || LEAD_STATUSES[0];
+}
+
+function getEmailVerificationBadge(status: string | null, verified: boolean | null) {
+  if (!status && !verified) return null;
+  switch (status) {
+    case "valid":
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+            </TooltipTrigger>
+            <TooltipContent><p>Email verificata</p></TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    case "invalid":
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <XCircle className="h-3 w-3 text-red-500 shrink-0" />
+            </TooltipTrigger>
+            <TooltipContent><p>Email non valida</p></TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    case "catch_all":
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertCircle className="h-3 w-3 text-orange-500 shrink-0" />
+            </TooltipTrigger>
+            <TooltipContent><p>Dominio catch-all</p></TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    case "disposable":
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertTriangle className="h-3 w-3 text-orange-500 shrink-0" />
+            </TooltipTrigger>
+            <TooltipContent><p>Email temporanea/disposable</p></TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    case "unknown":
+    default:
+      if (verified) {
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+              </TooltipTrigger>
+              <TooltipContent><p>Email verificata</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertCircle className="h-3 w-3 text-yellow-500 shrink-0" />
+            </TooltipTrigger>
+            <TooltipContent><p>Stato sconosciuto</p></TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+  }
 }
 
 function getScoreBar(score: number | null) {
@@ -2068,7 +2150,10 @@ export default function ConsultantLeadScraper() {
                                   </TableCell>
                                   <TableCell className="text-center">
                                     <div className="flex items-center justify-center gap-1.5">
-                                      <Mail className={`h-3.5 w-3.5 ${r.email ? "text-blue-500" : "text-gray-200 dark:text-gray-700"}`} title={r.email ? "Email disponibile" : "No email"} />
+                                      <div className="flex items-center gap-0.5">
+                                        <Mail className={`h-3.5 w-3.5 ${r.email ? "text-blue-500" : "text-gray-200 dark:text-gray-700"}`} title={r.email ? "Email disponibile" : "No email"} />
+                                        {r.email && getEmailVerificationBadge(r.emailVerificationStatus, r.emailVerified)}
+                                      </div>
                                       <Phone className={`h-3.5 w-3.5 ${r.phone ? "text-emerald-500" : "text-gray-200 dark:text-gray-700"}`} title={r.phone ? "Telefono disponibile" : "No telefono"} />
                                       <Globe className={`h-3.5 w-3.5 ${r.website ? "text-violet-500" : "text-gray-200 dark:text-gray-700"}`} title={r.website ? "Sito web disponibile" : "No sito"} />
                                     </div>
@@ -2397,7 +2482,12 @@ export default function ConsultantLeadScraper() {
                                   </TableCell>
                                   <TableCell className="py-3">
                                     <div className="space-y-0.5">
-                                      {r.email && <p className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-[180px]">{r.email}</p>}
+                                      {r.email && (
+                                        <div className="flex items-center gap-1">
+                                          {getEmailVerificationBadge(r.emailVerificationStatus, r.emailVerified)}
+                                          <p className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-[160px]">{r.email}</p>
+                                        </div>
+                                      )}
                                       {r.phone && <p className="text-xs text-gray-500 dark:text-gray-500">{r.phone}</p>}
                                       {!r.email && !r.phone && <span className="text-xs text-gray-300 dark:text-gray-600">—</span>}
                                     </div>
