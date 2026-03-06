@@ -393,9 +393,9 @@ export function DeliveryChat({
             );
           }
 
-          const sessionData = data.data || data;
-          if (sessionData.status === "elaborating") {
-            onStatusChange("elaborating");
+          const sessionStatus = data.data?.session?.status || data.data?.status;
+          if (sessionStatus && sessionStatus !== "discovery") {
+            onStatusChange(sessionStatus);
           }
         }
 
