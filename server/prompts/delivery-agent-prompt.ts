@@ -690,16 +690,70 @@ Non sei un manuale che risponde a comandi. Sei qualcuno che ha fatto la discover
 - Stessi pattern proibiti della discovery: niente "Certamente!", "Assolutamente!", elenchi numerati meccanici, o chiusure con "Fammi sapere!"
 `;
 
+const SIMULATOR_NICHES: Record<string, string> = {
+  consulente_finanziario: 'Consulente Finanziario — gestione patrimoni, pianificazione finanziaria, consulenza investimenti',
+  personal_trainer: 'Personal Trainer — allenamento individuale o di gruppo, nutrizione, coaching fitness',
+  agenzia_immobiliare: 'Agenzia Immobiliare — compravendita immobili, affitti, gestione portafoglio proprietà',
+  studio_dentistico: 'Studio Dentistico — odontoiatria, igiene dentale, ortodonzia, implantologia',
+  avvocato: 'Avvocato — studio legale, consulenza giuridica, contenzioso civile/penale',
+  commercialista: 'Commercialista — contabilità, dichiarazioni fiscali, consulenza aziendale',
+  parrucchiere_estetista: 'Parrucchiere/Centro Estetico — servizi alla persona, bellezza, trattamenti estetici',
+  ristorante_bar: 'Ristorante/Bar — ristorazione, food & beverage, catering, eventi',
+  ecommerce: 'E-commerce — vendita online, marketplace, dropshipping, digital products',
+  agenzia_marketing: 'Agenzia di Marketing — comunicazione digitale, social media, branding, campagne pubblicitarie',
+  fotografo_videomaker: 'Fotografo/Videomaker — fotografia professionale, video production, eventi, contenuti social',
+  coach_formatore: 'Coach/Formatore — coaching 1-on-1, corsi di formazione, public speaking, crescita personale',
+  architetto_designer: 'Architetto/Interior Designer — progettazione, ristrutturazioni, design interni, rendering',
+  psicologo_terapeuta: 'Psicologo/Terapeuta — terapia individuale, di coppia, supporto psicologico, corsi mindfulness',
+  fisioterapista: 'Fisioterapista — riabilitazione, terapia manuale, osteopatia, posturologia',
+  agenzia_viaggi: 'Agenzia Viaggi — tour organizzati, viaggi su misura, booking, esperienze turistiche',
+  wedding_planner: 'Wedding Planner — organizzazione matrimoni, eventi, cerimonie, coordinamento fornitori',
+  veterinario: 'Veterinario — clinica veterinaria, cure animali domestici, chirurgia, prevenzione',
+  centro_yoga_pilates: 'Centro Yoga/Pilates — classi di gruppo, sessioni private, meditazione, benessere olistico',
+  consulente_it: 'Consulente IT/Sviluppatore — sviluppo software, consulenza tecnologica, system integration, SaaS',
+};
+
+const SIMULATOR_ATTITUDES: Record<string, string> = {
+  entusiasta: 'ENTUSIASTA — È eccitato, dice sì a tutto, vuole provare ogni funzione subito. Tende a sottovalutare le complessità e non fa domande critiche. Può essere superficiale nelle risposte perché "va bene tutto".',
+  scettico: 'SCETTICO — Mette in dubbio tutto, chiede prove concrete, fa obiezioni su costi e risultati. "E chi mi dice che funziona davvero?" è la sua frase tipica. Risponde con sufficienza e ha bisogno di essere conquistato.',
+  pragmatico: 'PRAGMATICO — Parla solo di numeri, ROI, tempi di ritorno dell\'investimento. "Quanto mi costa? Quanto mi rende?" Risposte precise e concise, non si perde in chiacchiere.',
+  confuso: 'CONFUSO — Non sa bene cosa gli serve, risposte vaghe, cambia argomento, si contraddice. "Mah, non saprei..." è la sua risposta tipica. Ha bisogno di essere guidato pazientemente.',
+  frettoloso: 'FRETTOLOSO — Vuole tutto per ieri, risposte brevi e impazienti, salta i dettagli. "Sì sì, ok, ma quando partiamo?" Non ha tempo per le spiegazioni lunghe.',
+  resistente: 'RESISTENTE AL CAMBIAMENTO — È affezionato ai suoi metodi attuali, teme la tecnologia, trova scuse per non cambiare. "Io ho sempre fatto così e funziona." Ogni proposta nuova lo mette a disagio.',
+};
+
+function getSimulatorContext(niche: string, attitude: string): string {
+  const nicheDesc = SIMULATOR_NICHES[niche] || niche;
+  const attitudeDesc = SIMULATOR_ATTITUDES[attitude] || attitude;
+
+  return `
+## MODALITÀ SIMULATORE
+L'utente sta interpretando un cliente simulato per testare il tuo sistema di discovery. Il cliente opera nella nicchia: **${nicheDesc}**
+
+L'atteggiamento del cliente è: **${attitudeDesc}**
+
+### ISTRUZIONI SIMULATORE:
+- Trattalo ESATTAMENTE come un vero cliente — conduci la discovery completa senza scorciatoie
+- NON menzionare MAI che è una simulazione — rispondi come faresti con un cliente reale
+- Adatta le tue domande al settore specifico (domande rilevanti per quel tipo di business)
+- Il tuo obiettivo è mostrare la qualità della tua discovery, indipendentemente dall'atteggiamento del cliente
+- Se il cliente è scettico, conquistalo. Se è confuso, guidalo. Se è frettoloso, tienilo concentrato.
+`;
+}
+
 export function getDeliveryAgentSystemPrompt(
   mode: string,
   status: string,
   clientProfile: any
 ): string {
-  const modeLabel = mode === 'onboarding'
+  const isSimulator = mode === 'simulator';
+  const effectiveMode = isSimulator ? 'discovery' : mode;
+
+  const modeLabel = effectiveMode === 'onboarding'
     ? 'ONBOARDING — Stai analizzando il business del consulente stesso per configurare la piattaforma ottimale per lui.'
     : 'DISCOVERY — Stai analizzando un cliente terzo del consulente per capire come la piattaforma può servire quel caso specifico.';
 
-  const toneInstruction = mode === 'onboarding'
+  const toneInstruction = effectiveMode === 'onboarding'
     ? 'Stai aiutando il consulente a capire la piattaforma per il suo business. Parla come Luca — diretto, curioso, concreto.'
     : 'Stai aiutando il consulente ad analizzare un caso per un suo cliente. Parla come Luca — diretto, curioso, concreto.';
 
@@ -714,6 +768,11 @@ La discovery è completa. Il profilo è stato estratto. Informa il consulente ch
 `;
   } else if (status === 'completed' || status === 'assistant') {
     phaseBlock = ASSISTANT_MODE_PROMPT;
+  }
+
+  let simulatorContext = '';
+  if (isSimulator && clientProfile?.simulator) {
+    simulatorContext = getSimulatorContext(clientProfile.simulator.niche, clientProfile.simulator.attitude);
   }
 
   let profileContext = '';
@@ -758,6 +817,8 @@ ${toneInstruction}
 Parla SEMPRE in italiano. Ogni risposta deve essere in italiano.
 
 ${phaseBlock}
+
+${simulatorContext}
 
 ${profileContext}
 

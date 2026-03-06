@@ -30,6 +30,8 @@ import {
   FileText,
   Menu,
   X,
+  FlaskConical,
+  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DeliveryChat } from "./DeliveryChat";
@@ -37,7 +39,7 @@ import { DeliveryReport } from "./DeliveryReport";
 
 interface DeliverySession {
   id: string;
-  mode: "onboarding" | "discovery";
+  mode: "onboarding" | "discovery" | "simulator";
   status: "discovery" | "elaborating" | "completed" | "assistant";
   client_profile_json: any;
   created_at: string;
@@ -45,6 +47,38 @@ interface DeliverySession {
   last_message?: string;
   message_count?: number;
 }
+
+const SIMULATOR_NICHES = [
+  { key: "consulente_finanziario", label: "Consulente Finanziario", emoji: "💰" },
+  { key: "personal_trainer", label: "Personal Trainer", emoji: "🏋️" },
+  { key: "agenzia_immobiliare", label: "Agenzia Immobiliare", emoji: "🏠" },
+  { key: "studio_dentistico", label: "Studio Dentistico", emoji: "🦷" },
+  { key: "avvocato", label: "Avvocato", emoji: "⚖️" },
+  { key: "commercialista", label: "Commercialista", emoji: "📊" },
+  { key: "parrucchiere_estetista", label: "Parrucchiere/Estetista", emoji: "💇" },
+  { key: "ristorante_bar", label: "Ristorante/Bar", emoji: "🍽️" },
+  { key: "ecommerce", label: "E-commerce", emoji: "🛒" },
+  { key: "agenzia_marketing", label: "Agenzia Marketing", emoji: "📱" },
+  { key: "fotografo_videomaker", label: "Fotografo/Videomaker", emoji: "📸" },
+  { key: "coach_formatore", label: "Coach/Formatore", emoji: "🎯" },
+  { key: "architetto_designer", label: "Architetto/Designer", emoji: "🏗️" },
+  { key: "psicologo_terapeuta", label: "Psicologo/Terapeuta", emoji: "🧠" },
+  { key: "fisioterapista", label: "Fisioterapista", emoji: "🩺" },
+  { key: "agenzia_viaggi", label: "Agenzia Viaggi", emoji: "✈️" },
+  { key: "wedding_planner", label: "Wedding Planner", emoji: "💍" },
+  { key: "veterinario", label: "Veterinario", emoji: "🐾" },
+  { key: "centro_yoga_pilates", label: "Centro Yoga/Pilates", emoji: "🧘" },
+  { key: "consulente_it", label: "Consulente IT", emoji: "💻" },
+] as const;
+
+const SIMULATOR_ATTITUDES = [
+  { key: "entusiasta", label: "Entusiasta", desc: "Dice sì a tutto, eccitato", color: "emerald" },
+  { key: "scettico", label: "Scettico", desc: "Dubbioso, vuole prove", color: "amber" },
+  { key: "pragmatico", label: "Pragmatico", desc: "Solo numeri e ROI", color: "blue" },
+  { key: "confuso", label: "Confuso", desc: "Non sa cosa serve", color: "purple" },
+  { key: "frettoloso", label: "Frettoloso", desc: "Vuole tutto subito", color: "orange" },
+  { key: "resistente", label: "Resistente", desc: "Teme il cambiamento", color: "red" },
+] as const;
 
 const PHASE_STEPS = [
   { key: "discovery", label: "Discovery", icon: Search },
@@ -152,10 +186,12 @@ function SessionItem({
                 "text-[10px] px-1.5 py-0",
                 session.mode === "onboarding"
                   ? "border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400"
+                  : session.mode === "simulator"
+                  ? "border-orange-300 text-orange-700 dark:border-orange-700 dark:text-orange-400"
                   : "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400"
               )}
             >
-              {session.mode === "onboarding" ? "Onboarding" : "Discovery"}
+              {session.mode === "onboarding" ? "Onboarding" : session.mode === "simulator" ? "Simulatore" : "Discovery"}
             </Badge>
             <Badge
               variant="secondary"
@@ -164,6 +200,11 @@ function SessionItem({
               {statusLabels[session.status] || session.status}
             </Badge>
           </div>
+          {session.mode === "simulator" && session.client_profile_json?.simulator && (
+            <p className="text-[10px] text-orange-600 dark:text-orange-400 mb-0.5">
+              {session.client_profile_json.simulator.niche_label} — {session.client_profile_json.simulator.attitude_label}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground line-clamp-2">
             {session.last_message || "Nuova sessione"}
           </p>
@@ -198,6 +239,8 @@ export function DeliveryAgentPanel() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<DeliverySession | null>(null);
   const [showModeDialog, setShowModeDialog] = useState(false);
+  const [simulatorStep, setSimulatorStep] = useState<"niche" | "attitude" | null>(null);
+  const [selectedNiche, setSelectedNiche] = useState<typeof SIMULATOR_NICHES[number] | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [viewMode, setViewMode] = useState<"chat" | "report">("chat");
@@ -250,12 +293,16 @@ export function DeliveryAgentPanel() {
   );
 
   const createSession = useCallback(
-    async (mode: "onboarding" | "discovery") => {
+    async (mode: "onboarding" | "discovery" | "simulator", simulatorConfig?: { niche: string; niche_label: string; attitude: string; attitude_label: string }) => {
       try {
+        const body: any = { mode };
+        if (mode === "simulator" && simulatorConfig) {
+          body.simulatorConfig = simulatorConfig;
+        }
         const res = await fetch("/api/consultant/delivery-agent/sessions", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-          body: JSON.stringify({ mode }),
+          body: JSON.stringify(body),
         });
         if (res.ok) {
           const data = await res.json();
@@ -263,11 +310,15 @@ export function DeliveryAgentPanel() {
           await fetchSessions();
           loadSession(newSession.id);
           setShowModeDialog(false);
+          setSimulatorStep(null);
+          setSelectedNiche(null);
           toast({
             title: "Sessione creata",
             description:
               mode === "onboarding"
                 ? "Iniziamo l'onboarding per la tua attività"
+                : mode === "simulator"
+                ? `Simulazione avviata: ${simulatorConfig?.niche_label}`
                 : "Iniziamo la discovery per il tuo cliente",
           });
         }
@@ -500,46 +551,140 @@ export function DeliveryAgentPanel() {
         </div>
       </div>
 
-      <Dialog open={showModeDialog} onOpenChange={setShowModeDialog}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={showModeDialog} onOpenChange={(open) => {
+        setShowModeDialog(open);
+        if (!open) { setSimulatorStep(null); setSelectedNiche(null); }
+      }}>
+        <DialogContent className={cn(
+          "transition-all duration-200",
+          simulatorStep === "niche" ? "sm:max-w-2xl" : simulatorStep === "attitude" ? "sm:max-w-lg" : "sm:max-w-md"
+        )}>
           <DialogHeader>
-            <DialogTitle>Nuova Sessione</DialogTitle>
+            <DialogTitle>
+              {simulatorStep === "niche" ? "Scegli la Nicchia del Cliente" :
+               simulatorStep === "attitude" ? "Scegli l'Atteggiamento" :
+               "Nuova Sessione"}
+            </DialogTitle>
             <DialogDescription>
-              Scegli la modalità per la nuova sessione di delivery
+              {simulatorStep === "niche" ? "Che tipo di attività gestisce il cliente simulato?" :
+               simulatorStep === "attitude" ? `${selectedNiche?.emoji} ${selectedNiche?.label} — come si comporta durante la conversazione?` :
+               "Scegli la modalità per la nuova sessione di delivery"}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 py-4">
-            <button
-              onClick={() => createSession("onboarding")}
-              className="flex items-start gap-4 p-4 rounded-xl border border-border hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-all text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
-                <Rocket className="w-5 h-5 text-white" />
+
+          {!simulatorStep && (
+            <div className="grid gap-3 py-4">
+              <button
+                onClick={() => createSession("onboarding")}
+                className="flex items-start gap-4 p-4 rounded-xl border border-border hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-all text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+                  <Rocket className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Onboarding</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Per te stesso. Analizza la tua attività e genera un piano personalizzato.
+                  </p>
+                </div>
+              </button>
+              <button
+                onClick={() => createSession("discovery")}
+                className="flex items-start gap-4 p-4 rounded-xl border border-border hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                  <Users className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Discovery</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Per un cliente terzo. Analizza la situazione e genera un report.
+                  </p>
+                </div>
+              </button>
+              <button
+                onClick={() => setSimulatorStep("niche")}
+                className="flex items-start gap-4 p-4 rounded-xl border border-border hover:border-orange-300 dark:hover:border-orange-700 hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-all text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center flex-shrink-0">
+                  <FlaskConical className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Simulatore</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Testa Luca interpretando un cliente. Scegli nicchia e atteggiamento, poi chatta come se fossi quel cliente.
+                  </p>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {simulatorStep === "niche" && (
+            <div className="py-3">
+              <button
+                onClick={() => setSimulatorStep(null)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors"
+              >
+                <ArrowLeft className="w-3 h-3" /> Torna indietro
+              </button>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-[400px] overflow-y-auto pr-1">
+                {SIMULATOR_NICHES.map((niche) => (
+                  <button
+                    key={niche.key}
+                    onClick={() => {
+                      setSelectedNiche(niche);
+                      setSimulatorStep("attitude");
+                    }}
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-orange-300 dark:hover:border-orange-700 hover:bg-orange-50/40 dark:hover:bg-orange-900/10 transition-all text-center"
+                  >
+                    <span className="text-2xl">{niche.emoji}</span>
+                    <span className="text-xs font-medium text-foreground leading-tight">{niche.label}</span>
+                  </button>
+                ))}
               </div>
-              <div>
-                <p className="font-semibold text-foreground">Onboarding</p>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Per te stesso. Analizza la tua attività, genera un piano di
-                  configurazione personalizzato della piattaforma.
-                </p>
+            </div>
+          )}
+
+          {simulatorStep === "attitude" && selectedNiche && (
+            <div className="py-3">
+              <button
+                onClick={() => setSimulatorStep("niche")}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors"
+              >
+                <ArrowLeft className="w-3 h-3" /> Cambia nicchia
+              </button>
+              <div className="grid gap-2">
+                {SIMULATOR_ATTITUDES.map((att) => (
+                  <button
+                    key={att.key}
+                    onClick={() => {
+                      createSession("simulator", {
+                        niche: selectedNiche.key,
+                        niche_label: selectedNiche.label,
+                        attitude: att.key,
+                        attitude_label: att.label,
+                      });
+                    }}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-orange-300 dark:hover:border-orange-700 hover:bg-orange-50/30 dark:hover:bg-orange-900/10 transition-all text-left"
+                  >
+                    <div className={cn(
+                      "w-2 h-8 rounded-full flex-shrink-0",
+                      att.color === "emerald" ? "bg-emerald-500" :
+                      att.color === "amber" ? "bg-amber-500" :
+                      att.color === "blue" ? "bg-blue-500" :
+                      att.color === "purple" ? "bg-purple-500" :
+                      att.color === "orange" ? "bg-orange-500" :
+                      "bg-red-500"
+                    )} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{att.label}</p>
+                      <p className="text-xs text-muted-foreground">{att.desc}</p>
+                    </div>
+                  </button>
+                ))}
               </div>
-            </button>
-            <button
-              onClick={() => createSession("discovery")}
-              className="flex items-start gap-4 p-4 rounded-xl border border-border hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                <Users className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="font-semibold text-foreground">Discovery</p>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Per un cliente terzo. Analizza la situazione del cliente e
-                  genera un report con moduli consigliati e roadmap.
-                </p>
-              </div>
-            </button>
-          </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

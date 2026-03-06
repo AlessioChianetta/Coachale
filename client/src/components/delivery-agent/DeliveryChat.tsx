@@ -90,7 +90,7 @@ interface DeliveryMessage {
 interface DeliveryChatProps {
   session: {
     id: string;
-    mode: "onboarding" | "discovery";
+    mode: "onboarding" | "discovery" | "simulator";
     status: string;
     client_profile_json?: any;
   };
@@ -391,6 +391,18 @@ export function DeliveryChat({
         </div>
       )}
 
+      {session.mode === "simulator" && session.client_profile_json?.simulator && (
+        <div className="px-4 py-2 border-b border-orange-200 dark:border-orange-800/40 bg-orange-50/70 dark:bg-orange-900/15 flex-shrink-0">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-orange-600 dark:text-orange-400 font-semibold">SIMULAZIONE</span>
+            <span className="text-orange-500/50">|</span>
+            <span className="text-orange-700 dark:text-orange-300">{session.client_profile_json.simulator.niche_label}</span>
+            <span className="text-orange-500/50">—</span>
+            <span className="text-orange-600/80 dark:text-orange-400/80">Atteggiamento: {session.client_profile_json.simulator.attitude_label}</span>
+          </div>
+        </div>
+      )}
+
       {messages.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-sm">
@@ -400,11 +412,15 @@ export function DeliveryChat({
             <h3 className="font-semibold text-foreground mb-1">
               {session.mode === "onboarding"
                 ? "Benvenuto nell'Onboarding!"
+                : session.mode === "simulator"
+                ? "Modalità Simulatore"
                 : "Iniziamo la Discovery"}
             </h3>
             <p className="text-sm text-muted-foreground">
               {session.mode === "onboarding"
                 ? "Raccontami della tua attività. Ti guiderò nella configurazione ottimale della piattaforma."
+                : session.mode === "simulator"
+                ? "Interpreta il cliente e scrivi come farebbe lui. Luca condurrà la discovery completa."
                 : "Descrivi il cliente che vuoi analizzare. Esplorerò ogni aspetto per creare un piano su misura."}
             </p>
           </div>

@@ -71,13 +71,20 @@ ensureTables().catch(err => console.error('[DeliveryAgent] Init error:', err));
 router.post('/sessions', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { mode } = req.body;
-    if (!mode || !['onboarding', 'discovery'].includes(mode)) {
-      return res.status(400).json({ success: false, error: 'Mode must be onboarding or discovery' });
+    const { mode, simulatorConfig } = req.body;
+    if (!mode || !['onboarding', 'discovery', 'simulator'].includes(mode)) {
+      return res.status(400).json({ success: false, error: 'Mode must be onboarding, discovery, or simulator' });
+    }
+    let initialProfile = null;
+    if (mode === 'simulator') {
+      if (!simulatorConfig || !simulatorConfig.niche || !simulatorConfig.attitude) {
+        return res.status(400).json({ success: false, error: 'simulatorConfig with niche and attitude is required for simulator mode' });
+      }
+      initialProfile = JSON.stringify({ simulator: { niche: simulatorConfig.niche, niche_label: simulatorConfig.niche_label || simulatorConfig.niche, attitude: simulatorConfig.attitude, attitude_label: simulatorConfig.attitude_label || simulatorConfig.attitude } });
     }
     const result = await db.execute(sql`
-      INSERT INTO delivery_agent_sessions (consultant_id, mode, status)
-      VALUES (${consultantId}, ${mode}, 'discovery')
+      INSERT INTO delivery_agent_sessions (consultant_id, mode, status, client_profile_json)
+      VALUES (${consultantId}, ${mode}, 'discovery', ${initialProfile}::jsonb)
       RETURNING *
     `);
     res.json({ success: true, data: result.rows[0] });
