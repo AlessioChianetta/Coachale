@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { DeliveryAgentPanel } from "@/components/delivery-agent/DeliveryAgentPanel";
 import { ChatPanel } from "@/components/ai-assistant/ChatPanel";
+import ConsultantSetupWizard from "@/pages/consultant-setup-wizard";
 
 interface AcademyDocument {
   id: string;
@@ -584,7 +585,7 @@ function LessonDetail({
 export default function ConsultantAcademy() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"academy" | "delivery" | "setup-assistant" | "setup-wizard">("academy");
   const [setupChatStarted, setSetupChatStarted] = useState(false);
@@ -767,13 +768,7 @@ export default function ConsultantAcademy() {
               ] as const).map(tab => (
                 <button
                   key={tab.key}
-                  onClick={() => {
-                    if (tab.key === "setup-wizard") {
-                      navigate("/consultant/setup-wizard");
-                    } else {
-                      setActiveTab(tab.key);
-                    }
-                  }}
+                  onClick={() => setActiveTab(tab.key)}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
                     activeTab === tab.key
@@ -805,6 +800,10 @@ export default function ConsultantAcademy() {
           {activeTab === "delivery" ? (
             <div className="flex-1 min-h-0 overflow-hidden">
               <DeliveryAgentPanel />
+            </div>
+          ) : activeTab === "setup-wizard" ? (
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ConsultantSetupWizard embedded />
             </div>
           ) : activeTab === "setup-assistant" ? (
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">

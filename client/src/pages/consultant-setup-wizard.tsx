@@ -1242,7 +1242,7 @@ function CredentialNotesCard({ stepId }: { stepId: string }) {
   );
 }
 
-export default function ConsultantSetupWizard() {
+export default function ConsultantSetupWizard({ embedded = false }: { embedded?: boolean }) {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
@@ -1973,29 +1973,9 @@ export default function ConsultantSetupWizard() {
     );
   }
 
-  return (
-    <div className={cn("min-h-screen flex flex-col bg-background", !isMobile && "h-screen")}>
-      {isMobile && (
-        <Navbar onMenuClick={() => setSidebarOpen(true)} />
-      )}
-      <div className={cn("flex flex-1", isMobile ? "min-h-0" : "min-h-0 overflow-hidden")}>
-      <Sidebar
-        role="consultant"
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        showRoleSwitch={showRoleSwitch}
-        currentRole={currentRole}
-        onRoleSwitch={handleRoleSwitch}
-      />
-      
-      <main
-        className={cn("flex-1 min-h-0", isMobile ? "overflow-auto" : "overflow-hidden")}
-        style={{
-          paddingRight: !isMobile && isOnboardingMode ? "24rem" : "0",
-          transition: "padding-right 0.3s ease",
-        }}
-      >
-        <div className={cn("flex flex-col min-h-0", isMobile ? "" : "h-full")}>
+  const wizardContent = (
+    <>
+
           {/* ── HEADER ── */}
           <motion.header
             className="relative overflow-hidden border-b px-4 sm:px-6 py-3 sm:py-4 bg-background"
@@ -3234,6 +3214,45 @@ export default function ConsultantSetupWizard() {
 
           </div>
           )} {/* fine currentSection && */}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="flex flex-col min-h-0">
+            {wizardContent}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("min-h-screen flex flex-col bg-background", !isMobile && "h-screen")}>
+      {isMobile && (
+        <Navbar onMenuClick={() => setSidebarOpen(true)} />
+      )}
+      <div className={cn("flex flex-1", isMobile ? "min-h-0" : "min-h-0 overflow-hidden")}>
+      <Sidebar
+        role="consultant"
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        showRoleSwitch={showRoleSwitch}
+        currentRole={currentRole}
+        onRoleSwitch={handleRoleSwitch}
+      />
+      
+      <main
+        className={cn("flex-1 min-h-0", isMobile ? "overflow-auto" : "overflow-hidden")}
+        style={{
+          paddingRight: !isMobile && isOnboardingMode ? "24rem" : "0",
+          transition: "padding-right 0.3s ease",
+        }}
+      >
+        <div className={cn("flex flex-col min-h-0", isMobile ? "" : "h-full")}>
+          {wizardContent}
         </div>
       </main>
       {!isOnboardingMode && <ConsultantAIAssistant isOnboardingMode={false} />}
