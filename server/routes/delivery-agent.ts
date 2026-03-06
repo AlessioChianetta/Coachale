@@ -3,6 +3,27 @@ import { authenticateToken, requireRole, type AuthRequest } from '../middleware/
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { getAIProvider, getModelWithThinking, GEMINI_3_MODEL } from '../ai/provider-factory';
+import { searchGoogleMaps, scrapeWebsiteWithFirecrawl } from '../services/lead-scraper-service';
+import { decrypt } from '../encryption';
+import { superadminLeadScraperConfig } from '../../shared/schema';
+
+async function getLeadScraperKeys(): Promise<{ serpApiKey: string | null; firecrawlKey: string | null }> {
+  try {
+    const [config] = await db.select().from(superadminLeadScraperConfig).limit(1);
+    if (config && config.enabled) {
+      return {
+        serpApiKey: config.serpapiKeyEncrypted ? decrypt(config.serpapiKeyEncrypted) : null,
+        firecrawlKey: config.firecrawlKeyEncrypted ? decrypt(config.firecrawlKeyEncrypted) : null,
+      };
+    }
+  } catch (e) {
+    console.error("[DeliveryAgent] Error reading lead scraper keys:", e);
+  }
+  return {
+    serpApiKey: process.env.SERPAPI_KEY || null,
+    firecrawlKey: process.env.FIRECRAWL_API_KEY || null,
+  };
+}
 
 const router = Router();
 
@@ -283,13 +304,82 @@ router.post('/generate-report/:sessionId', authenticateToken, requireRole('consu
       .join('\n\n');
 
     const profileJson = session.client_profile_json ? JSON.stringify(session.client_profile_json, null, 2) : 'Non disponibile';
+    const clientProfile = session.client_profile_json || {};
+
+    let businessIntelligence: any = null;
+    try {
+      const nomeAttivita = clientProfile.nome_attivita || null;
+      const sitoWeb = clientProfile.sito_web || null;
+      const citta = clientProfile.citta_operativa || null;
+
+      if (nomeAttivita || sitoWeb) {
+        console.log(`[DeliveryAgent] Business Intelligence: scraping for "${nomeAttivita}" in "${citta}", website: ${sitoWeb}`);
+        const keys = await getLeadScraperKeys();
+
+        const withTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
+          Promise.race([
+            promise,
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms)),
+          ]);
+
+        if (nomeAttivita && citta && keys.serpApiKey) {
+          try {
+            const mapResults = await withTimeout(searchGoogleMaps(nomeAttivita, citta, 1, keys.serpApiKey), 15000, 'Google Maps');
+            if (mapResults.length > 0) {
+              const biz = mapResults[0];
+              businessIntelligence = {
+                googleRating: biz.rating || null,
+                reviewCount: biz.reviews || null,
+                address: biz.address || null,
+                phone: biz.phone || null,
+                website: biz.website || sitoWeb || null,
+              };
+              console.log(`[DeliveryAgent] Google Maps found: ${biz.title}, rating: ${biz.rating}, reviews: ${biz.reviews}`);
+
+              if (!sitoWeb && biz.website) {
+                businessIntelligence.website = biz.website;
+              }
+            }
+          } catch (mapErr: any) {
+            console.warn(`[DeliveryAgent] Google Maps scraping failed: ${mapErr.message}`);
+          }
+        }
+
+        const websiteToScrape = sitoWeb || businessIntelligence?.website;
+        if (websiteToScrape && keys.firecrawlKey) {
+          try {
+            const siteData = await withTimeout(scrapeWebsiteWithFirecrawl(websiteToScrape, keys.firecrawlKey), 20000, 'Firecrawl');
+            if (!businessIntelligence) businessIntelligence = {};
+            businessIntelligence.website = websiteToScrape;
+            businessIntelligence.websiteDescription = siteData.description || null;
+            businessIntelligence.servicesOffered = siteData.services || [];
+            businessIntelligence.socialLinks = siteData.socialLinks || {};
+            businessIntelligence.teamMembers = siteData.teamMembers || [];
+            console.log(`[DeliveryAgent] Website scraped: ${siteData.services?.length || 0} services, ${siteData.teamMembers?.length || 0} team members`);
+          } catch (scrapeErr: any) {
+            console.warn(`[DeliveryAgent] Website scraping failed: ${scrapeErr.message}`);
+          }
+        }
+
+        if (businessIntelligence) {
+          console.log(`[DeliveryAgent] Business Intelligence collected successfully`);
+        } else {
+          console.log(`[DeliveryAgent] No business intelligence data found — proceeding without`);
+        }
+      } else {
+        console.log(`[DeliveryAgent] No business name or website in profile — skipping scraping`);
+      }
+    } catch (biErr: any) {
+      console.warn(`[DeliveryAgent] Business Intelligence failed entirely: ${biErr.message} — continuing without`);
+      businessIntelligence = null;
+    }
 
     let reportPrompt = '';
     try {
       const { getReportGenerationPrompt } = await import('../prompts/delivery-agent-prompt');
-      reportPrompt = getReportGenerationPrompt();
+      reportPrompt = getReportGenerationPrompt(businessIntelligence);
     } catch {
-      reportPrompt = `Generate a structured onboarding report in JSON format with these 6 sections: profilo_cliente, diagnosi, pacchetti_consigliati, roadmap, quick_wins, metriche_successo.`;
+      reportPrompt = `Generate a structured onboarding report in JSON format with these sections: lettera_personale, profilo_cliente, diagnosi, pacchetti_consigliati, roadmap, quick_wins, azioni_questa_settimana, metriche_successo, chiusura_personale.`;
     }
 
     const provider = await getAIProvider(consultantId);
@@ -322,7 +412,7 @@ router.post('/generate-report/:sessionId', authenticateToken, requireRole('consu
         {
           role: 'user',
           parts: [{
-            text: `La discovery è conclusa. Profilo Estratto:\n${profileJson}\n\nCOMPITO: Analizza in profondità questa conversazione. NON generare ancora il report. Fai un'analisi critica:
+            text: `La discovery è conclusa. Profilo Estratto:\n${profileJson}\n\n${businessIntelligence ? `BUSINESS INTELLIGENCE (dati dalla ricerca online):\n${JSON.stringify(businessIntelligence, null, 2)}\n\n` : ''}COMPITO: Analizza in profondità questa conversazione. NON generare ancora il report. Fai un'analisi critica:
 
 1. **Pattern chiave emersi**: Quali sono i 3-5 pattern più importanti che hai notato? (es. "il consulente ha un business solido ma dipende completamente da lui", "ha molti clienti ma li perde per mancanza di follow-up")
 
@@ -534,6 +624,401 @@ router.get('/reports/:sessionId', authenticateToken, requireRole('consultant'), 
   } catch (err: any) {
     console.error('[DeliveryAgent] GET report error:', err);
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/reports/:sessionId/pdf', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { sessionId } = req.params;
+    const result = await db.execute(sql`
+      SELECT r.* FROM delivery_agent_reports r
+      JOIN delivery_agent_sessions s ON s.id::text = r.session_id
+      WHERE r.session_id = ${sessionId} AND s.consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Report not found' });
+    }
+    const reportRow = result.rows[0] as any;
+    const raw = reportRow.report_json || {};
+
+    const PDFDocument = (await import('pdfkit')).default;
+    const doc = new PDFDocument({ size: 'A4', margin: 60, bufferPages: true });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="piano-strategico-${sessionId.slice(0, 8)}.pdf"`);
+    doc.pipe(res);
+
+    doc.on('error', (pdfErr: any) => {
+      console.error('[DeliveryAgent] PDFKit stream error:', pdfErr);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: 'PDF generation failed' });
+      }
+    });
+
+    const INDIGO = '#4f46e5';
+    const DARK = '#1e1b4b';
+    const GRAY = '#64748b';
+    const LIGHT_BG = '#f8fafc';
+    const GREEN = '#059669';
+    const AMBER = '#d97706';
+    const RED = '#dc2626';
+    const pageW = 595.28 - 120;
+
+    const addFooter = () => {
+      const pages = doc.bufferedPageRange();
+      for (let i = 0; i < pages.count; i++) {
+        doc.switchToPage(i);
+        doc.save();
+        doc.fontSize(7).fillColor(GRAY).font('Helvetica');
+        doc.text('Documento riservato — uso esclusivo del destinatario', 60, 800, { align: 'center', width: pageW });
+        doc.text(`${i + 1}`, 60, 800, { align: 'right', width: pageW });
+        doc.restore();
+      }
+    };
+
+    const wrapText = (text: string, opts?: { fontSize?: number; color?: string; font?: string; lineGap?: number }) => {
+      const { fontSize = 10, color = DARK, font = 'Helvetica', lineGap = 4 } = opts || {};
+      doc.font(font).fontSize(fontSize).fillColor(color);
+      doc.text(text, { lineGap, width: pageW });
+    };
+
+    const sectionTitle = (num: string, title: string) => {
+      if (doc.y > 680) doc.addPage();
+      doc.moveDown(1.5);
+      doc.font('Helvetica').fontSize(11).fillColor(GRAY).text(num, { continued: true });
+      doc.font('Helvetica-Bold').fontSize(16).fillColor(DARK).text(`  ${title}`);
+      doc.moveDown(0.3);
+      doc.moveTo(60, doc.y).lineTo(60 + pageW, doc.y).strokeColor(INDIGO).lineWidth(1.5).stroke();
+      doc.moveDown(0.8);
+    };
+
+    const today = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+    doc.moveDown(8);
+    doc.moveTo(250, doc.y).lineTo(345, doc.y).strokeColor(INDIGO).lineWidth(2).stroke();
+    doc.moveDown(2);
+    doc.font('Helvetica-Bold').fontSize(28).fillColor(DARK).text('PIANO STRATEGICO', { align: 'center' });
+    doc.font('Helvetica').fontSize(22).fillColor(GRAY).text('PERSONALIZZATO', { align: 'center' });
+    doc.moveDown(2);
+    doc.font('Helvetica').fontSize(10).fillColor(GRAY).text(today, { align: 'center' });
+    doc.text('Documento riservato', { align: 'center' });
+
+    const profilo = raw.profilo_cliente || raw.client_profile;
+    if (profilo) {
+      const nome = profilo.nome || profilo.name;
+      if (nome) {
+        doc.moveDown(3);
+        doc.font('Helvetica').fontSize(8).fillColor(GRAY).text('PREPARATO PER', { align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(14).fillColor(DARK).text(nome, { align: 'center' });
+        const tipo = profilo.tipo_business || profilo.business_type;
+        if (tipo) doc.font('Helvetica').fontSize(10).fillColor(GRAY).text(tipo, { align: 'center' });
+      }
+    }
+
+    const lettera = raw.lettera_personale || raw.personal_letter;
+    if (lettera) {
+      doc.addPage();
+      sectionTitle('', 'Lettera Personale');
+      const paragraphs = lettera.split('\n\n');
+      for (const p of paragraphs) {
+        wrapText(p, { fontSize: 11, lineGap: 5 });
+        doc.moveDown(0.6);
+      }
+    }
+
+    if (profilo) {
+      doc.addPage();
+      sectionTitle('01', 'Profilo Cliente');
+      const fields: [string, any][] = [
+        ['Tipo Attività', profilo.tipo_business || profilo.business_type],
+        ['Settore', profilo.settore || profilo.sector],
+        ['Nicchia', profilo.nicchia || profilo.niche],
+        ['Scala', profilo.scala_descrizione || profilo.scale],
+        ['Team', profilo.team_size],
+        ['Maturità Digitale', profilo.maturita_digitale || profilo.digital_maturity],
+        ['Metodo Vendita', profilo.metodo_vendita || profilo.sales_method],
+        ['Budget', profilo.budget],
+        ['Sito Web', profilo.sito_web || profilo.website],
+        ['Città', profilo.citta || profilo.city],
+      ];
+      for (const [label, value] of fields) {
+        if (value) {
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(GRAY).text(label.toUpperCase(), { continued: true });
+          doc.font('Helvetica').fontSize(10).fillColor(DARK).text(`  ${value}`);
+          doc.moveDown(0.2);
+        }
+      }
+      const painPoint = profilo.pain_point_badge || profilo.main_pain_point || profilo.pain_point_principale;
+      if (painPoint) {
+        doc.moveDown(0.5);
+        const y = doc.y;
+        doc.rect(60, y, pageW, 40).fillColor('#fef3c7').fill();
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(AMBER).text('PAIN POINT PRINCIPALE', 70, y + 8);
+        doc.font('Helvetica').fontSize(9).fillColor('#92400e').text(painPoint, 70, y + 22, { width: pageW - 20 });
+        doc.y = y + 48;
+      }
+    }
+
+    const diagnosi = raw.diagnosi || raw.diagnosis;
+    if (diagnosi) {
+      doc.addPage();
+      sectionTitle('02', 'La Diagnosi');
+      const doveOra = diagnosi.dove_sei_ora || diagnosi.current_state;
+      const doveVuoi = diagnosi.dove_vuoi_arrivare || diagnosi.desired_state;
+      if (doveOra) {
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(RED).text('DOVE SEI ORA');
+        doc.moveDown(0.2);
+        wrapText(doveOra, { fontSize: 10, color: '#7f1d1d' });
+        doc.moveDown(0.8);
+      }
+      if (doveVuoi) {
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(GREEN).text('DOVE VUOI ARRIVARE');
+        doc.moveDown(0.2);
+        wrapText(doveVuoi, { fontSize: 10, color: '#064e3b' });
+        doc.moveDown(0.8);
+      }
+      const gap = diagnosi.gap_analysis || diagnosi.analisi_gap;
+      if (gap) {
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(GRAY).text('ANALISI GAP');
+        doc.moveDown(0.2);
+        wrapText(gap);
+        doc.moveDown(0.8);
+      }
+      const table = diagnosi.tabella_diagnostica || diagnosi.diagnostic_table;
+      if (table && Array.isArray(table) && table.length > 0) {
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(GRAY).text('DIAGNOSI PER AREA');
+        doc.moveDown(0.4);
+        const colW = [pageW * 0.25, pageW * 0.30, pageW * 0.15, pageW * 0.30];
+        const headers = ['Area', 'Stato', 'Impatto', 'Nota'];
+        let ty = doc.y;
+        doc.rect(60, ty, pageW, 16).fillColor('#e2e8f0').fill();
+        let tx = 60;
+        for (let c = 0; c < headers.length; c++) {
+          doc.font('Helvetica-Bold').fontSize(7).fillColor(GRAY).text(headers[c], tx + 4, ty + 4, { width: colW[c] - 8 });
+          tx += colW[c];
+        }
+        ty += 16;
+        for (const row of table) {
+          if (ty > 740) { doc.addPage(); ty = 80; }
+          const vals = [row.area, row.stato || row.status, row.impatto || row.impact || 'medio', row.nota || row.note || ''];
+          tx = 60;
+          const bg = vals[2] === 'urgente' ? '#fef2f2' : vals[2] === 'alto' ? '#fffbeb' : '#ffffff';
+          doc.rect(60, ty, pageW, 18).fillColor(bg).fill();
+          for (let c = 0; c < vals.length; c++) {
+            const isImpatto = c === 2;
+            doc.font(isImpatto ? 'Helvetica-Bold' : 'Helvetica').fontSize(8).fillColor(
+              isImpatto ? (vals[2] === 'urgente' ? RED : vals[2] === 'alto' ? AMBER : DARK) : DARK
+            ).text(String(vals[c]), tx + 4, ty + 4, { width: colW[c] - 8 });
+            tx += colW[c];
+          }
+          ty += 18;
+        }
+        doc.y = ty + 8;
+      }
+      const insight = diagnosi.insight_chiave || diagnosi.key_insight;
+      if (insight) {
+        doc.moveDown(0.5);
+        const iy = doc.y;
+        doc.rect(60, iy, 3, 40).fillColor(AMBER).fill();
+        doc.rect(63, iy, pageW - 3, 40).fillColor('#fffbeb').fill();
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(AMBER).text('INSIGHT CHIAVE', 72, iy + 6);
+        doc.font('Helvetica').fontSize(9).fillColor('#92400e').text(insight, 72, iy + 18, { width: pageW - 24 });
+        doc.y = iy + 48;
+      }
+    }
+
+    const pkgs = raw.pacchetti_consigliati || raw.recommended_packages;
+    if (pkgs && Array.isArray(pkgs)) {
+      pkgs.forEach((pkg: any, idx: number) => {
+        doc.addPage();
+        const num = String(idx + 3).padStart(2, '0');
+        const name = pkg.nome_pacchetto || pkg.package_name || `Pacchetto ${idx + 1}`;
+        const subtitle = pkg.sottotitolo || pkg.subtitle || '';
+        const score = pkg.punteggio || pkg.score;
+        sectionTitle(num, name);
+        if (subtitle) {
+          doc.font('Helvetica').fontSize(9).fillColor(GRAY).text(subtitle);
+          doc.moveDown(0.3);
+        }
+        if (score !== undefined) {
+          doc.font('Helvetica-Bold').fontSize(20).fillColor(score >= 7 ? GREEN : score >= 4 ? AMBER : RED).text(`${score}/10`, { continued: true });
+          const sl = pkg.punteggio_label || pkg.score_label;
+          if (sl) doc.font('Helvetica').fontSize(9).fillColor(GRAY).text(`  ${sl}`);
+          else doc.text('');
+          doc.moveDown(0.5);
+        }
+        const reason = pkg.perche_per_te || pkg.reason;
+        if (reason) {
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(GRAY).text('PERCHÉ PER TE');
+          doc.moveDown(0.2);
+          wrapText(reason, { fontSize: 10 });
+          doc.moveDown(0.6);
+        }
+        const good = pkg.cosa_va_bene || pkg.whats_good;
+        if (good) {
+          const gy = doc.y;
+          doc.rect(60, gy, pageW, 0).fillColor('#ecfdf5');
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(GREEN).text('COSA HAI FATTO BENE');
+          doc.moveDown(0.2);
+          wrapText(good, { fontSize: 9, color: '#064e3b' });
+          doc.moveDown(0.6);
+        }
+        const bad = pkg.cosa_non_funziona || pkg.whats_wrong;
+        if (bad) {
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(AMBER).text('COSA NON FUNZIONA');
+          doc.moveDown(0.2);
+          wrapText(bad, { fontSize: 9, color: '#92400e' });
+          doc.moveDown(0.6);
+        }
+        const fix = pkg.come_correggere || pkg.how_to_fix;
+        if (fix && Array.isArray(fix)) {
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(GRAY).text('COME CORREGGERE');
+          doc.moveDown(0.3);
+          for (const action of fix) {
+            doc.font('Helvetica').fontSize(9).fillColor(INDIGO).text('→ ', { continued: true });
+            doc.fillColor(DARK).text(action.replace(/^→\s*/, ''));
+            doc.moveDown(0.3);
+          }
+          doc.moveDown(0.3);
+        }
+        const diag = pkg.diagnosi_critica || pkg.critical_diagnosis;
+        if (diag) {
+          const dy = doc.y;
+          doc.rect(60, dy, 3, 30).fillColor(RED).fill();
+          doc.rect(63, dy, pageW - 3, 30).fillColor('#fef2f2').fill();
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(RED).text('DIAGNOSI CRITICA', 72, dy + 6);
+          doc.font('Helvetica').fontSize(9).fillColor('#7f1d1d').text(diag, 72, dy + 18, { width: pageW - 24 });
+          doc.y = dy + 38;
+        }
+        const mods = pkg.moduli_inclusi || pkg.modules;
+        if (mods && Array.isArray(mods) && mods.length > 0) {
+          doc.moveDown(0.5);
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(GRAY).text(`MODULI INCLUSI (${mods.length})`);
+          doc.moveDown(0.3);
+          for (const mod of mods) {
+            const modName = mod.nome || mod.name;
+            doc.font('Helvetica').fontSize(9).fillColor(GREEN).text('✓ ', { continued: true });
+            doc.fillColor(DARK).text(modName);
+            doc.moveDown(0.15);
+          }
+        }
+      });
+    }
+
+    const roadmap = raw.roadmap;
+    if (roadmap) {
+      doc.addPage();
+      const rNum = String((pkgs?.length || 0) + 3).padStart(2, '0');
+      sectionTitle(rNum, 'Roadmap Operativa');
+      const weeks = [
+        roadmap.settimana_1 || roadmap.week1,
+        roadmap.settimana_2 || roadmap.week2,
+        roadmap.settimana_3 || roadmap.week3,
+        roadmap.settimana_4 || roadmap.week4,
+      ];
+      weeks.forEach((w: any, i: number) => {
+        if (!w) return;
+        if (doc.y > 680) doc.addPage();
+        doc.font('Helvetica-Bold').fontSize(11).fillColor(INDIGO).text(`Settimana ${i + 1}`);
+        const titolo = w.titolo || w.title;
+        if (titolo) doc.font('Helvetica').fontSize(9).fillColor(GRAY).text(titolo);
+        doc.moveDown(0.3);
+        const azioni = w.azioni_prioritarie || w.azioni || w.actions || [];
+        for (const a of azioni) {
+          doc.font('Helvetica').fontSize(9).fillColor(DARK).text(`• ${a}`);
+          doc.moveDown(0.15);
+        }
+        const obj = w.obiettivo || w.objective;
+        if (obj) {
+          doc.moveDown(0.2);
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(GRAY).text('Obiettivo: ', { continued: true });
+          doc.font('Helvetica').fillColor(DARK).text(obj);
+        }
+        const kpi = w.kpi_target || w.kpi;
+        if (kpi) {
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(GRAY).text('KPI: ', { continued: true });
+          doc.font('Helvetica').fillColor(DARK).text(kpi);
+        }
+        doc.moveDown(0.8);
+      });
+    }
+
+    const qw = raw.quick_wins;
+    if (qw && Array.isArray(qw) && qw.length > 0) {
+      if (doc.y > 500) doc.addPage();
+      const qNum = String((pkgs?.length || 0) + 4).padStart(2, '0');
+      sectionTitle(qNum, 'Quick Wins');
+      qw.forEach((q: any, i: number) => {
+        if (doc.y > 700) doc.addPage();
+        const title = q.titolo || q.title;
+        doc.font('Helvetica-Bold').fontSize(10).fillColor(DARK).text(`${i + 1}. ${title}`);
+        const steps = q.passi || q.steps || [];
+        for (let s = 0; s < steps.length; s++) {
+          doc.font('Helvetica').fontSize(9).fillColor(DARK).text(`   ${s + 1}. ${steps[s]}`);
+          doc.moveDown(0.1);
+        }
+        const tempo = q.tempo_stimato || q.estimated_time;
+        if (tempo) doc.font('Helvetica').fontSize(8).fillColor(GRAY).text(`   ⏱ ${tempo}`);
+        doc.moveDown(0.6);
+      });
+    }
+
+    const metrics = raw.metriche_successo || raw.success_metrics;
+    if (metrics && Array.isArray(metrics) && metrics.length > 0) {
+      if (doc.y > 500) doc.addPage();
+      const mNum = String((pkgs?.length || 0) + 5).padStart(2, '0');
+      sectionTitle(mNum, 'Metriche di Successo');
+      for (const m of metrics) {
+        if (doc.y > 720) doc.addPage();
+        doc.font('Helvetica-Bold').fontSize(10).fillColor(DARK).text(m.kpi);
+        doc.font('Helvetica').fontSize(8).fillColor(GRAY).text(`Target: ${m.valore_target || m.target || ''} | Misura: ${m.come_misurare || m.measurement || ''} | Periodo: ${m.timeframe || ''}`);
+        doc.moveDown(0.5);
+      }
+    }
+
+    const azioni = raw.azioni_questa_settimana || raw.priority_actions;
+    if (azioni && Array.isArray(azioni) && azioni.length > 0) {
+      doc.addPage();
+      const aNum = String((pkgs?.length || 0) + 6).padStart(2, '0');
+      sectionTitle(aNum, 'Le Azioni di Questa Settimana');
+      azioni.forEach((a: any, i: number) => {
+        if (doc.y > 660) doc.addPage();
+        const title = a.titolo || a.title || '';
+        const desc = a.descrizione || a.description || '';
+        const tempo = a.tempo || a.time || '';
+        const impatto = a.impatto || a.impact || '';
+        doc.font('Helvetica-Bold').fontSize(18).fillColor(INDIGO).text(`${i + 1}`, { continued: true });
+        doc.font('Helvetica-Bold').fontSize(12).fillColor(DARK).text(`  ${title}`);
+        doc.moveDown(0.3);
+        wrapText(desc, { fontSize: 10 });
+        doc.moveDown(0.3);
+        doc.font('Helvetica').fontSize(8).fillColor(GRAY).text(`⏱ ${tempo}   📈 ${impatto}`);
+        doc.moveDown(1);
+      });
+    }
+
+    const chiusura = raw.chiusura_personale || raw.closing_message;
+    if (chiusura) {
+      if (doc.y > 500) doc.addPage();
+      doc.moveDown(2);
+      doc.moveTo(230, doc.y).lineTo(365, doc.y).strokeColor(GRAY).lineWidth(0.5).stroke();
+      doc.moveDown(1);
+      const paras = chiusura.split('\n\n');
+      for (const p of paras) {
+        doc.font('Helvetica-Oblique').fontSize(10).fillColor(GRAY).text(p, { align: 'center', width: pageW });
+        doc.moveDown(0.4);
+      }
+    }
+
+    addFooter();
+    doc.end();
+
+  } catch (err: any) {
+    console.error('[DeliveryAgent] PDF generation error:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   }
 });
 

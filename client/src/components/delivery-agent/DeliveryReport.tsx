@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,12 @@ import {
   ChevronUp,
   Layers,
   ArrowRight,
+  AlertTriangle,
+  Globe,
+  MapPin,
+  FileText,
+  Lightbulb,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -44,6 +50,34 @@ interface RecommendedPackage {
   modules: PackageModule[];
   timeline: string;
   connection: string;
+  score?: number;
+  score_label?: string;
+  whats_good?: string;
+  whats_wrong?: string;
+  how_to_fix?: string[];
+  critical_diagnosis?: string;
+}
+
+interface DiagnosticTableRow {
+  area: string;
+  stato: string;
+  impatto: "alto" | "medio" | "basso" | "urgente";
+  nota: string;
+}
+
+interface RoadmapWeek {
+  titolo: string;
+  pacchetti_coinvolti: string[];
+  azioni_prioritarie: string[];
+  obiettivo: string;
+  kpi_target: string;
+}
+
+interface PriorityAction {
+  titolo: string;
+  descrizione: string;
+  tempo: string;
+  impatto: string;
 }
 
 interface RecommendedModule {
@@ -55,7 +89,9 @@ interface RecommendedModule {
 }
 
 interface ReportData {
+  personal_letter?: string;
   client_profile?: {
+    name?: string;
     business_type?: string;
     sector?: string;
     niche?: string;
@@ -70,17 +106,24 @@ interface ReportData {
     communication_channels?: string[];
     sales_method?: string;
     has_training?: boolean;
+    website?: string;
+    city?: string;
   };
   diagnosis?: {
     current_state?: string;
     desired_state?: string;
     gap_analysis?: string;
     key_challenges?: string[];
+    diagnostic_table?: DiagnosticTableRow[];
+    key_insight?: string;
   };
   recommended_packages?: RecommendedPackage[];
   recommended_modules?: RecommendedModule[];
   roadmap?: {
-    week1?: any;
+    week1?: RoadmapWeek | any;
+    week2?: RoadmapWeek;
+    week3?: RoadmapWeek;
+    week4?: RoadmapWeek;
     weeks2_4?: any;
     month2_plus?: any;
   };
@@ -88,14 +131,17 @@ interface ReportData {
     title: string;
     steps: string[];
     estimated_time: string;
+    impact?: string;
     link?: string;
   }>;
+  priority_actions?: PriorityAction[];
   success_metrics?: Array<{
     kpi: string;
     target: string;
     measurement: string;
     timeframe: string;
   }>;
+  closing_message?: string;
 }
 
 function normalizeReport(raw: any): ReportData {
@@ -110,8 +156,22 @@ function normalizeReport(raw: any): ReportData {
 
   const result: ReportData = {};
 
+  result.personal_letter = raw.lettera_personale || raw.personal_letter || undefined;
+  result.closing_message = raw.chiusura_personale || raw.closing_message || undefined;
+
+  const pa = raw.azioni_questa_settimana || raw.priority_actions;
+  if (pa && Array.isArray(pa)) {
+    result.priority_actions = pa.map((a: any) => ({
+      titolo: a.titolo || a.title || '',
+      descrizione: a.descrizione || a.description || '',
+      tempo: a.tempo || a.time || '',
+      impatto: a.impatto || a.impact || '',
+    }));
+  }
+
   if (p) {
     result.client_profile = {
+      name: p.nome || p.name || undefined,
       business_type: p.tipo_business || p.business_type,
       sector: p.settore || p.sector,
       niche: p.nicchia || p.niche,
@@ -126,6 +186,8 @@ function normalizeReport(raw: any): ReportData {
       communication_channels: p.canali_comunicazione || p.communication_channels || [],
       sales_method: p.metodo_vendita || p.sales_method,
       has_training: p.ha_formazione ?? p.has_training,
+      website: p.sito_web || p.website || undefined,
+      city: p.citta || p.city || undefined,
     };
   }
 
@@ -135,7 +197,17 @@ function normalizeReport(raw: any): ReportData {
       desired_state: d.dove_vuoi_arrivare || d.desired_state,
       gap_analysis: d.gap_analysis || d.analisi_gap,
       key_challenges: d.sfide_principali || d.key_challenges || [],
+      key_insight: d.insight_chiave || d.key_insight || undefined,
     };
+    const dt = d.tabella_diagnostica || d.diagnostic_table;
+    if (dt && Array.isArray(dt)) {
+      result.diagnosis.diagnostic_table = dt.map((row: any) => ({
+        area: row.area || '',
+        stato: row.stato || row.status || '',
+        impatto: row.impatto || row.impact || 'medio',
+        nota: row.nota || row.note || '',
+      }));
+    }
   }
 
   if (pkg && Array.isArray(pkg) && pkg.length > 0) {
@@ -144,14 +216,20 @@ function normalizeReport(raw: any): ReportData {
       subtitle: pk.sottotitolo || pk.subtitle || '',
       priority: pk.priorita || pk.priority || 'core',
       reason: pk.perche_per_te || pk.reason || '',
-      modules: (pk.moduli_inclusi || pk.modules || []).map((mod: any) => ({
-        name: mod.nome || mod.name,
+      modules: Array.isArray(pk.moduli_inclusi || pk.modules) ? (pk.moduli_inclusi || pk.modules).map((mod: any) => ({
+        name: mod.nome || mod.name || '',
         complexity: mod.complessita_setup || mod.complexity || 'media',
         setup_time: mod.tempo_setup || mod.setup_time || '',
         config_link: mod.config_link,
-      })),
+      })) : [],
       timeline: pk.timeline_setup || pk.timeline || '',
       connection: pk.connessione_altri_pacchetti || pk.connection || '',
+      score: pk.punteggio || pk.score || undefined,
+      score_label: pk.punteggio_label || pk.score_label || undefined,
+      whats_good: pk.cosa_va_bene || pk.whats_good || undefined,
+      whats_wrong: pk.cosa_non_funziona || pk.whats_wrong || undefined,
+      how_to_fix: Array.isArray(pk.come_correggere || pk.how_to_fix) ? (pk.come_correggere || pk.how_to_fix) : undefined,
+      critical_diagnosis: pk.diagnosi_critica || pk.critical_diagnosis || undefined,
     }));
   }
 
@@ -166,7 +244,18 @@ function normalizeReport(raw: any): ReportData {
   }
 
   if (r) {
-    const mapPhase = (phase: any) => {
+    const mapWeek = (w: any): RoadmapWeek | undefined => {
+      if (!w) return undefined;
+      return {
+        titolo: w.titolo || w.title || '',
+        pacchetti_coinvolti: w.pacchetti_coinvolti || w.pacchetti || w.packages || [],
+        azioni_prioritarie: w.azioni_prioritarie || w.azioni || w.actions || [],
+        obiettivo: w.obiettivo || w.objective || '',
+        kpi_target: w.kpi_target || w.kpi || '',
+      };
+    };
+
+    const mapLegacyPhase = (phase: any) => {
       if (!phase) return undefined;
       if (Array.isArray(phase)) return phase;
       if (phase.azioni && Array.isArray(phase.azioni)) {
@@ -181,18 +270,23 @@ function normalizeReport(raw: any): ReportData {
       }
       return undefined;
     };
+
     result.roadmap = {
-      week1: mapPhase(r.settimana_1 || r.week1),
-      weeks2_4: mapPhase(r.settimane_2_4 || r.weeks2_4),
-      month2_plus: mapPhase(r.mese_2_plus || r.month2_plus),
+      week1: mapWeek(r.settimana_1 || r.week1) || mapLegacyPhase(r.settimana_1 || r.week1),
+      week2: mapWeek(r.settimana_2 || r.week2),
+      week3: mapWeek(r.settimana_3 || r.week3),
+      week4: mapWeek(r.settimana_4 || r.week4),
+      weeks2_4: mapLegacyPhase(r.settimane_2_4 || r.weeks2_4),
+      month2_plus: mapLegacyPhase(r.mese_2_plus || r.month2_plus),
     };
   }
 
   if (q && Array.isArray(q)) {
     result.quick_wins = q.map((qw: any) => ({
-      title: qw.titolo || qw.title,
-      steps: qw.passi || qw.steps || [],
+      title: qw.titolo || qw.title || '',
+      steps: Array.isArray(qw.passi || qw.steps) ? (qw.passi || qw.steps) : [],
       estimated_time: qw.tempo_stimato || qw.estimated_time || '',
+      impact: qw.impatto || qw.impact || '',
       link: qw.link,
     }));
   }
@@ -214,55 +308,34 @@ interface DeliveryReportProps {
   onBackToChat: () => void;
 }
 
-const SECTION_ICONS_PACKAGES = [
-  { icon: User, label: "Profilo Cliente", gradient: "from-blue-500 to-cyan-600" },
-  { icon: Stethoscope, label: "La Diagnosi", gradient: "from-rose-500 to-pink-600" },
-  { icon: Package, label: "Pacchetti Consigliati", gradient: "from-violet-500 to-purple-600" },
-  { icon: Calendar, label: "Roadmap", gradient: "from-amber-500 to-orange-600" },
-  { icon: Zap, label: "Quick Wins", gradient: "from-emerald-500 to-teal-600" },
-  { icon: BarChart3, label: "Metriche di Successo", gradient: "from-indigo-500 to-blue-600" },
-];
-
-const SECTION_ICONS_MODULES = [
-  { icon: User, label: "Profilo Cliente", gradient: "from-blue-500 to-cyan-600" },
-  { icon: Stethoscope, label: "La Diagnosi", gradient: "from-rose-500 to-pink-600" },
-  { icon: Layers, label: "Moduli Consigliati", gradient: "from-violet-500 to-purple-600" },
-  { icon: Calendar, label: "Roadmap", gradient: "from-amber-500 to-orange-600" },
-  { icon: Zap, label: "Quick Wins", gradient: "from-emerald-500 to-teal-600" },
-  { icon: BarChart3, label: "Metriche di Successo", gradient: "from-indigo-500 to-blue-600" },
-];
-
-const PRIORITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  fondamenta: {
-    bg: "bg-emerald-50 dark:bg-emerald-900/20",
-    text: "text-emerald-700 dark:text-emerald-400",
-    border: "border-emerald-200 dark:border-emerald-800",
-  },
-  core: {
-    bg: "bg-blue-50 dark:bg-blue-900/20",
-    text: "text-blue-700 dark:text-blue-400",
-    border: "border-blue-200 dark:border-blue-800",
-  },
-  avanzato: {
-    bg: "bg-violet-50 dark:bg-violet-900/20",
-    text: "text-violet-700 dark:text-violet-400",
-    border: "border-violet-200 dark:border-violet-800",
-  },
-};
-
 const COMPLEXITY_BARS: Record<string, number> = {
   bassa: 1,
   media: 2,
   alta: 3,
 };
 
+const IMPATTO_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  urgente: { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-400", border: "border-red-300 dark:border-red-700" },
+  alto: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-400", border: "border-amber-300 dark:border-amber-700" },
+  medio: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400", border: "border-blue-300 dark:border-blue-700" },
+  basso: { bg: "bg-slate-100 dark:bg-slate-800/50", text: "text-slate-600 dark:text-slate-400", border: "border-slate-300 dark:border-slate-700" },
+};
+
+interface Chapter {
+  id: string;
+  number: string;
+  title: string;
+  icon: any;
+}
+
 export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps) {
   const { toast } = useToast();
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const usePackages = !!(report?.recommended_packages && report.recommended_packages.length > 0);
-  const SECTION_ICONS = usePackages ? SECTION_ICONS_PACKAGES : SECTION_ICONS_MODULES;
+  const [activeChapter, setActiveChapter] = useState<string>("");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const chapterRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     const loadReport = async () => {
@@ -291,8 +364,75 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
     loadReport();
   }, [sessionId, toast]);
 
+  const chapters: Chapter[] = [];
+  if (report) {
+    if (report.personal_letter) chapters.push({ id: "lettera", number: "", title: "Lettera Personale", icon: FileText });
+    if (report.client_profile) chapters.push({ id: "profilo", number: "01", title: "Profilo Cliente", icon: User });
+    if (report.diagnosis) chapters.push({ id: "diagnosi", number: "02", title: "La Diagnosi", icon: Stethoscope });
+    if (report.recommended_packages) {
+      report.recommended_packages.forEach((pkg, i) => {
+        chapters.push({ id: `pkg-${i}`, number: String(i + 3).padStart(2, '0'), title: pkg.package_name, icon: Package });
+      });
+    }
+    const nextNum = (report.recommended_packages?.length || 0) + 3;
+    if (report.roadmap) chapters.push({ id: "roadmap", number: String(nextNum).padStart(2, '0'), title: "Roadmap Operativa", icon: Calendar });
+    if (report.quick_wins?.length) chapters.push({ id: "quickwins", number: String(nextNum + 1).padStart(2, '0'), title: "Quick Wins", icon: Zap });
+    if (report.success_metrics?.length) chapters.push({ id: "metriche", number: String(nextNum + 2).padStart(2, '0'), title: "Metriche di Successo", icon: BarChart3 });
+    if (report.priority_actions?.length) chapters.push({ id: "azioni", number: String(nextNum + 3).padStart(2, '0'), title: "Le Azioni di Questa Settimana", icon: Lightbulb });
+    if (report.closing_message) chapters.push({ id: "chiusura", number: "", title: "Chiusura", icon: BookOpen });
+  }
+
+  const scrollToChapter = useCallback((id: string) => {
+    const el = chapterRefs.current[id];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setActiveChapter(id);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!report || chapters.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveChapter(entry.target.id);
+            break;
+          }
+        }
+      },
+      { rootMargin: '-100px 0px -60% 0px', threshold: 0.1 }
+    );
+    Object.values(chapterRefs.current).forEach(el => {
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [report, chapters.length]);
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      const res = await fetch(
+        `/api/consultant/delivery-agent/reports/${sessionId}/pdf`,
+        { headers: getAuthHeaders() }
+      );
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `piano-strategico-${sessionId.slice(0, 8)}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        window.print();
+      }
+    } catch {
+      window.print();
+    }
   };
 
   const handleShare = async () => {
@@ -303,6 +443,10 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
       toast({ title: "Errore", description: "Impossibile copiare il link", variant: "destructive" });
     }
   };
+
+  const setChapterRef = useCallback((id: string) => (el: HTMLDivElement | null) => {
+    chapterRefs.current[id] = el;
+  }, []);
 
   if (loading) {
     return (
@@ -326,573 +470,610 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
     );
   }
 
+  const today = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+  const hasNewFormat = !!(report.personal_letter || report.priority_actions || report.closing_message);
+
   return (
-    <ScrollArea className="h-full">
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6 print:max-w-none print:px-8">
-        <div className="flex items-center justify-between mb-6 print:hidden">
-          <Button variant="ghost" onClick={onBackToChat} className="gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            Torna alla Chat
-          </Button>
+    <div className="flex h-full print:block">
+      {chapters.length > 0 && (
+        <div className={cn(
+          "flex-shrink-0 border-r border-border/60 bg-card transition-all duration-300 print:hidden",
+          sidebarOpen ? "w-64" : "w-0 overflow-hidden"
+        )}>
+          <div className="p-4 border-b border-border/40">
+            <h3 className="font-bold text-sm text-foreground">Indice</h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {chapters.length} capitoli
+            </p>
+          </div>
+          <ScrollArea className="h-[calc(100%-60px)]">
+            <div className="p-2 space-y-0.5">
+              {chapters.map((ch) => (
+                <button
+                  key={ch.id}
+                  onClick={() => scrollToChapter(ch.id)}
+                  className={cn(
+                    "w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center gap-2",
+                    activeChapter === ch.id
+                      ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 font-semibold"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  {ch.number && (
+                    <span className="text-[10px] font-bold opacity-50 w-4 flex-shrink-0">{ch.number}</span>
+                  )}
+                  {!ch.number && <ch.icon className="w-3 h-3 flex-shrink-0 opacity-50" />}
+                  <span className="truncate">{ch.title}</span>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-card flex-shrink-0 print:hidden">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleShare} className="gap-2">
-              <Share2 className="w-4 h-4" />
+            <Button variant="ghost" size="sm" onClick={onBackToChat} className="gap-1.5">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Chat
+            </Button>
+            {chapters.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)} className="gap-1.5">
+                <BookOpen className="w-3.5 h-3.5" />
+                {sidebarOpen ? "Nascondi indice" : "Mostra indice"}
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleShare} className="gap-1.5">
+              <Share2 className="w-3.5 h-3.5" />
               Condividi
             </Button>
             <Button
               size="sm"
-              onClick={handlePrint}
-              className="gap-2 bg-gradient-to-r from-indigo-500 to-violet-600 text-white"
+              onClick={handleDownloadPdf}
+              className="gap-1.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-3.5 h-3.5" />
               Scarica PDF
             </Button>
           </div>
         </div>
 
-        {report.client_profile && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <SectionCard index={0} icons={SECTION_ICONS}>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {report.client_profile.business_type && (
-                  <InfoField label="Tipo Attività" value={report.client_profile.business_type} />
-                )}
-                {report.client_profile.sector && (
-                  <InfoField label="Settore" value={report.client_profile.sector} />
-                )}
-                {report.client_profile.niche && (
-                  <InfoField label="Nicchia" value={report.client_profile.niche} />
-                )}
-                {report.client_profile.scale && (
-                  <InfoField label="Scala" value={report.client_profile.scale} />
-                )}
-                {report.client_profile.team_size && (
-                  <InfoField label="Team" value={report.client_profile.team_size} />
-                )}
-                {report.client_profile.digital_maturity && (
-                  <InfoField label="Maturità Digitale" value={report.client_profile.digital_maturity} />
-                )}
-                {report.client_profile.sales_method && (
-                  <InfoField label="Metodo Vendita" value={report.client_profile.sales_method} />
-                )}
-                {report.client_profile.budget && (
-                  <InfoField label="Budget" value={report.client_profile.budget} />
-                )}
-              </div>
-              {report.client_profile.communication_channels && report.client_profile.communication_channels.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mr-1 self-center">Canali:</span>
-                  {report.client_profile.communication_channels.map((ch, i) => (
-                    <Badge key={i} variant="outline" className="text-[10px]">
-                      {ch}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              {report.client_profile.main_pain_point && (
-                <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
-                  <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">
-                    Pain Point Principale
-                  </p>
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
-                    {report.client_profile.main_pain_point}
-                  </p>
-                </div>
-              )}
-              {report.client_profile.goals && report.client_profile.goals.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {report.client_profile.goals.map((goal, i) => (
-                    <Badge key={i} variant="secondary" className="text-xs">
-                      <Target className="w-3 h-3 mr-1" />
-                      {goal}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </SectionCard>
-          </motion.div>
-        )}
+        <ScrollArea className="flex-1" ref={contentRef}>
+          <div className="max-w-3xl mx-auto px-6 py-8 space-y-10 print:max-w-none print:px-12 print:py-0">
 
-        {report.diagnosis && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <SectionCard index={1} icons={SECTION_ICONS}>
-              <div className="grid md:grid-cols-2 gap-4">
-                {report.diagnosis.current_state && (
-                  <div className="p-4 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-200/50 dark:border-red-800/30">
-                    <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">
-                      Dove Sei Ora
-                    </p>
-                    <p className="text-sm text-red-800 dark:text-red-200 leading-relaxed">
-                      {report.diagnosis.current_state}
-                    </p>
-                  </div>
-                )}
-                {report.diagnosis.desired_state && (
-                  <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30">
-                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2">
-                      Dove Vuoi Arrivare
-                    </p>
-                    <p className="text-sm text-emerald-800 dark:text-emerald-200 leading-relaxed">
-                      {report.diagnosis.desired_state}
-                    </p>
-                  </div>
-                )}
+            <div className="text-center py-12 print:py-16 print:break-after-page">
+              <div className="w-16 h-1 bg-gradient-to-r from-indigo-500 to-violet-600 mx-auto mb-8 rounded-full" />
+              <h1 className="text-3xl font-bold text-foreground tracking-tight print:text-4xl">
+                PIANO STRATEGICO
+              </h1>
+              <h2 className="text-2xl font-light text-foreground/60 mt-1 print:text-3xl">
+                PERSONALIZZATO
+              </h2>
+              <div className="mt-6 space-y-1">
+                <p className="text-sm text-muted-foreground">{today}</p>
+                <p className="text-sm text-muted-foreground">Documento riservato</p>
               </div>
-              {report.diagnosis.gap_analysis && (
-                <div className="mt-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-border/60">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                    Analisi Gap
-                  </p>
-                  <p className="text-sm text-foreground leading-relaxed">
-                    {report.diagnosis.gap_analysis}
-                  </p>
+              {report.client_profile?.name && (
+                <div className="mt-8 pt-6 border-t border-border/40 inline-block px-8">
+                  <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Preparato per</p>
+                  <p className="text-lg font-semibold text-foreground">{report.client_profile.name}</p>
+                  {report.client_profile.business_type && (
+                    <p className="text-sm text-muted-foreground mt-0.5">{report.client_profile.business_type}</p>
+                  )}
                 </div>
               )}
-              {report.diagnosis.key_challenges && report.diagnosis.key_challenges.length > 0 && (
-                <div className="mt-3 space-y-1.5">
-                  {report.diagnosis.key_challenges.map((ch, i) => (
-                    <div key={i} className="flex items-start gap-2 text-sm">
-                      <span className="text-red-500 mt-0.5">!</span>
-                      <span className="text-foreground">{ch}</span>
+            </div>
+
+            {report.personal_letter && (
+              <div id="lettera" ref={setChapterRef("lettera")} className="print:break-before-page">
+                <ChapterHeader icon={FileText} title="Lettera Personale" />
+                <div className="mt-6 space-y-4">
+                  {report.personal_letter.split('\n\n').map((paragraph, i) => (
+                    <p key={i} className="text-[15px] leading-7 text-foreground/90">{paragraph}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {report.client_profile && (
+              <div id="profilo" ref={setChapterRef("profilo")} className="print:break-before-page">
+                <ChapterHeader number="01" title="Profilo Cliente" icon={User} />
+                <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {report.client_profile.business_type && <InfoField label="Tipo Attività" value={report.client_profile.business_type} />}
+                  {report.client_profile.sector && <InfoField label="Settore" value={report.client_profile.sector} />}
+                  {report.client_profile.niche && <InfoField label="Nicchia" value={report.client_profile.niche} />}
+                  {report.client_profile.scale && <InfoField label="Scala" value={report.client_profile.scale} />}
+                  {report.client_profile.team_size && <InfoField label="Team" value={report.client_profile.team_size} />}
+                  {report.client_profile.digital_maturity && <InfoField label="Maturità Digitale" value={report.client_profile.digital_maturity} />}
+                  {report.client_profile.sales_method && <InfoField label="Metodo Vendita" value={report.client_profile.sales_method} />}
+                  {report.client_profile.budget && <InfoField label="Budget" value={report.client_profile.budget} />}
+                  {report.client_profile.website && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Sito Web</p>
+                      <a href={report.client_profile.website} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-indigo-600 hover:underline flex items-center gap-1">
+                        <Globe className="w-3 h-3" />{report.client_profile.website.replace(/^https?:\/\//, '')}
+                      </a>
                     </div>
-                  ))}
+                  )}
+                  {report.client_profile.city && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Città</p>
+                      <p className="text-sm font-medium text-foreground flex items-center gap-1"><MapPin className="w-3 h-3 text-muted-foreground" />{report.client_profile.city}</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </SectionCard>
-          </motion.div>
-        )}
-
-        {report.recommended_packages && report.recommended_packages.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <SectionCard index={2} icons={SECTION_ICONS}>
-              <div className="space-y-4">
-                {report.recommended_packages.map((pkg, i) => (
-                  <PackageCard key={i} pkg={pkg} index={i} />
-                ))}
+                {report.client_profile.communication_channels && report.client_profile.communication_channels.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mr-1 self-center">Canali:</span>
+                    {report.client_profile.communication_channels.map((ch, i) => (
+                      <Badge key={i} variant="outline" className="text-[10px]">{ch}</Badge>
+                    ))}
+                  </div>
+                )}
+                {report.client_profile.main_pain_point && (
+                  <div className="mt-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
+                    <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Pain Point Principale</p>
+                    <p className="text-sm text-amber-800 dark:text-amber-200">{report.client_profile.main_pain_point}</p>
+                  </div>
+                )}
+                {report.client_profile.goals && report.client_profile.goals.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {report.client_profile.goals.map((goal, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs"><Target className="w-3 h-3 mr-1" />{goal}</Badge>
+                    ))}
+                  </div>
+                )}
               </div>
-            </SectionCard>
-          </motion.div>
-        )}
+            )}
 
-        {!report.recommended_packages && report.recommended_modules && report.recommended_modules.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <SectionCard index={2} icons={SECTION_ICONS}>
-              <div className="grid md:grid-cols-2 gap-3">
-                {report.recommended_modules.map((mod, i) => {
-                  const prio = PRIORITY_COLORS[mod.priority] || PRIORITY_COLORS.core;
-                  const complexityLevel = COMPLEXITY_BARS[mod.complexity] || 1;
-                  return (
-                    <div
-                      key={i}
-                      className={cn(
-                        "p-4 rounded-xl border",
-                        prio.border,
-                        prio.bg
-                      )}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className={cn("font-semibold text-sm", prio.text)}>
-                          {mod.name}
-                        </h4>
-                        <Badge
-                          variant="outline"
-                          className={cn("text-[10px] capitalize", prio.text, prio.border)}
-                        >
-                          {mod.priority}
-                        </Badge>
+            {report.diagnosis && (
+              <div id="diagnosi" ref={setChapterRef("diagnosi")} className="print:break-before-page">
+                <ChapterHeader number="02" title="La Diagnosi" icon={Stethoscope} />
+                <div className="mt-6 space-y-6">
+                  <div className="grid md:grid-cols-2 gap-5">
+                    {report.diagnosis.current_state && (
+                      <div className="p-5 rounded-xl bg-red-50/60 dark:bg-red-900/10 border border-red-200/60 dark:border-red-800/30">
+                        <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-3">Dove Sei Ora</p>
+                        <p className="text-sm text-red-800 dark:text-red-200 leading-relaxed">{report.diagnosis.current_state}</p>
                       </div>
-                      <p className="text-xs text-foreground/80 mb-3 leading-relaxed">
-                        {mod.reason}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-muted-foreground">Complessità:</span>
-                          <div className="flex gap-0.5">
-                            {[1, 2, 3].map((level) => (
-                              <div
-                                key={level}
-                                className={cn(
-                                  "w-3 h-1.5 rounded-full",
-                                  level <= complexityLevel
-                                    ? "bg-current opacity-60"
-                                    : "bg-slate-200 dark:bg-slate-700"
-                                )}
-                                style={{
-                                  color:
-                                    complexityLevel === 1
-                                      ? "#22c55e"
-                                      : complexityLevel === 2
-                                      ? "#f59e0b"
-                                      : "#ef4444",
-                                }}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground capitalize">
-                            {mod.complexity}
-                          </span>
+                    )}
+                    {report.diagnosis.desired_state && (
+                      <div className="p-5 rounded-xl bg-emerald-50/60 dark:bg-emerald-900/10 border border-emerald-200/60 dark:border-emerald-800/30">
+                        <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-3">Dove Vuoi Arrivare</p>
+                        <p className="text-sm text-emerald-800 dark:text-emerald-200 leading-relaxed">{report.diagnosis.desired_state}</p>
+                      </div>
+                    )}
+                  </div>
+                  {report.diagnosis.gap_analysis && (
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-border/60">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Analisi Gap</p>
+                      <p className="text-sm text-foreground leading-relaxed">{report.diagnosis.gap_analysis}</p>
+                    </div>
+                  )}
+                  {report.diagnosis.key_challenges && report.diagnosis.key_challenges.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sfide Principali</p>
+                      {report.diagnosis.key_challenges.map((ch, i) => (
+                        <div key={i} className="flex items-start gap-2.5 text-sm">
+                          <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-foreground leading-relaxed">{ch}</span>
                         </div>
-                        {mod.config_link && (
-                          <a
-                            href={mod.config_link}
-                            className="text-[10px] text-indigo-500 hover:underline flex items-center gap-0.5"
-                          >
-                            Configura <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
-                        )}
+                      ))}
+                    </div>
+                  )}
+
+                  {report.diagnosis.diagnostic_table && report.diagnosis.diagnostic_table.length > 0 && (
+                    <div className="print:break-inside-avoid">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Diagnosi per Area</p>
+                      <div className="border border-border/60 rounded-xl overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-slate-50 dark:bg-slate-800/80">
+                              <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Area</th>
+                              <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stato Attuale</th>
+                              <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Impatto</th>
+                              <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Nota</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {report.diagnosis.diagnostic_table.map((row, i) => {
+                              const imp = IMPATTO_COLORS[row.impatto] || IMPATTO_COLORS.medio;
+                              return (
+                                <tr key={i} className="border-t border-border/40">
+                                  <td className="px-4 py-3 font-medium text-foreground">{row.area}</td>
+                                  <td className="px-4 py-3 text-foreground/80">{row.stato}</td>
+                                  <td className="px-4 py-3 text-center">
+                                    <Badge variant="outline" className={cn("text-[10px] capitalize", imp.text, imp.border, imp.bg)}>
+                                      {row.impatto}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-4 py-3 text-muted-foreground text-xs hidden md:table-cell">{row.nota}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </SectionCard>
-          </motion.div>
-        )}
+                  )}
 
-        {report.roadmap && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <SectionCard index={3} icons={SECTION_ICONS}>
-              <div className="grid md:grid-cols-3 gap-4">
-                {report.roadmap.week1 && report.roadmap.week1.length > 0 && (
-                  <RoadmapColumn
-                    title="Settimana 1"
-                    subtitle="Fondamenta"
-                    items={report.roadmap.week1}
-                    color="emerald"
-                  />
-                )}
-                {report.roadmap.weeks2_4 && report.roadmap.weeks2_4.length > 0 && (
-                  <RoadmapColumn
-                    title="Settimane 2-4"
-                    subtitle="Sviluppo"
-                    items={report.roadmap.weeks2_4}
-                    color="blue"
-                  />
-                )}
-                {report.roadmap.month2_plus && report.roadmap.month2_plus.length > 0 && (
-                  <RoadmapColumn
-                    title="Mese 2+"
-                    subtitle="Espansione"
-                    items={report.roadmap.month2_plus}
-                    color="violet"
-                  />
-                )}
+                  {report.diagnosis.key_insight && (
+                    <InsightBox text={report.diagnosis.key_insight} />
+                  )}
+                </div>
               </div>
-            </SectionCard>
-          </motion.div>
-        )}
+            )}
 
-        {report.quick_wins && report.quick_wins.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <SectionCard index={4} icons={SECTION_ICONS}>
-              <div className="space-y-3">
-                {report.quick_wins.map((qw, i) => (
-                  <div
-                    key={i}
-                    className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
-                        {i + 1}
+            {report.recommended_packages && report.recommended_packages.length > 0 && (
+              report.recommended_packages.map((pkg, i) => (
+                <div key={i} id={`pkg-${i}`} ref={setChapterRef(`pkg-${i}`)} className="print:break-before-page">
+                  <ChapterHeader
+                    number={String(i + 3).padStart(2, '0')}
+                    title={pkg.package_name}
+                    subtitle={pkg.subtitle}
+                    icon={Package}
+                    score={pkg.score}
+                    scoreLabel={pkg.score_label}
+                    priority={pkg.priority}
+                  />
+                  <div className="mt-6 space-y-6">
+                    {pkg.reason && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Perché per te</p>
+                        <p className="text-[15px] leading-7 text-foreground/90">{pkg.reason}</p>
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="font-semibold text-sm text-foreground">
-                            {qw.title}
-                          </h4>
-                          {qw.estimated_time && (
-                            <Badge variant="outline" className="text-[10px]">
-                              <Clock className="w-2.5 h-2.5 mr-1" />
-                              {qw.estimated_time}
-                            </Badge>
+                    )}
+
+                    {pkg.whats_good && (
+                      <div className="p-5 rounded-xl bg-emerald-50/60 dark:bg-emerald-900/10 border border-emerald-200/60 dark:border-emerald-800/30 print:break-inside-avoid">
+                        <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-3">Cosa Hai Fatto Bene</p>
+                        <div className="space-y-3">
+                          {pkg.whats_good.split('\n\n').map((p, j) => (
+                            <p key={j} className="text-sm text-emerald-900 dark:text-emerald-200 leading-relaxed">{p}</p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {pkg.whats_wrong && (
+                      <div className="p-5 rounded-xl bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200/60 dark:border-amber-800/30 print:break-inside-avoid">
+                        <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-3">Cosa Non Funziona</p>
+                        <div className="space-y-3">
+                          {pkg.whats_wrong.split('\n\n').map((p, j) => (
+                            <p key={j} className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">{p}</p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {pkg.how_to_fix && pkg.how_to_fix.length > 0 && (
+                      <div className="print:break-inside-avoid">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Come Correggere — Azioni Concrete</p>
+                        <div className="space-y-3">
+                          {pkg.how_to_fix.map((action, j) => (
+                            <div key={j} className="flex items-start gap-3 p-3 rounded-lg bg-indigo-50/40 dark:bg-indigo-900/10 border border-indigo-200/40 dark:border-indigo-800/20">
+                              <ArrowRight className="w-4 h-4 text-indigo-500 mt-0.5 flex-shrink-0" />
+                              <p className="text-sm text-foreground leading-relaxed">{action.replace(/^→\s*/, '')}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {pkg.critical_diagnosis && (
+                      <InsightBox text={pkg.critical_diagnosis} variant="critical" />
+                    )}
+
+                    {pkg.modules && pkg.modules.length > 0 && (
+                      <div className="print:break-inside-avoid">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                          Moduli Inclusi ({pkg.modules.length})
+                        </p>
+                        <div className="space-y-1.5">
+                          {pkg.modules.map((mod, j) => {
+                            const cl = COMPLEXITY_BARS[mod.complexity] || 1;
+                            return (
+                              <div key={j} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-border/40">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                  <span className="text-sm font-medium text-foreground truncate">{mod.name}</span>
+                                </div>
+                                <div className="flex items-center gap-3 flex-shrink-0">
+                                  <div className="flex items-center gap-1">
+                                    <div className="flex gap-0.5">
+                                      {[1, 2, 3].map((level) => (
+                                        <div key={level} className={cn("w-2.5 h-1 rounded-full", level <= cl ? "bg-current opacity-60" : "bg-slate-200 dark:bg-slate-700")}
+                                          style={{ color: cl === 1 ? "#22c55e" : cl === 2 ? "#f59e0b" : "#ef4444" }}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                  {mod.setup_time && <span className="text-[10px] text-muted-foreground">{mod.setup_time}</span>}
+                                  {mod.config_link && (
+                                    <a href={mod.config_link} onClick={(e) => e.stopPropagation()} className="text-[10px] text-indigo-500 hover:underline flex items-center gap-0.5">
+                                      <ExternalLink className="w-2.5 h-2.5" />
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                      {pkg.timeline && (
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Setup: {pkg.timeline}</span>
+                      )}
+                      {pkg.connection && (
+                        <span className="flex items-center gap-1"><ArrowRight className="w-3 h-3 text-indigo-500" /> {pkg.connection}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+
+            {report.roadmap && (
+              <div id="roadmap" ref={setChapterRef("roadmap")} className="print:break-before-page">
+                <ChapterHeader number={String((report.recommended_packages?.length || 0) + 3).padStart(2, '0')} title="Roadmap Operativa" subtitle="Piano settimana per settimana" icon={Calendar} />
+                <div className="mt-6">
+                  {(report.roadmap.week1 as RoadmapWeek)?.azioni_prioritarie ? (
+                    <div className="space-y-5">
+                      {[report.roadmap.week1 as RoadmapWeek, report.roadmap.week2, report.roadmap.week3, report.roadmap.week4].filter(Boolean).map((week, i) => (
+                        week && (
+                          <div key={i} className="p-5 rounded-xl border border-border/60 bg-card print:break-inside-avoid">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h4 className="font-bold text-sm text-foreground">Settimana {i + 1}</h4>
+                                <p className="text-xs text-muted-foreground">{week.titolo}</p>
+                              </div>
+                              {week.pacchetti_coinvolti && week.pacchetti_coinvolti.length > 0 && (
+                                <div className="flex gap-1">
+                                  {week.pacchetti_coinvolti.map((p, j) => (
+                                    <Badge key={j} variant="outline" className="text-[9px]">{p}</Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-2 mb-3">
+                              {week.azioni_prioritarie.map((azione, j) => (
+                                <div key={j} className="flex items-start gap-2 text-sm">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 flex-shrink-0" />
+                                  <span className="text-foreground/80 leading-relaxed">{azione}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex flex-wrap gap-4 text-xs pt-2 border-t border-border/40">
+                              <div><span className="font-semibold text-muted-foreground">Obiettivo:</span> <span className="text-foreground">{week.obiettivo}</span></div>
+                              {week.kpi_target && <div><span className="font-semibold text-muted-foreground">KPI:</span> <span className="text-foreground">{week.kpi_target}</span></div>}
+                            </div>
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid md:grid-cols-3 gap-4">
+                      {report.roadmap.week1 && Array.isArray(report.roadmap.week1) && (
+                        <LegacyRoadmapColumn title="Settimana 1" subtitle="Fondamenta" items={report.roadmap.week1} color="emerald" />
+                      )}
+                      {report.roadmap.weeks2_4 && Array.isArray(report.roadmap.weeks2_4) && (
+                        <LegacyRoadmapColumn title="Settimane 2-4" subtitle="Sviluppo" items={report.roadmap.weeks2_4} color="blue" />
+                      )}
+                      {report.roadmap.month2_plus && Array.isArray(report.roadmap.month2_plus) && (
+                        <LegacyRoadmapColumn title="Mese 2+" subtitle="Espansione" items={report.roadmap.month2_plus} color="violet" />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {report.quick_wins && report.quick_wins.length > 0 && (
+              <div id="quickwins" ref={setChapterRef("quickwins")} className="print:break-before-page">
+                <ChapterHeader number={String((report.recommended_packages?.length || 0) + 4).padStart(2, '0')} title="Quick Wins" subtitle="Azioni rapide ad alto impatto" icon={Zap} />
+                <div className="mt-6 space-y-4">
+                  {report.quick_wins.map((qw, i) => (
+                    <div key={i} className="p-5 rounded-xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30 print:break-inside-avoid">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">{i + 1}</div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-semibold text-sm text-foreground">{qw.title}</h4>
+                            {qw.estimated_time && <Badge variant="outline" className="text-[10px]"><Clock className="w-2.5 h-2.5 mr-1" />{qw.estimated_time}</Badge>}
+                          </div>
+                          <ol className="space-y-1 mt-2">
+                            {qw.steps.map((step, j) => (
+                              <li key={j} className="text-xs text-foreground/80 flex items-start gap-2">
+                                <span className="text-emerald-500 font-semibold mt-0.5">{j + 1}.</span>{step}
+                              </li>
+                            ))}
+                          </ol>
+                          {qw.link && (
+                            <a href={qw.link} className="text-xs text-indigo-500 hover:underline mt-2 inline-flex items-center gap-1">
+                              Vai alla configurazione <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
                           )}
                         </div>
-                        <ol className="space-y-1 mt-2">
-                          {qw.steps.map((step, j) => (
-                            <li
-                              key={j}
-                              className="text-xs text-foreground/80 flex items-start gap-2"
-                            >
-                              <span className="text-emerald-500 font-semibold mt-0.5">
-                                {j + 1}.
-                              </span>
-                              {step}
-                            </li>
-                          ))}
-                        </ol>
-                        {qw.link && (
-                          <a
-                            href={qw.link}
-                            className="text-xs text-indigo-500 hover:underline mt-2 inline-flex items-center gap-1"
-                          >
-                            Vai alla configurazione{" "}
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
-                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </SectionCard>
-          </motion.div>
-        )}
+            )}
 
-        {report.success_metrics && report.success_metrics.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-          >
-            <SectionCard index={5} icons={SECTION_ICONS}>
-              <div className="grid md:grid-cols-2 gap-3">
-                {report.success_metrics.map((metric, i) => (
-                  <div
-                    key={i}
-                    className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-200/50 dark:border-indigo-800/30"
-                  >
-                    <div className="flex items-start gap-3">
-                      <TrendingUp className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className="font-semibold text-sm text-foreground">
-                          {metric.kpi}
-                        </h4>
-                        <div className="mt-2 space-y-1">
-                          <div className="flex items-center gap-2 text-xs">
-                            <Target className="w-3 h-3 text-emerald-500" />
-                            <span className="text-muted-foreground">Target:</span>
-                            <span className="font-medium text-foreground">
-                              {metric.target}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <BarChart3 className="w-3 h-3 text-blue-500" />
-                            <span className="text-muted-foreground">Misura:</span>
-                            <span className="text-foreground">{metric.measurement}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <Clock className="w-3 h-3 text-amber-500" />
-                            <span className="text-muted-foreground">Periodo:</span>
-                            <span className="text-foreground">{metric.timeframe}</span>
+            {report.success_metrics && report.success_metrics.length > 0 && (
+              <div id="metriche" ref={setChapterRef("metriche")} className="print:break-before-page">
+                <ChapterHeader number={String((report.recommended_packages?.length || 0) + 5).padStart(2, '0')} title="Metriche di Successo" icon={BarChart3} />
+                <div className="mt-6 grid md:grid-cols-2 gap-4">
+                  {report.success_metrics.map((metric, i) => (
+                    <div key={i} className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-200/50 dark:border-indigo-800/30 print:break-inside-avoid">
+                      <div className="flex items-start gap-3">
+                        <TrendingUp className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-sm text-foreground">{metric.kpi}</h4>
+                          <div className="mt-2 space-y-1">
+                            <div className="flex items-center gap-2 text-xs"><Target className="w-3 h-3 text-emerald-500" /><span className="text-muted-foreground">Target:</span><span className="font-medium text-foreground">{metric.target}</span></div>
+                            <div className="flex items-center gap-2 text-xs"><BarChart3 className="w-3 h-3 text-blue-500" /><span className="text-muted-foreground">Misura:</span><span className="text-foreground">{metric.measurement}</span></div>
+                            <div className="flex items-center gap-2 text-xs"><Clock className="w-3 h-3 text-amber-500" /><span className="text-muted-foreground">Periodo:</span><span className="text-foreground">{metric.timeframe}</span></div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </SectionCard>
-          </motion.div>
-        )}
+            )}
 
-        <div className="h-8 print:hidden" />
+            {report.priority_actions && report.priority_actions.length > 0 && (
+              <div id="azioni" ref={setChapterRef("azioni")} className="print:break-before-page">
+                <ChapterHeader
+                  number={String((report.recommended_packages?.length || 0) + 6).padStart(2, '0')}
+                  title="Le Azioni di Questa Settimana"
+                  subtitle="Quello che fai nei prossimi 5 giorni decide il risultato"
+                  icon={Lightbulb}
+                />
+                <div className="mt-6 space-y-6">
+                  {report.priority_actions.map((action, i) => (
+                    <div key={i} className="p-6 rounded-xl border-2 border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/30 dark:bg-indigo-900/10 print:break-inside-avoid">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 text-white font-bold text-xl">
+                          {i + 1}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-base text-foreground mb-2">{action.titolo}</h4>
+                          <p className="text-sm text-foreground/80 leading-relaxed mb-3">{action.descrizione}</p>
+                          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {action.tempo}</span>
+                            <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3 text-emerald-500" /> {action.impatto}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {report.closing_message && (
+              <div id="chiusura" ref={setChapterRef("chiusura")} className="print:break-before-page">
+                <div className="py-8 border-t border-border/40">
+                  <div className="max-w-2xl mx-auto text-center">
+                    <div className="space-y-4">
+                      {report.closing_message.split('\n\n').map((p, i) => (
+                        <p key={i} className="text-[15px] leading-7 text-foreground/80 italic">{p}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="text-center py-6 border-t border-border/40 text-xs text-muted-foreground print:fixed print:bottom-0 print:left-0 print:right-0 print:py-4">
+              Documento riservato — uso esclusivo del destinatario
+            </div>
+
+            <div className="h-8 print:hidden" />
+          </div>
+        </ScrollArea>
       </div>
 
       <style>{`
         @media print {
           .print\\:hidden { display: none !important; }
+          .print\\:block { display: block !important; }
           .print\\:max-w-none { max-width: none !important; }
-          .print\\:px-8 { padding-left: 2rem !important; padding-right: 2rem !important; }
+          .print\\:px-12 { padding-left: 3rem !important; padding-right: 3rem !important; }
+          .print\\:py-0 { padding-top: 0 !important; padding-bottom: 0 !important; }
+          .print\\:py-16 { padding-top: 4rem !important; padding-bottom: 4rem !important; }
+          .print\\:text-4xl { font-size: 2.25rem !important; }
+          .print\\:text-3xl { font-size: 1.875rem !important; }
+          .print\\:break-before-page { break-before: page !important; }
+          .print\\:break-after-page { break-after: page !important; }
+          .print\\:break-inside-avoid { break-inside: avoid !important; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          @page { margin: 2cm 2.5cm; }
         }
       `}</style>
-    </ScrollArea>
+    </div>
   );
 }
 
-function PackageCard({ pkg, index }: { pkg: RecommendedPackage; index: number }) {
-  const [expanded, setExpanded] = useState(index === 0);
-  const prio = PRIORITY_COLORS[pkg.priority] || PRIORITY_COLORS.core;
+function ChapterHeader({
+  number,
+  title,
+  subtitle,
+  icon: Icon,
+  score,
+  scoreLabel,
+  priority,
+}: {
+  number?: string;
+  title: string;
+  subtitle?: string;
+  icon: any;
+  score?: number;
+  scoreLabel?: string;
+  priority?: string;
+}) {
+  const scoreColor = score !== undefined
+    ? score >= 7 ? "text-emerald-600 border-emerald-400" : score >= 4 ? "text-amber-600 border-amber-400" : "text-red-600 border-red-400"
+    : "";
+
+  const priorityColors: Record<string, string> = {
+    fondamenta: "bg-emerald-100 text-emerald-700 border-emerald-300",
+    core: "bg-blue-100 text-blue-700 border-blue-300",
+    avanzato: "bg-violet-100 text-violet-700 border-violet-300",
+  };
 
   return (
-    <div className={cn("rounded-xl border overflow-hidden transition-all", prio.border)}>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className={cn(
-          "w-full p-4 flex items-center gap-3 text-left transition-colors",
-          prio.bg,
-          "hover:opacity-90"
+    <div className="flex items-start gap-4 pb-4 border-b-2 border-border/40">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        {number && (
+          <span className="text-3xl font-extralight text-muted-foreground/40 tracking-tighter leading-none">{number}</span>
         )}
-      >
-        <div className={cn(
-          "w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center flex-shrink-0 text-white font-bold text-sm",
-          pkg.priority === 'fondamenta' ? 'from-emerald-500 to-emerald-600' :
-          pkg.priority === 'avanzato' ? 'from-violet-500 to-violet-600' :
-          'from-blue-500 to-blue-600'
-        )}>
-          {index + 1}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h4 className={cn("font-bold text-sm", prio.text)}>
-              {pkg.package_name}
-            </h4>
-            <Badge
-              variant="outline"
-              className={cn("text-[10px] capitalize flex-shrink-0", prio.text, prio.border)}
-            >
-              {pkg.priority}
-            </Badge>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl font-bold text-foreground tracking-tight">{title}</h2>
+            {priority && priorityColors[priority] && (
+              <Badge variant="outline" className={cn("text-[10px] capitalize", priorityColors[priority])}>{priority}</Badge>
+            )}
           </div>
-          {pkg.subtitle && (
-            <p className="text-xs text-muted-foreground mt-0.5">{pkg.subtitle}</p>
-          )}
+          {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
+          {scoreLabel && <p className="text-[10px] text-muted-foreground mt-0.5">{scoreLabel}</p>}
         </div>
-        {pkg.timeline && (
-          <Badge variant="outline" className="text-[10px] flex-shrink-0 hidden sm:flex">
-            <Clock className="w-2.5 h-2.5 mr-1" />
-            {pkg.timeline}
-          </Badge>
-        )}
-        {expanded ? (
-          <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-        )}
-      </button>
-
-      {expanded && (
-        <div className="p-4 border-t border-border/40 space-y-4 bg-card">
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-              Perché per te
-            </p>
-            <p className="text-sm text-foreground leading-relaxed">
-              {pkg.reason}
-            </p>
+      </div>
+      {score !== undefined && (
+        <div className={cn("w-14 h-14 rounded-full border-[3px] flex items-center justify-center flex-shrink-0", scoreColor)}>
+          <div className="text-center">
+            <span className="text-lg font-bold leading-none">{score}</span>
+            <span className="text-[8px] text-muted-foreground block">/10</span>
           </div>
-
-          {pkg.modules && pkg.modules.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                Moduli Inclusi ({pkg.modules.length})
-              </p>
-              <div className="space-y-2">
-                {pkg.modules.map((mod, j) => {
-                  const complexityLevel = COMPLEXITY_BARS[mod.complexity] || 1;
-                  return (
-                    <div
-                      key={j}
-                      className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-border/40"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                        <span className="text-sm font-medium text-foreground truncate">
-                          {mod.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        <div className="flex items-center gap-1">
-                          <div className="flex gap-0.5">
-                            {[1, 2, 3].map((level) => (
-                              <div
-                                key={level}
-                                className={cn(
-                                  "w-2.5 h-1 rounded-full",
-                                  level <= complexityLevel
-                                    ? "bg-current opacity-60"
-                                    : "bg-slate-200 dark:bg-slate-700"
-                                )}
-                                style={{
-                                  color:
-                                    complexityLevel === 1
-                                      ? "#22c55e"
-                                      : complexityLevel === 2
-                                      ? "#f59e0b"
-                                      : "#ef4444",
-                                }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        {mod.setup_time && (
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                            {mod.setup_time}
-                          </span>
-                        )}
-                        {mod.config_link && (
-                          <a
-                            href={mod.config_link}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-[10px] text-indigo-500 hover:underline flex items-center gap-0.5"
-                          >
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {pkg.connection && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-200/50 dark:border-indigo-800/30">
-              <ArrowRight className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                {pkg.connection}
-              </p>
-            </div>
-          )}
         </div>
       )}
     </div>
   );
 }
 
-function SectionCard({
-  index,
-  children,
-  icons,
-}: {
-  index: number;
-  children: React.ReactNode;
-  icons: typeof SECTION_ICONS_PACKAGES;
-}) {
-  const section = icons[index];
-  const Icon = section.icon;
-
+function InsightBox({ text, variant = "insight" }: { text: string; variant?: "insight" | "critical" }) {
+  const isC = variant === "critical";
   return (
-    <div className="rounded-2xl border border-border/60 bg-card overflow-hidden shadow-sm">
-      <div className={cn("h-1 bg-gradient-to-r", section.gradient)} />
-      <div className="p-5">
-        <div className="flex items-center gap-2.5 mb-4">
-          <div
-            className={cn(
-              "w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center",
-              section.gradient
-            )}
-          >
-            <Icon className="w-4 h-4 text-white" />
-          </div>
-          <h3 className="font-bold text-foreground">{section.label}</h3>
+    <div className={cn(
+      "p-5 rounded-xl border-l-4 print:break-inside-avoid",
+      isC ? "bg-red-50/60 dark:bg-red-900/10 border-red-500 dark:border-red-600" : "bg-amber-50/60 dark:bg-amber-900/10 border-amber-500 dark:border-amber-600"
+    )}>
+      <div className="flex items-start gap-3">
+        <AlertTriangle className={cn("w-5 h-5 flex-shrink-0 mt-0.5", isC ? "text-red-500" : "text-amber-500")} />
+        <div>
+          <p className={cn("text-xs font-bold uppercase tracking-wider mb-1.5", isC ? "text-red-700 dark:text-red-400" : "text-amber-700 dark:text-amber-400")}>
+            {isC ? "Diagnosi Critica" : "Insight Chiave"}
+          </p>
+          <p className={cn("text-sm leading-relaxed", isC ? "text-red-800 dark:text-red-200" : "text-amber-800 dark:text-amber-200")}>{text}</p>
         </div>
-        {children}
       </div>
     </div>
   );
@@ -901,15 +1082,13 @@ function SectionCard({
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
-        {label}
-      </p>
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
       <p className="text-sm font-medium text-foreground">{value}</p>
     </div>
   );
 }
 
-function RoadmapColumn({
+function LegacyRoadmapColumn({
   title,
   subtitle,
   items,
@@ -921,28 +1100,11 @@ function RoadmapColumn({
   color: "emerald" | "blue" | "violet";
 }) {
   const colorMap = {
-    emerald: {
-      bg: "bg-emerald-50/50 dark:bg-emerald-900/10",
-      border: "border-emerald-200/50 dark:border-emerald-800/30",
-      dot: "bg-emerald-500",
-      text: "text-emerald-700 dark:text-emerald-400",
-    },
-    blue: {
-      bg: "bg-blue-50/50 dark:bg-blue-900/10",
-      border: "border-blue-200/50 dark:border-blue-800/30",
-      dot: "bg-blue-500",
-      text: "text-blue-700 dark:text-blue-400",
-    },
-    violet: {
-      bg: "bg-violet-50/50 dark:bg-violet-900/10",
-      border: "border-violet-200/50 dark:border-violet-800/30",
-      dot: "bg-violet-500",
-      text: "text-violet-700 dark:text-violet-400",
-    },
+    emerald: { bg: "bg-emerald-50/50 dark:bg-emerald-900/10", border: "border-emerald-200/50 dark:border-emerald-800/30", dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
+    blue: { bg: "bg-blue-50/50 dark:bg-blue-900/10", border: "border-blue-200/50 dark:border-blue-800/30", dot: "bg-blue-500", text: "text-blue-700 dark:text-blue-400" },
+    violet: { bg: "bg-violet-50/50 dark:bg-violet-900/10", border: "border-violet-200/50 dark:border-violet-800/30", dot: "bg-violet-500", text: "text-violet-700 dark:text-violet-400" },
   };
-
   const c = colorMap[color];
-
   return (
     <div className={cn("p-4 rounded-xl border", c.border, c.bg)}>
       <div className="mb-3">

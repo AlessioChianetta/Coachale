@@ -7,9 +7,75 @@ import {
   Bot,
   FileText,
   Sparkles,
+  Globe,
+  Search,
+  BarChart3,
+  Pencil,
+  CheckCircle2,
 } from "lucide-react";
 import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea } from "@/components/ai-assistant/InputArea";
+
+const GENERATION_PHASES = [
+  { icon: Search, label: "Ricerca informazioni sulla tua attività...", sub: "Google Maps, sito web, presenza online" },
+  { icon: Globe, label: "Analisi della conversazione...", sub: "Pattern, lacune, contraddizioni" },
+  { icon: Pencil, label: "Scrittura del piano strategico...", sub: "Diagnosi, pacchetti, roadmap, azioni" },
+  { icon: BarChart3, label: "Revisione critica del report...", sub: "Coerenza, completezza, qualità" },
+  { icon: CheckCircle2, label: "Finalizzazione...", sub: "Ultimi ritocchi e controllo qualità" },
+];
+
+function GeneratingReportProgress() {
+  const [phaseIndex, setPhaseIndex] = useState(0);
+
+  useEffect(() => {
+    const timings = [8000, 15000, 25000, 12000];
+    let timeout: ReturnType<typeof setTimeout>;
+    let current = 0;
+
+    const advance = () => {
+      current++;
+      if (current < GENERATION_PHASES.length) {
+        setPhaseIndex(current);
+        timeout = setTimeout(advance, timings[current] || 10000);
+      }
+    };
+
+    timeout = setTimeout(advance, timings[0]);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  const phase = GENERATION_PHASES[phaseIndex];
+  const Icon = phase.icon;
+  const progress = ((phaseIndex + 1) / GENERATION_PHASES.length) * 100;
+
+  return (
+    <div className="px-4 py-3 border-t border-border/60 bg-indigo-50/50 dark:bg-indigo-900/10 flex-shrink-0">
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <Loader2 className="w-5 h-5 animate-spin text-indigo-500 absolute inset-0 opacity-30" />
+          <Icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400 relative" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-indigo-700 dark:text-indigo-400">
+            {phase.label}
+          </p>
+          <p className="text-xs text-indigo-500/70">
+            {phase.sub}
+          </p>
+        </div>
+        <span className="text-xs font-medium text-indigo-600/60 flex-shrink-0">
+          {phaseIndex + 1}/{GENERATION_PHASES.length}
+        </span>
+      </div>
+      <div className="mt-2 h-1 bg-indigo-200/50 dark:bg-indigo-800/30 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-indigo-500 to-violet-600 rounded-full transition-all duration-1000 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 interface DeliveryMessage {
   id: string;
@@ -374,19 +440,7 @@ export function DeliveryChat({
       )}
 
       {isGeneratingReport && (
-        <div className="px-4 py-3 border-t border-border/60 bg-indigo-50/50 dark:bg-indigo-900/10 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
-            <div>
-              <p className="text-sm font-medium text-indigo-700 dark:text-indigo-400">
-                Generazione report in corso...
-              </p>
-              <p className="text-xs text-indigo-500/70">
-                Analisi del profilo, mappatura moduli, creazione roadmap
-              </p>
-            </div>
-          </div>
-        </div>
+        <GeneratingReportProgress />
       )}
 
       <div className="p-3 border-t border-border/60 flex-shrink-0">
