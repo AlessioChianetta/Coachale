@@ -1,0 +1,331 @@
+CONDIZIONI DI PAGAMENTO
+Il pagamento sarà corrisposto mediante modalità che il Cliente/Committente avrà cura di accendere come soluzione sottoscritta nel contratto con conseguente pagamento dell'indicato importo secondo il piano prestabilito.
+
+Modalità di pagamento:
+
+Pagamento in unica soluzione
+Pagamento rateale secondo il piano concordato
+Resta inteso che in caso di inerzia del Cliente potrà essere emesso un rimborso entro 30 giorni dalla firma del contratto e avvenuto pagamento.
+
+CORPO DEL CONTRATTO
+PREMESSE
+Il presente Contratto di Partnership Tecnologica (di seguito "Contratto") disciplina i termini e le condizioni per la concessione in licenza d'uso della piattaforma proprietaria di intelligenza artificiale (di seguito "Piattaforma") sviluppata e di proprietà esclusiva del Fornitore.
+
+La Piattaforma costituisce un sistema integrato di gestione aziendale basato su intelligenza artificiale, progettato per la gestione clienti, l'automazione delle comunicazioni, la formazione strutturata e la vendita assistita tramite agenti AI.
+
+Il presente Contratto è strutturato su due livelli complementari:
+
+LIVELLO 1 — COMMERCIALE: disciplina l'oggetto, i servizi inclusi, il modello economico, la durata e le condizioni operative della partnership;
+LIVELLO 2 — PROTEZIONE LEGALE: disciplina la proprietà intellettuale, la responsabilità, le clausole restrittive, la risoluzione e il foro competente.
+LIVELLO 1 — PARTE COMMERCIALE
+ARTICOLO 1 — DEFINIZIONI
+Ai fini del presente Contratto, i seguenti termini assumono il significato di seguito indicato:
+
+"Piattaforma": il sistema software proprietario di intelligenza artificiale, comprensivo di tutti i moduli, le funzionalità, le interfacce, le API, i database e i servizi accessori descritti nel presente Contratto, accessibile via web e ospitato su infrastruttura cloud gestita dal Fornitore.
+
+"Licenza d'Uso": il diritto non esclusivo, non trasferibile e revocabile concesso al Partner di utilizzare la Piattaforma nei limiti e secondo le modalità stabilite dal presente Contratto.
+
+"Orbitale": il nome commerciale della Piattaforma.
+
+"Assistente AI": l'intelligenza artificiale integrata nella Piattaforma Orbitale, personalizzabile e addestrabile sulla base dei documenti e delle istruzioni fornite dall'utilizzatore. Opera con capacità conversazionali, analitiche e generative.
+
+"Licenza Diamond": il pacchetto di accesso alla Piattaforma Orbitale riservato al Partner in qualità di consulente. Comprende l'accesso completo a tutti i moduli: dashboard consulente, gestione clienti, Lead Hub, agenti AI WhatsApp, Knowledge Base, Content Marketing Studio, AI Course Builder, Email Hub, calendario, analytics avanzate. È la licenza oggetto del presente Contratto.
+
+"Licenza Gold": il pacchetto di accesso alla Piattaforma destinato ai clienti finali del Partner (non al Partner stesso). Include: assistente AI con memoria persistente, percorsi formativi strutturati, assistente AI personale, dipendente AI virtuale, Knowledge Base personalizzata, AI Analytics, Script Manager, sistema di gamification Momentum e Streak.
+
+"Licenza Silver": il pacchetto di accesso alla Piattaforma destinato ai clienti finali del Partner (non al Partner stesso), con funzionalità ridotte rispetto alla Gold. Include: assistente AI senza memoria persistente tra le sessioni. Ogni conversazione inizia senza contesto delle precedenti.
+
+"Agente AI WhatsApp": il modulo della Piattaforma che consente la creazione di dipendenti virtuali operanti su WhatsApp Business, in grado di gestire conversazioni automatizzate, qualificare lead, prenotare appuntamenti e fornire assistenza clienti, 24 ore su 24, 7 giorni su 7.
+
+"Knowledge Base": l'archivio documentale digitale alimentabile dal Partner (PDF, DOCX, TXT, URL) dal quale l'intelligenza artificiale attinge per formulare risposte accurate, pertinenti e basate su fonti verificabili, senza inventare informazioni (tecnologia RAG — Retrieval Augmented Generation).
+
+"Lead": un potenziale cliente del Partner che ha manifestato interesse o che viene contattato proattivamente tramite campagne automatizzate.
+
+"Canone Mensile": il corrispettivo fisso ricorrente dovuto dal Partner al Fornitore per l'utilizzo della Piattaforma.
+
+"Revenue Share": la percentuale sulle vendite di licenze Gold e Silver effettuate dal Partner a favore dei propri clienti finali, dovuta al Fornitore in via permanente e irrevocabile.
+
+"Stripe Connect": il sistema di gestione dei pagamenti integrato che consente il tracciamento automatico delle transazioni e la ripartizione dei ricavi tra Fornitore e Partner.
+
+ARTICOLO 2 — OGGETTO DEL CONTRATTO
+2.1. Il Fornitore concede al Partner una Licenza Diamond della Piattaforma Orbitale, non esclusiva, non trasferibile e non sublicenziabile, per la durata e alle condizioni stabilite dal presente Contratto.
+
+2.2. La Licenza Diamond comprende l'accesso a tutti i moduli e le funzionalità della Piattaforma come dettagliati nell'Articolo 3, in qualità di consulente, inclusi gli aggiornamenti e le evoluzioni rilasciate dal Fornitore durante il periodo di validità del Contratto.
+
+2.3. Il Partner acquisisce il diritto di utilizzare la Piattaforma Orbitale per la propria attività e di rivendere licenze Gold e Silver ai propri clienti finali, nel rispetto delle condizioni economiche e operative stabilite nel presente Contratto. Le licenze Gold e Silver sono destinate esclusivamente ai clienti del Partner e non al Partner stesso.
+
+2.4. La Piattaforma è fornita in modalità SaaS (Software as a Service), accessibile via browser web, senza necessità di installazione locale. Il Fornitore si occupa dell'hosting, della manutenzione dell'infrastruttura e degli aggiornamenti tecnici.
+
+ARTICOLO 3 — DESCRIZIONE DEI SERVIZI INCLUSI
+La Piattaforma include i seguenti moduli e funzionalità, qui descritti in dettaglio affinché il Partner abbia piena consapevolezza di ciò che acquisisce.
+
+3.1. Assistenza Clienti AI su WhatsApp — 24/7
+La Piattaforma consente al Partner di attivare agenti AI operanti su WhatsApp Business che funzionano come veri e propri dipendenti virtuali. Questi agenti:
+
+rispondono automaticamente ai messaggi in arrivo dai clienti, a qualsiasi ora del giorno e della notte, senza pause e senza ritardi;
+attingono alla Knowledge Base del Partner per fornire risposte accurate e basate sui documenti caricati (FAQ, listini prezzi, procedure, guide);
+gestiscono le obiezioni più comuni seguendo script personalizzabili con variazioni naturali nel linguaggio;
+eseguono l'escalation automatica a un operatore umano quando il cliente lo richiede esplicitamente, quando l'agente non riesce a rispondere dopo due tentativi, o quando rileva frustrazione nel tono della conversazione;
+inviano check-in settimanali automatici ai clienti, ruotando tra cinque template predefiniti e personalizzando i messaggi con il nome del cliente, l'ultimo esercizio completato e i progressi formativi;
+operano con un ritardo configurabile tra le risposte (da 3 a 8 secondi) per simulare un comportamento naturale e non robotico;
+rispettano fasce orarie configurabili e giorni di attività definiti dal Partner;
+inviano notifiche in tempo reale al Partner quando un cliente prenota un appuntamento o quando si verifica un'escalation.
+3.2. Venditore AI che Qualifica i Lead su WhatsApp
+La Piattaforma mette a disposizione del Partner un sistema completo di acquisizione clienti automatizzato:
+
+a) Lead Hub — Centro di Controllo Acquisizione
+importazione massiva di lead da file Excel e CSV con mappatura automatica delle colonne;
+creazione manuale di singoli lead con tag personalizzabili per fonte, priorità, interesse;
+gestione duplicati intelligente con opzioni di salto, aggiornamento o creazione forzata;
+organizzazione dei lead con tag illimitati;
+visualizzazione dello stato di ogni lead: in attesa, contattato, ha risposto, qualificato, appuntamento fissato, convertito in cliente, perso;
+filtri avanzati per tag, stato, punteggio e campagna di appartenenza.
+b) Lead Scoring Automatico
+punteggio automatico basato sulle interazioni: +10 per risposta, +20 per prenotazione appuntamento, +15 per richiesta informazioni, +5 per clic su link;
+penalizzazioni: -2 per ogni giorno senza risposta, -50 per richiesta di non essere contattato, -10 per messaggio non consegnato;
+classificazione: lead caldo (>70 punti), tiepido (40-70), freddo (<40).
+c) Campagne WhatsApp Automatizzate
+creazione di campagne con nome, descrizione, "uncino" e offerta;
+selezione dei lead per tag, stato o manualmente;
+collegamento a template WhatsApp approvati da Meta;
+modalità "Dry Run" per testare la campagna senza inviare messaggi reali;
+statistiche in tempo reale: messaggi inviati, consegnati, letti, risposte, appuntamenti, conversioni.
+d) Agente AI "Setter" — Il Venditore Virtuale
+contatta proattivamente i lead e gestisce le risposte in arrivo;
+segue uno script di vendita personalizzabile con fasi strutturate: apertura, qualifica, obiezioni, proposta, chiusura;
+qualifica automaticamente i lead attraverso domande strategiche;
+propone fasce orarie per appuntamenti basate sulla disponibilità del calendario;
+prenota automaticamente e invia conferma al lead e notifica al Partner;
+passa al Partner soltanto i lead qualificati e con appuntamento fissato.
+3.3. Intelligenza Artificiale Personalizzata — Strutturata a Livelli
+Licenza Gold — Il Pacchetto Completo
+Consulente AI addestrato con memoria: l'AI ricorda ogni conversazione precedente con il cliente, riprende il discorso dove era stato lasciato, conosce progressi, obiettivi e preferenze;
+Percorsi formativi strutturati: corsi organizzati in moduli e lezioni (testo, video, quiz, file scaricabili), con tracciamento dei progressi e percentuale di completamento;
+Sistema esercizi con feedback: template riutilizzabili, consegna da parte del cliente, revisione con feedback e valutazione;
+Assistente AI personale: disponibile 24/7 per domande sui corsi, aiuto con esercizi, analisi progressi, consigli personalizzati;
+Dipendente AI addestrato: agente AI su WhatsApp, addestrato sulla documentazione specifica del cliente;
+Knowledge Base personalizzata: il cliente può caricare documenti per risposte ancora più accurate;
+AI Analytics: monitoraggio utilizzo con token consumati, richieste, costo stimato, tempo medio di risposta;
+Script Manager: gestione script di vendita con fasi personalizzabili;
+Momentum e Streak: gamification con giorni consecutivi di attività e record personali.
+Licenza Silver — Il Pacchetto Base
+Assistente AI addestrato senza memoria: AI addestrata sulla documentazione aziendale, risponde accuratamente ma ogni sessione inizia senza contesto delle precedenti;
+Accesso alle funzionalità base della Piattaforma con limitazioni rispetto alla Licenza Gold.
+3.4. Onboarding Venditori e Dipendenti
+creazione di account per venditori e dipendenti con invio automatico delle credenziali di accesso via email;
+assegnazione di corsi formativi e percorsi di onboarding strutturati;
+ogni dipendente dispone della propria dashboard con progressi, esercizi, calendario e accesso all'AI;
+monitoraggio dei progressi formativi, revisione esercizi e feedback;
+supporto doppio ruolo: un utente può essere contemporaneamente consulente e cliente nella stessa piattaforma;
+le prime 5 licenze dipendente sono incluse gratuitamente nel pacchetto del Partner.
+3.5. Knowledge Base e AI — Il Cervello Documentale
+caricamento di documenti in formato PDF, DOCX, TXT e URL di pagine web;
+organizzazione per categorie (Servizi e Prezzi, Materiale Formativo, Procedure Interne, FAQ Clienti);
+configurazione granulare dell'accesso: ogni documento può essere reso disponibile all'AI del consulente, dei clienti, degli Agenti WhatsApp, o combinazioni;
+tecnologia RAG (Retrieval Augmented Generation): l'AI cerca nei documenti, estrae informazioni rilevanti, formula risposte con fonti verificabili;
+l'AI non inventa mai informazioni: se non trova la risposta nei documenti, lo comunica chiaramente.
+3.6. AI Course Builder — Generazione Automatica di Corsi
+generazione di corsi strutturati a partire da un URL di un video YouTube;
+estrazione automatica della trascrizione, analisi dei contenuti, generazione di moduli e lezioni, creazione di quiz;
+un video di 1 ora può generare un corso completo (5 moduli, 15 lezioni, 5 quiz) in circa 10 minuti;
+revisione e modifica del corso generato prima della pubblicazione.
+3.7. Content Marketing Studio
+generatore di idee per contenuti basato sull'AI, personalizzato per settore e target del Partner;
+creazione automatica di copy per social media (LinkedIn, Instagram, Facebook) con controllo su tono, lunghezza, emoji, hashtag e call-to-action;
+generazione di immagini AI tramite Google Gemini Imagen 3, con scelta del formato e dello stile;
+Campaign Builder guidato in 6 step: obiettivo, target, canali, contenuti, calendario, review e lancio;
+organizzazione dei contenuti in cartelle e calendario editoriale visuale;
+libreria brand assets per logo, palette colori, bio e descrizioni.
+3.8. Email e Automazioni
+Email Journey: sequenze di email automatiche programmate nel tempo (benvenuto, come iniziare, primo corso, check-in, feedback);
+Email Nurturing 365: sistema automatico che genera e invia 365 email personalizzate nell'arco di un anno per scaldare i lead, una al giorno;
+Email Hub: inbox unificata multi-account con sincronizzazione IMAP, risposte AI automatiche, sistema ticket, rilevamento email urgenti;
+Email post-consulenza: riepilogo automatico con punti chiave discussi, decisioni prese, prossimi step e data prossimo appuntamento;
+Automazioni: regole trigger-condizione-azione personalizzabili (es: se lead non risponde da 3 giorni, invia follow-up WhatsApp).
+3.9. Calendario, Consulenze e Task
+calendario integrato con gestione appuntamenti e consulenze;
+videochiamate integrate con link generato automaticamente 15 minuti prima dell'appuntamento;
+preparazione consulenza assistita dall'AI con riepilogo della situazione del cliente;
+sistema task con scadenze, priorità e gestione quotidiana;
+completamento consulenza con note, email di riepilogo automatica, nuovi esercizi e programmazione prossimo appuntamento.
+3.10. Dashboard e Analytics
+dashboard consulente con 4 KPI principali: clienti attivi, esercizi da revisionare, consulenze della settimana, lead prioritari;
+sezione "Items in Attesa" con consulenze da completare, bozze email, task scaduti, lead non contattati;
+dashboard WhatsApp con statistiche in tempo reale: messaggi oggi, conversazioni attive, tasso risposta, lead convertiti;
+profilo cliente completo con 6 tab: panoramica, percorso formativo, consulenze, documenti, comunicazioni, analytics;
+dashboard cliente con progressi formativi, esercizi, calendario e accesso all'AI Assistant.
+3.11. Integrazione Instagram DM
+collegamento dell'account Instagram Business tramite API Meta;
+risposta automatica ai DM con la stessa AI degli agenti WhatsApp;
+gestione story replies e conversione follower in lead;
+rispetto della finestra 24 ore imposta da Instagram per le risposte.
+3.12. Assistenza WhatsApp AI — 24/7
+Il Partner riceve accesso a un canale di assistenza gestito da un'intelligenza artificiale addestrata sulla documentazione della Piattaforma, disponibile 24 ore su 24 tramite WhatsApp. L'assistenza AI è in grado di rispondere a domande sull'utilizzo della Piattaforma, guidare il Partner nelle configurazioni e risolvere dubbi operativi.
+
+Per problematiche tecniche complesse (bug, malfunzionamenti, errori di sistema), il Partner può aprire un ticket via email come disciplinato dall'Articolo 5.
+
+ARTICOLO 4 — AGGIORNAMENTI E MANUTENZIONE
+4.1. Aggiornamenti Base. Il Fornitore rilascia periodicamente aggiornamenti della Piattaforma che includono: correzioni di bug, miglioramenti delle prestazioni, aggiornamenti di sicurezza ed evoluzioni delle funzionalità esistenti. Tali aggiornamenti sono sempre inclusi nel Canone Mensile senza costi aggiuntivi.
+
+4.2. Aggiornamenti Custom. Il Partner ha diritto a una (1) richiesta di personalizzazione al mese, da intendersi come una modifica specifica, un adattamento funzionale o una configurazione dedicata richiesta dal Partner. Le richieste custom:
+
+non sono cumulabili: se il Partner non utilizza la richiesta in un determinato mese, non può sommarla a quella del mese successivo;
+devono essere inviate via email o tramite il canale di assistenza dedicato;
+saranno valutate dal Fornitore in termini di fattibilità e tempistiche;
+il Fornitore si riserva il diritto di rifiutare richieste che comportino modifiche strutturali all'architettura della Piattaforma.
+4.3. Manutenzione Programmata. Il Fornitore può eseguire interventi di manutenzione programmata che comportino temporanea indisponibilità della Piattaforma, previo avviso al Partner con almeno 24 ore di anticipo.
+
+ARTICOLO 5 — SUPPORTO TECNICO
+5.1. Livello 1 — Supporto Operativo. Il supporto di primo livello è a carico del Partner, che potrà avvalersi della documentazione fornita, dell'assistenza WhatsApp AI 24/7 e dei materiali formativi inclusi.
+
+5.2. Livello 2 — Supporto Tecnico. Per problematiche tecniche (bug, malfunzionamenti, errori), il Partner può aprire un ticket via email. Il Fornitore si impegna a fornire una prima risposta entro quarantotto (48) ore lavorative.
+
+5.3. Esclusioni. Il supporto non copre: problemi da uso improprio, interruzioni di servizi terzi (WhatsApp, Meta, Google, Twilio), personalizzazioni extra, formazione individuale oltre ai materiali forniti.
+
+ARTICOLO 6 — MODELLO ECONOMICO — CORRISPETTIVI
+6.1. Costo di Attivazione (Setup)
+All'atto della sottoscrizione, il Partner corrisponde un costo di attivazione una tantum fino a un massimo di Euro 2.000,00, comprensivo di: configurazione iniziale della Piattaforma, creazione dell'ambiente dedicato, setup degli agenti AI WhatsApp, caricamento iniziale della Knowledge Base, formazione iniziale.
+
+Il costo di attivazione può essere ridotto o azzerato a insindacabile discrezione del Fornitore.
+
+6.2. Canone Mensile Fisso
+Il Partner corrisponde un canone mensile fisso, dovuto anticipatamente entro il giorno 5 di ogni mese solare, a partire dal mese successivo alla data di attivazione.
+
+Il Canone include: accesso completo a tutti i moduli, aggiornamenti base, 1 richiesta custom/mese, 5 licenze dipendente gratuite, assistenza WhatsApp AI 24/7, supporto tecnico via ticket.
+
+6.3. Licenze Dipendenti Aggiuntive
+Le prime 5 licenze per dipendenti sono incluse gratuitamente. A partire dalla sesta, il costo è di Euro 20,00/mese per pacchetto di 5 licenze. Non è possibile acquistare licenze singole.
+
+6.4. Costi di Servizi Terzi. Restano a carico del Partner: messaggistica WhatsApp (Twilio, ~€0,05/msg), API AI (Google Vertex AI / Gemini), invio email (SMTP), configurazione WhatsApp Business (Meta). Il Fornitore non è responsabile per variazioni di prezzo dei fornitori terzi.
+
+6.5. Modalità di Pagamento. Pagamenti preferibilmente tramite Stripe Connect per tracciamento automatico e ripartizione ricavi. In alternativa, bonifico bancario.
+
+ARTICOLO 7 — REVENUE SHARE
+7.1. Il Partner che rivende licenze Gold o Silver è tenuto a corrispondere al Fornitore il 50% del ricavo netto generato da ciascuna licenza rivenduta.
+
+7.2. Si applica a: canoni mensili delle licenze rivendute, costi di attivazione applicati ai clienti finali, servizi aggiuntivi collegati alla Piattaforma. Non si applica a: consulenze professionali, formazione e attività commerciali non connesse alla Piattaforma.
+
+7.3. L'obbligo di Revenue Share è PERMANENTE e IRREVOCABILE per tutta la durata del rapporto tra Partner e cliente finale, anche oltre la cessazione del presente Contratto.
+
+7.4. Tracciamento preferibilmente tramite Stripe Connect. Il Partner si impegna a fornire documentazione attestante i ricavi su richiesta.
+
+7.5. La quota del Fornitore è liquidata mensilmente entro il giorno 15 del mese successivo. Con Stripe Connect, la ripartizione avviene automaticamente.
+
+ARTICOLO 8 — DURATA E RINNOVO
+8.1. Durata minima di 12 mesi dalla data di sottoscrizione.
+
+8.2. Rinnovo automatico per ulteriori periodi di 12 mesi ciascuno, salvo disdetta nei termini dell'Articolo 9.
+
+8.3. Canone invariato per il periodo in corso. Adeguamenti comunicati con almeno 60 giorni di preavviso prima della scadenza, con facoltà di recesso entro 30 giorni senza penali.
+
+ARTICOLO 9 — RECESSO
+9.1. Recesso del Partner
+Preavviso minimo di 30 giorni via PEC o raccomandata A/R. Il recesso ha effetto alla scadenza del periodo in corso (12 mesi). Il Partner resta obbligato al pagamento dei canoni residui fino alla naturale scadenza.
+
+Esempio: Contratto dal 1° gennaio, recesso comunicato il 15 giugno → resta efficace fino al 31 dicembre, canoni dovuti da luglio a dicembre.
+9.2. Recesso del Fornitore
+Preavviso minimo di 30 giorni via PEC o raccomandata A/R. Il Partner non è tenuto al pagamento di canoni successivi. Il Fornitore garantisce 30 giorni per l'esportazione dei dati.
+
+9.3. Effetti del Recesso
+Alla cessazione: accesso disattivato; perdita del diritto di utilizzo di materiale, software, prompt, architettura; dati anagrafici clienti disponibili per esportazione entro 30 giorni; obbligo di Revenue Share permanente per i clienti acquisiti durante la vigenza.
+
+LIVELLO 2 — PROTEZIONE LEGALE
+ARTICOLO 10 — PROPRIETÀ INTELLETTUALE
+10.1. La Piattaforma, in ogni componente, è di proprietà esclusiva del Fornitore: codice sorgente e compilato, architettura, design, prompt AI, istruzioni di addestramento, quiz, template, materiali formativi, nomi, marchi, loghi, documentazione tecnica, algoritmi, logiche, know-how.
+
+10.2. Qualsiasi sviluppo custom realizzato dal Fornitore su richiesta del Partner, anche se pagato, è di proprietà esclusiva del Fornitore, che può riutilizzarlo liberamente.
+
+10.3. Il Partner si impegna a non decompilare, disassemblare, effettuare reverse engineering, copiare, riprodurre, modificare, adattare, tradurre, creare opere derivate o tentare di risalire al codice sorgente, ai prompt, all'architettura o alla logica della Piattaforma.
+
+ARTICOLO 11 — TITOLARITÀ E TRATTAMENTO DEI DATI
+11.1. Il Partner è titolare dei dati anagrafici e di contatto dei propri clienti. In caso di cessazione, tali dati saranno disponibili per l'esportazione.
+
+11.2. Il Fornitore è titolare dei dati generati dall'utilizzo della Piattaforma: log conversazioni AI, dati di utilizzo e analytics, contenuti generati dall'AI, metriche, dati di addestramento.
+
+11.3. Segregazione e Riservatezza dei Dati tra Clienti Finali
+Ciascun cliente del Partner vede esclusivamente i propri dati all'interno della Piattaforma. Non ha accesso ai dati di altri clienti dello stesso Partner;
+La Knowledge Base è segregata tra i diversi Partner: ciascun Partner ha una Knowledge Base indipendente e inaccessibile ai concorrenti;
+Per i clienti con Licenza Gold, l'intelligenza artificiale utilizza esclusivamente i dati e i documenti specifici di quel cliente per formulare risposte personalizzate;
+Il Fornitore implementa controlli di accesso granulare ai documenti della Knowledge Base: ogni documento può essere reso disponibile selettivamente all'AI del consulente, all'AI dei clienti, agli Agenti WhatsApp, o a specifiche combinazioni;
+Gli Agenti AI WhatsApp del Partner operano in un contesto isolato, elaborando esclusivamente i dati dei clienti del Partner e utilizzando la Knowledge Base del Partner, senza accesso ai dati o alla Knowledge Base di altri Partner.
+11.4. Sicurezza dei Dati
+Il Fornitore implementa misure tecniche e organizzative adeguate a garantire la riservatezza, l'integrità e la disponibilità dei dati, conformemente alle migliori pratiche del settore;
+Backup automatici e ridondanza dell'infrastruttura per assicurare continuità operativa e recupero da malfunzionamenti;
+Crittografia dei dati in transito (TLS/HTTPS) e a riposo nei database;
+Monitoraggio continuo della sicurezza, audit regolari e aggiornamenti tempestivi delle misure di protezione.
+11.5. Trattamento dei Dati Personali
+Ciascuna Parte tratta i dati personali nel rispetto del GDPR (Reg. UE 2016/679) e della normativa nazionale vigente. Le Parti si impegnano a sottoscrivere, ove necessario, un Data Processing Agreement.
+
+ARTICOLO 12 — MANLEVA E LIMITAZIONE DI RESPONSABILITÀ
+12.1. Manleva Totale sull'AI. Il Partner riconosce che l'AI opera su modelli probabilistici e può generare risposte inesatte ("allucinazioni"). Il Partner manleva e tiene indenne il Fornitore da qualsiasi responsabilità, danno, costo, pretesa o azione legale derivante da: risposte errate dell'AI, decisioni prese sulla base di informazioni AI, danni di qualsiasi natura, violazioni normative da uso improprio.
+
+12.2. La responsabilità complessiva del Fornitore non potrà eccedere l'importo dei Canoni Mensili corrisposti nei 12 mesi precedenti.
+
+12.3. La Piattaforma è fornita "così com'è" e "come disponibile". Nessuna garanzia espressa o implicita circa idoneità, assenza di errori, disponibilità ininterrotta o accuratezza dell'AI.
+
+ARTICOLO 13 — NON CONCORRENZA
+13.1. Per tutta la durata del Contratto e per 24 mesi successivi alla cessazione, il Partner si impegna a non sviluppare, direttamente o indirettamente, sistemi software che riproducano in modo sostanziale l'architettura, le logiche operative, i flussi di automazione, i prompt o il modello organizzativo dell'Infrastruttura.
+
+13.2. È fatto divieto di utilizzare il know-how tecnico o commerciale appreso durante il rapporto per la realizzazione di prodotti o servizi che costituiscano replica sostanziale della Piattaforma.
+
+13.3. Resta salva la possibilità per il Partner di svolgere attività professionale generica nel settore della consulenza o dell'innovazione digitale, purché non comporti la copia o riproduzione dell'Infrastruttura.
+
+13.4. In caso di violazione, è prevista una penale di €30.000 per ciascuna violazione accertata, fatto salvo il diritto al risarcimento del maggior danno.
+
+13.5. L'ambito territoriale della presente clausola è limitato ai territori in cui il Fornitore operi al momento della cessazione del Contratto.
+
+ARTICOLO 14 — SOSPENSIONE DEL SERVIZIO
+14.1. Sospensione con preavviso di 24 ore nei casi di: mancato pagamento oltre 15 giorni, violazione contrattuale, uso illegale, rischio sicurezza, richiesta dell'autorità.
+
+14.2. Nessun indennizzo, riduzione o compensazione durante la sospensione. Il Canone Mensile resta dovuto.
+
+14.3. Riattivazione entro 24 ore dalla rimozione della causa.
+
+ARTICOLO 15 — CESSIONE DEL CONTRATTO
+15.1. Il Fornitore può cedere il Contratto a terzi con 30 giorni di preavviso, senza consenso del Partner.
+
+15.2. Il Partner non può cedere il Contratto senza previo consenso scritto del Fornitore.
+
+ARTICOLO 16 — BRANDING E ATTRIBUZIONE
+16.1. La Piattaforma riporta la dicitura "Powered by Alessio Chianetta" in ogni manifestazione visibile ai clienti finali. Il Partner si impegna a non rimuovere, oscurare o modificare tale attribuzione.
+
+16.2. Il Fornitore può utilizzare nome e logo del Partner come referenza commerciale, salvo diverso accordo scritto.
+
+ARTICOLO 17 — RISERVATEZZA
+17.1. Ciascuna Parte mantiene riservate tutte le informazioni confidenziali ricevute dall'altra.
+
+17.2. L'obbligo permane per 5 anni dalla cessazione.
+
+17.3. Esclusioni: informazioni di dominio pubblico, già in possesso legittimo, da divulgare per obbligo di legge.
+
+ARTICOLO 18 — CLAUSOLA RISOLUTIVA ESPRESSA
+Ai sensi dell'art. 1456 c.c., il Fornitore può dichiarare risolto il Contratto via PEC nei seguenti casi: mancato pagamento di 2 o più canoni consecutivi; violazione non concorrenza; violazione proprietà intellettuale; cessione non autorizzata; violazione riservatezza; rimozione branding; uso illecito; fallimento o insolvenza del Partner.
+
+In caso di risoluzione per inadempimento del Partner, il Fornitore ha diritto ai canoni residui fino alla scadenza del periodo in corso, oltre al risarcimento del maggior danno.
+
+ARTICOLO 19 — FORZA MAGGIORE
+Nessuna Parte è responsabile per inadempimenti causati da eventi di forza maggiore: calamità naturali, guerre, atti di terrorismo, pandemie, provvedimenti dell'autorità, interruzioni prolungate di servizi essenziali terzi.
+
+ARTICOLO 20 — NON ESCLUSIVITÀ
+Il Contratto non conferisce alcun diritto di esclusiva. Il Fornitore è libero di concedere licenze ad altri soggetti, anche nello stesso settore o area geografica del Partner.
+
+ARTICOLO 21 — COMUNICAZIONI
+Tutte le comunicazioni in forma scritta via PEC o raccomandata A/R agli indirizzi in intestazione. Si intendono ricevute alla data di ricezione della PEC o della raccomandata.
+
+ARTICOLO 22 — LEGGE APPLICABILE E FORO COMPETENTE
+22.1. Il presente Contratto è regolato dalla legge italiana.
+
+22.2. Per qualsiasi controversia, le Parti riconoscono la competenza esclusiva del Foro di Messina, con espressa rinuncia a qualsiasi altro foro concorrente.
+
+ARTICOLO 23 — DISPOSIZIONI FINALI
+23.1. Intero Accordo. Il presente Contratto costituisce l'intero accordo tra le Parti e sostituisce qualsiasi precedente accordo, intesa o comunicazione.
+
+23.2. Modifiche. Qualsiasi modifica deve essere concordata per iscritto e sottoscritta da entrambe le Parti.
+
+23.3. Nullità Parziale. Se una clausola è dichiarata nulla, le restanti rimangono valide. Le Parti la sostituiranno con una clausola valida di effetto simile.
+
+23.4. Tolleranza. La mancata applicazione di una clausola non costituisce rinuncia al diritto di applicarla successivamente.
+
+23.5. Copie. Redatto in due copie originali, una per ciascuna Parte.
+
+APPROVAZIONE SPECIFICA

@@ -3277,9 +3277,27 @@ Dopo la consulenza, il sistema genera:
 
 La pagina mostra in tempo reale:
 
+| Metrica | Descrizione |
+|---------|-------------|
+| **Token Totali** | Numero totale di token consumati (input + output) |
+| **Costo Stimato** | Stima del costo in base ai token consumati |
+| **Richieste AI** | Numero di chiamate AI effettuate |
+| **Periodo** | Filtro temporale (oggi, settimana, mese, personalizzato) |
+
 ### 27.2 Breakdown per Funzionalità
 
 Il consumo è suddiviso per area della piattaforma:
+
+| Funzionalità | Cosa Include |
+|--------------|-------------|
+| **AI Assistant** | Chat con l'assistente AI in ogni pagina |
+| **Email AI (Millie)** | Generazione bozze email, classificazione |
+| **WhatsApp AI** | Risposte automatiche agli agenti WhatsApp |
+| **Dipendenti AI** | Cicli di analisi e generazione task autonomi |
+| **Chiamate Vocali** | Conversazioni vocali AI (Alessia) |
+| **Content Studio** | Generazione idee, post, campagne |
+| **Corsi AI** | Generazione automatica di corsi e lezioni |
+| **Lead Scraper** | Arricchimento e analisi lead |
 
 ### 27.3 Sistema Crediti
 
@@ -3300,8 +3318,22 @@ Moduli di formazione strutturati per imparare a usare la piattaforma e sviluppar
 #### Struttura dei Moduli
 
 Ogni modulo è organizzato in:
+```
+Modulo (es. "Gestione Clienti Avanzata")
+  └── Lezione 1: Titolo (video + testo)
+  └── Lezione 2: Titolo (video + testo)
+  └── Lezione 3: Titolo (video + testo)
+  └── Quiz finale (opzionale)
+```
 
 #### Funzionalità
+
+| Funzione | Descrizione |
+|----------|-------------|
+| **Progresso** | Barra di avanzamento per ogni modulo e lezione |
+| **Video integrati** | Player video integrato (GuiddePlayer) per tutorial visivi |
+| **Setup Wizard** | Wizard guidato che aiuta a configurare la piattaforma passo-passo |
+| **Completamento** | Spunta automatica al completamento di ogni lezione |
 
 ### 28.2 Tab Delivery AI (Dipendente Delivery)
 
@@ -3428,14 +3460,51 @@ Quando l'Open Mode è **disabilitato**, il bot opera in modalità "gatekeeper":
 
 ### 31.1 Funzionalità Principali
 
+| Funzionalità | Descrizione |
+|-------------|-------------|
+| **Monitoraggio Trascrizioni** | Visualizza le trascrizioni delle consulenze (via Fathom o altri strumenti) |
+| **Generazione Riepiloghi AI** | Echo genera automaticamente un riepilogo strutturato di ogni consulenza |
+| **Email di Riepilogo** | Invio automatico del riepilogo al cliente via email |
+| **Estrazione Action Items** | Identifica le azioni da fare emerse dalla consulenza |
+| **Task per Approvazione** | I task estratti vengono presentati al consulente per approvazione prima dell'esecuzione |
+
 ### 31.2 Flusso di Lavoro
+
+```
+Consulenza completata (con trascrizione Fathom)
+        ↓
+Echo analizza la trascrizione
+        ↓
+Genera riepilogo strutturato:
+  - Punti chiave discussi
+  - Decisioni prese
+  - Action items (con responsabile e scadenza)
+  - Prossimi passi
+        ↓
+Il consulente approva/modifica il riepilogo
+        ↓
+Email di riepilogo inviata al cliente
+        ↓
+Task creati nella piattaforma (se approvati)
+```
 
 ## Capitolo 32: AdVisage AI — Creative Factory
 
 **Dove trovarlo:** `Sidebar → CONTENT STUDIO → AdVisage AI`
 **URL:** `/consultant/advisage`
 
+AdVisage AI è la fabbrica creativa AI per generare concept pubblicitari e contenuti visivi per i social media.
+
 ### 32.1 Funzionalità Principali
+
+| Funzionalità | Descrizione |
+|-------------|-------------|
+| **Generazione Concept** | Crea concept pubblicitari completi (copy + visual direction) |
+| **Pitch Mode** | Modalità presentazione per mostrare i concept ai clienti |
+| **Batch Analysis** | Analisi massiva di post esistenti per identificare pattern di successo |
+| **Multi-Style Engine** | Genera varianti usando diverse combinazioni di mood e stile artistico |
+| **Platform-Specific** | Concetti ottimizzati per piattaforme specifiche (Instagram, Facebook, LinkedIn, TikTok) |
+| **Publer Export** | Esportazione diretta verso Publer per la pubblicazione |
 
 ### 32.2 Multi-Style Engine
 
@@ -3452,47 +3521,81 @@ La modalità Pitch crea una presentazione professionale dei concept per i client
 - Possibilità di commentare e approvare singoli concept
 - Export in formato presentazione
 
-## Capitolo 33: Stripe Connect
+## Capitolo 33: Stripe Connect — Modello di Business e Monetizzazione
 
 **Dove trovarlo:** `Sidebar → IMPOSTAZIONI → Stripe Connect`
 **URL:** `/consultant/stripe-connect`
 
+### 33.0 Il Modello di Business: Licenze e Rivendita
+
+La piattaforma usa un modello di **licenze a livelli** con revenue sharing automatico:
+
+- Il **Fornitore** (proprietario della piattaforma) concede al consulente una **Licenza Diamond** — accesso completo a tutto
+- Il consulente **rivende** ai propri clienti licenze **Gold** o **Silver**, al prezzo che decide lui
+- Ogni pagamento viene **diviso automaticamente** via Stripe Connect: 50% al consulente, 50% al Fornitore
+- La ripartizione è **permanente** per tutta la durata dell'abbonamento del cliente
+
+**Soggetto a revenue sharing:** canoni mensili/annuali licenze, costi attivazione, add-on piattaforma
+**NON soggetto:** servizi professionali del consulente esterni alla piattaforma
+
+**Le 3 Licenze:**
+
+| Licenza | Chi la Usa | Accesso |
+|---------|-----------|---------|
+| **Diamond** | Consulente | Tutti i moduli: AI Suite, Dipendenti AI, Content Studio, Voice AI, Lead Scraper, CRM, Stripe Connect, Team, Corsi, Analytics |
+| **Gold** | Cliente | AI con **memoria persistente**, corsi, esercizi, WhatsApp agent, Knowledge Base, analytics, gamification |
+| **Silver** | Cliente | AI **senza memoria** (riparte da zero ogni volta), funzionalità base, accesso limitato ai corsi |
+
 ### 33.1 Onboarding (Wizard a 3 Step)
 
 **Step 1 — Connetti Account Stripe Express:**
-1. Clicca "Connetti Stripe"
-2. Verrai reindirizzato a Stripe per creare un account Express
-3. Completa la verifica identità richiesta da Stripe
-4. Torna alla piattaforma — account connesso
+1. Clicca "Connetti Stripe" → redirect a Stripe → verifica identità → torna alla piattaforma
 
 **Step 2 — Configura Webhook:**
-1. Il sistema genera automaticamente un URL webhook
-2. Copialo e incollalo nelle impostazioni del tuo account Stripe
-3. Seleziona gli eventi: `checkout.session.completed`, `customer.subscription.updated`, `invoice.payment_failed`
-4. Clicca "Testa Webhook"
+1. Il sistema genera URL webhook → copialo nelle impostazioni Stripe
+2. Eventi: `checkout.session.completed`, `customer.subscription.updated`, `invoice.payment_failed`
 
 **Step 3 — Inserisci API Keys:**
-1. Dal dashboard Stripe, copia le API keys (Publishable + Secret)
-2. Incollale nei campi dedicati
-3. Clicca "Salva e Verifica"
+1. Copia Publishable + Secret key da Stripe → incolla → "Salva e Verifica"
 
 ### 33.2 Revenue Sharing
 
-Il sistema supporta revenue sharing automatico tra venditore della piattaforma e consulente:
+Ogni pagamento di un cliente transita attraverso Stripe Connect con split automatico:
+
+| Parametro | Descrizione |
+|-----------|-------------|
+| **Quota Consulente** | 50% (default) — va sul suo account Stripe Express |
+| **Quota Fornitore** | 50% (default) — va sull'account Stripe principale |
+| **Configurabile** | Il Fornitore può impostare % diverse per ogni consulente |
+| **Permanente** | Lo split si applica a OGNI rinnovo, per sempre |
+
+**Esempio:** 20 licenze Gold a €100/mese = €2.000 fatturato. Il consulente riceve €1.000/mese, il Fornitore €1.000/mese. Automatico, ogni mese, per sempre.
 
 ### 33.3 Gestione Piani (Tier)
 
-I piani disponibili per i clienti:
+| Piano | Livello | Abbonamento | Funzionalità |
+|-------|---------|-------------|-------------|
+| **Silver** | Base | Mensile/Annuale | AI senza memoria, funzionalità base, corsi limitati |
+| **Gold** | Premium | Mensile/Annuale | AI con memoria, corsi completi, WhatsApp, KB, analytics, gamification |
+| **Custom** | Personalizzato | Mensile/Annuale/Una Tantum/Lifetime | Configurazione personalizzata di moduli e agenti AI |
 
-Per ogni piano si configura: prezzo, descrizione, funzionalità incluse, agenti AI attivi.
+Per ogni piano: prezzo (deciso dal consulente), descrizione, funzionalità incluse, agenti AI attivi.
 
 ### 33.4 Flusso Pagamento Completo
 
+```
+Consulente crea contatto CRM → Genera link pagamento (Silver/Gold/Custom)
+  → Invia link al cliente → Cliente paga (Stripe Checkout)
+  → Split automatico 50/50 via Stripe Connect
+  → Sistema auto-attiva: account, password temporanea, livello, agenti AI, Welcome Journey
+  → Cliente fa login → Cambio password al primo accesso
+```
+
 ### 33.5 Payouts
 
-I pagamenti vengono trasferiti automaticamente al consulente tramite Stripe Express:
-- I trasferimenti avvengono secondo la cadenza configurata (giornaliera, settimanale, mensile)
-- Il consulente può verificare i payout dal proprio dashboard Stripe
+- Trasferimenti automatici al consulente secondo cadenza configurata (giornaliera/settimanale/mensile)
+- Il Fornitore riceve la sua quota direttamente sull'account Stripe principale
+- Verificabili dal dashboard Stripe del consulente — nessun intervento manuale
 
 ## Capitolo 34: Orbitale Tools — Integrazioni Esterne
 
@@ -3501,6 +3604,13 @@ I pagamenti vengono trasferiti automaticamente al consulente tramite Stripe Expr
 Gli Orbitale Tools sono integrazioni esterne caricate tramite iframe nella piattaforma. Permettono di accedere a strumenti esterni senza uscire dall'interfaccia.
 
 ### 34.1 Strumenti Disponibili
+
+| Strumento | Descrizione | URL Sidebar |
+|-----------|-------------|-------------|
+| **Finanza** | Strumenti di gestione finanziaria | `/consultant/orbital-finance` |
+| **CRM** | CRM esterno integrato | `/consultant/orbital-crm` |
+| **Contratti** | Gestione contratti e documenti legali | `/consultant/orbital-contracts` |
+| **Locale** | Strumenti locali personalizzati | `/consultant/orbital-local` |
 
 ### 34.2 Come Funzionano
 
@@ -3525,9 +3635,33 @@ I lead vengono registrati automaticamente tramite `ensureProactiveLead`:
 
 ### 35.3 Trigger di Auto-Call
 
+| Trigger | Descrizione |
+|---------|-------------|
+| **Manuale** | Il consulente clicca "Chiama" sul lead |
+| **Import CSV** | I lead importati vengono messi in coda automaticamente |
+| **Google Sheets Polling** | Nuovi lead dal foglio Google vengono aggiunti alla coda |
+| **Webhook** | Lead da sistemi esterni (landing page, form) |
+| **Hunter Automatico** | Il dipendente Hunter programma chiamate in autonomia |
+
 ### 35.4 Gestione Coda Chiamate
 
+| Parametro | Descrizione |
+|-----------|-------------|
+| **Batch Staggering** | 5 minuti tra un lead e l'altro per evitare sovraccarico |
+| **Concorrenza Massima** | `max_concurrent_calls` — numero massimo di chiamate simultanee |
+| **Queue Drain** | Quando una chiamata termina, il prossimo lead in coda parte automaticamente |
+| **Validazione SIP** | Il numero viene verificato prima della chiamata |
+
 ### 35.5 Stati delle Chiamate
+
+| Stato | Significato |
+|-------|-------------|
+| **Schedulata** | Chiamata programmata, in attesa |
+| **Programmata** | Confermata e nella coda |
+| **In Corso** | Chiamata attiva |
+| **Completata** | Chiamata terminata con successo |
+| **Fallita** | Chiamata non riuscita (numero errato, non risponde) |
+| **Retry** | Tentativo fallito, riprogrammata automaticamente |
 
 # PARTE SESTA: PACCHETTI SERVIZI
 

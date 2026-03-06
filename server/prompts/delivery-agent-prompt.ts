@@ -130,16 +130,17 @@ const SERVICE_PACKAGES = `
 | VoIP Provisioning | Alta | Sidebar → IMPOSTAZIONI → Numeri Telefono |
 | Brand Voice | Bassa | Sidebar → AI AVANZATO → Chiamate Vocali → Brand Voice |
 
-### 9. PAGAMENTI & STRIPE — Monetizzazione
-**Obiettivo:** Automatizzare pagamenti, abbonamenti e provisioning clienti.
-**Per chi:** Chi vuole ricevere pagamenti online e attivare clienti automaticamente.
-**Prerequisiti:** Account Stripe. API Key Gemini opzionale.
+### 9. PAGAMENTI & STRIPE — Monetizzazione e Rivendita Licenze
+**Obiettivo:** Monetizzare la piattaforma rivendendo licenze Gold/Silver ai propri clienti, con revenue sharing automatico via Stripe Connect. Il consulente (Licenza Diamond) rivende l'accesso ai clienti e guadagna una quota ricorrente su ogni abbonamento venduto.
+**Per chi:** Chi vuole generare entrate ricorrenti rivendendo licenze ai propri clienti, con provisioning automatico e split pagamento.
+**Prerequisiti:** Account Stripe. Onboarding Stripe Connect completato.
 | Modulo | Setup | Dove |
 |--------|-------|------|
 | Stripe Connect | Media | Sidebar → IMPOSTAZIONI → Stripe Connect |
 | Payment Automations | Media | Sidebar → IMPOSTAZIONI → Automazioni Pagamento |
-| Revenue Sharing | Bassa | Configurato dal venditore/admin |
+| Revenue Sharing (50/50 automatico) | Bassa | Configurato dal venditore/admin — split automatico su ogni pagamento |
 | Piani/Tier (Silver, Gold, Custom) | Bassa | Sidebar → IMPOSTAZIONI → Automazioni Pagamento → Piani |
+| Contatti CRM + Link Pagamento | Bassa | Sidebar → Clienti → Nuovo Cliente CRM → Genera Link |
 
 ### 10. TEAM & DIPENDENTI UMANI — Gestione Team
 **Obiettivo:** Organizzare il team umano con reparti, licenze e AI per ciascuno.
@@ -706,6 +707,7 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 24. Il **cosa_va_bene** e **cosa_non_funziona** devono essere scritti con la stessa profondità dei pacchetti_consigliati — riferimenti specifici alla discovery, non frasi generiche
 25. Il **come_correggere** deve avere 2-4 azioni concrete con → prefisso, ciascuna con spiegazione di 2-3 frasi
 26. La **diagnosi_critica** è opzionale — usala solo per i pacchetti dove c'è un insight davvero importante. Non metterla su tutti.
+26b. Per il pacchetto **PAGAMENTI & STRIPE**, spiega SEMPRE il modello di business completo: il consulente ha una Licenza Diamond (accesso completo), può rivendere licenze Gold (AI con memoria, corsi, WhatsApp, KB) e Silver (AI senza memoria, funzionalità base) ai propri clienti. Ogni pagamento viene diviso automaticamente via Stripe Connect (default 50% consulente / 50% Fornitore). Il revenue share è permanente e si applica a canoni, attivazioni e add-on. NON si applica ai servizi professionali esterni. Usa esempi concreti con numeri: "Se vendi 20 licenze Gold a €100/mese = €2.000 fatturato, tu ricevi €1.000/mese automaticamente".
 
 ### Regole per i Nuovi Campi:
 
@@ -758,7 +760,7 @@ Conosci i 10 pacchetti della piattaforma:
 6. **FORMAZIONE & CORSI** — Academy
 7. **CONTENT STUDIO** — Marketing & Contenuti
 8. **VOCE AI** — Centralino & Chiamate
-9. **PAGAMENTI & STRIPE** — Monetizzazione
+9. **PAGAMENTI & STRIPE** — Monetizzazione e Rivendita Licenze (Diamond→Gold/Silver, revenue share 50/50)
 10. **TEAM & DIPENDENTI UMANI** — Gestione Team
 ${manualeBlock}
 

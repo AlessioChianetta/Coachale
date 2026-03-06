@@ -5434,12 +5434,41 @@ La modalità Pitch crea una presentazione professionale dei concept per i client
 
 ---
 
-## Capitolo 33: Stripe Connect
+## Capitolo 33: Stripe Connect — Modello di Business e Monetizzazione
 
 **Dove trovarlo:** `Sidebar → IMPOSTAZIONI → Stripe Connect`
 **URL:** `/consultant/stripe-connect`
 
-Stripe Connect permette ai consulenti di ricevere pagamenti direttamente dai propri clienti, con revenue sharing automatico.
+### 33.0 Il Modello di Business: Licenze e Rivendita
+
+La piattaforma utilizza un modello di **licenze a livelli** con revenue sharing automatico. Ecco come funziona:
+
+Il **Fornitore** (proprietario/venditore della piattaforma) concede al consulente una **Licenza Diamond** — l'accesso completo a tutti i moduli e funzionalità della piattaforma. Il consulente, a sua volta, può **rivendere l'accesso** ai propri clienti sotto forma di licenze **Gold** o **Silver**, a un prezzo che stabilisce lui.
+
+Ogni volta che un cliente del consulente paga un abbonamento (mensile o annuale), il pagamento viene suddiviso automaticamente tramite **Stripe Connect**:
+- Una quota va al **consulente** (tipicamente il 50%)
+- Una quota va al **Fornitore** (tipicamente il 50%)
+
+Questa ripartizione è **permanente e automatica** per tutta la durata dell'abbonamento del cliente. Il consulente non deve fare nulla: Stripe gestisce lo split in tempo reale.
+
+**Cosa è soggetto a revenue sharing:**
+- Canoni mensili/annuali delle licenze rivendute (Silver, Gold, Custom)
+- Costi di attivazione addebitati ai clienti
+- Servizi aggiuntivi legati alla piattaforma (add-on)
+
+**Cosa NON è soggetto a revenue sharing:**
+- I servizi professionali del consulente (consulenza, formazione, coaching non legati alla piattaforma)
+- Attività commerciali esterne alla piattaforma
+
+### 33.0.1 Le Tre Licenze
+
+| Licenza | Chi la Usa | Accesso |
+|---------|-----------|---------|
+| **Diamond** | Il Consulente | Accesso completo a TUTTI i moduli della piattaforma: AI Suite, Dipendenti AI, Content Studio, Voice AI, Lead Scraper, CRM, Stripe Connect, Gestione Team, Corsi, Analytics avanzate. È la licenza "padrone" — può creare clienti, gestire licenze, configurare agenti AI, generare report. |
+| **Gold** | Il Cliente del Consulente | Accesso premium: AI Assistant con **memoria persistente**, corsi ed esercizi, agente WhatsApp dedicato, Knowledge Base (File Search), analytics avanzate, gamification, accesso a tutti i contenuti formativi creati dal consulente. |
+| **Silver** | Il Cliente del Consulente | Accesso base: AI Assistant **senza memoria persistente** (ogni conversazione riparte da zero), funzionalità base della piattaforma, accesso limitato ai contenuti formativi. |
+
+**Differenza chiave Gold vs Silver:** La memoria AI. Un cliente Gold ha un assistente AI che "ricorda" tutto — conversazioni precedenti, preferenze, contesto. Un cliente Silver ha un AI che riparte ogni volta da zero.
 
 ### 33.1 Onboarding (Wizard a 3 Step)
 
@@ -5460,45 +5489,74 @@ Stripe Connect permette ai consulenti di ricevere pagamenti direttamente dai pro
 2. Incollale nei campi dedicati
 3. Clicca "Salva e Verifica"
 
-### 33.2 Revenue Sharing
+### 33.2 Revenue Sharing — Come Funziona Tecnicamente
 
-Il sistema supporta revenue sharing automatico tra venditore della piattaforma e consulente:
+Quando il consulente genera un link di pagamento per un cliente (vedi Cap. 25), il pagamento transita attraverso **Stripe Connect** con split automatico:
+
+```
+Cliente paga €100/mese (abbonamento Gold)
+        ↓
+Stripe Connect riceve il pagamento
+        ↓
+Split automatico:
+  → €50 al Consulente (sul suo account Stripe Express)
+  → €50 al Fornitore (sull'account Stripe principale)
+        ↓
+Il consulente riceve il suo payout automaticamente
+Il Fornitore riceve la sua quota senza intervento
+```
 
 | Parametro | Descrizione |
 |-----------|-------------|
 | **Percentuale Consulente** | Quota del pagamento che va al consulente (default: 50%) |
-| **Percentuale Piattaforma** | Quota che va al venditore della piattaforma |
-| **Configurabile** | Ogni venditore può impostare percentuali diverse per consulente |
+| **Percentuale Fornitore** | Quota che va al proprietario della piattaforma (default: 50%) |
+| **Configurabile** | Il Fornitore può impostare percentuali diverse per ogni consulente |
+| **Permanente** | Lo split si applica automaticamente a OGNI rinnovo, per sempre |
+| **Automatico** | Nessun intervento manuale — Stripe gestisce tutto |
+
+**Esempio concreto:** Il consulente vende 20 licenze Gold a €100/mese ciascuna. Fatturato mensile: €2.000. Il consulente riceve €1.000/mese, il Fornitore riceve €1.000/mese. Tutto automatico, ogni mese, per sempre.
 
 ### 33.3 Gestione Piani (Tier)
 
-I piani disponibili per i clienti:
+I piani disponibili per i clienti del consulente:
 
-| Piano | Livello | Tipo Abbonamento |
-|-------|---------|-----------------|
-| **Silver** | Base | Mensile o Annuale |
-| **Gold** | Premium | Mensile o Annuale |
-| **Custom** | Personalizzato | Mensile, Annuale, Una Tantum, Lifetime |
+| Piano | Livello | Tipo Abbonamento | Funzionalità Incluse |
+|-------|---------|-----------------|---------------------|
+| **Silver** | Base | Mensile o Annuale | AI Assistant (senza memoria), funzionalità base, accesso limitato ai corsi |
+| **Gold** | Premium | Mensile o Annuale | AI con memoria persistente, corsi completi, WhatsApp agent, Knowledge Base, analytics, gamification |
+| **Custom** | Personalizzato | Mensile, Annuale, Una Tantum, Lifetime | Configurazione personalizzata di funzionalità e agenti AI attivi |
 
-Per ogni piano si configura: prezzo, descrizione, funzionalità incluse, agenti AI attivi.
+Per ogni piano si configura:
+- **Prezzo**: il consulente decide il prezzo di vendita al suo cliente
+- **Descrizione**: testo visibile al cliente nella checkout
+- **Funzionalità incluse**: quali moduli della piattaforma sono accessibili
+- **Agenti AI attivi**: quali dipendenti AI sono disponibili per quel livello
 
 ### 33.4 Flusso Pagamento Completo
 
 ```
-Consulente genera link pagamento per lead CRM
+1. Consulente crea un contatto CRM (Cap. 25)
         ↓
-Lead clicca il link → Stripe Checkout
+2. Consulente genera link di pagamento (sceglie piano Silver/Gold/Custom)
         ↓
-Pagamento completato → Webhook `checkout.session.completed`
+3. Consulente invia il link al cliente (email, WhatsApp, di persona)
         ↓
-Sistema auto-attiva:
-  - Account cliente (is_crm_only → false)
-  - Password temporanea generata
-  - Livello utente assegnato (Silver/Gold)
-  - Agenti AI attivati
-  - Welcome Journey avviato
+4. Cliente clicca il link → Stripe Checkout (email e nome pre-compilati)
         ↓
-Cliente fa login → Cambia password al primo accesso
+5. Cliente paga → Stripe Connect split automatico (50/50)
+        ↓
+6. Webhook `checkout.session.completed` arriva alla piattaforma
+        ↓
+7. Sistema auto-attiva:
+   - Account cliente convertito (is_crm_only → false)
+   - Password temporanea generata (12 caratteri)
+   - Livello utente assegnato (Silver/Gold/Custom)
+   - Agenti AI attivati secondo il piano
+   - Welcome Journey avviato
+        ↓
+8. Cliente fa login con email + password temporanea
+        ↓
+9. Al primo accesso → cambio password obbligatorio
 ```
 
 ### 33.5 Payouts
@@ -5506,6 +5564,8 @@ Cliente fa login → Cambia password al primo accesso
 I pagamenti vengono trasferiti automaticamente al consulente tramite Stripe Express:
 - I trasferimenti avvengono secondo la cadenza configurata (giornaliera, settimanale, mensile)
 - Il consulente può verificare i payout dal proprio dashboard Stripe
+- Il Fornitore riceve la sua quota direttamente sull'account Stripe principale
+- Non è necessario nessun intervento manuale da parte del consulente o del Fornitore
 
 ---
 
