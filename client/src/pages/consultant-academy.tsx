@@ -749,7 +749,7 @@ export default function ConsultantAcademy() {
           onClose={() => setSidebarOpen(false)}
         />
 
-        <main className={cn("flex-1 min-h-0", activeTab === "delivery" ? "overflow-hidden flex flex-col" : "overflow-auto")}>
+        <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
           {activeTab === "delivery" ? (
             <>
               <div className="flex items-center gap-3 px-4 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
@@ -781,57 +781,57 @@ export default function ConsultantAcademy() {
               </div>
             </>
           ) : (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8">
-            <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
-                  <button
-                    onClick={() => setActiveTab("academy")}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                      "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-md"
-                    )}
-                  >
-                    <GraduationCap className="w-4 h-4" />
-                    Accademia
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("delivery")}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                      "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    )}
-                  >
-                    <Rocket className="w-4 h-4" />
-                    Delivery AI
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="hidden sm:flex items-center gap-2">
-                  <div className="w-32 h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-500"
-                      style={{ width: `${progressPct}%` }}
-                    />
+          <div className="flex flex-col h-full">
+            <div className="flex-shrink-0 px-4 sm:px-6 py-4 border-b border-border/60 bg-card/30">
+              <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
+                    <button
+                      onClick={() => setActiveTab("academy")}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                        "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-md"
+                      )}
+                    >
+                      <GraduationCap className="w-4 h-4" />
+                      Accademia
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("delivery")}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                        "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Rocket className="w-4 h-4" />
+                      Delivery AI
+                    </button>
                   </div>
-                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
                 </div>
 
-                <Link href="/consultant/setup-wizard">
-                  <Button variant="outline" size="sm" className="gap-2 text-xs">
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    Setup Wizard
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-3">
+                  <div className="hidden sm:flex items-center gap-2">
+                    <div className="w-32 h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-500"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
+                  </div>
+
+                  <Link href="/consultant/setup-wizard">
+                    <Button variant="outline" size="sm" className="gap-2 text-xs">
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      Setup Wizard
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
 
-            <>
-
             {isMobile && (
-              <div className="mb-4">
+              <div className="flex-shrink-0 px-4 sm:px-6 pt-4">
                 <Button
                   variant="outline"
                   size="sm"
@@ -866,47 +866,46 @@ export default function ConsultantAcademy() {
               </div>
             )}
 
-            <div className="flex gap-6 lg:gap-8 overflow-hidden">
+            <div className="flex-1 min-h-0 flex">
               {!isMobile && (
-                <aside className="w-72 flex-shrink-0">
-                  <div className="sticky top-6 max-h-[calc(100vh-120px)] overflow-y-auto pr-1 space-y-1 scrollbar-thin">
-                    {sidebarContent}
-                  </div>
+                <aside className="w-72 flex-shrink-0 border-r border-border/40 overflow-y-auto p-4 scrollbar-thin">
+                  {sidebarContent}
                 </aside>
               )}
 
-              <div className="flex-1 min-w-0 overflow-hidden">
-                {activeLesson ? (
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={activeId}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -12 }}
-                      transition={{ duration: 0.25 }}
-                    >
-                      <LessonDetail
-                        lesson={activeLesson}
-                        module={activeModule}
-                        isCompleted={isCompleted}
-                        isWizardDone={isWizardDone}
-                        onToggleComplete={handleToggleComplete}
-                        isToggling={markMutation.isPending}
-                        onPrev={() => prevLesson && handleSelect(prevLesson.lesson_id)}
-                        onNext={() => nextLesson && handleSelect(nextLesson.lesson_id)}
-                        hasPrev={!!prevLesson}
-                        hasNext={!!nextLesson}
-                        lessonIndex={activeIndex}
-                        totalLessons={totalLessons}
-                      />
-                    </motion.div>
-                  </AnimatePresence>
-                ) : (
-                  <div className="text-center text-muted-foreground py-20">Nessuna lezione disponibile</div>
-                )}
+              <div className="flex-1 min-w-0 overflow-y-auto">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+                  {activeLesson ? (
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={activeId}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        <LessonDetail
+                          lesson={activeLesson}
+                          module={activeModule}
+                          isCompleted={isCompleted}
+                          isWizardDone={isWizardDone}
+                          onToggleComplete={handleToggleComplete}
+                          isToggling={markMutation.isPending}
+                          onPrev={() => prevLesson && handleSelect(prevLesson.lesson_id)}
+                          onNext={() => nextLesson && handleSelect(nextLesson.lesson_id)}
+                          hasPrev={!!prevLesson}
+                          hasNext={!!nextLesson}
+                          lessonIndex={activeIndex}
+                          totalLessons={totalLessons}
+                        />
+                      </motion.div>
+                    </AnimatePresence>
+                  ) : (
+                    <div className="text-center text-muted-foreground py-20">Nessuna lezione disponibile</div>
+                  )}
+                </div>
               </div>
             </div>
-            </>
           </div>
           )}
         </main>
