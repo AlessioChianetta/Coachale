@@ -518,10 +518,14 @@ Ragiona in modo strutturato e critico. Questa analisi servirà come base per il 
               text: `Perfetto. Ora basandoti sulla tua analisi, genera il report JSON strutturato completo. Segui esattamente il template nel system prompt. Ricorda:
 - Includi SOLO i pacchetti che servono davvero nei pacchetti_consigliati (tipicamente 4-7, non tutti e 10)
 - Ogni "perche_per_te" deve citare cose specifiche dette dal consulente durante la conversazione
-- La roadmap deve rispettare le dipendenze
-- I quick_wins devono essere azioni concrete sotto i 30 minuti
+- La roadmap deve rispettare le dipendenze — ogni fase deve avere "vita_dopo" che descrive come cambia la vita lavorativa
+- I quick_wins devono essere azioni concrete sotto i 30 minuti — includi "testo_da_copiare" quando l'azione prevede un messaggio o template
 - Le metriche devono essere misurabili nella piattaforma
-- Il catalogo_completo deve includere TUTTI E 10 i pacchetti con descrizioni personalizzate e 2-3 esempi concreti tangibili per ciascuno
+- Includi "flusso_completo" — un paragrafo narrativo su come i moduli si parlano nel caso specifico
+- Includi "avvertimento_onesto" — dove farai fatica e perché vale la pena
+- Includi "segnali_successo" — almeno 3 segnali con timeframe diversificati e "dove_guardare" nella piattaforma
+- Ogni modulo nei pacchetti_consigliati deve avere "primo_passo" e "come_misuri"
+- Il catalogo_completo deve includere TUTTI E 10 i pacchetti con analisi APPROFONDITA per ciascuno: punteggio (1-10), cosa_va_bene, cosa_non_funziona, diagnosi_critica (opzionale), come_correggere (2-4 azioni con →), descrizione_personalizzata, esempi_concreti (2-3). Stessa profondità dei pacchetti_consigliati — non descrizioni superficiali.
 
 Rispondi SOLO con il JSON nel formato richiesto.`,
             }],
@@ -592,9 +596,11 @@ COMPITO DI REVISIONE CRITICA: Rileggi il report e valuta:
 
 6. **Diagnosi**: La sezione "dove_sei_ora" e "gap_analysis" riflettono davvero la situazione emersa?
 
-7. **Catalogo Completo**: Ci sono tutti e 10 i pacchetti? Ogni descrizione è personalizzata per questo consulente? Gli esempi concreti sono tangibili e specifici (non generici)?
+7. **Catalogo Completo**: Ci sono tutti e 10 i pacchetti? Ogni pacchetto ha punteggio, cosa_va_bene, cosa_non_funziona, come_correggere con almeno 2 azioni concrete? Le descrizioni sono personalizzate e gli esempi tangibili?
 
-Se trovi problemi, genera il report JSON CORRETTO e COMPLETO (incluso catalogo_completo con TUTTI i 10 pacchetti). Se il report è già buono, restituiscilo invariato.
+8. **Nuovi campi**: C'è il flusso_completo (paragrafo narrativo)? L'avvertimento_onesto è genuinamente onesto? I segnali_successo hanno almeno 3 entry con timeframe diversificati? Le quick_wins hanno testo_da_copiare dove serve? I moduli hanno primo_passo e come_misuri? La roadmap ha vita_dopo per ogni fase?
+
+Se trovi problemi, genera il report JSON CORRETTO e COMPLETO (incluso catalogo_completo con TUTTI i 10 pacchetti e analisi approfondita). Se il report è già buono, restituiscilo invariato.
 Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
             }],
           },

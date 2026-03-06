@@ -32,10 +32,12 @@ import {
   X,
   FlaskConical,
   ArrowLeft,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DeliveryChat } from "./DeliveryChat";
 import { DeliveryReport } from "./DeliveryReport";
+import { DeliveryCatalogo } from "./DeliveryCatalogo";
 
 interface DeliverySession {
   id: string;
@@ -247,7 +249,7 @@ export function DeliveryAgentPanel() {
   const [selectedNiche, setSelectedNiche] = useState<typeof SIMULATOR_NICHES[number] | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
-  const [viewMode, setViewMode] = useState<"chat" | "report">("chat");
+  const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo">("chat");
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -512,6 +514,15 @@ export function DeliveryAgentPanel() {
                   <FileText className="w-3.5 h-3.5" />
                   Report
                 </Button>
+                <Button
+                  variant={viewMode === "catalogo" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("catalogo")}
+                  className="h-7 text-xs gap-1"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  Catalogo
+                </Button>
               </div>
             )}
         </div>
@@ -542,6 +553,11 @@ export function DeliveryAgentPanel() {
             </div>
           ) : viewMode === "report" ? (
             <DeliveryReport
+              sessionId={activeSession.id}
+              onBackToChat={() => setViewMode("chat")}
+            />
+          ) : viewMode === "catalogo" ? (
+            <DeliveryCatalogo
               sessionId={activeSession.id}
               onBackToChat={() => setViewMode("chat")}
             />

@@ -558,7 +558,9 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
           "nome": "Agenti WhatsApp",
           "complessita_setup": "bassa|media|alta",
           "tempo_setup": "15 min|30 min|1 ora|2 ore",
-          "config_link": "/consultant/whatsapp-agents"
+          "config_link": "/consultant/whatsapp-agents",
+          "primo_passo": "Il primo passo concreto per configurare questo modulo (es. 'Vai in Sidebar → COMUNICAZIONE → Agenti WhatsApp e clicca Crea Agente')",
+          "come_misuri": "Come sai che questo modulo funziona (es. 'Quando vedi la prima conversazione gestita in autonomia nella dashboard')"
         }
       ],
       "timeline_setup": "1-2 settimane",
@@ -570,9 +572,20 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
     {
       "nome_pacchetto": "SETTER AI",
       "icona": "setter",
+      "sottotitolo": "Acquisizione & Primo Contatto",
+      "punteggio": 7,
+      "punteggio_label": "Breve giustificazione del punteggio (es. 'Buon potenziale ma nessun sistema attivo')",
+      "cosa_va_bene": "1-2 paragrafi (separati da \\n\\n) su cosa il consulente sta già facendo bene in quest'area. Basato sulla discovery — cita cose specifiche dette. Anche se il pacchetto non è consigliato, trova qualcosa di positivo nell'area.",
+      "cosa_non_funziona": "1-2 paragrafi (separati da \\n\\n) su cosa non funziona o manca in quest'area. Sii diretto e specifico. Collega ai problemi concreti emersi dalla discovery.",
+      "diagnosi_critica": "Frase d'impatto opzionale — insight critico per quest'area. Usala solo quando c'è qualcosa di importante da evidenziare (altrimenti null).",
+      "come_correggere": [
+        "→ Azione concreta 1 con spiegazione di 2-3 frasi su cosa fare e come",
+        "→ Azione concreta 2...",
+        "→ Azione concreta 3..."
+      ],
       "descrizione_personalizzata": "Spiegazione personalizzata di 2-3 frasi su come QUESTO consulente specifico potrebbe utilizzare il pacchetto, basata sulla discovery. Anche se non è stato consigliato, spiega il valore potenziale per il suo caso.",
       "esempi_concreti": [
-        "Esempio tangibile e specifico per il business del consulente — es. 'Quando un paziente ti scrive alle 22 per spostare un appuntamento, Stella risponde in automatico e aggiorna il calendario senza che tu debba fare nulla'",
+        "Esempio tangibile e specifico per il business del consulente",
         "Secondo esempio concreto legato alla sua realtà operativa quotidiana",
         "Terzo esempio che mostra un risultato misurabile"
       ],
@@ -591,6 +604,7 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
         "Azione 3..."
       ],
       "obiettivo": "Cosa deve essere operativo a fine settimana 1",
+      "vita_dopo": "Come cambia la vita lavorativa del consulente dopo aver completato questa fase (es. 'Non rispondi più manualmente ai lead — il sistema filtra e qualifica per te')",
       "kpi_target": "Metrica concreta misurabile entro fine settimana (es. '5 clienti caricati, System Prompt configurato, 1 test consulenza AI')"
     },
     "settimana_2": {
@@ -620,8 +634,9 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
     {
       "titolo": "Azione rapida con impatto immediato",
       "passi": ["Step 1 concreto", "Step 2 concreto", "Step 3 concreto"],
+      "testo_da_copiare": "Testo pronto da copiare e incollare se la quick win lo richiede (messaggio, script, template). Se non applicabile, ometti questo campo.",
       "tempo_stimato": "15 minuti",
-      "impatto": "Descrizione dell'impatto atteso"
+      "cosa_cambia": "Descrizione dell'impatto atteso — cosa cambia concretamente dopo questa azione"
     }
   ],
 
@@ -634,6 +649,17 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
     }
   ],
 
+  "flusso_completo": "Paragrafo narrativo che descrive come tutti i moduli e pacchetti si parlano nel caso specifico di questo consulente. Spiega il flusso end-to-end: da dove arriva il lead, come viene gestito, come diventa cliente, e come viene mantenuto. Deve essere un racconto coerente, non una lista. 5-8 frasi.",
+
+  "segnali_successo": [
+    {
+      "timeframe": "Entro 2 settimane",
+      "dove_guardare": "Dashboard → Dipendenti AI → Stella",
+      "cosa_cerchi": "almeno 20 conversazioni gestite in autonomia",
+      "cosa_significa": "Stella è attiva e funziona — il sistema risponde senza di te"
+    }
+  ],
+
   "metriche_successo": [
     {
       "kpi": "Nome della metrica",
@@ -642,6 +668,8 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
       "timeframe": "Entro quando (es. '30 giorni')"
     }
   ],
+
+  "avvertimento_onesto": "Paragrafo onesto su dove farai fatica, cosa richiede effort vero, e perché vale comunque la pena. Sii diretto: non addolcire. Esempio: 'La prima settimana sarà la più dura — devi investire 5-6 ore per configurare tutto. Ma dopo quelle ore, il sistema lavora per te 24/7.' 3-5 frasi.",
 
   "chiusura_personale": "2-4 frasi di chiusura personale da Luca. Tono: motivante ma concreto, non retorico. Esempio: 'Hai tutto il necessario per farcela. Il business c'è, i clienti ti stimano, la qualità del servizio è alta. Quello che manca è un sistema che lavori per te anche quando non sei davanti allo schermo. Vai.' Firma: chiudi sempre con '— Luca'"
 }
@@ -674,6 +702,19 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 20. Per i pacchetti NON consigliati, spiega comunque il valore potenziale — perché potrebbe diventare utile in futuro
 21. I moduli devono elencare TUTTI i moduli del pacchetto (a differenza dei pacchetti_consigliati dove filtri solo quelli utili)
 22. Le icone devono essere: "setter", "dipendenti", "hunter", "email", "quotidiano", "formazione", "content", "voce", "pagamenti", "team"
+23. Ogni pacchetto nel catalogo deve avere un **punteggio** (1-10) onesto e variato — non dare 6/10 a tutto. Pacchetti dove il consulente eccelle: 8-9. Pacchetti irrilevanti: 2-3.
+24. Il **cosa_va_bene** e **cosa_non_funziona** devono essere scritti con la stessa profondità dei pacchetti_consigliati — riferimenti specifici alla discovery, non frasi generiche
+25. Il **come_correggere** deve avere 2-4 azioni concrete con → prefisso, ciascuna con spiegazione di 2-3 frasi
+26. La **diagnosi_critica** è opzionale — usala solo per i pacchetti dove c'è un insight davvero importante. Non metterla su tutti.
+
+### Regole per i Nuovi Campi:
+
+27. Il **flusso_completo** deve raccontare il percorso del cliente end-to-end nel caso specifico di questo consulente — non una lista generica di funzionalità
+28. I **segnali_successo** devono essere almeno 3, con timeframe diversificati (2 settimane, 1 mese, 2 mesi) e "dove_guardare" che punta a sezioni reali della piattaforma
+29. L'**avvertimento_onesto** deve essere genuinamente onesto — non un disclaimer soft. Dì dove sarà difficile e quanto effort ci vuole.
+30. Le **quick_wins** devono includere **testo_da_copiare** quando l'azione prevede un messaggio, un template, o uno script pronto all'uso
+31. Ogni **modulo** nei pacchetti_consigliati deve avere **primo_passo** e **come_misuri** — rendi ogni modulo immediatamente azionabile
+32. La **vita_dopo** in ogni fase della roadmap descrive il cambiamento tangibile nella vita lavorativa del consulente dopo quella fase
 
 ### Quando hai dati di Business Intelligence (scraping Google/sito web):
 Se ti viene fornito un blocco "BUSINESS INTELLIGENCE" con dati dalla ricerca online:
