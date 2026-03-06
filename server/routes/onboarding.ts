@@ -32,7 +32,6 @@ import {
 } from '@shared/schema';
 import { eq, and, count, sql, inArray, isNotNull, ne } from 'drizzle-orm';
 import { ensureGeminiFileValid } from '../services/gemini-file-manager';
-import { VertexAI } from '@google-cloud/vertexai';
 import { getCalendarClient, getAgentCalendarClient } from '../google-calendar-service';
 import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
 import nodemailer from 'nodemailer';
@@ -671,118 +670,15 @@ router.post('/test/vertex-ai', authenticateToken, requireRole('consultant'), asy
   try {
     const consultantId = req.user!.id;
     
-    // Check if consultant uses SuperAdmin Vertex AI
-    const consultant = await db.query.users.findFirst({
-      where: eq(users.id, consultantId),
-      columns: { useSuperadminVertex: true },
-    });
-    
-    if (consultant?.useSuperadminVertex) {
-      // Test SuperAdmin Vertex AI configuration
-      const superadminConfig = await db.query.superadminVertexConfig.findFirst({
-        where: eq(superadminVertexConfig.enabled, true),
-      });
-      
-      if (!superadminConfig) {
-        return res.status(400).json({
-          success: false,
-          error: 'SuperAdmin Vertex AI non configurato. Contatta il supporto.',
-        });
-      }
-      
-      let serviceAccountJson;
-      try {
-        serviceAccountJson = JSON.parse(superadminConfig.serviceAccountJson);
-      } catch (e) {
-        return res.status(400).json({
-          success: false,
-          error: 'Errore nel parsing delle credenziali SuperAdmin Vertex AI.',
-        });
-      }
-      
-      try {
-        const vertexAI = new VertexAI({
-          project: superadminConfig.projectId,
-          location: superadminConfig.location,
-          googleAuthOptions: {
-            credentials: serviceAccountJson,
-          },
-        });
-        
-        const model = vertexAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
-        const result = await model.generateContent('Rispondi solo "OK" se funziona.');
-        const response = result.response;
-        const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        
-        await db.update(consultantOnboardingStatus)
-          .set({
-            vertexAiStatus: 'verified',
-            vertexAiTestedAt: new Date(),
-            vertexAiErrorMessage: null,
-            updatedAt: new Date(),
-          })
-          .where(eq(consultantOnboardingStatus.consultantId, consultantId));
-        
-        res.json({
-          success: true,
-          message: 'SuperAdmin Vertex AI funziona correttamente!',
-          response: text.substring(0, 100),
-          source: 'superadmin',
-        });
-      } catch (vertexError: any) {
-        await db.update(consultantOnboardingStatus)
-          .set({
-            vertexAiStatus: 'error',
-            vertexAiTestedAt: new Date(),
-            vertexAiErrorMessage: vertexError.message,
-            updatedAt: new Date(),
-          })
-          .where(eq(consultantOnboardingStatus.consultantId, consultantId));
-        
-        res.status(400).json({
-          success: false,
-          error: `Test SuperAdmin Vertex AI fallito: ${vertexError.message}`,
-        });
-      }
-      return;
-    }
-    
-    // Test consultant's own Vertex AI configuration
-    const vertexSettings = await db.query.vertexAiSettings.findFirst({
-      where: eq(vertexAiSettings.userId, consultantId),
-    });
-    
-    if (!vertexSettings) {
-      return res.status(400).json({
-        success: false,
-        error: 'Vertex AI non configurato. Vai su API Keys per configurarlo.',
-      });
-    }
-    
-    let serviceAccountJson;
     try {
-      // Vertex AI credentials are stored in plain text
-      serviceAccountJson = JSON.parse(vertexSettings.serviceAccountJson);
-    } catch (e) {
-      return res.status(400).json({
-        success: false,
-        error: 'Errore nel parsing delle credenziali Vertex AI. Verifica che il JSON sia valido.',
-      });
-    }
-    
-    try {
-      const vertexAI = new VertexAI({
-        project: vertexSettings.projectId,
-        location: vertexSettings.location,
-        googleAuthOptions: {
-          credentials: serviceAccountJson,
-        },
-      });
-      
-      const model = vertexAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+      const provider = await getAIProvider(consultantId, consultantId);
+      const model = provider.client.getGenerativeModel({ model: 'gemini-2.0-flash' });
       const result = await model.generateContent('Rispondi solo "OK" se funziona.');
       const response = result.response;
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
+      const source = (provider as any).source || 'unknown';
+      const providerName = provider.metadata?.name || 'AI Engine';
       
       await db.update(consultantOnboardingStatus)
         .set({
@@ -795,27 +691,27 @@ router.post('/test/vertex-ai', authenticateToken, requireRole('consultant'), asy
       
       res.json({
         success: true,
-        message: 'Vertex AI funziona correttamente!',
+        message: `${providerName} funziona correttamente!`,
         response: text.substring(0, 100),
-        source: 'own',
+        source,
       });
-    } catch (vertexError: any) {
+    } catch (aiError: any) {
       await db.update(consultantOnboardingStatus)
         .set({
           vertexAiStatus: 'error',
           vertexAiTestedAt: new Date(),
-          vertexAiErrorMessage: vertexError.message,
+          vertexAiErrorMessage: aiError.message,
           updatedAt: new Date(),
         })
         .where(eq(consultantOnboardingStatus.consultantId, consultantId));
       
       res.status(400).json({
         success: false,
-        error: `Test Vertex AI fallito: ${vertexError.message}`,
+        error: `Test AI Engine fallito: ${aiError.message}`,
       });
     }
   } catch (error: any) {
-    console.error('Error testing Vertex AI:', error);
+    console.error('Error testing AI Engine:', error);
     res.status(500).json({
       success: false,
       error: 'Errore durante il test',
@@ -1202,75 +1098,14 @@ router.post('/test/whatsapp-ai', authenticateToken, requireRole('consultant'), a
   try {
     const consultantId = req.user!.id;
     
-    // NEW UNIFIED APPROACH: Check SuperAdmin Vertex first, then consultant's own vertexAiSettings
-    let vertexSettings: { projectId: string; location: string; serviceAccountJson: string } | null = null;
-    let source = '';
-    
-    // 1. Check if consultant can use SuperAdmin Vertex
-    const [consultant] = await db.select({ useSuperadminVertex: users.useSuperadminVertex })
-      .from(users)
-      .where(eq(users.id, consultantId))
-      .limit(1);
-    
-    if (consultant?.useSuperadminVertex) {
-      const [accessRecord] = await db.select({ hasAccess: consultantVertexAccess.hasAccess })
-        .from(consultantVertexAccess)
-        .where(eq(consultantVertexAccess.consultantId, consultantId))
-        .limit(1);
-      
-      const hasAccess = accessRecord?.hasAccess ?? true;
-      
-      if (hasAccess) {
-        const [superadminConfig] = await db.select()
-          .from(superadminVertexConfig)
-          .where(eq(superadminVertexConfig.enabled, true))
-          .limit(1);
-        
-        if (superadminConfig) {
-          vertexSettings = superadminConfig;
-          source = 'SuperAdmin';
-        }
-      }
-    }
-    
-    // 2. Fallback: Check consultant's own vertexAiSettings
-    if (!vertexSettings) {
-      const [consultantVertex] = await db.select()
-        .from(vertexAiSettings)
-        .where(and(
-          eq(vertexAiSettings.userId, consultantId),
-          eq(vertexAiSettings.enabled, true)
-        ))
-        .limit(1);
-      
-      if (consultantVertex) {
-        vertexSettings = consultantVertex;
-        source = 'Consultant';
-      }
-    }
-    
-    if (!vertexSettings) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vertex AI per WhatsApp non configurato. Configura Vertex AI nelle impostazioni.',
-      });
-    }
-    
     try {
-      const serviceAccountJson = JSON.parse(vertexSettings.serviceAccountJson);
-      
-      const vertexAI = new VertexAI({
-        project: vertexSettings.projectId,
-        location: vertexSettings.location,
-        googleAuthOptions: {
-          credentials: serviceAccountJson,
-        },
-      });
-      
-      const model = vertexAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+      const provider = await getAIProvider(consultantId, consultantId);
+      const model = provider.client.getGenerativeModel({ model: 'gemini-2.0-flash' });
       const result = await model.generateContent('Rispondi solo "OK" se funziona.');
       const response = result.response;
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
+      const providerName = provider.metadata?.name || 'AI Engine';
       
       await db.update(consultantOnboardingStatus)
         .set({
@@ -1283,22 +1118,22 @@ router.post('/test/whatsapp-ai', authenticateToken, requireRole('consultant'), a
       
       res.json({
         success: true,
-        message: `Vertex AI per WhatsApp funziona correttamente! (fonte: ${source})`,
-        details: { response: text.substring(0, 100), source },
+        message: `AI per WhatsApp funziona correttamente! (${providerName})`,
+        details: { response: text.substring(0, 100), source: providerName },
       });
-    } catch (vertexError: any) {
+    } catch (aiError: any) {
       await db.update(consultantOnboardingStatus)
         .set({
           whatsappAiStatus: 'error',
           whatsappAiTestedAt: new Date(),
-          whatsappAiErrorMessage: vertexError.message,
+          whatsappAiErrorMessage: aiError.message,
           updatedAt: new Date(),
         })
         .where(eq(consultantOnboardingStatus.consultantId, consultantId));
       
       res.status(400).json({
         success: false,
-        message: `Test WhatsApp AI fallito: ${vertexError.message}`,
+        message: `Test WhatsApp AI fallito: ${aiError.message}`,
       });
     }
   } catch (error: any) {
