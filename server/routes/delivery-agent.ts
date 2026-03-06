@@ -7,6 +7,38 @@ import { searchGoogleMaps, scrapeWebsiteWithFirecrawl } from '../services/lead-s
 import { decrypt } from '../encryption';
 import { superadminLeadScraperConfig } from '../../shared/schema';
 
+const fileSearchBootstrapped = new Set<string>();
+
+async function ensureFileSearchBootstrap(consultantId: string): Promise<void> {
+  if (fileSearchBootstrapped.has(consultantId)) return;
+
+  try {
+    const checkRes = await db.execute(sql`
+      SELECT id FROM file_search_documents
+      WHERE source_type = 'consultant_guide'
+        AND source_id = ${'consultant-guide-' + consultantId}
+        AND status = 'indexed'
+      LIMIT 1
+    `);
+
+    if (checkRes.rows.length > 0) {
+      fileSearchBootstrapped.add(consultantId);
+      console.log(`[DeliveryAgent] File search already indexed for consultant ${consultantId}`);
+      return;
+    }
+
+    console.log(`[DeliveryAgent] Bootstrapping file search for consultant ${consultantId}...`);
+    const { FileSearchSyncService } = await import('../services/file-search-sync-service');
+    const result = await FileSearchSyncService.syncConsultantGuide(consultantId);
+    if (result.success) {
+      fileSearchBootstrapped.add(consultantId);
+    }
+    console.log(`[DeliveryAgent] File search bootstrap result:`, result);
+  } catch (err) {
+    console.warn(`[DeliveryAgent] File search bootstrap failed (non-blocking, will retry):`, err);
+  }
+}
+
 async function getLeadScraperKeys(): Promise<{ serpApiKey: string | null; firecrawlKey: string | null }> {
   try {
     const [config] = await db.select().from(superadminLeadScraperConfig).limit(1);
@@ -168,6 +200,8 @@ router.post('/chat', authenticateToken, requireRole('consultant'), async (req: A
   };
 
   try {
+    ensureFileSearchBootstrap(consultantId).catch(() => {});
+
     const sessionRes = await db.execute(sql`
       SELECT * FROM delivery_agent_sessions
       WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId}
@@ -482,18 +516,19 @@ Ragiona in modo strutturato e critico. Questa analisi servirà come base per il 
             role: 'user',
             parts: [{
               text: `Perfetto. Ora basandoti sulla tua analisi, genera il report JSON strutturato completo. Segui esattamente il template nel system prompt. Ricorda:
-- Includi SOLO i pacchetti che servono davvero (tipicamente 4-7, non tutti e 10)
+- Includi SOLO i pacchetti che servono davvero nei pacchetti_consigliati (tipicamente 4-7, non tutti e 10)
 - Ogni "perche_per_te" deve citare cose specifiche dette dal consulente durante la conversazione
 - La roadmap deve rispettare le dipendenze
 - I quick_wins devono essere azioni concrete sotto i 30 minuti
 - Le metriche devono essere misurabili nella piattaforma
+- Il catalogo_completo deve includere TUTTI E 10 i pacchetti con descrizioni personalizzate e 2-3 esempi concreti tangibili per ciascuno
 
 Rispondi SOLO con il JSON nel formato richiesto.`,
             }],
           },
         ],
         generationConfig: {
-          maxOutputTokens: 16384,
+          maxOutputTokens: 32768,
           temperature: 0.4,
           ...thinkingConfig,
         },
@@ -557,13 +592,15 @@ COMPITO DI REVISIONE CRITICA: Rileggi il report e valuta:
 
 6. **Diagnosi**: La sezione "dove_sei_ora" e "gap_analysis" riflettono davvero la situazione emersa?
 
-Se trovi problemi, genera il report JSON CORRETTO e COMPLETO. Se il report è già buono, restituiscilo invariato.
+7. **Catalogo Completo**: Ci sono tutti e 10 i pacchetti? Ogni descrizione è personalizzata per questo consulente? Gli esempi concreti sono tangibili e specifici (non generici)?
+
+Se trovi problemi, genera il report JSON CORRETTO e COMPLETO (incluso catalogo_completo con TUTTI i 10 pacchetti). Se il report è già buono, restituiscilo invariato.
 Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
             }],
           },
         ],
         generationConfig: {
-          maxOutputTokens: 16384,
+          maxOutputTokens: 32768,
           temperature: 0.3,
           ...thinkingConfig,
         },

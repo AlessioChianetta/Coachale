@@ -80,6 +80,15 @@ interface PriorityAction {
   impatto: string;
 }
 
+interface CatalogPackage {
+  nome_pacchetto: string;
+  icona: string;
+  descrizione_personalizzata: string;
+  esempi_concreti: string[];
+  moduli: string[];
+  gia_consigliato: boolean;
+}
+
 interface RecommendedModule {
   name: string;
   priority: "fondamenta" | "core" | "avanzato";
@@ -141,6 +150,7 @@ interface ReportData {
     measurement: string;
     timeframe: string;
   }>;
+  catalogo_completo?: CatalogPackage[];
   closing_message?: string;
 }
 
@@ -300,6 +310,18 @@ function normalizeReport(raw: any): ReportData {
     }));
   }
 
+  const cat = raw.catalogo_completo;
+  if (cat && Array.isArray(cat) && cat.length > 0) {
+    result.catalogo_completo = cat.map((c: any) => ({
+      nome_pacchetto: c.nome_pacchetto || '',
+      icona: c.icona || '',
+      descrizione_personalizzata: c.descrizione_personalizzata || '',
+      esempi_concreti: Array.isArray(c.esempi_concreti) ? c.esempi_concreti : [],
+      moduli: Array.isArray(c.moduli) ? c.moduli : [],
+      gia_consigliato: !!c.gia_consigliato,
+    }));
+  }
+
   return result;
 }
 
@@ -400,11 +422,15 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
         });
       });
     }
-    const nextNum = (report.recommended_packages?.length || 0) + 3;
-    if (report.roadmap) chapters.push({ id: "roadmap", number: String(nextNum).padStart(2, '0'), title: "Roadmap Operativa", subtitle: "Piano settimana per settimana", icon: Calendar });
-    if (report.quick_wins?.length) chapters.push({ id: "quickwins", number: String(nextNum + 1).padStart(2, '0'), title: "Quick Wins", subtitle: `${report.quick_wins.length} azioni rapide`, icon: Zap });
-    if (report.success_metrics?.length) chapters.push({ id: "metriche", number: String(nextNum + 2).padStart(2, '0'), title: "Metriche di Successo", subtitle: `${report.success_metrics.length} KPI da monitorare`, icon: BarChart3 });
-    if (report.priority_actions?.length) chapters.push({ id: "azioni", number: String(nextNum + 3).padStart(2, '0'), title: "Azioni Immediate", subtitle: "Cosa fare nei prossimi 5 giorni", icon: Lightbulb });
+    let nextNum = (report.recommended_packages?.length || 0) + 3;
+    if (report.catalogo_completo?.length) {
+      chapters.push({ id: "catalogo", number: String(nextNum).padStart(2, '0'), title: "Catalogo Completo", subtitle: `Tutti i ${report.catalogo_completo.length} pacchetti disponibili`, icon: Layers });
+      nextNum++;
+    }
+    if (report.roadmap) { chapters.push({ id: "roadmap", number: String(nextNum).padStart(2, '0'), title: "Roadmap Operativa", subtitle: "Piano settimana per settimana", icon: Calendar }); nextNum++; }
+    if (report.quick_wins?.length) { chapters.push({ id: "quickwins", number: String(nextNum).padStart(2, '0'), title: "Quick Wins", subtitle: `${report.quick_wins.length} azioni rapide`, icon: Zap }); nextNum++; }
+    if (report.success_metrics?.length) { chapters.push({ id: "metriche", number: String(nextNum).padStart(2, '0'), title: "Metriche di Successo", subtitle: `${report.success_metrics.length} KPI da monitorare`, icon: BarChart3 }); nextNum++; }
+    if (report.priority_actions?.length) { chapters.push({ id: "azioni", number: String(nextNum).padStart(2, '0'), title: "Azioni Immediate", subtitle: "Cosa fare nei prossimi 5 giorni", icon: Lightbulb }); nextNum++; }
     if (report.closing_message) chapters.push({ id: "chiusura", number: "", title: "Chiusura", icon: BookOpen });
   }
 
@@ -932,9 +958,69 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
               ))
             )}
 
+            {report.catalogo_completo && report.catalogo_completo.length > 0 && (
+              <div id="catalogo" ref={setChapterRef("catalogo")} className="print:break-before-page">
+                <div className="relative py-8">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border/40" /></div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-background px-4 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Parte 2</span>
+                  </div>
+                </div>
+
+                <ChapterHeader
+                  number={chapters.find(c => c.id === 'catalogo')?.number}
+                  title="Tutti i Moduli Disponibili"
+                  subtitle="Catalogo completo dei 10 pacchetti della piattaforma"
+                  icon={Layers}
+                />
+
+                <div className="mt-8 space-y-6">
+                  {report.catalogo_completo.map((catPkg, i) => (
+                    <div key={i} className="print:break-inside-avoid">
+                      <div className="border border-border/60 rounded-xl bg-card overflow-hidden">
+                        <div className="px-6 py-5">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="min-w-0">
+                              <h3 className="text-base font-bold text-foreground tracking-tight">{catPkg.nome_pacchetto}</h3>
+                              {catPkg.gia_consigliato && (
+                                <p className="text-[11px] text-muted-foreground mt-0.5 italic">Incluso nel tuo piano</p>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-sm text-foreground/80 leading-relaxed">
+                            <RichText text={catPkg.descrizione_personalizzata} />
+                          </p>
+
+                          {catPkg.esempi_concreti.length > 0 && (
+                            <div className="mt-4 space-y-2">
+                              {catPkg.esempi_concreti.map((esempio, j) => (
+                                <div key={j} className="pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                                  <p className="text-[13px] text-foreground/70 italic leading-relaxed">{esempio}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {catPkg.moduli.length > 0 && (
+                            <div className="mt-4 flex flex-wrap gap-1.5">
+                              {catPkg.moduli.map((modulo, j) => (
+                                <span key={j} className="inline-block px-2.5 py-1 text-[11px] font-medium text-foreground/70 bg-slate-100 dark:bg-slate-800/60 rounded-full">
+                                  {modulo}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {report.roadmap && (
               <div id="roadmap" ref={setChapterRef("roadmap")} className="print:break-before-page">
-                <ChapterHeader number={String((report.recommended_packages?.length || 0) + 3).padStart(2, '0')} title="Roadmap Operativa" subtitle="Piano settimana per settimana" icon={Calendar} />
+                <ChapterHeader number={chapters.find(c => c.id === 'roadmap')?.number} title="Roadmap Operativa" subtitle="Piano settimana per settimana" icon={Calendar} />
                 <div className="mt-6">
                   {(report.roadmap.week1 as RoadmapWeek)?.azioni_prioritarie ? (
                     <div className="space-y-5">
@@ -989,7 +1075,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
 
             {report.quick_wins && report.quick_wins.length > 0 && (
               <div id="quickwins" ref={setChapterRef("quickwins")} className="print:break-before-page">
-                <ChapterHeader number={String((report.recommended_packages?.length || 0) + 4).padStart(2, '0')} title="Quick Wins" subtitle="Azioni rapide ad alto impatto" icon={Zap} />
+                <ChapterHeader number={chapters.find(c => c.id === 'quickwins')?.number} title="Quick Wins" subtitle="Azioni rapide ad alto impatto" icon={Zap} />
                 <div className="mt-6 space-y-4">
                   {report.quick_wins.map((qw, i) => (
                     <div key={i} className="p-5 rounded-xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30 print:break-inside-avoid">
@@ -1022,7 +1108,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
 
             {report.success_metrics && report.success_metrics.length > 0 && (
               <div id="metriche" ref={setChapterRef("metriche")} className="print:break-before-page">
-                <ChapterHeader number={String((report.recommended_packages?.length || 0) + 5).padStart(2, '0')} title="Metriche di Successo" icon={BarChart3} />
+                <ChapterHeader number={chapters.find(c => c.id === 'metriche')?.number} title="Metriche di Successo" icon={BarChart3} />
                 <div className="mt-6 grid md:grid-cols-2 gap-4">
                   {report.success_metrics.map((metric, i) => (
                     <div key={i} className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-200/50 dark:border-indigo-800/30 print:break-inside-avoid">
@@ -1046,7 +1132,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
             {report.priority_actions && report.priority_actions.length > 0 && (
               <div id="azioni" ref={setChapterRef("azioni")} className="print:break-before-page">
                 <ChapterHeader
-                  number={String((report.recommended_packages?.length || 0) + 6).padStart(2, '0')}
+                  number={chapters.find(c => c.id === 'azioni')?.number}
                   title="Le Azioni di Questa Settimana"
                   subtitle="Quello che fai nei prossimi 5 giorni decide il risultato"
                   icon={Lightbulb}

@@ -1,3 +1,29 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+let _manualeCache: string | null = null;
+function getManualeLight(): string {
+  if (_manualeCache !== null) return _manualeCache;
+  try {
+    const lightPath = path.join(process.cwd(), 'MANUALE-COMPLETO-LIGHT.md');
+    if (fs.existsSync(lightPath)) {
+      _manualeCache = fs.readFileSync(lightPath, 'utf-8');
+      console.log(`📚 [DeliveryAgent] Loaded MANUALE-COMPLETO-LIGHT.md (${_manualeCache.length} chars)`);
+      return _manualeCache;
+    }
+    const fullPath = path.join(process.cwd(), 'MANUALE-COMPLETO.md');
+    if (fs.existsSync(fullPath)) {
+      _manualeCache = fs.readFileSync(fullPath, 'utf-8');
+      console.log(`📚 [DeliveryAgent] Loaded MANUALE-COMPLETO.md fallback (${_manualeCache.length} chars)`);
+      return _manualeCache;
+    }
+  } catch (err) {
+    console.warn(`⚠️ [DeliveryAgent] Could not load manuale:`, err);
+  }
+  _manualeCache = '';
+  return _manualeCache;
+}
+
 const SERVICE_PACKAGES = `
 ## PACCHETTI SERVIZI DELLA PIATTAFORMA
 
@@ -540,6 +566,21 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
     }
   ],
 
+  "catalogo_completo": [
+    {
+      "nome_pacchetto": "SETTER AI",
+      "icona": "setter",
+      "descrizione_personalizzata": "Spiegazione personalizzata di 2-3 frasi su come QUESTO consulente specifico potrebbe utilizzare il pacchetto, basata sulla discovery. Anche se non è stato consigliato, spiega il valore potenziale per il suo caso.",
+      "esempi_concreti": [
+        "Esempio tangibile e specifico per il business del consulente — es. 'Quando un paziente ti scrive alle 22 per spostare un appuntamento, Stella risponde in automatico e aggiorna il calendario senza che tu debba fare nulla'",
+        "Secondo esempio concreto legato alla sua realtà operativa quotidiana",
+        "Terzo esempio che mostra un risultato misurabile"
+      ],
+      "moduli": ["Agenti WhatsApp", "Template WhatsApp", "Email Hub (Outreach)", "Presa Appuntamento", "Weekly Check-in"],
+      "gia_consigliato": true
+    }
+  ],
+
   "roadmap": {
     "settimana_1": {
       "titolo": "Fondamenta & Quick Wins",
@@ -624,6 +665,16 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 14. La **lettera_personale** deve essere LUNGA (4-6 paragrafi) e contenere almeno 3 dati specifici dalla conversazione
 15. Ogni "come_correggere" deve avere 3-5 azioni con → prefisso, ciascuna con spiegazione di 2-3 frasi
 
+### Regole per il Catalogo Completo:
+
+16. Il **catalogo_completo** deve contenere TUTTI E 10 i pacchetti servizio — nessuna eccezione
+17. Per ogni pacchetto, la descrizione_personalizzata deve essere scritta per QUESTO consulente specifico, basandosi sulla discovery
+18. Gli **esempi_concreti** devono essere 2-3 per pacchetto, tangibili e realistici — usa dettagli specifici del business del consulente (nome attività, settore, numeri emersi dalla discovery). Esempio buono: "Quando un paziente ti scrive alle 22 per spostare un appuntamento, Stella risponde e aggiorna il calendario". Esempio cattivo: "L'AI gestisce le comunicazioni automatiche".
+19. Per i pacchetti già inclusi nei pacchetti_consigliati, imposta "gia_consigliato": true
+20. Per i pacchetti NON consigliati, spiega comunque il valore potenziale — perché potrebbe diventare utile in futuro
+21. I moduli devono elencare TUTTI i moduli del pacchetto (a differenza dei pacchetti_consigliati dove filtri solo quelli utili)
+22. Le icone devono essere: "setter", "dipendenti", "hunter", "email", "quotidiano", "formazione", "content", "voce", "pagamenti", "team"
+
 ### Quando hai dati di Business Intelligence (scraping Google/sito web):
 Se ti viene fornito un blocco "BUSINESS INTELLIGENCE" con dati dalla ricerca online:
 - Usa il **Google rating e le recensioni** per valutare la reputazione online nell'area corrispondente
@@ -634,7 +685,17 @@ Se ti viene fornito un blocco "BUSINESS INTELLIGENCE" con dati dalla ricerca onl
 - Se le recensioni Google sono alte, riconoscilo come punto di forza
 `;
 
-const ASSISTANT_MODE_PROMPT = `
+function getAssistantModePrompt(): string {
+  const manuale = getManualeLight();
+  const manualeBlock = manuale ? `
+
+### MANUALE COMPLETO DELLA PIATTAFORMA
+Questo è il manuale operativo della piattaforma. Usalo come riferimento per dare istruzioni precise e percorsi di navigazione corretti.
+
+${manuale}
+` : '';
+
+  return `
 ## MODALITÀ ASSISTENTE — Compagno di Delivery Permanente
 
 La discovery è completa e il report è stato generato. Ora sei un **compagno di delivery permanente** che conosce il business del consulente a fondo.
@@ -642,7 +703,7 @@ La discovery è completa e il report è stato generato. Ora sei un **compagno di
 ### Il tuo ruolo:
 - Conosci il profilo del consulente, i pacchetti consigliati, la roadmap
 - Guidi la configurazione **pacchetto per pacchetto**, modulo per modulo
-- Fornisci istruzioni dettagliate e specifiche tratte dal MANUALE-COMPLETO
+- Fornisci istruzioni dettagliate e specifiche basate sul manuale della piattaforma
 - Troubleshoot problemi che emergono durante la configurazione
 - Suggerisci il prossimo pacchetto/modulo da configurare in base ai progressi
 
@@ -658,6 +719,7 @@ Conosci i 10 pacchetti della piattaforma:
 8. **VOCE AI** — Centralino & Chiamate
 9. **PAGAMENTI & STRIPE** — Monetizzazione
 10. **TEAM & DIPENDENTI UMANI** — Gestione Team
+${manualeBlock}
 
 ### Come parli in modalità assistente
 
@@ -689,6 +751,7 @@ Non sei un manuale che risponde a comandi. Sei qualcuno che ha fatto la discover
 - Parla SEMPRE in italiano
 - Stessi pattern proibiti della discovery: niente "Certamente!", "Assolutamente!", elenchi numerati meccanici, o chiusure con "Fammi sapere!"
 `;
+}
 
 const SIMULATOR_NICHES: Record<string, string> = {
   consulente_finanziario: 'Consulente Finanziario — gestione patrimoni, pianificazione finanziaria, consulenza investimenti',
@@ -767,7 +830,7 @@ export function getDeliveryAgentSystemPrompt(
 La discovery è completa. Il profilo è stato estratto. Informa il consulente che stai elaborando il report personalizzato con i pacchetti servizio consigliati e che sarà pronto a breve. Riepiloga brevemente i punti chiave delle 8 fasi di discovery.
 `;
   } else if (status === 'completed' || status === 'assistant') {
-    phaseBlock = ASSISTANT_MODE_PROMPT;
+    phaseBlock = getAssistantModePrompt();
   }
 
   let simulatorContext = '';
@@ -912,6 +975,15 @@ Usa questi dati per arricchire l'analisi — confronta ciò che il consulente ha
 `;
   }
 
+  const manuale = getManualeLight();
+  const manualeModulesBlock = manuale ? `
+
+## CONOSCENZA MODULI DELLA PIATTAFORMA
+Hai accesso al manuale operativo completo della piattaforma. Usalo per scrivere descrizioni accurate dei moduli, percorsi di navigazione corretti (Sidebar → Sezione → Modulo), e esempi realistici di come ogni funzionalità lavora nella pratica.
+
+${manuale}
+` : '';
+
   return `# GENERAZIONE REPORT — Luca, Dipendente Delivery
 
 Sei Luca — hai appena condotto una discovery approfondita in 8 fasi e ora devi generare il report personalizzato. Conosci il business del consulente a fondo perché ci hai parlato per 20-30 minuti. Il report è organizzato per PACCHETTI SERVIZIO, non per singoli moduli.
@@ -925,6 +997,7 @@ ${PACKAGE_DEPENDENCIES}
 ${REPORT_TEMPLATE}
 
 ${biBlock}
+${manualeModulesBlock}
 
 ## ISTRUZIONI AGGIUNTIVE
 - Analizza il profilo e la conversazione per capire ESATTAMENTE quali pacchetti servono a questo consulente
