@@ -124,8 +124,6 @@ export default function ConsultantCatalogSettings() {
   const [aiLoading, setAiLoading] = useState(false);
   const [priceInput, setPriceInput] = useState("");
 
-  const defaultPaymentMode = hasStripeConnect ? "connect" : "direct";
-
   const { data: catalogData, isLoading } = useQuery({
     queryKey: ["/api/consultant/catalog"],
     queryFn: async () => {
@@ -156,6 +154,7 @@ export default function ConsultantCatalogSettings() {
   });
 
   const hasStripeConnect = !!(stripeConnectStatus?.onboarded);
+  const defaultPaymentMode = hasStripeConnect ? "connect" : "direct";
 
   const items = catalogData || [];
   const sales = salesData || [];

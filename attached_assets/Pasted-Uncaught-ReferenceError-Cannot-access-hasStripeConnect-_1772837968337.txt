@@ -1,0 +1,55 @@
+Uncaught ReferenceError: Cannot access 'hasStripeConnect' before initialization
+    at ConsultantCatalogSettings (consultant-catalog-settings.tsx:127:30)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=acfd96f4:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=acfd96f4:14582:28)
+    at mountLazyComponent (chunk-RPCDYKBN.js?v=acfd96f4:14833:23)
+    at beginWork (chunk-RPCDYKBN.js?v=acfd96f4:15918:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=acfd96f4:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=acfd96f4:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=acfd96f4:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=acfd96f4:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=acfd96f4:19198:20)Understand this error
+injected.js:37 The above error occurred in the <ConsultantCatalogSettings> component:
+
+    at ConsultantCatalogSettings (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/src/pages/consultant-catalog-settings.tsx:103:20)
+    at AuthGuard (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/src/App.tsx?v=lV53DFw6FT0dk8qeBy64e:349:35)
+    at Provider (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/src/App.tsx?v=lV53DFw6FT0dk8qeBy64e:2280:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+(anonymous) @ injected.js:37Understand this error
+chunk-RPCDYKBN.js?v=acfd96f4:19413 Uncaught ReferenceError: Cannot access 'hasStripeConnect' before initialization
+    at ConsultantCatalogSettings (consultant-catalog-settings.tsx:127:30)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=acfd96f4:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=acfd96f4:14582:28)
+    at mountLazyComponent (chunk-RPCDYKBN.js?v=acfd96f4:14833:23)
+    at beginWork (chunk-RPCDYKBN.js?v=acfd96f4:15918:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=acfd96f4:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=acfd96f4:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=acfd96f4:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=acfd96f4:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=acfd96f4:18736:28)Understand this error
+client:536 WebSocket connection to 'wss://b1ea7f8b-57c1-433b-95b6-310e15af6127-00-3tiar3vwauy6x.riker.replit.dev/?token=-x6-58NYA7jS' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=-x6-58NYA7jS' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+injected.js:37 Activity tracker init: 
