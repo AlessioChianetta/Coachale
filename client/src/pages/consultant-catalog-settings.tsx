@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Trash2, Loader2, Pencil, Package, Sparkles, Wand2,
   ToggleLeft, ToggleRight, Star, ShoppingCart, Eye, EyeOff,
-  GripVertical,
+  GripVertical, Link2, CreditCard, AlertTriangle, Info, ExternalLink,
 } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -124,6 +124,8 @@ export default function ConsultantCatalogSettings() {
   const [aiLoading, setAiLoading] = useState(false);
   const [priceInput, setPriceInput] = useState("");
 
+  const defaultPaymentMode = hasStripeConnect ? "connect" : "direct";
+
   const { data: catalogData, isLoading } = useQuery({
     queryKey: ["/api/consultant/catalog"],
     queryFn: async () => {
@@ -143,6 +145,17 @@ export default function ConsultantCatalogSettings() {
       return (data.data || []) as SaleRecord[];
     },
   });
+
+  const { data: stripeConnectStatus } = useQuery({
+    queryKey: ["/api/consultant/stripe-connect/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/stripe-connect/status", { headers: getAuthHeaders() });
+      if (!res.ok) return { connected: false, onboarded: false };
+      return await res.json();
+    },
+  });
+
+  const hasStripeConnect = !!(stripeConnectStatus?.onboarded);
 
   const items = catalogData || [];
   const sales = salesData || [];
@@ -205,7 +218,7 @@ export default function ConsultantCatalogSettings() {
 
   function openCreateModal() {
     setEditingItem(null);
-    setForm({ ...DEFAULT_FORM });
+    setForm({ ...DEFAULT_FORM, paymentMode: defaultPaymentMode });
     setPriceInput("");
     setCreationMode("manual");
     setAiPrompt("");
@@ -301,6 +314,14 @@ export default function ConsultantCatalogSettings() {
   function handleSave() {
     if (!form.name?.trim()) {
       toast({ title: "Nome richiesto", variant: "destructive" });
+      return;
+    }
+    if (form.paymentMode === "connect" && !hasStripeConnect) {
+      toast({ title: "Stripe Connect non configurato", description: "Configura Stripe Connect nelle impostazioni oppure usa la modalità Link Diretto", variant: "destructive" });
+      return;
+    }
+    if (form.paymentMode === "direct" && !form.stripeDirectLink?.trim()) {
+      toast({ title: "Link Stripe mancante", description: "Inserisci il tuo Stripe Payment Link per la modalità diretta", variant: "destructive" });
       return;
     }
     saveMutation.mutate(form);
@@ -682,50 +703,149 @@ export default function ConsultantCatalogSettings() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Modalità Pagamento</Label>
-                <Select
-                  value={form.paymentMode || "connect"}
-                  onValueChange={v => setForm(prev => ({ ...prev, paymentMode: v }))}
+            <div className="space-y-2">
+              <Label>Tipo Prodotto</Label>
+              <Select
+                value={form.itemType || "single"}
+                onValueChange={v => setForm(prev => ({ ...prev, itemType: v, bundleItems: v === "bundle" ? [] : null }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single">Singolo</SelectItem>
+                  <SelectItem value="bundle">Bundle</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Modalità Pagamento</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  disabled={!hasStripeConnect}
+                  onClick={() => hasStripeConnect && setForm(prev => ({ ...prev, paymentMode: "connect" }))}
+                  className={cn(
+                    "relative text-left p-4 rounded-xl border-2 transition-all",
+                    form.paymentMode === "connect"
+                      ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30 ring-1 ring-violet-500/30"
+                      : hasStripeConnect
+                        ? "border-border hover:border-violet-300 dark:hover:border-violet-700 bg-card"
+                        : "border-border/50 bg-muted/30 opacity-60 cursor-not-allowed"
+                  )}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_MODES.map(pm => (
-                      <SelectItem key={pm.value} value={pm.value}>
-                        {pm.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground">
-                  {PAYMENT_MODES.find(pm => pm.value === form.paymentMode)?.description}
-                </p>
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                      form.paymentMode === "connect"
+                        ? "bg-violet-500 text-white"
+                        : "bg-muted text-muted-foreground"
+                    )}>
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">Stripe Connect</span>
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0">50%</Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Il cliente paga tramite la piattaforma. Tu ricevi il 50% automaticamente sul tuo conto Stripe.
+                      </p>
+                      {!hasStripeConnect && (
+                        <div className="flex items-center gap-1.5 mt-2 text-amber-600 dark:text-amber-400">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          <span className="text-[10px] font-medium">Stripe Connect non configurato</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {form.paymentMode === "connect" && (
+                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, paymentMode: "direct" }))}
+                  className={cn(
+                    "relative text-left p-4 rounded-xl border-2 transition-all",
+                    form.paymentMode === "direct"
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 ring-1 ring-emerald-500/30"
+                      : "border-border hover:border-emerald-300 dark:hover:border-emerald-700 bg-card"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                      form.paymentMode === "direct"
+                        ? "bg-emerald-500 text-white"
+                        : "bg-muted text-muted-foreground"
+                    )}>
+                      <Link2 className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">Link Diretto</span>
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-300 text-emerald-600 dark:border-emerald-700 dark:text-emerald-400">100%</Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Usa il tuo link Stripe personale. Il 100% del pagamento va direttamente a te.
+                      </p>
+                    </div>
+                  </div>
+                  {form.paymentMode === "direct" && (
+                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                </button>
               </div>
 
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select
-                  value={form.itemType || "single"}
-                  onValueChange={v => setForm(prev => ({ ...prev, itemType: v, bundleItems: v === "bundle" ? [] : null }))}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="single">Singolo</SelectItem>
-                    <SelectItem value="bundle">Bundle</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="rounded-lg bg-muted/40 border border-border/50 p-3 flex items-start gap-2.5">
+                <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                <div className="text-[11px] text-muted-foreground leading-relaxed">
+                  {form.paymentMode === "connect" ? (
+                    <>
+                      <strong className="text-foreground">Stripe Connect:</strong> La piattaforma gestisce il pagamento. Quando un cliente acquista, il 50% viene trasferito automaticamente al tuo conto Stripe collegato. Non devi creare nessun link — tutto è automatico.
+                    </>
+                  ) : (
+                    <>
+                      <strong className="text-foreground">Link Diretto:</strong> Crei un Payment Link dal tuo account Stripe e lo incolli qui sotto. Il cliente viene reindirizzato al tuo link per pagare. Il 100% va a te, la piattaforma non trattiene nulla.
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
             {form.paymentMode === "direct" && (
               <div className="space-y-2">
                 <Label>Stripe Payment Link URL</Label>
-                <Input
-                  value={form.stripeDirectLink || ""}
-                  onChange={e => setForm(prev => ({ ...prev, stripeDirectLink: e.target.value }))}
-                  placeholder="https://buy.stripe.com/..."
-                />
+                <div className="relative">
+                  <Input
+                    value={form.stripeDirectLink || ""}
+                    onChange={e => setForm(prev => ({ ...prev, stripeDirectLink: e.target.value }))}
+                    placeholder="https://buy.stripe.com/..."
+                    className="pr-10"
+                  />
+                  {form.stripeDirectLink && (
+                    <a
+                      href={form.stripeDirectLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Vai su Stripe → Payments → Payment Links → crea un link e incollalo qui
+                </p>
               </div>
             )}
 
