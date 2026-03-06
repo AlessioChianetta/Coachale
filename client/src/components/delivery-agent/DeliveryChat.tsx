@@ -116,6 +116,7 @@ export function DeliveryChat({
   const [simTurn, setSimTurn] = useState(0);
 
   useEffect(() => {
+    setMessages([]);
     const loadMessages = async () => {
       setLoadingMessages(true);
       try {
