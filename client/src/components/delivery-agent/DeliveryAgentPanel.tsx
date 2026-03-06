@@ -556,18 +556,33 @@ export function DeliveryAgentPanel() {
                   Il tuo assistente AI per l'onboarding e la discovery dei clienti.
                 </p>
 
-                <div className="grid grid-cols-3 gap-3 mb-8 max-w-sm mx-auto">
-                  <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/60 dark:bg-white/5 border border-indigo-100/60 dark:border-indigo-800/30">
-                    <Search className="w-4 h-4 text-indigo-500" />
-                    <span className="text-[10px] font-medium text-muted-foreground">Analisi</span>
+                <div className="grid grid-cols-3 gap-3 mb-8 max-w-lg mx-auto">
+                  <div className="group flex flex-col items-center gap-2.5 p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-indigo-200/60 dark:border-indigo-700/30 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md hover:shadow-indigo-500/5 transition-all duration-200">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
+                      <Search className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-center">
+                      <span className="text-xs font-bold text-foreground block">Discovery</span>
+                      <span className="text-[10px] text-muted-foreground/70 leading-tight block mt-0.5">9 fasi di analisi del cliente</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/60 dark:bg-white/5 border border-violet-100/60 dark:border-violet-800/30">
-                    <FileText className="w-4 h-4 text-violet-500" />
-                    <span className="text-[10px] font-medium text-muted-foreground">Report</span>
+                  <div className="group flex flex-col items-center gap-2.5 p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-violet-200/60 dark:border-violet-700/30 hover:border-violet-300 dark:hover:border-violet-600 hover:shadow-md hover:shadow-violet-500/5 transition-all duration-200">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md shadow-violet-500/20 group-hover:scale-105 transition-transform duration-200">
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-center">
+                      <span className="text-xs font-bold text-foreground block">Report</span>
+                      <span className="text-[10px] text-muted-foreground/70 leading-tight block mt-0.5">Piano personalizzato completo</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/60 dark:bg-white/5 border border-purple-100/60 dark:border-purple-800/30">
-                    <Bot className="w-4 h-4 text-purple-500" />
-                    <span className="text-[10px] font-medium text-muted-foreground">Assistente</span>
+                  <div className="group flex flex-col items-center gap-2.5 p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-purple-200/60 dark:border-purple-700/30 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md hover:shadow-purple-500/5 transition-all duration-200">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform duration-200">
+                      <Bot className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-center">
+                      <span className="text-xs font-bold text-foreground block">Assistente</span>
+                      <span className="text-[10px] text-muted-foreground/70 leading-tight block mt-0.5">Supporto permanente post-report</span>
+                    </div>
                   </div>
                 </div>
 
