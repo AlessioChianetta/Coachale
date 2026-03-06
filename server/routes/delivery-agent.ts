@@ -6,6 +6,7 @@ import { getAIProvider, getModelWithThinking, GEMINI_3_MODEL } from '../ai/provi
 import { searchGoogleMaps, scrapeWebsiteWithFirecrawl } from '../services/lead-scraper-service';
 import { decrypt } from '../encryption';
 import { superadminLeadScraperConfig } from '../../shared/schema';
+import { getOnboardingStatusForAI } from './onboarding';
 
 const fileSearchBootstrapped = new Set<string>();
 
@@ -229,10 +230,17 @@ router.post('/chat', authenticateToken, requireRole('consultant'), async (req: A
       parts: [{ text: m.content }],
     }));
 
+    let activationStatuses: { stepId: string; status: string }[] = [];
+    try {
+      activationStatuses = await getOnboardingStatusForAI(consultantId);
+    } catch (e: any) {
+      console.warn('[DeliveryAgent] Could not fetch activation statuses:', e.message);
+    }
+
     let systemPromptText = '';
     try {
       const { getDeliveryAgentSystemPrompt } = await import('../prompts/delivery-agent-prompt');
-      systemPromptText = getDeliveryAgentSystemPrompt(session.mode, session.status, session.client_profile_json);
+      systemPromptText = getDeliveryAgentSystemPrompt(session.mode, session.status, session.client_profile_json, activationStatuses);
     } catch {
       systemPromptText = `You are a delivery agent assistant. Mode: ${session.mode}. Status: ${session.status}. Help the consultant with onboarding and discovery.`;
     }

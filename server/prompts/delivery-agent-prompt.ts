@@ -850,7 +850,8 @@ L'atteggiamento del cliente è: **${attitudeDesc}**
 export function getDeliveryAgentSystemPrompt(
   mode: string,
   status: string,
-  clientProfile: any
+  clientProfile: any,
+  activationStatuses?: { stepId: string; status: string }[]
 ): string {
   const isSimulator = mode === 'simulator';
   const effectiveMode = isSimulator ? 'discovery' : mode;
@@ -891,6 +892,54 @@ ${JSON.stringify(clientProfile, null, 2)}
 `;
   }
 
+  let activationBlock = '';
+  if (activationStatuses && activationStatuses.length > 0) {
+    const STEP_LABELS: Record<string, string> = {
+      twilio: 'Twilio/WhatsApp Business',
+      smtp: 'Server SMTP (Email)',
+      vertex_ai: 'AI Gemini (Google AI Studio)',
+      lead_import: 'Importazione Lead / Webhook',
+      whatsapp_template: 'Template WhatsApp Approvati',
+      agent_inbound: 'Agente Inbound',
+      first_campaign: 'Prima Campagna Marketing',
+      agent_outbound: 'Agente Outbound',
+      stripe_connect: 'Stripe Connect (Pagamenti)',
+      knowledge_base: 'Knowledge Base (Documenti)',
+      google_calendar: 'Google Calendar (Personale)',
+      google_calendar_agents: 'Google Calendar (Agenti)',
+      voice_calls: 'Chiamate Vocali AI (Alessia)',
+      agent_consultative: 'Agente Consulenziale',
+      email_journey: 'Email Journey Post-Consulenza',
+      nurturing_emails: 'Email Nurturing 365',
+      ai_autonomo: 'AI Autonomo (Dipendenti AI)',
+      summary_email: 'Email Riepilogo Consulenza',
+      email_hub: 'Email Hub (Inbox AI)',
+      agent_public_link: 'Link Pubblico Agente',
+      instagram: 'Instagram DM',
+      turn_config: 'Video Meeting (TURN Server)',
+      agent_ideas: 'Idee AI per Agenti',
+      more_templates: 'Template WhatsApp Aggiuntivi',
+      first_course: 'Primo Corso Formativo',
+      first_exercise: 'Primo Esercizio',
+      whatsapp_ai: 'Credenziali AI WhatsApp',
+    };
+    const verified = activationStatuses.filter(s => s.status === 'verified').map(s => STEP_LABELS[s.stepId] || s.stepId);
+    const configured = activationStatuses.filter(s => s.status === 'configured').map(s => STEP_LABELS[s.stepId] || s.stepId);
+    const pending = activationStatuses.filter(s => s.status === 'pending').map(s => STEP_LABELS[s.stepId] || s.stepId);
+    const errors = activationStatuses.filter(s => s.status === 'error').map(s => STEP_LABELS[s.stepId] || s.stepId);
+
+    activationBlock = `
+## STATO CENTRO DI ATTIVAZIONE (DATI IN TEMPO REALE)
+Questi sono i dati reali della piattaforma del consulente — aggiornati in tempo reale.
+${verified.length > 0 ? `\n✅ **Attivi e funzionanti (${verified.length}):** ${verified.join(', ')}` : ''}
+${configured.length > 0 ? `\n🟡 **Configurati ma non testati (${configured.length}):** ${configured.join(', ')}` : ''}
+${pending.length > 0 ? `\n⚪ **Da configurare (${pending.length}):** ${pending.join(', ')}` : ''}
+${errors.length > 0 ? `\n🔴 **Errori (${errors.length}):** ${errors.join(', ')}` : ''}
+
+**ISTRUZIONI:** Usa questi dati quando il consulente chiede dello stato della piattaforma. Se chiede "ho configurato X?", rispondi basandoti esclusivamente su questi dati reali. Se suggerisci di attivare qualcosa, verifica prima che i prerequisiti siano già configurati. Non inventare mai lo stato di una funzionalità.
+`;
+  }
+
   return `# DELIVERY AGENT — Sistema di Onboarding e Supporto Continuo
 
 ## CHI SEI — IDENTITÀ E CARATTERE
@@ -927,6 +976,8 @@ ${phaseBlock}
 ${simulatorContext}
 
 ${profileContext}
+
+${activationBlock}
 
 ${SERVICE_PACKAGES}
 

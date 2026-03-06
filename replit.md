@@ -93,3 +93,6 @@ The Academy system (`/consultant/academy`) has 16 modules total:
 - Master content source: `GUIDA-PACCHETTI-SERVIZIO.md`
 - Seed in `server/routes/academy.ts` covers modules + lessons (content populated via direct SQL from guide)
 - API uses `SELECT *` so content field is auto-included
+- Academy page has 3 tabs: Accademia (modules/lessons), Delivery AI (delivery agent chat), Assistente Setup (onboarding chat with activation status)
+- `getOnboardingStatusForAI(consultantId)` exported from `server/routes/onboarding.ts` — returns activation step statuses for AI prompts
+- Delivery Agent system prompt includes real-time "STATO CENTRO DI ATTIVAZIONE" block via `getDeliveryAgentSystemPrompt()` in `server/prompts/delivery-agent-prompt.ts`

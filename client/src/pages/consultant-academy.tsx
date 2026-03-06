@@ -11,13 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, ChevronDown, ChevronRight, ExternalLink,
   ArrowLeft, ArrowRight, GraduationCap, Settings, Clock,
-  ChevronUp, FileText, Loader2, Rocket, BookOpen,
+  ChevronUp, FileText, Loader2, Rocket, BookOpen, Sparkles,
 } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { DeliveryAgentPanel } from "@/components/delivery-agent/DeliveryAgentPanel";
+import { ChatPanel } from "@/components/ai-assistant/ChatPanel";
 
 interface AcademyDocument {
   id: string;
@@ -164,7 +165,7 @@ function useAcademyData() {
     },
   });
 
-  return { modules, lessonsFlat, lessonById, wizardCompleted, manualCompleted, allCompleted, markMutation, modulesLoading };
+  return { modules, lessonsFlat, lessonById, wizardCompleted, manualCompleted, allCompleted, markMutation, modulesLoading, onboardingStatuses: wizardData?.data };
 }
 
 function LessonSidebarItem({
@@ -585,9 +586,12 @@ export default function ConsultantAcademy() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [location] = useLocation();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"academy" | "delivery">("academy");
+  const [activeTab, setActiveTab] = useState<"academy" | "delivery" | "setup-assistant">("academy");
+  const [setupChatStarted, setSetupChatStarted] = useState(false);
+  const [setupAutoMessage, setSetupAutoMessage] = useState<string | null>(null);
+  const [setupChatKey, setSetupChatKey] = useState(0);
   const [sidebarTab, setSidebarTab] = useState<"setup" | "corsi">("setup");
-  const { modules, lessonsFlat, lessonById, wizardCompleted, manualCompleted, allCompleted, markMutation, modulesLoading } = useAcademyData();
+  const { modules, lessonsFlat, lessonById, wizardCompleted, manualCompleted, allCompleted, markMutation, modulesLoading, onboardingStatuses } = useAcademyData();
 
   const setupModules = useMemo(() => modules.filter(m => !m.slug.startsWith('pkg_')), [modules]);
   const corsiModules = useMemo(() => modules.filter(m => m.slug.startsWith('pkg_')), [modules]);
@@ -753,86 +757,114 @@ export default function ConsultantAcademy() {
         />
 
         <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          {activeTab === "delivery" ? (
-            <>
-              <div className="flex items-center gap-3 px-4 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
-                <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
-                  <button
-                    onClick={() => setActiveTab("academy")}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                      "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    )}
-                  >
-                    <GraduationCap className="w-4 h-4" />
-                    Accademia
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("delivery")}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                      "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md"
-                    )}
-                  >
-                    <Rocket className="w-4 h-4" />
-                    Delivery AI
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <DeliveryAgentPanel />
-              </div>
-            </>
-          ) : (
-          <div className="flex flex-col h-full">
-            <div className="flex-shrink-0 px-4 sm:px-6 py-4 border-b border-border/60 bg-card/30">
-              <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
-                    <button
-                      onClick={() => setActiveTab("academy")}
-                      className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                        "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-md"
-                      )}
-                    >
-                      <GraduationCap className="w-4 h-4" />
-                      Accademia
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("delivery")}
-                      className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                        "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                    >
-                      <Rocket className="w-4 h-4" />
-                      Delivery AI
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="hidden sm:flex items-center gap-2">
-                    <div className="w-32 h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-500"
-                        style={{ width: `${progressPct}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
-                  </div>
-
-                  <Link href="/consultant/setup-wizard">
-                    <Button variant="outline" size="sm" className="gap-2 text-xs">
-                      <ArrowLeft className="w-3.5 h-3.5" />
-                      Setup Wizard
-                    </Button>
-                  </Link>
-                </div>
-              </div>
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
+            <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
+              {([
+                { key: "academy" as const, label: "Accademia", icon: <GraduationCap className="w-4 h-4" />, gradient: "from-indigo-500 to-blue-600" },
+                { key: "delivery" as const, label: "Delivery AI", icon: <Rocket className="w-4 h-4" />, gradient: "from-violet-500 to-purple-600" },
+                { key: "setup-assistant" as const, label: "Assistente Setup", icon: <Sparkles className="w-4 h-4" />, gradient: "from-emerald-500 to-teal-600" },
+              ] as const).map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                    activeTab === tab.key
+                      ? `bg-gradient-to-r ${tab.gradient} text-white shadow-md`
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
+            {activeTab === "academy" && (
+              <div className="ml-auto flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-2">
+                  <div className="w-32 h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-500"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
+                </div>
+                <Link href="/consultant/setup-wizard">
+                  <Button variant="outline" size="sm" className="gap-2 text-xs">
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Setup Wizard
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {activeTab === "delivery" ? (
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <DeliveryAgentPanel />
+            </div>
+          ) : activeTab === "setup-assistant" ? (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              {!setupChatStarted && (
+                <div className="shrink-0 border-b border-emerald-100 dark:border-emerald-900/40 bg-gradient-to-b from-emerald-50/80 to-white dark:from-emerald-950/30 dark:to-background overflow-y-auto" style={{ maxHeight: "20rem" }}>
+                  <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Inizia da qui</p>
+                    <button
+                      onClick={() => setSetupChatStarted(true)}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Nascondi
+                    </button>
+                  </div>
+                  <div className="px-3 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-w-3xl mx-auto">
+                    {[
+                      "Da dove inizio? Quali sono i primi step critici?",
+                      "Cosa fa esattamente l'agente inbound e quando conviene usarlo?",
+                      "Qual è la differenza tra agente outbound e campagna WhatsApp?",
+                      "Come funziona l'AI Autonomo e cosa può fare per me ogni giorno?",
+                      "Come configuro Twilio per WhatsApp Business?",
+                      "Cosa devo caricare nella Knowledge Base per far funzionare bene gli agenti?",
+                      "Come funziona l'Email Journey dopo una consulenza?",
+                      "Quando ha senso usare le chiamate vocali AI?",
+                      "Come collego Stripe per incassare automaticamente?",
+                      "Ho un problema con uno step, mi aiuti a risolverlo?",
+                    ].map((q, i) => (
+                      <button
+                        key={i}
+                        onClick={() => { setSetupAutoMessage(q); setSetupChatStarted(true); setSetupChatKey(k => k + 1); }}
+                        className="w-full text-left text-xs p-2.5 rounded-xl bg-card/80 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-foreground border border-border hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-150 leading-relaxed flex items-start gap-2.5 group shadow-sm"
+                      >
+                        <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex items-center justify-center group-hover:bg-emerald-200 dark:group-hover:bg-emerald-800 transition-colors">
+                          {i + 1}
+                        </span>
+                        <span>{q}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                <ChatPanel
+                  key={setupChatKey}
+                  isOpen={true}
+                  onClose={() => setActiveTab("academy")}
+                  mode="assistenza"
+                  setMode={() => {}}
+                  consultantType="finanziario"
+                  setConsultantType={() => {}}
+                  isConsultantMode={true}
+                  isOnboardingMode={true}
+                  embedded={true}
+                  onboardingStatuses={onboardingStatuses}
+                  autoMessage={setupAutoMessage}
+                  onAutoMessageSent={() => setSetupAutoMessage(null)}
+                />
+              </div>
+            </div>
+          ) : (
+          <div className="flex flex-col h-full">
             {isMobile && (
               <div className="flex-shrink-0 px-4 sm:px-6 pt-4">
                 <Button

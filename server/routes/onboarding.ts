@@ -319,11 +319,12 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
   }
 });
 
-router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
-  try {
-    const consultantId = req.user!.id;
-    
-    // Fetch all configuration statuses in parallel for efficiency
+export interface OnboardingStatusEntry {
+  stepId: string;
+  status: 'pending' | 'configured' | 'verified' | 'error' | 'skipped';
+}
+
+export async function getOnboardingStatusForAI(consultantId: string): Promise<OnboardingStatusEntry[]> {
     const [
       onboardingStatus,
       vertexSettings,
@@ -504,20 +505,6 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
     const hasEmailJourney = smtpSettings?.automationEnabled === true || 
       (smtpSettings?.emailFrequencyDays !== null && smtpSettings?.emailFrequencyDays !== undefined);
     
-    type OnboardingStepStatus = 'pending' | 'configured' | 'verified' | 'error' | 'skipped';
-    type OnboardingStepId = 
-      | 'vertex_ai' | 'smtp' | 'google_calendar' | 'google_calendar_agents' | 'twilio' | 'instagram'
-      | 'whatsapp_template' | 'first_campaign' | 'whatsapp_ai'
-      | 'agent_inbound' | 'agent_outbound' | 'agent_consultative' | 'agent_public_link' | 'agent_ideas' | 'more_templates'
-      | 'first_course' | 'first_exercise' | 'knowledge_base'
-      | 'summary_email' | 'turn_config' | 'lead_import' | 'stripe_connect'
-      | 'email_journey' | 'nurturing_emails' | 'email_hub' | 'voice_calls' | 'ai_autonomo';
-    
-    interface OnboardingStatusEntry {
-      stepId: OnboardingStepId;
-      status: OnboardingStepStatus;
-    }
-    
     // Helper to determine status: prioritize verified status from onboardingStatus table,
     // then fall back to checking if credentials exist (configured), otherwise pending
     const getStepStatus = (
@@ -604,16 +591,17 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
     console.log('');
     // ─────────────────────────────────────────────────────────────────────
 
-    res.json({
-      success: true,
-      data: statuses,
-    });
+    return statuses;
+}
+
+router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const statuses = await getOnboardingStatusForAI(consultantId);
+    res.json({ success: true, data: statuses });
   } catch (error: any) {
     console.error('Error fetching onboarding status for AI:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch onboarding status for AI',
-    });
+    res.status(500).json({ success: false, error: 'Failed to fetch onboarding status for AI' });
   }
 });
 
