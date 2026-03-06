@@ -216,8 +216,8 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
     const license = await db.query.consultantLicenses.findFirst({
       where: eq(consultantLicenses.consultantId, consultantId),
     });
-    const hasStripeAccount = !!license?.stripeAccountId;
-    const stripeAccountStatus = license?.stripeAccountStatus || null;
+    const hasStripeAccount = !!license?.stripeConnectAccountId;
+    const stripeAccountStatus = license?.stripeConnectOnboarded ? 'active' : (license?.stripeConnectDetailsSubmitted ? 'pending' : null);
     
     // Check Email Journey configuration
     // Consider configured if: automation is set up OR custom templates exist
@@ -507,8 +507,8 @@ export async function getOnboardingStatusForAI(consultantId: string): Promise<On
     // google_calendar (consultant's personal): check onboarding status or google auth token
     const hasConsultantCalendar = !!onboardingStatus?.googleCalendarStatus && onboardingStatus.googleCalendarStatus !== 'pending';
     const hasInstagram = !!(instagramConfig?.instagramPageId && instagramConfig?.pageAccessToken);
-    const hasStripeAccount = !!license?.stripeAccountId;
-    const stripeAccountStatus = license?.stripeAccountStatus;
+    const hasStripeAccount = !!license?.stripeConnectAccountId;
+    const stripeAccountStatus = license?.stripeConnectOnboarded ? 'active' : (license?.stripeConnectDetailsSubmitted ? 'pending' : null);
     // nurturing: 365 templates generated
     const nurturingConfig = nurturingConfigResult[0];
     const hasNurturingEmails = nurturingConfig?.templatesGenerated === true && (nurturingConfig?.templatesCount || 0) >= 10;
