@@ -8,6 +8,7 @@
       
       <action application="set" data="call_timeout=3600"/>
       <action application="set" data="session_timeout=3600"/>
+      <action application="sched_hangup" data="+3600 normal_clearing"/>
       
       <action application="set" data="execute_on_answer=log INFO [INBOUND] Chiamata risposta: ${uuid} da ${caller_id_number} a ${destination_number}"/>
       

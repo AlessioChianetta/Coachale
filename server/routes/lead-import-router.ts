@@ -357,36 +357,63 @@ router.post(
       }
       
       const sheetId = sheetIdMatch[1];
-      const csvExportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
       
-      const response = await fetch(csvExportUrl);
+      let sheetGids: number[] = [0];
+      try {
+        const listUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
+        const listResp = await fetch(listUrl, { redirect: 'follow' });
+        if (listResp.ok) {
+          const htmlText = await listResp.text();
+          const gidMatches = htmlText.match(/gid=(\d+)/g);
+          if (gidMatches && gidMatches.length > 0) {
+            const gids = [...new Set(gidMatches.map((m: string) => parseInt(m.replace('gid=', ''))))];
+            if (gids.length > 0) sheetGids = gids;
+          }
+        }
+      } catch {}
       
-      if (!response.ok) {
+      let allHeaders: string[] = [];
+      let allRows: Record<string, any>[] = [];
+      let tabCount = 0;
+      
+      for (const gid of sheetGids) {
+        const csvExportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+        const response = await fetch(csvExportUrl);
+        if (!response.ok) continue;
+        
+        const csvContent = await response.text();
+        const { headers: tabHeaders, rows: tabRows } = parseCsvData(csvContent);
+        
+        if (tabHeaders.length > 0 && tabRows.length > 0) {
+          tabCount++;
+          if (allHeaders.length === 0) {
+            allHeaders = tabHeaders;
+          } else {
+            for (const h of tabHeaders) {
+              if (!allHeaders.includes(h)) allHeaders.push(h);
+            }
+          }
+          allRows.push(...tabRows);
+        }
+      }
+      
+      if (allHeaders.length === 0) {
         return res.status(400).json({
           success: false,
-          error: "Impossibile accedere al foglio. Verifica che sia condiviso pubblicamente."
+          error: "Impossibile accedere al foglio o nessuna intestazione trovata. Verifica che sia condiviso pubblicamente."
         });
       }
       
-      const csvContent = await response.text();
-      const { headers, rows } = parseCsvData(csvContent);
-      
-      if (headers.length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: "Il foglio non contiene intestazioni valide"
-        });
-      }
-      
-      const suggestedMappings = autoMapColumns(headers);
-      const previewRows = rows.slice(0, 5);
+      const suggestedMappings = autoMapColumns(allHeaders);
+      const previewRows = allRows.slice(0, 5);
       
       res.json({
         success: true,
         data: {
-          columns: headers,
+          columns: allHeaders,
           previewRows,
-          totalRows: rows.length,
+          totalRows: allRows.length,
+          tabCount,
           suggestedMappings,
           googleSheetUrl: sheetUrl,
         }

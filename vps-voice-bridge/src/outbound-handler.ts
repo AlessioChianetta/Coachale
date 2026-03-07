@@ -51,6 +51,12 @@ export async function handleOutboundCall(req: OutboundCallRequest): Promise<Outb
   const callerId = sipCallerId || config.sip.callerId;
   const gateway = sipGateway || config.sip.gateway;
 
+  const normalizeForCompare = (p: string) => p.replace(/[\s\-\(\)\+]/g, '').replace(/^00/, '').replace(/^39/, '');
+  if (normalizeForCompare(targetPhone) === normalizeForCompare(callerId)) {
+    log.error(`[BRIDGE:OUTBOUND] SELF-CALL BLOCKED: target ${targetPhone} matches caller ${callerId}`);
+    return { success: false, error: 'Self-call loop blocked: target matches caller ID' };
+  }
+
   const isLocalExtension = /^\d{3,4}$/.test(targetPhone) && !targetPhone.startsWith('+');
 
   const uuid = `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;

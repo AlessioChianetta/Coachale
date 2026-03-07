@@ -176,18 +176,56 @@ export async function importNewRowsFromSheet(job: schema.LeadImportJob, options?
   }
   
   const sheetId = sheetIdMatch[1];
-  const csvExportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
   
   try {
-    const response = await fetch(csvExportUrl);
+    const allRows: Record<string, any>[] = [];
     
-    if (!response.ok) {
-      console.error(`[SHEETS POLLING] Failed to fetch sheet for job ${job.id}: ${response.status}`);
+    const sheetsMetaUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&tq=SELECT%20*%20LIMIT%200`;
+    let sheetGids: number[] = [0];
+    
+    try {
+      const listUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
+      const listResp = await fetch(listUrl, { redirect: 'follow' });
+      if (listResp.ok) {
+        const htmlText = await listResp.text();
+        const gidMatches = htmlText.match(/gid=(\d+)/g);
+        if (gidMatches && gidMatches.length > 0) {
+          const gids = [...new Set(gidMatches.map(m => parseInt(m.replace('gid=', ''))))];
+          if (gids.length > 0) {
+            sheetGids = gids;
+          }
+        }
+      }
+    } catch (metaErr) {
+      console.log(`[SHEETS POLLING] Could not detect sheet tabs, using default (gid=0): ${(metaErr as any)?.message}`);
+    }
+    
+    console.log(`[SHEETS POLLING] Detected ${sheetGids.length} tab(s) in spreadsheet: gids=[${sheetGids.join(',')}]`);
+    
+    for (const gid of sheetGids) {
+      const csvExportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+      const response = await fetch(csvExportUrl);
+      
+      if (!response.ok) {
+        console.warn(`[SHEETS POLLING] Failed to fetch tab gid=${gid} for job ${job.id}: ${response.status}`);
+        continue;
+      }
+      
+      const csvContent = await response.text();
+      const { rows: tabRows } = parseCsvData(csvContent);
+      
+      if (tabRows.length > 0) {
+        console.log(`[SHEETS POLLING] Tab gid=${gid}: ${tabRows.length} rows found`);
+        allRows.push(...tabRows);
+      }
+    }
+    
+    if (allRows.length === 0) {
+      console.log(`[SHEETS POLLING] No rows found across ${sheetGids.length} tab(s) for job ${job.id}`);
       return result;
     }
     
-    const csvContent = await response.text();
-    let { rows } = parseCsvData(csvContent);
+    let rows = allRows;
     
     const columnMappings = job.columnMappings || {};
     const settings = job.settings || {};

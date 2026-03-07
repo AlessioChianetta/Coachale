@@ -2966,6 +2966,22 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     }
     console.log(`🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
+    // Self-call loop prevention: block if target phone matches caller ID
+    if (sipCallerId && call.target_phone) {
+      const normalizePhone = (p: string) => p.replace(/[\s\-\(\)\+]/g, '').replace(/^00/, '').replace(/^39/, '');
+      const normalizedTarget = normalizePhone(call.target_phone);
+      const normalizedCaller = normalizePhone(sipCallerId);
+      if (normalizedTarget && normalizedCaller && normalizedTarget === normalizedCaller) {
+        console.error(`🚫 [Outbound] SELF-CALL BLOCKED: target ${call.target_phone} matches caller ID ${sipCallerId}`);
+        await db.execute(sql`
+          UPDATE scheduled_voice_calls 
+          SET status = 'failed', error_message = 'Self-call loop blocked: target number matches caller ID', updated_at = NOW()
+          WHERE id = ${callId}
+        `);
+        return { success: false, error: "Self-call loop blocked: cannot call own number" };
+      }
+    }
+
     // Call VPS outbound endpoint
     const outboundUrl = `${vpsUrl.replace(/\/$/, '')}/outbound/call`;
     console.log(`📞 [Outbound] Calling VPS: ${outboundUrl} for ${call.target_phone}`);

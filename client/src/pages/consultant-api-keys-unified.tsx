@@ -6232,17 +6232,18 @@ export default function ConsultantApiKeysUnified() {
 
                           <div className="space-y-2">
                             <Label htmlFor="googleSheetsCampaign" className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                              Campagna di destinazione *
-                              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Obbligatorio</Badge>
+                              Campagna di destinazione
+                              <Badge className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0">Opzionale</Badge>
                             </Label>
                             <Select
                               value={googleSheetsFormData.targetCampaignId}
-                              onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, targetCampaignId: value })}
+                              onValueChange={(value) => setGoogleSheetsFormData({ ...googleSheetsFormData, targetCampaignId: value === '__none__' ? '' : value })}
                             >
-                              <SelectTrigger id="googleSheetsCampaign" className={`bg-white/80 border-slate-200 focus:border-blue-500 ${!googleSheetsFormData.targetCampaignId ? 'border-red-300' : ''}`}>
-                                <SelectValue placeholder="Seleziona una campagna" />
+                              <SelectTrigger id="googleSheetsCampaign" className="bg-white/80 border-slate-200 focus:border-blue-500">
+                                <SelectValue placeholder="Nessuna campagna (opzionale)" />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="__none__">Nessuna campagna</SelectItem>
                                 {campaignsLoading ? (
                                   <div className="p-2 text-sm text-muted-foreground">Caricamento...</div>
                                 ) : campaigns.length === 0 ? (
@@ -6959,14 +6960,6 @@ export default function ConsultantApiKeysUnified() {
                                     });
                                     return;
                                   }
-                                  if (!googleSheetsFormData.targetCampaignId) {
-                                    toast({
-                                      title: "Campagna Obbligatoria",
-                                      description: "Seleziona una campagna prima di testare la connessione",
-                                      variant: "destructive",
-                                    });
-                                    return;
-                                  }
                                   setIsTestingGoogleSheets(true);
                                   try {
                                     const response = await fetch(`/api/consultant/agents/${googleSheetsFormData.agentConfigId}/leads/preview-sheet`, {
@@ -7005,7 +6998,7 @@ export default function ConsultantApiKeysUnified() {
                                     setIsTestingGoogleSheets(false);
                                   }
                                 }}
-                                disabled={isTestingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId || !googleSheetsFormData.targetCampaignId}
+                                disabled={isTestingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
                                 className={isNextStep 
                                   ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all duration-200"
                                   : "border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 transition-all"
@@ -7032,15 +7025,6 @@ export default function ConsultantApiKeysUnified() {
                                 toast({
                                   title: "Errore",
                                   description: "Compila tutti i campi obbligatori",
-                                  variant: "destructive",
-                                });
-                                return;
-                              }
-                              
-                              if (!googleSheetsFormData.targetCampaignId) {
-                                toast({
-                                  title: "Campagna Obbligatoria",
-                                  description: "Seleziona una campagna per definire obiettivi e desideri che l'AI utilizzerà per personalizzare i messaggi",
                                   variant: "destructive",
                                 });
                                 return;
@@ -7122,7 +7106,7 @@ export default function ConsultantApiKeysUnified() {
                                 setIsSavingGoogleSheets(false);
                               }
                             }}
-                            disabled={isSavingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId || !googleSheetsFormData.targetCampaignId}
+                            disabled={isSavingGoogleSheets || !googleSheetsFormData.sheetUrl || !googleSheetsFormData.agentConfigId}
                             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
                           >
                             {isSavingGoogleSheets ? (

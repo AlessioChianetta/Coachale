@@ -37,6 +37,23 @@
 
   <!--
     ============================================================
+    ANTI-LOOP: Blocca chiamate dove chiamante = chiamato
+    Previene loop SIP infiniti che causano chiamate fantasma
+    di ore (e costi elevati). Ultimo livello di difesa.
+    ============================================================
+  -->
+  <extension name="outbound_self_call_block">
+    <condition field="destination_number" expression="^(.+)$"/>
+    <condition field="${effective_caller_id_number}" expression="^(.+)$">
+      <condition field="${destination_number}" expression="^${effective_caller_id_number}$">
+        <action application="log" data="ERR [OUTBOUND] SELF-CALL BLOCKED: ${effective_caller_id_number} tried to call itself"/>
+        <action application="hangup" data="CALL_REJECTED"/>
+      </condition>
+    </condition>
+  </extension>
+
+  <!--
+    ============================================================
     EMERGENZA: Numeri di emergenza italiani
     Priorità massima: devono essere instradati SEMPRE via Messagenet
     (provider italiano) per garantire la localizzazione corretta.
@@ -68,6 +85,7 @@
         
         <action application="set" data="hangup_after_bridge=true"/>
         <action application="set" data="session_timeout=3600"/>
+        <action application="sched_hangup" data="+3600 normal_clearing"/>
         <action application="set" data="absolute_codec_string=PCMU,PCMA,G722"/>
         <action application="set" data="sip_h_X-Alessia-CallType=outbound"/>
         <action application="set" data="sip_h_X-Alessia-Gateway=${sip_gateway}"/>
@@ -87,6 +105,7 @@
         
         <action application="set" data="hangup_after_bridge=true"/>
         <action application="set" data="session_timeout=3600"/>
+        <action application="sched_hangup" data="+3600 normal_clearing"/>
         <action application="set" data="absolute_codec_string=PCMU,PCMA,G722"/>
         <action application="set" data="sip_h_X-Alessia-CallType=outbound"/>
         <action application="set" data="sip_h_X-Alessia-Gateway=${sip_gateway}"/>
@@ -109,6 +128,7 @@
       
       <action application="set" data="hangup_after_bridge=true"/>
       <action application="set" data="session_timeout=3600"/>
+      <action application="sched_hangup" data="+3600 normal_clearing"/>
       <action application="set" data="absolute_codec_string=PCMU,PCMA,G722"/>
       <action application="set" data="sip_h_X-Alessia-CallType=outbound-italy"/>
       <action application="set" data="execute_on_answer=log INFO [OUTBOUND] Chiamata Italia risposta: ${uuid} → ${destination_number}"/>
@@ -133,6 +153,7 @@
       
       <action application="set" data="hangup_after_bridge=true"/>
       <action application="set" data="session_timeout=3600"/>
+      <action application="sched_hangup" data="+3600 normal_clearing"/>
       <action application="set" data="absolute_codec_string=PCMU,PCMA,G722,OPUS"/>
       <action application="set" data="sip_h_X-Alessia-CallType=outbound-international"/>
       <action application="set" data="execute_on_answer=log INFO [OUTBOUND] Chiamata internazionale risposta: ${uuid} → ${destination_number}"/>
