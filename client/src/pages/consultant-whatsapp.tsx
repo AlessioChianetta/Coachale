@@ -121,7 +121,8 @@ import {
   Inbox,
   HelpCircle,
   Mic,
-  UserPlus
+  UserPlus,
+  BarChart3
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -874,6 +875,7 @@ export default function ConsultantWhatsAppPage() {
   const [userManagementTab, setUserManagementTab] = useState<"bronze" | "silver" | "gold">("bronze");
   const [userToDelete, setUserToDelete] = useState<{ id: string; email: string } | null>(null);
   const [subscriptionSourceTab, setSubscriptionSourceTab] = useState<"stripe_connect" | "direct_link">("stripe_connect");
+  const [licenseSubTab, setLicenseSubTab] = useState<"overview" | "dashboard" | "subscriptions" | "users">("overview");
 
   // Stati per dialog reset password manuale
   const [passwordResetTarget, setPasswordResetTarget] = useState<{ type: "bronze" | "silver", id: string, email: string } | null>(null);
@@ -3133,7 +3135,29 @@ export default function ConsultantWhatsAppPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="licenses" className="space-y-6">
+          <TabsContent value="licenses" className="space-y-4">
+            <Tabs value={licenseSubTab} onValueChange={(v) => setLicenseSubTab(v as "overview" | "dashboard" | "subscriptions" | "users")}>
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="overview" className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-800 dark:data-[state=active]:bg-violet-900/40 dark:data-[state=active]:text-violet-300">
+                  <Key className="h-4 w-4 mr-1.5" />
+                  Panoramica
+                </TabsTrigger>
+                <TabsTrigger value="dashboard" className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-800 dark:data-[state=active]:bg-violet-900/40 dark:data-[state=active]:text-violet-300">
+                  <BarChart3 className="h-4 w-4 mr-1.5" />
+                  Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="subscriptions" className="data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-emerald-900/40 dark:data-[state=active]:text-emerald-300">
+                  <CreditCard className="h-4 w-4 mr-1.5" />
+                  Abbonamenti
+                </TabsTrigger>
+                <TabsTrigger value="users" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800 dark:data-[state=active]:bg-blue-900/40 dark:data-[state=active]:text-blue-300">
+                  <Users className="h-4 w-4 mr-1.5" />
+                  Utenti
+                </TabsTrigger>
+              </TabsList>
+
+              {/* ── PANORAMICA ── */}
+              <TabsContent value="overview" className="space-y-6 mt-4">
             <Alert className="bg-violet-50 border-violet-200 dark:bg-violet-950/20 dark:border-violet-800">
               <Key className="h-5 w-5 text-violet-600" />
               <AlertDescription>
@@ -3223,7 +3247,10 @@ export default function ConsultantWhatsAppPage() {
                 </div>
               </CardContent>
             </Card>
+              </TabsContent>
 
+              {/* ── DASHBOARD ── */}
+              <TabsContent value="dashboard" className="space-y-6 mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* License Dashboard Card */}
               <Card className="border-2 border-violet-200 dark:border-violet-800">
@@ -3411,7 +3438,10 @@ export default function ConsultantWhatsAppPage() {
                 </CardContent>
               </Card>
             </div>
+              </TabsContent>
 
+              {/* ── ABBONAMENTI ── */}
+              <TabsContent value="subscriptions" className="space-y-6 mt-4">
             {/* Sottoscrizioni Attive per Origine */}
             <Card className="border-2 border-emerald-200 dark:border-emerald-800">
               <CardHeader>
@@ -3586,7 +3616,10 @@ export default function ConsultantWhatsAppPage() {
                 </Tabs>
               </CardContent>
             </Card>
+              </TabsContent>
 
+              {/* ── UTENTI ── */}
+              <TabsContent value="users" className="space-y-6 mt-4">
             {/* Gestione Utenti Registrati */}
             <Card className="border-2 border-violet-200 dark:border-violet-800">
               <CardHeader>
@@ -4034,6 +4067,9 @@ export default function ConsultantWhatsAppPage() {
                 </Tabs>
               </CardContent>
             </Card>
+              </TabsContent>
+
+            </Tabs>
 
             {/* Partner Webhook Notifications Card */}
             <PartnerWebhookCard />
