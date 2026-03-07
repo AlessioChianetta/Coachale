@@ -197,18 +197,18 @@ L'immagine generata dal prompt DEVE corrispondere alla descrizione italiana most
 Per ogni concept, DEVI generare un campo "promptVisual" che è un JSON strutturato con la DESCRIZIONE ESATTA di ogni elemento dell'immagine da generare.
 Questo JSON verrà usato DIRETTAMENTE per generare l'immagine, quindi deve essere ESTREMAMENTE SPECIFICO e DETTAGLIATO.
 
-REGOLE IMPORTANTI per promptVisual:
-- OGNI ELEMENTO VISIVO deve essere descritto singolarmente: soggetto, sfondo, illuminazione, testi, posizioni
+REGOLE IMPORTANTI per promptVisual — pensa come un FOTOGRAFO COMMERCIALE:
+- Descrivi la scena come un brief fotografico per uno studio professionale, non come una lista di keyword
 - La struttura deve CORRISPONDERE ESATTAMENTE alla "description" del concept — sono la stessa scena
-- Sii ULTRA-SPECIFICO: non "prodotto generico" ma "flacone di olio da massaggio in vetro ambrato con etichetta nera minimalista, illuminato da luce laterale calda con riflessi morbidi sulla superficie"
-- Descrivi ESATTAMENTE cosa deve apparire nell'immagine, non lasciare ambiguità
-- Per ogni soggetto specifica: materiale, colore esatto, texture, dimensione relativa, posizione precisa nella scena
-- Per le persone: descrivi età approssimativa, corporatura, abbigliamento specifico, espressione facciale, postura esatta
-- Per gli sfondi: colore esatto (es: "rosso carminio saturo #C41E3A" non solo "rosso"), gradiente se presente, texture
-- Per i box di testo: specifica colore sfondo box, colore testo, bordi, ombra, dimensione relativa
-- ILLUMINAZIONE: specifica sempre direzione (laterale, dall'alto, controluce), temperatura (calda/fredda), intensità
-- Se la tipologia prevede box di testo (es: Noi vs Competitor), specifica ESATTAMENTE i testi in ogni box
+- SOGGETTI: descrivi come un fotografo — "flacone in vetro ambrato con etichetta nera su piano in marmo bianco, illuminato da softbox laterale con riflessi morbidi sulla superficie curva"
+- PERSONE: età, corporatura, abbigliamento specifico, espressione naturale, postura — come un casting brief
+- SFONDI: colore preciso, gradiente se presente, texture della superficie (opaco, lucido, tessuto, legno, cemento)
+- ILLUMINAZIONE: specifica il setup come un fotografo — "luce principale softbox a 45° da sinistra, fill light morbida frontale, rim light dal retro per separazione"
+- MATERIALI E TEXTURE: nomina i materiali specifici — "vetro satinato", "alluminio spazzolato", "pelle opaca", "legno di noce"
+- BOX DI TESTO: specifica testi esatti, stile (font, colore, sfondo del box, bordi)
+- Profondità di campo: indica dove il fuoco è nitido e dove sfuma
 - TUTTO IN ITALIANO
+- NON usare keyword spam ("8K, masterpiece, trending") — scrivi frasi narrative descrittive
 
 Struttura promptVisual:
 {
@@ -303,19 +303,8 @@ function buildPromptFromVisualJSON(promptVisual: PromptVisual, aspectRatio: stri
 
   const formatLabel = formatGuide[aspectRatio] || formatGuide['1:1'];
 
-  let prompt = `Sei un direttore creativo pubblicitario d'élite specializzato in inserzioni Meta/Facebook ad altissima conversione.
-Genera un'immagine pubblicitaria PROFESSIONALE di livello agenzia seguendo ESATTAMENTE queste specifiche.
-
-═══ STANDARD QUALITÀ OBBLIGATORI ═══
-- Resa visiva da FOTOGRAFIA COMMERCIALE PROFESSIONALE: nitida, ad alta risoluzione, senza artefatti
-- Colori VIVIDI e SATURI con color grading cinematografico professionale
-- BORDI PULITI e NETTI: ogni elemento deve avere contorni definiti, nessuna sfumatura involontaria
-- Superfici LISCE e REALISTICHE: niente texture pixelate o artificiali
-- Se ci sono persone: anatomia corretta, espressioni naturali, pelle realistica
-- Se ci sono prodotti/oggetti: rendering fotorealistico con riflessi e ombre coerenti
-- Composizione BILANCIATA con gerarchia visiva chiara che guida l'occhio
-- Separazioni tra sezioni NETTE e GEOMETRICHE (no bordi sfumati o irregolari)
-- CONTRASTO ELEVATO tra elementi per massimo impatto visivo da scroll
+  let prompt = `Genera una fotografia pubblicitaria professionale seguendo queste specifiche.
+Pensa come un fotografo commerciale in studio: composizione intenzionale, illuminazione da set professionale, materiali realistici con texture autentiche.
 
 ═══ LAYOUT ═══
 Tipo: ${promptVisual.layout.tipo}`;
@@ -361,15 +350,13 @@ Tipo: ${promptVisual.layout.tipo}`;
     prompt += `\n\n═══ NOTE AGGIUNTIVE ═══\n${promptVisual.note_aggiuntive}`;
   }
 
-  prompt += `\n\n═══ SPECIFICHE TECNICHE ═══
+  prompt += `\n\n═══ SPECIFICHE FOTOGRAFICHE ═══
 Formato: ${formatLabel}
 Stile: ${promptVisual.stile_fotografico}
-Qualità: Ultra HD 8K, standard da fotografia pubblicitaria per agenzia top-tier.
-Illuminazione: Drammatica e direzionale con ombre morbide e definite, mai piatta o uniforme.
-Profondità di campo: Ridotta selettivamente per guidare l'attenzione sul soggetto principale.
-Post-produzione: Color grading professionale, contrasto calibrato, saturazione vibrante ma naturale.
-Rendering: Fotorealistico, superfici con texture autentiche, riflessi fisicamente corretti.
-ANTI-ARTEFATTI: Nessuna distorsione, nessun bordo frastagliato, nessun elemento sfocato involontariamente, nessuna ripetizione di pattern.`;
+Scattata con obiettivo professionale da 85mm f/1.8, profondità di campo selettiva per guidare l'attenzione.
+Illuminazione da studio a tre punti: luce principale softbox a 45°, fill light morbida, rim light per separare dal fondo.
+Resa dei materiali: superfici con texture fisiche autentiche — riflessi, ombre portate, micro-dettagli visibili.
+Color grading cinematografico naturale — colori saturi ma credibili, mai artificiali o plastici.`;
 
   return prompt;
 }
@@ -401,36 +388,31 @@ function buildLegacyImagePrompt(basePrompt: string, aspectRatio: string, variant
     }
   }
 
-  return `Sei un direttore creativo pubblicitario d'élite specializzato in inserzioni Meta/Facebook ad altissima conversione.
-Genera un visual pubblicitario PROFESSIONALE di livello agenzia.
+  return `Genera una fotografia pubblicitaria professionale per inserzione Meta/Facebook.
+Pensa come un fotografo commerciale in studio: composizione intenzionale, illuminazione da set professionale, materiali realistici con texture autentiche.
 
 FORMATO: ${formatInstruction}
 
-═══ STANDARD QUALITÀ OBBLIGATORI ═══
-- Resa visiva da FOTOGRAFIA COMMERCIALE PROFESSIONALE: nitida, ad alta risoluzione, senza artefatti
-- Colori VIVIDI e SATURI con color grading cinematografico professionale
-- BORDI PULITI e NETTI: ogni elemento con contorni definiti, nessuna sfumatura involontaria
-- Superfici LISCE e REALISTICHE: niente texture pixelate o artificiali
-- Se ci sono persone: anatomia corretta, espressioni naturali, pelle realistica con illuminazione naturale
-- Se ci sono prodotti/oggetti: rendering fotorealistico con riflessi e ombre coerenti
-- Composizione BILANCIATA con gerarchia visiva chiara
-- Separazioni tra sezioni NETTE e GEOMETRICHE (bordi dritti e precisi)
-- ANTI-ARTEFATTI: nessuna distorsione, nessun bordo frastagliato, nessun pattern ripetuto
+COMPOSIZIONE:
+Composizione equilibrata con regola dei terzi. Soggetto principale su un punto focale. Gerarchia visiva chiara: hook in alto, soggetto al centro, CTA in basso.
 
-═══ REGOLE COMPOSIZIONE PUBBLICITARIA ═══
-- ALTO CONTRASTO: Colori bold e saturi che fermano lo scroll
-- REGOLA DEI TERZI: Elemento principale su un punto di intersezione
-- SPAZIO NEGATIVO: Almeno 25% per leggibilità
-- GERARCHIA VISIVA: Hook (alto) → soggetto (centro) → CTA (basso)
-- ILLUMINAZIONE: Drammatica e direzionale con ombre morbide definite, mai piatta
-- Profondità di campo ridotta selettivamente per guidare l'attenzione
-- Post-produzione: Color grading professionale, contrasto calibrato, saturazione vibrante ma naturale
+ILLUMINAZIONE DA STUDIO:
+Setup a tre punti — luce principale softbox a 45° per modellare il soggetto, fill light morbida per le ombre, rim light per separazione dal fondo. Ombre morbide e definite, mai illuminazione piatta.
+
+RESA MATERIALI:
+Ogni superficie deve avere texture fisica autentica — riflessi coerenti, ombre portate realistiche, micro-dettagli visibili. Niente superfici plastiche o artificiali.
+
+PROFONDITÀ DI CAMPO:
+Obiettivo 85mm f/1.8 — sfondo morbido con bokeh naturale, soggetto principale a fuoco nitido.
+
+COLOR GRADING:
+Colori saturi ma credibili, color grading cinematografico naturale. Contrasto calibrato per impatto visivo senza sembrare artificiale.
+
 ${textRule}
-- QUALITÀ: Ultra HD 8K, standard da fotografia pubblicitaria per agenzia top-tier
 ${layoutInstructions}
-CONCEPT DA VISUALIZZARE:
+SCENA DA FOTOGRAFARE:
 ${basePrompt}
-${visualDescription ? `\n═══ RIFERIMENTO VISIVO (segui questa descrizione scena FEDELMENTE) ═══\n${visualDescription}\n═══ FINE RIFERIMENTO VISIVO ═══` : ''}`;
+${visualDescription ? `\nRIFERIMENTO VISIVO (segui questa descrizione scena fedelmente):\n${visualDescription}` : ''}`;
 }
 
 async function getGeminiApiKeyForImage(consultantId: string): Promise<string | null> {
@@ -503,7 +485,9 @@ export async function generateImageServerSide(
       console.log(`[ADVISAGE-SERVER] Using legacy prompt (${adOptimizedPrompt.length} chars)`);
     }
     
-    console.log(`[ADVISAGE-SERVER] Final prompt preview: ${adOptimizedPrompt.substring(0, 200)}...`);
+    console.log(`[ADVISAGE-SERVER] ═══ PROMPT COMPLETO INVIATO AL MODELLO ═══`);
+    console.log(adOptimizedPrompt);
+    console.log(`[ADVISAGE-SERVER] ═══ FINE PROMPT (${adOptimizedPrompt.length} chars) ═══`);
     
     const response = await trackedGenerateContent(ai, {
       model: IMAGE_MODEL,
