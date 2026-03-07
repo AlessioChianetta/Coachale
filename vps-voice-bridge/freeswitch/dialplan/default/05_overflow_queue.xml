@@ -76,28 +76,28 @@
       <action application="digit_action_set_realm" data="overflow"/>
 
       <!-- Ciclo 1: posizione + messaggio A -->
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_hold_A XML default" inline="true"/>
+      <action application="execute_extension" data="announce_position XML default"/>
+      <action application="execute_extension" data="play_hold_A XML default"/>
 
       <!-- Ciclo 2: posizione + messaggio B -->
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_hold_B XML default" inline="true"/>
+      <action application="execute_extension" data="announce_position XML default"/>
+      <action application="execute_extension" data="play_hold_B XML default"/>
 
       <!-- Ciclo 3: posizione + messaggio C -->
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_hold_C XML default" inline="true"/>
+      <action application="execute_extension" data="announce_position XML default"/>
+      <action application="execute_extension" data="play_hold_C XML default"/>
 
       <!-- Ciclo 4: posizione + messaggio D -->
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_hold_D XML default" inline="true"/>
+      <action application="execute_extension" data="announce_position XML default"/>
+      <action application="execute_extension" data="play_hold_D XML default"/>
 
       <!-- Ciclo 5: posizione + messaggio E -->
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_hold_E XML default" inline="true"/>
+      <action application="execute_extension" data="announce_position XML default"/>
+      <action application="execute_extension" data="play_hold_E XML default"/>
 
       <!-- Ciclo 6: riparte la rotazione con A -->
-      <action application="execute_extension" data="announce_position XML default" inline="true"/>
-      <action application="execute_extension" data="play_hold_A XML default" inline="true"/>
+      <action application="execute_extension" data="announce_position XML default"/>
+      <action application="execute_extension" data="play_hold_A XML default"/>
 
       <action application="log" data="WARNING [OVERFLOW] Chiamata ${uuid} - loop completato senza dequeue, parking"/>
       <action application="park"/>
