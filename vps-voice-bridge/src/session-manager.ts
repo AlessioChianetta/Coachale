@@ -9,7 +9,8 @@ import type { ReplitWSClient } from './replit-ws-client.js';
 const log = logger.child('SESSION');
 const syncLog = logger.child('OVERFLOW-SYNC');
 
-const OVERFLOW_BASE_DIR = '/opt/sounds/overflow';
+const OVERFLOW_BASE_DIR = '/opt/alessia-voice/freeswitch-sounds/overflow';
+const OVERFLOW_FS_BASE_DIR = '/usr/share/freeswitch/sounds/overflow';
 const OVERFLOW_DEFAULT_DIR = path.join(OVERFLOW_BASE_DIR, 'default');
 const SYNC_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const lastSyncTimes = new Map<string, number>();
@@ -23,6 +24,7 @@ function ensureDir(dir: string): void {
 
 export async function syncOverflowAudio(consultantId: string): Promise<string> {
   const consultantDir = path.join(OVERFLOW_BASE_DIR, consultantId);
+  const fsContainerDir = path.join(OVERFLOW_FS_BASE_DIR, consultantId);
 
   const lastSync = lastSyncTimes.get(consultantId) || 0;
   const elapsed = Date.now() - lastSync;
@@ -30,14 +32,14 @@ export async function syncOverflowAudio(consultantId: string): Promise<string> {
     const files = fs.readdirSync(consultantDir).filter(f => f.endsWith('.wav'));
     if (files.length > 0) {
       syncLog.info(`⏩ [SYNC] Skipping sync for ${consultantId.slice(0, 8)} — cached (${Math.round(elapsed / 60000)}min ago, ${files.length} files)`);
-      return consultantDir;
+      return fsContainerDir;
     }
   }
 
   if (!config.replit.apiUrl || !config.serviceToken) {
     syncLog.warn(`⚠️ [SYNC] Replit API or service token not configured — using default audio`);
     ensureDir(OVERFLOW_DEFAULT_DIR);
-    return OVERFLOW_DEFAULT_DIR;
+    return path.join(OVERFLOW_FS_BASE_DIR, 'default');
   }
 
   try {
@@ -61,7 +63,7 @@ export async function syncOverflowAudio(consultantId: string): Promise<string> {
     if (!manifestData.success || !manifestData.files || manifestData.files.length === 0) {
       syncLog.info(`📭 [SYNC] No custom audio files for consultant ${consultantId.slice(0, 8)} — using default`);
       ensureDir(OVERFLOW_DEFAULT_DIR);
-      return OVERFLOW_DEFAULT_DIR;
+      return path.join(OVERFLOW_FS_BASE_DIR, 'default');
     }
 
     ensureDir(consultantDir);
@@ -121,12 +123,12 @@ export async function syncOverflowAudio(consultantId: string): Promise<string> {
 
     lastSyncTimes.set(consultantId, Date.now());
     syncLog.info(`🔄 [SYNC] Sync complete for ${consultantId.slice(0, 8)}: ${downloaded} downloaded, ${skipped} skipped, ${removed} removed, ${manifestData.files.length} total`);
-    return consultantDir;
+    return fsContainerDir;
 
   } catch (err: any) {
     syncLog.error(`❌ [SYNC] Sync failed for ${consultantId.slice(0, 8)}: ${err.message}`);
     ensureDir(OVERFLOW_DEFAULT_DIR);
-    return OVERFLOW_DEFAULT_DIR;
+    return path.join(OVERFLOW_FS_BASE_DIR, 'default');
   }
 }
 

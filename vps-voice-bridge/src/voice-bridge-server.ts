@@ -819,7 +819,10 @@ async function routeToOverflow(uuid: string, calledNumber: string, overflowCfg?:
     }
     log.info(`📥 [ROUTE-OVERFLOW] ESL connection available ✅`);
 
-    let overflowAudioDir = '/opt/sounds/overflow/default';
+    let overflowAudioDir = '/usr/share/freeswitch/sounds/overflow/default';
+    // NOTE: syncOverflowAudio saves files to host path (/opt/alessia-voice/freeswitch-sounds/overflow/)
+    // but returns the FreeSWITCH container path (/usr/share/freeswitch/sounds/overflow/)
+    // because the host dir is bind-mounted into the container at that path
     if (overflowCfg.consultant_id) {
       try {
         overflowAudioDir = await syncOverflowAudio(overflowCfg.consultant_id);
