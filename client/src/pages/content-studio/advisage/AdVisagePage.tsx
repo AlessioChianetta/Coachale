@@ -70,7 +70,6 @@ import {
   Maximize2,
   ZoomIn,
   ZoomOut,
-  Zap,
 } from "lucide-react";
 
 interface ContentPost {
