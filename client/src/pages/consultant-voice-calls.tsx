@@ -1410,7 +1410,9 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
               <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700/50 pb-1 mb-2">
                 {numberGroups.map((g, idx) => {
                   const isActive = g.number === selectedNumberTab;
-                  const groupTotal = g.approvalCalls.length + g.queuedCalls.length + g.retryCalls.length + g.futureCalls.length;
+                  const normalizedGroupNum = g.number.replace(/\D/g, '');
+                  const overflowForGroup = overflowEntries.filter(e => e.calledNumber?.replace(/\D/g, '') === normalizedGroupNum).length;
+                  const groupTotal = g.approvalCalls.length + g.queuedCalls.length + g.retryCalls.length + g.futureCalls.length + overflowForGroup;
                   return (
                     <button
                       key={g.number}
@@ -1429,6 +1431,9 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
                         </span>
                         {groupTotal > 0 && (
                           <span className="text-[9px] px-1 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">{groupTotal}</span>
+                        )}
+                        {overflowForGroup > 0 && (
+                          <span className="text-[9px] px-1 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 animate-pulse">{overflowForGroup} in coda</span>
                         )}
                       </div>
                     </button>
