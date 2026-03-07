@@ -4,6 +4,7 @@
  */
 
 import { VertexAI } from "@google-cloud/vertexai";
+import { GoogleGenAI } from "@google/genai";
 import { Writer as WavWriter } from "wav";
 import { Readable, PassThrough } from "stream";
 import { tokenTracker } from './token-tracker';
@@ -162,6 +163,87 @@ export async function generateSpeech({
     console.error(`   Stack: ${error.stack}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
+    throw new Error(`TTS generation failed: ${error.message}`);
+  }
+}
+
+interface TTSApiKeyConfig {
+  text: string;
+  apiKey: string;
+  voiceName?: string;
+  consultantId?: string;
+}
+
+/**
+ * Generate speech using Google AI Studio (GoogleGenAI) with an API key.
+ * Does not require VertexAI — works with SuperAdmin or user Gemini keys.
+ */
+export async function generateSpeechWithApiKey({
+  text,
+  apiKey,
+  voiceName = 'Achernar',
+  consultantId,
+}: TTSApiKeyConfig): Promise<Buffer> {
+  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🎙️ [TTS SERVICE] Generating speech via Google AI Studio');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`📝 Text length: ${text.length} characters`);
+  console.log(`🗣️ Voice: ${voiceName}`);
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+
+    const ttsStartMs = Date.now();
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-preview-tts',
+      contents: [{ role: 'user', parts: [{ text }] }],
+      config: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName },
+          },
+        },
+      },
+    });
+
+    const ttsDurationMs = Date.now() - ttsStartMs;
+
+    const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!audioData) {
+      throw new Error('No audio data received from Gemini TTS (Google AI Studio)');
+    }
+
+    const pcmBuffer = Buffer.from(audioData, 'base64');
+    console.log(`✅ Raw PCM audio received (${pcmBuffer.length} bytes)`);
+
+    if (consultantId) {
+      const usage = response.usageMetadata;
+      if (usage && (usage.promptTokenCount || usage.candidatesTokenCount || usage.totalTokenCount)) {
+        tokenTracker.track({
+          consultantId,
+          model: 'gemini-2.5-flash-preview-tts',
+          feature: 'tts:overflow-audio',
+          requestType: 'generate',
+          inputTokens: usage.promptTokenCount || 0,
+          outputTokens: usage.candidatesTokenCount || 0,
+          totalTokens: usage.totalTokenCount || 0,
+          durationMs: ttsDurationMs,
+        }).catch(e => console.error('[TTS TokenTracker] Error:', e));
+      }
+    }
+
+    const wavBuffer = await convertPCMtoWAV(pcmBuffer);
+    console.log(`✅ WAV file created (${wavBuffer.length} bytes)`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    return wavBuffer;
+
+  } catch (error: any) {
+    console.error('❌ [TTS SERVICE] Error generating speech via Google AI Studio');
+    console.error(`   Error: ${error.message}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     throw new Error(`TTS generation failed: ${error.message}`);
   }
 }

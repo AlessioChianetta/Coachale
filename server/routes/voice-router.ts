@@ -17,8 +17,8 @@ import { consultantAvailabilitySettings, users } from "@shared/schema";
 import { getActiveVoiceCallsForConsultant, getActiveGeminiConnections, getActiveGeminiConnectionCount, forceCloseAllGeminiConnections, invalidateVoiceCache, invalidateVoiceNumberCache } from "../ai/gemini-live-ws-service";
 import { getTemplateOptions, getTemplateById, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
 import { scheduleNextRecurrence } from '../cron/ai-task-scheduler';
-import { quickGenerate, getAIProvider } from '../ai/provider-factory';
-import { generateSpeech } from '../ai/tts-service';
+import { quickGenerate, getAIProvider, getSuperAdminGeminiKeys } from '../ai/provider-factory';
+import { generateSpeech, generateSpeechWithApiKey } from '../ai/tts-service';
 import { initCallTimerManager, scheduleTimer as _scheduleTimerFromManager, cancelTimer as _cancelTimerFromManager, registerCallFunctions, getTimerCount } from '../services/call-timer-manager';
 import { resolveHunterContext } from '../services/hunter-context-resolver';
 import * as telnyxProvisioning from '../services/telnyx-provisioning';
@@ -6444,18 +6444,27 @@ router.post("/overflow-audio/generate", authenticateToken, requireAnyRole(["cons
 
     console.log(`[OVERFLOW-AUDIO] Generating TTS for slot "${slotName}" consultant ${consultantId}`);
 
-    const aiProvider = await getAIProvider(consultantId, consultantId);
-    aiProvider.setFeature?.('overflow-audio-tts');
-
-    if (!aiProvider.vertexClient) {
-      return res.status(500).json({ error: "VertexAI client non disponibile per TTS" });
+    let geminiApiKey: string | undefined;
+    const superAdminKeys = await getSuperAdminGeminiKeys();
+    if (superAdminKeys && superAdminKeys.keys.length > 0) {
+      const idx = Math.floor(Math.random() * superAdminKeys.keys.length);
+      geminiApiKey = superAdminKeys.keys[idx];
+      console.log(`[OVERFLOW-AUDIO] Using SuperAdmin Gemini key (${idx + 1}/${superAdminKeys.keys.length})`);
+    } else {
+      geminiApiKey = process.env.GEMINI_API_KEY;
+      if (geminiApiKey) {
+        console.log(`[OVERFLOW-AUDIO] Using env GEMINI_API_KEY`);
+      }
     }
 
-    const wav24kBuffer = await generateSpeech({
+    if (!geminiApiKey) {
+      return res.status(500).json({ error: "Nessuna chiave Gemini disponibile per la generazione TTS" });
+    }
+
+    const wav24kBuffer = await generateSpeechWithApiKey({
       text,
-      vertexClient: aiProvider.vertexClient,
-      projectId: aiProvider.metadata.projectId || process.env.VERTEX_PROJECT_ID || '',
-      location: aiProvider.metadata.location || process.env.VERTEX_LOCATION || 'us-central1',
+      apiKey: geminiApiKey,
+      voiceName: voiceName || 'Achernar',
       consultantId,
     });
 
