@@ -1,0 +1,26 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# mv /opt/sounds/overflow /opt/sounds/overflow_old
+ln -s /opt/alessia-voice/freeswitch-sounds/overflow /opt/sounds/overflow
+ls -la /opt/sounds/
+total 4708
+drwxr-xr-x 3 root root    4096 Mar  7 05:26 .
+drwxr-xr-x 8 root root    4096 Feb  3 08:29 ..
+-rw-r--r-- 1 root root 4800586 Feb  6 04:14 background.wav
+lrwxrwxrwx 1 root root      45 Mar  7 05:26 overflow -> /opt/alessia-voice/freeswitch-sounds/overflow
+drwxr-xr-x 3 root root    4096 Mar  7 05:24 overflow_old
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# pm2 restart voice-bridge
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [voice-bridge](ids: [ 6 ])
+[PM2] [voice-bridge](6) ✓
+┌────┬──────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                 │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼──────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 7  │ Orbitale-locale      │ default     │ 1.0.0   │ fork    │ 2138776  │ 2D     │ 3    │ online    │ 0%       │ 150.0mb  │ root     │ disabled │
+│ 0  │ coachale-dev         │ default     │ N/A     │ fork    │ 2262161  │ 8m     │ 11   │ online    │ 0%       │ 55.3mb   │ root     │ disabled │
+│ 4  │ orbitale-builder     │ default     │ 1.0.0   │ fork    │ 2138731  │ 2D     │ 3    │ online    │ 0%       │ 108.2mb  │ root     │ disabled │
+│ 3  │ orbitale-contract    │ default     │ 1.0.0   │ fork    │ 2138728  │ 2D     │ 3    │ online    │ 0%       │ 114.0mb  │ root     │ disabled │
+│ 2  │ orbitale-crm         │ default     │ 1.0.0   │ fork    │ 2138720  │ 2D     │ 3    │ online    │ 7.7%     │ 112.1mb  │ root     │ disabled │
+│ 1  │ orbitale-finanza     │ default     │ 1.0.0   │ fork    │ 2138709  │ 2D     │ 3    │ online    │ 0%       │ 122.7mb  │ root     │ disabled │
+│ 5  │ orbitale-turbo       │ default     │ 1.0.0   │ fork    │ 2138753  │ 2D     │ 3    │ online    │ 0%       │ 142.8mb  │ root     │ disabled │
+│ 6  │ voice-bridge         │ default     │ 1.0.0   │ fork    │ 2262563  │ 0s     │ 47   │ online    │ 0%       │ 18.1mb   │ root     │ disabled │
+└────┴──────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
