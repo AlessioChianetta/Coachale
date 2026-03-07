@@ -519,45 +519,56 @@ export default function ConsultantPricingSettingsPage() {
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 p-6 overflow-y-auto">
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-8 text-white shadow-2xl">
+          <div className="mb-6">
+            <button
+              onClick={() => setLocation("/consultant/whatsapp?tab=licenses")}
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4 group"
+            >
+              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+              <span>Licenze</span>
+              <span className="text-muted-foreground/50">/</span>
+              <span className="text-foreground font-medium">Configurazione Prezzi</span>
+            </button>
+            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-xl">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-white/80 hover:text-white hover:bg-white/10 rounded-xl shrink-0"
-                    onClick={() => setLocation("/consultant/whatsapp?tab=licenses")}
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                  </Button>
-                  <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl">
-                    <Settings className="w-8 h-8 text-white" />
+                  <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
+                    <Settings className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-3xl md:text-4xl font-bold">Configurazione Prezzi</h1>
-                    <p className="text-blue-100 text-lg">
+                    <h1 className="text-2xl md:text-3xl font-bold">Configurazione Prezzi</h1>
+                    <p className="text-blue-100 text-sm">
                       Personalizza la tua pagina prezzi pubblica
                     </p>
                   </div>
                 </div>
-                <Button
-                  onClick={handleSave}
-                  disabled={saveMutation.isPending || (formData.pricingPageSlug && slugAvailable === false)}
-                  className="bg-white text-indigo-600 hover:bg-blue-50"
-                >
-                  {saveMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Salvataggio...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-5 w-5" />
-                      Salva
-                    </>
-                  )}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    className="border-white/30 text-white bg-white/10 hover:bg-white/20 hover:text-white"
+                    onClick={() => setLocation("/consultant/whatsapp?tab=licenses")}
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Torna alle Licenze
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={saveMutation.isPending || (formData.pricingPageSlug && slugAvailable === false)}
+                    className="bg-white text-indigo-600 hover:bg-blue-50"
+                  >
+                    {saveMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Salvataggio...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-5 w-5" />
+                        Salva
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
