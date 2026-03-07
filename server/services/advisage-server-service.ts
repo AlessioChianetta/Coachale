@@ -452,7 +452,7 @@ async function getGeminiApiKeyForImage(consultantId: string): Promise<string | n
 export async function generateImageServerSide(
   consultantId: string,
   prompt: string,
-  aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '1:1',
+  aspectRatio: string = '1:1',
   variant: 'text' | 'clean' = 'clean',
   hookText?: string,
   styleType?: string,
@@ -492,19 +492,30 @@ export async function generateImageServerSide(
     const response = await trackedGenerateContent(ai, {
       model: IMAGE_MODEL,
       contents: [{ role: 'user', parts: [{ text: adOptimizedPrompt }] }] as any,
-      config: { imageConfig: { aspectRatio } } as any
+      config: {
+        responseModalities: ['IMAGE'],
+        imageConfig: {
+          aspectRatio,
+          imageSize: '2K',
+        },
+        thinkingConfig: {
+          thinkingLevel: 'High',
+        },
+      } as any
     }, { consultantId, feature: 'advisage', isImageOutput: true });
     
-    const part = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+    const allParts = response.candidates?.[0]?.content?.parts || [];
+    const imageParts = allParts.filter((p: any) => p.inlineData && !p.thought);
+    const part = imageParts.length > 0 ? imageParts[imageParts.length - 1] : allParts.find((p: any) => p.inlineData);
     
     if (!part?.inlineData) {
-      console.error("[ADVISAGE-SERVER] No image data in response");
+      console.error("[ADVISAGE-SERVER] No image data in response. Parts count:", allParts.length);
       throw new Error("Generazione immagine fallita - nessun dato immagine nella risposta");
     }
     
     const imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
     
-    console.log(`[ADVISAGE-SERVER] Image generated successfully, size: ${part.inlineData.data.length} bytes`);
+    console.log(`[ADVISAGE-SERVER] Image generated successfully, size: ${part.inlineData.data.length} bytes, total parts: ${allParts.length}, image parts: ${imageParts.length}`);
     
     return { imageUrl };
     

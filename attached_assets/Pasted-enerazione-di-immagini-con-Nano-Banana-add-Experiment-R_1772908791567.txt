@@ -1,0 +1,905 @@
+enerazione di immagini con Nano Banana
+
+
+add
+Experiment
+Run in AI Studio keyboard_arrow_down
+rivistaLondraripristinabananabararticolocaneisometrico
+rivista
+Generato da Nano Banana 2
+Prompt: "Una foto della copertina lucida di una rivista. La copertina blu minimalista riporta in grassetto le parole Nano Banana. Il testo è in un carattere serif e riempie la visualizzazione. Nessun altro testo. Davanti al testo c'è il ritratto di una persona con un abito elegante e minimalista. Sta tenendo in mano il numero 2, che è il punto focale.
+Metti il numero del problema e la data "Feb 2026" nell'angolo insieme a un codice a barre. La rivista è su uno scaffale contro una parete intonacata di arancione, all'interno di un negozio di design."
+Crea scatti professionali dei prodotti in AI Studio
+Londra
+Generato da Nano Banana Pro
+Prompt: "Presenta una scena chiara, in miniatura, isometrica, dall'alto, a 45°, in 3D, di Londra, con i suoi monumenti e gli elementi architettonici più iconici. Utilizza texture morbide e raffinate con materiali PBR realistici e illuminazione e ombre delicate e realistiche. Integra le condizioni meteo attuali direttamente nell'ambiente della città per creare un'atmosfera coinvolgente. Utilizza una composizione pulita e minimalista con uno sfondo morbido e in tinta unita. Nella parte superiore centrale, inserisci il titolo "Londra" in grassetto grande, un'icona meteo in evidenza sotto, poi la data (testo piccolo) e la temperatura (testo medio). Tutto il testo deve essere centrato con una spaziatura uniforme e può sovrapporsi leggermente alla parte superiore degli edifici."
+Scopri di più sul grounding della ricerca e provalo in AI Studio
+quetzal
+Generato da Nano Banana 2
+Prompt: "Utilizza la ricerca di immagini per trovare immagini accurate di un quetzal splendente. Crea un bellissimo sfondo 3:2 di questo uccello, con una sfumatura naturale dall'alto verso il basso e una composizione minimalista."
+Utilizza la base della Ricerca immagini di Google con Nano Banana 2. Prova in AI Studio
+banana
+Generato da Nano Banana Pro
+Prompt: "Inserisci questo logo in un annuncio di lusso per un profumo al profumo di banana. Il logo è perfettamente integrato nella bottiglia".
+Prova la conservazione dei dettagli ad alta fedeltà di Nano Banana in AI Studio
+bar
+Generato da Nano Banana Pro
+Prompt: "Una foto di una scena quotidiana in un caffè affollato che serve la colazione. In primo piano c'è un uomo anime con i capelli blu, una delle persone è un disegno a matita, un'altra è una persona in claymation"
+Sperimenta diversi stili artistici con Nano Banana in AI Studio
+articolo
+Generato da Nano Banana Pro
+Prompt: "Utilizza la ricerca per scoprire come è stato accolto il lancio di Gemini 3 Flash. Utilizza queste informazioni per scrivere un breve articolo sull'argomento (con i titoli). Restituisci una foto dell'articolo così come appariva in una rivista patinata incentrata sul design. È una foto di una singola pagina piegata, che mostra l'articolo su Gemini 3 Flash. Una foto hero. Titolo in serif."
+Genera testo accurato dalla ricerca. Prova Nano Banana in AI Studio
+cane
+Generato da Nano Banana Pro
+Prompt: "Un'icona che rappresenta un cane carino. Lo sfondo è bianco. Crea le icone in uno stile 3D colorato e tattile. Nessun testo."
+Crea icone, adesivi e asset con Nano Banana in AI Studio
+isometrico
+Generato da Nano Banana 2
+Prompt: "Crea una foto perfettamente isometrica. Non è una miniatura, ma una foto acquisita che è risultata perfettamente isometrica. È una foto di un bellissimo giardino moderno. C'è una grande piscina a forma di 2 e le parole: Nano Banana 2".
+Prova la generazione di immagini fotorealistiche in AI Studio
+
+
+Diapositiva corrente: 1
+
+Diapositiva corrente: 2
+
+Diapositiva corrente: 3
+
+Diapositiva corrente: 4
+
+Diapositiva corrente: 5
+
+Diapositiva corrente: 6
+
+Diapositiva corrente: 7
+
+Diapositiva corrente: 8
+
+Diapositiva corrente: 9
+Nano Banana è il nome delle funzionalità di generazione di immagini native di Gemini. Gemini può generare ed elaborare immagini in modo conversazionale con testo, immagini o una combinazione di entrambi. In questo modo puoi creare, modificare e iterare le immagini con un controllo senza precedenti.
+
+Nano Banana si riferisce a due modelli distinti disponibili nell'API Gemini:
+
+Nano Banana 2: il modello Gemini 3.1 Flash Image Preview (gemini-3.1-flash-image-preview). Questo modello è la controparte ad alta efficienza di Gemini 3 Pro Image, ottimizzato per la velocità e i casi d'uso degli sviluppatori con volumi elevati.
+Nano Banana Pro: il modello Gemini 3 Pro Image Preview (gemini-3-pro-image-preview). Questo modello è progettato per la produzione di asset professionali, utilizzando il ragionamento avanzato ("Thinking") per seguire istruzioni complesse e riprodurre testo ad alta fedeltà.
+Nano Banana: il modello Gemini 2.5 Flash Image (gemini-2.5-flash-image). Questo modello è progettato per velocità ed efficienza, ottimizzato per attività a basso volume e bassa latenza.
+Tutte le immagini generate includono una filigrana SynthID.
+
+Generazione di immagini (da testo a immagine)
+Python
+JavaScript
+Go
+Java
+REST
+
+from google import genai
+from google.genai import types
+from PIL import Image
+
+client = genai.Client()
+
+prompt = ("Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme")
+response = client.models.generate_content(
+    model="gemini-3.1-flash-image-preview",
+    contents=[prompt],
+)
+
+for part in response.parts:
+    if part.text is not None:
+        print(part.text)
+    elif part.inline_data is not None:
+        image = part.as_image()
+        image.save("generated_image.png")
+Modifica delle immagini (da testo e immagine a immagine)
+Promemoria: assicurati di disporre dei diritti necessari per le immagini che carichi. Non generare contenuti che violano i diritti di altre persone, inclusi video o immagini che ingannano, molestano o danneggiano. L'utilizzo di questo servizio di AI generativa è soggetto alle nostre Norme relative all'uso vietato.
+
+Fornisci un'immagine e utilizza prompt di testo per aggiungere, rimuovere o modificare elementi, cambiare lo stile o regolare la classificazione del colore.
+
+Il seguente esempio mostra il caricamento di immagini codificate base64. Per più immagini, payload più grandi e tipi MIME supportati, consulta la pagina Comprensione delle immagini.
+
+Python
+JavaScript
+Go
+Java
+REST
+
+from google import genai
+from google.genai import types
+from PIL import Image
+
+client = genai.Client()
+
+prompt = (
+    "Create a picture of my cat eating a nano-banana in a "
+    "fancy restaurant under the Gemini constellation",
+)
+
+image = Image.open("/path/to/cat_image.png")
+
+response = client.models.generate_content(
+    model="gemini-3.1-flash-image-preview",
+    contents=[prompt, image],
+)
+
+for part in response.parts:
+    if part.text is not None:
+        print(part.text)
+    elif part.inline_data is not None:
+        image = part.as_image()
+        image.save("generated_image.png")
+Modifica di immagini in più passaggi
+Continua a generare e modificare immagini in modo conversazionale. La chat o la conversazione multi-turno è il modo consigliato per iterare le immagini. L'esempio seguente mostra un prompt per generare un'infografica sulla fotosintesi.
+
+Python
+JavaScript
+Go
+Java
+REST
+
+from google import genai
+from google.genai import types
+
+client = genai.Client()
+
+chat = client.chats.create(
+    model="gemini-3.1-flash-image-preview",
+    config=types.GenerateContentConfig(
+        response_modalities=['TEXT', 'IMAGE'],
+        tools=[{"google_search": {}}]
+    )
+)
+
+message = "Create a vibrant infographic that explains photosynthesis as if it were a recipe for a plant's favorite food. Show the \"ingredients\" (sunlight, water, CO2) and the \"finished dish\" (sugar/energy). The style should be like a page from a colorful kids' cookbook, suitable for a 4th grader."
+
+response = chat.send_message(message)
+
+for part in response.parts:
+    if part.text is not None:
+        print(part.text)
+    elif image:= part.as_image():
+        image.save("photosynthesis.png")
+Infografica creata con l&#39;AI sulla fotosintesi
+Infografica creata con l'AI sulla fotosintesi
+Puoi quindi utilizzare la stessa chat per cambiare la lingua del grafico in spagnolo.
+
+Python
+JavaScript
+Go
+Java
+REST
+
+message = "Update this infographic to be in Spanish. Do not change any other elements of the image."
+aspect_ratio = "16:9" # "1:1","1:4","1:8","2:3","3:2","3:4","4:1","4:3","4:5","5:4","8:1","9:16","16:9","21:9"
+resolution = "2K" # "512px", "1K", "2K", "4K"
+
+response = chat.send_message(message,
+    config=types.GenerateContentConfig(
+        image_config=types.ImageConfig(
+            aspect_ratio=aspect_ratio,
+            image_size=resolution
+        ),
+    ))
+
+for part in response.parts:
+    if part.text is not None:
+        print(part.text)
+    elif image:= part.as_image():
+        image.save("photosynthesis_spanish.png")
+Infografica creata con l&#39;AI sulla fotosintesi in spagnolo
+Infografica generata con l'AI sulla fotosintesi in spagnolo
+Novità con i modelli Gemini 3 Image
+Gemini 3 offre modelli all'avanguardia per la generazione e la modifica di immagini. Gemini 3.1 Flash Image è ottimizzato per la velocità e i casi d'uso ad alto volume, mentre Gemini 3 Pro Image è ottimizzato per la produzione di asset professionali. Progettati per affrontare i workflow più impegnativi grazie al ragionamento avanzato, sono ideali per attività di creazione e modifica complesse e in più passaggi.
+
+Output ad alta risoluzione: funzionalità di generazione integrate per immagini 1K, 2K e 4K.
+Gemini 3.1 Flash Image aggiunge la risoluzione più piccola di 512 px (0,5 K).
+Rendering avanzato del testo: in grado di generare testo leggibile e stilizzato per infografiche, menu, diagrammi e asset di marketing.
+Grounding con la Ricerca Google: il modello può utilizzare la Ricerca Google come strumento per verificare i fatti e generare immagini basate su dati in tempo reale (ad es. mappe meteo attuali, grafici azionari, eventi recenti).
+Gemini 3.1 Flash Image aggiunge l'integrazione della funzionalità di grounding della Ricerca immagini di Google insieme alla Ricerca web.
+Modalità di pensiero: il modello utilizza un processo di "pensiero" per ragionare su prompt complessi. Genera "immagini di pensiero" provvisorie (visibili nel backend ma non addebitate) per perfezionare la composizione prima di produrre l'output finale di alta qualità.
+Fino a 14 immagini di riferimento: ora puoi combinare fino a 14 immagini di riferimento per produrre l'immagine finale.
+Nuove proporzioni: l'anteprima di Gemini 3.1 Flash Image aggiunge le proporzioni 1:4, 4:1, 1:8 e 8:1.
+Utilizzare fino a 14 immagini di riferimento
+I modelli di immagini Gemini 3 ti consentono di combinare fino a 14 immagini di riferimento. Queste 14 immagini possono includere:
+
+Anteprima dell'immagine di Gemini 3.1 Flash	Anteprima di Gemini 3 Pro Image
+Fino a 10 immagini di oggetti ad alta fedeltà da includere nell'immagine finale	Fino a 6 immagini di oggetti ad alta fedeltà da includere nell'immagine finale
+Fino a 4 immagini di personaggi per mantenere la coerenza dei personaggi	Fino a 5 immagini di personaggi per mantenere la coerenza
+Python
+JavaScript
+Go
+Java
+REST
+
+from google import genai
+from google.genai import types
+from PIL import Image
+
+prompt = "An office group photo of these people, they are making funny faces."
+aspect_ratio = "5:4" # "1:1","1:4","1:8","2:3","3:2","3:4","4:1","4:3","4:5","5:4","8:1","9:16","16:9","21:9"
+resolution = "2K" # "512px", "1K", "2K", "4K"
+
+client = genai.Client()
+
+response = client.models.generate_content(
+    model="gemini-3.1-flash-image-preview",
+    contents=[
+        prompt,
+        Image.open('person1.png'),
+        Image.open('person2.png'),
+        Image.open('person3.png'),
+        Image.open('person4.png'),
+        Image.open('person5.png'),
+    ],
+    config=types.GenerateContentConfig(
+        response_modalities=['TEXT', 'IMAGE'],
+        image_config=types.ImageConfig(
+            aspect_ratio=aspect_ratio,
+            image_size=resolution
+        ),
+    )
+)
+
+for part in response.parts:
+    if part.text is not None:
+        print(part.text)
+    elif image:= part.as_image():
+        image.save("office.png")
+Foto di gruppo di un ufficio creata con l&#39;AI
+Foto di gruppo in ufficio generata con l'AI
+Grounding con la Ricerca Google
+Utilizza lo strumento Ricerca Google per generare immagini basate su informazioni in tempo reale, come previsioni meteo, grafici azionari o eventi recenti.
+
+Tieni presente che quando utilizzi il Grounding con la Ricerca Google con la generazione di immagini, i risultati di ricerca basati su immagini non vengono passati al modello di generazione e sono esclusi dalla risposta (vedi Grounding con la Ricerca immagini di Google).
+
+Python
+JavaScript
+Java
+REST
+
+from google import genai
+prompt = "Visualize the current weather forecast for the next 5 days in San Francisco as a clean, modern weather chart. Add a visual on what I should wear each day"
+aspect_ratio = "16:9" # "1:1","1:4","1:8","2:3","3:2","3:4","4:1","4:3","4:5","5:4","8:1","9:16","16:9","21:9"
+
+client = genai.Client()
+
+response = client.models.generate_content(
+    model="gemini-3.1-flash-image-preview",
+    contents=prompt,
+    config=types.GenerateContentConfig(
+        response_modalities=['Text', 'Image'],
+        image_config=types.ImageConfig(
+            aspect_ratio=aspect_ratio,
+        ),
+        tools=[{"google_search": {}}]
+    )
+)
+
+for part in response.parts:
+    if part.text is not None:
+        print(part.text)
+    elif image:= part.as_image():
+        image.save("weather.png")
+Grafico meteo di cinque giorni creato con l&#39;AI per San Francisco
+Grafico meteo di cinque giorni generato con l'AI per San Francisco
+La risposta include groundingMetadata, che contiene i seguenti campi obbligatori:
+
+searchEntryPoint: contiene HTML e CSS per il rendering dei suggerimenti di ricerca richiesti.
+groundingChunks: restituisce le prime tre fonti web utilizzate per basare l'immagine generata
+Grounding con la Ricerca immagini di Google (3.1 Flash)
+Nota: questa funzionalità è disponibile solo per il modello Gemini 3.1 Flash Image.
+Il grounding con Google Ricerca immagini consente ai modelli di utilizzare le immagini web recuperate tramite Google Ricerca immagini come contesto visivo per la generazione di immagini. La ricerca di immagini è un nuovo tipo di ricerca all'interno dello strumento esistente Grounding with Google Search, che funziona insieme alla ricerca web standard.
+
+Per attivare la ricerca di immagini, configura lo strumento googleSearch nella richiesta API e specifica imageSearch all'interno dell'oggetto searchTypes. La ricerca di immagini può essere utilizzata in modo indipendente o insieme alla ricerca sul web.
+
+Python
+JavaScript
+Go
+REST
+
+from google import genai
+prompt = "A detailed painting of a Timareta butterfly resting on a flower"
+
+client = genai.Client()
+
+response = client.models.generate_content(
+    model="gemini-3.1-flash-image-preview",
+    contents=prompt,
+    config=types.GenerateContentConfig(
+        response_modalities=["IMAGE"],
+        tools=[
+            types.Tool(google_search=types.GoogleSearch(
+                search_types=types.SearchTypes(
+                    web_search=types.WebSearch(),
+                    image_search=types.ImageSearch()
+                )
+            ))
+        ]
+    )
+)
+
+# Display grounding sources if available
+if response.candidates and response.candidates[0].grounding_metadata and response.candidates[0].grounding_metadata.search_entry_point:
+    display(HTML(response.candidates[0].grounding_metadata.search_entry_point.rendered_content))
+Requisiti di visualizzazione
+
+Quando utilizzi la ricerca immagini all'interno di Grounding con la Ricerca Google, devi rispettare le seguenti condizioni:
+
+Attribuzione della fonte: devi fornire un link alla pagina web contenente l'immagine di origine (la "pagina contenente", non il file immagine stesso) in un modo che l'utente riconosca come link.
+Navigazione diretta: se scegli anche di mostrare le immagini di origine, devi fornire un percorso diretto con un solo clic dalle immagini di origine alla pagina web di origine che le contiene. Non è consentita qualsiasi altra implementazione che ritardi o astragga l'accesso dell'utente finale alla pagina web di origine, inclusi, a titolo esemplificativo ma non esaustivo, qualsiasi percorso a più clic o l'utilizzo di un visualizzatore di immagini intermedio.
+Risposta
+
+Per le risposte basate sulla ricerca di immagini, l'API fornisce un'attribuzione chiara e metadati per collegare l'output a fonti verificate. I campi chiave nell'oggetto groundingMetadata includono:
+
+imageSearchQueries: le query specifiche utilizzate dal modello per il contesto visivo (ricerca immagini).
+groundingChunks: contiene le informazioni sull'origine dei risultati recuperati. Per le origini immagini, questi verranno restituiti come URL di reindirizzamento utilizzando un nuovo tipo di chunk immagine. Questo blocco include:
+
+uri: l'URL della pagina web per l'attribuzione (la pagina di destinazione).
+image_uri: l'URL diretto dell'immagine.
+groundingSupports: fornisce mappature specifiche che collegano i contenuti generati alla fonte di citazione pertinente nei chunk.
+
+searchEntryPoint: include il chip "Ricerca Google" contenente HTML e CSS conformi per il rendering dei suggerimenti di ricerca.
+
+Generare immagini con una risoluzione fino a 4K
+I modelli di immagini Gemini 3 generano 1000 immagini per impostazione predefinita, ma possono anche produrre immagini 2K, 4K e 512 px (05.K) (solo Gemini 3.1 Flash Image). Per generare asset con una risoluzione più elevata, specifica image_size in generation_config.
+
+Devi utilizzare una "K" maiuscola (ad es. 512 px (05.K), 1K, 2K, 4K). Parametri in lettere minuscole (ad es. 1000) verrà rifiutata.
+
+Python
+JavaScript
+Go
+Java
+REST
+
+from google import genai
+from google.genai import types
+
+prompt = "Da Vinci style anatomical sketch of a dissected Monarch butterfly. Detailed drawings of the head, wings, and legs on textured parchment with notes in English."
+aspect_ratio = "1:1" # "1:1","1:4","1:8","2:3","3:2","3:4","4:1","4:3","4:5","5:4","8:1","9:16","16:9","21:9"
+resolution = "1K" # "512px", "1K", "2K", "4K"
+
+client = genai.Client()
+
+response = client.models.generate_content(
+    model="gemini-3.1-flash-image-preview",
+    contents=prompt,
+    config=types.GenerateContentConfig(
+        response_modalities=['TEXT', 'IMAGE'],
+        image_config=types.ImageConfig(
+            aspect_ratio=aspect_ratio,
+            image_size=resolution
+        ),
+    )
+)
+
+for part in response.parts:
+    if part.text is not None:
+        print(part.text)
+    elif image:= part.as_image():
+        image.save("butterfly.png")
+Di seguito è riportata un'immagine di esempio generata da questo prompt:
+
+Schizzo anatomico in stile Da Vinci di una farfalla monarca sezionata, creato con l&#39;AI.
+Schizzo anatomico in stile Da Vinci di una farfalla monarca sezionata creato con l'AI.
+Procedura di ragionamento
+I modelli di immagine Gemini 3 sono modelli di ragionamento che utilizzano un processo di ragionamento ("Ragionamento") per i prompt complessi. Questa funzionalità è attivata per impostazione predefinita e non può essere disattivata nell'API. Per saperne di più sul processo di pensiero, consulta la guida Il pensiero di Gemini.
+
+Il modello genera fino a due immagini provvisorie per testare la composizione e la logica. L'ultima immagine all'interno di Pensiero è anche l'immagine finale renderizzata.
+
+Puoi controllare i pensieri che hanno portato alla produzione dell'immagine finale.
+
+Python
+JavaScript
+
+for part in response.parts:
+    if part.thought:
+        if part.text:
+            print(part.text)
+        elif image:= part.as_image():
+            image.show()
+Controllare i livelli di pensiero
+Con Gemini 3.1 Flash Image, puoi controllare la quantità di ragionamento che il modello utilizza per bilanciare qualità e latenza. Il valore predefinito di thinkingLevel è minimal, mentre i livelli supportati sono minimal e high.
+
+Puoi aggiungere il valore booleano includeThoughts per determinare se i pensieri generati dal modello vengono restituiti nella risposta o rimangono nascosti.
+
+Python
+JavaScript
+Go
+REST
+
+from google import genai
+
+response = client.models.generate_content(
+    model="gemini-3.1-flash-image-preview",
+    contents="A futuristic city built inside a giant glass bottle floating in space",
+    config=types.GenerateContentConfig(
+        response_modalities=["IMAGE"],
+        thinking_config=types.ThinkingConfig(
+            thinking_level="High",
+            include_thoughts=True
+        ),
+    )
+)
+
+for part in response.parts:
+    if part.thought: # Skip outputting thoughts
+      continue
+    if part.text:
+      display(Markdown(part.text))
+    elif image:= part.as_image():
+      image.show()
+Tieni presente che i token di pensiero vengono fatturati indipendentemente dal fatto che includeThoughts sia impostato su true o false, poiché il processo di pensiero avviene sempre per impostazione predefinita, indipendentemente dal fatto che tu lo visualizzi o meno.
+
+Firme dei pensieri
+Le firme del pensiero sono rappresentazioni criptate del processo di pensiero interno del modello e vengono utilizzate per preservare il contesto del ragionamento nelle interazioni multi-turno. Tutte le risposte includono un campo thought_signature. Come regola generale, se ricevi una firma del pensiero nella risposta di un modello, devi restituirla esattamente come l'hai ricevuta quando invii la cronologia della conversazione nel turno successivo. La mancata circolazione delle firme del pensiero potrebbe causare l'esito negativo della risposta. Per ulteriori spiegazioni sulle firme in generale, consulta la documentazione relativa alla firma del pensiero.
+
+Nota: se utilizzi gli SDK Google Gen AI e la funzionalità di chat (o aggiungi l'oggetto di risposta completo del modello direttamente alla cronologia), le firme del pensiero vengono gestite automaticamente. Non devi estrarli o gestirli manualmente, né modificare il codice.
+Ecco come funzionano le firme dei pensieri:
+
+Tutte le parti inline_data con l'immagine mimetype che fanno parte della risposta devono avere una firma.
+Se all'inizio (prima di qualsiasi immagine) sono presenti alcune parti di testo subito dopo i pensieri, anche la prima parte di testo deve avere una firma.
+Se le parti inline_data con l'immagine mimetype fanno parte dei pensieri, non avranno firme.
+Il seguente codice mostra un esempio di dove sono incluse le firme dei pensieri:
+
+
+[
+  {
+    "inline_data": {
+      "data": "<base64_image_data_0>",
+      "mime_type": "image/png"
+    },
+    "thought": true // Thoughts don't have signatures
+  },
+  {
+    "inline_data": {
+      "data": "<base64_image_data_1>",
+      "mime_type": "image/png"
+    },
+    "thought": true // Thoughts don't have signatures
+  },
+  {
+    "inline_data": {
+      "data": "<base64_image_data_2>",
+      "mime_type": "image/png"
+    },
+    "thought": true // Thoughts don't have signatures
+  },
+  {
+    "text": "Here is a step-by-step guide to baking macarons, presented in three separate images.\n\n### Step 1: Piping the Batter\n\nThe first step after making your macaron batter is to pipe it onto a baking sheet. This requires a steady hand to create uniform circles.\n\n",
+    "thought_signature": "<Signature_A>" // The first non-thought part always has a signature
+  },
+  {
+    "inline_data": {
+      "data": "<base64_image_data_3>",
+      "mime_type": "image/png"
+    },
+    "thought_signature": "<Signature_B>" // All image parts have a signatures
+  },
+  {
+    "text": "\n\n### Step 2: Baking and Developing Feet\n\nOnce piped, the macarons are baked in the oven. A key sign of a successful bake is the development of \"feet\"—the ruffled edge at the base of each macaron shell.\n\n"
+    // Follow-up text parts don't have signatures
+  },
+  {
+    "inline_data": {
+      "data": "<base64_image_data_4>",
+      "mime_type": "image/png"
+    },
+    "thought_signature": "<Signature_C>" // All image parts have a signatures
+  },
+  {
+    "text": "\n\n### Step 3: Assembling the Macaron\n\nThe final step is to pair the cooled macaron shells by size and sandwich them together with your desired filling, creating the classic macaron dessert.\n\n"
+  },
+  {
+    "inline_data": {
+      "data": "<base64_image_data_5>",
+      "mime_type": "image/png"
+    },
+    "thought_signature": "<Signature_D>" // All image parts have a signatures
+  }
+]
+Altre modalità di generazione di immagini
+Gemini supporta altre modalità di interazione con le immagini in base alla struttura e al contesto del prompt, tra cui:
+
+Testo in immagini e testo (interleaved): restituisce immagini con testo correlato.
+Prompt di esempio: "Genera una ricetta illustrata per una paella".
+Immagini e testo in immagini e testo (interleaved): utilizza immagini e testo di input per creare nuove immagini e testo correlati.
+Prompt di esempio: (con un'immagine di una stanza arredata) "Quali altri divani di colore diverso si adatterebbero al mio spazio? Puoi aggiornare l'immagine?"
+Generare immagini in batch
+Se devi generare molte immagini, puoi utilizzare l'API Batch. In cambio di un tempo di risposta fino a 24 ore, ottieni limiti di frequenza più elevati.
+
+Consulta la documentazione sulla generazione di immagini dell'API Batch e il cookbook per esempi e codice di immagini dell'API Batch.
+
+Guida e strategie per i prompt
+Per padroneggiare la generazione di immagini, devi partire da un principio fondamentale:
+
+Descrivi la scena, non elencare solo le parole chiave. Il punto di forza principale del modello è la sua profonda comprensione del linguaggio. Un paragrafo narrativo e descrittivo produrrà quasi sempre un'immagine migliore e più coerente rispetto a un elenco di parole scollegate.
+
+Prompt per la generazione di immagini
+Le seguenti strategie ti aiuteranno a creare prompt efficaci per generare esattamente le immagini che stai cercando.
+
+1. Scene fotorealistiche
+Per immagini realistiche, utilizza termini fotografici. Menziona angolazioni della fotocamera, tipi di obiettivo, illuminazione e dettagli precisi per guidare il modello verso un risultato fotorealistico.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+A photorealistic [shot type] of [subject], [action or expression], set in
+[environment]. The scene is illuminated by [lighting description], creating
+a [mood] atmosphere. Captured with a [camera/lens details], emphasizing
+[key textures and details]. The image should be in a [aspect ratio] format.
+Un ritratto fotorealistico in primo piano di un anziano ceramista giapponese…
+Un ritratto ravvicinato fotorealistico di un ceramista giapponese anziano...
+2. Illustrazioni e adesivi stilizzati
+Per creare adesivi, icone o asset, specifica lo stile e richiedi uno sfondo trasparente.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+A [style] sticker of a [subject], featuring [key characteristics] and a
+[color palette]. The design should have [line style] and [shading style].
+The background must be transparent.
+Adesivo in stile kawaii di un felice...
+Un adesivo in stile kawaii di un panda rosso felice…
+3. Testo accurato nelle immagini
+Gemini eccelle nel rendering del testo. Descrivi in modo chiaro il testo, lo stile del carattere (in modo descrittivo) e il design complessivo. Utilizza l'anteprima di Gemini 3 Pro Image per la produzione di asset professionali.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+Create a [image type] for [brand/concept] with the text "[text to render]"
+in a [font style]. The design should be [style description], with a
+[color scheme].
+Crea un logo moderno e minimalista per una caffetteria chiamata &quot;The Daily Grind&quot;…
+Crea un logo moderno e minimalista per una caffetteria chiamata "The Daily Grind"…
+4. Mockup di prodotti e fotografia commerciale
+Ideale per creare foto di prodotti pulite e professionali per l'e-commerce, la pubblicità o il branding.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+A high-resolution, studio-lit product photograph of a [product description]
+on a [background surface/description]. The lighting is a [lighting setup,
+e.g., three-point softbox setup] to [lighting purpose]. The camera angle is
+a [angle type] to showcase [specific feature]. Ultra-realistic, with sharp
+focus on [key detail]. [Aspect ratio].
+Una fotografia di prodotto ad alta risoluzione illuminata in studio di una tazza da caffè in ceramica minimalista…
+Una fotografia ad alta risoluzione di un prodotto illuminato in studio, una tazza da caffè in ceramica minimalista...
+5. Design minimalista e con spazio negativo
+Ideale per creare sfondi per siti web, presentazioni o materiali di marketing in cui verrà sovrapposto il testo.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+A minimalist composition featuring a single [subject] positioned in the
+[bottom-right/top-left/etc.] of the frame. The background is a vast, empty
+[color] canvas, creating significant negative space. Soft, subtle lighting.
+[Aspect ratio].
+Una composizione minimalista con una sola e delicata foglia d&#39;acero rossa…
+Una composizione minimalista con una singola e delicata foglia di acero rosso…
+6. Arte sequenziale (riquadro di fumetto / storyboard)
+Si basa sulla coerenza dei personaggi e sulla descrizione della scena per creare riquadri per la narrazione visiva. Per una maggiore precisione con il testo e la capacità di narrazione, questi prompt funzionano meglio con Gemini 3 Pro e Gemini 3.1 Flash Image Preview.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+Make a 3 panel comic in a [style]. Put the character in a [type of scene].
+Input
+
+Output
+
+Uomo con occhiali bianchi
+Immagine di input
+Crea un fumetto di tre vignette in uno stile artistico noir e crudo…
+Crea un fumetto di tre vignette in uno stile artistico noir e crudo…
+7. Grounding con la Ricerca Google
+Utilizza la Ricerca Google per generare immagini basate su informazioni recenti o in tempo reale. Questa funzionalità è utile per notizie, meteo e altri argomenti urgenti.
+
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+Make a simple but stylish graphic of last night's Arsenal game in the Champion's League
+Grafica creata con l&#39;AI del risultato di una partita di calcio dell&#39;Arsenal
+Grafica creata con l'AI di un risultato di una partita di calcio dell'Arsenal
+Prompt per la modifica delle immagini
+Questi esempi mostrano come fornire immagini insieme ai prompt di testo per la modifica, la composizione e il trasferimento dello stile.
+
+1. Aggiunta e rimozione di elementi
+Fornisci un'immagine e descrivi la modifica. Il modello corrisponderà allo stile, all'illuminazione e alla prospettiva dell'immagine originale.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+Using the provided image of [subject], please [add/remove/modify] [element]
+to/from the scene. Ensure the change is [description of how the change should
+integrate].
+Input
+
+Output
+
+Un&#39;immagine fotorealistica di un gatto rosso e soffice.
+Una foto realistica di un gatto rosso e soffice...
+Utilizzando l&#39;immagine fornita del mio gatto, aggiungi un piccolo cappello da mago lavorato a maglia…
+Utilizzando l'immagine fornita del mio gatto, aggiungi un piccolo cappello da mago lavorato a maglia...
+2. Inpainting (mascheratura semantica)
+Definisci in modo conversazionale una "maschera" per modificare una parte specifica di un'immagine lasciando invariato il resto.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+Using the provided image, change only the [specific element] to [new
+element/description]. Keep everything else in the image exactly the same,
+preserving the original style, lighting, and composition.
+Input
+
+Output
+
+Un&#39;inquadratura ampia di un soggiorno moderno e ben illuminato…
+Inquadratura ampia di un soggiorno moderno e ben illuminato…
+Utilizzando l&#39;immagine fornita di un soggiorno, cambia solo il divano blu in un divano Chesterfield vintage in pelle marrone…
+Utilizzando l'immagine fornita di un soggiorno, cambia solo il divano blu in un divano Chesterfield vintage in pelle marrone…
+3. Trasferimento stile
+Fornisci un'immagine e chiedi al modello di ricreare i suoi contenuti in uno stile artistico diverso.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+Transform the provided photograph of [subject] into the artistic style of [artist/art style]. Preserve the original composition but render it with [description of stylistic elements].
+Input
+
+Output
+
+Una fotografia fotorealistica ad alta risoluzione di una strada trafficata della città…
+Una fotografia fotorealistica ad alta risoluzione di una strada trafficata di una città…
+Trasforma la fotografia fornita di una strada moderna di una città di notte…
+Trasforma la fotografia fornita di una strada moderna di una città di notte...
+4. Composizione avanzata: combinare più immagini
+Fornisci più immagini come contesto per creare una nuova scena composita. È perfetto per i mockup di prodotti o i collage creativi.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+Create a new image by combining the elements from the provided images. Take
+the [element from image 1] and place it with/on the [element from image 2].
+The final image should be a [description of the final scene].
+Input 1
+
+Input 2
+
+Output
+
+Una foto scattata da un professionista di un abito estivo blu a fiori…
+Una foto scattata da un professionista di un abito estivo blu con stampa floreale…
+Scatto a figura intera di una donna con i capelli raccolti in uno chignon…
+Inquadratura a figura intera di una donna con i capelli raccolti in uno chignon…
+Crea una foto di moda per l&#39;e-commerce professionale…
+Crea una foto di moda professionale per l'e-commerce…
+5. Conservazione dei dettagli ad alta fedeltà
+Per assicurarti che i dettagli importanti (come un volto o un logo) vengano conservati durante una modifica, descrivili in dettaglio insieme alla richiesta di modifica.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+Using the provided images, place [element from image 2] onto [element from
+image 1]. Ensure that the features of [element from image 1] remain
+completely unchanged. The added element should [description of how the
+element should integrate].
+Input 1
+
+Input 2
+
+Output
+
+Un ritratto professionale di una donna con capelli castani e occhi azzurri…
+Un ritratto professionale di una donna con capelli castani e occhi azzurri…
+Un logo semplice e moderno con le lettere &quot;G&quot; e &quot;A&quot;...
+Un logo semplice e moderno con le lettere "G" e "A"...
+Prendi la prima immagine della donna con capelli castani, occhi azzurri e un&#39;espressione neutra…
+Prendi la prima immagine della donna con capelli castani, occhi azzurri e un'espressione neutra…
+6. Dare vita a qualcosa
+Carica uno schizzo o un disegno e chiedi al modello di perfezionarlo in un'immagine finita.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+Turn this rough [medium] sketch of a [subject] into a [style description]
+photo. Keep the [specific features] from the sketch but add [new details/materials].
+Input
+
+Output
+
+Schizzo di un&#39;auto
+Schizzo approssimativo di un'auto
+Output che mostra la concept car finale
+Foto ritoccata di un'auto
+7. Coerenza dei personaggi: visione a 360°
+Puoi generare visualizzazioni a 360 gradi di un personaggio chiedendo iterativamente angolazioni diverse. Per ottenere risultati ottimali, includi le immagini generate in precedenza nei prompt successivi per mantenere la coerenza. Per le pose complesse, includi un'immagine di riferimento della posa desiderata.
+
+Modello
+Prompt
+Python
+JavaScript
+Go
+Java
+REST
+
+A studio portrait of [person] against [background], [looking forward/in profile looking right/etc.]
+Input
+
+Output 1
+
+Output 2
+
+Input originale di un uomo con occhiali bianchi
+Immagine originale
+Output di un uomo con occhiali bianchi che guarda a destra
+Uomo con occhiali bianchi che guarda a destra
+Output di un uomo con occhiali bianchi che guarda avanti
+Uomo con occhiali bianchi che guarda avanti
+Best practice
+Per migliorare i tuoi risultati, incorpora queste strategie professionali nel tuo flusso di lavoro.
+
+Sii iper-specifico: più dettagli fornisci, maggiore sarà il controllo. Invece di "armatura fantasy", descrivila: "armatura a piastre elfica riccamente decorata, incisa con motivi a foglie d'argento, con un colletto alto e spallacci a forma di ali di falco".
+Fornisci contesto e intenzione:spiega lo scopo dell'immagine. La comprensione del contesto da parte del modello influenzerà l'output finale. Ad esempio, "Crea un logo per un brand di prodotti per la cura della pelle minimalista di fascia alta" produrrà risultati migliori rispetto a "Crea un logo".
+Esegui l'iterazione e perfeziona:non aspettarti un'immagine perfetta al primo tentativo. Sfrutta la natura conversazionale del modello per apportare piccole modifiche. Segui con prompt come "Ottimo, ma puoi rendere l'illuminazione un po' più calda?" o "Lascia tutto invariato, ma cambia l'espressione del personaggio in modo che sia più serio".
+Utilizza istruzioni passo passo:per scene complesse con molti elementi, suddividi il prompt in passaggi. "Per prima cosa, crea uno sfondo di una serena foresta nebbiosa all'alba. Poi, in primo piano, aggiungi un antico altare in pietra ricoperto di muschio. Infine, posiziona una spada singola e luminosa sopra l'altare".
+Utilizza "prompt negativi semantici": invece di dire "no auto", descrivi la scena desiderata in modo positivo: "una strada vuota e deserta senza segni di traffico".
+Controlla la fotocamera:utilizza un linguaggio fotografico e cinematografico per controllare la composizione. Termini come wide-angle shot, macro shot, low-angle perspective.
+Limitazioni
+Per ottenere prestazioni ottimali, utilizza le seguenti lingue: EN, ar-EG, de-DE, es-MX, fr-FR, hi-IN, id-ID, it-IT, ja-JP, ko-KR, pt-BR, ru-RU, ua-UA, vi-VN, zh-CN.
+La generazione di immagini non supporta input audio o video.
+Il modello non sempre segue il numero esatto di output di immagini richiesto esplicitamente dall'utente.
+gemini-2.5-flash-image funziona al meglio con un massimo di tre immagini come input, mentre gemini-3-pro-image-preview supporta cinque immagini ad alta fedeltà e fino a 14 immagini in totale. gemini-3.1-flash-image-preview supporta la somiglianza dei personaggi fino a 4 caratteri e la fedeltà fino a 10 oggetti in un unico flusso di lavoro.
+Quando generi testo per un'immagine, Gemini funziona meglio se prima generi il testo e poi chiedi un'immagine con il testo.
+Tutte le immagini generate includono una filigrana SynthID.
+Configurazioni facoltative
+Facoltativamente, puoi configurare le modalità di risposta e le proporzioni dell'output del modello nel campo config delle chiamate generate_content.
+
+Tipi di output
+Per impostazione predefinita, il modello restituisce risposte di testo e immagini (ovvero response_modalities=['Text', 'Image']). Puoi configurare la risposta in modo che restituisca solo immagini senza testo utilizzando response_modalities=['Image'].
+
+Python
+JavaScript
+Go
+Java
+REST
+
+response = client.models.generate_content(
+    model="gemini-3.1-flash-image-preview",
+    contents=[prompt],
+    config=types.GenerateContentConfig(
+        response_modalities=['Image']
+    )
+)
+Proporzioni e dimensioni delle immagini
+Per impostazione predefinita, il modello abbina le dimensioni dell'immagine di output a quelle dell'immagine di input oppure genera quadrati 1:1. Puoi controllare le proporzioni dell'immagine di output utilizzando il campo aspect_ratio in image_config nella richiesta di risposta, come mostrato di seguito:
+
+Python
+JavaScript
+Go
+Java
+REST
+
+# For gemini-2.5-flash-image
+response = client.models.generate_content(
+    model="gemini-2.5-flash-image",
+    contents=[prompt],
+    config=types.GenerateContentConfig(
+        image_config=types.ImageConfig(
+            aspect_ratio="16:9",
+        )
+    )
+)
+
+# For gemini-3.1-flash-image-preview and gemini-3-pro-image-preview
+response = client.models.generate_content(
+    model="gemini-3.1-flash-image-preview",
+    contents=[prompt],
+    config=types.GenerateContentConfig(
+        image_config=types.ImageConfig(
+            aspect_ratio="16:9",
+            image_size="2K",
+        )
+    )
+)
+I diversi rapporti disponibili e le dimensioni dell'immagine generata sono elencati nelle tabelle seguenti:
+
+3.1 Anteprima immagine Flash
+Anteprima di Gemini 3 Pro Image
+Gemini 2.5 Flash Image
+Proporzioni	Risoluzione 512 px	500 token	Risoluzione 1K	1000 token	Risoluzione 2K	2000 token	Risoluzione 4K	Token 4K
+1:1	512x512	747	1024x1024	1120	2048x2048	1120	4096x4096	2000
+1:4	256x1024	747	512x2048	1120	1024x4096	1120	2048x8192	2000
+1:08	192x1536	747	384x3072	1120	768x6144	1120	1536x12288	2000
+2:3	424x632	747	848x1264	1120	1696x2528	1120	3392x5056	2000
+3:2	632x424	747	1264x848	1120	2528x1696	1120	5056x3392	2000
+3:4	448x600	747	896x1200	1120	1792x2400	1120	3584x4800	2000
+4:1	1024x256	747	2048x512	1120	4096x1024	1120	8192x2048	2000
+4:3	600x448	747	1200x896	1120	2400x1792	1120	4800x3584	2000
+4:5	464x576	747	928x1152	1120	1856x2304	1120	3712x4608	2000
+5:4	576x464	747	1152x928	1120	2304x1856	1120	4608x3712	2000
+8:1	1536x192	747	3072x384	1120	6144x768	1120	12288x1536	2000
+9:16	384x688	747	768x1376	1120	1536x2752	1120	3072x5504	2000
+16:9	688x384	747	1376x768	1120	2752x1536	1120	5504x3072	2000
+21:9	792x168	747	1584x672	1120	3168x1344	1120	6336x2688	2000
+Selezione del modello
+Scegli il modello più adatto al tuo caso d'uso specifico.
+
+Gemini 3.1 Flash Image Preview (Nano Banana 2 Preview) dovrebbe essere il tuo modello di generazione di immagini di riferimento, in quanto offre il miglior equilibrio tra prestazioni e intelligenza complessive, costi e latenza. Per ulteriori dettagli, consulta la pagina relativa ai prezzi e alle funzionalità del modello.
+
+Gemini 3 Pro Image Preview (anteprima di Nano Banana Pro) è progettato per la produzione di asset professionali e istruzioni complesse. Questo modello è caratterizzato da un grounding nel mondo reale tramite la Ricerca Google, un processo di "Pensiero" predefinito che perfeziona la composizione prima della generazione e può generare immagini con risoluzioni fino a 4K. Per ulteriori dettagli, consulta la pagina relativa ai prezzi e alle funzionalità del modello.
+
+Gemini 2.5 Flash Image (Nano Banana) è progettato per velocità ed efficienza. Questo modello è ottimizzato per attività a basso volume e bassa latenza e genera immagini con una risoluzione di 1024 px. Per ulteriori dettagli, consulta la pagina relativa ai prezzi e alle funzionalità del modello.
+
+Quando utilizzare Imagen
+Oltre a utilizzare le funzionalità di generazione di immagini integrate di Gemini, puoi accedere anche a Imagen, il nostro modello specializzato di generazione di immagini, tramite l'API Gemini.
+
+Imagen 4 dovrebbe essere il modello di riferimento quando inizi a generare immagini con Imagen. Scegli Imagen 4 Ultra per casi d'uso avanzati o quando hai bisogno della migliore qualità dell'immagine (tieni presente che può generare solo un'immagine alla volta).
+
+Passaggi successivi
+Trova altri esempi ed esempi di codice nella guida Cookbook.
+Consulta la guida di Veo per scoprire come generare video con l'API Gemini.
+Per scoprire di più sui modelli Gemini, consulta Modelli Gemini.
