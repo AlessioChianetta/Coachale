@@ -1,0 +1,736 @@
+6injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:6074
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:6069
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+mountLazyComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14833
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15918
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopConcurrent @ chunk-RPCDYKBN.js?v=acfd96f4:19189
+renderRootConcurrent @ chunk-RPCDYKBN.js?v=acfd96f4:19164
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18678
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+3injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:6074
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:6069
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=acfd96f4:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=acfd96f4:19116
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18678
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+3injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:6074
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:6069
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=acfd96f4:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=acfd96f4:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=acfd96f4:18627
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=acfd96f4:103
+flush @ @tanstack_react-query.js?v=acfd96f4:615
+batch @ @tanstack_react-query.js?v=acfd96f4:633
+dispatch_fn @ @tanstack_react-query.js?v=acfd96f4:1260
+setData @ @tanstack_react-query.js?v=acfd96f4:935
+fetch @ @tanstack_react-query.js?v=acfd96f4:1157
+await in fetch
+executeFetch_fn @ @tanstack_react-query.js?v=acfd96f4:1651
+onSubscribe @ @tanstack_react-query.js?v=acfd96f4:1344
+subscribe @ @tanstack_react-query.js?v=acfd96f4:24
+(anonymous) @ @tanstack_react-query.js?v=acfd96f4:3313
+subscribeToStore @ chunk-RPCDYKBN.js?v=acfd96f4:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=acfd96f4:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=acfd96f4:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=acfd96f4:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=acfd96f4:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=acfd96f4:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=acfd96f4:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19432
+commitRoot @ chunk-RPCDYKBN.js?v=acfd96f4:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=acfd96f4:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18718
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+3injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:6074
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:6069
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=acfd96f4:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=acfd96f4:19116
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18678
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+15injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:6074
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:6069
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=acfd96f4:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=acfd96f4:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=acfd96f4:18627
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=acfd96f4:103
+flush @ @tanstack_react-query.js?v=acfd96f4:615
+batch @ @tanstack_react-query.js?v=acfd96f4:633
+dispatch_fn @ @tanstack_react-query.js?v=acfd96f4:1260
+setData @ @tanstack_react-query.js?v=acfd96f4:935
+fetch @ @tanstack_react-query.js?v=acfd96f4:1157
+await in fetch
+executeFetch_fn @ @tanstack_react-query.js?v=acfd96f4:1651
+onSubscribe @ @tanstack_react-query.js?v=acfd96f4:1344
+subscribe @ @tanstack_react-query.js?v=acfd96f4:24
+(anonymous) @ @tanstack_react-query.js?v=acfd96f4:3313
+subscribeToStore @ chunk-RPCDYKBN.js?v=acfd96f4:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=acfd96f4:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=acfd96f4:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=acfd96f4:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=acfd96f4:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=acfd96f4:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=acfd96f4:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19432
+commitRoot @ chunk-RPCDYKBN.js?v=acfd96f4:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=acfd96f4:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18718
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+injected.js:214  GET https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/api/voice/numbers 500 (Internal Server Error)
+apply @ injected.js:214
+queryFn @ consultant-voice-calls.tsx:1955
+fetchFn @ @tanstack_react-query.js?v=acfd96f4:1101
+run @ @tanstack_react-query.js?v=acfd96f4:800
+start @ @tanstack_react-query.js?v=acfd96f4:843
+fetch @ @tanstack_react-query.js?v=acfd96f4:1148
+executeFetch_fn @ @tanstack_react-query.js?v=acfd96f4:1651
+onSubscribe @ @tanstack_react-query.js?v=acfd96f4:1344
+subscribe @ @tanstack_react-query.js?v=acfd96f4:24
+(anonymous) @ @tanstack_react-query.js?v=acfd96f4:3313
+subscribeToStore @ chunk-RPCDYKBN.js?v=acfd96f4:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=acfd96f4:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=acfd96f4:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=acfd96f4:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=acfd96f4:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=acfd96f4:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=acfd96f4:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19432
+commitRoot @ chunk-RPCDYKBN.js?v=acfd96f4:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=acfd96f4:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18718
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+9injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:6074
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:6069
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=acfd96f4:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=acfd96f4:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=acfd96f4:18627
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=acfd96f4:103
+flush @ @tanstack_react-query.js?v=acfd96f4:615
+batch @ @tanstack_react-query.js?v=acfd96f4:633
+dispatch_fn @ @tanstack_react-query.js?v=acfd96f4:1260
+setData @ @tanstack_react-query.js?v=acfd96f4:935
+fetch @ @tanstack_react-query.js?v=acfd96f4:1157
+await in fetch
+executeFetch_fn @ @tanstack_react-query.js?v=acfd96f4:1651
+onSubscribe @ @tanstack_react-query.js?v=acfd96f4:1344
+subscribe @ @tanstack_react-query.js?v=acfd96f4:24
+(anonymous) @ @tanstack_react-query.js?v=acfd96f4:3313
+subscribeToStore @ chunk-RPCDYKBN.js?v=acfd96f4:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=acfd96f4:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=acfd96f4:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=acfd96f4:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=acfd96f4:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=acfd96f4:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=acfd96f4:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19432
+commitRoot @ chunk-RPCDYKBN.js?v=acfd96f4:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=acfd96f4:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18718
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+3injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:6074
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:6069
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=acfd96f4:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=acfd96f4:19116
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18678
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+3injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:6074
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:6069
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=acfd96f4:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=acfd96f4:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=acfd96f4:18627
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=acfd96f4:103
+flush @ @tanstack_react-query.js?v=acfd96f4:615
+batch @ @tanstack_react-query.js?v=acfd96f4:633
+dispatch_fn @ @tanstack_react-query.js?v=acfd96f4:1260
+setData @ @tanstack_react-query.js?v=acfd96f4:935
+fetch @ @tanstack_react-query.js?v=acfd96f4:1157
+await in fetch
+executeFetch_fn @ @tanstack_react-query.js?v=acfd96f4:1651
+onSubscribe @ @tanstack_react-query.js?v=acfd96f4:1344
+subscribe @ @tanstack_react-query.js?v=acfd96f4:24
+(anonymous) @ @tanstack_react-query.js?v=acfd96f4:3313
+subscribeToStore @ chunk-RPCDYKBN.js?v=acfd96f4:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=acfd96f4:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=acfd96f4:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=acfd96f4:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=acfd96f4:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=acfd96f4:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=acfd96f4:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19432
+commitRoot @ chunk-RPCDYKBN.js?v=acfd96f4:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=acfd96f4:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18718
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+3injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:6074
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:6069
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=acfd96f4:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=acfd96f4:19116
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18678
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+15injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:6074
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:6069
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=acfd96f4:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=acfd96f4:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=acfd96f4:18627
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=acfd96f4:103
+flush @ @tanstack_react-query.js?v=acfd96f4:615
+batch @ @tanstack_react-query.js?v=acfd96f4:633
+dispatch_fn @ @tanstack_react-query.js?v=acfd96f4:1260
+setData @ @tanstack_react-query.js?v=acfd96f4:935
+fetch @ @tanstack_react-query.js?v=acfd96f4:1157
+await in fetch
+executeFetch_fn @ @tanstack_react-query.js?v=acfd96f4:1651
+onSubscribe @ @tanstack_react-query.js?v=acfd96f4:1344
+subscribe @ @tanstack_react-query.js?v=acfd96f4:24
+(anonymous) @ @tanstack_react-query.js?v=acfd96f4:3313
+subscribeToStore @ chunk-RPCDYKBN.js?v=acfd96f4:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=acfd96f4:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=acfd96f4:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=acfd96f4:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=acfd96f4:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=acfd96f4:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=acfd96f4:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=acfd96f4:19432
+commitRoot @ chunk-RPCDYKBN.js?v=acfd96f4:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=acfd96f4:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18718
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+3injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:6074
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:6069
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=acfd96f4:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=acfd96f4:19116
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18678
+workLoop @ chunk-RPCDYKBN.js?v=acfd96f4:197
+flushWork @ chunk-RPCDYKBN.js?v=acfd96f4:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=acfd96f4:384
+3injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx?t=1772849095788:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?t=1772849095788&v=YTFBXoivEIB4TWMQvk9rT:2280:22)

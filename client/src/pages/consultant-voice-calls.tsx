@@ -6070,20 +6070,18 @@ export default function ConsultantVoiceCallsPage() {
                             const delay = backoffMode === 'exponential'
                               ? Math.min(retryIntervalMinutes * Math.pow(2, i), 30)
                               : (manualDelays[i] ?? 5);
-                            return (
-                              <React.Fragment key={i}>
-                                {i > 0 && (
-                                  <span className="px-1 text-blue-400 dark:text-blue-500">
-                                    → {backoffMode === 'exponential'
-                                      ? Math.min(retryIntervalMinutes * Math.pow(2, i), 30)
-                                      : (manualDelays[i - 1] ?? 5)} min →
-                                  </span>
-                                )}
-                                <span className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded font-medium">
-                                  {i + 1}° tentativo
+                            return [
+                              i > 0 ? (
+                                <span key={`arrow-${i}`} className="px-1 text-blue-400 dark:text-blue-500">
+                                  → {backoffMode === 'exponential'
+                                    ? Math.min(retryIntervalMinutes * Math.pow(2, i), 30)
+                                    : (manualDelays[i - 1] ?? 5)} min →
                                 </span>
-                              </React.Fragment>
-                            );
+                              ) : null,
+                              <span key={`attempt-${i}`} className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded font-medium">
+                                {i + 1}° tentativo
+                              </span>
+                            ];
                           })}
                         </div>
                       </div>
