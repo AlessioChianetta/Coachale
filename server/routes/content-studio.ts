@@ -1689,8 +1689,8 @@ const generateIdeasSchema = z.object({
       deepestDesire: z.string().optional().default(""),
       currentSituation: z.string().optional().default(""),
       decisionStyle: z.string().optional().default(""),
-      languageUsed: z.string().optional().default(""),
-      influencers: z.string().optional().default(""),
+      languageUsed: z.preprocess((v) => Array.isArray(v) ? v.join("\n") : v, z.string().optional().default("")),
+      influencers: z.preprocess((v) => Array.isArray(v) ? v.join(", ") : v, z.string().optional().default("")),
     }).optional(),
     emotionalDrivers: z.array(z.string()).optional(),
     existingSolutionProblems: z.array(z.string()).optional(),
@@ -1851,8 +1851,8 @@ function normalizeMarketResearchData(parsed: any) {
       deepestDesire: parsed.avatar?.deepestDesire || "",
       currentSituation: parsed.avatar?.currentSituation || "",
       decisionStyle: parsed.avatar?.decisionStyle || "",
-      languageUsed: parsed.avatar?.languageUsed || "",
-      influencers: parsed.avatar?.influencers || "",
+      languageUsed: Array.isArray(parsed.avatar?.languageUsed) ? parsed.avatar.languageUsed.join("\n") : (parsed.avatar?.languageUsed || ""),
+      influencers: Array.isArray(parsed.avatar?.influencers) ? parsed.avatar.influencers.join(", ") : (parsed.avatar?.influencers || ""),
     },
     emotionalDrivers: Array.isArray(parsed.emotionalDrivers) ? parsed.emotionalDrivers.map((d: string) => {
       const keyMap: Record<string, string> = { fuga_dal_dolore: 'fuga_dolore', pulsione_sessuale: 'sessualita', approvazione_sociale: 'approvazione' };
