@@ -598,7 +598,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
   const { isAnalysisActive, activeRoleName, newResultsCount, clearNewResults } = useAutonomyNotifications();
   const { brandName, brandLogoUrl, brandPrimaryColor, brandSecondaryColor } = useBrandContext();
 
-  const SidebarContent = () => (
+  const sidebarContent = (
     <div className="flex flex-col h-full">
       {!isCollapsed && <div className="mb-3">
         <div className="flex items-center justify-between mb-4">
@@ -1328,7 +1328,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
             </Button>
           </div>
           <div className="p-3 flex-1 h-[calc(100vh-4rem)] flex flex-col overflow-y-auto no-scrollbar">
-            <SidebarContent />
+            {sidebarContent}
           </div>
         </SheetContent>
       </Sheet>
@@ -1344,7 +1344,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
         data-testid="sidebar"
         data-tour="client-sidebar"
       >
-        <SidebarContent />
+        {sidebarContent}
       </div>
       )}
     </>
