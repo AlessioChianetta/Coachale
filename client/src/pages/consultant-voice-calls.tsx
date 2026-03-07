@@ -5609,8 +5609,8 @@ export default function ConsultantVoiceCallsPage() {
 
                             {isConfigured && fileInfo && (
                               <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg">
-                                <audio controls preload="none" className="h-8 flex-1" style={{ maxHeight: '32px' }}>
-                                  <source src={`${fileInfo.previewUrl}`} type="audio/wav" />
+                                <audio key={`${slot.slot}-${fileInfo.updatedAt}`} controls preload="metadata" className="h-8 flex-1" style={{ maxHeight: '32px' }}>
+                                  <source src={`${fileInfo.previewUrl}?token=${localStorage.getItem('token') || ''}`} type="audio/wav" />
                                 </audio>
                                 <Button
                                   variant="ghost"

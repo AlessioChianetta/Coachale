@@ -6576,9 +6576,28 @@ router.delete("/overflow-audio/:slotName", authenticateToken, requireAnyRole(["c
   }
 });
 
-router.get("/overflow-audio/play/:slotName", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.get("/overflow-audio/play/:slotName", async (req: AuthRequest, res: Response) => {
   try {
-    const consultantId = await resolveConsultantId(req.user, req.query.consultantId as string);
+    const JWT_SECRET_LOCAL = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
+    const authHeader = req.headers['authorization'];
+    const tokenFromHeader = authHeader && authHeader.split(' ')[1];
+    const tokenFromQuery = req.query.token as string | undefined;
+    const token = tokenFromHeader || tokenFromQuery;
+
+    if (!token) return res.status(401).json({ message: 'Access token required' });
+
+    let decoded: any;
+    try {
+      decoded = require('jsonwebtoken').verify(token, JWT_SECRET_LOCAL);
+    } catch {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    if (!decoded || !['consultant', 'super_admin'].includes(decoded.role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const consultantId = decoded.consultantId || decoded.id;
     if (!consultantId) return res.status(400).json({ error: "Consultant ID richiesto" });
 
     const { slotName } = req.params;
@@ -6593,6 +6612,7 @@ router.get("/overflow-audio/play/:slotName", authenticateToken, requireAnyRole([
       'Content-Type': 'audio/wav',
       'Content-Length': stat.size.toString(),
       'Content-Disposition': `inline; filename="${slotName}.wav"`,
+      'Cache-Control': 'no-cache',
     });
     fs.createReadStream(filePath).pipe(res);
   } catch (error: any) {
