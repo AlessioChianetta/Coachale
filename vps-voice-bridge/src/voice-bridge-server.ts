@@ -154,6 +154,67 @@ function validateServiceToken(token: string | undefined): boolean {
   return token === expectedToken;
 }
 
+const GHOST_CALL_MIN_SECS = 300;
+const GHOST_WATCHDOG_INTERVAL_MS = 3 * 60 * 1000;
+
+async function runGhostCallWatchdog(): Promise<void> {
+  const eslConn = getEslConnection();
+  if (!eslConn) return;
+
+  try {
+    const raw = await new Promise<string>((resolve) => {
+      (eslConn as any).bgapi('show channels as json', (res: any) => {
+        resolve(res?.getBody?.() || '{}');
+      });
+    });
+
+    let parsed: any;
+    try { parsed = JSON.parse(raw); } catch { return; }
+
+    const rows: any[] = parsed?.rows || [];
+    if (rows.length === 0) return;
+
+    const activeFsUuids = new Set(
+      sessionManager.getAllSessions().map((s) => s.fsUuid).filter(Boolean)
+    );
+    const overflowUuids = new Set(
+      sessionManager.getOverflowDetails().entries.map((e) => e.uuid)
+    );
+    const pendingUuids = new Set(pendingCalls.keys());
+
+    const nowSecs = Math.floor(Date.now() / 1000);
+    let killed = 0;
+
+    for (const row of rows) {
+      const uuid: string = row.uuid;
+      if (!uuid) continue;
+      if (activeFsUuids.has(uuid)) continue;
+      if (overflowUuids.has(uuid)) continue;
+      if (pendingUuids.has(uuid)) continue;
+
+      const createdEpoch: number = parseInt(row.created_epoch, 10) || 0;
+      if (!createdEpoch) continue;
+      const ageSecs = nowSecs - createdEpoch;
+
+      if (ageSecs >= GHOST_CALL_MIN_SECS) {
+        log.warn(`👻 [GHOST-WATCHDOG] Killing orphan channel uuid=${uuid} age=${ageSecs}s (no bridge session, not in overflow/pending)`);
+        (eslConn as any).bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`, (res: any) => {
+          log.info(`👻 [GHOST-WATCHDOG] uuid_kill result for ${uuid}: ${res?.getBody?.() || 'no response'}`);
+        });
+        killed++;
+      } else {
+        log.info(`👻 [GHOST-WATCHDOG] Orphan channel uuid=${uuid} age=${ageSecs}s — under threshold (${GHOST_CALL_MIN_SECS}s), skipping`);
+      }
+    }
+
+    if (killed > 0) {
+      log.warn(`👻 [GHOST-WATCHDOG] Killed ${killed} ghost channel(s)`);
+    }
+  } catch (err: any) {
+    log.error(`👻 [GHOST-WATCHDOG] Error: ${err.message}`);
+  }
+}
+
 export function startVoiceBridgeServer(): void {
   sessionManager.setOnTimeoutCallback((sessionId, callId, fsUuid) => {
     log.warn(`⏰ [TIMEOUT-CALLBACK] Session ${sessionId.slice(0, 8)} timed out — cleaning up and hanging up FreeSWITCH call`, { callId, fsUuid });
@@ -165,6 +226,9 @@ export function startVoiceBridgeServer(): void {
       });
     }
   });
+
+  setInterval(() => { runGhostCallWatchdog(); }, GHOST_WATCHDOG_INTERVAL_MS);
+  log.info(`👻 [GHOST-WATCHDOG] Started — interval=${GHOST_WATCHDOG_INTERVAL_MS / 1000}s, threshold=${GHOST_CALL_MIN_SECS}s`);
 
   const app = express();
   app.use(express.json());

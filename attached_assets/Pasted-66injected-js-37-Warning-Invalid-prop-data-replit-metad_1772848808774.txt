@@ -1,0 +1,152 @@
+66injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?v=QRoJ-851g7k2tYCbJZY7t:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?v=QRoJ-851g7k2tYCbJZY7t:2280:22)
+(anonymous) @ injected.js:37
+0d1756d5f0d5ce3c.js:14 Missing field 'thinkingEnabled' while writing result {
+  "__typename": "AgentSettings",
+  "chatMode": "discussion"
+}
+(anonymous) @ 0d1756d5f0d5ce3c.js:14
+0d1756d5f0d5ce3c.js:14 Missing field 'modelProfile' while writing result {
+  "__typename": "AgentSettings",
+  "chatMode": "discussion"
+}
+(anonymous) @ 0d1756d5f0d5ce3c.js:14
+0d1756d5f0d5ce3c.js:14 Missing field 'enableAutomatedTesting' while writing result {
+  "__typename": "AgentSettings",
+  "chatMode": "discussion"
+}
+(anonymous) @ 0d1756d5f0d5ce3c.js:14
+0d1756d5f0d5ce3c.js:14 Missing field 'enableAutoCheckpointing' while writing result {
+  "__typename": "AgentSettings",
+  "chatMode": "discussion"
+}
+(anonymous) @ 0d1756d5f0d5ce3c.js:14
+0d1756d5f0d5ce3c.js:14 Missing field 'webSearchEnabled' while writing result {
+  "__typename": "AgentSettings",
+  "chatMode": "discussion"
+}
+(anonymous) @ 0d1756d5f0d5ce3c.js:14
+0d1756d5f0d5ce3c.js:14 Missing field 'imageGenerationEnabled' while writing result {
+  "__typename": "AgentSettings",
+  "chatMode": "discussion"
+}
+(anonymous) @ 0d1756d5f0d5ce3c.js:14
+0d1756d5f0d5ce3c.js:14 Missing field 'autonomyLevel' while writing result {
+  "__typename": "AgentSettings",
+  "chatMode": "discussion"
+}
+(anonymous) @ 0d1756d5f0d5ce3c.js:14
+0d1756d5f0d5ce3c.js:14 Missing field 'maxAutonomyEnabled' while writing result {
+  "__typename": "AgentSettings",
+  "chatMode": "discussion"
+}
+(anonymous) @ 0d1756d5f0d5ce3c.js:14
+30injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?v=QRoJ-851g7k2tYCbJZY7t:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?v=QRoJ-851g7k2tYCbJZY7t:2280:22)
+(anonymous) @ injected.js:37
+3injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?v=QRoJ-851g7k2tYCbJZY7t:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?v=QRoJ-851g7k2tYCbJZY7t:2280:22)
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+printWarning @ react_jsx-dev-runtime.js?v=acfd96f4:64
+error @ react_jsx-dev-runtime.js?v=acfd96f4:48
+validateFragmentProps @ react_jsx-dev-runtime.js?v=acfd96f4:796
+jsxWithValidation @ react_jsx-dev-runtime.js?v=acfd96f4:874
+(anonymous) @ consultant-voice-calls.tsx:3513
+ConsultantVoiceCallsPage @ consultant-voice-calls.tsx:3378
+renderWithHooks @ chunk-RPCDYKBN.js?v=acfd96f4:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=acfd96f4:14582
+beginWork @ chunk-RPCDYKBN.js?v=acfd96f4:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=acfd96f4:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=acfd96f4:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=acfd96f4:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=acfd96f4:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=acfd96f4:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=acfd96f4:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=acfd96f4:18627
+setTimeout
+systemSetTimeoutZero @ @tanstack_react-query.js?v=acfd96f4:103
+flush @ @tanstack_react-query.js?v=acfd96f4:615
+batch @ @tanstack_react-query.js?v=acfd96f4:633
+dispatch_fn @ @tanstack_react-query.js?v=acfd96f4:1260
+setData @ @tanstack_react-query.js?v=acfd96f4:935
+fetch @ @tanstack_react-query.js?v=acfd96f4:1157
+await in fetch
+executeFetch_fn @ @tanstack_react-query.js?v=acfd96f4:1651
+(anonymous) @ @tanstack_react-query.js?v=acfd96f4:1685
+3injected.js:37 Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at ConsultantVoiceCallsPage (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/pages/consultant-voice-calls.tsx:1952:20)
+    at AuthGuard (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?v=QRoJ-851g7k2tYCbJZY7t:349:35)
+    at Provider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/src/App.tsx?v=QRoJ-851g7k2tYCbJZY7t:2280:22)

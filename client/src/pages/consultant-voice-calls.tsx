@@ -3509,17 +3509,18 @@ export default function ConsultantVoiceCallsPage() {
                           const shortCallCount = group.statuses['short_call'] || 0;
                           const voicemailCount = group.statuses['voicemail'] || 0;
                           
-                          return (
-                            <React.Fragment key={groupKey}>
-                              <TableRow 
-                                className="cursor-pointer hover:bg-muted/50"
-                                onClick={() => setExpandedGroups(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(groupKey)) next.delete(groupKey);
-                                  else next.add(groupKey);
-                                  return next;
-                                })}
-                              >
+                          const groupRows: React.ReactNode[] = [];
+                          groupRows.push(
+                            <TableRow 
+                              key={`${groupKey}-header`}
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => setExpandedGroups(prev => {
+                                const next = new Set(prev);
+                                if (next.has(groupKey)) next.delete(groupKey);
+                                else next.add(groupKey);
+                                return next;
+                              })}
+                            >
                                 <TableCell>
                                   <div className="flex items-center gap-1.5">
                                     <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
@@ -3630,13 +3631,14 @@ export default function ConsultantVoiceCallsPage() {
                                     </Button>
                                   </Link>
                                 </TableCell>
-                              </TableRow>
-                              {isExpanded && group.allCalls
-                                .sort((a: any, b: any) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
-                                .map((c: any) => renderCallRow(c, true))
-                              }
-                            </React.Fragment>
+                            </TableRow>
                           );
+                          if (isExpanded) {
+                            group.allCalls
+                              .sort((a: any, b: any) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
+                              .forEach((c: any) => groupRows.push(renderCallRow(c, true)));
+                          }
+                          return groupRows;
                         })}
                       </TableBody>
                     </Table>
