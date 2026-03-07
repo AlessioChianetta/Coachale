@@ -1,0 +1,31 @@
+success":true,"connections"…
+6:49:29 AM [express] GET /api/voice/calls 304 in 699ms :: {"calls":[{"id":"vc_1772865871839_c0to8xq4…
+📞 [OVERFLOW-CONFIG] ━━━ Request: called_number=+1001 ━━━
+📞 [OVERFLOW-CONFIG] Searching variants: [+1001, 1001, +391001]
+📞 [OVERFLOW-CONFIG] ⚠️ Number NOT FOUND → returning defaults: overflow_enabled=true, max_concurrent=5, timeout=120s
+6:49:30 AM [express] GET /api/voice/overflow-config 200 in 119ms :: {"found":false,"overflow_enabled…
+🎤 [6dyfmf] Client connected to Live API
+⏱️ [LATENCY-E2E] WebSocket arrival: 2026-03-07T06:49:30.771Z
+⏱️ [AUTH-DETAIL] JWT verify: 0ms
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:
+🔍 [ROUTING-DEBUG]   decoded.consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   decoded.type: phone_service
+🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+🔍 [ROUTING-DEBUG]   calledNumber: 1001
+🔍 [ROUTING-DEBUG]   callerId: 1001
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6:49:30 AM [express] POST /api/voice/call-start 200 in 8ms
+⏱️ [AUTH-DETAIL] scheduledCall consultant lookup: 115ms
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ROUTING-DEBUG] OUTBOUND CONSULTANT OVERRIDE from scheduled_voice_calls:
+🔍 [ROUTING-DEBUG]   scheduledCallId: sc_1772866163533_hxmpocq9x
+🔍 [ROUTING-DEBUG]   JWT consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   DB consultant_id (REAL): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   target_phone: 1001
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 [Number Lookup] Not found: 1001 (normalized: +1001)
+6:49:30 AM [express] GET /api/voice/number-lookup 200 in 232ms :: {"found":false}
+⏱️ [AUTH-DETAIL] voice_numbers lookup: 115ms (tried: 1001, +1001, 1001)
+⚠️ [PHONE SERVICE] calledNumber 1001 not in voice_numbers — OUTBOUND call allowed (consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b resolved from scheduled_voice_calls)
+📊 [CHANNEL-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━

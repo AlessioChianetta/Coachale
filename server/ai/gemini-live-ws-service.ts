@@ -1533,6 +1533,7 @@ async function getUserIdFromRequest(req: any): Promise<{
           phoneInstructionType: instructionType,
           phoneScheduledCallId: scheduledCallId,
           phoneVoiceCallId: voiceCallIdParam,
+          phoneSourceTaskId: callSourceTaskId,
         };
       } catch (jwtError) {
         console.error('❌ Invalid phone_service token:', jwtError);
@@ -1905,7 +1906,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     const authDoneTime = Date.now();
     console.log(`⏱️ [LATENCY-E2E] Auth completed: +${authDoneTime - wsArrivalTime}ms from WS arrival`);
 
-    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneCallLeadContext, phoneInstructionType, phoneScheduledCallId, phoneVoiceCallId } = authResult;
+    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneCallLeadContext, phoneInstructionType, phoneScheduledCallId, phoneVoiceCallId, phoneSourceTaskId } = authResult;
 
     // ⚡ O4: EARLY-START parallel queries immediately after auth
     // These queries start running while 1400+ lines of variable declarations and function definitions execute
@@ -5455,7 +5456,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
             voiceCallId: voiceCallId || '',
             contactPhone: phoneCallerId || '',
             contactName: phoneLeadContactData?.name || null,
-            sourceTaskId: callSourceTaskId || null,
+            sourceTaskId: phoneSourceTaskId || null,
           });
 
           const taskPromptSection = await taskSupervisor.getTaskPromptSection(
