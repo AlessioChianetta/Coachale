@@ -16,7 +16,7 @@ import {
 import {
   Loader2, MessageCircle, Users, ArrowLeft, Send, User, Bot, RotateCcw,
   Shield, UserCheck, Clock, Brain, Briefcase, Target, Heart, FileText,
-  ChevronRight, RefreshCw, Eye, CircleDot,
+  ChevronRight, ChevronUp, RefreshCw, Eye, CircleDot,
 } from "lucide-react";
 
 interface TelegramChatsProps {
@@ -376,13 +376,17 @@ export default function TelegramChats({ roleId, roleName, open, onClose }: Teleg
   const [selectedChat, setSelectedChat] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<TelegramMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const lastMsgCountRef = useRef<number>(0);
+  const shouldScrollToBottom = useRef(true);
 
   useEffect(() => {
     if (open) {
@@ -416,7 +420,10 @@ export default function TelegramChats({ roleId, roleName, open, onClose }: Teleg
   }, [selectedChat, open]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (shouldScrollToBottom.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    shouldScrollToBottom.current = true;
   }, [messages]);
 
   const loadConversations = async (silent = false) => {
@@ -444,10 +451,35 @@ export default function TelegramChats({ roleId, roleName, open, onClose }: Teleg
         const data = await res.json();
         const msgs = data.messages || [];
         setMessages(msgs);
+        setHasMore(data.hasMore === true);
         lastMsgCountRef.current = msgs.length;
       }
     } catch {}
     setMessagesLoading(false);
+  };
+
+  const loadOlderMessages = async () => {
+    if (!selectedChat || loadingOlder || !hasMore || messages.length === 0) return;
+    setLoadingOlder(true);
+    shouldScrollToBottom.current = false;
+    try {
+      const oldestMsg = messages[0];
+      const chatId = selectedChat.telegram_chat_id;
+      const beforeDate = oldestMsg.created_at;
+      const res = await fetch(`/api/ai-autonomy/telegram-conversations/${roleId}/${chatId}/messages?limit=${getMessageLimit(chatId)}&before=${encodeURIComponent(beforeDate)}`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        const olderMsgs = data.messages || [];
+        if (olderMsgs.length > 0) {
+          setMessages(prev => [...olderMsgs, ...prev]);
+          setHasMore(data.hasMore === true);
+          lastMsgCountRef.current += olderMsgs.length;
+        } else {
+          setHasMore(false);
+        }
+      }
+    } catch {}
+    setLoadingOlder(false);
   };
 
   const pollNewMessages = useCallback(async (chatId: string) => {
@@ -698,6 +730,24 @@ export default function TelegramChats({ roleId, roleName, open, onClose }: Teleg
                       </div>
                     ) : (
                       <div className="space-y-3">
+                        {hasMore && (
+                          <div className="flex justify-center pb-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                              onClick={loadOlderMessages}
+                              disabled={loadingOlder}
+                            >
+                              {loadingOlder ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <ChevronUp className="h-3 w-3" />
+                              )}
+                              {loadingOlder ? "Caricamento..." : "Carica messaggi precedenti"}
+                            </Button>
+                          </div>
+                        )}
                         {messages.map((msg, idx) => {
                           const isOnboardingMsg = typeof msg.id === 'string' && String(msg.id).startsWith('onb_');
                           const prevMsg = idx > 0 ? messages[idx - 1] : null;
