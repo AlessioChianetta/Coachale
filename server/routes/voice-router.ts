@@ -6233,11 +6233,12 @@ router.delete("/voip-provisioning/kyc-doc/:id", authenticateToken, requireAnyRol
 });
 
 const OVERFLOW_AUDIO_SLOTS = [
-  { slot: 'hold_A', title: 'Musica Attesa A', description: 'Primo messaggio di attesa' },
-  { slot: 'hold_B', title: 'Musica Attesa B', description: 'Secondo messaggio di attesa' },
-  { slot: 'hold_C', title: 'Musica Attesa C', description: 'Terzo messaggio di attesa' },
-  { slot: 'hold_D', title: 'Musica Attesa D', description: 'Quarto messaggio di attesa' },
-  { slot: 'hold_E', title: 'Musica Attesa E', description: 'Quinto messaggio di attesa' },
+  { slot: 'background_music', title: 'Musica di Sottofondo', description: 'Suona in loop continuo — i messaggi parlati si sentono sopra (solo upload WAV)' },
+  { slot: 'hold_A', title: 'Messaggio A', description: 'Primo messaggio parlato (suona sopra la musica)' },
+  { slot: 'hold_B', title: 'Messaggio B', description: 'Secondo messaggio parlato (suona sopra la musica)' },
+  { slot: 'hold_C', title: 'Messaggio C', description: 'Terzo messaggio parlato (suona sopra la musica)' },
+  { slot: 'hold_D', title: 'Messaggio D', description: 'Quarto messaggio parlato (suona sopra la musica)' },
+  { slot: 'hold_E', title: 'Messaggio E', description: 'Quinto messaggio parlato (suona sopra la musica)' },
   { slot: 'position_prefix', title: 'Prefisso Posizione', description: 'Messaggio prima del numero di posizione in coda' },
   { slot: 'position_suffix', title: 'Suffisso Posizione', description: 'Messaggio dopo il numero di posizione in coda' },
   { slot: 'transferring', title: 'Trasferimento', description: 'Messaggio durante il trasferimento al consulente' },
@@ -6246,6 +6247,7 @@ const OVERFLOW_AUDIO_SLOTS = [
 ];
 
 const OVERFLOW_AUDIO_DEFAULTS: Record<string, { text: string; voiceName: string }> = {
+  background_music: { text: '', voiceName: 'Achernar' },
   hold_A: { text: "Ciao! Sei in coda e ti risponderemo a breve. Resta in linea, ci siamo quasi!", voiceName: "Achernar" },
   hold_B: { text: "Ancora un momento! Il nostro team è impegnato ma stai per essere il prossimo. Vale la pena aspettare.", voiceName: "Achernar" },
   hold_C: { text: "Ci stiamo occupando di te! Ogni giorno aiutiamo tante persone — e ora tocca a te. Ancora un attimo.", voiceName: "Achernar" },

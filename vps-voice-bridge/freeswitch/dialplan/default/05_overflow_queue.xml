@@ -17,30 +17,33 @@
   
   FLUSSO:
   1. Answer difensivo (se canale non gia answered)
-  2. Bind DTMF "1" per trasferimento (se overflow_dtmf_enabled=true)
-  3. Ciclo 1: posizione + hold_A (social proof)
-  4. Ciclo 2: posizione + hold_B (urgenza morbida)
-  5. Ciclo 3: posizione + hold_C (curiosita / hook)
-  6. Ciclo 4: posizione + hold_D (valore gratuito)
-  7. Ciclo 5: posizione + hold_E (identita brand)
-  8. Ciclo 6: posizione + hold_A (riparte la rotazione)
-  9. Timeout -> park (il Voice Bridge gestisce il timeout)
+  2. Avvia musica di sottofondo in loop (background_music.wav se presente)
+  3. Bind DTMF "1" per trasferimento (se overflow_dtmf_enabled=true)
+  4. Ciclo 1: posizione + messaggio_A (sopra la musica)
+  5. Ciclo 2: posizione + messaggio_B
+  6. Ciclo 3: posizione + messaggio_C
+  7. Ciclo 4: posizione + messaggio_D
+  8. Ciclo 5: posizione + messaggio_E
+  9. Ciclo 6: posizione + messaggio_A (riparte la rotazione)
+  10. Timeout -> park (il Voice Bridge gestisce il timeout)
   
-  FILE AUDIO in /opt/sounds/overflow/:
-  OBBLIGATORI per esperienza ottimale:
-  - hold_A.wav: messaggio social proof (~30-40 sec)
-  - hold_B.wav: messaggio urgenza morbida (~30-40 sec)
-  - hold_C.wav: messaggio curiosita / hook (~30-40 sec)
-  - hold_D.wav: messaggio valore gratuito (~30-40 sec)
-  - hold_E.wav: messaggio identita brand (~30-40 sec)
+  FILE AUDIO in /opt/sounds/overflow/<consultant_id>/:
+  RACCOMANDATO:
+  - background_music.wav: musica di sottofondo in loop (qualsiasi durata, riparte automaticamente)
+  
+  MESSAGGI PARLATI (suonano sopra la musica di sottofondo):
+  - hold_A.wav: primo messaggio (~20-30 sec)
+  - hold_B.wav: secondo messaggio (~20-30 sec)
+  - hold_C.wav: terzo messaggio (~20-30 sec)
+  - hold_D.wav: quarto messaggio (~20-30 sec)
+  - hold_E.wav: quinto messaggio (~20-30 sec)
   
   OPZIONALI (fallback automatico se assenti):
-  - announcement.wav: annuncio principale (usato solo se i hold_X mancano)
-  - transferring.wav: "Ti stiamo trasferendo..."
-  - transfer_failed.wav: "Il trasferimento non e riuscito"
+  - transferring.wav: "Ti passo subito al consulente..."
+  - transfer_failed.wav: "Ops, c'e stato un problema..."
   - timeout.wav: messaggio pre-disconnessione per timeout
-  - position_prefix.wav: "Sei in posizione numero"
-  - position_suffix.wav: "nella coda d'attesa"
+  - position_prefix.wav: "Sei in posizione"
+  - position_suffix.wav: "in coda. Sei quasi li!"
   
   VARIABILI CHANNEL AGGIUNTIVE:
   - overflow_audio_dir: directory audio per-consulente (default: /opt/sounds/overflow/default)
@@ -63,27 +66,32 @@
       <action application="set" data="overflow_audio_dir=${overflow_audio_dir:-/opt/sounds/overflow/default}"/>
       <action application="set" data="playback_terminators=none"/>
 
+      <!-- Musica di sottofondo in loop continuo (m=mix con canale, l=loop) -->
+      <!-- Se background_music.wav non esiste, displace_session fallisce silenziosamente -->
+      <action application="displace_session" data="${overflow_audio_dir}/background_music.wav ml"/>
+      <action application="log" data="INFO [OVERFLOW] Background music avviata da ${overflow_audio_dir}/background_music.wav"/>
+
       <!-- Bind DTMF "1" per trasferimento manuale -->
       <action application="bind_digit_action" data="overflow,1,exec:transfer,transfer_to_fallback XML default"/>
       <action application="digit_action_set_realm" data="overflow"/>
 
-      <!-- Ciclo 1: posizione + social proof -->
+      <!-- Ciclo 1: posizione + messaggio A -->
       <action application="execute_extension" data="announce_position XML default" inline="true"/>
       <action application="execute_extension" data="play_hold_A XML default" inline="true"/>
 
-      <!-- Ciclo 2: posizione + urgenza morbida -->
+      <!-- Ciclo 2: posizione + messaggio B -->
       <action application="execute_extension" data="announce_position XML default" inline="true"/>
       <action application="execute_extension" data="play_hold_B XML default" inline="true"/>
 
-      <!-- Ciclo 3: posizione + curiosita hook -->
+      <!-- Ciclo 3: posizione + messaggio C -->
       <action application="execute_extension" data="announce_position XML default" inline="true"/>
       <action application="execute_extension" data="play_hold_C XML default" inline="true"/>
 
-      <!-- Ciclo 4: posizione + valore gratuito -->
+      <!-- Ciclo 4: posizione + messaggio D -->
       <action application="execute_extension" data="announce_position XML default" inline="true"/>
       <action application="execute_extension" data="play_hold_D XML default" inline="true"/>
 
-      <!-- Ciclo 5: posizione + identita brand -->
+      <!-- Ciclo 5: posizione + messaggio E -->
       <action application="execute_extension" data="announce_position XML default" inline="true"/>
       <action application="execute_extension" data="play_hold_E XML default" inline="true"/>
 
@@ -115,57 +123,53 @@
   </extension>
 
   <!-- ============================================================
-       Sub-extension: hold_A - Social proof
-       "Ogni giorno persone come te scelgono {{businessName}}..."
+       Sub-extension: hold_A - primo messaggio parlato
+       Suona sopra la musica di sottofondo (displace_session attiva)
   ============================================================ -->
   <extension name="play_hold_A">
     <condition field="destination_number" expression="^play_hold_A$">
       <action application="playback" data="${overflow_audio_dir}/hold_A.wav"/>
-      <anti-action application="playback" data="local_stream://moh"/>
+      <anti-action application="sleep" data="5000"/>
     </condition>
   </extension>
 
   <!-- ============================================================
-       Sub-extension: hold_B - Urgenza morbida
-       "Sappiamo che il tuo tempo e prezioso..."
+       Sub-extension: hold_B - secondo messaggio parlato
   ============================================================ -->
   <extension name="play_hold_B">
     <condition field="destination_number" expression="^play_hold_B$">
       <action application="playback" data="${overflow_audio_dir}/hold_B.wav"/>
-      <anti-action application="playback" data="local_stream://moh"/>
+      <anti-action application="sleep" data="5000"/>
     </condition>
   </extension>
 
   <!-- ============================================================
-       Sub-extension: hold_C - Curiosita / hook
-       "Ti stai chiedendo se {{businessName}} fa al caso tuo?..."
+       Sub-extension: hold_C - terzo messaggio parlato
   ============================================================ -->
   <extension name="play_hold_C">
     <condition field="destination_number" expression="^play_hold_C$">
       <action application="playback" data="${overflow_audio_dir}/hold_C.wav"/>
-      <anti-action application="playback" data="local_stream://moh"/>
+      <anti-action application="sleep" data="5000"/>
     </condition>
   </extension>
 
   <!-- ============================================================
-       Sub-extension: hold_D - Valore gratuito
-       "La chiamata che stai per fare e completamente gratuita..."
+       Sub-extension: hold_D - quarto messaggio parlato
   ============================================================ -->
   <extension name="play_hold_D">
     <condition field="destination_number" expression="^play_hold_D$">
       <action application="playback" data="${overflow_audio_dir}/hold_D.wav"/>
-      <anti-action application="playback" data="local_stream://moh"/>
+      <anti-action application="sleep" data="5000"/>
     </condition>
   </extension>
 
   <!-- ============================================================
-       Sub-extension: hold_E - Identita brand
-       "{{businessName}} nasce con un'idea semplice: parlare chiaro..."
+       Sub-extension: hold_E - quinto messaggio parlato
   ============================================================ -->
   <extension name="play_hold_E">
     <condition field="destination_number" expression="^play_hold_E$">
       <action application="playback" data="${overflow_audio_dir}/hold_E.wav"/>
-      <anti-action application="playback" data="local_stream://moh"/>
+      <anti-action application="sleep" data="5000"/>
     </condition>
   </extension>
 
@@ -177,6 +181,8 @@
     <condition field="destination_number" expression="^overflow_timeout$">
       <action application="log" data="INFO [OVERFLOW-TIMEOUT] Chiamata ${uuid} - timeout raggiunto"/>
       <action application="clear_digit_action" data="overflow"/>
+      <!-- Ferma la musica di sottofondo prima del messaggio di timeout -->
+      <action application="displace_session" data="${overflow_audio_dir}/background_music.wav stop"/>
       <action application="playback" data="${overflow_audio_dir}/timeout.wav"/>
       <anti-action application="playback" data="tone_stream://%(500,100,400);%(500,100,300);%(1000,0,200)"/>
       <action application="hangup" data="NORMAL_CLEARING"/>
@@ -193,6 +199,8 @@
       <action application="log" data="INFO [OVERFLOW-TRANSFER] Chiamata ${uuid} - trasferimento a ${fallback_transfer_number} via ${sip_gateway} (prefix=${tech_prefix})"/>
 
       <action application="clear_digit_action" data="overflow"/>
+      <!-- Ferma la musica di sottofondo prima del messaggio di trasferimento -->
+      <action application="displace_session" data="${overflow_audio_dir}/background_music.wav stop"/>
 
       <action application="playback" data="${overflow_audio_dir}/transferring.wav"/>
       <anti-action application="playback" data="tone_stream://%(200,100,600);%(200,100,500)"/>

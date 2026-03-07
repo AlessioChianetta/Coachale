@@ -5468,17 +5468,33 @@ export default function ConsultantVoiceCallsPage() {
                             </div>
                           </div>
 
+                          <div className="flex items-start gap-3">
+                            <div className="flex flex-col items-center pt-1">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs ${configuredAudioSlots.has('background_music') ? 'bg-teal-400 shadow-sm' : 'border-2 border-dashed border-teal-300 dark:border-teal-700'}`}>
+                                <span>🎵</span>
+                              </div>
+                              <div className="w-0.5 h-5 bg-border mt-1" />
+                            </div>
+                            <div className="pt-1 flex items-center gap-2">
+                              <p className={`text-xs font-medium ${configuredAudioSlots.has('background_music') ? 'text-teal-700 dark:text-teal-300' : 'text-muted-foreground'}`}>Musica di sottofondo parte (in loop)</p>
+                              {configuredAudioSlots.has('background_music')
+                                ? <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400">personalizzata</span>
+                                : <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">nessuna musica</span>
+                              }
+                            </div>
+                          </div>
+
                           {[
-                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Sei il numero X in coda', hint: 'annuncio posizione', isPosition: true },
-                            { slots: ['hold_A'], emoji: '🎵', label: 'Messaggio A', hint: 'primo messaggio di attesa', isPosition: false },
-                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', hint: 'annuncio posizione', isPosition: true },
-                            { slots: ['hold_B'], emoji: '🎵', label: 'Messaggio B', hint: 'secondo messaggio di attesa', isPosition: false },
-                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', hint: 'annuncio posizione', isPosition: true },
-                            { slots: ['hold_C'], emoji: '🎵', label: 'Messaggio C', hint: 'terzo messaggio di attesa', isPosition: false },
-                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', hint: 'annuncio posizione', isPosition: true },
-                            { slots: ['hold_D'], emoji: '🎵', label: 'Messaggio D', hint: 'quarto messaggio di attesa', isPosition: false },
-                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', hint: 'annuncio posizione', isPosition: true },
-                            { slots: ['hold_E'], emoji: '🎵', label: 'Messaggio E', hint: 'quinto messaggio di attesa', isPosition: false },
+                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Sei il numero X in coda', isPosition: true },
+                            { slots: ['hold_A'], emoji: '🗣️', label: 'Messaggio A (sopra la musica)', isPosition: false },
+                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true },
+                            { slots: ['hold_B'], emoji: '🗣️', label: 'Messaggio B (sopra la musica)', isPosition: false },
+                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true },
+                            { slots: ['hold_C'], emoji: '🗣️', label: 'Messaggio C (sopra la musica)', isPosition: false },
+                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true },
+                            { slots: ['hold_D'], emoji: '🗣️', label: 'Messaggio D (sopra la musica)', isPosition: false },
+                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true },
+                            { slots: ['hold_E'], emoji: '🗣️', label: 'Messaggio E (sopra la musica)', isPosition: false },
                           ].map((step, i) => {
                             const isConfigured = step.slots.some(s => configuredAudioSlots.has(s));
                             const dotColor = isConfigured
@@ -5511,7 +5527,7 @@ export default function ConsultantVoiceCallsPage() {
                               </div>
                             </div>
                             <div className="pt-1">
-                              <p className="text-xs font-medium text-blue-600 dark:text-blue-400">Ricomincia dal Messaggio A →</p>
+                              <p className="text-xs font-medium text-blue-600 dark:text-blue-400">Ricomincia dal Messaggio A → (musica continua)</p>
                             </div>
                           </div>
 
@@ -5567,7 +5583,9 @@ export default function ConsultantVoiceCallsPage() {
                         const fileInfo = (overflowAudioFiles?.files || []).find(f => f.slotName === slot.slot);
                         const isConfigured = !!fileInfo;
                         const isGenerating = generatingSlots[slot.slot] || false;
-                        const slotIcon = slot.slot.startsWith('hold_') ? Volume2
+                        const isBgMusic = slot.slot === 'background_music';
+                        const slotIcon = isBgMusic ? Music
+                          : slot.slot.startsWith('hold_') ? Volume2
                           : slot.slot.startsWith('position_') ? List
                           : slot.slot === 'transferring' ? PhoneForwarded
                           : slot.slot === 'transfer_failed' ? PhoneOff
@@ -5575,16 +5593,16 @@ export default function ConsultantVoiceCallsPage() {
                           : Music;
 
                         return (
-                          <div key={slot.slot} className="p-4 border rounded-lg space-y-3">
+                          <div key={slot.slot} className={`p-4 border rounded-lg space-y-3 ${isBgMusic ? 'border-teal-200 dark:border-teal-800 bg-teal-50/40 dark:bg-teal-950/20' : ''}`}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                {React.createElement(slotIcon, { className: "h-4 w-4 text-muted-foreground" })}
+                                {React.createElement(slotIcon, { className: `h-4 w-4 ${isBgMusic ? 'text-teal-500' : 'text-muted-foreground'}` })}
                                 <div>
                                   <p className="text-sm font-medium">{slot.title}</p>
                                   <p className="text-xs text-muted-foreground">{slot.description}</p>
                                 </div>
                               </div>
-                              <Badge variant={isConfigured ? "default" : "secondary"} className={isConfigured ? "bg-green-600" : ""}>
+                              <Badge variant={isConfigured ? "default" : "secondary"} className={isConfigured ? (isBgMusic ? "bg-teal-600" : "bg-green-600") : ""}>
                                 {isConfigured ? "Personalizzato" : "Non configurato"}
                               </Badge>
                             </div>
@@ -5606,74 +5624,104 @@ export default function ConsultantVoiceCallsPage() {
                               </div>
                             )}
 
-                            <div className="space-y-2">
-                              <Textarea
-                                placeholder="Testo per la generazione AI..."
-                                value={overflowAudioTexts[slot.slot] || ""}
-                                onChange={(e) => setOverflowAudioTexts(prev => ({ ...prev, [slot.slot]: e.target.value }))}
-                                rows={2}
-                                className="text-sm resize-none"
-                              />
-                            </div>
+                            {isBgMusic ? (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/30"
+                                  onClick={() => overflowFileInputRefs.current[slot.slot]?.click()}
+                                >
+                                  <Upload className="h-3.5 w-3.5 mr-1.5" />
+                                  Carica WAV musicale
+                                </Button>
+                                <input
+                                  type="file"
+                                  accept=".wav,audio/wav"
+                                  className="hidden"
+                                  ref={(el) => { overflowFileInputRefs.current[slot.slot] = el; }}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      uploadOverflowAudioMutation.mutate({ slotName: slot.slot, file });
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                />
+                                <p className="text-xs text-muted-foreground">Solo upload WAV — viene riprodotta in loop continuo</p>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="space-y-2">
+                                  <Textarea
+                                    placeholder="Testo per la generazione AI..."
+                                    value={overflowAudioTexts[slot.slot] || ""}
+                                    onChange={(e) => setOverflowAudioTexts(prev => ({ ...prev, [slot.slot]: e.target.value }))}
+                                    rows={2}
+                                    className="text-sm resize-none"
+                                  />
+                                </div>
 
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="default"
-                                size="sm"
-                                disabled={isGenerating || !overflowAudioTexts[slot.slot]}
-                                onClick={() => {
-                                  setGeneratingSlots(prev => ({ ...prev, [slot.slot]: true }));
-                                  generateOverflowAudioMutation.mutate({
-                                    slotName: slot.slot,
-                                    text: overflowAudioTexts[slot.slot] || "",
-                                    voiceName: overflowAudioVoices[slot.slot] || "Achernar",
-                                  });
-                                }}
-                              >
-                                {isGenerating ? (
-                                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                                ) : (
-                                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                                )}
-                                Genera con AI
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => overflowFileInputRefs.current[slot.slot]?.click()}
-                              >
-                                <Upload className="h-3.5 w-3.5 mr-1.5" />
-                                Carica WAV
-                              </Button>
-                              <input
-                                type="file"
-                                accept=".wav,audio/wav"
-                                className="hidden"
-                                ref={(el) => { overflowFileInputRefs.current[slot.slot] = el; }}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    uploadOverflowAudioMutation.mutate({ slotName: slot.slot, file });
-                                    e.target.value = "";
-                                  }
-                                }}
-                              />
-                              <Select
-                                value={overflowAudioVoices[slot.slot] || "Achernar"}
-                                onValueChange={(val) => setOverflowAudioVoices(prev => ({ ...prev, [slot.slot]: val }))}
-                              >
-                                <SelectTrigger className="w-36 h-8 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {VOICES.map((v) => (
-                                    <SelectItem key={v.value} value={v.value}>
-                                      {v.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    disabled={isGenerating || !overflowAudioTexts[slot.slot]}
+                                    onClick={() => {
+                                      setGeneratingSlots(prev => ({ ...prev, [slot.slot]: true }));
+                                      generateOverflowAudioMutation.mutate({
+                                        slotName: slot.slot,
+                                        text: overflowAudioTexts[slot.slot] || "",
+                                        voiceName: overflowAudioVoices[slot.slot] || "Achernar",
+                                      });
+                                    }}
+                                  >
+                                    {isGenerating ? (
+                                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                    ) : (
+                                      <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                                    )}
+                                    Genera con AI
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => overflowFileInputRefs.current[slot.slot]?.click()}
+                                  >
+                                    <Upload className="h-3.5 w-3.5 mr-1.5" />
+                                    Carica WAV
+                                  </Button>
+                                  <input
+                                    type="file"
+                                    accept=".wav,audio/wav"
+                                    className="hidden"
+                                    ref={(el) => { overflowFileInputRefs.current[slot.slot] = el; }}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        uploadOverflowAudioMutation.mutate({ slotName: slot.slot, file });
+                                        e.target.value = "";
+                                      }
+                                    }}
+                                  />
+                                  <Select
+                                    value={overflowAudioVoices[slot.slot] || "Achernar"}
+                                    onValueChange={(val) => setOverflowAudioVoices(prev => ({ ...prev, [slot.slot]: val }))}
+                                  >
+                                    <SelectTrigger className="w-36 h-8 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {VOICES.map((v) => (
+                                        <SelectItem key={v.value} value={v.value}>
+                                          {v.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </>
+                            )}
                           </div>
                         );
                       })}
