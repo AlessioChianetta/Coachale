@@ -1686,31 +1686,62 @@ function buildBrandVoiceContext(brandVoiceData?: GenerateContentIdeasParams["bra
   if (!brandVoiceData) return "";
   
   const bv = brandVoiceData;
-  const parts: string[] = [];
+  const sections: string[] = [];
   
-  if (bv.businessName) parts.push(`Azienda: ${bv.businessName}`);
-  if (bv.consultantDisplayName) parts.push(`Consulente: ${bv.consultantDisplayName}`);
-  if (bv.businessDescription) parts.push(`Descrizione: ${bv.businessDescription}`);
-  if (bv.usp) parts.push(`USP: ${bv.usp}`);
-  if (bv.vision) parts.push(`Vision: ${bv.vision}`);
-  if (bv.mission) parts.push(`Mission: ${bv.mission}`);
-  if (bv.values?.length) parts.push(`Valori: ${bv.values.join(", ")}`);
-  if (bv.whoWeHelp) parts.push(`Target: ${bv.whoWeHelp}`);
-  if (bv.whatWeDo) parts.push(`Servizi: ${bv.whatWeDo}`);
-  if (bv.howWeDoIt) parts.push(`Metodo: ${bv.howWeDoIt}`);
-  if (bv.yearsExperience) parts.push(`Esperienza: ${bv.yearsExperience} anni`);
-  if (bv.clientsHelped) parts.push(`Clienti aiutati: ${bv.clientsHelped}+`);
-  if (bv.resultsGenerated) parts.push(`Risultati: ${bv.resultsGenerated}`);
+  const identityParts: string[] = [];
+  if (bv.businessName) identityParts.push(`Azienda: ${bv.businessName}`);
+  if (bv.consultantDisplayName) identityParts.push(`Consulente: ${bv.consultantDisplayName}`);
+  if (bv.businessDescription) identityParts.push(`Descrizione: ${bv.businessDescription}`);
+  if (bv.usp) identityParts.push(`USP: ${bv.usp}`);
+  if (bv.vision) identityParts.push(`Vision: ${bv.vision}`);
+  if (bv.mission) identityParts.push(`Mission: ${bv.mission}`);
+  if (bv.values?.length) identityParts.push(`Valori: ${bv.values.join(", ")}`);
+  if (bv.whoWeHelp) identityParts.push(`Target: ${bv.whoWeHelp}`);
+  if (bv.whatWeDo) identityParts.push(`Servizi: ${bv.whatWeDo}`);
+  if (bv.howWeDoIt) identityParts.push(`Metodo: ${bv.howWeDoIt}`);
+  if (bv.yearsExperience) identityParts.push(`Esperienza: ${bv.yearsExperience} anni`);
+  if (bv.clientsHelped) identityParts.push(`Clienti aiutati: ${bv.clientsHelped}+`);
+  if (bv.resultsGenerated) identityParts.push(`Risultati: ${bv.resultsGenerated}`);
   if (bv.caseStudies?.length) {
-    parts.push(`Case Studies: ${bv.caseStudies.map(cs => `${cs.client} - ${cs.result}`).join("; ")}`);
+    identityParts.push(`Case Studies: ${bv.caseStudies.map((cs: { client: string; result: string }) => `${cs.client} - ${cs.result}`).join("; ")}`);
   }
   if (bv.servicesOffered?.length) {
-    parts.push(`Offerta: ${bv.servicesOffered.map(s => `${s.name} (${s.price})`).join(", ")}`);
+    identityParts.push(`Offerta: ${bv.servicesOffered.map((s: { name: string; price: string }) => `${s.name} (${s.price})`).join(", ")}`);
   }
-  if (bv.guarantees) parts.push(`Garanzie: ${bv.guarantees}`);
+  if (bv.guarantees) identityParts.push(`Garanzie: ${bv.guarantees}`);
   
-  if (parts.length > 0) {
-    return `\n\n🏢 BRAND VOICE & IDENTITÀ:\n${parts.join("\n")}`;
+  if (identityParts.length > 0) {
+    sections.push(`🏢 BRAND VOICE & IDENTITÀ:\n${identityParts.join("\n")}`);
+  }
+
+  if (bv.personalTone) {
+    sections.push(`🎙️ TONO PERSONALE DEL CONSULENTE (IMITA QUESTO STILE DI COMUNICAZIONE):\n${bv.personalTone}`);
+  }
+
+  if (bv.contentPersonality) {
+    sections.push(`✨ PERSONALITÀ DEL CONTENUTO (l'emozione che il lettore deve provare):\n${bv.contentPersonality}`);
+  }
+
+  if (bv.audienceLanguage) {
+    sections.push(`🗣️ LINGUAGGIO E REGISTRO DEL TARGET (usa questo livello di formalità e vocabolario):\n${bv.audienceLanguage}`);
+  }
+
+  const writingExamples = bv.writingExamples?.filter((ex: string) => ex && ex.trim().length > 0);
+  if (writingExamples && writingExamples.length > 0) {
+    const examplesText = writingExamples.map((ex: string, i: number) => `--- ESEMPIO ${i + 1} ---\n${ex.trim()}`).join("\n\n");
+    sections.push(`📄 ESEMPI DI SCRITTURA REALE DEL CONSULENTE (ANALIZZA ritmo, vocabolario, lunghezza frasi, struttura paragrafi e REPLICA lo stesso stile — NON il tuo stile AI):\n${examplesText}`);
+  }
+
+  if (bv.signaturePhrases?.length) {
+    sections.push(`💬 FRASI FIRMA DEL CONSULENTE (integra naturalmente 1-2 di queste espressioni nel testo quando pertinenti):\n${bv.signaturePhrases.join(" | ")}`);
+  }
+
+  if (bv.avoidPatterns) {
+    sections.push(`🚫 ANTI-PATTERN — NON FARE MAI QUESTE COSE (RIGOROSO):\n${bv.avoidPatterns}`);
+  }
+  
+  if (sections.length > 0) {
+    return `\n\n${sections.join("\n\n")}`;
   }
   return "";
 }
@@ -2775,6 +2806,21 @@ IMPORTANTE: Sviluppa il contenuto ESCLUSIVAMENTE su questo argomento specifico. 
 
   const brandVoiceContext = buildBrandVoiceContext(params.brandVoiceData);
 
+  const hasWritingExamples = params.brandVoiceData?.writingExamples?.some((ex: string) => ex && ex.trim().length > 0);
+  const writingExamplesPriorityInstruction = hasWritingExamples ? `
+
+⚠️ ISTRUZIONE PRIORITARIA — STILE DI SCRITTURA PERSONALIZZATO:
+Hai ricevuto esempi di scrittura reale del consulente. Il tuo obiettivo NON è scrivere "bene" in modo generico — è scrivere COME LUI/LEI.
+Analizza gli esempi forniti per identificare:
+1. Lunghezza media delle frasi (corte e secche? lunghe e articolate?)
+2. Uso di domande vs affermazioni
+3. Livello di formalità (tu/lei, slang, termini tecnici)
+4. Struttura dei paragrafi (corti/lunghi, con/senza spaziature)
+5. Pattern ricorrenti (come inizia i post, come chiude, come fa transizioni)
+6. Tono emotivo (ironico? serio? provocatorio? empatico?)
+Poi REPLICA quello stile fedelmente. Il risultato deve sembrare scritto dalla stessa persona, NON da un'AI.
+` : '';
+
   let kbContext = "";
   if (params.kbContent && params.kbContent.trim().length > 0) {
     kbContext = `\n\n📚 KNOWLEDGE BASE (usa questi contenuti come riferimento):\n${params.kbContent}`;
@@ -2839,6 +2885,15 @@ Scrivi come parla una persona normale. Il testo deve SCORRERE naturalmente, esse
 - Le frasi devono fluire l'una nell'altra come in una conversazione
 - Evita costruzioni rigide che spezzano il ritmo
 - Se rileggendo il testo "suona strano", riscrivilo più semplice
+
+🧠 REGOLE ANTI-ROBOTICO AVANZATE:
+- VARIETÀ SINTATTICA: Alterna frasi da 5 parole a frasi da 20. Non usare MAI 3 frasi consecutive della stessa lunghezza
+- TRANSIZIONI NATURALI: VIETATO usare "Inoltre", "Pertanto", "In conclusione", "Di conseguenza", "È importante sottolineare che", "In un mondo dove". Usa transizioni parlate: "E sai cosa?", "Il punto è", "Ora ti dico una cosa", "Aspetta"
+- CONCRETEZZA: Ogni affermazione astratta DEVE essere seguita da un esempio concreto, un numero o un aneddoto. Mai 2 frasi astratte consecutive
+- APERTURE VARIATE: Non iniziare MAI 2 frasi consecutive con lo stesso soggetto o struttura. Alterna: domanda, affermazione, aneddoto, dato
+- LESSICO NATURALE: Preferisci parole semplici. "Dire" > "affermare". "Usare" > "utilizzare". "Perché" > "in quanto". "Ma" > "tuttavia". "Anche" > "altresì"
+- IMPERFEZIONI DEL PARLATO: Inserisci 1-2 elementi naturali: una frase lasciata in sospeso con "...", un pensiero tra parentesi, una correzione tipo "anzi no, aspetta"
+- ANTI-TEMPLATE: Non seguire MAI la struttura "Problema → Soluzione → CTA" in modo prevedibile. Varia l'ordine. Sorprendi il lettore
 
 📝 FORMATTAZIONE OBBLIGATORIA:
 - NON creare muri di testo! Il copy deve essere ARIOSO e facile da leggere
@@ -3239,7 +3294,7 @@ CONTESTO:
 - Tipo Copy: ${copyType}
 ${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
 ${brandContext}${brandVoiceContext}${kbContext}${platformSchemaContext}${topicContext}
-${antiRepetitionContext}
+${writingExamplesPriorityInstruction}${antiRepetitionContext}
 ${writingStyleSection}
 ${hookPatternAndAngleSection}
 

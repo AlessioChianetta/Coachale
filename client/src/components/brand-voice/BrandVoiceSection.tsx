@@ -18,7 +18,8 @@ import {
   Download,
   Save,
   Loader2,
-  Check
+  Check,
+  MessageSquare
 } from "lucide-react";
 
 export interface BrandVoiceData {
@@ -42,6 +43,12 @@ export interface BrandVoiceData {
   caseStudies?: { client: string; result: string }[];
   servicesOffered?: { name: string; price: string; description: string }[];
   guarantees?: string;
+  personalTone?: string;
+  contentPersonality?: string;
+  audienceLanguage?: string;
+  avoidPatterns?: string;
+  writingExamples?: string[];
+  signaturePhrases?: string[];
 }
 
 export interface BrandVoiceSectionProps {
@@ -71,7 +78,9 @@ export function BrandVoiceSection({
   const [authorityOpen, setAuthorityOpen] = useState(!compact);
   const [credentialsOpen, setCredentialsOpen] = useState(!compact);
   const [servicesOpen, setServicesOpen] = useState(!compact);
+  const [voiceStyleOpen, setVoiceStyleOpen] = useState(!compact);
   const [valueInput, setValueInput] = useState("");
+  const [phraseInput, setPhraseInput] = useState("");
 
   const updateField = <K extends keyof BrandVoiceData>(field: K, value: BrandVoiceData[K]) => {
     onDataChange({ ...data, [field]: value });
@@ -152,6 +161,37 @@ export function BrandVoiceSection({
   const handleRemoveService = (index: number) => {
     const current = data.servicesOffered || [];
     updateField("servicesOffered", current.filter((_, i) => i !== index));
+  };
+
+  const handleAddPhrase = () => {
+    if (phraseInput.trim()) {
+      const current = data.signaturePhrases || [];
+      updateField("signaturePhrases", [...current, phraseInput.trim()]);
+      setPhraseInput("");
+    }
+  };
+
+  const handleRemovePhrase = (index: number) => {
+    const current = data.signaturePhrases || [];
+    updateField("signaturePhrases", current.filter((_, i) => i !== index));
+  };
+
+  const handleAddWritingExample = () => {
+    const current = data.writingExamples || [];
+    if (current.length < 3) {
+      updateField("writingExamples", [...current, ""]);
+    }
+  };
+
+  const handleUpdateWritingExample = (index: number, value: string) => {
+    const current = [...(data.writingExamples || [])];
+    current[index] = value;
+    updateField("writingExamples", current);
+  };
+
+  const handleRemoveWritingExample = (index: number) => {
+    const current = data.writingExamples || [];
+    updateField("writingExamples", current.filter((_, i) => i !== index));
   };
 
   return (
@@ -641,6 +681,159 @@ export function BrandVoiceSection({
                   rows={3}
                   className="mt-2"
                 />
+              </div>
+
+              {showSaveButton && (
+                <Button 
+                  onClick={onSave}
+                  disabled={isSaving}
+                  className={`w-full transition-all duration-300 ${saveSuccess ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : saveSuccess ? (
+                    <Check className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {saveSuccess ? 'Salvato!' : 'Salva Brand Voice'}
+                </Button>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      <Collapsible open={voiceStyleOpen} onOpenChange={setVoiceStyleOpen}>
+        <Card className="border-2 border-indigo-500/20 shadow-lg">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="bg-gradient-to-r from-indigo-500/5 to-indigo-500/10 cursor-pointer hover:from-indigo-500/10 hover:to-indigo-500/15 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-indigo-500" />
+                  <CardTitle>Voce & Stile Personale</CardTitle>
+                </div>
+                {voiceStyleOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </div>
+              <CardDescription className="text-left">Come comunichi e come vuoi che l'AI scriva per te</CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-6 space-y-6">
+              <div>
+                <Label htmlFor="bv-personalTone">Tono Personale</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Descrivi come comunichi — il tuo stile naturale di scrittura</p>
+                <Textarea
+                  id="bv-personalTone"
+                  value={data.personalTone || ""}
+                  onChange={(e) => updateField("personalTone", e.target.value)}
+                  placeholder="Es: Diretto e provocatorio, uso spesso l'ironia. Parlo come un coach da spogliatoio, non come un professore. Le mie frasi sono corte e vanno dritte al punto."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="bv-contentPersonality">Personalità del Contenuto</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Che emozione vuoi trasmettere a chi legge?</p>
+                <Textarea
+                  id="bv-contentPersonality"
+                  value={data.contentPersonality || ""}
+                  onChange={(e) => updateField("contentPersonality", e.target.value)}
+                  placeholder="Es: Voglio che chi legge si senta capito e un po' provocato, mai giudicato. Come parlare con un amico sincero che ti dice le cose in faccia."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="bv-audienceLanguage">Linguaggio del Target</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Come parla il tuo pubblico? Che livello di formalità, slang o termini tecnici usano?</p>
+                <Textarea
+                  id="bv-audienceLanguage"
+                  value={data.audienceLanguage || ""}
+                  onChange={(e) => updateField("audienceLanguage", e.target.value)}
+                  placeholder="Es: Il mio target sono personal trainer, parlano informale, usano termini tecnici come 'periodizzazione', 'volume', 'deload'. Sono pratici, vogliono soluzioni concrete."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="bv-avoidPatterns">Cosa NON Fare Mai</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Anti-pattern espliciti — cose che l'AI non deve MAI fare nei tuoi contenuti</p>
+                <Textarea
+                  id="bv-avoidPatterns"
+                  value={data.avoidPatterns || ""}
+                  onChange={(e) => updateField("avoidPatterns", e.target.value)}
+                  placeholder="Es: Mai iniziare con 'In un mondo dove...', mai usare elenchi puntati generici, evitare il tono motivazionale americano, non usare 'game changer' o 'mindset shift'"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <Label>Esempi di Scrittura Reale</Label>
+                    <p className="text-xs text-muted-foreground mt-1">Incolla 1-3 post o testi che hai scritto tu. L'AI analizzerà il tuo stile per replicarlo.</p>
+                  </div>
+                  {(data.writingExamples || []).length < 3 && (
+                    <Button type="button" onClick={handleAddWritingExample} size="sm" variant="outline">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Aggiungi
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {(data.writingExamples || []).map((example, index: number) => (
+                    <div key={index} className="relative">
+                      <Textarea
+                        value={example}
+                        onChange={(e) => handleUpdateWritingExample(index, e.target.value)}
+                        placeholder={`Esempio ${index + 1}: incolla qui un tuo post, caption o testo reale...`}
+                        rows={4}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 h-6 w-6"
+                        onClick={() => handleRemoveWritingExample(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label>Frasi Firma</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Espressioni, modi di dire o catchphrase che usi sempre</p>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={phraseInput}
+                      onChange={(e) => setPhraseInput(e.target.value)}
+                      placeholder="Es: Il punto è questo:, Sveglia!, Non è magia, è metodo"
+                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddPhrase())}
+                    />
+                    <Button type="button" onClick={handleAddPhrase} size="icon">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(data.signaturePhrases || []).map((phrase: string, index: number) => (
+                      <Badge key={index} variant="secondary" className="gap-1">
+                        {phrase}
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhrase(index)}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {showSaveButton && (
