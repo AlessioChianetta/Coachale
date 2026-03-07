@@ -3331,6 +3331,191 @@ router.post("/advisage/analyze-and-generate", authenticateToken, requireRole("co
 });
 
 // ============================================================
+// ADVISAGE SESSIONS - Persistence & History
+// ============================================================
+
+router.get("/advisage/sessions", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const result = await db.execute(sql`
+      SELECT s.id, s.name, s.status, s.created_at, s.updated_at,
+        (SELECT COUNT(*) FROM advisage_generated_images WHERE session_id = s.id) as image_count,
+        jsonb_array_length(COALESCE(s.batch_results, '[]'::jsonb)) as concept_count
+      FROM advisage_sessions s
+      WHERE s.consultant_id = ${consultantId}
+      ORDER BY s.created_at DESC
+      LIMIT 50
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (error: any) {
+    console.error("[ADVISAGE-SESSIONS] List error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/advisage/sessions/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const sessionId = req.params.id;
+    
+    const sessionResult = await db.execute(sql`
+      SELECT * FROM advisage_sessions
+      WHERE id = ${sessionId} AND consultant_id = ${consultantId}
+    `);
+    if (!sessionResult.rows.length) {
+      return res.status(404).json({ success: false, error: "Sessione non trovata" });
+    }
+    
+    const imagesResult = await db.execute(sql`
+      SELECT agi.* FROM advisage_generated_images agi
+      JOIN advisage_sessions s ON s.id = agi.session_id
+      WHERE agi.session_id = ${sessionId} AND s.consultant_id = ${consultantId}
+      ORDER BY agi.created_at ASC
+    `);
+    
+    res.json({ 
+      success: true, 
+      data: {
+        session: sessionResult.rows[0],
+        images: imagesResult.rows
+      }
+    });
+  } catch (error: any) {
+    console.error("[ADVISAGE-SESSIONS] Load error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/advisage/sessions", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { name, settings, batchResults, postInputs } = req.body;
+    
+    const result = await db.execute(sql`
+      INSERT INTO advisage_sessions (consultant_id, name, settings, batch_results, post_inputs)
+      VALUES (${consultantId}, ${name || null}, ${JSON.stringify(settings || {})}, ${JSON.stringify(batchResults || [])}, ${JSON.stringify(postInputs || [])})
+      RETURNING id, created_at
+    `);
+    
+    const session = result.rows[0];
+    console.log(`[ADVISAGE-SESSIONS] Created session ${session.id} for consultant ${consultantId}`);
+    res.json({ success: true, data: session });
+  } catch (error: any) {
+    console.error("[ADVISAGE-SESSIONS] Create error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put("/advisage/sessions/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const sessionId = req.params.id;
+    const { name, settings, batchResults, postInputs, status } = req.body;
+    
+    const updates: string[] = [];
+    const values: any[] = [];
+    
+    await db.execute(sql`
+      UPDATE advisage_sessions
+      SET 
+        name = COALESCE(${name || null}, name),
+        settings = COALESCE(${settings ? JSON.stringify(settings) : null}::jsonb, settings),
+        batch_results = COALESCE(${batchResults ? JSON.stringify(batchResults) : null}::jsonb, batch_results),
+        post_inputs = COALESCE(${postInputs ? JSON.stringify(postInputs) : null}::jsonb, post_inputs),
+        status = COALESCE(${status || null}, status),
+        updated_at = NOW()
+      WHERE id = ${sessionId} AND consultant_id = ${consultantId}
+    `);
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("[ADVISAGE-SESSIONS] Update error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete("/advisage/sessions/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const sessionId = req.params.id;
+    
+    const imagesDir = path.join(process.cwd(), "uploads", "advisage", sessionId);
+    if (fs.existsSync(imagesDir)) {
+      fs.rmSync(imagesDir, { recursive: true, force: true });
+    }
+    
+    await db.execute(sql`
+      DELETE FROM advisage_sessions
+      WHERE id = ${sessionId} AND consultant_id = ${consultantId}
+    `);
+    
+    console.log(`[ADVISAGE-SESSIONS] Deleted session ${sessionId}`);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("[ADVISAGE-SESSIONS] Delete error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/advisage/sessions/:id/images", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const sessionId = req.params.id;
+    const { conceptId, variant, imageBase64, settingsUsed } = req.body;
+    
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      return res.status(400).json({ success: false, error: "imageBase64 richiesto" });
+    }
+    
+    const mimeMatch = imageBase64.match(/^data:image\/(png|jpeg|jpg|webp);base64,/);
+    if (!mimeMatch) {
+      return res.status(400).json({ success: false, error: "Formato immagine non valido" });
+    }
+    
+    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    
+    const MAX_SIZE = 20 * 1024 * 1024;
+    if (buffer.length > MAX_SIZE) {
+      return res.status(400).json({ success: false, error: "Immagine troppo grande (max 20MB)" });
+    }
+    
+    const sessionCheck = await db.execute(sql`
+      SELECT id FROM advisage_sessions
+      WHERE id = ${sessionId} AND consultant_id = ${consultantId}
+    `);
+    if (!sessionCheck.rows.length) {
+      return res.status(404).json({ success: false, error: "Sessione non trovata" });
+    }
+    
+    const uploadsDir = path.join(process.cwd(), "uploads", "advisage", sessionId);
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    const ext = mimeMatch[1] === 'jpeg' || mimeMatch[1] === 'jpg' ? 'jpg' : mimeMatch[1];
+    const safeConceptId = conceptId.replace(/[^a-zA-Z0-9_-]/g, '');
+    const filename = `${safeConceptId}-${variant || 'clean'}-${Date.now()}.${ext}`;
+    const filePath = path.join(uploadsDir, filename);
+    await fsPromises.writeFile(filePath, buffer);
+    
+    const imagePath = `/uploads/advisage/${sessionId}/${filename}`;
+    
+    const result = await db.execute(sql`
+      INSERT INTO advisage_generated_images (session_id, concept_id, variant, image_path, settings_used)
+      VALUES (${sessionId}, ${conceptId}, ${variant || 'clean'}, ${imagePath}, ${JSON.stringify(settingsUsed || {})})
+      RETURNING id, image_path, created_at
+    `);
+    
+    console.log(`[ADVISAGE-SESSIONS] Saved image for concept ${conceptId} in session ${sessionId}`);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error: any) {
+    console.error("[ADVISAGE-SESSIONS] Save image error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
 // AUTOPILOT BATCHES - Review Mode Endpoints
 // ============================================================
 

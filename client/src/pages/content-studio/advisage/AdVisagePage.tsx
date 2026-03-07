@@ -151,6 +151,131 @@ const AdVisagePage: React.FC = () => {
   const [conceptControlsOpen, setConceptControlsOpen] = useState<Record<string, boolean>>({});
   const [selectedHistoryImage, setSelectedHistoryImage] = useState<Record<string, number>>({});
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string } | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [showSessionHistory, setShowSessionHistory] = useState(false);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
+
+  const { data: sessionsData, refetch: refetchSessions } = useQuery({
+    queryKey: ['/api/content/advisage/sessions'],
+    queryFn: async () => {
+      const response = await fetch('/api/content/advisage/sessions', { headers: getAuthHeaders() });
+      if (!response.ok) throw new Error('Failed to fetch sessions');
+      return response.json();
+    },
+  });
+
+  const saveSessionToServer = async (batchData: AdAnalysis[], postData: PostInput[], sessionId?: string | null): Promise<string | null> => {
+    try {
+      const firstPost = batchData[0];
+      const sessionName = firstPost ? `${firstPost.context?.sector || 'Produzione'} — ${new Date().toLocaleDateString('it-IT')}` : `Produzione ${new Date().toLocaleDateString('it-IT')}`;
+      
+      if (sessionId) {
+        const response = await fetch(`/api/content/advisage/sessions/${sessionId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          body: JSON.stringify({ batchResults: batchData, postInputs: postData, settings }),
+        });
+        if (!response.ok) {
+          console.error('[ADVISAGE] Update session failed:', response.status);
+          return null;
+        }
+        return sessionId;
+      } else {
+        const response = await fetch('/api/content/advisage/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          body: JSON.stringify({ name: sessionName, settings, batchResults: batchData, postInputs: postData }),
+        });
+        if (!response.ok) {
+          console.error('[ADVISAGE] Create session failed:', response.status);
+          return null;
+        }
+        const result = await response.json();
+        if (result.success && result.data?.id) {
+          refetchSessions();
+          return result.data.id;
+        }
+      }
+    } catch (err) {
+      console.error('[ADVISAGE] Save session error:', err);
+    }
+    return null;
+  };
+
+  const saveImageToServer = async (sessionId: string, conceptId: string, variant: string, imageBase64: string) => {
+    try {
+      await fetch(`/api/content/advisage/sessions/${sessionId}/images`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ conceptId, variant, imageBase64, settingsUsed: getMergedSettings(conceptId) }),
+      });
+    } catch (err) {
+      console.error('[ADVISAGE] Save image error:', err);
+    }
+  };
+
+  const loadSessionFromServer = async (sessionId: string) => {
+    setLoadingSessionId(sessionId);
+    try {
+      const response = await fetch(`/api/content/advisage/sessions/${sessionId}`, { headers: getAuthHeaders() });
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error);
+      
+      const { session, images } = result.data;
+      
+      if (session.settings) setSettings(prev => ({ ...prev, ...session.settings }));
+      if (session.post_inputs?.length) setPostInputs(session.post_inputs);
+      
+      if (session.batch_results?.length) {
+        setBatchResults(session.batch_results);
+        setActivePostId(session.batch_results[0].id);
+        
+        const newPrompts: Record<string, string> = {};
+        session.batch_results.forEach((result: AdAnalysis) => {
+          result.concepts.forEach((c: VisualConcept) => {
+            newPrompts[`${c.id}_text`] = c.promptWithText;
+            newPrompts[`${c.id}_clean`] = c.promptClean;
+          });
+        });
+        setCustomPrompts(newPrompts);
+      }
+      
+      if (images?.length) {
+        const loadedImages: GeneratedImage[] = images.map((img: any) => ({
+          conceptId: img.concept_id,
+          imageUrl: img.image_path,
+          variant: img.variant,
+          timestamp: new Date(img.created_at).getTime(),
+        }));
+        setGeneratedImages(loadedImages);
+      }
+      
+      setCurrentSessionId(sessionId);
+      setShowSessionHistory(false);
+      
+      toast({ title: "Sessione caricata", description: "Produzione precedente ripristinata con successo" });
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setLoadingSessionId(null);
+    }
+  };
+
+  const deleteSession = async (sessionId: string) => {
+    try {
+      await fetch(`/api/content/advisage/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      refetchSessions();
+      if (currentSessionId === sessionId) {
+        setCurrentSessionId(null);
+      }
+      toast({ title: "Sessione eliminata" });
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    }
+  };
 
   const getMergedSettings = (conceptId: string): AppSettings => {
     const overrides = conceptOverrides[conceptId];
@@ -363,6 +488,12 @@ const AdVisagePage: React.FC = () => {
         setBatchResults(results);
         setCustomPrompts(newPrompts);
         setActivePostId(results[0].id);
+        
+        const newSessionId = await saveSessionToServer(results, valid, currentSessionId);
+        if (newSessionId) {
+          setCurrentSessionId(newSessionId);
+          toast({ title: "Sessione salvata", description: "La produzione è stata salvata automaticamente" });
+        }
       }
     } catch (err: any) { 
       setError(err.message); 
@@ -393,6 +524,10 @@ const AdVisagePage: React.FC = () => {
       const url = await generateImageConcept(customPrompts[`${concept.id}_${variant}`], aspectRatio, mergedSettings, variant, concept.textContent, concept.styleType, concept.promptVisual, concept.description, originalText);
       setGeneratedImages(prev => [{ conceptId: concept.id, imageUrl: url, variant, timestamp: Date.now() }, ...prev]);
       setSelectedHistoryImage(prev => ({ ...prev, [concept.id]: 0 }));
+      
+      if (currentSessionId) {
+        saveImageToServer(currentSessionId, concept.id, variant, url);
+      }
     } catch (err: any) { 
       setError(err.message); 
     } finally { 
@@ -577,6 +712,13 @@ const AdVisagePage: React.FC = () => {
                       onClick={() => setViewMode(viewMode === 'factory' ? 'pitch' : 'factory')}
                     >
                       {viewMode === 'factory' ? 'Client Pitch Mode' : 'Back to Factory'}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => { refetchSessions(); setShowSessionHistory(true); }}>
+                      <History className="w-4 h-4 mr-1" />
+                      Storico
+                      {sessionsData?.data?.length > 0 && (
+                        <Badge variant="secondary" className="ml-1 text-[10px]">{sessionsData.data.length}</Badge>
+                      )}
                     </Button>
                     <Button variant="outline" size="icon" onClick={() => setShowSettings(true)}>
                       <Settings className="w-4 h-4" />
@@ -1069,16 +1211,28 @@ const AdVisagePage: React.FC = () => {
                           )}
                         </Button>
 
+                        {currentSessionId && (
+                          <div className="text-[10px] text-center text-emerald-500 py-1">
+                            <Check className="w-3 h-3 inline mr-1" />
+                            Sessione salvata
+                          </div>
+                        )}
+
                         <Button
                           variant="ghost"
                           className="w-full text-destructive"
                           onClick={() => {
                             setBatchResults([]);
+                            setGeneratedImages([]);
+                            setCurrentSessionId(null);
+                            setConceptOverrides({});
+                            setCustomPrompts({});
+                            setSelectedHistoryImage({});
                             setPostInputs([{ id: 'reset', text: '', platform: 'instagram' }]);
                           }}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Pulisci Tutto
+                          Nuova Produzione
                         </Button>
                       </CardContent>
                     </Card>
@@ -1783,6 +1937,104 @@ const AdVisagePage: React.FC = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSessionHistory} onOpenChange={setShowSessionHistory}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-indigo-500" />
+              Storico Produzioni
+            </DialogTitle>
+            <DialogDescription>
+              Le tue produzioni batch precedenti con analisi e immagini generate
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 max-h-[60vh] pr-2">
+            <div className="space-y-2 pt-2">
+              {!sessionsData?.data?.length ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Nessuna produzione salvata</p>
+                  <p className="text-sm mt-1">Le produzioni batch vengono salvate automaticamente</p>
+                </div>
+              ) : (
+                sessionsData.data.map((session: any) => {
+                  const isActive = currentSessionId === session.id;
+                  const isLoading = loadingSessionId === session.id;
+                  const createdAt = new Date(session.created_at);
+                  const imageCount = Number(session.image_count) || 0;
+                  const conceptCount = Number(session.concept_count) || 0;
+                  
+                  return (
+                    <div
+                      key={session.id}
+                      className={`p-4 rounded-xl border transition-all ${
+                        isActive 
+                          ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500/30' 
+                          : 'border-border hover:border-muted-foreground/30 hover:bg-muted/30'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-sm truncate">{session.name || 'Produzione senza nome'}</p>
+                            {isActive && <Badge className="text-[10px] bg-indigo-500">Attiva</Badge>}
+                          </div>
+                          <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                            <span>{createdAt.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                            <span>{createdAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-2">
+                            {conceptCount > 0 && (
+                              <Badge variant="outline" className="text-[10px]">
+                                <Layers className="w-3 h-3 mr-1" />
+                                {conceptCount} concept
+                              </Badge>
+                            )}
+                            {imageCount > 0 && (
+                              <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-600">
+                                <ImageIcon className="w-3 h-3 mr-1" />
+                                {imageCount} immagini
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant={isActive ? 'secondary' : 'default'}
+                            onClick={() => loadSessionFromServer(session.id)}
+                            disabled={isLoading || isActive}
+                          >
+                            {isLoading ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : isActive ? (
+                              'Attiva'
+                            ) : (
+                              <>
+                                <RotateCcw className="w-3 h-3 mr-1" />
+                                Carica
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => deleteSession(session.id)}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
