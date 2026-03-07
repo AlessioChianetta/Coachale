@@ -274,13 +274,14 @@ interface ActiveGeminiConnection {
   connectionId: string;
   mode: string;
   startedAt: Date;
-  lastActivity: Date;  // 🆕 P0.1 - Per garbage collector anti-zombie
+  lastActivity: Date;
   status: 'connecting' | 'active' | 'reconnecting' | 'closing';
   retryCount: number;
   websocket: WebSocket | null;
+  callerWebsocket?: WebSocket | null;
   consultantId?: string;
-  callId?: string;      // 🆕 P0.1 - Per tracking voice calls
-  clientId?: string;    // 🆕 P0.1 - Per tracking client
+  callId?: string;
+  clientId?: string;
 }
 
 // 🆕 P0.1 - Costanti per timeout anti-zombie
@@ -417,11 +418,22 @@ function forceCloseConnection(connectionId: string, reason: string): void {
   
   try {
     if (conn.websocket) {
-      // 🆕 P0.4 - Usa terminate() invece di close() per chiusura HARD
       if (typeof (conn.websocket as any).terminate === 'function') {
         (conn.websocket as any).terminate();
       } else {
         conn.websocket.close(1000, reason);
+      }
+    }
+    if (conn.callerWebsocket) {
+      console.log(`   🔌 [${connectionId}] Also closing caller/VPS WebSocket (triggers FreeSWITCH uuid_kill)`);
+      try {
+        if (typeof (conn.callerWebsocket as any).terminate === 'function') {
+          (conn.callerWebsocket as any).terminate();
+        } else {
+          conn.callerWebsocket.close(1000, reason);
+        }
+      } catch (callerErr: any) {
+        console.warn(`   ⚠️ [${connectionId}] Failed to close caller WS: ${callerErr.message}`);
       }
     }
     activeGeminiConnections.delete(connectionId);
@@ -5609,13 +5621,14 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         connectionId,
         mode,
         startedAt: now,
-        lastActivity: now,  // 🆕 P0.1 - Inizializzato al momento della connessione
+        lastActivity: now,
         status: 'connecting',
         retryCount: 0,
         websocket: geminiSession,
+        callerWebsocket: clientWs,
         consultantId,
-        callId: conversationId,  // 🆕 P0.1 - Per tracking voice calls
-        clientId: agentBusinessContext?.clientId  // 🆕 P0.1 - Per tracking client
+        callId: conversationId,
+        clientId: agentBusinessContext?.clientId
       });
       console.log(`🔌 [${connectionId}] Added to connection tracker (total: ${activeGeminiConnections.size})`);
 
