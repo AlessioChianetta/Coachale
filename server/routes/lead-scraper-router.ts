@@ -349,12 +349,24 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
                 const leadsWithContact = searchResults.filter(r => r.email || r.phone);
 
                 let slotIndex = 0;
+                let emailsSkipped = 0;
                 for (const lead of leadsWithContact) {
                   try {
+                    const bestEmail = lead.primaryEmail || lead.email;
+                    const emailAllowed = bestEmail && shouldAllowAutomatedOutreach(
+                      lead.emailVerified ?? false,
+                      lead.emailVerificationStatus ?? null
+                    );
+
+                    if (bestEmail && !emailAllowed) {
+                      emailsSkipped++;
+                      console.log(`[LEAD-SCRAPER] Skipped email for ${lead.businessName}: email not verified (status: ${lead.emailVerificationStatus || 'unknown'}, verified: ${lead.emailVerified})`);
+                    }
+
                     const leadObj = {
                       id: lead.id, leadId: lead.id,
                       businessName: lead.businessName, phone: lead.phone,
-                      email: lead.email, website: lead.website,
+                      email: emailAllowed ? bestEmail : null, website: lead.website,
                       address: lead.address, category: lead.category,
                       score: lead.aiCompatibilityScore,
                       salesSummary: lead.aiSalesSummary,
@@ -364,7 +376,7 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
 
                     const channels: string[] = [];
                     if (lead.phone) channels.push("voice", "whatsapp");
-                    if (lead.email) channels.push("email");
+                    if (emailAllowed) channels.push("email");
                     if (channels.length === 0) continue;
 
                     let firstTaskId: string | null = null;
@@ -397,7 +409,7 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
                     outreachErrors.push(`${lead.businessName || lead.id}: ${taskErr?.message?.substring(0, 80)}`);
                   }
                 }
-                console.log(`[LEAD-SCRAPER] Outreach scheduling complete: ${outreachCount} tasks created (${JSON.stringify(channelBreakdown)})`);
+                console.log(`[LEAD-SCRAPER] Outreach scheduling complete: ${outreachCount} tasks created (${JSON.stringify(channelBreakdown)}), ${emailsSkipped} emails skipped (not verified)`);
               } catch (outreachErr: any) {
                 console.error(`[LEAD-SCRAPER] Outreach scheduling error:`, outreachErr?.message || outreachErr);
               }
@@ -409,6 +421,7 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
                   metadata: sql`jsonb_set(COALESCE(metadata, '{}'::jsonb), '{outreachResults}', ${JSON.stringify({
                     tasksCreated: outreachCount,
                     channelBreakdown,
+                    emailsSkipped,
                     errors: outreachErrors.length > 0 ? outreachErrors : undefined,
                   })}::jsonb)`,
                 })

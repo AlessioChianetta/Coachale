@@ -2054,8 +2054,13 @@ export default function ConsultantLeadScraper() {
                             Canali: {channelParts.join(", ")}
                           </p>
                         )}
+                        {or.emailsSkipped > 0 && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                            {or.emailsSkipped} email escluse (non verificate/non valide)
+                          </p>
+                        )}
                         {or.errors?.length > 0 && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                          <p className="text-xs text-red-600 dark:text-red-400 mt-1">
                             {or.errors.length} errori durante la creazione
                           </p>
                         )}
