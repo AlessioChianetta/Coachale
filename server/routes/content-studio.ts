@@ -2291,6 +2291,84 @@ Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
   }
 });
 
+// POST /api/content/ai/suggest-market-problems - AI generates market research problems
+router.post("/ai/suggest-market-problems", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { niche, targetAudience, brandVoiceData } = req.body;
+    
+    if (!niche && !targetAudience && (!brandVoiceData || Object.keys(brandVoiceData).length === 0)) {
+      return res.status(400).json({ success: false, error: "Serve almeno una nicchia, un pubblico target o Brand Voice" });
+    }
+    
+    const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, "content-suggest-problems");
+    setFeature?.('content-suggest-problems');
+    const { model } = getModelWithThinking(metadata?.name);
+    
+    const contextParts = [];
+    if (niche) contextParts.push(`Nicchia/Settore: ${niche}`);
+    if (targetAudience) contextParts.push(`Pubblico Target: ${targetAudience}`);
+    
+    if (brandVoiceData) {
+      if (brandVoiceData.businessName) contextParts.push(`Business: ${brandVoiceData.businessName}`);
+      if (brandVoiceData.businessDescription) contextParts.push(`Descrizione: ${brandVoiceData.businessDescription}`);
+      if (brandVoiceData.whoWeHelp) contextParts.push(`Chi Aiutiamo: ${brandVoiceData.whoWeHelp}`);
+      if (brandVoiceData.whatWeDo) contextParts.push(`Cosa Facciamo: ${brandVoiceData.whatWeDo}`);
+      if (brandVoiceData.usp) contextParts.push(`USP: ${brandVoiceData.usp}`);
+      if (brandVoiceData.servicesOffered?.length) {
+        contextParts.push(`Servizi: ${brandVoiceData.servicesOffered.map((s: any) => s.name).filter(Boolean).join(", ")}`);
+      }
+    }
+    
+    const prompt = `Sei un esperto di ricerca di mercato e copywriting. Analizza il contesto fornito e identifica i problemi REALI, le frustrazioni e i bisogni più profondi del pubblico target.
+
+=== CONTESTO ===
+${contextParts.join("\n")}
+
+=== ISTRUZIONI ===
+1. Identifica 5-7 problemi concreti e specifici (non generici)
+2. Ogni problema deve essere una frase completa che descrive una frustrazione reale
+3. Usa il linguaggio che userebbe il target (non tecnico, emotivo)
+4. Includi sia problemi pratici che emotivi/psicologici
+5. Ordina dal più urgente/doloroso al meno
+
+Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
+{"problems": ["problema 1", "problema 2", "problema 3", "problema 4", "problema 5"]}`;
+
+    const result = await trackedGenerateContent({
+      model,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.8,
+        maxOutputTokens: 2048,
+      },
+    } as any, { consultantId, feature: 'content-suggest-problems', callerRole: 'consultant' });
+    
+    const responseText = result.response.text();
+    console.log("[SUGGEST-MARKET-PROBLEMS] Response:", responseText);
+    
+    let cleanedResponse = responseText
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
+    
+    const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return res.status(500).json({ success: false, error: "AI non ha fornito una risposta valida" });
+    }
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!parsed.problems || !Array.isArray(parsed.problems) || parsed.problems.length === 0) {
+      return res.status(500).json({ success: false, error: "Nessun problema identificato" });
+    }
+    
+    return res.json({ success: true, data: { problems: parsed.problems } });
+  } catch (error: any) {
+    console.error("Error suggesting market problems:", error);
+    return res.status(500).json({ success: false, error: error.message || "Errore nella generazione" });
+  }
+});
+
 // ============================================================
 // IMAGE GENERATION (Gemini Imagen 3)
 // ============================================================

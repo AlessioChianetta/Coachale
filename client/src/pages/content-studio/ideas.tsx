@@ -514,6 +514,7 @@ export default function ContentStudioIdeas() {
   const ITEMS_PER_PAGE = 10;
   const [isSuggestingLevels, setIsSuggestingLevels] = useState(false);
   const [isGeneratingNicheTarget, setIsGeneratingNicheTarget] = useState(false);
+  const [isGeneratingMarketProblems, setIsGeneratingMarketProblems] = useState(false);
   const [showLevelsSuggestionDialog, setShowLevelsSuggestionDialog] = useState(false);
   const [levelsSuggestion, setLevelsSuggestion] = useState<{
     awarenessLevel: string;
@@ -1572,6 +1573,36 @@ export default function ContentStudioIdeas() {
       toast({ title: "Errore nella generazione", description: error.message, variant: "destructive" });
     } finally {
       setIsGeneratingNicheTarget(false);
+    }
+  };
+
+  const handleGenerateMarketProblems = async () => {
+    if (!topic && !targetAudience && (!useBrandVoice || Object.keys(brandVoiceData).length === 0)) {
+      toast({ title: "Inserisci almeno una nicchia, un pubblico target, o configura Brand Voice", variant: "destructive" });
+      return;
+    }
+    setIsGeneratingMarketProblems(true);
+    try {
+      const response = await fetch("/api/content/ai/suggest-market-problems", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          niche: topic,
+          targetAudience,
+          ...(useBrandVoice && Object.keys(brandVoiceData).length > 0 && { brandVoiceData }),
+        }),
+      });
+      const data = await response.json();
+      if (data.success && data.data?.problems?.length > 0) {
+        setMarketResearchProblems(data.data.problems);
+        toast({ title: "Problemi generati!", description: `${data.data.problems.length} pain point identificati. Puoi modificarli.` });
+      } else {
+        throw new Error(data.error || "Nessun problema generato");
+      }
+    } catch (error: any) {
+      toast({ title: "Errore nella generazione", description: error.message, variant: "destructive" });
+    } finally {
+      setIsGeneratingMarketProblems(false);
     }
   };
 
@@ -2634,9 +2665,25 @@ export default function ContentStudioIdeas() {
                 >
                   <div className="overflow-hidden">
                   <CardContent className="pt-4 space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Elenca i problemi, le frustrazioni e i bisogni del tuo pubblico target. L'AI userà queste informazioni per creare contenuti che parlano direttamente ai loro pain point.
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground flex-1">
+                        Elenca i problemi, le frustrazioni e i bisogni del tuo pubblico target.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleGenerateMarketProblems}
+                        disabled={isGeneratingMarketProblems || (!topic && !targetAudience && (!useBrandVoice || Object.keys(brandVoiceData).length === 0))}
+                        className="h-7 text-xs gap-1.5 ml-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border-amber-200 dark:border-amber-800 hover:from-amber-100 hover:to-orange-100 flex-shrink-0"
+                      >
+                        {isGeneratingMarketProblems ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Wand2 className="h-3 w-3" />
+                        )}
+                        Genera con AI
+                      </Button>
+                    </div>
                     <div className="space-y-3">
                       {marketResearchProblems.map((problem, index) => (
                         <div key={index} className="flex items-start gap-2">
