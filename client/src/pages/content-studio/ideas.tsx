@@ -506,8 +506,10 @@ export default function ContentStudioIdeas() {
   const [customWritingInstructions, setCustomWritingInstructions] = useState<string>("");
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
-    return (localStorage.getItem('ideas_view_mode') as 'grid' | 'list') || 'grid';
+    return (localStorage.getItem('ideas_view_mode') as 'grid' | 'list') || 'list';
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const [isSuggestingLevels, setIsSuggestingLevels] = useState(false);
   const [isGeneratingNicheTarget, setIsGeneratingNicheTarget] = useState(false);
   const [showLevelsSuggestionDialog, setShowLevelsSuggestionDialog] = useState(false);
@@ -1210,6 +1212,22 @@ export default function ContentStudioIdeas() {
 
     return result;
   }, [ideas, statusFilter, filterContentType, sortBy, activeFilters, filterPlatform]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, filterContentType, sortBy, activeFilters, filterPlatform]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedIdeas.length / ITEMS_PER_PAGE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+  const paginatedIdeas = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredAndSortedIdeas.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredAndSortedIdeas, currentPage, ITEMS_PER_PAGE]);
 
   const createIdeaMutation = useMutation({
     mutationFn: async (idea: Partial<Idea>) => {
@@ -3481,131 +3499,122 @@ export default function ContentStudioIdeas() {
                   ))}
                 </div>
               ) : filteredAndSortedIdeas.length > 0 ? (
-                viewMode === 'list' ? (
-                <div className="space-y-1.5">
-                  {filteredAndSortedIdeas.map((idea) => {
+                <div className="space-y-0">
+                {viewMode === 'list' ? (
+                <div className="border rounded-lg overflow-hidden">
+                  {paginatedIdeas.map((idea, idx) => {
                     const statusInfo = getStatusInfo(idea.status, idea.developedPostId);
                     const StatusIcon = statusInfo.icon;
                     const isDeveloped = idea.developedPostId || idea.status === "developed";
                     const isArchived = idea.status === "archived";
                     
                     return (
-                      <Card key={idea.id} className={`overflow-hidden hover:shadow-md transition-shadow duration-200 ${statusInfo.cardClass} ${isArchived ? "opacity-70" : ""}`}>
-                        <CardContent className="p-3 flex items-center gap-3">
-                          <div className={`flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold shrink-0 ${
-                            (idea.aiScore || 0) >= 85 
-                              ? "bg-gradient-to-br from-green-400 to-green-600 text-white" 
-                              : (idea.aiScore || 0) >= 70 
-                                ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white" 
-                                : (idea.aiScore || 0) > 0
-                                  ? "bg-gradient-to-br from-red-400 to-red-600 text-white"
-                                  : "bg-gradient-to-br from-slate-300 to-slate-400 text-white"
-                          }`}>
-                            {idea.aiScore || "-"}
-                          </div>
-                          
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${statusInfo.color}`}>
-                              <StatusIcon className="h-2.5 w-2.5" />
-                              {statusInfo.label}
+                      <div key={idea.id} className={`flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors ${idx > 0 ? "border-t" : ""} ${isArchived ? "opacity-60" : ""}`}>
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-md text-xs font-semibold shrink-0 ${
+                          (idea.aiScore || 0) >= 85 
+                            ? "bg-foreground/10 text-foreground" 
+                            : (idea.aiScore || 0) >= 70 
+                              ? "bg-foreground/10 text-foreground" 
+                              : (idea.aiScore || 0) > 0
+                                ? "bg-foreground/10 text-muted-foreground"
+                                : "bg-muted text-muted-foreground"
+                        }`}>
+                          {idea.aiScore || "-"}
+                        </div>
+                        
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border ${statusInfo.color}`}>
+                            <StatusIcon className="h-2.5 w-2.5" />
+                            {statusInfo.label}
+                          </span>
+                          {idea.mediaType && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground">
+                              {idea.mediaType === "video" ? <Video className="h-2.5 w-2.5" /> : <Camera className="h-2.5 w-2.5" />}
                             </span>
-                            {idea.mediaType && (
-                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                                idea.mediaType === "video"
-                                  ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
-                                  : "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
-                              }`}>
-                                {idea.mediaType === "video" ? <Video className="h-2.5 w-2.5" /> : <Camera className="h-2.5 w-2.5" />}
-                              </span>
-                            )}
-                            {idea.copyType && (
-                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                                idea.copyType === "long"
-                                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-                                  : "bg-gradient-to-r from-orange-500 to-amber-500 text-white"
-                              }`}>
-                                {idea.copyType === "long" ? "L" : "S"}
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm truncate">{idea.title}</h3>
-                            {idea.hook && (
-                              <p className="text-xs text-muted-foreground truncate italic">"{idea.hook}"</p>
-                            )}
-                            {!idea.hook && idea.description && (
-                              <p className="text-xs text-muted-foreground truncate">{idea.description}</p>
-                            )}
-                          </div>
-                          
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {isDeveloped ? (
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                className="h-7 px-2 text-xs border-green-300 text-green-600 hover:bg-green-50"
-                                onClick={() => idea.developedPostId && handleGoToPost(idea.developedPostId)}
-                              >
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Creato
-                              </Button>
-                            ) : (
-                              <Button 
-                                size="sm" 
-                                className="h-7 px-2 text-xs bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-                                onClick={() => handleDevelopPost(idea)}
-                              >
-                                <Zap className="h-3 w-3 mr-1" />
-                                Sviluppa
-                              </Button>
-                            )}
+                          )}
+                          {idea.copyType && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground">
+                              {idea.copyType === "long" ? "L" : "S"}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-sm truncate">{idea.title}</h3>
+                          {idea.hook && (
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">"{idea.hook}"</p>
+                          )}
+                          {!idea.hook && idea.description && (
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">{idea.description}</p>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isDeveloped ? (
                             <Button 
                               size="sm" 
-                              variant="outline" 
-                              className="h-7 px-2 text-xs"
-                              onClick={() => setViewingIdea(idea)}
+                              variant="outline"
+                              className="h-7 px-2.5 text-xs"
+                              onClick={() => idea.developedPostId && handleGoToPost(idea.developedPostId)}
                             >
-                              <Eye className="h-3 w-3" />
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Creato
                             </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-                                  <MoreVertical className="h-3.5 w-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "new")} disabled={idea.status === "new"}>
-                                  <Sparkles className="h-4 w-4 mr-2" />
-                                  Segna come Nuova
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "in_progress")} disabled={idea.status === "in_progress"}>
-                                  <Clock className="h-4 w-4 mr-2" />
-                                  In Lavorazione
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "archived")} disabled={idea.status === "archived"}>
-                                  <Archive className="h-4 w-4 mr-2" />
-                                  Archivia
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => deleteIdeaMutation.mutate(idea.id)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Elimina
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </CardContent>
-                      </Card>
+                          ) : (
+                            <Button 
+                              size="sm" 
+                              className="h-7 px-2.5 text-xs"
+                              onClick={() => handleDevelopPost(idea)}
+                            >
+                              <Zap className="h-3 w-3 mr-1" />
+                              Sviluppa
+                            </Button>
+                          )}
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-7 w-7 p-0"
+                            onClick={() => setViewingIdea(idea)}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "new")} disabled={idea.status === "new"}>
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Segna come Nuova
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "in_progress")} disabled={idea.status === "in_progress"}>
+                                <Clock className="h-4 w-4 mr-2" />
+                                In Lavorazione
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "archived")} disabled={idea.status === "archived"}>
+                                <Archive className="h-4 w-4 mr-2" />
+                                Archivia
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => deleteIdeaMutation.mutate(idea.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Elimina
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
                 ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {filteredAndSortedIdeas.map((idea) => {
+                  {paginatedIdeas.map((idea) => {
                     const statusInfo = getStatusInfo(idea.status, idea.developedPostId);
                     const StatusIcon = statusInfo.icon;
                     const isDeveloped = idea.developedPostId || idea.status === "developed";
@@ -3628,11 +3637,7 @@ export default function ContentStudioIdeas() {
                                 {statusInfo.label}
                               </span>
                               {idea.mediaType && (
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                  idea.mediaType === "video"
-                                    ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
-                                    : "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
-                                }`}>
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
                                   {idea.mediaType === "video" ? (
                                     <><Video className="h-3 w-3" /> Video</>
                                   ) : (
@@ -3641,11 +3646,7 @@ export default function ContentStudioIdeas() {
                                 </span>
                               )}
                               {idea.copyType && (
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                  idea.copyType === "long"
-                                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-                                    : "bg-gradient-to-r from-orange-500 to-amber-500 text-white"
-                                }`}>
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
                                   {idea.copyType === "long" ? (
                                     <><AlignLeft className="h-3 w-3" /> Lungo</>
                                   ) : (
@@ -3655,14 +3656,14 @@ export default function ContentStudioIdeas() {
                               )}
                             </div>
                             
-                            <div className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-bold ${
+                            <div className={`flex items-center justify-center w-9 h-9 rounded-md text-sm font-semibold ${
                               (idea.aiScore || 0) >= 85 
-                                ? "bg-gradient-to-br from-green-400 to-green-600 text-white" 
+                                ? "bg-foreground/10 text-foreground" 
                                 : (idea.aiScore || 0) >= 70 
-                                  ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white" 
+                                  ? "bg-foreground/10 text-foreground" 
                                   : (idea.aiScore || 0) > 0
-                                    ? "bg-gradient-to-br from-red-400 to-red-600 text-white"
-                                    : "bg-gradient-to-br from-slate-300 to-slate-400 text-white"
+                                    ? "bg-foreground/10 text-muted-foreground"
+                                    : "bg-muted text-muted-foreground"
                             }`}>
                               {idea.aiScore || "-"}
                             </div>
@@ -3680,8 +3681,8 @@ export default function ContentStudioIdeas() {
                           )}
 
                           {idea.hook && (
-                            <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 p-3 rounded-lg mb-3 flex-grow">
-                              <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1 flex items-center gap-1">
+                            <div className="bg-muted/50 p-3 rounded-lg mb-3 flex-grow">
+                              <p className="text-xs text-muted-foreground font-medium mb-1 flex items-center gap-1">
                                 <Sparkles className="h-3 w-3" />
                                 Hook
                               </p>
@@ -3721,7 +3722,7 @@ export default function ContentStudioIdeas() {
                             ) : (
                               <Button 
                                 size="sm" 
-                                className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                                className="flex-1"
                                 onClick={() => handleDevelopPost(idea)}
                               >
                                 <Zap className="h-4 w-4 mr-1" />
@@ -3783,6 +3784,46 @@ export default function ContentStudioIdeas() {
                   })}
                 </div>
                 )
+
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4">
+                    <p className="text-xs text-muted-foreground">
+                      {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredAndSortedIdeas.length)} di {filteredAndSortedIdeas.length}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage(p => p - 1)}
+                      >
+                        Precedente
+                      </Button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        <Button
+                          key={page}
+                          variant={page === currentPage ? "default" : "outline"}
+                          size="sm"
+                          className="h-7 w-7 p-0 text-xs"
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setCurrentPage(p => p + 1)}
+                      >
+                        Successiva
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                </div>
               ) : (
                 <Card>
                   <CardContent className="p-8 text-center">
