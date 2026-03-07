@@ -1478,7 +1478,8 @@ export default function ConsultantWhatsAppPage() {
 
   const searchParams = new URLSearchParams(useSearch());
   const tabParam = searchParams.get("tab");
-  const initialTab = tabParam === "system" ? "system" : "custom";
+  const validTabs = ["custom", "system", "agents", "ideas", "voice", "calendario", "employees", "licenses"];
+  const initialTab = tabParam && validTabs.includes(tabParam) ? tabParam : "custom";
 
   // Load existing WhatsApp configs
   const { data: existingConfigs, isLoading } = useQuery({

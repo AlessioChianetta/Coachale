@@ -34,7 +34,9 @@ import {
   CreditCard,
   ChevronUp,
   ChevronDown,
+  ArrowLeft,
 } from "lucide-react";
+import { useLocation } from "wouter";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -193,6 +195,7 @@ const defaultFormData: FormData = {
 
 export default function ConsultantPricingSettingsPage() {
   const isMobile = useIsMobile();
+  const [, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -520,6 +523,14 @@ export default function ConsultantPricingSettingsPage() {
             <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-8 text-white shadow-2xl">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white/80 hover:text-white hover:bg-white/10 rounded-xl shrink-0"
+                    onClick={() => setLocation("/consultant/whatsapp?tab=licenses")}
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
                   <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl">
                     <Settings className="w-8 h-8 text-white" />
                   </div>
