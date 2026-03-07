@@ -507,6 +507,8 @@ export default function ContentStudioIdeas() {
   const [generatingPhase, setGeneratingPhase] = useState<string | null>(null);
   const [showResearchDialog, setShowResearchDialog] = useState(false);
   const [researchJobId, setResearchJobId] = useState<string | null>(null);
+  const [pendingPhaseGen, setPendingPhaseGen] = useState<{ phase: string; mode: 'add' | 'overwrite' | null }>({ phase: '', mode: null });
+  const [showPhaseConfirmDialog, setShowPhaseConfirmDialog] = useState(false);
   const [researchProgress, setResearchProgress] = useState<{
     status: string;
     currentStep: number;
@@ -1658,7 +1660,34 @@ export default function ContentStudioIdeas() {
     }
   };
 
-  const handleGenerateMarketResearch = async (phase?: string) => {
+  const phaseHasData = (phase: string): boolean => {
+    const d = marketResearchData;
+    switch (phase) {
+      case 'trasformazione': return (d.currentState?.some(s => s.trim()) || d.idealState?.some(s => s.trim())) || false;
+      case 'avatar': return !!(d.avatar?.nightThought || d.avatar?.biggestFear || d.avatar?.dailyFrustration);
+      case 'leve': return (d.emotionalDrivers?.length > 0 || d.existingSolutionProblems?.some(s => s.trim())) || false;
+      case 'obiezioni': return (d.internalObjections?.some(s => s.trim()) || d.externalObjections?.some(s => s.trim())) || false;
+      case 'errore': return (d.coreLies?.length > 0) || false;
+      case 'meccanismo': return !!(d.uniqueMechanism?.name || d.uniqueMechanism?.description);
+      case 'posizionamento': return !!d.uvp;
+      default: return false;
+    }
+  };
+
+  const handlePhaseButtonClick = (phase: string) => {
+    if (!topic?.trim()) {
+      toast({ title: "Inserisci l'argomento (Nicchia) per avviare la ricerca di mercato", variant: "destructive" });
+      return;
+    }
+    if (phaseHasData(phase)) {
+      setPendingPhaseGen({ phase, mode: null });
+      setShowPhaseConfirmDialog(true);
+    } else {
+      handleGenerateMarketResearch(phase, 'overwrite');
+    }
+  };
+
+  const handleGenerateMarketResearch = async (phase?: string, mergeMode?: 'add' | 'overwrite') => {
     if (!topic?.trim()) {
       toast({ title: "Inserisci l'argomento (Nicchia) per avviare la ricerca di mercato", variant: "destructive" });
       return;
@@ -1706,7 +1735,23 @@ export default function ContentStudioIdeas() {
 
             if (statusData.status === 'completed' && statusData.result) {
               clearInterval(pollInterval);
-              if (phase) {
+              if (phase && mergeMode === 'add') {
+                setMarketResearchData(prev => {
+                  const newData = statusData.result.data;
+                  const merged = { ...prev };
+                  if (newData.currentState) merged.currentState = [...(prev.currentState || []).filter((s: string) => s.trim()), ...newData.currentState];
+                  if (newData.idealState) merged.idealState = [...(prev.idealState || []).filter((s: string) => s.trim()), ...newData.idealState];
+                  if (newData.avatar) merged.avatar = { ...prev.avatar, ...newData.avatar };
+                  if (newData.emotionalDrivers) merged.emotionalDrivers = [...new Set([...(prev.emotionalDrivers || []), ...newData.emotionalDrivers])];
+                  if (newData.existingSolutionProblems) merged.existingSolutionProblems = [...(prev.existingSolutionProblems || []).filter((s: string) => s.trim()), ...newData.existingSolutionProblems];
+                  if (newData.internalObjections) merged.internalObjections = [...(prev.internalObjections || []).filter((s: string) => s.trim()), ...newData.internalObjections];
+                  if (newData.externalObjections) merged.externalObjections = [...(prev.externalObjections || []).filter((s: string) => s.trim()), ...newData.externalObjections];
+                  if (newData.coreLies) merged.coreLies = [...(prev.coreLies || []), ...newData.coreLies];
+                  if (newData.uniqueMechanism) merged.uniqueMechanism = newData.uniqueMechanism;
+                  if (newData.uvp) merged.uvp = newData.uvp;
+                  return merged;
+                });
+              } else if (phase) {
                 setMarketResearchData(prev => ({ ...prev, ...statusData.result.data }));
               } else {
                 setMarketResearchData(statusData.result.data);
@@ -2839,7 +2884,7 @@ export default function ContentStudioIdeas() {
                           {(marketResearchData.currentState.some(s => s.trim()) || marketResearchData.idealState.some(s => s.trim())) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "trasformazione"} onClick={(e) => { e.stopPropagation(); handleGenerateMarketResearch("trasformazione"); }}>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "trasformazione"} onClick={(e) => { e.stopPropagation(); handlePhaseButtonClick("trasformazione"); }}>
                             {generatingPhase === "trasformazione" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                           </Button>
                           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedResearchPhases.has("trasformazione") ? "rotate-180" : ""}`} />
@@ -2890,7 +2935,7 @@ export default function ContentStudioIdeas() {
                           {Object.values(marketResearchData.avatar).some(v => v.trim()) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "avatar"} onClick={(e) => { e.stopPropagation(); handleGenerateMarketResearch("avatar"); }}>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "avatar"} onClick={(e) => { e.stopPropagation(); handlePhaseButtonClick("avatar"); }}>
                             {generatingPhase === "avatar" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                           </Button>
                           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedResearchPhases.has("avatar") ? "rotate-180" : ""}`} />
@@ -2928,7 +2973,7 @@ export default function ContentStudioIdeas() {
                           )}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "leve"} onClick={(e) => { e.stopPropagation(); handleGenerateMarketResearch("leve"); }}>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "leve"} onClick={(e) => { e.stopPropagation(); handlePhaseButtonClick("leve"); }}>
                             {generatingPhase === "leve" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                           </Button>
                           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedResearchPhases.has("leve") ? "rotate-180" : ""}`} />
@@ -2962,7 +3007,7 @@ export default function ContentStudioIdeas() {
                           {(marketResearchData.existingSolutionProblems.some(s => s.trim()) || marketResearchData.internalObjections.some(s => s.trim()) || marketResearchData.externalObjections.some(s => s.trim())) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "obiezioni"} onClick={(e) => { e.stopPropagation(); handleGenerateMarketResearch("obiezioni"); }}>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "obiezioni"} onClick={(e) => { e.stopPropagation(); handlePhaseButtonClick("obiezioni"); }}>
                             {generatingPhase === "obiezioni" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                           </Button>
                           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedResearchPhases.has("obiezioni") ? "rotate-180" : ""}`} />
@@ -3004,7 +3049,7 @@ export default function ContentStudioIdeas() {
                           {marketResearchData.coreLies.length > 0 && marketResearchData.coreLies.some(c => c.name.trim()) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "errore"} onClick={(e) => { e.stopPropagation(); handleGenerateMarketResearch("errore"); }}>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "errore"} onClick={(e) => { e.stopPropagation(); handlePhaseButtonClick("errore"); }}>
                             {generatingPhase === "errore" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                           </Button>
                           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedResearchPhases.has("errore") ? "rotate-180" : ""}`} />
@@ -3056,7 +3101,7 @@ export default function ContentStudioIdeas() {
                           {(marketResearchData.uniqueMechanism.name.trim() || marketResearchData.uniqueMechanism.description.trim()) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "meccanismo"} onClick={(e) => { e.stopPropagation(); handleGenerateMarketResearch("meccanismo"); }}>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "meccanismo"} onClick={(e) => { e.stopPropagation(); handlePhaseButtonClick("meccanismo"); }}>
                             {generatingPhase === "meccanismo" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                           </Button>
                           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedResearchPhases.has("meccanismo") ? "rotate-180" : ""}`} />
@@ -3086,7 +3131,7 @@ export default function ContentStudioIdeas() {
                           {marketResearchData.uvp.trim() && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "posizionamento"} onClick={(e) => { e.stopPropagation(); handleGenerateMarketResearch("posizionamento"); }}>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" disabled={generatingPhase === "posizionamento"} onClick={(e) => { e.stopPropagation(); handlePhaseButtonClick("posizionamento"); }}>
                             {generatingPhase === "posizionamento" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                           </Button>
                           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedResearchPhases.has("posizionamento") ? "rotate-180" : ""}`} />
@@ -4536,6 +4581,26 @@ export default function ContentStudioIdeas() {
           </div>
         </div>
       </div>
+
+      <Dialog open={showPhaseConfirmDialog} onOpenChange={setShowPhaseConfirmDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Dati già presenti</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Questa sezione contiene già dei dati. Come vuoi procedere?</p>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button onClick={() => { setShowPhaseConfirmDialog(false); handleGenerateMarketResearch(pendingPhaseGen.phase, 'add'); }} className="w-full">
+              Aggiungi ai dati esistenti
+            </Button>
+            <Button variant="outline" onClick={() => { setShowPhaseConfirmDialog(false); handleGenerateMarketResearch(pendingPhaseGen.phase, 'overwrite'); }} className="w-full">
+              Sovrascrivi tutto
+            </Button>
+            <Button variant="ghost" onClick={() => setShowPhaseConfirmDialog(false)} className="w-full text-muted-foreground">
+              Annulla
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showResearchDialog} onOpenChange={(open) => { if (!open && researchProgress?.status !== 'running') { setShowResearchDialog(false); setResearchProgress(null); } }}>
         <DialogContent className="max-w-lg">
