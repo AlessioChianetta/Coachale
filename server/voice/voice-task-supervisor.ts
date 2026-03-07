@@ -470,6 +470,8 @@ export class VoiceTaskSupervisor {
   private async executeModifyTask(): Promise<TaskSupervisorResult> {
     const { originalDate, originalTime, originalDescription, newDate, newTime, newDescription, searchBy } = this.state.modifyTarget;
 
+    console.log(`🔍 [VOICE-TASK-SUPERVISOR] executeModifyTask - searchBy=${searchBy}, contactPhone=${this.contactPhone}, originalDate=${originalDate}, originalTime=${originalTime}, originalDesc=${originalDescription}, newDate=${newDate}, newTime=${newTime}, newDesc=${newDescription}`);
+
     let whereConditions = [
       sql`consultant_id = ${this.consultantId}`,
       sql`contact_phone = ${this.contactPhone}`,
@@ -784,14 +786,19 @@ REGOLE CRITICHE:
    - L'utente sta solo chiedendo informazioni senza dare un'istruzione chiara
 3. Se l'utente menziona più promemoria, crea un array di tasks (es: "ricordami X alle 9 e Y alle 15" = 2 tasks)
 4. "intent" = "none" se la conversazione non riguarda promemoria, reminder, task, cose da ricordare
-5. Per "modify_task": identifica il task da modificare tramite data, ora o descrizione e specifica i nuovi valori
+5. Per "modify_task": identifica il task da modificare tramite data, ora o descrizione e specifica i nuovi valori. DEVE riferirsi ESPLICITAMENTE a un task esistente nella lista dei TASK ESISTENTI.
 6. Per "cancel_task": identifica il task da cancellare tramite data, ora o descrizione
 7. Per "list_tasks": l'utente chiede "che promemoria ho?", "quali reminder ho?", "elenca i miei task"
 8. Converti SEMPRE le espressioni temporali relative in date/ore concrete usando la data/ora corrente
 9. Se manca la descrizione o la data/ora, NON impostare confirmed=true
 10. "recurrence_type" = "once" per task singoli, "daily" per giornalieri, "weekly" per settimanali
 11. Se l'utente dice "ogni lunedì e mercoledì", usa recurrence_type="weekly" e recurrence_days=[1,3]
-12. IGNORA completamente qualsiasi messaggio che contiene tag di sistema come [SYSTEM_INSTRUCTION], [TASK_CREATED], [BOOKING_CREATED] - questi NON sono messaggi dell'utente`;
+12. IGNORA completamente qualsiasi messaggio che contiene tag di sistema come [SYSTEM_INSTRUCTION], [TASK_CREATED], [BOOKING_CREATED] - questi NON sono messaggi dell'utente
+13. DISTINGUI tra NUOVA RICHIESTA e MODIFICA:
+   - "richiamami tra X minuti/ore", "richiamami domani", "richiamami alle 15" = SEMPRE "create_task" (crea un NUOVO promemoria di richiamo). Queste sono richieste di CREARE un nuovo task, NON di modificare uno esistente.
+   - "sposta il promemoria alle 10", "cambia l'orario del reminder", "modifica il task di domani" = "modify_task" (modifica un task GIÀ esistente)
+   - Se l'intent corrente è "modify_task" ma l'utente fa una NUOVA richiesta indipendente (es: "richiamami tra 5 minuti"), CAMBIA l'intent a "create_task". Non continuare con modify_task per richieste che non si riferiscono al task in modifica.
+14. "modify_task" è valido SOLO se nei TASK ESISTENTI c'è un task corrispondente ai criteri di ricerca. Se non c'è nessun task corrispondente, usa "create_task" invece.`;
   }
 
   async getTaskPromptSection(preloadedTaskRows?: any[]): Promise<string> {

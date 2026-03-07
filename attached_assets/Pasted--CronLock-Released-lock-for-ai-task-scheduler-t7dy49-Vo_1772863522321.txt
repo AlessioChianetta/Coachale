@@ -1,0 +1,33 @@
+ [CronLock] Released lock for "ai-task-scheduler"
+📝 [t7dy49] Voice call transcript updated (29 messages)
+📊 [TokenTracker] Buffered: voice-call | gemini-3.1-flash-lite-preview | 2038 tokens | $0.0014 | consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b client=self
+🔓 [Semaphore] Released slot (1/3 in use)
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [VOICE-BOOKING-SUPERVISOR] AUDIT LOG - Call vc_17728
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Turn: 13 | ➡️ Stage: nessun_intento → nessun_intento
+   Correction: false
+   Deltas: (nessuna modifica)
+   Reasoning: La conversazione riguarda esclusivamente una richiesta di richiamo (callback) tra 5 minuti. Come da istruzioni, le richieste di promemoria o richiami devono essere ignorate dal sistema di prenotazione appuntamenti, pertanto lo stato rimane 'nessun_intento'.
+   Data: date=null, time=null, confirmed=false
+   Lead data: phone=***, email=null, name=Contatto
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 [TokenTracker] Buffered: voice-call | gemini-3.1-flash-lite-preview | 2845 tokens | $0.0017 | consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b client=self
+🔓 [Semaphore] Released slot (0/3 in use)
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [VOICE-TASK-SUPERVISOR] AUDIT LOG - Call vc_17728
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Turn: 13 | 🔄 Stage: dati_completi → confermato
+   Intent: modify_task | Tasks: 0 | Confirmed: true
+   Deltas: stage: dati_completi → confermato | confirmed: false → true
+   Reasoning: L'utente ha confermato esplicitamente la modifica del task esistente, spostando l'orario dalle 09:00 alle 07:09 (calcolato come 07:04 + 5 minuti).
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ [t7dy49] Task operation failed: Nessun promemoria trovato con i criteri specificati
+📝 [t7dy49] Task supervisor notification injected to Gemini Live
+6:05:02 AM [express] GET /api/voice/health 200 in 751ms :: {"overall":"healthy","components":{"datab…
+📝 [t7dy49] AI transcript (output): Accidenti, c'è
+🎤 [t7dy49] AI started speaking (audio st
