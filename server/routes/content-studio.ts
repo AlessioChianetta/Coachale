@@ -3293,6 +3293,8 @@ import { analyzeAdTextServerSide, generateImageServerSide, analyzeAndGenerateIma
 const advisageImageSchema = z.object({
   prompt: z.string().min(10),
   aspectRatio: z.enum(['1:1', '3:4', '4:3', '9:16', '16:9']).default('1:1'),
+  variant: z.enum(['text', 'clean']).default('clean'),
+  hookText: z.string().optional(),
 });
 
 router.post("/advisage/generate-image-server", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
@@ -3300,12 +3302,14 @@ router.post("/advisage/generate-image-server", authenticateToken, requireRole("c
     const consultantId = req.user!.id;
     const validated = advisageImageSchema.parse(req.body);
     
-    console.log(`[ADVISAGE-SERVER] Image generation request from ${consultantId}`);
+    console.log(`[ADVISAGE-SERVER] Richiesta generazione immagine da ${consultantId}, variante: ${validated.variant}`);
     
     const { imageUrl, error } = await generateImageServerSide(
       consultantId,
       validated.prompt,
-      validated.aspectRatio
+      validated.aspectRatio,
+      validated.variant,
+      validated.hookText
     );
     
     if (error) {

@@ -124,6 +124,7 @@ const AdVisagePage: React.FC = () => {
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
+  const [variantToggle, setVariantToggle] = useState<Record<string, 'clean' | 'text'>>({});
   
   const [showSettings, setShowSettings] = useState(false);
   const [viewMode, setViewMode] = useState<'factory' | 'pitch'>('factory');
@@ -323,15 +324,16 @@ const AdVisagePage: React.FC = () => {
     }
   };
 
-  const handleGenerateOne = async (concept: VisualConcept) => {
+  const handleGenerateOne = async (concept: VisualConcept, variantOverride?: 'clean' | 'text') => {
     if (generatingIds.has(concept.id)) return;
+    const variant = variantOverride || variantToggle[concept.id] || 'text';
     setGeneratingIds(prev => new Set(prev).add(concept.id));
     try {
       const ratioMap: any = { "1:1": "1:1", "4:5": "3:4", "9:16": "9:16", "16:9": "16:9", "4:3": "4:3", "3:4": "3:4" };
       const userFormat = settings.imageFormat || '1:1';
       const aspectRatio = ratioMap[userFormat] || ratioMap[concept.recommendedFormat] || '1:1';
-      const url = await generateImageConcept(customPrompts[`${concept.id}_clean`], aspectRatio, settings);
-      setGeneratedImages(prev => [{ conceptId: concept.id, imageUrl: url, variant: 'clean', timestamp: Date.now() }, ...prev]);
+      const url = await generateImageConcept(customPrompts[`${concept.id}_${variant}`], aspectRatio, settings, variant, concept.textContent);
+      setGeneratedImages(prev => [{ conceptId: concept.id, imageUrl: url, variant, timestamp: Date.now() }, ...prev]);
     } catch (err: any) { 
       setError(err.message); 
     } finally { 
@@ -823,7 +825,7 @@ const AdVisagePage: React.FC = () => {
                           ) : (
                             <>
                               <Layers className="w-4 h-4 mr-2" />
-                              Renderizza Batch
+                              Genera Tutto
                             </>
                           )}
                         </Button>
@@ -897,7 +899,8 @@ const AdVisagePage: React.FC = () => {
 
                         {activePost.concepts.map(concept => {
                           const isGen = generatingIds.has(concept.id);
-                          const currentImg = generatedImages.find(i => i.conceptId === concept.id)?.imageUrl;
+                          const variant = variantToggle[concept.id] || 'text';
+                          const currentImg = generatedImages.find(i => i.conceptId === concept.id && i.variant === variant)?.imageUrl;
                           
                           return (
                             <Card key={concept.id} className={`overflow-hidden ${isDark ? 'bg-slate-900/50 border-slate-800' : ''}`}>
@@ -916,7 +919,7 @@ const AdVisagePage: React.FC = () => {
                                         <Button
                                           size="icon"
                                           variant="secondary"
-                                          onClick={() => downloadImage(currentImg, `advisage-${concept.title.replace(/\s+/g, '-').toLowerCase()}.png`)}
+                                          onClick={() => downloadImage(currentImg, `advisage-${concept.title.replace(/\s+/g, '-').toLowerCase()}-${variant}.png`)}
                                         >
                                           <Download className="w-4 h-4" />
                                         </Button>
@@ -933,7 +936,7 @@ const AdVisagePage: React.FC = () => {
                                   ) : (
                                     <div className="flex flex-col items-center opacity-30">
                                       <ImageIcon className="w-16 h-16 mb-4" />
-                                      <p className="text-xs font-semibold uppercase tracking-wider">Ready for Render</p>
+                                      <p className="text-xs font-semibold uppercase tracking-wider">Pronto per la Generazione</p>
                                     </div>
                                   )}
                                   {isGen && (
@@ -958,7 +961,7 @@ const AdVisagePage: React.FC = () => {
                                   {concept.textContent && (
                                     <div className={`relative p-4 rounded-xl border-2 ${isDark ? 'border-amber-500/40 bg-amber-950/20' : 'border-amber-400/60 bg-gradient-to-r from-amber-50 to-orange-50'}`}>
                                       <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-amber-600 text-xs font-bold uppercase tracking-wider">Hook Copy</span>
+                                        <span className="text-amber-600 text-xs font-bold uppercase tracking-wider">Testo Hook</span>
                                         <div className="flex-1 h-px bg-amber-300/40" />
                                         <Button
                                           variant="ghost"
@@ -979,7 +982,7 @@ const AdVisagePage: React.FC = () => {
                                   )}
 
                                   <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Descrizione Visual</p>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Descrizione Visiva</p>
                                     <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                                       {concept.description}
                                     </p>
@@ -990,6 +993,13 @@ const AdVisagePage: React.FC = () => {
                                     <p className="text-xs leading-relaxed opacity-80">{concept.reasoning}</p>
                                   </div>
                                   
+                                  <Tabs value={variant} onValueChange={(v) => setVariantToggle({...variantToggle, [concept.id]: v as 'text' | 'clean'})}>
+                                    <TabsList className="w-full mb-4">
+                                      <TabsTrigger value="text" className="flex-1">Con Testo</TabsTrigger>
+                                      <TabsTrigger value="clean" className="flex-1">Solo Visual</TabsTrigger>
+                                    </TabsList>
+                                  </Tabs>
+
                                   <Button
                                     className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
                                     onClick={() => handleGenerateOne(concept)}
@@ -998,12 +1008,12 @@ const AdVisagePage: React.FC = () => {
                                     {isGen ? (
                                       <>
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Generazione...
+                                        Generazione in corso...
                                       </>
                                     ) : (
                                       <>
                                         <Sparkles className="w-4 h-4 mr-2" />
-                                        Renderizza Asset Pro
+                                        Genera Immagine
                                       </>
                                     )}
                                   </Button>

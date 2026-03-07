@@ -22,11 +22,15 @@ export const analyzeAdText = async (text: string, platform: SocialPlatform, sett
 export const generateImageConcept = async (
   prompt: string, 
   aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9", 
-  settings: AppSettings
+  settings: AppSettings,
+  variant: 'text' | 'clean' = 'clean',
+  hookText?: string
 ): Promise<string> => {
   const result = await apiRequest("POST", "/api/content/advisage/generate-image-server", {
     prompt,
     aspectRatio,
+    variant,
+    hookText: variant === 'text' ? hookText : undefined,
   });
   
   if (!result.success) {

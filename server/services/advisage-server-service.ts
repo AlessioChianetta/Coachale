@@ -80,19 +80,22 @@ REGOLE PER I PROMPT IMMAGINE (promptClean e promptWithText):
 - Includi un PATTERN INTERRUPT: un elemento visivo inaspettato che rompe la monotonia del feed.
 - GERARCHIA VISIVA: guida l'occhio dall'hook (alto) → soggetto (centro) → area CTA (basso).
 - Illuminazione drammatica e direzionale, mai piatta. Profondità di campo ridotta per look premium.
-- NON includere MAI testo, loghi o watermark nell'immagine — solo visual puro.
+- promptClean: visual puro SENZA testo/loghi/watermark — solo immagine.
+- promptWithText: il prompt deve INCLUDERE istruzioni per renderizzare il testo dell'hook (textContent) in modo prominente e leggibile nell'immagine, con tipografia bold, alto contrasto e posizionamento strategico.
 - Qualità fotorealistica, standard da fotografia pubblicitaria commerciale.
+
+LINGUA: Tutti i campi testuali (title, description, reasoning, textContent, socialCaptions, tone, objective, emotion, cta, competitiveEdge) DEVONO essere in ITALIANO. Solo i prompt immagine (promptClean, promptWithText) restano in inglese per il modello di generazione.
 
 OUTPUT JSON VALIDO con questa struttura esatta:
 {
-  "tone": "string",
-  "objective": "string", 
-  "emotion": "string",
-  "cta": "string",
-  "context": { "sector": "string", "product": "string", "target": "string" },
-  "concepts": [{ "id": "string", "title": "string", "description": "string", "styleType": "string", "recommendedFormat": "1:1|4:5|9:16", "promptClean": "string (prompt dettagliato per visual puro senza testo, ottimizzato per ads)", "promptWithText": "string (prompt con indicazioni per spazio testo overlay)", "textContent": "string", "reasoning": "string (spiega perché questo visual converte)" }],
-  "socialCaptions": [{ "tone": "string", "text": "string", "hashtags": ["string"] }],
-  "competitiveEdge": "string"
+  "tone": "string (in italiano)",
+  "objective": "string (in italiano)", 
+  "emotion": "string (in italiano)",
+  "cta": "string (in italiano)",
+  "context": { "sector": "string (in italiano)", "product": "string (in italiano)", "target": "string (in italiano)" },
+  "concepts": [{ "id": "string", "title": "string (in italiano)", "description": "string (descrizione del visual IN ITALIANO)", "styleType": "string (in italiano)", "recommendedFormat": "1:1|4:5|9:16", "promptClean": "string (prompt IN INGLESE per visual puro senza testo, ottimizzato per ads)", "promptWithText": "string (prompt IN INGLESE con istruzioni per renderizzare il testo hook nell'immagine in modo leggibile e prominente)", "textContent": "string (testo hook IN ITALIANO da mostrare nell'immagine)", "reasoning": "string (IN ITALIANO, spiega perché questo visual converte)" }],
+  "socialCaptions": [{ "tone": "string (in italiano)", "text": "string (in italiano)", "hashtags": ["string"] }],
+  "competitiveEdge": "string (in italiano)"
 }`;
   
   console.log("[ADVISAGE-SERVER] Calling AI provider with model:", modelConfig.model);
