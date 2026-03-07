@@ -6002,6 +6002,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               proactivity: {
                 proactive_audio: true
               },
+              enable_affective_dialog: true,
               session_resumption: { handle: validatedResumeHandle || null }
             }
           };
