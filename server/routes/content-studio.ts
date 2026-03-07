@@ -3203,17 +3203,26 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
       ? `BRAND COLOR: ${validated.brandColor}. BRAND FONT: ${validated.brandFont || 'Modern Sans'}.` 
       : '';
     
-    const prompt = `Analizza questo copy pubblicitario per ${validated.platform.toUpperCase()}.
+    const prompt = `Sei un direttore creativo esperto in advertising digitale ad alta conversione. Analizza questo copy pubblicitario per ${validated.platform.toUpperCase()}.
     FACTORY SETTINGS: Mood: ${validated.mood}, Style: ${validated.stylePreference}. ${brandInfo}
     
     TEXT: "${validated.text}"
     
     TASK: 
-    1. Crea 3 concept visuali per generazione immagini AI.
-    2. Crea 3 caption social (Emozionale, Tecnico, Diretto) con hashtag.
+    1. Crea 3 concept visuali ottimizzati per generazione immagini AI pubblicitarie ad alta conversione.
+    2. Crea 3 caption social (Emozionale, Tecnico, Diretto) con hashtag strategici.
     3. Fornisci un breve vantaggio competitivo.
-    
-    REGOLE TESTO: Il testo nell'immagine deve stare in una "SAFE ZONE" centrale (15% di margine dai bordi).
+
+    REGOLE PER I PROMPT IMMAGINE (promptClean e promptWithText):
+    - I prompt devono descrivere visual che FERMANO LO SCROLL: alto contrasto, colori vividi, composizione dinamica.
+    - Usa la REGOLA DEI TERZI per posizionare gli elementi chiave.
+    - Prevedi SPAZIO NEGATIVO (almeno 25% dell'immagine) per overlay di testo pubblicitario.
+    - Applica PSICOLOGIA DEI COLORI: rosso/arancio per urgenza, blu per fiducia, verde per crescita.
+    - Includi un PATTERN INTERRUPT: un elemento visivo inaspettato che rompe la monotonia del feed.
+    - GERARCHIA VISIVA: guida l'occhio dall'hook (alto) → soggetto (centro) → area CTA (basso).
+    - Illuminazione drammatica e direzionale, mai piatta. Profondità di campo ridotta per look premium.
+    - NON includere MAI testo, loghi o watermark nell'immagine — solo visual puro.
+    - Qualità fotorealistica, standard da fotografia pubblicitaria commerciale.
     
     OUTPUT JSON VALIDO con questa struttura esatta:
     {
@@ -3222,7 +3231,7 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
       "emotion": "string",
       "cta": "string",
       "context": { "sector": "string", "product": "string", "target": "string" },
-      "concepts": [{ "id": "string", "title": "string", "description": "string", "styleType": "string", "recommendedFormat": "1:1|4:5|9:16", "promptClean": "string", "promptWithText": "string", "textContent": "string", "reasoning": "string" }],
+      "concepts": [{ "id": "string", "title": "string", "description": "string", "styleType": "string", "recommendedFormat": "1:1|4:5|9:16", "promptClean": "string (prompt dettagliato per visual puro senza testo, ottimizzato per ads)", "promptWithText": "string (prompt con indicazioni per spazio testo overlay)", "textContent": "string", "reasoning": "string (spiega perché questo visual converte)" }],
       "socialCaptions": [{ "tone": "string", "text": "string", "hashtags": ["string"] }],
       "competitiveEdge": "string"
     }`;

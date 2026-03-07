@@ -42,7 +42,7 @@ export interface VisualConcept {
   title: string;
   description: string;
   styleType: string;
-  recommendedFormat: "1:1" | "4:5" | "9:16";
+  recommendedFormat: "1:1" | "4:5" | "9:16" | "16:9" | "4:3" | "3:4";
   promptClean: string;
   promptWithText: string;
   textContent: string;
@@ -56,11 +56,13 @@ export interface GeneratedImage {
   timestamp: number;
 }
 
+export type AdImageFormat = '1:1' | '4:5' | '9:16' | '16:9' | '4:3';
+
 export interface AppSettings {
   mood: 'professional' | 'energetic' | 'luxury' | 'minimalist' | 'playful';
   stylePreference: 'realistic' | '3d-render' | 'illustration' | 'cyberpunk' | 'lifestyle';
+  imageFormat: AdImageFormat;
   brandColor?: string;
   brandFont?: string;
-  manualApiKey?: string;
   externalSourceUrl?: string;
 }

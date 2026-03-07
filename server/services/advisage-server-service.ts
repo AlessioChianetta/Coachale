@@ -62,17 +62,26 @@ export async function analyzeAdTextServerSide(
     ? `BRAND COLOR: ${settings.brandColor}. BRAND FONT: ${settings.brandFont || 'Modern Sans'}.` 
     : '';
   
-  const prompt = `Analizza questo copy pubblicitario per ${platform.toUpperCase()}.
+  const prompt = `Sei un direttore creativo esperto in advertising digitale ad alta conversione. Analizza questo copy pubblicitario per ${platform.toUpperCase()}.
 FACTORY SETTINGS: Mood: ${settings.mood}, Style: ${settings.stylePreference}. ${brandInfo}
 
 TEXT: "${text}"
 
 TASK: 
-1. Crea 3 concept visuali per generazione immagini AI.
-2. Crea 3 caption social (Emozionale, Tecnico, Diretto) con hashtag.
+1. Crea 3 concept visuali ottimizzati per generazione immagini AI pubblicitarie ad alta conversione.
+2. Crea 3 caption social (Emozionale, Tecnico, Diretto) con hashtag strategici.
 3. Fornisci un breve vantaggio competitivo.
 
-REGOLE TESTO: Il testo nell'immagine deve stare in una "SAFE ZONE" centrale (15% di margine dai bordi).
+REGOLE PER I PROMPT IMMAGINE (promptClean e promptWithText):
+- I prompt devono descrivere visual che FERMANO LO SCROLL: alto contrasto, colori vividi, composizione dinamica.
+- Usa la REGOLA DEI TERZI per posizionare gli elementi chiave.
+- Prevedi SPAZIO NEGATIVO (almeno 25% dell'immagine) per overlay di testo pubblicitario.
+- Applica PSICOLOGIA DEI COLORI: rosso/arancio per urgenza, blu per fiducia, verde per crescita.
+- Includi un PATTERN INTERRUPT: un elemento visivo inaspettato che rompe la monotonia del feed.
+- GERARCHIA VISIVA: guida l'occhio dall'hook (alto) → soggetto (centro) → area CTA (basso).
+- Illuminazione drammatica e direzionale, mai piatta. Profondità di campo ridotta per look premium.
+- NON includere MAI testo, loghi o watermark nell'immagine — solo visual puro.
+- Qualità fotorealistica, standard da fotografia pubblicitaria commerciale.
 
 OUTPUT JSON VALIDO con questa struttura esatta:
 {
@@ -81,7 +90,7 @@ OUTPUT JSON VALIDO con questa struttura esatta:
   "emotion": "string",
   "cta": "string",
   "context": { "sector": "string", "product": "string", "target": "string" },
-  "concepts": [{ "id": "string", "title": "string", "description": "string", "styleType": "string", "recommendedFormat": "1:1|4:5|9:16", "promptClean": "string", "promptWithText": "string", "textContent": "string", "reasoning": "string" }],
+  "concepts": [{ "id": "string", "title": "string", "description": "string", "styleType": "string", "recommendedFormat": "1:1|4:5|9:16", "promptClean": "string (prompt dettagliato per visual puro senza testo, ottimizzato per ads)", "promptWithText": "string (prompt con indicazioni per spazio testo overlay)", "textContent": "string", "reasoning": "string (spiega perché questo visual converte)" }],
   "socialCaptions": [{ "tone": "string", "text": "string", "hashtags": ["string"] }],
   "competitiveEdge": "string"
 }`;
@@ -128,6 +137,37 @@ OUTPUT JSON VALIDO con questa struttura esatta:
   console.log(`[ADVISAGE-SERVER] Analysis complete: ${result.concepts.length} concepts generated`);
   
   return result;
+}
+
+function buildAdImagePrompt(basePrompt: string, aspectRatio: string): string {
+  const formatGuide: Record<string, string> = {
+    '1:1': 'Square format (Instagram Feed). Center the focal point. Leave 20% margins for text overlay.',
+    '3:4': 'Portrait format (Instagram Post 4:5). Vertical composition, subject in upper 2/3, lower 1/3 free for caption overlay.',
+    '4:3': 'Landscape format. Wide composition, subject off-center using rule of thirds.',
+    '9:16': 'Vertical Story/Reel format. Full-height vertical composition. Key visual hook in top 40%. Leave bottom 25% clean for swipe-up CTA area.',
+    '16:9': 'Widescreen format (Facebook/LinkedIn). Panoramic composition, subject positioned at left or right third.',
+  };
+
+  const formatInstruction = formatGuide[aspectRatio] || formatGuide['1:1'];
+
+  return `You are an elite advertising creative director generating a high-converting ad visual.
+
+FORMAT: ${formatInstruction}
+
+ADVERTISING VISUAL RULES (follow strictly):
+- HIGH CONTRAST: Use bold color contrasts to stop the scroll. The image must pop against white/dark feed backgrounds.
+- RULE OF THIRDS: Position the hero element at a power point intersection, never dead center.
+- NEGATIVE SPACE: Reserve at least 25% of the image as clean space for text overlay — no busy patterns in text areas.
+- COLOR PSYCHOLOGY: Use warm tones (red, orange) for urgency/action, cool tones (blue, teal) for trust/calm, green for growth/health.
+- PATTERN INTERRUPT: Include one unexpected or eye-catching element that breaks the visual monotony of a social feed.
+- VISUAL HIERARCHY: Guide the viewer's eye from the hook (top) → product/subject (center) → CTA area (bottom).
+- LIGHTING: Use dramatic, directional lighting (not flat). Rim lighting, golden hour, or studio lighting for product shots.
+- DEPTH OF FIELD: Shallow depth of field to isolate the subject and create a professional, premium look.
+- NO TEXT IN IMAGE: Do NOT render any text, typography, logos, or watermarks in the image. The image is purely visual.
+- PROFESSIONAL QUALITY: Photorealistic, 8K quality, commercial advertising photography standard.
+
+CONCEPT TO VISUALIZE:
+${basePrompt}`;
 }
 
 async function getGeminiApiKeyForImage(consultantId: string): Promise<string | null> {
@@ -184,11 +224,14 @@ export async function generateImageServerSide(
     
     const ai = new GoogleGenAI({ apiKey });
     
-    console.log(`[ADVISAGE-SERVER] Using model: gemini-2.5-flash-image`);
+    const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
+    console.log(`[ADVISAGE-SERVER] Using model: ${IMAGE_MODEL}`);
+    
+    const adOptimizedPrompt = buildAdImagePrompt(prompt, aspectRatio);
     
     const response = await trackedGenerateContent(ai, {
-      model: 'gemini-2.5-flash-image',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }] as any,
+      model: IMAGE_MODEL,
+      contents: [{ role: 'user', parts: [{ text: adOptimizedPrompt }] }] as any,
       config: { imageConfig: { aspectRatio } } as any
     }, { consultantId, feature: 'advisage' });
     
