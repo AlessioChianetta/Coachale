@@ -1,0 +1,40 @@
+[ADVISAGE-SERVER] ═══ PROMPT COMPLETO INVIATO AL MODELLO ═══
+Genera una fotografia pubblicitaria professionale seguendo queste specifiche.
+Pensa come un fotografo commerciale in studio: composizione intenzionale, illuminazione da set professionale, materiali realistici con texture autentiche.
+
+═══ LAYOUT ═══
+Tipo: composizione centrale con elementi a raggiera
+Divisione: soggetto centrale, testi distribuiti circolarmente
+
+═══ SEZIONE: CENTRO ═══
+Sfondo: grigio scuro antracite con effetto spotlight circolare dietro l'atleta
+Soggetto: un runner colto nel momento della spinta, muscolatura definita, postura perfetta che comunica equilibrio
+Illuminazione: chiaroscuro drammatico, luce laterale che scolpisce i muscoli
+Testi nei box (minimalista, senza sfondo, solo testo bianco con una piccola linea di collegamento al corpo):
+  1. "Appoggio Plantare"
+  2. "Ricalibrazione Diaframma"
+  3. "Simmetria Spalle"
+  4. "Memoria dei Tessuti"
+
+═══ ELEMENTO CENTRALE ═══
+l'atleta 'in asse'
+
+═══ TESTO HOOK (da renderizzare LEGGIBILE nell'immagine) ═══
+Testo: "TORNA IN ASSE"
+Posizione: alto centro
+Stile: font Inter, maiuscolo, spaziatura ampia, colore bianco
+Il testo DEVE essere perfettamente leggibile, con alto contrasto rispetto allo sfondo.
+
+═══ COLORI BRAND ═══
+#6366f1 usato per le punte delle frecce e piccoli dettagli grafici
+
+═══ NOTE AGGIUNTIVE ═══
+l'immagine deve sembrare un'infografica di una rivista scientifica di alto livello
+
+═══ SPECIFICHE FOTOGRAFICHE ═══
+Formato: Quadrato 1:1 (Instagram Feed)
+Stile: fotografia sportiva premium, high-contrast, moody
+Scattata con obiettivo professionale da 85mm f/1.8, profondità di campo selettiva per guidare l'attenzione.
+Illuminazione da studio a tre punti: luce principale softbox a 45°, fill light morbida, rim light per separare dal fondo.
+Resa dei materiali: superfici con texture fisiche autentiche — riflessi, ombre portate, micro-dettagli visibili.
+Color grading cinematografico naturale — colori saturi ma credibili, mai artificiali o plastici.
