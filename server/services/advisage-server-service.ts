@@ -10,6 +10,7 @@ export interface AdvisageSettings {
   brandColor?: string;
   brandFont?: string;
   conceptTypes?: string[];
+  stylesMode?: 'manual' | 'auto';
 }
 
 export interface ImageGenOptions {
@@ -182,6 +183,16 @@ export interface AdvisageAnalysis {
     hashtags: string[];
   }>;
   competitiveEdge: string;
+  recommendedSettings?: {
+    mood?: string;
+    stylePreference?: string;
+    lightingStyle?: string;
+    colorGrading?: string;
+    cameraAngle?: string;
+    backgroundStyle?: string;
+    imageFormat?: string;
+    reasoning?: string;
+  };
   originalText: string;
   socialNetwork: string;
   status: string;
@@ -211,6 +222,7 @@ export async function analyzeAdTextServerSide(
 
 Analizza questo copy pubblicitario per ${platform.toUpperCase()}.
 FACTORY SETTINGS: Mood: ${settings.mood}, Style: ${settings.stylePreference}. ${brandInfo}
+STYLES MODE: ${settings.stylesMode === 'auto' ? 'AUTOMATICO — scegli TU le impostazioni visive ottimali in base al contenuto dell\'ads' : 'MANUALE — usa le impostazioni specificate sopra'}
 
 TEXT: "${text}"
 
@@ -218,6 +230,7 @@ TASK:
 1. Crea 3 concept visuali (immagini) ottimizzati per inserzioni pubblicitarie ad alta conversione.
 2. Crea 3 caption social (Emozionale, Tecnico, Diretto) con hashtag strategici.
 3. Fornisci un breve vantaggio competitivo.
+4. Suggerisci le impostazioni visive ottimali per questo specifico ads (recommendedSettings).
 
 ═══════════════════════════════════════════════════
 LINEE GUIDA INSERZIONI IMMAGINE:
@@ -330,7 +343,17 @@ OUTPUT JSON VALIDO — TUTTO IN ITALIANO:
     "reasoning": "spiegazione in italiano del perché questo visual converte"
   }],
   "socialCaptions": [{ "tone": "Emozionale o Tecnico o Diretto", "text": "caption completa in italiano", "hashtags": ["hashtag"] }],
-  "competitiveEdge": "vantaggio competitivo in italiano"
+  "competitiveEdge": "vantaggio competitivo in italiano",
+  "recommendedSettings": {
+    "mood": "professional | energetic | luxury | minimalist | playful — scegli il mood PIÙ ADATTO al contenuto dell'ads, al settore e al target",
+    "stylePreference": "realistic | 3d-render | illustration | cyberpunk | lifestyle — scegli lo stile visivo migliore per questo tipo di prodotto/servizio",
+    "lightingStyle": "studio | natural | dramatic | neon | soft — scegli l'illuminazione che meglio comunica l'emozione dell'ads",
+    "colorGrading": "neutral | warm | cold | cinematic | vintage | vibrant — scegli il color grading che rafforza il messaggio",
+    "cameraAngle": "standard | closeup | wideshot | flatlay | lowangle | aerial — scegli l'inquadratura più impattante per il visual",
+    "backgroundStyle": "studio | outdoor | gradient | blur | contextual — scegli lo sfondo che valorizza il soggetto",
+    "imageFormat": "1:1 | 4:5 | 9:16 | 16:9 | 4:3 | 2:3 | 3:2 | 5:4 | 21:9 — scegli il formato migliore per la piattaforma e il tipo di contenuto",
+    "reasoning": "spiega in 1-2 frasi PERCHÉ hai scelto queste impostazioni per questo specifico ads"
+  }
 }`;
   
   console.log("[ADVISAGE-SERVER] Calling AI provider with model:", modelConfig.model);

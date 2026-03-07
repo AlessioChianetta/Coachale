@@ -12,6 +12,17 @@ export interface PostInput {
   sourceMediaType?: string;
 }
 
+export interface RecommendedSettings {
+  mood?: string;
+  stylePreference?: string;
+  lightingStyle?: string;
+  colorGrading?: string;
+  cameraAngle?: string;
+  backgroundStyle?: string;
+  imageFormat?: string;
+  reasoning?: string;
+}
+
 export interface AdAnalysis {
   id: string;
   originalText: string;
@@ -32,6 +43,7 @@ export interface AdAnalysis {
     hashtags: string[];
   }[];
   competitiveEdge: string;
+  recommendedSettings?: RecommendedSettings;
   status: 'pending' | 'analyzing' | 'completed' | 'error';
   sourcePostId?: string;
   sourcePostTitle?: string;

@@ -70,6 +70,7 @@ import {
   Maximize2,
   ZoomIn,
   ZoomOut,
+  Zap,
 } from "lucide-react";
 
 interface ContentPost {
@@ -124,6 +125,11 @@ const AdVisagePage: React.FC = () => {
       externalSourceUrl: ''
     };
   });
+  
+  const [stylesMode, setStylesMode] = useState<'manual' | 'auto'>(() => {
+    return (localStorage.getItem('advisage_styles_mode') as 'manual' | 'auto') || 'auto';
+  });
+  const [cachedManualSettings, setCachedManualSettings] = useState<AppSettings | null>(null);
   
   const [batchResults, setBatchResults] = useState<AdAnalysis[]>([]);
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
@@ -337,7 +343,8 @@ const AdVisagePage: React.FC = () => {
     localStorage.setItem('advisage_infinite_v3', JSON.stringify(postInputs));
     localStorage.setItem('advisage_settings_v3', JSON.stringify(settings));
     localStorage.setItem('advisage_theme', theme);
-  }, [postInputs, settings, theme]);
+    localStorage.setItem('advisage_styles_mode', stylesMode);
+  }, [postInputs, settings, theme, stylesMode]);
 
   useEffect(() => {
     if (!lightboxImage) return;
@@ -451,7 +458,7 @@ const AdVisagePage: React.FC = () => {
         const batch = valid.slice(i, i + CONCURRENCY_LIMIT);
         const batchResults = await Promise.allSettled(
           batch.map(async (post) => {
-            const result = await analyzeAdText(post.text, post.platform, settings, selectedConceptTypes);
+            const result = await analyzeAdText(post.text, post.platform, settings, selectedConceptTypes, stylesMode);
             result.sourcePostId = post.sourcePostId;
             result.sourcePostTitle = post.sourcePostTitle;
             return result;
@@ -485,6 +492,34 @@ const AdVisagePage: React.FC = () => {
       });
       
       if (results.length > 0) {
+        if (stylesMode === 'auto' && results[0]?.recommendedSettings) {
+          const rec = results[0].recommendedSettings;
+          const validMoods = ['professional', 'energetic', 'luxury', 'minimalist', 'playful'];
+          const validStyles = ['realistic', '3d-render', 'illustration', 'cyberpunk', 'lifestyle'];
+          const validLighting = ['studio', 'natural', 'dramatic', 'neon', 'soft'];
+          const validColorGrading = ['neutral', 'warm', 'cold', 'cinematic', 'vintage', 'vibrant'];
+          const validCamera = ['standard', 'closeup', 'wideshot', 'flatlay', 'lowangle', 'aerial'];
+          const validBackground = ['studio', 'outdoor', 'gradient', 'blur', 'contextual'];
+          const validFormats = ['1:1', '4:5', '9:16', '16:9', '4:3', '2:3', '3:2', '5:4', '21:9'];
+          
+          const validated: Partial<AppSettings> = {};
+          if (rec.mood && validMoods.includes(rec.mood)) validated.mood = rec.mood as any;
+          if (rec.stylePreference && validStyles.includes(rec.stylePreference)) validated.stylePreference = rec.stylePreference as any;
+          if (rec.lightingStyle && validLighting.includes(rec.lightingStyle)) validated.lightingStyle = rec.lightingStyle as any;
+          if (rec.colorGrading && validColorGrading.includes(rec.colorGrading)) validated.colorGrading = rec.colorGrading as any;
+          if (rec.cameraAngle && validCamera.includes(rec.cameraAngle)) validated.cameraAngle = rec.cameraAngle as any;
+          if (rec.backgroundStyle && validBackground.includes(rec.backgroundStyle)) validated.backgroundStyle = rec.backgroundStyle as any;
+          if (rec.imageFormat && validFormats.includes(rec.imageFormat)) validated.imageFormat = rec.imageFormat as any;
+          
+          if (Object.keys(validated).length > 0) {
+            setSettings(prev => ({ ...prev, ...validated }));
+            toast({ 
+              title: "AI Auto-Style applicato", 
+              description: rec.reasoning || "Impostazioni visive ottimizzate automaticamente per questo ads" 
+            });
+          }
+        }
+        
         setBatchResults(results);
         setCustomPrompts(newPrompts);
         setActivePostId(results[0].id);
@@ -743,6 +778,48 @@ const AdVisagePage: React.FC = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
+                        <div className={`flex items-center gap-2 p-2.5 rounded-lg border ${
+                          stylesMode === 'auto' 
+                            ? 'bg-indigo-500/10 border-indigo-500/30' 
+                            : isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
+                        }`}>
+                          <button
+                            onClick={() => {
+                              if (cachedManualSettings) {
+                                setSettings(cachedManualSettings);
+                                setCachedManualSettings(null);
+                              }
+                              setStylesMode('manual');
+                            }}
+                            className={`flex-1 text-[11px] font-semibold py-1.5 rounded-md transition-all ${
+                              stylesMode === 'manual' 
+                                ? isDark ? 'bg-slate-700 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            Manuale
+                          </button>
+                          <button
+                            onClick={() => {
+                              setCachedManualSettings({ ...settings });
+                              setStylesMode('auto');
+                            }}
+                            className={`flex-1 text-[11px] font-semibold py-1.5 rounded-md transition-all flex items-center justify-center gap-1 ${
+                              stylesMode === 'auto' 
+                                ? 'bg-indigo-500 text-white shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            <Zap className="w-3 h-3" />
+                            AI Auto
+                          </button>
+                        </div>
+                        {stylesMode === 'auto' && (
+                          <p className="text-[10px] text-indigo-400 leading-tight">
+                            L'AI analizzerà il testo e sceglierà automaticamente mood, stile, illuminazione, colori, inquadratura e sfondo ottimali per ogni ads.
+                          </p>
+                        )}
+                        <div className={stylesMode === 'auto' ? 'opacity-50 pointer-events-none' : ''}>
                         <div>
                           <label className="text-xs font-medium text-muted-foreground mb-2 block">Mood</label>
                           <Select value={settings.mood} onValueChange={(v) => setSettings({...settings, mood: v as any})}>
@@ -928,6 +1005,7 @@ const AdVisagePage: React.FC = () => {
                             />
                           </div>
                           <p className="text-[10px] text-muted-foreground mt-1">Usato come accento visivo nell'immagine</p>
+                        </div>
                         </div>
                       </CardContent>
                     </Card>

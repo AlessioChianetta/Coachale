@@ -3189,6 +3189,7 @@ const advisageAnalysisSchema = z.object({
   brandColor: z.string().optional(),
   brandFont: z.string().optional(),
   conceptTypes: z.array(z.string()).optional(),
+  stylesMode: z.enum(['manual', 'auto']).optional(),
 });
 
 router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
@@ -3204,6 +3205,7 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
       brandColor: validated.brandColor,
       brandFont: validated.brandFont,
       conceptTypes: validated.conceptTypes,
+      stylesMode: validated.stylesMode,
     });
     
     res.json({ success: true, data: result });

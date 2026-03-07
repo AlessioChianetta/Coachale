@@ -2,7 +2,7 @@
 import { AdAnalysis, AppSettings, SocialPlatform, PromptVisual, PROMPT_MAPPINGS } from "../types";
 import { apiRequest } from "@/lib/queryClient";
 
-export const analyzeAdText = async (text: string, platform: SocialPlatform, settings: AppSettings, conceptTypes?: string[]): Promise<AdAnalysis> => {
+export const analyzeAdText = async (text: string, platform: SocialPlatform, settings: AppSettings, conceptTypes?: string[], stylesMode?: 'manual' | 'auto'): Promise<AdAnalysis> => {
   const result = await apiRequest("POST", "/api/content/advisage/analyze", {
     text,
     platform,
@@ -11,6 +11,7 @@ export const analyzeAdText = async (text: string, platform: SocialPlatform, sett
     brandColor: settings.brandColor,
     brandFont: settings.brandFont,
     conceptTypes: conceptTypes?.length ? conceptTypes : undefined,
+    stylesMode: stylesMode || 'manual',
   });
   
   if (!result.success) {
