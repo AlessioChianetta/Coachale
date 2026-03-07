@@ -1518,6 +1518,7 @@ export default function ConsultantVoiceCallsPage() {
   const [voiceThinkingBudgetGreeting, setVoiceThinkingBudgetGreeting] = useState(0);
   const [voiceProtectFirstMessage, setVoiceProtectFirstMessage] = useState(true);
   const [voiceDeferredPrompt, setVoiceDeferredPrompt] = useState(false);
+  const [voiceAffectiveDialog, setVoiceAffectiveDialog] = useState(false);
   const [voiceVadStartSensitivity, setVoiceVadStartSensitivity] = useState('START_SENSITIVITY_HIGH');
   const [voiceVadEndSensitivity, setVoiceVadEndSensitivity] = useState('END_SENSITIVITY_LOW');
   const [voiceVadSilenceMs, setVoiceVadSilenceMs] = useState(500);
@@ -2776,6 +2777,7 @@ export default function ConsultantVoiceCallsPage() {
       setVoiceThinkingBudgetGreeting(nonClientSettingsData.voice_thinking_budget_greeting ?? 0);
       setVoiceProtectFirstMessage(nonClientSettingsData.voice_protect_first_message ?? true);
       setVoiceDeferredPrompt(nonClientSettingsData.voice_deferred_prompt ?? false);
+      setVoiceAffectiveDialog(nonClientSettingsData.voice_affective_dialog ?? false);
       setVoiceVadStartSensitivity(nonClientSettingsData.voice_vad_start_sensitivity || 'START_SENSITIVITY_HIGH');
       setVoiceVadEndSensitivity(nonClientSettingsData.voice_vad_end_sensitivity || 'END_SENSITIVITY_LOW');
       setVoiceVadSilenceMs(nonClientSettingsData.voice_vad_silence_ms ?? 500);
@@ -2805,6 +2807,7 @@ export default function ConsultantVoiceCallsPage() {
           voiceThinkingBudgetGreeting,
           voiceProtectFirstMessage,
           voiceDeferredPrompt,
+          voiceAffectiveDialog,
           voiceVadStartSensitivity,
           voiceVadEndSensitivity,
           voiceVadSilenceMs,
@@ -5155,8 +5158,8 @@ export default function ConsultantVoiceCallsPage() {
                               <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs border ${nonClientSettingsData.voice_protect_first_message !== false ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30' : 'bg-background'}`}>
                                 Proteggi Saluto: {nonClientSettingsData.voice_protect_first_message !== false ? 'ON' : 'OFF'}
                               </span>
-                              <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs border ${nonClientSettingsData.voice_deferred_prompt ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30' : 'bg-background'}`}>
-                                Prompt Differito: {nonClientSettingsData.voice_deferred_prompt ? 'ON' : 'OFF'}
+                              <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs border ${nonClientSettingsData.voice_affective_dialog ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30' : 'bg-background'}`}>
+                                Dialogo Affettivo: {nonClientSettingsData.voice_affective_dialog ? 'ON' : 'OFF'}
                               </span>
                               <span className="inline-flex items-center rounded-md bg-background px-2 py-0.5 text-xs border">
                                 VAD Inizio: {(nonClientSettingsData.voice_vad_start_sensitivity || 'START_SENSITIVITY_HIGH').includes('HIGH') ? 'Alta' : 'Bassa'}
@@ -5198,12 +5201,12 @@ export default function ConsultantVoiceCallsPage() {
 
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
-                            <Label>Prompt Differito (Velocità)</Label>
-                            <p className="text-xs text-muted-foreground">L'AI saluta subito con le regole base, poi riceve lo script di vendita completo in background. Saluto più veloce ma le prime 1-2 frasi dopo il saluto potrebbero essere generiche.</p>
+                            <Label>Dialogo Affettivo</Label>
+                            <p className="text-xs text-muted-foreground">L'AI comprende il tono emotivo della voce e adatta le risposte di conseguenza. Utile per chiamate di vendita dove serve empatia e naturalezza.</p>
                           </div>
                           <Switch
-                            checked={voiceDeferredPrompt}
-                            onCheckedChange={(checked) => { setVoiceDeferredPrompt(checked); setHasChanges(true); }}
+                            checked={voiceAffectiveDialog}
+                            onCheckedChange={(checked) => { setVoiceAffectiveDialog(checked); setHasChanges(true); }}
                           />
                         </div>
 

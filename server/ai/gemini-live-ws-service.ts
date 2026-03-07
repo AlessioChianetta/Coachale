@@ -1997,6 +1997,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           voiceThinkingBudgetGreeting: consultantAvailabilitySettings.voiceThinkingBudgetGreeting,
           voiceProtectFirstMessage: consultantAvailabilitySettings.voiceProtectFirstMessage,
           voiceDeferredPrompt: consultantAvailabilitySettings.voiceDeferredPrompt,
+          voiceAffectiveDialog: consultantAvailabilitySettings.voiceAffectiveDialog,
           voiceVadStartSensitivity: consultantAvailabilitySettings.voiceVadStartSensitivity,
           voiceVadEndSensitivity: consultantAvailabilitySettings.voiceVadEndSensitivity,
           voiceVadSilenceMs: consultantAvailabilitySettings.voiceVadSilenceMs,
@@ -3000,6 +3001,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       let voiceThinkingBudget = 0;
       let voiceProtectFirstMessage = true;
       let voiceDeferredPrompt = false;
+      let voiceAffectiveDialog = false;
       let voiceVadStartSensitivity = 'START_SENSITIVITY_HIGH';
       let voiceVadEndSensitivity = 'END_SENSITIVITY_LOW';
       let voiceVadSilenceMs = 500;
@@ -3634,12 +3636,13 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             voiceThinkingBudget = settings.voiceThinkingBudgetGreeting ?? 0;
             voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
             voiceDeferredPrompt = settings.voiceDeferredPrompt ?? false;
+            voiceAffectiveDialog = settings.voiceAffectiveDialog ?? false;
             voiceVadStartSensitivity = settings.voiceVadStartSensitivity || 'START_SENSITIVITY_HIGH';
             voiceVadEndSensitivity = settings.voiceVadEndSensitivity || 'END_SENSITIVITY_LOW';
             if (!['START_SENSITIVITY_LOW', 'START_SENSITIVITY_HIGH'].includes(voiceVadStartSensitivity)) voiceVadStartSensitivity = 'START_SENSITIVITY_HIGH';
             if (!['END_SENSITIVITY_LOW', 'END_SENSITIVITY_HIGH'].includes(voiceVadEndSensitivity)) voiceVadEndSensitivity = 'END_SENSITIVITY_LOW';
             voiceVadSilenceMs = settings.voiceVadSilenceMs ?? 500;
-            console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}, deferredPrompt=${voiceDeferredPrompt}, thinkingBudget=${voiceThinkingBudget}`);
+            console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}, deferredPrompt=${voiceDeferredPrompt}, affectiveDialog=${voiceAffectiveDialog}, thinkingBudget=${voiceThinkingBudget}`);
             console.log(`🔍 [ROUTING-DEBUG] ━━━ OUTBOUND SETTINGS (non-client path) ━━━`);
             console.log(`🔍 [ROUTING-DEBUG]   consultantId used for query: ${consultantId}`);
             console.log(`🔍 [ROUTING-DEBUG]   outboundPromptSource: ${outboundPromptSource}`);
@@ -3972,6 +3975,7 @@ Una volta che hanno capito e confermato:
             voiceThinkingBudget = settings.voiceThinkingBudgetGreeting ?? 0;
             voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
             voiceDeferredPrompt = settings.voiceDeferredPrompt ?? false;
+            voiceAffectiveDialog = settings.voiceAffectiveDialog ?? false;
             voiceVadStartSensitivity = settings.voiceVadStartSensitivity || 'START_SENSITIVITY_HIGH';
             voiceVadEndSensitivity = settings.voiceVadEndSensitivity || 'END_SENSITIVITY_LOW';
             if (!['START_SENSITIVITY_LOW', 'START_SENSITIVITY_HIGH'].includes(voiceVadStartSensitivity)) voiceVadStartSensitivity = 'START_SENSITIVITY_HIGH';
@@ -6002,7 +6006,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               proactivity: {
                 proactive_audio: true
               },
-              enable_affective_dialog: true,
+              enable_affective_dialog: voiceAffectiveDialog,
               session_resumption: { handle: validatedResumeHandle || null }
             }
           };
