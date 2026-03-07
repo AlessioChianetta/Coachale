@@ -1321,6 +1321,7 @@ async function getUserIdFromRequest(req: any): Promise<{
         let userRole = 'anonymous_caller';
         let consultantVoice = 'Kore';
         let callInstruction: string | null = null;
+        let callSourceTaskId: string | null = null;
         let callLeadContext: string | null = null;
         let instructionType: 'task' | 'reminder' | null = null;
         let scheduledCallId: string | null = null;
@@ -1346,7 +1347,7 @@ async function getUserIdFromRequest(req: any): Promise<{
             ? Promise.resolve({ rows: [_cachedScheduledCallRow] }).then(r => { console.log(`⏱️ [AUTH] scheduledCall REUSED from early lookup: 0ms`); return r; })
             : scheduledCallIdParam
               ? db.execute(sql`
-                  SELECT id, call_instruction, instruction_type, target_phone, custom_prompt 
+                  SELECT id, call_instruction, instruction_type, target_phone, custom_prompt, source_task_id 
                   FROM scheduled_voice_calls 
                   WHERE id = ${scheduledCallIdParam}
                     AND consultant_id = ${resolvedConsultantId}
@@ -1387,6 +1388,7 @@ async function getUserIdFromRequest(req: any): Promise<{
             instructionType = scheduledCall.instruction_type;
             scheduledCallId = scheduledCall.id;
             outboundTargetPhone = scheduledCall.target_phone;
+            callSourceTaskId = scheduledCall.source_task_id || null;
             console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
             console.log(`🎯 [PHONE SERVICE] FOUND SCHEDULED OUTBOUND CALL!`);
             console.log(`🎯   Scheduled Call ID: ${scheduledCallId}`);
@@ -5453,6 +5455,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
             voiceCallId: voiceCallId || '',
             contactPhone: phoneCallerId || '',
             contactName: phoneLeadContactData?.name || null,
+            sourceTaskId: callSourceTaskId || null,
           });
 
           const taskPromptSection = await taskSupervisor.getTaskPromptSection(
