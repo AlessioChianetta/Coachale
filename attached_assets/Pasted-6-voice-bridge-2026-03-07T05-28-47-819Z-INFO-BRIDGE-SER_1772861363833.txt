@@ -1,0 +1,110 @@
+6|voice-bridge  | 2026-03-07T05:28:47.819Z [INFO ] [BRIDGE:SERVER] [AI]: "**Scheduling the Call**
+6|voice-bridge  | Okay, I've analyzed the call history and noted the scheduled appointment with Alessio. It's set for Wednesday, March 11, 2026, at 3 PM. Now, I'm ready to proceed based on this information.
+6|voice-bridge  | "
+6|voice-bridge  | 2026-03-07T05:28:48.029Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Ciao Alessio!
+6|voice-bridge  | 2026-03-07T05:28:48.029Z [INFO ] [BRIDGE:SERVER] [AI]: "Ciao Alessio!"
+6|voice-bridge  | 2026-03-07T05:28:48.582Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] First BINARY audio byte received 3721ms after WS open sessionId=bb9501f0
+6|voice-bridge  | 2026-03-07T05:28:48.582Z [INFO ] [BRIDGE:SERVER] 
+6|voice-bridge  | ⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-07T05:28:48.582Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS LATENCY REPORT] First audio from Replit
+6|voice-bridge  | 2026-03-07T05:28:48.582Z [INFO ] [BRIDGE:SERVER] ⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-07T05:28:48.582Z [INFO ] [BRIDGE:SERVER] ⏱️  handleCallStart entry → Replit WS connect start:  4ms (local setup)
+6|voice-bridge  | 2026-03-07T05:28:48.582Z [INFO ] [BRIDGE:SERVER] ⏱️  Replit WS connect (TLS handshake):                507ms
+6|voice-bridge  | 2026-03-07T05:28:48.582Z [INFO ] [BRIDGE:SERVER] ⏱️  Replit WS open → First audio byte:               3721ms (server-side processing)
+6|voice-bridge  | 2026-03-07T05:28:48.582Z [INFO ] [BRIDGE:SERVER] ⏱️  ─────────────────────────────────────────
+6|voice-bridge  | 2026-03-07T05:28:48.582Z [INFO ] [BRIDGE:SERVER] ⏱️  TOTAL handleCallStart → First audio:              4232ms
+6|voice-bridge  | 2026-03-07T05:28:48.582Z [INFO ] [BRIDGE:SERVER] ⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-07T05:28:48.590Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Che super
+6|voice-bridge  | 2026-03-07T05:28:48.590Z [INFO ] [BRIDGE:SERVER] [AI]: " Che super"
+6|voice-bridge  | 2026-03-07T05:28:48.593Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  energia!
+6|voice-bridge  | 2026-03-07T05:28:48.593Z [INFO ] [BRIDGE:SERVER] [AI]: " energia!"
+6|voice-bridge  | 2026-03-07T05:28:48.705Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Come
+6|voice-bridge  | 2026-03-07T05:28:48.705Z [INFO ] [BRIDGE:SERVER] [AI]: " Come"
+6|voice-bridge  | 2026-03-07T05:28:48.735Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  stai?
+6|voice-bridge  | 2026-03-07T05:28:48.735Z [INFO ] [BRIDGE:SERVER] [AI]: " stai?"
+6|voice-bridge  | 2026-03-07T05:28:52.016Z [INFO ] [BRIDGE:REPLIT-WS] 🔄 [SESSION HANDLE] Saved resume handle for proactive restart sessionId=bb9501f0 handlePreview=Cig1ZDBhcnZ3aGQ1aHVlcTZnc...
+6|voice-bridge  | 2026-03-07T05:28:59.268Z [INFO ] [BRIDGE:ESL] 🔍 [CHANNEL_ANSWER DEBUG] uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 otherLeg= direction=inbound dest=9999 caller=1002 isOutbound=false
+6|voice-bridge  | 2026-03-07T05:28:59.974Z [INFO ] [BRIDGE:ESL] 🅿️  Call parked type=INBOUND uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 callerIdNumber=1002 calledNumber=9999
+6|voice-bridge  | 2026-03-07T05:28:59.975Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] CHANNEL_PARK at 1772861339974 uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:28:59.975Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173, uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:28:59.975Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
+6|voice-bridge  | 2026-03-07T05:28:59.975Z [INFO ] [BRIDGE:ESL] 📞 INBOUND call parked — uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:28:59.975Z [INFO ] [BRIDGE:ESL] 🔄 [AUDIO-STREAM] Sending preventive STOP before START uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.020Z [INFO ] [BRIDGE:ESL] 🔄 [AUDIO-STREAM] Preventive STOP result: -ERR Operation Failed uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.120Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] Executing uuid_audio_stream after 146ms uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.167Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+6|voice-bridge  | 2026-03-07T05:29:00.167Z [INFO ] [BRIDGE:SERVER] 🔍 WEBSOCKET CONNECTION path=/stream/f99cf599-6cb2-4e95-aab8-c2e5fedf8173 uuidFromUrl=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 pendingCallsCount=1 pendingIds=[{"uuid":"f99cf599-6cb2-4e95-aab8-c2e5fedf8173","callId":"f99cf599-6cb2-4e95-aab8-c2e5fedf8173"}] timestamp=1772861340167
+6|voice-bridge  | 2026-03-07T05:29:00.168Z [INFO ] [BRIDGE:SERVER] ✅ Consumed pending call: callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173, uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.168Z [INFO ] [BRIDGE:SERVER] 📞 INBOUND call matched: callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 (same as uuid)
+6|voice-bridge  | 2026-03-07T05:29:00.168Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] CHANNEL_PARK → WebSocket connection: 194ms (FreeSWITCH audio_stream setup + WS open) callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.168Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 | CallerId=1002 | CallerName=1002
+6|voice-bridge  | 2026-03-07T05:29:00.168Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.168Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] Checking limits for calledNumber=9999 uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.183Z [INFO ] [BRIDGE:ESL] ✅ Audio stream started in 63ms (total: 209ms) uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.796Z [INFO ] [BRIDGE:CONTEXT] 📋 Overflow config loaded calledNumber=+9999 found=true overflow_enabled=true fallback_number=null overflow_timeout_secs=120 overflow_dtmf_enabled=true overflow_auto_return=true
+6|voice-bridge  | 2026-03-07T05:29:00.796Z [INFO ] [BRIDGE:SESSION] 📊 [SM] canAcceptCallForNumber(9999, max=1): active=0 → YES
+6|voice-bridge  | 2026-03-07T05:29:00.796Z [INFO ] [BRIDGE:SESSION] 📊 [SM] canAcceptNewCall: 1/10 → YES
+6|voice-bridge  | 2026-03-07T05:29:00.796Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] perNumber: 0/1 (full=false) | global: 1/10 (full=false) callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.796Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] overflowCfg: enabled=true, timeout=120s, auto_return=true, dtmf=true, fallback=none, max_concurrent=1 callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.796Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] Active sessions (1): callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.796Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK]   → id=bb9501f0 | callId=sc_1772861319298_0ruy4jp9d | caller=1003 | called=1003 | state=active | fsUuid=outbound-177 callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.796Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.796Z [INFO ] [BRIDGE:SERVER] ✅ [OVERFLOW-PRE-CHECK] Limits OK — proceeding to connect to Replit callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:00.796Z [INFO ] [BRIDGE:SESSION] 📊 [SM] canAcceptNewCall: 1/10 → YES
+6|voice-bridge  | 2026-03-07T05:29:00.796Z [INFO ] [BRIDGE:SESSION] Session created sessionId=c868c4f5 callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 callerId=1002 calledNumber=9999 codec=L16 sampleRate=8000 activeSessions=2
+6|voice-bridge  | 2026-03-07T05:29:00.798Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] handleCallStart setup: session=0ms, bgInit+queue=2ms sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:00.799Z [INFO ] [BRIDGE:SERVER] 🎵 Adaptive audio timer started (prefill=4) sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:00.799Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Pre-connect overhead: 3ms sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:00.799Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=c868c4f5 url=wss://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/ws/ai-voice voice=Puck isResume=false
+6|voice-bridge  | 2026-03-07T05:29:01.302Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] TLS+HTTP upgrade handshake: 503ms sessionId=c868c4f5 resumed=false
+6|voice-bridge  | 2026-03-07T05:29:01.302Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Replit WS connected in 503ms (TLS handshake + HTTP upgrade) sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:01.302Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:01.302Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=c868c4f5 from=connecting to=active
+6|voice-bridge  | 2026-03-07T05:29:01.302Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Total handleCallStart: 506ms (setup=3ms, connect=503ms, post=0ms) sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:01.536Z [INFO ] [BRIDGE:CONTEXT] Number owner found calledNumber=9999 consultant_id=0c73bbe5 display_name=Alessio Test
+6|voice-bridge  | 2026-03-07T05:29:01.536Z [INFO ] [BRIDGE:SERVER] 📞 [NUMBER LOOKUP] Called number 9999 belongs to consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, display=Alessio Test
+6|voice-bridge  | 2026-03-07T05:29:01.647Z [WARN ] [BRIDGE:REPLIT-WS] ⚠️ Audio DISCARDED - connected=true, ws=true, readyState=2 sessionId=c868c4f5 reconnecting=false
+6|voice-bridge  | 2026-03-07T05:29:01.771Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=c868c4f5 code=4429 reason=CHANNELS_FULL hasPendingResume=false
+6|voice-bridge  | 2026-03-07T05:29:01.771Z [INFO ] [BRIDGE:SERVER] 📞 [REPLIT-ONCLOSE] Replit connection closed sessionId=c868c4f5 code=4429 reason=CHANNELS_FULL fsUuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 calledNumber=9999
+6|voice-bridge  | 2026-03-07T05:29:01.771Z [WARN ] [BRIDGE:REPLIT-WS] 🔶 Replit rejected with CHANNELS_FULL (4429) — routing to overflow sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:01.771Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:01.771Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Replit rejected with 4429 CHANNELS_FULL sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:01.771Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Session: fsUuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 | callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 | caller=1002 | called=9999 | state=active sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:01.776Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=c868c4f5 callId=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 reason=channels_full_overflow duration=980ms bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+6|voice-bridge  | 2026-03-07T05:29:01.771Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Active sessions: 2 | Overflow queue: 0 sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:01.776Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] wasDequeued=false (recentlyDequeuedUuids has 0 entries) sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:01.776Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Cleaning up session and routing to overflow queue... sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:01.778Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-07T05:29:01.779Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Starting overflow routing for uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 calledNumber=9999
+6|voice-bridge  | 2026-03-07T05:29:01.779Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] No overflowCfg provided — fetching from Replit API...
+6|voice-bridge  | 2026-03-07T05:29:02.025Z [INFO ] [BRIDGE:CONTEXT] 📋 Overflow config loaded calledNumber=+9999 found=true overflow_enabled=true fallback_number=null overflow_timeout_secs=120 overflow_dtmf_enabled=true overflow_auto_return=true
+6|voice-bridge  | 2026-03-07T05:29:02.025Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Config: enabled=true, timeout=120s, auto_return=true, dtmf=true, fallback=none, max_concurrent=1
+6|voice-bridge  | 2026-03-07T05:29:02.025Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] ESL connection available ✅
+6|voice-bridge  | 2026-03-07T05:29:02.027Z [INFO ] [BRIDGE:OVERFLOW-SYNC] 🔄 [SYNC] Fetching manifest for consultant 0c73bbe5...
+6|voice-bridge  | 2026-03-07T05:29:02.273Z [INFO ] [BRIDGE:OVERFLOW-SYNC] 📁 Created directory: /opt/alessia-voice/freeswitch-sounds/overflow/0c73bbe5-51e1-4108-866b-6be7a52fce3b
+6|voice-bridge  | 2026-03-07T05:29:03.406Z [INFO ] [BRIDGE:OVERFLOW-SYNC] ✅ [SYNC] Downloaded background_music.wav (2768976 bytes)
+6|voice-bridge  | 2026-03-07T05:29:03.905Z [INFO ] [BRIDGE:OVERFLOW-SYNC] ✅ [SYNC] Downloaded hold_A.wav (86618 bytes)
+6|voice-bridge  | 2026-03-07T05:29:04.153Z [INFO ] [BRIDGE:OVERFLOW-SYNC] ✅ [SYNC] Downloaded hold_B.wav (101978 bytes)
+6|voice-bridge  | 2026-03-07T05:29:04.768Z [INFO ] [BRIDGE:OVERFLOW-SYNC] ✅ [SYNC] Downloaded hold_C.wav (119258 bytes)
+6|voice-bridge  | 2026-03-07T05:29:05.012Z [INFO ] [BRIDGE:OVERFLOW-SYNC] ✅ [SYNC] Downloaded hold_D.wav (104538 bytes)
+6|voice-bridge  | 2026-03-07T05:29:05.379Z [INFO ] [BRIDGE:OVERFLOW-SYNC] ✅ [SYNC] Downloaded hold_E.wav (89818 bytes)
+6|voice-bridge  | 2026-03-07T05:29:05.624Z [INFO ] [BRIDGE:OVERFLOW-SYNC] ✅ [SYNC] Downloaded position_prefix.wav (25818 bytes)
+6|voice-bridge  | 2026-03-07T05:29:05.869Z [INFO ] [BRIDGE:OVERFLOW-SYNC] ✅ [SYNC] Downloaded position_suffix.wav (40538 bytes)
+6|voice-bridge  | 2026-03-07T05:29:06.237Z [INFO ] [BRIDGE:OVERFLOW-SYNC] ✅ [SYNC] Downloaded timeout.wav (105178 bytes)
+6|voice-bridge  | 2026-03-07T05:29:06.604Z [INFO ] [BRIDGE:OVERFLOW-SYNC] ✅ [SYNC] Downloaded transfer_failed.wav (83418 bytes)
+6|voice-bridge  | 2026-03-07T05:29:06.848Z [INFO ] [BRIDGE:OVERFLOW-SYNC] ✅ [SYNC] Downloaded transferring.wav (53978 bytes)
+6|voice-bridge  | 2026-03-07T05:29:06.849Z [INFO ] [BRIDGE:OVERFLOW-SYNC] 🔄 [SYNC] Sync complete for 0c73bbe5: 11 downloaded, 0 skipped, 0 removed, 11 total
+6|voice-bridge  | 2026-03-07T05:29:06.849Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Audio dir resolved: /usr/share/freeswitch/sounds/overflow/0c73bbe5-51e1-4108-866b-6be7a52fce3b
+6|voice-bridge  | 2026-03-07T05:29:06.849Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Setting vars on channel: sip_gateway=telnyx-ip | tech_prefix=0312 | queue_position=1 | overflow_audio_dir=/usr/share/freeswitch/sounds/overflow/0c73bbe5-51e1-4108-866b-6be7a52fce3b | overflow_dtmf_enabled=false uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:06.849Z [INFO ] [BRIDGE:SESSION] 📥 [SM-OVERFLOW] addToOverflow: uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 calledNumber=9999 timeoutSecs=120 | queueBefore=0
+6|voice-bridge  | 2026-03-07T05:29:06.850Z [INFO ] [BRIDGE:SESSION] 📥 [SM-OVERFLOW] Added to overflow queue — queueAfter=1 uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 calledNumber=9999 timeoutSecs=120
+6|voice-bridge  | 2026-03-07T05:29:06.850Z [INFO ] [BRIDGE:SESSION] 📊 [SM-OVERFLOW] Queue state (1 entries):
+6|voice-bridge  | 2026-03-07T05:29:06.850Z [INFO ] [BRIDGE:SESSION] 📊 [SM-OVERFLOW]   [0] uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173 | calledNumber=9999 | waiting=0s
+6|voice-bridge  | 2026-03-07T05:29:06.850Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Call f99cf599-6cb2-4e95-aab8-c2e5fedf8173 queued in overflow — position=1, timeout=120s, current queue size=1
+6|voice-bridge  | 2026-03-07T05:29:06.850Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-07T05:29:06.850Z [INFO ] [BRIDGE:SERVER] ✅ [OVERFLOW-4429] Call f99cf599-6cb2-4e95-aab8-c2e5fedf8173 successfully routed to overflow queue sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:06.850Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ sessionId=c868c4f5
+6|voice-bridge  | 2026-03-07T05:29:06.892Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] uuid_setvar_multi result: +OK
+6|voice-bridge  |  uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:06.948Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Transferring f99cf599-6cb2-4e95-aab8-c2e5fedf8173 → overflow_queue XML default uuid=f99cf599-6cb2-4e95-aab8-c2e5fedf8173
+6|voice-bridge  | 2026-03-07T05:29:06.992Z [INFO ] [BRIDGE:SERVER] ✅ [ROUTE-OVERFLOW] Call f99cf599-6cb2-4e95-aab8-c2e5fedf8173 transferred to overflow_queue SUCCESSFULLY
