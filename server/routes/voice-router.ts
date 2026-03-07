@@ -6364,7 +6364,7 @@ function convertWavTo8kMono(wavBuffer: Buffer): Buffer {
 
 const overflowUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     if (file.mimetype === 'audio/wav' || file.mimetype === 'audio/wave' || file.mimetype === 'audio/x-wav') {
       cb(null, true);
