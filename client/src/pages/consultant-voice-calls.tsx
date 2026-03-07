@@ -132,7 +132,8 @@ import { it } from "date-fns/locale";
 
 const ITALY_TZ = "Europe/Rome";
 
-const parseUTCDate = (date: Date | string): Date => {
+const parseUTCDate = (date: Date | string | null | undefined): Date => {
+  if (!date) return new Date();
   if (date instanceof Date) return date;
   let raw = date;
   if (!raw.endsWith('Z') && !raw.includes('+') && !raw.includes('T')) {
