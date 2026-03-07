@@ -8,7 +8,7 @@
  * - voice_rate_limits: Gestione blocchi
  */
 
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { authenticateToken, requireAnyRole, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
 import { sql, desc, eq, and, gte, lte, count } from "drizzle-orm";
@@ -6576,28 +6576,16 @@ router.delete("/overflow-audio/:slotName", authenticateToken, requireAnyRole(["c
   }
 });
 
-router.get("/overflow-audio/play/:slotName", async (req: AuthRequest, res: Response) => {
+const injectQueryToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.headers['authorization'] && req.query.token) {
+    req.headers['authorization'] = `Bearer ${req.query.token}`;
+  }
+  next();
+};
+
+router.get("/overflow-audio/play/:slotName", injectQueryToken, authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const JWT_SECRET_LOCAL = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
-    const authHeader = req.headers['authorization'];
-    const tokenFromHeader = authHeader && authHeader.split(' ')[1];
-    const tokenFromQuery = req.query.token as string | undefined;
-    const token = tokenFromHeader || tokenFromQuery;
-
-    if (!token) return res.status(401).json({ message: 'Access token required' });
-
-    let decoded: any;
-    try {
-      decoded = require('jsonwebtoken').verify(token, JWT_SECRET_LOCAL);
-    } catch {
-      return res.status(401).json({ message: 'Invalid token' });
-    }
-
-    if (!decoded || !['consultant', 'super_admin'].includes(decoded.role)) {
-      return res.status(403).json({ message: 'Forbidden' });
-    }
-
-    const consultantId = decoded.consultantId || decoded.id;
+    const consultantId = await resolveConsultantId(req.user, req.query.consultantId as string);
     if (!consultantId) return res.status(400).json({ error: "Consultant ID richiesto" });
 
     const { slotName } = req.params;
