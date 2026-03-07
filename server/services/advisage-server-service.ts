@@ -200,8 +200,13 @@ Questo JSON verrà usato DIRETTAMENTE per generare l'immagine, quindi deve esser
 REGOLE IMPORTANTI per promptVisual:
 - OGNI ELEMENTO VISIVO deve essere descritto singolarmente: soggetto, sfondo, illuminazione, testi, posizioni
 - La struttura deve CORRISPONDERE ESATTAMENTE alla "description" del concept — sono la stessa scena
-- Sii SPECIFICO: non "prodotto generico" ma "flacone di olio da massaggio scuro con etichetta nera"
+- Sii ULTRA-SPECIFICO: non "prodotto generico" ma "flacone di olio da massaggio in vetro ambrato con etichetta nera minimalista, illuminato da luce laterale calda con riflessi morbidi sulla superficie"
 - Descrivi ESATTAMENTE cosa deve apparire nell'immagine, non lasciare ambiguità
+- Per ogni soggetto specifica: materiale, colore esatto, texture, dimensione relativa, posizione precisa nella scena
+- Per le persone: descrivi età approssimativa, corporatura, abbigliamento specifico, espressione facciale, postura esatta
+- Per gli sfondi: colore esatto (es: "rosso carminio saturo #C41E3A" non solo "rosso"), gradiente se presente, texture
+- Per i box di testo: specifica colore sfondo box, colore testo, bordi, ombra, dimensione relativa
+- ILLUMINAZIONE: specifica sempre direzione (laterale, dall'alto, controluce), temperatura (calda/fredda), intensità
 - Se la tipologia prevede box di testo (es: Noi vs Competitor), specifica ESATTAMENTE i testi in ogni box
 - TUTTO IN ITALIANO
 
@@ -298,8 +303,19 @@ function buildPromptFromVisualJSON(promptVisual: PromptVisual, aspectRatio: stri
 
   const formatLabel = formatGuide[aspectRatio] || formatGuide['1:1'];
 
-  let prompt = `Sei un direttore creativo pubblicitario d'élite.
-Genera un'immagine pubblicitaria seguendo ESATTAMENTE queste specifiche.
+  let prompt = `Sei un direttore creativo pubblicitario d'élite specializzato in inserzioni Meta/Facebook ad altissima conversione.
+Genera un'immagine pubblicitaria PROFESSIONALE di livello agenzia seguendo ESATTAMENTE queste specifiche.
+
+═══ STANDARD QUALITÀ OBBLIGATORI ═══
+- Resa visiva da FOTOGRAFIA COMMERCIALE PROFESSIONALE: nitida, ad alta risoluzione, senza artefatti
+- Colori VIVIDI e SATURI con color grading cinematografico professionale
+- BORDI PULITI e NETTI: ogni elemento deve avere contorni definiti, nessuna sfumatura involontaria
+- Superfici LISCE e REALISTICHE: niente texture pixelate o artificiali
+- Se ci sono persone: anatomia corretta, espressioni naturali, pelle realistica
+- Se ci sono prodotti/oggetti: rendering fotorealistico con riflessi e ombre coerenti
+- Composizione BILANCIATA con gerarchia visiva chiara che guida l'occhio
+- Separazioni tra sezioni NETTE e GEOMETRICHE (no bordi sfumati o irregolari)
+- CONTRASTO ELEVATO tra elementi per massimo impatto visivo da scroll
 
 ═══ LAYOUT ═══
 Tipo: ${promptVisual.layout.tipo}`;
@@ -348,8 +364,12 @@ Tipo: ${promptVisual.layout.tipo}`;
   prompt += `\n\n═══ SPECIFICHE TECNICHE ═══
 Formato: ${formatLabel}
 Stile: ${promptVisual.stile_fotografico}
-Qualità: 8K, standard da fotografia pubblicitaria commerciale.
-Illuminazione drammatica e direzionale. Profondità di campo ridotta per look premium.`;
+Qualità: Ultra HD 8K, standard da fotografia pubblicitaria per agenzia top-tier.
+Illuminazione: Drammatica e direzionale con ombre morbide e definite, mai piatta o uniforme.
+Profondità di campo: Ridotta selettivamente per guidare l'attenzione sul soggetto principale.
+Post-produzione: Color grading professionale, contrasto calibrato, saturazione vibrante ma naturale.
+Rendering: Fotorealistico, superfici con texture autentiche, riflessi fisicamente corretti.
+ANTI-ARTEFATTI: Nessuna distorsione, nessun bordo frastagliato, nessun elemento sfocato involontariamente, nessuna ripetizione di pattern.`;
 
   return prompt;
 }
@@ -381,18 +401,32 @@ function buildLegacyImagePrompt(basePrompt: string, aspectRatio: string, variant
     }
   }
 
-  return `Sei un direttore creativo pubblicitario d'élite. Genera un visual pubblicitario ad alta conversione.
+  return `Sei un direttore creativo pubblicitario d'élite specializzato in inserzioni Meta/Facebook ad altissima conversione.
+Genera un visual pubblicitario PROFESSIONALE di livello agenzia.
 
 FORMATO: ${formatInstruction}
 
-REGOLE VISUAL PUBBLICITARIO:
-- ALTO CONTRASTO: Colori bold che fermano lo scroll.
-- REGOLA DEI TERZI: Elemento principale su un punto di intersezione.
-- SPAZIO NEGATIVO: Almeno 25% per overlay testo.
-- GERARCHIA VISIVA: Hook (alto) → soggetto (centro) → CTA (basso).
-- ILLUMINAZIONE: Drammatica e direzionale, mai piatta. Profondità di campo ridotta.
+═══ STANDARD QUALITÀ OBBLIGATORI ═══
+- Resa visiva da FOTOGRAFIA COMMERCIALE PROFESSIONALE: nitida, ad alta risoluzione, senza artefatti
+- Colori VIVIDI e SATURI con color grading cinematografico professionale
+- BORDI PULITI e NETTI: ogni elemento con contorni definiti, nessuna sfumatura involontaria
+- Superfici LISCE e REALISTICHE: niente texture pixelate o artificiali
+- Se ci sono persone: anatomia corretta, espressioni naturali, pelle realistica con illuminazione naturale
+- Se ci sono prodotti/oggetti: rendering fotorealistico con riflessi e ombre coerenti
+- Composizione BILANCIATA con gerarchia visiva chiara
+- Separazioni tra sezioni NETTE e GEOMETRICHE (bordi dritti e precisi)
+- ANTI-ARTEFATTI: nessuna distorsione, nessun bordo frastagliato, nessun pattern ripetuto
+
+═══ REGOLE COMPOSIZIONE PUBBLICITARIA ═══
+- ALTO CONTRASTO: Colori bold e saturi che fermano lo scroll
+- REGOLA DEI TERZI: Elemento principale su un punto di intersezione
+- SPAZIO NEGATIVO: Almeno 25% per leggibilità
+- GERARCHIA VISIVA: Hook (alto) → soggetto (centro) → CTA (basso)
+- ILLUMINAZIONE: Drammatica e direzionale con ombre morbide definite, mai piatta
+- Profondità di campo ridotta selettivamente per guidare l'attenzione
+- Post-produzione: Color grading professionale, contrasto calibrato, saturazione vibrante ma naturale
 ${textRule}
-- QUALITÀ PROFESSIONALE: Fotorealistico, 8K, standard pubblicitario commerciale.
+- QUALITÀ: Ultra HD 8K, standard da fotografia pubblicitaria per agenzia top-tier
 ${layoutInstructions}
 CONCEPT DA VISUALIZZARE:
 ${basePrompt}
