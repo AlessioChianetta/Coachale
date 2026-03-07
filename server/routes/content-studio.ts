@@ -3223,11 +3223,13 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
 import { analyzeAdTextServerSide, generateImageServerSide, analyzeAndGenerateImage } from "../services/advisage-server-service";
 
 const advisageImageSchema = z.object({
-  prompt: z.string().min(10),
+  prompt: z.string().min(5),
   aspectRatio: z.enum(['1:1', '3:4', '4:3', '9:16', '16:9']).default('1:1'),
   variant: z.enum(['text', 'clean']).default('clean'),
   hookText: z.string().optional(),
   styleType: z.string().optional(),
+  promptVisual: z.any().optional(),
+  visualDescription: z.string().optional(),
 });
 
 router.post("/advisage/generate-image-server", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
@@ -3243,7 +3245,9 @@ router.post("/advisage/generate-image-server", authenticateToken, requireRole("c
       validated.aspectRatio,
       validated.variant,
       validated.hookText,
-      validated.styleType
+      validated.styleType,
+      validated.promptVisual,
+      validated.visualDescription
     );
     
     if (error) {

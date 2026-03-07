@@ -333,7 +333,7 @@ const AdVisagePage: React.FC = () => {
       const ratioMap: any = { "1:1": "1:1", "4:5": "3:4", "9:16": "9:16", "16:9": "16:9", "4:3": "4:3", "3:4": "3:4" };
       const userFormat = settings.imageFormat || '1:1';
       const aspectRatio = ratioMap[userFormat] || ratioMap[concept.recommendedFormat] || '1:1';
-      const url = await generateImageConcept(customPrompts[`${concept.id}_${variant}`], aspectRatio, settings, variant, concept.textContent, concept.styleType);
+      const url = await generateImageConcept(customPrompts[`${concept.id}_${variant}`], aspectRatio, settings, variant, concept.textContent, concept.styleType, concept.promptVisual, concept.description);
       setGeneratedImages(prev => [{ conceptId: concept.id, imageUrl: url, variant, timestamp: Date.now() }, ...prev]);
     } catch (err: any) { 
       setError(err.message); 

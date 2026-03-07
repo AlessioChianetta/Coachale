@@ -37,6 +37,30 @@ export interface AdAnalysis {
   sourcePostTitle?: string;
 }
 
+export interface PromptVisual {
+  layout: {
+    tipo: string;
+    divisione?: string;
+  };
+  sezioni: Array<{
+    nome: string;
+    sfondo: string;
+    soggetto: string;
+    illuminazione?: string;
+    box_testi?: string[];
+    stile_box?: string;
+  }>;
+  elemento_centrale?: string;
+  hook_text?: {
+    testo: string;
+    posizione: string;
+    stile: string;
+  };
+  stile_fotografico: string;
+  colori_brand?: string;
+  note_aggiuntive?: string;
+}
+
 export interface VisualConcept {
   id: string;
   title: string;
@@ -45,6 +69,7 @@ export interface VisualConcept {
   recommendedFormat: "1:1" | "4:5" | "9:16" | "16:9" | "4:3" | "3:4";
   promptClean: string;
   promptWithText: string;
+  promptVisual?: PromptVisual;
   textContent: string;
   reasoning: string;
 }

@@ -68,6 +68,30 @@ Specifica nel campo styleType ESATTAMENTE il nome della tipologia (in italiano).
 Se le tipologie selezionate sono meno di 3, completa con altre tipologie a tua scelta fino a 3 concept totali.`;
 }
 
+export interface PromptVisual {
+  layout: {
+    tipo: string;
+    divisione?: string;
+  };
+  sezioni: Array<{
+    nome: string;
+    sfondo: string;
+    soggetto: string;
+    illuminazione?: string;
+    box_testi?: string[];
+    stile_box?: string;
+  }>;
+  elemento_centrale?: string;
+  hook_text?: {
+    testo: string;
+    posizione: string;
+    stile: string;
+  };
+  stile_fotografico: string;
+  colori_brand?: string;
+  note_aggiuntive?: string;
+}
+
 export interface VisualConcept {
   id: string;
   title: string;
@@ -76,6 +100,7 @@ export interface VisualConcept {
   recommendedFormat: '1:1' | '4:5' | '9:16' | '16:9' | '3:4';
   promptClean: string;
   promptWithText: string;
+  promptVisual?: PromptVisual;
   textContent: string;
   reasoning: string;
 }
@@ -123,7 +148,7 @@ export async function analyzeAdTextServerSide(
 
   const prompt = `Sei un direttore creativo senior esperto in Facebook/Meta Ads ad alta conversione.
 
-⚠️ REGOLA FONDAMENTALE LINGUA: TUTTI i campi testuali del JSON (title, description, reasoning, textContent, tone, objective, emotion, cta, competitiveEdge, styleType, socialCaptions.tone, socialCaptions.text) DEVONO essere scritti ESCLUSIVAMENTE in ITALIANO. NON in inglese. Solo i campi promptClean e promptWithText sono in inglese. Se scrivi anche UN SOLO campo testuale in inglese, la risposta è INVALIDA e verrà rifiutata.
+⚠️ REGOLA FONDAMENTALE LINGUA: TUTTI i campi del JSON DEVONO essere in ITALIANO. Nessuna eccezione.
 
 Analizza questo copy pubblicitario per ${platform.toUpperCase()}.
 FACTORY SETTINGS: Mood: ${settings.mood}, Style: ${settings.stylePreference}. ${brandInfo}
@@ -136,55 +161,86 @@ TASK:
 3. Fornisci un breve vantaggio competitivo.
 
 ═══════════════════════════════════════════════════
-LINEE GUIDA INSERZIONI IMMAGINE (da rispettare SEMPRE):
+LINEE GUIDA INSERZIONI IMMAGINE:
 ═══════════════════════════════════════════════════
-- Immagini ad ALTA RISOLUZIONE, nessuna sfocatura o sgranatura.
-- Formati obbligatori: 1:1 (feed) e 9:16 (stories). Il recommendedFormat deve alternare tra questi.
-- Usa i COLORI e il LOGO del marchio in modo coerente nell'immagine.
-- Includi il logo del brand ma SENZA sovraccaricare l'immagine.
-- L'immagine deve trasmettere il MESSAGGIO dell'inserzione a COLPO D'OCCHIO.
-- Inserisci sempre una CALL TO ACTION visibile e facilmente identificabile.
-- Scegli visual che evocano EMOZIONI POSITIVE o che mostrano RISULTATI DESIDERABILI.
-- Rispetta le linee guida Facebook/Meta (no testo >20% dell'immagine, no contenuti vietati).
+- Visual che FERMANO LO SCROLL: alto contrasto, colori vividi, composizione dinamica.
+- Formati: 1:1 (feed) e 9:16 (stories). Alterna il recommendedFormat.
+- Usa i COLORI del brand in modo coerente.
+- L'immagine deve trasmettere il MESSAGGIO a COLPO D'OCCHIO.
+- Inserisci sempre una CALL TO ACTION visiva chiara.
+- Visual che evocano EMOZIONI POSITIVE o mostrano RISULTATI DESIDERABILI.
+- Rispetta le linee guida Facebook/Meta (testo max 20% dell'immagine).
 
 ═══════════════════════════════════════════════════
-STRUTTURA TESTI INSERZIONE (per socialCaptions — TUTTO IN ITALIANO):
+STRUTTURA TESTI INSERZIONE (socialCaptions):
 ═══════════════════════════════════════════════════
-- Usa modelli di comunicazione: AIDA (Attenzione, Interesse, Desiderio, Azione) o Think-Feel-Do.
-- Usa ELENCHI PUNTATI per evidenziare le USP del prodotto/servizio.
-- Usa PARAGRAFI brevi per facilitare la lettura.
-- Incorpora elementi di RIPROVA SOCIALE (testimonianze, numeri, risultati).
-- Valuta se inserire SCARCITY o URGENCY (se pertinente al contesto).
-- Chiudi SEMPRE con una CALL TO ACTION chiara e diretta.
-- Il titolo deve essere < 125 caratteri e fare leva su una caratteristica del prodotto o un'offerta.
-- La descrizione deve evidenziare i BENEFICI CHIAVE e contenere parole come: senza sforzo, spedizione gratuita, risultati garantiti, ecc.
+- AIDA o Think-Feel-Do come modelli di comunicazione.
+- Elenchi puntati per USP. Paragrafi brevi.
+- Riprova sociale, scarcity/urgency se pertinente.
+- CTA chiara e diretta. Titolo < 125 caratteri.
 
 ${conceptTypeInstructions}
 
 ═══════════════════════════════════════════════════
-REGOLE PER I PROMPT IMMAGINE (promptClean e promptWithText):
+⚠️ REGOLA CRITICA DI COERENZA PROMPT/DESCRIZIONE:
 ═══════════════════════════════════════════════════
-- I prompt devono descrivere visual che FERMANO LO SCROLL: alto contrasto, colori vividi, composizione dinamica.
-- Usa la REGOLA DEI TERZI per posizionare gli elementi chiave.
-- Prevedi SPAZIO NEGATIVO (almeno 25% dell'immagine) per overlay di testo pubblicitario.
-- Applica PSICOLOGIA DEI COLORI: rosso/arancio per urgenza, blu per fiducia, verde per crescita.
-- GERARCHIA VISIVA: guida l'occhio dall'hook (alto) → soggetto (centro) → area CTA (basso).
-- Illuminazione drammatica e direzionale, mai piatta. Profondità di campo ridotta per look premium.
-- promptClean: visual puro SENZA testo/loghi/watermark — solo immagine.
-- promptWithText: il prompt deve INCLUDERE istruzioni per renderizzare il testo dell'hook (textContent) in modo prominente e leggibile nell'immagine, con tipografia bold, alto contrasto e posizionamento strategico. Il testo deve occupare max 20% dell'immagine.
-- Qualità fotorealistica, standard da fotografia pubblicitaria commerciale.
-- QUESTI SONO GLI UNICI CAMPI IN INGLESE. Tutti gli altri campi DEVONO essere in italiano.
+I campi "promptClean" e "promptWithText" DEVONO descrivere ESATTAMENTE LA STESSA scena visiva del campo "description".
+Sono la sua TRADUZIONE FEDELE in inglese per il modello di generazione immagine.
+NON INVENTARE una scena diversa. NON sostituire elementi. NON generalizzare.
+Se la "description" dice "una persona a sinistra che prende un antidolorifico", il prompt DEVE dire la stessa cosa.
+Se la "description" descrive un layout split-screen con due metà, il prompt DEVE descrivere lo stesso layout.
+L'immagine generata dal prompt DEVE corrispondere alla descrizione italiana mostrata all'utente.
 
-OUTPUT JSON VALIDO con questa struttura esatta (ricorda: TUTTO in italiano tranne promptClean e promptWithText):
+═══════════════════════════════════════════════════
+⚠️ CAMPO CRITICO: promptVisual (JSON strutturato per generazione immagine)
+═══════════════════════════════════════════════════
+Per ogni concept, DEVI generare un campo "promptVisual" che è un JSON strutturato con la DESCRIZIONE ESATTA di ogni elemento dell'immagine da generare.
+Questo JSON verrà usato DIRETTAMENTE per generare l'immagine, quindi deve essere ESTREMAMENTE SPECIFICO e DETTAGLIATO.
+
+REGOLE IMPORTANTI per promptVisual:
+- OGNI ELEMENTO VISIVO deve essere descritto singolarmente: soggetto, sfondo, illuminazione, testi, posizioni
+- La struttura deve CORRISPONDERE ESATTAMENTE alla "description" del concept — sono la stessa scena
+- Sii SPECIFICO: non "prodotto generico" ma "flacone di olio da massaggio scuro con etichetta nera"
+- Descrivi ESATTAMENTE cosa deve apparire nell'immagine, non lasciare ambiguità
+- Se la tipologia prevede box di testo (es: Noi vs Competitor), specifica ESATTAMENTE i testi in ogni box
+- TUTTO IN ITALIANO
+
+Struttura promptVisual:
+{
+  "layout": { "tipo": "split-screen verticale 50/50 | composizione centrale | full-bleed | griglia 2x3 | ecc.", "divisione": "descrizione della divisione visiva (opzionale)" },
+  "sezioni": [
+    { "nome": "sinistra | destra | centro | sfondo | primo_piano | ecc.", "sfondo": "colore e tono specifico", "soggetto": "descrizione PRECISA e DETTAGLIATA del soggetto — cosa appare, come appare, espressione, postura, oggetti", "illuminazione": "tipo di luce specifica", "box_testi": ["testo 1", "testo 2"], "stile_box": "descrizione stile dei box testi" }
+  ],
+  "elemento_centrale": "elemento visivo che sta al centro o collega le sezioni (es: VS, freccia, badge)",
+  "hook_text": { "testo": "il testo hook da mostrare LEGGIBILE nell'immagine", "posizione": "dove va posizionato (es: fascia inferiore, alto centro)", "stile": "stile tipografico (es: bold bianco con ombra scura, font sans-serif grande)" },
+  "stile_fotografico": "fotorealistico | illustrazione | infografica | lifestyle | ecc. + dettagli",
+  "colori_brand": "colori predominanti da usare",
+  "note_aggiuntive": "qualsiasi dettaglio extra per la resa visiva"
+}
+
+═══════════════════════════════════════════════════
+OUTPUT JSON VALIDO — TUTTO IN ITALIANO:
+═══════════════════════════════════════════════════
 {
   "tone": "stringa in italiano",
   "objective": "stringa in italiano", 
   "emotion": "stringa in italiano",
   "cta": "stringa in italiano, massimo 125 caratteri",
-  "context": { "sector": "stringa in italiano", "product": "stringa in italiano", "target": "stringa in italiano" },
-  "concepts": [{ "id": "string", "title": "titolo in ITALIANO", "description": "descrizione dettagliata del visual in ITALIANO", "styleType": "tipologia inserzione in ITALIANO (es: Call Out Benefici, Social Proof Avatar, Offerta / Headline USP, Noi vs Competitor, X Ragioni per Acquistare, Risultato Desiderabile)", "recommendedFormat": "1:1|9:16", "promptClean": "detailed image prompt IN ENGLISH for pure visual without text", "promptWithText": "detailed image prompt IN ENGLISH with instructions to render the hook text legibly in the image", "textContent": "testo hook in ITALIANO da mostrare nell'immagine", "reasoning": "spiegazione in ITALIANO del perché questo visual converte" }],
-  "socialCaptions": [{ "tone": "Emozionale o Tecnico o Diretto", "text": "caption completa in ITALIANO", "hashtags": ["hashtag"] }],
-  "competitiveEdge": "vantaggio competitivo in ITALIANO"
+  "context": { "sector": "in italiano", "product": "in italiano", "target": "in italiano" },
+  "concepts": [{
+    "id": "string",
+    "title": "titolo in italiano",
+    "description": "descrizione dettagliata del visual in italiano — questa descrizione DEVE corrispondere ESATTAMENTE alla scena descritta in promptClean/promptWithText e promptVisual",
+    "styleType": "tipologia inserzione (es: Call Out Benefici, Social Proof Avatar, Offerta / Headline USP, Noi vs Competitor, X Ragioni per Acquistare, Risultato Desiderabile)",
+    "recommendedFormat": "1:1|9:16",
+    "promptClean": "prompt in inglese per generazione immagine SENZA testo — TRADUZIONE FEDELE della description",
+    "promptWithText": "prompt in inglese per generazione immagine CON testo hook overlay — TRADUZIONE FEDELE della description + istruzioni testo",
+    "promptVisual": { "layout": {}, "sezioni": [], "stile_fotografico": "", "hook_text": {} },
+    "textContent": "testo hook in italiano da mostrare nell'immagine",
+    "reasoning": "spiegazione in italiano del perché questo visual converte"
+  }],
+  "socialCaptions": [{ "tone": "Emozionale o Tecnico o Diretto", "text": "caption completa in italiano", "hashtags": ["hashtag"] }],
+  "competitiveEdge": "vantaggio competitivo in italiano"
 }`;
   
   console.log("[ADVISAGE-SERVER] Calling AI provider with model:", modelConfig.model);
@@ -231,51 +287,116 @@ OUTPUT JSON VALIDO con questa struttura esatta (ricorda: TUTTO in italiano trann
   return result;
 }
 
-function buildAdImagePrompt(basePrompt: string, aspectRatio: string, variant: 'text' | 'clean' = 'clean', hookText?: string, styleType?: string): string {
+function buildPromptFromVisualJSON(promptVisual: PromptVisual, aspectRatio: string, variant: 'text' | 'clean' = 'clean'): string {
   const formatGuide: Record<string, string> = {
-    '1:1': 'Square format (Instagram Feed). Center the focal point. Leave 20% margins for text overlay.',
-    '3:4': 'Portrait format (Instagram Post 4:5). Vertical composition, subject in upper 2/3, lower 1/3 free for caption overlay.',
-    '4:3': 'Landscape format. Wide composition, subject off-center using rule of thirds.',
-    '9:16': 'Vertical Story/Reel format. Full-height vertical composition. Key visual hook in top 40%. Leave bottom 25% clean for swipe-up CTA area.',
-    '16:9': 'Widescreen format (Facebook/LinkedIn). Panoramic composition, subject positioned at left or right third.',
+    '1:1': 'Quadrato 1:1 (Instagram Feed)',
+    '3:4': 'Verticale 3:4 (Instagram Post)',
+    '4:3': 'Orizzontale 4:3 (Landscape)',
+    '9:16': 'Verticale 9:16 (Stories/Reels)',
+    '16:9': 'Orizzontale 16:9 (Facebook/LinkedIn)',
+  };
+
+  const formatLabel = formatGuide[aspectRatio] || formatGuide['1:1'];
+
+  let prompt = `Sei un direttore creativo pubblicitario d'élite.
+Genera un'immagine pubblicitaria seguendo ESATTAMENTE queste specifiche.
+
+═══ LAYOUT ═══
+Tipo: ${promptVisual.layout.tipo}`;
+
+  if (promptVisual.layout.divisione) {
+    prompt += `\nDivisione: ${promptVisual.layout.divisione}`;
+  }
+
+  for (const sezione of promptVisual.sezioni) {
+    prompt += `\n\n═══ SEZIONE: ${sezione.nome.toUpperCase()} ═══`;
+    prompt += `\nSfondo: ${sezione.sfondo}`;
+    prompt += `\nSoggetto: ${sezione.soggetto}`;
+    if (sezione.illuminazione) {
+      prompt += `\nIlluminazione: ${sezione.illuminazione}`;
+    }
+    if (sezione.box_testi && sezione.box_testi.length > 0) {
+      prompt += `\nTesti nei box${sezione.stile_box ? ` (${sezione.stile_box})` : ''}:`;
+      sezione.box_testi.forEach((t, i) => {
+        prompt += `\n  ${i + 1}. "${t}"`;
+      });
+    }
+  }
+
+  if (promptVisual.elemento_centrale) {
+    prompt += `\n\n═══ ELEMENTO CENTRALE ═══\n${promptVisual.elemento_centrale}`;
+  }
+
+  if (variant === 'text' && promptVisual.hook_text) {
+    prompt += `\n\n═══ TESTO HOOK (da renderizzare LEGGIBILE nell'immagine) ═══`;
+    prompt += `\nTesto: "${promptVisual.hook_text.testo}"`;
+    prompt += `\nPosizione: ${promptVisual.hook_text.posizione}`;
+    prompt += `\nStile: ${promptVisual.hook_text.stile}`;
+    prompt += `\nIl testo DEVE essere perfettamente leggibile, con alto contrasto rispetto allo sfondo.`;
+  } else if (variant === 'clean') {
+    prompt += `\n\n═══ REGOLA TESTO ═══\nNON inserire NESSUN testo, tipografia, logo o watermark nell'immagine. Solo visual puro.`;
+  }
+
+  if (promptVisual.colori_brand) {
+    prompt += `\n\n═══ COLORI BRAND ═══\n${promptVisual.colori_brand}`;
+  }
+
+  if (promptVisual.note_aggiuntive) {
+    prompt += `\n\n═══ NOTE AGGIUNTIVE ═══\n${promptVisual.note_aggiuntive}`;
+  }
+
+  prompt += `\n\n═══ SPECIFICHE TECNICHE ═══
+Formato: ${formatLabel}
+Stile: ${promptVisual.stile_fotografico}
+Qualità: 8K, standard da fotografia pubblicitaria commerciale.
+Illuminazione drammatica e direzionale. Profondità di campo ridotta per look premium.`;
+
+  return prompt;
+}
+
+function buildLegacyImagePrompt(basePrompt: string, aspectRatio: string, variant: 'text' | 'clean' = 'clean', hookText?: string, styleType?: string, visualDescription?: string): string {
+  const formatGuide: Record<string, string> = {
+    '1:1': 'Formato quadrato 1:1 (Instagram Feed).',
+    '3:4': 'Formato verticale 3:4 (Instagram Post).',
+    '4:3': 'Formato orizzontale 4:3.',
+    '9:16': 'Formato verticale 9:16 (Stories/Reels).',
+    '16:9': 'Formato orizzontale 16:9 (Facebook/LinkedIn).',
   };
 
   const formatInstruction = formatGuide[aspectRatio] || formatGuide['1:1'];
 
   const textRule = variant === 'text' && hookText
-    ? `- TEXT OVERLAY: Render the following text prominently in the image as a bold, high-contrast typographic overlay. The text must be PERFECTLY LEGIBLE and positioned in the safe zone (15% margin from edges). Use a clean, modern sans-serif font. Text: "${hookText}"
-- TEXT STYLING: The text must have strong contrast against the background — use white text with dark shadow, or dark text on a light gradient bar. Make the text the dominant visual element that catches the eye first.
-- LAYOUT: Position the hook text in the upper third or center of the image. Leave the bottom area clean for CTA elements that will be added later.`
-    : `- NO TEXT IN IMAGE: Do NOT render any text, typography, logos, or watermarks in the image. The image is purely visual — text will be overlaid separately.`;
+    ? `- TESTO OVERLAY: Renderizza il seguente testo in modo prominente nell'immagine come overlay tipografico bold, ad alto contrasto. Il testo DEVE essere PERFETTAMENTE LEGGIBILE. Font sans-serif moderno e pulito. Testo: "${hookText}"
+- STILE TESTO: Forte contrasto con lo sfondo — testo bianco con ombra scura, o testo scuro su barra gradiente chiara. Il testo deve catturare l'occhio per primo.`
+    : `- NESSUN TESTO: NON inserire testo, tipografia, loghi o watermark nell'immagine. Solo visual puro.`;
 
-  return `You are an elite advertising creative director generating a high-converting ad visual.
-
-FORMAT: ${formatInstruction}
-
-ADVERTISING VISUAL RULES (follow strictly):
-- HIGH CONTRAST: Use bold color contrasts to stop the scroll. The image must pop against white/dark feed backgrounds.
-- RULE OF THIRDS: Position the hero element at a power point intersection, never dead center.
-- NEGATIVE SPACE: Reserve at least 25% of the image as clean space for text overlay — no busy patterns in text areas.
-- COLOR PSYCHOLOGY: Use warm tones (red, orange) for urgency/action, cool tones (blue, teal) for trust/calm, green for growth/health.
-- PATTERN INTERRUPT: Include one unexpected or eye-catching element that breaks the visual monotony of a social feed.
-- VISUAL HIERARCHY: Guide the viewer's eye from the hook (top) → product/subject (center) → CTA area (bottom).
-- LIGHTING: Use dramatic, directional lighting (not flat). Rim lighting, golden hour, or studio lighting for product shots.
-- DEPTH OF FIELD: Shallow depth of field to isolate the subject and create a professional, premium look.
-${textRule}
-- PROFESSIONAL QUALITY: Photorealistic, 8K quality, commercial advertising photography standard.
-${styleType ? getStyleTypeLayoutInstructions(styleType) : ''}
-CONCEPT TO VISUALIZE:
-${basePrompt}`;
-}
-
-function getStyleTypeLayoutInstructions(styleType: string): string {
-  const normalized = styleType.toLowerCase().trim();
-  for (const [key, value] of Object.entries(CONCEPT_TYPE_PROMPTS)) {
-    if (normalized.includes(key.replace(/-/g, ' ')) || normalized.includes(value.label.toLowerCase())) {
-      return `\nAD TYPE-SPECIFIC LAYOUT INSTRUCTIONS:\n${value.layoutInstructions}\nFollow the above layout instructions EXACTLY for this ad type.\n`;
+  let layoutInstructions = '';
+  if (styleType) {
+    const normalized = styleType.toLowerCase().trim();
+    for (const [key, value] of Object.entries(CONCEPT_TYPE_PROMPTS)) {
+      if (normalized.includes(key.replace(/-/g, ' ')) || normalized.includes(value.label.toLowerCase())) {
+        layoutInstructions = `\n═══ ISTRUZIONI LAYOUT SPECIFICHE ═══\n${value.layoutInstructions}\nSegui queste istruzioni ESATTAMENTE.\n`;
+        break;
+      }
     }
   }
-  return '';
+
+  return `Sei un direttore creativo pubblicitario d'élite. Genera un visual pubblicitario ad alta conversione.
+
+FORMATO: ${formatInstruction}
+
+REGOLE VISUAL PUBBLICITARIO:
+- ALTO CONTRASTO: Colori bold che fermano lo scroll.
+- REGOLA DEI TERZI: Elemento principale su un punto di intersezione.
+- SPAZIO NEGATIVO: Almeno 25% per overlay testo.
+- GERARCHIA VISIVA: Hook (alto) → soggetto (centro) → CTA (basso).
+- ILLUMINAZIONE: Drammatica e direzionale, mai piatta. Profondità di campo ridotta.
+${textRule}
+- QUALITÀ PROFESSIONALE: Fotorealistico, 8K, standard pubblicitario commerciale.
+${layoutInstructions}
+CONCEPT DA VISUALIZZARE:
+${basePrompt}
+${visualDescription ? `\n═══ RIFERIMENTO VISIVO (segui questa descrizione scena FEDELMENTE) ═══\n${visualDescription}\n═══ FINE RIFERIMENTO VISIVO ═══` : ''}`;
 }
 
 async function getGeminiApiKeyForImage(consultantId: string): Promise<string | null> {
@@ -318,11 +439,12 @@ export async function generateImageServerSide(
   aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '1:1',
   variant: 'text' | 'clean' = 'clean',
   hookText?: string,
-  styleType?: string
+  styleType?: string,
+  promptVisual?: PromptVisual,
+  visualDescription?: string
 ): Promise<{ imageUrl: string; error?: string }> {
   console.log(`[ADVISAGE-SERVER] Generating image for consultantId: ${consultantId}`);
-  console.log(`[ADVISAGE-SERVER] Prompt: ${prompt.substring(0, 100)}...`);
-  console.log(`[ADVISAGE-SERVER] Aspect ratio: ${aspectRatio}, variant: ${variant}${hookText ? ', hookText: ' + hookText.substring(0, 50) + '...' : ''}`);
+  console.log(`[ADVISAGE-SERVER] Has promptVisual: ${!!promptVisual}, hasVisualDesc: ${!!visualDescription}, variant: ${variant}, aspectRatio: ${aspectRatio}`);
   
   try {
     const apiKey = await getGeminiApiKeyForImage(consultantId);
@@ -338,7 +460,16 @@ export async function generateImageServerSide(
     const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
     console.log(`[ADVISAGE-SERVER] Using model: ${IMAGE_MODEL}`);
     
-    const adOptimizedPrompt = buildAdImagePrompt(prompt, aspectRatio, variant, hookText, styleType);
+    let adOptimizedPrompt: string;
+    if (promptVisual && promptVisual.layout && promptVisual.sezioni?.length > 0) {
+      adOptimizedPrompt = buildPromptFromVisualJSON(promptVisual, aspectRatio, variant);
+      console.log(`[ADVISAGE-SERVER] Using structured promptVisual (${adOptimizedPrompt.length} chars)`);
+    } else {
+      adOptimizedPrompt = buildLegacyImagePrompt(prompt, aspectRatio, variant, hookText, styleType, visualDescription);
+      console.log(`[ADVISAGE-SERVER] Using legacy prompt (${adOptimizedPrompt.length} chars)`);
+    }
+    
+    console.log(`[ADVISAGE-SERVER] Final prompt preview: ${adOptimizedPrompt.substring(0, 200)}...`);
     
     const response = await trackedGenerateContent(ai, {
       model: IMAGE_MODEL,
@@ -412,7 +543,12 @@ export async function analyzeAndGenerateImage(
     const { imageUrl, error: imageError } = await generateImageServerSide(
       consultantId,
       promptToUse,
-      aspectRatio
+      aspectRatio,
+      'clean',
+      undefined,
+      firstConcept.styleType,
+      firstConcept.promptVisual,
+      firstConcept.description
     );
     
     if (imageError) {

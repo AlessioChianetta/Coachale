@@ -1,5 +1,5 @@
 
-import { AdAnalysis, AppSettings, SocialPlatform } from "../types";
+import { AdAnalysis, AppSettings, SocialPlatform, PromptVisual } from "../types";
 import { apiRequest } from "@/lib/queryClient";
 
 export const analyzeAdText = async (text: string, platform: SocialPlatform, settings: AppSettings, conceptTypes?: string[]): Promise<AdAnalysis> => {
@@ -26,7 +26,9 @@ export const generateImageConcept = async (
   settings: AppSettings,
   variant: 'text' | 'clean' = 'clean',
   hookText?: string,
-  styleType?: string
+  styleType?: string,
+  promptVisual?: PromptVisual,
+  visualDescription?: string
 ): Promise<string> => {
   const result = await apiRequest("POST", "/api/content/advisage/generate-image-server", {
     prompt,
@@ -34,6 +36,8 @@ export const generateImageConcept = async (
     variant,
     hookText: variant === 'text' ? hookText : undefined,
     styleType,
+    promptVisual,
+    visualDescription,
   });
   
   if (!result.success) {
