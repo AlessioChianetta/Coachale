@@ -1,0 +1,15 @@
+6|voice-bridge  | 2026-03-07T06:55:05.106Z [INFO ] [BRIDGE:CONTEXT] Number owner found calledNumber=9999 consultant_id=0c73bbe5 display_name=Alessio Test
+6|voice-bridge  | 2026-03-07T06:55:05.106Z [INFO ] [BRIDGE:SERVER] 📞 [NUMBER LOOKUP] Called number 9999 belongs to consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, display=Alessio Test
+6|voice-bridge  | 2026-03-07T06:55:05.115Z [WARN ] [BRIDGE:REPLIT-WS] ⚠️ Audio DISCARDED - connected=true, ws=true, readyState=2 sessionId=c7da795d reconnecting=false
+6|voice-bridge  | 2026-03-07T06:55:05.231Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=c7da795d code=4429 reason=CHANNELS_FULL hasPendingResume=false
+6|voice-bridge  | 2026-03-07T06:55:05.231Z [INFO ] [BRIDGE:SERVER] 📞 [REPLIT-ONCLOSE] Replit connection closed sessionId=c7da795d code=4429 reason=CHANNELS_FULL fsUuid=1f2bfd8e-e512-48bb-8634-b2ee84a852aa callId=1f2bfd8e-e512-48bb-8634-b2ee84a852aa calledNumber=9999
+6|voice-bridge  | 2026-03-07T06:55:05.231Z [WARN ] [BRIDGE:REPLIT-WS] 🔶 Replit rejected with CHANNELS_FULL (4429) — routing to overflow sessionId=c7da795d
+6|voice-bridge  | 2026-03-07T06:55:05.231Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ sessionId=c7da795d
+6|voice-bridge  | 2026-03-07T06:55:05.231Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Replit rejected with 4429 CHANNELS_FULL sessionId=c7da795d
+6|voice-bridge  | 2026-03-07T06:55:05.231Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Session: fsUuid=1f2bfd8e-e512-48bb-8634-b2ee84a852aa | callId=1f2bfd8e-e512-48bb-8634-b2ee84a852aa | caller=1002 | called=9999 | state=active sessionId=c7da795d
+6|voice-bridge  | 2026-03-07T06:55:05.232Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=c7da795d callId=1f2bfd8e-e512-48bb-8634-b2ee84a852aa reason=channels_full_after_dequeue duration=867ms bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+6|voice-bridge  | 2026-03-07T06:55:05.231Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] Active sessions: 1 | Overflow queue: 0 sessionId=c7da795d
+6|voice-bridge  | 2026-03-07T06:55:05.232Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] wasDequeued=true (recentlyDequeuedUuids has 1 entries) sessionId=c7da795d
+6|voice-bridge  | 2026-03-07T06:55:05.232Z [ERROR] [BRIDGE:SERVER] 🔴 [OVERFLOW-4429] LOOP PREVENTION: Call 1f2bfd8e-e512-48bb-8634-b2ee84a852aa was just dequeued but Replit rejected again → killing call sessionId=c7da795d
+6|voice-bridge  | 2026-03-07T06:55:05.232Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ sessionId=c7da795d
+6|voice-bridge  | 2026-03-07T06:55:05.280Z [INFO ] [BRIDGE:SERVER] WebSocket closed (Session: c7da795d-f62c-48ea-a169-ecb78939186a)

@@ -3647,6 +3647,20 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
               WHERE id = ${ghostId} AND status IN ('calling', 'talking')
             `);
           }
+
+          if (ghostCall?.voice_call_id) {
+            const vcCheck = await db.execute(sql`
+              SELECT status FROM voice_calls WHERE id = ${ghostCall.voice_call_id} AND status IN ('talking', 'calling')
+            `);
+            if (vcCheck.rows.length > 0) {
+              await db.execute(sql`
+                UPDATE voice_calls 
+                SET status = 'failed', outcome = 'ghost_cleanup', ended_at = NOW(), updated_at = NOW()
+                WHERE id = ${ghostCall.voice_call_id} AND status IN ('talking', 'calling')
+              `);
+              console.log(`🧹 [GHOST] Also cleaned voice_call ${ghostCall.voice_call_id} (was ${(vcCheck.rows[0] as any).status})`);
+            }
+          }
         }
         const cleanedSet = new Set(ghostIds);
         const filteredCalls = allCalls.filter((c: any) => !cleanedSet.has(c.id));
