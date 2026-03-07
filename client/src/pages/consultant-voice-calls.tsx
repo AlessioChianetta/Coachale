@@ -1298,7 +1298,11 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
   };
 
   const renderOverflowSection = (entries: typeof overflowEntries, forNumber?: string) => {
-    const filtered = forNumber ? entries.filter(e => e.calledNumber === forNumber || e.calledNumber === forNumber.replace(/^\+/, '')) : entries;
+    const normalizedForNumber = forNumber?.replace(/\D/g, '');
+    const filtered = forNumber ? entries.filter(e => {
+      const normalizedCalled = e.calledNumber?.replace(/\D/g, '');
+      return normalizedCalled === normalizedForNumber;
+    }) : entries;
     if (filtered.length === 0) return null;
     const style = sectionStyles['overflow'];
     const key = forNumber ? `overflow-${forNumber}` : 'overflow';
@@ -1442,7 +1446,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
                   )}
                   {activeGroup.retryCalls.length > 0 && renderSection(`retry-${activeGroup.number}`, 'Retry', activeGroup.retryCalls.length, activeGroup.retryCalls, 'retry')}
                   {activeGroup.futureCalls.length > 0 && renderSection(`future-${activeGroup.number}`, 'Programmate', activeGroup.futureCalls.length, activeGroup.futureCalls, 'future', undefined, 5)}
-                  {activeGroup.approvalCalls.length === 0 && activeGroup.queuedCalls.length === 0 && activeGroup.retryCalls.length === 0 && activeGroup.futureCalls.length === 0 && overflowEntries.filter(e => e.calledNumber === activeGroup.number || e.calledNumber === activeGroup.number.replace(/^\+/, '')).length === 0 && (
+                  {activeGroup.approvalCalls.length === 0 && activeGroup.queuedCalls.length === 0 && activeGroup.retryCalls.length === 0 && activeGroup.futureCalls.length === 0 && overflowEntries.filter(e => e.calledNumber?.replace(/\D/g, '') === activeGroup.number.replace(/\D/g, '')).length === 0 && (
                     <div className="text-center py-4 text-[12px] text-muted-foreground">
                       Nessuna chiamata in coda per questo numero
                     </div>
@@ -4028,8 +4032,11 @@ export default function ConsultantVoiceCallsPage() {
                     const vps = healthData?.vps;
                     const fsCalls = vps?.freeswitchCalls || [];
                     const bridgeSessions = vps?.activeSessions || 0;
+                    const overflowUuids = new Set((vps?.overflowEntries || []).map((e: any) => e.uuid));
+                    const ghostCalls = fsCalls.filter((c: any) => !overflowUuids.has(c.uuid));
                     const fsCount = fsCalls.length;
-                    const hasGhosts = fsCount > 0 && fsCount > bridgeSessions;
+                    const ghostCount = ghostCalls.length;
+                    const hasGhosts = ghostCount > 0 && ghostCount > bridgeSessions;
 
                     if (!vps || fsCount === 0) return null;
 
@@ -4060,8 +4067,8 @@ export default function ConsultantVoiceCallsPage() {
                     };
 
                     const handleKillAll = async () => {
-                      if (!confirm(`Terminare tutte le ${fsCount} chiamate attive su FreeSWITCH?`)) return;
-                      for (const call of fsCalls) {
+                      if (!confirm(`Terminare tutte le ${ghostCount} chiamate fantasma su FreeSWITCH?`)) return;
+                      for (const call of ghostCalls) {
                         try {
                           await fetch('/api/voice/freeswitch-kill', {
                             method: 'POST',
@@ -4070,7 +4077,7 @@ export default function ConsultantVoiceCallsPage() {
                           });
                         } catch {}
                       }
-                      toast({ title: "Completato", description: `${fsCount} chiamate terminate` });
+                      toast({ title: "Completato", description: `${ghostCount} chiamate terminate` });
                       refetchHealth();
                     };
 
@@ -4087,18 +4094,18 @@ export default function ConsultantVoiceCallsPage() {
                               {hasGhosts ? 'Chiamate fantasma rilevate' : 'Centralino sincronizzato'}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                              FreeSWITCH: {fsCount} | Bridge: {bridgeSessions}
+                              FreeSWITCH: {fsCount} | Bridge: {bridgeSessions}{overflowUuids.size > 0 ? ` | Overflow: ${overflowUuids.size}` : ''}
                             </span>
                           </div>
-                          {hasGhosts && fsCalls.length > 1 && (
+                          {hasGhosts && ghostCalls.length > 1 && (
                             <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={handleKillAll}>
-                              Termina tutte ({fsCount})
+                              Termina tutte ({ghostCount})
                             </Button>
                           )}
                         </div>
-                        {fsCalls.length > 0 && (
+                        {ghostCalls.length > 0 && (
                           <div className="space-y-1">
-                            {fsCalls.map((call: any) => (
+                            {ghostCalls.map((call: any) => (
                               <div key={call.uuid} className="flex items-center justify-between text-xs py-1.5 px-2 rounded bg-white/60 dark:bg-black/20">
                                 <div className="flex items-center gap-3 min-w-0">
                                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${call.direction === 'inbound' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'}`}>
