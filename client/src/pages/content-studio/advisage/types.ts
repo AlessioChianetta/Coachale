@@ -66,3 +66,47 @@ export interface AppSettings {
   brandFont?: string;
   externalSourceUrl?: string;
 }
+
+export interface ConceptTypeOption {
+  id: string;
+  label: string;
+  description: string;
+  referenceImage?: string;
+}
+
+export const CONCEPT_TYPES: ConceptTypeOption[] = [
+  {
+    id: 'call-out-benefici',
+    label: 'Call Out Benefici',
+    description: 'Immagine che evidenzia i benefici principali con frecce e callout',
+    referenceImage: '/images/advisage/call-out-benefici.png',
+  },
+  {
+    id: 'social-proof-avatar',
+    label: 'Social Proof Avatar',
+    description: 'Immagine con avatar cliente e testimonianza sovrapposta al prodotto',
+    referenceImage: '/images/advisage/social-proof-avatar.png',
+  },
+  {
+    id: 'x-ragioni-acquistare',
+    label: 'X Ragioni per Acquistare',
+    description: 'Visual con elenco numerato dei motivi per acquistare',
+  },
+  {
+    id: 'offerta-headline-usp',
+    label: 'Offerta / Headline USP',
+    description: 'Immagine focalizzata sull\'offerta principale o USP con headline bold',
+    referenceImage: '/images/advisage/offerta-headline-usp.png',
+  },
+  {
+    id: 'noi-vs-competitor',
+    label: 'Noi vs Competitor',
+    description: 'Visual comparativo split-screen tra brand e concorrenza',
+    referenceImage: '/images/advisage/noi-vs-competitor.png',
+  },
+  {
+    id: 'risultato-desiderabile',
+    label: 'Risultato Desiderabile',
+    description: 'Visual aspirazionale che mostra il risultato finale per il cliente',
+  },
+];

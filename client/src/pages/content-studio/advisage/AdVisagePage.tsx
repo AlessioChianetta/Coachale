@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { analyzeAdText, generateImageConcept } from './services/geminiService';
-import { AdAnalysis, GeneratedImage, VisualConcept, AppSettings, PostInput, SocialPlatform } from './types';
+import { AdAnalysis, GeneratedImage, VisualConcept, AppSettings, PostInput, SocialPlatform, CONCEPT_TYPES } from './types';
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -126,6 +126,7 @@ const AdVisagePage: React.FC = () => {
   const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
   const [variantToggle, setVariantToggle] = useState<Record<string, 'clean' | 'text'>>({});
   
+  const [selectedConceptTypes, setSelectedConceptTypes] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [viewMode, setViewMode] = useState<'factory' | 'pitch'>('factory');
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -279,7 +280,7 @@ const AdVisagePage: React.FC = () => {
         const batch = valid.slice(i, i + CONCURRENCY_LIMIT);
         const batchResults = await Promise.allSettled(
           batch.map(async (post) => {
-            const result = await analyzeAdText(post.text, post.platform, settings);
+            const result = await analyzeAdText(post.text, post.platform, settings, selectedConceptTypes);
             result.sourcePostId = post.sourcePostId;
             result.sourcePostTitle = post.sourcePostTitle;
             return result;
@@ -332,7 +333,7 @@ const AdVisagePage: React.FC = () => {
       const ratioMap: any = { "1:1": "1:1", "4:5": "3:4", "9:16": "9:16", "16:9": "16:9", "4:3": "4:3", "3:4": "3:4" };
       const userFormat = settings.imageFormat || '1:1';
       const aspectRatio = ratioMap[userFormat] || ratioMap[concept.recommendedFormat] || '1:1';
-      const url = await generateImageConcept(customPrompts[`${concept.id}_${variant}`], aspectRatio, settings, variant, concept.textContent);
+      const url = await generateImageConcept(customPrompts[`${concept.id}_${variant}`], aspectRatio, settings, variant, concept.textContent, concept.styleType);
       setGeneratedImages(prev => [{ conceptId: concept.id, imageUrl: url, variant, timestamp: Date.now() }, ...prev]);
     } catch (err: any) { 
       setError(err.message); 
@@ -749,6 +750,69 @@ const AdVisagePage: React.FC = () => {
                       );
                     })}
                     
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground block">
+                        Tipologia Inserzione <span className="text-muted-foreground/60">(opzionale — seleziona 1-3 tipologie)</span>
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {CONCEPT_TYPES.map((ct) => {
+                          const isSelected = selectedConceptTypes.includes(ct.id);
+                          return (
+                            <button
+                              key={ct.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedConceptTypes(prev => {
+                                  if (prev.includes(ct.id)) return prev.filter(id => id !== ct.id);
+                                  if (prev.length >= 3) return prev;
+                                  return [...prev, ct.id];
+                                });
+                              }}
+                              className={`relative flex flex-col items-start gap-1.5 p-3 rounded-lg border-2 text-left transition-all ${
+                                isSelected 
+                                  ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500/30' 
+                                  : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50'
+                              } ${selectedConceptTypes.length >= 3 && !isSelected ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            >
+                              {ct.referenceImage && (
+                                <img 
+                                  src={ct.referenceImage} 
+                                  alt={ct.label}
+                                  className="w-full h-16 object-cover rounded-md mb-1"
+                                />
+                              )}
+                              <span className={`text-xs font-semibold leading-tight ${isSelected ? 'text-indigo-400' : ''}`}>
+                                {ct.label}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground leading-tight line-clamp-2">
+                                {ct.description}
+                              </span>
+                              {isSelected && (
+                                <div className="absolute top-1.5 right-1.5">
+                                  <div className="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
+                                    <Check className="w-2.5 h-2.5 text-white" />
+                                  </div>
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {selectedConceptTypes.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground">
+                            {selectedConceptTypes.length}/3 selezionate
+                          </span>
+                          <button 
+                            className="text-[10px] text-indigo-400 hover:text-indigo-300 underline"
+                            onClick={() => setSelectedConceptTypes([])}
+                          >
+                            Rimuovi tutte
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex gap-3">
                       <Button variant="outline" className="flex-1" onClick={addPostInput}>
                         <Plus className="w-4 h-4 mr-2" />

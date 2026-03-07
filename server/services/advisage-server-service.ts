@@ -9,6 +9,63 @@ export interface AdvisageSettings {
   stylePreference: 'realistic' | '3d-render' | 'illustration' | 'cyberpunk' | 'lifestyle';
   brandColor?: string;
   brandFont?: string;
+  conceptTypes?: string[];
+}
+
+const CONCEPT_TYPE_PROMPTS: Record<string, { label: string; layoutInstructions: string }> = {
+  'call-out-benefici': {
+    label: 'Call Out Benefici',
+    layoutInstructions: `Layout "Call Out Benefici": Immagine del prodotto/servizio al centro o a destra. Intorno al prodotto, frecce bianche curve che puntano a box di testo con i benefici chiave (es: "Pochi minuti al giorno", "Migliora la tua autostima", "Esercizi guidati"). In alto, headline grande e bold. In basso a sinistra, un badge con social proof (es: "15.000+ persone hanno già...", stelle di rating). Sfondo elegante e scuro con illuminazione d'ambiente. Stile: infografica premium.`
+  },
+  'social-proof-avatar': {
+    label: 'Social Proof Avatar',
+    layoutInstructions: `Layout "Social Proof Avatar": In alto a sinistra, foto avatar rotonda di un cliente con nome e username sotto. Sotto l'avatar, un box bianco semi-trasparente con una testimonianza/recensione del cliente in testo grande e leggibile. Nella metà inferiore, foto del prodotto/servizio in uso. Layout tipo "tweet" o "post social" sovrapposto alla foto prodotto. Stile: autentico, social media native.`
+  },
+  'x-ragioni-acquistare': {
+    label: 'X Ragioni per Acquistare',
+    layoutInstructions: `Layout "X Ragioni per Acquistare": Headline grande in alto (es: "5 ragioni per scegliere [prodotto]"). Sotto, elenco numerato verticale con icone o numeri colorati a sinistra e testo beneficio a destra. Ogni riga ha un colore o icona diversa. In basso, CTA button. Sfondo con il prodotto sfocato dietro o a lato. Stile: infografica moderna e pulita.`
+  },
+  'offerta-headline-usp': {
+    label: 'Offerta / Headline USP',
+    layoutInstructions: `Layout "Offerta / Headline USP": Headline dominante in alto (grande, bold, colore d'impatto). Sotto, 3-4 benefici chiave in box colorati orizzontali allineati a sinistra, ciascuno con testo bold. Prodotto posizionato a destra occupando circa il 40% dell'immagine. In basso, badge con social proof (voto medio, stelline). Colori del brand prominenti. Stile: advertising diretto, alto impatto.`
+  },
+  'noi-vs-competitor': {
+    label: 'Noi vs Competitor',
+    layoutInstructions: `Layout "Noi vs Competitor": Immagine divisa a metà verticalmente. SINISTRA: sfondo rosa/rosso pallido, prodotto generico/scuro, sotto 3 box bianchi con testi negativi del competitor (es: "istruzioni poco chiare", "troppo costoso"). DESTRA: sfondo verde/menta, prodotto del brand premium e colorato, sotto 3 box verdi con testi positivi bold (es: "Facile da usare", "40% più economico"). Al centro grande "VS" in rosso. In basso, banner con offerta/CTA. Stile: comparativo, alto contrasto tra le due metà.`
+  },
+  'risultato-desiderabile': {
+    label: 'Risultato Desiderabile',
+    layoutInstructions: `Layout "Risultato Desiderabile": Foto a tutto campo del risultato finale che il cliente otterrà (persona felice, risultato raggiunto, trasformazione). Atmosfera aspirazionale e positiva. Overlay gradiente in basso con testo CTA. In alto, piccola headline. Stile: lifestyle aspirazionale, emozionale.`
+  },
+};
+
+function buildConceptTypeInstructions(conceptTypes?: string[]): string {
+  if (!conceptTypes || conceptTypes.length === 0) {
+    return `═══════════════════════════════════════════════════
+TIPOLOGIE CONCEPT (scegli 3 tra queste):
+═══════════════════════════════════════════════════
+Scegli 3 tipologie diverse per i concept visuali:
+${Object.entries(CONCEPT_TYPE_PROMPTS).map(([_, v]) => `- "${v.label}"`).join('\n')}
+Specifica nel campo styleType la tipologia scelta (in italiano).`;
+  }
+
+  const selectedTypes = conceptTypes
+    .map(id => CONCEPT_TYPE_PROMPTS[id])
+    .filter(Boolean);
+
+  if (selectedTypes.length === 0) {
+    return buildConceptTypeInstructions(undefined);
+  }
+
+  return `═══════════════════════════════════════════════════
+TIPOLOGIE CONCEPT RICHIESTE (genera ESATTAMENTE queste):
+═══════════════════════════════════════════════════
+L'utente ha selezionato queste tipologie specifiche. Genera UN concept per ciascuna tipologia richiesta:
+${selectedTypes.map(t => `
+- "${t.label}": ${t.layoutInstructions}`).join('\n')}
+
+Specifica nel campo styleType ESATTAMENTE il nome della tipologia (in italiano).
+Se le tipologie selezionate sono meno di 3, completa con altre tipologie a tua scelta fino a 3 concept totali.`;
 }
 
 export interface VisualConcept {
@@ -62,7 +119,13 @@ export async function analyzeAdTextServerSide(
     ? `BRAND COLOR: ${settings.brandColor}. BRAND FONT: ${settings.brandFont || 'Modern Sans'}.` 
     : '';
   
-  const prompt = `Sei un direttore creativo senior esperto in Facebook/Meta Ads ad alta conversione. Analizza questo copy pubblicitario per ${platform.toUpperCase()}.
+  const conceptTypeInstructions = buildConceptTypeInstructions(settings.conceptTypes);
+
+  const prompt = `Sei un direttore creativo senior esperto in Facebook/Meta Ads ad alta conversione.
+
+⚠️ REGOLA FONDAMENTALE LINGUA: TUTTI i campi testuali del JSON (title, description, reasoning, textContent, tone, objective, emotion, cta, competitiveEdge, styleType, socialCaptions.tone, socialCaptions.text) DEVONO essere scritti ESCLUSIVAMENTE in ITALIANO. NON in inglese. Solo i campi promptClean e promptWithText sono in inglese. Se scrivi anche UN SOLO campo testuale in inglese, la risposta è INVALIDA e verrà rifiutata.
+
+Analizza questo copy pubblicitario per ${platform.toUpperCase()}.
 FACTORY SETTINGS: Mood: ${settings.mood}, Style: ${settings.stylePreference}. ${brandInfo}
 
 TEXT: "${text}"
@@ -71,7 +134,6 @@ TASK:
 1. Crea 3 concept visuali (immagini) ottimizzati per inserzioni pubblicitarie ad alta conversione.
 2. Crea 3 caption social (Emozionale, Tecnico, Diretto) con hashtag strategici.
 3. Fornisci un breve vantaggio competitivo.
-4. Per ogni concept, specifica a quale tipologia appartiene (vedi CONCEPT OBBLIGATORI sotto).
 
 ═══════════════════════════════════════════════════
 LINEE GUIDA INSERZIONI IMMAGINE (da rispettare SEMPRE):
@@ -86,7 +148,7 @@ LINEE GUIDA INSERZIONI IMMAGINE (da rispettare SEMPRE):
 - Rispetta le linee guida Facebook/Meta (no testo >20% dell'immagine, no contenuti vietati).
 
 ═══════════════════════════════════════════════════
-STRUTTURA TESTI INSERZIONE (per socialCaptions):
+STRUTTURA TESTI INSERZIONE (per socialCaptions — TUTTO IN ITALIANO):
 ═══════════════════════════════════════════════════
 - Usa modelli di comunicazione: AIDA (Attenzione, Interesse, Desiderio, Azione) o Think-Feel-Do.
 - Usa ELENCHI PUNTATI per evidenziare le USP del prodotto/servizio.
@@ -97,17 +159,7 @@ STRUTTURA TESTI INSERZIONE (per socialCaptions):
 - Il titolo deve essere < 125 caratteri e fare leva su una caratteristica del prodotto o un'offerta.
 - La descrizione deve evidenziare i BENEFICI CHIAVE e contenere parole come: senza sforzo, spedizione gratuita, risultati garantiti, ecc.
 
-═══════════════════════════════════════════════════
-CONCEPT OBBLIGATORI (tipologie da usare nei 3 concept):
-═══════════════════════════════════════════════════
-Scegli 3 tra queste tipologie per i concept visuali:
-- "Call Out Benefici": immagine che mette in evidenza i benefici principali del prodotto/servizio
-- "Social Proof Avatar": immagine con avatar/foto di clienti soddisfatti + testimonianza
-- "X Ragioni per Acquistare": visual con elenco numerico dei motivi per acquistare
-- "Offerta / Headline USP": immagine focalizzata sull'offerta principale o sulla USP (Unique Selling Proposition)
-- "Noi vs Competitor": visual comparativo tra il prodotto e la concorrenza
-- "Risultato Desiderabile": visual che mostra il risultato finale ottenibile dal cliente
-Specifica nel campo styleType la tipologia scelta.
+${conceptTypeInstructions}
 
 ═══════════════════════════════════════════════════
 REGOLE PER I PROMPT IMMAGINE (promptClean e promptWithText):
@@ -121,23 +173,18 @@ REGOLE PER I PROMPT IMMAGINE (promptClean e promptWithText):
 - promptClean: visual puro SENZA testo/loghi/watermark — solo immagine.
 - promptWithText: il prompt deve INCLUDERE istruzioni per renderizzare il testo dell'hook (textContent) in modo prominente e leggibile nell'immagine, con tipografia bold, alto contrasto e posizionamento strategico. Il testo deve occupare max 20% dell'immagine.
 - Qualità fotorealistica, standard da fotografia pubblicitaria commerciale.
+- QUESTI SONO GLI UNICI CAMPI IN INGLESE. Tutti gli altri campi DEVONO essere in italiano.
 
-═══════════════════════════════════════════════════
-LINGUA:
-═══════════════════════════════════════════════════
-Tutti i campi testuali (title, description, reasoning, textContent, socialCaptions, tone, objective, emotion, cta, competitiveEdge, styleType) DEVONO essere in ITALIANO.
-Solo i prompt immagine (promptClean, promptWithText) restano in INGLESE per il modello di generazione.
-
-OUTPUT JSON VALIDO con questa struttura esatta:
+OUTPUT JSON VALIDO con questa struttura esatta (ricorda: TUTTO in italiano tranne promptClean e promptWithText):
 {
-  "tone": "string (in italiano)",
-  "objective": "string (in italiano)", 
-  "emotion": "string (in italiano)",
-  "cta": "string (in italiano, < 125 caratteri)",
-  "context": { "sector": "string (in italiano)", "product": "string (in italiano)", "target": "string (in italiano)" },
-  "concepts": [{ "id": "string", "title": "string (in italiano)", "description": "string (descrizione del visual IN ITALIANO)", "styleType": "string (tipologia concept IN ITALIANO: es. Call Out Benefici, Social Proof Avatar, Offerta/Headline USP, Noi vs Competitor, X Ragioni per Acquistare, Risultato Desiderabile)", "recommendedFormat": "1:1|9:16", "promptClean": "string (prompt IN INGLESE per visual puro senza testo, ottimizzato per ads)", "promptWithText": "string (prompt IN INGLESE con istruzioni per renderizzare il testo hook nell'immagine in modo leggibile e prominente, testo max 20% immagine)", "textContent": "string (testo hook IN ITALIANO da mostrare nell'immagine)", "reasoning": "string (IN ITALIANO, spiega perché questo visual converte secondo le linee guida inserzioni)" }],
-  "socialCaptions": [{ "tone": "string (in italiano: Emozionale, Tecnico o Diretto)", "text": "string (in italiano, strutturato con AIDA o Think-Feel-Do, con elenchi puntati USP, riprova sociale e CTA finale)", "hashtags": ["string"] }],
-  "competitiveEdge": "string (in italiano)"
+  "tone": "stringa in italiano",
+  "objective": "stringa in italiano", 
+  "emotion": "stringa in italiano",
+  "cta": "stringa in italiano, massimo 125 caratteri",
+  "context": { "sector": "stringa in italiano", "product": "stringa in italiano", "target": "stringa in italiano" },
+  "concepts": [{ "id": "string", "title": "titolo in ITALIANO", "description": "descrizione dettagliata del visual in ITALIANO", "styleType": "tipologia inserzione in ITALIANO (es: Call Out Benefici, Social Proof Avatar, Offerta / Headline USP, Noi vs Competitor, X Ragioni per Acquistare, Risultato Desiderabile)", "recommendedFormat": "1:1|9:16", "promptClean": "detailed image prompt IN ENGLISH for pure visual without text", "promptWithText": "detailed image prompt IN ENGLISH with instructions to render the hook text legibly in the image", "textContent": "testo hook in ITALIANO da mostrare nell'immagine", "reasoning": "spiegazione in ITALIANO del perché questo visual converte" }],
+  "socialCaptions": [{ "tone": "Emozionale o Tecnico o Diretto", "text": "caption completa in ITALIANO", "hashtags": ["hashtag"] }],
+  "competitiveEdge": "vantaggio competitivo in ITALIANO"
 }`;
   
   console.log("[ADVISAGE-SERVER] Calling AI provider with model:", modelConfig.model);
@@ -184,7 +231,7 @@ OUTPUT JSON VALIDO con questa struttura esatta:
   return result;
 }
 
-function buildAdImagePrompt(basePrompt: string, aspectRatio: string, variant: 'text' | 'clean' = 'clean', hookText?: string): string {
+function buildAdImagePrompt(basePrompt: string, aspectRatio: string, variant: 'text' | 'clean' = 'clean', hookText?: string, styleType?: string): string {
   const formatGuide: Record<string, string> = {
     '1:1': 'Square format (Instagram Feed). Center the focal point. Leave 20% margins for text overlay.',
     '3:4': 'Portrait format (Instagram Post 4:5). Vertical composition, subject in upper 2/3, lower 1/3 free for caption overlay.',
@@ -216,9 +263,19 @@ ADVERTISING VISUAL RULES (follow strictly):
 - DEPTH OF FIELD: Shallow depth of field to isolate the subject and create a professional, premium look.
 ${textRule}
 - PROFESSIONAL QUALITY: Photorealistic, 8K quality, commercial advertising photography standard.
-
+${styleType ? getStyleTypeLayoutInstructions(styleType) : ''}
 CONCEPT TO VISUALIZE:
 ${basePrompt}`;
+}
+
+function getStyleTypeLayoutInstructions(styleType: string): string {
+  const normalized = styleType.toLowerCase().trim();
+  for (const [key, value] of Object.entries(CONCEPT_TYPE_PROMPTS)) {
+    if (normalized.includes(key.replace(/-/g, ' ')) || normalized.includes(value.label.toLowerCase())) {
+      return `\nAD TYPE-SPECIFIC LAYOUT INSTRUCTIONS:\n${value.layoutInstructions}\nFollow the above layout instructions EXACTLY for this ad type.\n`;
+    }
+  }
+  return '';
 }
 
 async function getGeminiApiKeyForImage(consultantId: string): Promise<string | null> {
@@ -260,7 +317,8 @@ export async function generateImageServerSide(
   prompt: string,
   aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '1:1',
   variant: 'text' | 'clean' = 'clean',
-  hookText?: string
+  hookText?: string,
+  styleType?: string
 ): Promise<{ imageUrl: string; error?: string }> {
   console.log(`[ADVISAGE-SERVER] Generating image for consultantId: ${consultantId}`);
   console.log(`[ADVISAGE-SERVER] Prompt: ${prompt.substring(0, 100)}...`);
@@ -280,13 +338,13 @@ export async function generateImageServerSide(
     const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
     console.log(`[ADVISAGE-SERVER] Using model: ${IMAGE_MODEL}`);
     
-    const adOptimizedPrompt = buildAdImagePrompt(prompt, aspectRatio, variant, hookText);
+    const adOptimizedPrompt = buildAdImagePrompt(prompt, aspectRatio, variant, hookText, styleType);
     
     const response = await trackedGenerateContent(ai, {
       model: IMAGE_MODEL,
       contents: [{ role: 'user', parts: [{ text: adOptimizedPrompt }] }] as any,
       config: { imageConfig: { aspectRatio } } as any
-    }, { consultantId, feature: 'advisage' });
+    }, { consultantId, feature: 'advisage', isImageOutput: true });
     
     const part = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
     

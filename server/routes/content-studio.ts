@@ -3188,6 +3188,7 @@ const advisageAnalysisSchema = z.object({
   stylePreference: z.enum(['realistic', '3d-render', 'illustration', 'cyberpunk', 'lifestyle']),
   brandColor: z.string().optional(),
   brandFont: z.string().optional(),
+  conceptTypes: z.array(z.string()).optional(),
 });
 
 router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
@@ -3195,84 +3196,15 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
     const consultantId = req.user!.id;
     const validated = advisageAnalysisSchema.parse(req.body);
     
-    const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, consultantId);
-    setFeature?.('advisage-analyze');
-    const modelConfig = getModelWithThinking(metadata.name);
+    console.log(`[ADVISAGE] Analysis request from ${consultantId}, conceptTypes: ${validated.conceptTypes?.join(', ') || 'auto'}`);
     
-    const brandInfo = validated.brandColor 
-      ? `BRAND COLOR: ${validated.brandColor}. BRAND FONT: ${validated.brandFont || 'Modern Sans'}.` 
-      : '';
-    
-    const prompt = `Sei un direttore creativo esperto in advertising digitale ad alta conversione. Analizza questo copy pubblicitario per ${validated.platform.toUpperCase()}.
-    FACTORY SETTINGS: Mood: ${validated.mood}, Style: ${validated.stylePreference}. ${brandInfo}
-    
-    TEXT: "${validated.text}"
-    
-    TASK: 
-    1. Crea 3 concept visuali ottimizzati per generazione immagini AI pubblicitarie ad alta conversione.
-    2. Crea 3 caption social (Emozionale, Tecnico, Diretto) con hashtag strategici.
-    3. Fornisci un breve vantaggio competitivo.
-
-    REGOLE PER I PROMPT IMMAGINE (promptClean e promptWithText):
-    - I prompt devono descrivere visual che FERMANO LO SCROLL: alto contrasto, colori vividi, composizione dinamica.
-    - Usa la REGOLA DEI TERZI per posizionare gli elementi chiave.
-    - Prevedi SPAZIO NEGATIVO (almeno 25% dell'immagine) per overlay di testo pubblicitario.
-    - Applica PSICOLOGIA DEI COLORI: rosso/arancio per urgenza, blu per fiducia, verde per crescita.
-    - Includi un PATTERN INTERRUPT: un elemento visivo inaspettato che rompe la monotonia del feed.
-    - GERARCHIA VISIVA: guida l'occhio dall'hook (alto) → soggetto (centro) → area CTA (basso).
-    - Illuminazione drammatica e direzionale, mai piatta. Profondità di campo ridotta per look premium.
-    - NON includere MAI testo, loghi o watermark nell'immagine — solo visual puro.
-    - Qualità fotorealistica, standard da fotografia pubblicitaria commerciale.
-    
-    OUTPUT JSON VALIDO con questa struttura esatta:
-    {
-      "tone": "string",
-      "objective": "string", 
-      "emotion": "string",
-      "cta": "string",
-      "context": { "sector": "string", "product": "string", "target": "string" },
-      "concepts": [{ "id": "string", "title": "string", "description": "string", "styleType": "string", "recommendedFormat": "1:1|4:5|9:16", "promptClean": "string (prompt dettagliato per visual puro senza testo, ottimizzato per ads)", "promptWithText": "string (prompt con indicazioni per spazio testo overlay)", "textContent": "string", "reasoning": "string (spiega perché questo visual converte)" }],
-      "socialCaptions": [{ "tone": "string", "text": "string", "hashtags": ["string"] }],
-      "competitiveEdge": "string"
-    }`;
-    
-    console.log("[ADVISAGE] Calling AI provider with model:", modelConfig.model);
-    const response = await trackedGenerateContent({
-      model: modelConfig.model,
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.7,
-      }
-    } as any, { consultantId, feature: 'advisage-analyze', callerRole: 'consultant' });
-    
-    const responseText = (response.response?.text?.() || (response as any).text?.() || "").trim();
-    console.log("[ADVISAGE] Response length:", responseText.length);
-    
-    if (!responseText) {
-      throw new Error("La risposta AI è vuota. Riprova.");
-    }
-    
-    let parsed;
-    try {
-      parsed = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("[ADVISAGE] JSON parse error. Response:", responseText.substring(0, 500));
-      throw new Error("Errore nel parsing della risposta AI. Riprova.");
-    }
-    
-    const postId = Math.random().toString(36).substr(2, 9);
-    const result = {
-      ...parsed,
-      id: postId,
-      concepts: (parsed.concepts || []).map((c: any, idx: number) => ({ 
-        ...c, 
-        id: `${postId}_concept_${idx}` 
-      })),
-      originalText: validated.text,
-      socialNetwork: validated.platform,
-      status: 'completed'
-    };
+    const result = await analyzeAdTextServerSide(consultantId, validated.text, validated.platform, {
+      mood: validated.mood,
+      stylePreference: validated.stylePreference,
+      brandColor: validated.brandColor,
+      brandFont: validated.brandFont,
+      conceptTypes: validated.conceptTypes,
+    });
     
     res.json({ success: true, data: result });
   } catch (error: any) {
@@ -3295,6 +3227,7 @@ const advisageImageSchema = z.object({
   aspectRatio: z.enum(['1:1', '3:4', '4:3', '9:16', '16:9']).default('1:1'),
   variant: z.enum(['text', 'clean']).default('clean'),
   hookText: z.string().optional(),
+  styleType: z.string().optional(),
 });
 
 router.post("/advisage/generate-image-server", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
@@ -3309,7 +3242,8 @@ router.post("/advisage/generate-image-server", authenticateToken, requireRole("c
       validated.prompt,
       validated.aspectRatio,
       validated.variant,
-      validated.hookText
+      validated.hookText,
+      validated.styleType
     );
     
     if (error) {

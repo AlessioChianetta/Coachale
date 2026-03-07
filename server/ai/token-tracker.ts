@@ -2,10 +2,11 @@ import { db } from "../db";
 import { aiTokenUsage, users } from "../../shared/schema";
 import { eq } from "drizzle-orm";
 
-export const PRICING: Record<string, { input: number; output: number; cachedInput: number }> = {
+export const PRICING: Record<string, { input: number; output: number; cachedInput: number; imageOutput?: number }> = {
   'gemini-3-flash-preview': { input: 0.50, output: 3.00, cachedInput: 0.05 },
   'gemini-3.1-pro-preview': { input: 2.00, output: 12.00, cachedInput: 0.20 },
-  'gemini-3.1-pro-image-preview': { input: 2.00, output: 12.00, cachedInput: 0.20 },
+  'gemini-3.1-pro-image-preview': { input: 2.00, output: 12.00, cachedInput: 0.20, imageOutput: 60.00 },
+  'gemini-3.1-flash-image-preview': { input: 0.50, output: 3.00, cachedInput: 0.05, imageOutput: 60.00 },
   'gemini-2.5-flash-tts': { input: 0.30, output: 2.50, cachedInput: 0.03 },
   'gemini-2.5-pro-tts': { input: 1.25, output: 10.00, cachedInput: 0.125 },
   'gemini-2.5-flash-native-audio-preview-12-2025': { input: 3.00, output: 12.00, cachedInput: 0.30 },
@@ -39,6 +40,7 @@ export interface TrackUsageParams {
   hasTools?: boolean;
   hasFileSearch?: boolean;
   callerRole?: 'client' | 'consultant';
+  isImageOutput?: boolean;
 }
 
 interface BufferEntry {
@@ -88,13 +90,14 @@ async function resolveClientRole(clientId: string): Promise<string | null> {
   }
 }
 
-export function calcCost(model: string, inputTokens: number, outputTokens: number, cachedTokens: number, thinkingTokens: number = 0): {
+export function calcCost(model: string, inputTokens: number, outputTokens: number, cachedTokens: number, thinkingTokens: number = 0, isImageOutput: boolean = false): {
   inputCost: number; outputCost: number; cacheSavings: number; totalCost: number;
 } {
   const pricing = PRICING[model] || DEFAULT_PRICING;
   const nonCachedInput = Math.max(0, inputTokens - cachedTokens);
   const inputCost = (nonCachedInput / 1_000_000) * pricing.input + (cachedTokens / 1_000_000) * pricing.cachedInput;
-  const outputCost = ((outputTokens + thinkingTokens) / 1_000_000) * pricing.output;
+  const outputRate = (isImageOutput && pricing.imageOutput) ? pricing.imageOutput : pricing.output;
+  const outputCost = ((outputTokens + thinkingTokens) / 1_000_000) * outputRate;
   const cacheSavings = (cachedTokens / 1_000_000) * (pricing.input - pricing.cachedInput);
   const totalCost = inputCost + outputCost;
   return { inputCost, outputCost, cacheSavings, totalCost };
@@ -137,7 +140,7 @@ class TokenTracker {
         return;
       }
 
-      const costs = calcCost(params.model, inputTokens, outputTokens, cachedTokens, thinkingTokens);
+      const costs = calcCost(params.model, inputTokens, outputTokens, cachedTokens, thinkingTokens, params.isImageOutput);
 
       let clientRole: string | null = params.callerRole || null;
       if (!clientRole) {

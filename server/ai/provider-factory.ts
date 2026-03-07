@@ -2021,7 +2021,7 @@ export async function trackedGenerateContent(
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     config?: any;
   },
-  context: { consultantId: string; clientId?: string; feature: string; keySource?: string; callerRole?: 'client' | 'consultant' }
+  context: { consultantId: string; clientId?: string; feature: string; keySource?: string; callerRole?: 'client' | 'consultant'; isImageOutput?: boolean }
 ): Promise<any> {
   const start = Date.now();
   let error = false;
@@ -2046,6 +2046,7 @@ export async function trackedGenerateContent(
         hasFileSearch: false,
         error: false,
         callerRole: context.callerRole,
+        isImageOutput: context.isImageOutput,
       }).catch(e => console.error('[TokenTracker] trackedGenerateContent error:', e));
     }
     return result;

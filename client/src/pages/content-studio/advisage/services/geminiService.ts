@@ -2,7 +2,7 @@
 import { AdAnalysis, AppSettings, SocialPlatform } from "../types";
 import { apiRequest } from "@/lib/queryClient";
 
-export const analyzeAdText = async (text: string, platform: SocialPlatform, settings: AppSettings): Promise<AdAnalysis> => {
+export const analyzeAdText = async (text: string, platform: SocialPlatform, settings: AppSettings, conceptTypes?: string[]): Promise<AdAnalysis> => {
   const result = await apiRequest("POST", "/api/content/advisage/analyze", {
     text,
     platform,
@@ -10,6 +10,7 @@ export const analyzeAdText = async (text: string, platform: SocialPlatform, sett
     stylePreference: settings.stylePreference,
     brandColor: settings.brandColor,
     brandFont: settings.brandFont,
+    conceptTypes: conceptTypes?.length ? conceptTypes : undefined,
   });
   
   if (!result.success) {
@@ -24,13 +25,15 @@ export const generateImageConcept = async (
   aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9", 
   settings: AppSettings,
   variant: 'text' | 'clean' = 'clean',
-  hookText?: string
+  hookText?: string,
+  styleType?: string
 ): Promise<string> => {
   const result = await apiRequest("POST", "/api/content/advisage/generate-image-server", {
     prompt,
     aspectRatio,
     variant,
     hookText: variant === 'text' ? hookText : undefined,
+    styleType,
   });
   
   if (!result.success) {
