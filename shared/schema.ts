@@ -8862,6 +8862,7 @@ export const contentIdeaTemplates = pgTable("content_idea_templates", {
   mediaType: varchar("media_type", { length: 50 }),
   copyType: varchar("copy_type", { length: 50 }),
   isDefault: boolean("is_default").default(false),
+  marketResearchProblems: jsonb("market_research_problems").$type<string[]>().default([]),
   createdAt: timestamp("created_at").default(sql`now()`),
 }, (table) => ({
   consultantIdx: index("idx_content_idea_templates_consultant").on(table.consultantId),

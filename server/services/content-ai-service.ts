@@ -51,6 +51,7 @@ export interface GenerateIdeasParams {
     guarantees?: string;
   };
   kbContent?: string;
+  marketResearchProblems?: string[];
 }
 
 export interface StructuredCopyShort {
@@ -3293,6 +3294,12 @@ CONTESTO:
 - Tipo Media: ${mediaType}
 - Tipo Copy: ${copyType}
 ${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
+${params.marketResearchProblems && params.marketResearchProblems.length > 0 ? `
+🔍 RICERCA DI MERCATO — PROBLEMI DEL PUBBLICO:
+Questi sono i problemi reali, le frustrazioni e i bisogni che il consulente risolve. Usa queste informazioni per creare contenuti che parlano direttamente ai pain point del target:
+${params.marketResearchProblems.map((p: string, i: number) => `${i + 1}. ${p}`).join('\n')}
+I contenuti devono fare leva su almeno uno di questi problemi, mostrando comprensione profonda e offrendo prospettive concrete.
+` : ''}
 ${brandContext}${brandVoiceContext}${kbContext}${platformSchemaContext}${topicContext}
 ${writingExamplesPriorityInstruction}${antiRepetitionContext}
 ${writingStyleSection}

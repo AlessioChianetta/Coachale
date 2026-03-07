@@ -488,6 +488,7 @@ router.post("/idea-templates", authenticateToken, requireRole("consultant"), asy
           sophisticationLevel: body.sophisticationLevel,
           mediaType: body.mediaType,
           copyType: body.copyType,
+          marketResearchProblems: body.marketResearchProblems || [],
         })
         .where(eq(schema.contentIdeaTemplates.id, existingTemplate.id))
         .returning();
@@ -514,6 +515,7 @@ router.post("/idea-templates", authenticateToken, requireRole("consultant"), asy
         sophisticationLevel: body.sophisticationLevel,
         mediaType: body.mediaType,
         copyType: body.copyType,
+        marketResearchProblems: body.marketResearchProblems || [],
       })
       .returning();
     
@@ -550,6 +552,7 @@ router.put("/idea-templates/:id", authenticateToken, requireRole("consultant"), 
         sophisticationLevel: body.sophisticationLevel,
         mediaType: body.mediaType,
         copyType: body.copyType,
+        marketResearchProblems: body.marketResearchProblems || [],
       })
       .where(and(
         eq(schema.contentIdeaTemplates.id, templateId),
@@ -1672,6 +1675,7 @@ const generateIdeasSchema = z.object({
   }).optional(),
   kbDocumentIds: z.array(z.string()).optional(),
   kbContent: z.string().optional(),
+  marketResearchProblems: z.array(z.string()).optional(),
 });
 
 const generateCopySchema = z.object({
@@ -1814,6 +1818,7 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
       charLimit: validatedData.charLimit,
       writingStyle: validatedData.writingStyle,
       customWritingInstructions: validatedData.customWritingInstructions,
+      marketResearchProblems: validatedData.marketResearchProblems,
     });
     
     console.log(`✅ [CONTENT-AI] Generated ${result.ideas.length} ideas using ${result.modelUsed}`);

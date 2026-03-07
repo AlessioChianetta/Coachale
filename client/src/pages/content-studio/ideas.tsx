@@ -494,6 +494,7 @@ export default function ContentStudioIdeas() {
   const [awarenessLevel, setAwarenessLevel] = useState<"unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware">("problem_aware");
   const [sophisticationLevel, setSophisticationLevel] = useState<"level_1" | "level_2" | "level_3" | "level_4" | "level_5">("level_3");
   const [additionalContext, setAdditionalContext] = useState("");
+  const [marketResearchProblems, setMarketResearchProblems] = useState<string[]>([""]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
   const [showGeneratedDialog, setShowGeneratedDialog] = useState(false);
@@ -1100,6 +1101,7 @@ export default function ContentStudioIdeas() {
       sophisticationLevel,
       mediaType,
       copyType,
+      marketResearchProblems: marketResearchProblems.filter(p => p.trim()),
     };
     try {
       if (saveMode === "overwrite" && activeTemplateId) {
@@ -1156,6 +1158,8 @@ export default function ContentStudioIdeas() {
     setSophisticationLevel(template.sophisticationLevel || "level_3");
     setMediaType(template.mediaType || "photo");
     setCopyType(template.copyType || "short");
+    const problems = template.marketResearchProblems;
+    setMarketResearchProblems(Array.isArray(problems) && problems.length > 0 ? problems : [""]);
     setActiveTemplateId(template.id);
     setActiveTemplateName(template.name);
   };
@@ -1637,6 +1641,7 @@ export default function ContentStudioIdeas() {
           charLimit: targetPlatform === "x" ? platformLimit.tweet : (targetPlatform === "linkedin" ? platformLimit.post : platformLimit.caption),
           writingStyle,
           customWritingInstructions: writingStyle === "custom" ? customWritingInstructions : undefined,
+          marketResearchProblems: marketResearchProblems.filter(p => p.trim()),
           ...(useBrandVoice && Object.keys(brandVoiceData).length > 0 && { brandVoiceData }),
           ...(useKnowledgeBase && selectedKbDocIds.length > 0 && { kbDocumentIds: selectedKbDocIds }),
           ...(useKnowledgeBase && tempFiles.filter(f => f.status === "success").length > 0 && { 
@@ -2592,6 +2597,95 @@ export default function ContentStudioIdeas() {
                         />
                       )}
                     </CardContent>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Step 3.5: Ricerca di Mercato */}
+              <Card className="overflow-hidden">
+                <button
+                  onClick={() => toggleSection("market")}
+                  className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 hover:from-amber-100 hover:to-orange-100 dark:hover:from-amber-950/40 dark:hover:to-orange-950/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold text-sm">
+                      <Compass className="h-4 w-4" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-foreground">Ricerca di Mercato</h3>
+                      <p className="text-xs text-muted-foreground">Problemi che risolvi per il tuo pubblico</p>
+                    </div>
+                    {!expandedSections.has("market") && marketResearchProblems.filter(p => p.trim()).length > 0 && (
+                      <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+                        {marketResearchProblems.filter(p => p.trim()).length} problemi
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {marketResearchProblems.filter(p => p.trim()).length > 0 && (
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    )}
+                    <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${expandedSections.has("market") ? "rotate-180" : ""}`} />
+                  </div>
+                </button>
+                
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${expandedSections.has("market") ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                >
+                  <div className="overflow-hidden">
+                  <CardContent className="pt-4 space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Elenca i problemi, le frustrazioni e i bisogni del tuo pubblico target. L'AI userà queste informazioni per creare contenuti che parlano direttamente ai loro pain point.
+                    </p>
+                    <div className="space-y-3">
+                      {marketResearchProblems.map((problem, index) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <div className="h-6 w-6 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0 mt-2">
+                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{index + 1}</span>
+                          </div>
+                          <Textarea
+                            placeholder={
+                              index === 0 ? "es. Non riescono a trovare clienti in modo costante..." :
+                              index === 1 ? "es. Hanno poco tempo per creare contenuti di qualità..." :
+                              index === 2 ? "es. Non sanno come differenziarsi dalla concorrenza..." :
+                              "Descrivi un altro problema..."
+                            }
+                            value={problem}
+                            onChange={(e) => {
+                              const updated = [...marketResearchProblems];
+                              updated[index] = e.target.value;
+                              setMarketResearchProblems(updated);
+                            }}
+                            rows={2}
+                            className="flex-1 resize-none text-sm"
+                          />
+                          {marketResearchProblems.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 flex-shrink-0 mt-1 text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                const updated = marketResearchProblems.filter((_, i) => i !== index);
+                                setMarketResearchProblems(updated);
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {marketResearchProblems.length < 10 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMarketResearchProblems([...marketResearchProblems, ""])}
+                        className="w-full border-dashed border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                      >
+                        <span className="mr-1.5">+</span> Aggiungi problema
+                      </Button>
+                    )}
+                  </CardContent>
                   </div>
                 </div>
               </Card>
