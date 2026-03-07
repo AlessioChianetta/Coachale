@@ -1,0 +1,27 @@
+dNumber=1001 codec=L16 sampleRate=8000 activeSessions=1
+6|voice-bridge  | 2026-03-07T06:44:30.821Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] handleCallStart setup: session=0ms, bgInit+queue=2ms sessionId=0f86a4b0
+6|voice-bridge  | 2026-03-07T06:44:30.821Z [INFO ] [BRIDGE:SERVER] 🎵 Adaptive audio timer started (prefill=4) sessionId=0f86a4b0
+6|voice-bridge  | 2026-03-07T06:44:30.821Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Pre-connect overhead: 2ms sessionId=0f86a4b0
+6|voice-bridge  | 2026-03-07T06:44:30.821Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=0f86a4b0 url=wss://bec38890-842e-48dc-ba52-eb94c9c0fac4-00-3lqlofxb78yp4.picard.replit.dev/ws/ai-voice voice=Puck isResume=false
+6|voice-bridge  | 2026-03-07T06:44:31.330Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] TLS+HTTP upgrade handshake: 509ms sessionId=0f86a4b0 resumed=false
+6|voice-bridge  | 2026-03-07T06:44:31.330Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Replit WS connected in 509ms (TLS handshake + HTTP upgrade) sessionId=0f86a4b0
+6|voice-bridge  | 2026-03-07T06:44:31.330Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=0f86a4b0
+6|voice-bridge  | 2026-03-07T06:44:31.330Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=0f86a4b0 from=connecting to=active
+6|voice-bridge  | 2026-03-07T06:44:31.330Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Total handleCallStart: 511ms (setup=2ms, connect=509ms, post=0ms) sessionId=0f86a4b0
+6|voice-bridge  | 2026-03-07T06:44:31.557Z [INFO ] [BRIDGE:SERVER] 📞 [NUMBER LOOKUP] Called number 1001 not found in voice_numbers
+6|voice-bridge  | 2026-03-07T06:44:33.041Z [ERROR] [BRIDGE:REPLIT-WS] [REPLIT ERROR]: Failed to initialize Live session
+6|voice-bridge  | 2026-03-07T06:44:33.059Z [WARN ] [BRIDGE:REPLIT-WS] ⚠️ Audio DISCARDED - connected=true, ws=true, readyState=2 sessionId=0f86a4b0 reconnecting=false
+6|voice-bridge  | 2026-03-07T06:44:33.166Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=0f86a4b0 code=4500 reason=Server error hasPendingResume=false
+6|voice-bridge  | 2026-03-07T06:44:33.166Z [INFO ] [BRIDGE:SERVER] 📞 [REPLIT-ONCLOSE] Replit connection closed sessionId=0f86a4b0 code=4500 reason=Server error fsUuid=outbound-1772865864274-r1u689 callId=sc_1772865862534_91gmsqbf2 calledNumber=1001
+6|voice-bridge  | 2026-03-07T06:44:33.166Z [INFO ] [BRIDGE:SERVER] 📞 Replit closed permanently - ending call sessionId=0f86a4b0
+6|voice-bridge  | 2026-03-07T06:44:33.166Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-07T06:44:33.166Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] callId=sc_1772865862534_91gmsqbf2 | reason=replit_disconnected | duration=2s
+6|voice-bridge  | 2026-03-07T06:44:33.166Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] session: id=0f86a4b0 | caller=1001 | called=1001 | state=active | fsUuid=outbound-177
+6|voice-bridge  | 2026-03-07T06:44:33.166Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] Before cleanup: activeSessions=1 | overflowQueue=0
+6|voice-bridge  | 2026-03-07T06:44:33.167Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=0f86a4b0 callId=sc_1772865862534_91gmsqbf2 reason=replit_disconnected duration=2.3s bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+6|voice-bridge  | 2026-03-07T06:44:33.167Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] Sending uuid_kill to FreeSWITCH: fsUuid=outbound-1772865864274-r1u689 reason=replit_disconnected
+6|voice-bridge  | 2026-03-07T06:44:33.168Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] After cleanup: activeSessions=0 | overflowQueue=0
+6|voice-bridge  | 2026-03-07T06:44:33.168Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-07T06:44:33.168Z [INFO ] [BRIDGE:SERVER] 🔄 [DEQUEUE] No overflow callers to dequeue
+6|voice-bridge  | 2026-03-07T06:44:33.210Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] uuid_kill result for outbound-1772865864274-r1u689: +OK
+6|voice-bridge  | 2026-03-07T06:44:33.225Z [INFO ] [BRIDGE:SERVER] WebSocket closed (Session: 0f86a4b0-b40c-49be-b948-3d77918b6738)

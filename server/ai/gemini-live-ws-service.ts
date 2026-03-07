@@ -10165,10 +10165,13 @@ ${compactFeedback}
               }
             }
             
+            const isFailedInit = code === 4500 || (code !== 1000 && durationSeconds <= 3 && conversationMessages.length === 0);
+            const vcStatus = isFailedInit ? 'failed' : 'completed';
+
             await db
               .update(voiceCalls)
               .set({
-                status: 'completed',
+                status: vcStatus,
                 endedAt: endedAt,
                 durationSeconds: durationSeconds,
                 fullTranscript: transcriptText || null,
@@ -10181,7 +10184,7 @@ ${compactFeedback}
             // Remove from active calls tracking
             activeVoiceCalls.delete(voiceCallId);
             
-            console.log(`📞 [${connectionId}] Voice call ${voiceCallId} completed - Duration: ${durationSeconds}s`);
+            console.log(`📞 [${connectionId}] Voice call ${voiceCallId} ${vcStatus} - Duration: ${durationSeconds}s${isFailedInit ? ' (failed init)' : ''}`);
 
             if (consultantId) {
               try {
@@ -10224,9 +10227,10 @@ ${compactFeedback}
               console.log(`🔄 [${connectionId}] Skipping scheduled_voice_call completion — GoAway reconnect in progress (call still active)`);
             } else if (effectiveScheduledCallId) {
               try {
+                const svcStatus = isFailedInit ? 'failed' : 'completed';
                 await db.execute(sql`
                   UPDATE scheduled_voice_calls 
-                  SET status = 'completed',
+                  SET status = ${svcStatus},
                       voice_call_id = ${voiceCallId},
                       duration_seconds = ${durationSeconds},
                       hangup_cause = ${code === 1000 ? 'normal_end' : `disconnect_${code}`},
@@ -10234,7 +10238,7 @@ ${compactFeedback}
                       updated_at = NOW()
                   WHERE id = ${effectiveScheduledCallId}
                 `);
-                console.log(`🔗 [${connectionId}] Synced scheduled_voice_call ${effectiveScheduledCallId} -> completed`);
+                console.log(`🔗 [${connectionId}] Synced scheduled_voice_call ${effectiveScheduledCallId} -> ${svcStatus}`);
                 
                 const svcResult = await db.execute(sql`
                   SELECT source_task_id FROM scheduled_voice_calls WHERE id = ${effectiveScheduledCallId}
