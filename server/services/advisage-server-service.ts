@@ -231,6 +231,32 @@ LINEE GUIDA INSERZIONI IMMAGINE:
 - Rispetta le linee guida Facebook/Meta (testo max 20% dell'immagine).
 
 ═══════════════════════════════════════════════════
+⚠️ HOOK TEXT — REGOLE FONDAMENTALI PER LEAD GENERATION:
+═══════════════════════════════════════════════════
+Il "textContent" e "hook_text.testo" sono il TESTO HOOK che appare nell'immagine pubblicitaria.
+Questo testo ha UN UNICO OBIETTIVO: far dire al target "Sì, ho esattamente questo problema/desiderio — voglio saperne di più" affinché clicchi sull'annuncio e lasci i propri dati.
+
+FORMULA HOOK VINCENTE (usa UNA di queste strutture):
+1. PROBLEMA RICONOSCIBILE: Nomina un dolore specifico che il target VIVE OGNI GIORNO.
+   Esempio: "Stanco di clienti che spariscono dopo il preventivo?" — NON: "Migliora le vendite"
+2. DESIDERIO CONCRETO: Descrivi il RISULTATO che il target sogna, come se lo stesse già vivendo.
+   Esempio: "Clienti che ti cercano. Ogni settimana." — NON: "Fai crescere il tuo business"
+3. DOMANDA-SPECCHIO: Una domanda che il target legge e pensa "questo parla di me".
+   Esempio: "Quanto tempo perdi a rincorrere lead che non convertono?" — NON: "Vuoi più clienti?"
+4. CONTRASTO PRIMA/DOPO: Mostra la trasformazione in modo specifico.
+   Esempio: "Da 2 clienti al mese a 2 a settimana" — NON: "Aumenta i tuoi guadagni"
+5. STATISTICA/PROVOCAZIONE: Un dato o un'affermazione che interrompe il pattern mentale.
+   Esempio: "Il 73% dei tuoi competitor lo fa già" — NON: "Non restare indietro"
+
+REGOLE CRITICHE per hook:
+- MASSIMO 8-12 parole. Se è più lungo, è troppo lungo. Il cervello lo deve elaborare in 1.5 secondi.
+- SPECIFICO > generico. "Mal di schiena ogni mattina?" batte "Problemi di salute?"
+- VIETATO: frasi vuote come "Scopri di più", "La soluzione per te", "Il futuro è qui", "Trasforma la tua vita"
+- VIETATO: slogan motivazionali o frasi da poster. L'hook parla del PROBLEMA DEL CLIENTE, non del brand.
+- USA il linguaggio REALE del target — come parlerebbero con un amico al bar, non in una presentazione.
+- L'hook deve creare un MICRO-GAP di curiosità: "ho questo problema... come lo risolvono?"
+
+═══════════════════════════════════════════════════
 STRUTTURA TESTI INSERZIONE (socialCaptions):
 ═══════════════════════════════════════════════════
 - AIDA o Think-Feel-Do come modelli di comunicazione.
@@ -276,7 +302,7 @@ Struttura promptVisual:
     { "nome": "sinistra | destra | centro | sfondo | primo_piano | ecc.", "sfondo": "colore e tono specifico", "soggetto": "descrizione PRECISA e DETTAGLIATA del soggetto — cosa appare, come appare, espressione, postura, oggetti", "illuminazione": "tipo di luce specifica", "box_testi": ["testo 1", "testo 2"], "stile_box": "descrizione stile dei box testi" }
   ],
   "elemento_centrale": "elemento visivo che sta al centro o collega le sezioni (es: VS, freccia, badge)",
-  "hook_text": { "testo": "il testo hook da mostrare LEGGIBILE nell'immagine", "posizione": "dove va posizionato (es: fascia inferiore, alto centro)", "stile": "stile tipografico (es: bold bianco con ombra scura, font sans-serif grande)" },
+  "hook_text": { "testo": "STESSO testo di textContent — l'hook che fa dire al target 'ho questo problema' (MAX 8-12 parole, specifico, zero fuffa)", "posizione": "dove va posizionato (es: fascia inferiore, alto centro)", "stile": "stile tipografico (es: bold bianco con ombra scura, font sans-serif grande)" },
   "stile_fotografico": "fotorealistico | illustrazione | infografica | lifestyle | ecc. + dettagli",
   "colori_brand": "colori predominanti da usare",
   "note_aggiuntive": "qualsiasi dettaglio extra per la resa visiva"
@@ -300,7 +326,7 @@ OUTPUT JSON VALIDO — TUTTO IN ITALIANO:
     "promptClean": "prompt in inglese per generazione immagine SENZA testo — TRADUZIONE FEDELE della description",
     "promptWithText": "prompt in inglese per generazione immagine CON testo hook overlay — TRADUZIONE FEDELE della description + istruzioni testo",
     "promptVisual": { "layout": {}, "sezioni": [], "stile_fotografico": "", "hook_text": {} },
-    "textContent": "testo hook in italiano da mostrare nell'immagine",
+    "textContent": "testo hook in italiano (MAX 8-12 parole) — deve far dire al target 'ho questo problema/desiderio, voglio saperne di più'. Usa le formule hook sopra: problema riconoscibile, desiderio concreto, domanda-specchio, contrasto prima/dopo, o statistica/provocazione",
     "reasoning": "spiegazione in italiano del perché questo visual converte"
   }],
   "socialCaptions": [{ "tone": "Emozionale o Tecnico o Diretto", "text": "caption completa in italiano", "hashtags": ["hashtag"] }],
