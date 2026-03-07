@@ -12,6 +12,65 @@ export interface AdvisageSettings {
   conceptTypes?: string[];
 }
 
+export interface ImageGenOptions {
+  originalText?: string;
+  mood?: string;
+  stylePreference?: string;
+  brandColor?: string;
+  lightingStyle?: string;
+  colorGrading?: string;
+  cameraAngle?: string;
+  backgroundStyle?: string;
+  imageQuality?: string;
+}
+
+const PROMPT_MAPPINGS = {
+  mood: {
+    luxury: 'Atmosfera di lusso sofisticato, materiali premium, finiture eleganti, palette toni caldi dorati e neutri profondi',
+    energetic: 'Atmosfera dinamica e vibrante, colori saturi e contrastati, composizione diagonale che comunica movimento ed energia',
+    professional: 'Atmosfera corporate e autorevole, colori sobri e raffinati, composizione pulita e ordinata',
+    minimalist: 'Atmosfera zen e essenziale, ampi spazi negativi, palette monocromatica, composizione centrata e simmetrica',
+    playful: 'Atmosfera giocosa e fresca, colori pastello vivaci, composizione asimmetrica e dinamica',
+  } as Record<string, string>,
+  stylePreference: {
+    realistic: 'Fotografia professionale da studio. Obiettivo 85mm f/1.8, profondità di campo selettiva. Illuminazione da set a tre punti. Texture fisiche autentiche, resa materiali fotorealistica.',
+    '3d-render': 'Rendering 3D fotorealistico con materiali PBR (Physically Based Rendering), ombre ray-traced precise, ambiente HDRI, superfici con riflessi e rifrazione accurati.',
+    illustration: 'Illustrazione flat design professionale con colori solidi e ben bilanciati, linee pulite e definite, forme geometriche semplificate, stile editoriale moderno.',
+    cyberpunk: 'Estetica cyber/neon futuristica, luci al neon blu elettrico e magenta, riflessi bagnati su superfici, atmosfera notturna urbana, effetti lens flare.',
+    lifestyle: 'Fotografia lifestyle naturale, luce ambiente morbida, ambientazione quotidiana autentica, colori caldi e naturali, composizione spontanea ma curata.',
+  } as Record<string, string>,
+  lightingStyle: {
+    studio: 'Illuminazione da studio a tre punti: luce principale softbox a 45° per modellare il soggetto, fill light morbida per le ombre, rim light per separazione dal fondo.',
+    natural: 'Luce naturale golden hour, raggi caldi e morbidi, ombre lunghe e delicate, atmosfera calda e accogliente.',
+    dramatic: 'Chiaroscuro drammatico, contrasto estremo tra luci e ombre, ombre nette e profonde, atmosfera intensa e cinematografica.',
+    neon: 'Illuminazione neon colorata con riflessi cromatici multipli, atmosfera da club/urbana notturna, colori vividi che si riflettono sulle superfici.',
+    soft: 'Luce diffusa ultra-morbida, zero ombre dure, atmosfera eterea e sognante, come luce filtrata da tende bianche.',
+  } as Record<string, string>,
+  colorGrading: {
+    neutral: 'Color grading cinematografico naturale — colori saturi ma credibili, mai artificiali o plastici.',
+    warm: 'Color grading caldo, tonalità ambrate e dorate, highlights caldi, atmosfera accogliente e invitante.',
+    cold: 'Color grading freddo, tonalità blu e ciano dominanti, atmosfera invernale o tecnologica, contrasto pulito.',
+    cinematic: 'Color grading cinematografico orange & teal (arancione nelle pelli, teal nelle ombre), contrasto profondo, look da film hollywoodiano.',
+    vintage: 'Color grading vintage film analogico, grana leggera, colori leggermente desaturati con toni seppia, neri rialzati.',
+    vibrant: 'Colori ultra-saturi e vivaci, contrasto alto, look pop commerciale d\'impatto, ogni colore spinto al massimo della vivacità.',
+  } as Record<string, string>,
+  cameraAngle: {
+    standard: 'Inquadratura a livello degli occhi, composizione classica con regola dei terzi.',
+    closeup: 'Close-up ravvicinato, dettaglio del soggetto con bokeh estremo, intimo e d\'impatto.',
+    wideshot: 'Inquadratura ampia che include ambiente e contesto, il soggetto nel suo spazio.',
+    flatlay: 'Flat lay dall\'alto (90°), oggetti disposti con cura su superficie piatta, composizione geometrica ordinata.',
+    lowangle: 'Inquadratura dal basso verso l\'alto, effetto eroico e imponente, il soggetto domina la scena.',
+    aerial: 'Vista aerea/drone, prospettiva dall\'alto che rivela pattern e composizione.',
+  } as Record<string, string>,
+  backgroundStyle: {
+    studio: 'Sfondo studio fotografico con fondale infinito (cyclorama), pulito e professionale.',
+    outdoor: 'Ambientazione esterna naturale, location reale con elementi ambientali autentici.',
+    gradient: 'Sfondo gradiente morbido professionale, transizione cromatica elegante, nessun elemento di distrazione.',
+    blur: 'Sfondo fortemente sfocato (bokeh f/1.4), soggetto completamente isolato e protagonista assoluto.',
+    contextual: 'Sfondo contestuale che racconta una storia (ufficio, casa, negozio, palestra) — coerente con il messaggio dell\'inserzione.',
+  } as Record<string, string>,
+};
+
 const CONCEPT_TYPE_PROMPTS: Record<string, { label: string; layoutInstructions: string }> = {
   'call-out-benefici': {
     label: 'Call Out Benefici',
@@ -292,22 +351,71 @@ OUTPUT JSON VALIDO — TUTTO IN ITALIANO:
   return result;
 }
 
-function buildPromptFromVisualJSON(promptVisual: PromptVisual, aspectRatio: string, variant: 'text' | 'clean' = 'clean'): string {
+function buildCommonSections(opts: ImageGenOptions, aspectRatio: string): string {
   const formatGuide: Record<string, string> = {
     '1:1': 'Quadrato 1:1 (Instagram Feed)',
+    '2:3': 'Verticale 2:3',
+    '3:2': 'Orizzontale 3:2',
     '3:4': 'Verticale 3:4 (Instagram Post)',
     '4:3': 'Orizzontale 4:3 (Landscape)',
+    '4:5': 'Verticale 4:5 (Instagram Portrait)',
+    '5:4': 'Orizzontale 5:4',
     '9:16': 'Verticale 9:16 (Stories/Reels)',
     '16:9': 'Orizzontale 16:9 (Facebook/LinkedIn)',
+    '21:9': 'Ultra-wide 21:9 (Cinematic)',
   };
 
+  let sections = '';
+
+  if (opts.originalText) {
+    sections += `\n\n═══ CONTESTO INSERZIONE (il testo pubblicitario da cui nasce questa immagine) ═══\n${opts.originalText}`;
+  }
+
+  const moodDesc = PROMPT_MAPPINGS.mood[opts.mood || 'professional'] || PROMPT_MAPPINGS.mood.professional;
+  sections += `\n\n═══ ATMOSFERA / MOOD ═══\n${moodDesc}`;
+
+  if (opts.brandColor) {
+    sections += `\n\n═══ COLORE BRAND ═══\nIl colore brand ${opts.brandColor} deve essere presente come accento visivo dominante: usalo per dettagli grafici, riflessi colorati, elementi di sfondo, bordi e punti focali.`;
+  }
+
+  const styleDesc = PROMPT_MAPPINGS.stylePreference[opts.stylePreference || 'realistic'] || PROMPT_MAPPINGS.stylePreference.realistic;
+  sections += `\n\n═══ STILE ARTISTICO ═══\n${styleDesc}`;
+
+  const lightDesc = PROMPT_MAPPINGS.lightingStyle[opts.lightingStyle || 'studio'] || PROMPT_MAPPINGS.lightingStyle.studio;
+  sections += `\n\n═══ ILLUMINAZIONE ═══\n${lightDesc}`;
+
+  const colorDesc = PROMPT_MAPPINGS.colorGrading[opts.colorGrading || 'neutral'] || PROMPT_MAPPINGS.colorGrading.neutral;
+  sections += `\n\n═══ COLOR GRADING ═══\n${colorDesc}`;
+
+  const camDesc = PROMPT_MAPPINGS.cameraAngle[opts.cameraAngle || 'standard'] || PROMPT_MAPPINGS.cameraAngle.standard;
+  sections += `\n\n═══ INQUADRATURA ═══\n${camDesc}`;
+
+  const bgDesc = PROMPT_MAPPINGS.backgroundStyle[opts.backgroundStyle || 'studio'] || PROMPT_MAPPINGS.backgroundStyle.studio;
+  sections += `\n\n═══ SFONDO ═══\n${bgDesc}`;
+
   const formatLabel = formatGuide[aspectRatio] || formatGuide['1:1'];
+  sections += `\n\n═══ SPECIFICHE TECNICHE ═══\nFormato: ${formatLabel}`;
+  sections += `\nResa dei materiali: superfici con texture fisiche autentiche — riflessi, ombre portate, micro-dettagli visibili.`;
 
+  sections += `\n\n═══ RESA UMANA (se presenti persone) ═══
+Pelle con texture naturale (pori, imperfezioni sottili), proporzioni anatomiche corrette, espressioni facciali naturali e non forzate, capelli con singole ciocche visibili, mani con 5 dita proporzionate.`;
+
+  sections += `\n\n═══ EVITA ASSOLUTAMENTE ═══
+Artefatti AI, anatomia distorta, dita extra o mancanti, pelle plastificata o cerosa, occhi innaturali, testo storto/illeggibile/con errori ortografici, watermark, loghi non richiesti, look generico da stock photo, sfondi ripetitivi o pattern AI tipici.`;
+
+  sections += `\n\n═══ LIVELLO QUALITÀ ═══
+Questa immagine deve competere con campagne pubblicitarie di brand come Nike, Apple, Audi. Qualità da rivista patinata, zero compromessi su dettagli e finiture.`;
+
+  return sections;
+}
+
+function buildPromptFromVisualJSON(promptVisual: PromptVisual, aspectRatio: string, variant: 'text' | 'clean' = 'clean', opts: ImageGenOptions = {}): string {
   let prompt = `Genera una fotografia pubblicitaria professionale seguendo queste specifiche.
-Pensa come un fotografo commerciale in studio: composizione intenzionale, illuminazione da set professionale, materiali realistici con texture autentiche.
+Pensa come un fotografo commerciale in studio: composizione intenzionale, illuminazione da set professionale, materiali realistici con texture autentiche.`;
 
-═══ LAYOUT ═══
-Tipo: ${promptVisual.layout.tipo}`;
+  prompt += buildCommonSections(opts, aspectRatio);
+
+  prompt += `\n\n═══ LAYOUT ═══\nTipo: ${promptVisual.layout.tipo}`;
 
   if (promptVisual.layout.divisione) {
     prompt += `\nDivisione: ${promptVisual.layout.divisione}`;
@@ -338,43 +446,29 @@ Tipo: ${promptVisual.layout.tipo}`;
     prompt += `\nPosizione: ${promptVisual.hook_text.posizione}`;
     prompt += `\nStile: ${promptVisual.hook_text.stile}`;
     prompt += `\nIl testo DEVE essere perfettamente leggibile, con alto contrasto rispetto allo sfondo.`;
+    prompt += `\nOrtografia ESATTAMENTE come specificato — controlla lettera per lettera. Kerning uniforme, anti-aliasing pulito, font leggibile anche in miniatura.`;
   } else if (variant === 'clean') {
     prompt += `\n\n═══ REGOLA TESTO ═══\nNON inserire NESSUN testo, tipografia, logo o watermark nell'immagine. Solo visual puro.`;
   }
 
   if (promptVisual.colori_brand) {
-    prompt += `\n\n═══ COLORI BRAND ═══\n${promptVisual.colori_brand}`;
+    prompt += `\n\n═══ COLORI BRAND (dal concept) ═══\n${promptVisual.colori_brand}`;
   }
 
   if (promptVisual.note_aggiuntive) {
     prompt += `\n\n═══ NOTE AGGIUNTIVE ═══\n${promptVisual.note_aggiuntive}`;
   }
 
-  prompt += `\n\n═══ SPECIFICHE FOTOGRAFICHE ═══
-Formato: ${formatLabel}
-Stile: ${promptVisual.stile_fotografico}
-Scattata con obiettivo professionale da 85mm f/1.8, profondità di campo selettiva per guidare l'attenzione.
-Illuminazione da studio a tre punti: luce principale softbox a 45°, fill light morbida, rim light per separare dal fondo.
-Resa dei materiali: superfici con texture fisiche autentiche — riflessi, ombre portate, micro-dettagli visibili.
-Color grading cinematografico naturale — colori saturi ma credibili, mai artificiali o plastici.`;
+  prompt += `\n\nStile fotografico: ${promptVisual.stile_fotografico}`;
 
   return prompt;
 }
 
-function buildLegacyImagePrompt(basePrompt: string, aspectRatio: string, variant: 'text' | 'clean' = 'clean', hookText?: string, styleType?: string, visualDescription?: string): string {
-  const formatGuide: Record<string, string> = {
-    '1:1': 'Formato quadrato 1:1 (Instagram Feed).',
-    '3:4': 'Formato verticale 3:4 (Instagram Post).',
-    '4:3': 'Formato orizzontale 4:3.',
-    '9:16': 'Formato verticale 9:16 (Stories/Reels).',
-    '16:9': 'Formato orizzontale 16:9 (Facebook/LinkedIn).',
-  };
-
-  const formatInstruction = formatGuide[aspectRatio] || formatGuide['1:1'];
-
+function buildLegacyImagePrompt(basePrompt: string, aspectRatio: string, variant: 'text' | 'clean' = 'clean', hookText?: string, styleType?: string, visualDescription?: string, opts: ImageGenOptions = {}): string {
   const textRule = variant === 'text' && hookText
     ? `- TESTO OVERLAY: Renderizza il seguente testo in modo prominente nell'immagine come overlay tipografico bold, ad alto contrasto. Il testo DEVE essere PERFETTAMENTE LEGGIBILE. Font sans-serif moderno e pulito. Testo: "${hookText}"
-- STILE TESTO: Forte contrasto con lo sfondo — testo bianco con ombra scura, o testo scuro su barra gradiente chiara. Il testo deve catturare l'occhio per primo.`
+- STILE TESTO: Forte contrasto con lo sfondo — testo bianco con ombra scura, o testo scuro su barra gradiente chiara. Il testo deve catturare l'occhio per primo.
+- Ortografia ESATTAMENTE come specificato — controlla lettera per lettera. Kerning uniforme, anti-aliasing pulito.`
     : `- NESSUN TESTO: NON inserire testo, tipografia, loghi o watermark nell'immagine. Solo visual puro.`;
 
   let layoutInstructions = '';
@@ -388,31 +482,19 @@ function buildLegacyImagePrompt(basePrompt: string, aspectRatio: string, variant
     }
   }
 
-  return `Genera una fotografia pubblicitaria professionale per inserzione Meta/Facebook.
-Pensa come un fotografo commerciale in studio: composizione intenzionale, illuminazione da set professionale, materiali realistici con texture autentiche.
+  let prompt = `Genera una fotografia pubblicitaria professionale per inserzione Meta/Facebook.
+Pensa come un fotografo commerciale in studio: composizione intenzionale, illuminazione da set professionale, materiali realistici con texture autentiche.`;
 
-FORMATO: ${formatInstruction}
+  prompt += buildCommonSections(opts, aspectRatio);
 
-COMPOSIZIONE:
-Composizione equilibrata con regola dei terzi. Soggetto principale su un punto focale. Gerarchia visiva chiara: hook in alto, soggetto al centro, CTA in basso.
+  prompt += `\n\n${textRule}`;
+  prompt += layoutInstructions;
+  prompt += `\n\nSCENA DA FOTOGRAFARE:\n${basePrompt}`;
+  if (visualDescription) {
+    prompt += `\n\nRIFERIMENTO VISIVO (segui questa descrizione scena fedelmente):\n${visualDescription}`;
+  }
 
-ILLUMINAZIONE DA STUDIO:
-Setup a tre punti — luce principale softbox a 45° per modellare il soggetto, fill light morbida per le ombre, rim light per separazione dal fondo. Ombre morbide e definite, mai illuminazione piatta.
-
-RESA MATERIALI:
-Ogni superficie deve avere texture fisica autentica — riflessi coerenti, ombre portate realistiche, micro-dettagli visibili. Niente superfici plastiche o artificiali.
-
-PROFONDITÀ DI CAMPO:
-Obiettivo 85mm f/1.8 — sfondo morbido con bokeh naturale, soggetto principale a fuoco nitido.
-
-COLOR GRADING:
-Colori saturi ma credibili, color grading cinematografico naturale. Contrasto calibrato per impatto visivo senza sembrare artificiale.
-
-${textRule}
-${layoutInstructions}
-SCENA DA FOTOGRAFARE:
-${basePrompt}
-${visualDescription ? `\nRIFERIMENTO VISIVO (segui questa descrizione scena fedelmente):\n${visualDescription}` : ''}`;
+  return prompt;
 }
 
 async function getGeminiApiKeyForImage(consultantId: string): Promise<string | null> {
@@ -457,10 +539,12 @@ export async function generateImageServerSide(
   hookText?: string,
   styleType?: string,
   promptVisual?: PromptVisual,
-  visualDescription?: string
+  visualDescription?: string,
+  opts: ImageGenOptions = {}
 ): Promise<{ imageUrl: string; error?: string }> {
   console.log(`[ADVISAGE-SERVER] Generating image for consultantId: ${consultantId}`);
   console.log(`[ADVISAGE-SERVER] Has promptVisual: ${!!promptVisual}, hasVisualDesc: ${!!visualDescription}, variant: ${variant}, aspectRatio: ${aspectRatio}`);
+  console.log(`[ADVISAGE-SERVER] Options: mood=${opts.mood}, style=${opts.stylePreference}, light=${opts.lightingStyle}, color=${opts.colorGrading}, cam=${opts.cameraAngle}, bg=${opts.backgroundStyle}, quality=${opts.imageQuality}, hasOriginalText=${!!opts.originalText}`);
   
   try {
     const apiKey = await getGeminiApiKeyForImage(consultantId);
@@ -476,12 +560,14 @@ export async function generateImageServerSide(
     const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
     console.log(`[ADVISAGE-SERVER] Using model: ${IMAGE_MODEL}`);
     
+    const imageSize = opts.imageQuality === 'high' ? '4K' : '2K';
+    
     let adOptimizedPrompt: string;
     if (promptVisual && promptVisual.layout && promptVisual.sezioni?.length > 0) {
-      adOptimizedPrompt = buildPromptFromVisualJSON(promptVisual, aspectRatio, variant);
+      adOptimizedPrompt = buildPromptFromVisualJSON(promptVisual, aspectRatio, variant, opts);
       console.log(`[ADVISAGE-SERVER] Using structured promptVisual (${adOptimizedPrompt.length} chars)`);
     } else {
-      adOptimizedPrompt = buildLegacyImagePrompt(prompt, aspectRatio, variant, hookText, styleType, visualDescription);
+      adOptimizedPrompt = buildLegacyImagePrompt(prompt, aspectRatio, variant, hookText, styleType, visualDescription, opts);
       console.log(`[ADVISAGE-SERVER] Using legacy prompt (${adOptimizedPrompt.length} chars)`);
     }
     
@@ -496,7 +582,7 @@ export async function generateImageServerSide(
         responseModalities: ['IMAGE'],
         imageConfig: {
           aspectRatio,
-          imageSize: '2K',
+          imageSize,
         },
         thinkingConfig: {
           thinkingLevel: 'High',

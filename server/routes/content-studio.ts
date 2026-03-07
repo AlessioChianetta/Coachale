@@ -3230,6 +3230,15 @@ const advisageImageSchema = z.object({
   styleType: z.string().optional(),
   promptVisual: z.any().optional(),
   visualDescription: z.string().optional(),
+  originalText: z.string().optional(),
+  mood: z.string().optional(),
+  stylePreference: z.string().optional(),
+  brandColor: z.string().optional(),
+  lightingStyle: z.string().optional(),
+  colorGrading: z.string().optional(),
+  cameraAngle: z.string().optional(),
+  backgroundStyle: z.string().optional(),
+  imageQuality: z.string().optional(),
 });
 
 router.post("/advisage/generate-image-server", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
@@ -3247,7 +3256,18 @@ router.post("/advisage/generate-image-server", authenticateToken, requireRole("c
       validated.hookText,
       validated.styleType,
       validated.promptVisual,
-      validated.visualDescription
+      validated.visualDescription,
+      {
+        originalText: validated.originalText,
+        mood: validated.mood,
+        stylePreference: validated.stylePreference,
+        brandColor: validated.brandColor,
+        lightingStyle: validated.lightingStyle,
+        colorGrading: validated.colorGrading,
+        cameraAngle: validated.cameraAngle,
+        backgroundStyle: validated.backgroundStyle,
+        imageQuality: validated.imageQuality,
+      }
     );
     
     if (error) {
