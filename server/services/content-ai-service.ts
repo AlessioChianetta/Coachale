@@ -52,6 +52,7 @@ export interface GenerateIdeasParams {
   };
   kbContent?: string;
   marketResearchProblems?: string[];
+  marketResearchData?: import("@shared/schema").MarketResearchData;
 }
 
 export interface StructuredCopyShort {
@@ -3294,12 +3295,57 @@ CONTESTO:
 - Tipo Media: ${mediaType}
 - Tipo Copy: ${copyType}
 ${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
-${params.marketResearchProblems && params.marketResearchProblems.length > 0 ? `
-🔍 RICERCA DI MERCATO — PROBLEMI DEL PUBBLICO:
-Questi sono i problemi reali, le frustrazioni e i bisogni che il consulente risolve. Usa queste informazioni per creare contenuti che parlano direttamente ai pain point del target:
-${params.marketResearchProblems.map((p: string, i: number) => `${i + 1}. ${p}`).join('\n')}
-I contenuti devono fare leva su almeno uno di questi problemi, mostrando comprensione profonda e offrendo prospettive concrete.
-` : ''}
+${(() => {
+  const mrd = params.marketResearchData;
+  if (mrd && (mrd.currentState?.some((s: string) => s.trim()) || mrd.uvp?.trim() || Object.values(mrd.avatar || {}).some((v: any) => typeof v === 'string' && v.trim()))) {
+    const sections: string[] = ['🔍 RICERCA DI MERCATO APPROFONDITA'];
+    if (mrd.currentState?.some((s: string) => s.trim()) || mrd.idealState?.some((s: string) => s.trim())) {
+      sections.push(`📊 TRASFORMAZIONE:\n- Stato Attuale: ${(mrd.currentState || []).filter((s: string) => s.trim()).join(' | ')}\n- Stato Ideale: ${(mrd.idealState || []).filter((s: string) => s.trim()).join(' | ')}`);
+    }
+    const av = mrd.avatar;
+    if (av && Object.values(av).some((v: any) => typeof v === 'string' && v.trim())) {
+      const avParts: string[] = [];
+      if (av.nightThought) avParts.push(`Pensiero notturno: ${av.nightThought}`);
+      if (av.biggestFear) avParts.push(`Paura principale: ${av.biggestFear}`);
+      if (av.dailyFrustration) avParts.push(`Frustrazione quotidiana: ${av.dailyFrustration}`);
+      if (av.deepestDesire) avParts.push(`Desiderio profondo: ${av.deepestDesire}`);
+      if (av.currentSituation) avParts.push(`Situazione attuale: ${av.currentSituation}`);
+      if (av.decisionStyle) avParts.push(`Stile decisionale: ${av.decisionStyle}`);
+      if (av.languageUsed) avParts.push(`Linguaggio usato: ${av.languageUsed}`);
+      if (av.influencers) avParts.push(`Influenze: ${av.influencers}`);
+      sections.push(`👤 AVATAR DEL CLIENTE:\n${avParts.map(p => `- ${p}`).join('\n')}`);
+    }
+    if (mrd.emotionalDrivers?.length > 0) {
+      const driverLabels: Record<string, string> = { sopravvivenza: 'Sopravvivenza', piacere: 'Piacere', fuga_dolore: 'Fuga dal dolore', sessualita: 'Aspetto/Attrazione', status: 'Status/Vincere', protezione: 'Protezione dei cari', approvazione: 'Approvazione sociale', comfort: 'Comfort/Sicurezza' };
+      sections.push(`🔥 LEVE MOTIVAZIONALI: ${mrd.emotionalDrivers.map((d: string) => driverLabels[d] || d).join(', ')}`);
+    }
+    const hasObj = mrd.existingSolutionProblems?.some((s: string) => s.trim()) || mrd.internalObjections?.some((s: string) => s.trim()) || mrd.externalObjections?.some((s: string) => s.trim());
+    if (hasObj) {
+      const objParts: string[] = [];
+      if (mrd.existingSolutionProblems?.some((s: string) => s.trim())) objParts.push(`Soluzioni esistenti falliscono perché: ${mrd.existingSolutionProblems.filter((s: string) => s.trim()).join(' | ')}`);
+      if (mrd.internalObjections?.some((s: string) => s.trim())) objParts.push(`Obiezioni interne: ${mrd.internalObjections.filter((s: string) => s.trim()).join(' | ')}`);
+      if (mrd.externalObjections?.some((s: string) => s.trim())) objParts.push(`Obiezioni esterne: ${mrd.externalObjections.filter((s: string) => s.trim()).join(' | ')}`);
+      sections.push(`🛡️ OBIEZIONI DA ANTICIPARE:\n${objParts.map(p => `- ${p}`).join('\n')}`);
+    }
+    if (mrd.coreLies?.length > 0 && mrd.coreLies.some((c: any) => c.name?.trim())) {
+      const lies = mrd.coreLies.filter((c: any) => c.name?.trim()).map((c: any) => `"${c.name}" — ${c.problem || 'N/A'} (${c.cureOrPrevent === 'C' ? 'Cura' : 'Previene'}, Importanza: ${c.importance}/10)`);
+      sections.push(`⚠️ ERRORE NASCOSTO (CORE LIE):\n${lies.map(l => `- ${l}`).join('\n')}`);
+    }
+    if (mrd.uniqueMechanism?.name?.trim()) {
+      sections.push(`💡 MECCANISMO UNICO: ${mrd.uniqueMechanism.name}${mrd.uniqueMechanism.description ? ` — ${mrd.uniqueMechanism.description}` : ''}`);
+    }
+    if (mrd.uvp?.trim()) {
+      sections.push(`🎯 POSIZIONAMENTO (UVP): ${mrd.uvp}`);
+    }
+    sections.push(`⚡ ISTRUZIONE PRIORITARIA RICERCA DI MERCATO: Usa TUTTA questa ricerca di mercato per creare contenuti che:\n- Parlano direttamente ai problemi REALI del target usando il loro linguaggio\n- Anticipano e disinnenscano le obiezioni\n- Fanno leva sulle emozioni profonde identificate\n- Posizionano il meccanismo unico come la soluzione credibile\n- Mostrano la trasformazione dallo stato attuale allo stato ideale`);
+    return sections.join('\n\n');
+  }
+  if (params.marketResearchProblems && params.marketResearchProblems.length > 0) {
+    const problemsList = params.marketResearchProblems.map((p: string, i: number) => (i + 1) + '. ' + p).join('\n');
+    return '🔍 RICERCA DI MERCATO — PROBLEMI DEL PUBBLICO:\nQuesti sono i problemi reali, le frustrazioni e i bisogni che il consulente risolve:\n' + problemsList + '\nI contenuti devono fare leva su almeno uno di questi problemi, mostrando comprensione profonda e offrendo prospettive concrete.';
+  }
+  return '';
+})()}
 ${brandContext}${brandVoiceContext}${kbContext}${platformSchemaContext}${topicContext}
 ${writingExamplesPriorityInstruction}${antiRepetitionContext}
 ${writingStyleSection}

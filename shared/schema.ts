@@ -8847,6 +8847,60 @@ export type ContentIdea = typeof contentIdeas.$inferSelect;
 export type InsertContentIdea = typeof contentIdeas.$inferInsert;
 export const insertContentIdeaSchema = createInsertSchema(contentIdeas).omit({ id: true, createdAt: true, updatedAt: true });
 
+// Market Research Data - Comprehensive 7-phase market research structure
+export interface MarketResearchData {
+  currentState: string[];
+  idealState: string[];
+  avatar: {
+    nightThought: string;
+    biggestFear: string;
+    dailyFrustration: string;
+    deepestDesire: string;
+    currentSituation: string;
+    decisionStyle: string;
+    languageUsed: string;
+    influencers: string;
+  };
+  emotionalDrivers: string[];
+  existingSolutionProblems: string[];
+  internalObjections: string[];
+  externalObjections: string[];
+  coreLies: Array<{
+    name: string;
+    problem: string;
+    cureOrPrevent: 'C' | 'P';
+    isAware: boolean;
+    importance: number;
+  }>;
+  uniqueMechanism: {
+    name: string;
+    description: string;
+  };
+  uvp: string;
+}
+
+export const EMPTY_MARKET_RESEARCH: MarketResearchData = {
+  currentState: [""],
+  idealState: [""],
+  avatar: {
+    nightThought: "",
+    biggestFear: "",
+    dailyFrustration: "",
+    deepestDesire: "",
+    currentSituation: "",
+    decisionStyle: "",
+    languageUsed: "",
+    influencers: "",
+  },
+  emotionalDrivers: [],
+  existingSolutionProblems: [""],
+  internalObjections: [""],
+  externalObjections: [""],
+  coreLies: [],
+  uniqueMechanism: { name: "", description: "" },
+  uvp: "",
+};
+
 // Content Idea Templates - Saved templates for idea generation
 export const contentIdeaTemplates = pgTable("content_idea_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -8863,6 +8917,7 @@ export const contentIdeaTemplates = pgTable("content_idea_templates", {
   copyType: varchar("copy_type", { length: 50 }),
   isDefault: boolean("is_default").default(false),
   marketResearchProblems: jsonb("market_research_problems").$type<string[]>().default([]),
+  marketResearchData: jsonb("market_research_data").$type<MarketResearchData>(),
   createdAt: timestamp("created_at").default(sql`now()`),
 }, (table) => ({
   consultantIdx: index("idx_content_idea_templates_consultant").on(table.consultantId),

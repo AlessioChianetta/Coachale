@@ -14,7 +14,7 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, lt, isNull, isNotNull, asc, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { getSuperAdminGeminiKeys, getAIProvider, getModelWithThinking } from "../ai/provider-factory";
+import { getSuperAdminGeminiKeys, getAIProvider, getModelWithThinking, getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "../ai/provider-factory";
 import { ensureGeminiFileValid } from "../services/gemini-file-manager";
 import fs from "fs";
 import fsPromises from "fs/promises";
@@ -489,6 +489,7 @@ router.post("/idea-templates", authenticateToken, requireRole("consultant"), asy
           mediaType: body.mediaType,
           copyType: body.copyType,
           marketResearchProblems: body.marketResearchProblems || [],
+          marketResearchData: body.marketResearchData || undefined,
         })
         .where(eq(schema.contentIdeaTemplates.id, existingTemplate.id))
         .returning();
@@ -516,6 +517,7 @@ router.post("/idea-templates", authenticateToken, requireRole("consultant"), asy
         mediaType: body.mediaType,
         copyType: body.copyType,
         marketResearchProblems: body.marketResearchProblems || [],
+        marketResearchData: body.marketResearchData || undefined,
       })
       .returning();
     
@@ -553,6 +555,7 @@ router.put("/idea-templates/:id", authenticateToken, requireRole("consultant"), 
         mediaType: body.mediaType,
         copyType: body.copyType,
         marketResearchProblems: body.marketResearchProblems || [],
+        marketResearchData: body.marketResearchData || undefined,
       })
       .where(and(
         eq(schema.contentIdeaTemplates.id, templateId),
@@ -1676,6 +1679,36 @@ const generateIdeasSchema = z.object({
   kbDocumentIds: z.array(z.string()).optional(),
   kbContent: z.string().optional(),
   marketResearchProblems: z.array(z.string()).optional(),
+  marketResearchData: z.object({
+    currentState: z.array(z.string()).optional(),
+    idealState: z.array(z.string()).optional(),
+    avatar: z.object({
+      nightThought: z.string().optional().default(""),
+      biggestFear: z.string().optional().default(""),
+      dailyFrustration: z.string().optional().default(""),
+      deepestDesire: z.string().optional().default(""),
+      currentSituation: z.string().optional().default(""),
+      decisionStyle: z.string().optional().default(""),
+      languageUsed: z.string().optional().default(""),
+      influencers: z.string().optional().default(""),
+    }).optional(),
+    emotionalDrivers: z.array(z.string()).optional(),
+    existingSolutionProblems: z.array(z.string()).optional(),
+    internalObjections: z.array(z.string()).optional(),
+    externalObjections: z.array(z.string()).optional(),
+    coreLies: z.array(z.object({
+      name: z.string(),
+      problem: z.string(),
+      cureOrPrevent: z.enum(["C", "P"]),
+      isAware: z.boolean(),
+      importance: z.number(),
+    })).optional(),
+    uniqueMechanism: z.object({
+      name: z.string().optional().default(""),
+      description: z.string().optional().default(""),
+    }).optional(),
+    uvp: z.string().optional().default(""),
+  }).optional(),
 });
 
 const generateCopySchema = z.object({
@@ -1745,6 +1778,342 @@ const generateImagePromptSchema = z.object({
   mood: z.string().optional(),
   includeText: z.boolean().optional(),
   textToInclude: z.string().optional(),
+});
+
+// ============================================================
+// MARKET RESEARCH — Deep Research with Dual Google Search + AI
+// ============================================================
+
+const generateMarketResearchSchema = z.object({
+  niche: z.string().min(1, "Nicchia obbligatoria"),
+  targetAudience: z.string().default(""),
+  brandVoiceData: z.object({
+    consultantDisplayName: z.string().optional(),
+    businessName: z.string().optional(),
+    businessDescription: z.string().optional(),
+    consultantBio: z.string().optional(),
+    vision: z.string().optional(),
+    mission: z.string().optional(),
+    values: z.array(z.string()).optional(),
+    usp: z.string().optional(),
+    whoWeHelp: z.string().optional(),
+    whatWeDo: z.string().optional(),
+    howWeDoIt: z.string().optional(),
+    yearsExperience: z.number().optional(),
+    clientsHelped: z.number().optional(),
+    resultsGenerated: z.string().optional(),
+    caseStudies: z.array(z.object({ client: z.string(), result: z.string() })).optional(),
+    servicesOffered: z.array(z.object({ name: z.string(), price: z.string(), description: z.string() })).optional(),
+    guarantees: z.string().optional(),
+  }).optional(),
+  whatYouSell: z.string().optional(),
+  promisedResult: z.string().optional(),
+  phase: z.string().optional(),
+});
+
+async function getMarketResearchKeys(): Promise<{ serpApiKey: string | null }> {
+  try {
+    const [config] = await db.select().from(schema.superadminLeadScraperConfig).limit(1);
+    if (config && config.enabled) {
+      const { decrypt: dec } = await import("../encryption");
+      return {
+        serpApiKey: config.serpapiKeyEncrypted ? dec(config.serpapiKeyEncrypted) : null,
+      };
+    }
+  } catch (e) {
+    console.error("[MARKET-RESEARCH] Error reading keys from DB, falling back to env:", e);
+  }
+  return {
+    serpApiKey: process.env.SERPAPI_KEY || null,
+  };
+}
+
+router.post("/ai/generate-market-research", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const input = generateMarketResearchSchema.parse(req.body);
+
+    console.log(`🔬 [MARKET-RESEARCH] Starting deep research for "${input.niche}" / "${input.targetAudience}" (phase: ${input.phase || 'all'})`);
+
+    // ── Step 1: Dual Web Research (parallel) ──
+    const serpApiPromise = (async () => {
+      try {
+        const keys = await getMarketResearchKeys();
+        if (!keys.serpApiKey) {
+          console.log("[MARKET-RESEARCH] SerpApi key not available, skipping Source A");
+          return [];
+        }
+
+        const { searchGoogleWeb } = await import("../services/lead-scraper-service");
+        const queries = [
+          `${input.niche} problemi frustrazioni clienti`,
+          `${input.niche} ${input.targetAudience} forum opinioni recensioni`,
+          `${input.niche} concorrenti soluzioni alternative`,
+          `${input.niche} obiezioni paure acquisto`,
+        ];
+
+        const results = await Promise.allSettled(
+          queries.map(q => searchGoogleWeb(q, "", 8, keys.serpApiKey!, 0))
+        );
+
+        const snippets: string[] = [];
+        results.forEach((r, i) => {
+          if (r.status === "fulfilled") {
+            r.value.forEach((item: any) => {
+              if (item.snippet) snippets.push(`[${queries[i]}] ${item.snippet}`);
+            });
+          }
+        });
+
+        console.log(`[MARKET-RESEARCH] SerpApi collected ${snippets.length} snippets`);
+        return snippets;
+      } catch (err: any) {
+        console.warn("[MARKET-RESEARCH] SerpApi source failed:", err.message);
+        return [];
+      }
+    })();
+
+    const geminiGroundingPromise = (async () => {
+      try {
+        const { GoogleGenAI } = await import("@google/genai");
+        const apiKey = await getGeminiApiKeyForClassifier();
+        if (!apiKey) {
+          console.log("[MARKET-RESEARCH] No Gemini API key for grounding, skipping Source B");
+          return { text: "", sources: [] as Array<{ url: string; title: string }>, queries: [] as string[] };
+        }
+
+        const ai = new GoogleGenAI({ apiKey });
+        const groundingPrompt = `Sei un ricercatore di mercato esperto. Cerca informazioni reali e aggiornate su questo mercato:
+
+Nicchia: ${input.niche}
+Target: ${input.targetAudience}
+${input.whatYouSell ? `Prodotto/Servizio: ${input.whatYouSell}` : ''}
+${input.promisedResult ? `Risultato promesso: ${input.promisedResult}` : ''}
+
+Trova e riporta:
+1. Problemi reali e frustrazioni dei clienti in questa nicchia
+2. Soluzioni dei concorrenti e le loro lacune
+3. Recensioni e lamentele reali dei clienti
+4. Pattern emotivi e paure ricorrenti
+5. Obiezioni comuni all'acquisto
+6. Tendenze di mercato attuali
+
+Riporta SOLO informazioni che trovi realmente dalla ricerca. Cita le fonti.`;
+
+        const result = await ai.models.generateContent({
+          model: GEMINI_3_MODEL,
+          contents: [{ role: "user", parts: [{ text: groundingPrompt }] }],
+          config: {
+            temperature: 0.3,
+            maxOutputTokens: 4096,
+            tools: [{ googleSearch: {} }],
+          },
+        });
+
+        const text = typeof result.text === 'function' ? result.text() : (result as any).text || '';
+        const groundingMetadata = (result as any).candidates?.[0]?.groundingMetadata;
+        const groundingChunks = groundingMetadata?.groundingChunks || [];
+        const searchQueries = groundingMetadata?.webSearchQueries || [];
+
+        const sources = groundingChunks
+          .filter((chunk: any) => chunk.web)
+          .map((chunk: any) => ({
+            url: chunk.web.uri,
+            title: chunk.web.title || "Fonte web",
+          }));
+
+        console.log(`[MARKET-RESEARCH] Gemini Grounding: ${text.length} chars, ${sources.length} sources, ${searchQueries.length} queries`);
+        return { text, sources, queries: searchQueries };
+      } catch (err: any) {
+        console.warn("[MARKET-RESEARCH] Gemini grounding source failed:", err.message);
+        return { text: "", sources: [] as Array<{ url: string; title: string }>, queries: [] as string[] };
+      }
+    })();
+
+    const [serpSnippets, groundingResult] = await Promise.all([serpApiPromise, geminiGroundingPromise]);
+
+    // ── Step 2: AI Analysis (second Gemini call, no grounding) ──
+    let webDataSection = "";
+    if (serpSnippets.length > 0 || groundingResult.text) {
+      webDataSection = `\n\n=== DATI REALI DAL MERCATO (Raccolti da ricerca Google) ===\n`;
+      if (serpSnippets.length > 0) {
+        webDataSection += `\n--- Risultati Google Search (SerpApi) ---\n${serpSnippets.slice(0, 30).join("\n")}\n`;
+      }
+      if (groundingResult.text) {
+        webDataSection += `\n--- Ricerca Google con Gemini Grounding ---\n${groundingResult.text}\n`;
+      }
+      if (groundingResult.sources.length > 0) {
+        webDataSection += `\n--- Fonti verificate ---\n${groundingResult.sources.map(s => `- ${s.title}: ${s.url}`).join("\n")}\n`;
+      }
+    }
+
+    const brandCtx = input.brandVoiceData || {};
+    let brandSection = "";
+    if (Object.keys(brandCtx).length > 0) {
+      brandSection = `\n\n=== BRAND VOICE ===\n`;
+      if (brandCtx.businessName) brandSection += `Business: ${brandCtx.businessName}\n`;
+      if (brandCtx.businessDescription) brandSection += `Descrizione: ${brandCtx.businessDescription}\n`;
+      if (brandCtx.usp) brandSection += `USP: ${brandCtx.usp}\n`;
+      if (brandCtx.whatWeDo) brandSection += `Cosa facciamo: ${brandCtx.whatWeDo}\n`;
+      if (brandCtx.whoWeHelp) brandSection += `Chi aiutiamo: ${brandCtx.whoWeHelp}\n`;
+      if (brandCtx.howWeDoIt) brandSection += `Come lo facciamo: ${brandCtx.howWeDoIt}\n`;
+      if (brandCtx.vision) brandSection += `Vision: ${brandCtx.vision}\n`;
+      if (brandCtx.mission) brandSection += `Mission: ${brandCtx.mission}\n`;
+      if (brandCtx.values && brandCtx.values.length > 0) brandSection += `Valori: ${brandCtx.values.join(", ")}\n`;
+      if (brandCtx.guarantees) brandSection += `Garanzie: ${brandCtx.guarantees}\n`;
+    }
+
+    const phaseInstructions = input.phase
+      ? `GENERA SOLO la fase "${input.phase}". Lascia le altre fasi vuote/default.`
+      : `Genera TUTTE le 7 fasi della ricerca di mercato in modo completo e dettagliato.`;
+
+    const analysisPrompt = `Sei un esperto di ricerca di mercato e copywriting strategico. Analizza i dati raccolti e genera una ricerca di mercato completa seguendo le 7 fasi del framework.
+
+NICCHIA: ${input.niche}
+TARGET: ${input.targetAudience}
+${input.whatYouSell ? `COSA VENDI: ${input.whatYouSell}` : ''}
+${input.promisedResult ? `RISULTATO PROMESSO: ${input.promisedResult}` : ''}
+${brandSection}
+${webDataSection}
+
+${phaseInstructions}
+
+Rispondi SOLO con un oggetto JSON valido (senza markdown, senza backtick) con questa struttura:
+
+{
+  "currentState": ["problema1", "problema2", "problema3", "problema4", "problema5"],
+  "idealState": ["risultato1", "risultato2", "risultato3", "risultato4", "risultato5"],
+  "avatar": {
+    "nightThought": "cosa pensa il cliente alle 3 di notte",
+    "biggestFear": "la sua paura più grande",
+    "dailyFrustration": "la frustrazione quotidiana",
+    "deepestDesire": "il desiderio più profondo",
+    "currentSituation": "come vive la situazione attuale",
+    "decisionStyle": "come prende decisioni di acquisto",
+    "languageUsed": "parole e frasi che usa parlando del problema",
+    "influencers": "chi lo influenza (persone, media, community)"
+  },
+  "emotionalDrivers": ["sopravvivenza", "piacere", "fuga_dolore", "sessualita", "comfort", "status", "protezione", "approvazione"],
+  "existingSolutionProblems": ["problema con soluzione esistente 1", "..."],
+  "internalObjections": ["obiezione interna 1 (autodubbie)", "..."],
+  "externalObjections": ["obiezione esterna 1 (dubbi sul mercato)", "..."],
+  "coreLies": [
+    {
+      "name": "Nome della convinzione errata",
+      "problem": "Perché è un problema",
+      "cureOrPrevent": "C",
+      "isAware": false,
+      "importance": 8
+    }
+  ],
+  "uniqueMechanism": {
+    "name": "Nome del meccanismo unico",
+    "description": "Descrizione di come funziona e perché è diverso"
+  },
+  "uvp": "Formula UVP: Aiuto [target] a [risultato] senza [problema] grazie a [meccanismo unico]"
+}
+
+REGOLE:
+- Usa i dati reali dal mercato quando disponibili per fondare le risposte sulla realtà
+- I problemi (currentState) devono essere specifici e sentiti dal target, non generici
+- L'avatar deve usare il linguaggio reale del target
+- Le obiezioni devono riflettere resistenze reali all'acquisto
+- Il meccanismo unico deve differenziare realmente dall'offerta dei concorrenti
+- La UVP deve seguire la formula: "Aiuto [chi] a [cosa] senza [dolore] grazie a [come]"
+- emotionalDrivers: seleziona SOLO quelle rilevanti tra: sopravvivenza, piacere, fuga_dolore, sessualita, comfort, status, protezione, approvazione
+- coreLies: genera 2-4 convinzioni errate con importanza da 1 a 10
+- Rispondi SOLO con JSON valido, niente altro testo`;
+
+    const { GoogleGenAI } = await import("@google/genai");
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (!apiKey) {
+      return res.status(500).json({ success: false, error: "No AI API key available" });
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const analysisResult = await ai.models.generateContent({
+      model: GEMINI_3_MODEL,
+      contents: [{ role: "user", parts: [{ text: analysisPrompt }] }],
+      config: {
+        temperature: 0.7,
+        maxOutputTokens: 8192,
+        responseMimeType: "application/json",
+      },
+    });
+
+    const rawText = typeof analysisResult.text === 'function' ? analysisResult.text() : (analysisResult as any).text || '';
+    let parsed: any;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("AI response was not valid JSON");
+      }
+    }
+
+    const marketResearchData = {
+      currentState: Array.isArray(parsed.currentState) ? parsed.currentState : [""],
+      idealState: Array.isArray(parsed.idealState) ? parsed.idealState : [""],
+      avatar: {
+        nightThought: parsed.avatar?.nightThought || "",
+        biggestFear: parsed.avatar?.biggestFear || "",
+        dailyFrustration: parsed.avatar?.dailyFrustration || "",
+        deepestDesire: parsed.avatar?.deepestDesire || "",
+        currentSituation: parsed.avatar?.currentSituation || "",
+        decisionStyle: parsed.avatar?.decisionStyle || "",
+        languageUsed: parsed.avatar?.languageUsed || "",
+        influencers: parsed.avatar?.influencers || "",
+      },
+      emotionalDrivers: Array.isArray(parsed.emotionalDrivers) ? parsed.emotionalDrivers.map((d: string) => {
+        const keyMap: Record<string, string> = { fuga_dal_dolore: 'fuga_dolore', pulsione_sessuale: 'sessualita', approvazione_sociale: 'approvazione' };
+        return keyMap[d] || d;
+      }) : [],
+      existingSolutionProblems: Array.isArray(parsed.existingSolutionProblems) ? parsed.existingSolutionProblems : [""],
+      internalObjections: Array.isArray(parsed.internalObjections) ? parsed.internalObjections : [""],
+      externalObjections: Array.isArray(parsed.externalObjections) ? parsed.externalObjections : [""],
+      coreLies: Array.isArray(parsed.coreLies) ? parsed.coreLies.map((cl: any) => ({
+        name: cl.name || "",
+        problem: cl.problem || "",
+        cureOrPrevent: cl.cureOrPrevent === 'P' ? 'P' : 'C',
+        isAware: !!cl.isAware,
+        importance: typeof cl.importance === 'number' ? Math.min(10, Math.max(1, cl.importance)) : 5,
+      })) : [],
+      uniqueMechanism: {
+        name: parsed.uniqueMechanism?.name || "",
+        description: parsed.uniqueMechanism?.description || "",
+      },
+      uvp: parsed.uvp || "",
+    };
+
+    console.log(`✅ [MARKET-RESEARCH] Deep research complete: ${serpSnippets.length} serp snippets, ${groundingResult.sources.length} grounding sources`);
+
+    res.json({
+      success: true,
+      data: marketResearchData,
+      meta: {
+        serpSnippetsCount: serpSnippets.length,
+        groundingSourcesCount: groundingResult.sources.length,
+        groundingQueriesUsed: groundingResult.queries,
+        phase: input.phase || "all",
+      },
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+        details: error.errors,
+      });
+    }
+    console.error("❌ [MARKET-RESEARCH] Error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate market research",
+    });
+  }
 });
 
 router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
@@ -1819,6 +2188,7 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
       writingStyle: validatedData.writingStyle,
       customWritingInstructions: validatedData.customWritingInstructions,
       marketResearchProblems: validatedData.marketResearchProblems,
+      marketResearchData: validatedData.marketResearchData as any,
     });
     
     console.log(`✅ [CONTENT-AI] Generated ${result.ideas.length} ideas using ${result.modelUsed}`);
