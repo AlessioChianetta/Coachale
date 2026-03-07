@@ -2060,18 +2060,23 @@ export default function ContentStudioIdeas() {
                   className={`grid transition-all duration-300 ease-in-out ${expandedSections.has("objective") ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
                 >
                   <div className="overflow-hidden">
-                  <CardContent className="pt-4 space-y-5">
-                    {/* Nicchia e Pubblico Target - Campi obbligatori */}
-                    <div className="space-y-3">
+                  <CardContent className="pt-4 space-y-6">
+                    {/* Nicchia e Pubblico Target - Separate labeled fields */}
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium">Nicchia e Pubblico Target *</Label>
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-md bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                            <Target className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                          </div>
+                          <Label className="text-sm font-semibold">Chi vuoi raggiungere</Label>
+                        </div>
                         {useBrandVoice && Object.keys(brandVoiceData).length > 0 && (
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={handleGenerateNicheTarget}
                             disabled={isGeneratingNicheTarget}
-                            className="h-8 text-xs gap-1.5 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-purple-200 dark:border-purple-800 hover:from-purple-100 hover:to-pink-100"
+                            className="h-7 text-xs gap-1.5 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-purple-200 dark:border-purple-800 hover:from-purple-100 hover:to-pink-100"
                           >
                             {isGeneratingNicheTarget ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
@@ -2083,24 +2088,39 @@ export default function ContentStudioIdeas() {
                         )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Input
-                          placeholder="es. Finanza personale, Fitness, Marketing..."
-                          value={topic}
-                          onChange={(e) => setTopic(e.target.value)}
-                          className="h-10"
-                        />
-                        <Input
-                          placeholder="es. Imprenditori 35-50, Mamme lavoratrici..."
-                          value={targetAudience}
-                          onChange={(e) => setTargetAudience(e.target.value)}
-                          className="h-10"
-                        />
+                        <div className="space-y-1.5">
+                          <Label htmlFor="niche-field" className="text-xs text-muted-foreground font-normal">Nicchia / Settore</Label>
+                          <Input
+                            id="niche-field"
+                            placeholder="es. Fitness, Finanza personale, Marketing digitale..."
+                            value={topic}
+                            onChange={(e) => setTopic(e.target.value)}
+                            className="h-10"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="audience-field" className="text-xs text-muted-foreground font-normal">Pubblico Target</Label>
+                          <Input
+                            id="audience-field"
+                            placeholder="es. Imprenditori 35-50, Mamme sportive, Freelancer..."
+                            value={targetAudience}
+                            onChange={(e) => setTargetAudience(e.target.value)}
+                            className="h-10"
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    {/* Objectives as compact pills with tooltips */}
+                    <div className="border-t border-border/50" />
+
+                    {/* Objectives */}
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium">Obiettivo *</Label>
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-md bg-pink-100 dark:bg-pink-900/40 flex items-center justify-center">
+                          <Compass className="h-3.5 w-3.5 text-pink-600 dark:text-pink-400" />
+                        </div>
+                        <Label className="text-sm font-semibold">Obiettivo del contenuto</Label>
+                      </div>
                       <TooltipProvider delayDuration={200}>
                         <div className="flex flex-wrap gap-2">
                           {OBJECTIVES.map((obj) => {
@@ -2131,67 +2151,84 @@ export default function ContentStudioIdeas() {
                       </TooltipProvider>
                     </div>
 
-                    {/* Media & Copy Type - Inline Selection */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Tipo Media</Label>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setMediaType("video")}
-                            className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
-                              mediaType === "video"
-                                ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300"
-                                : "border-border hover:border-blue-300"
-                            }`}
-                          >
-                            <Video className="h-4 w-4" />
-                            <span className="font-medium text-sm">Video</span>
-                          </button>
-                          <button
-                            onClick={() => setMediaType("photo")}
-                            className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
-                              mediaType === "photo"
-                                ? "border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300"
-                                : "border-border hover:border-green-300"
-                            }`}
-                          >
-                            <Camera className="h-4 w-4" />
-                            <span className="font-medium text-sm">Foto</span>
-                          </button>
+                    <div className="border-t border-border/50" />
+
+                    {/* Formato: Media & Copy Type */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                          <Palette className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                         </div>
+                        <Label className="text-sm font-semibold">Formato</Label>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Tipo Copy</Label>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setCopyType("short")}
-                            className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
-                              copyType === "short"
-                                ? "border-orange-500 bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300"
-                                : "border-border hover:border-orange-300"
-                            }`}
-                          >
-                            <FileTextIcon className="h-4 w-4" />
-                            <span className="font-medium text-sm">Corto</span>
-                          </button>
-                          <button
-                            onClick={() => setCopyType("long")}
-                            className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
-                              copyType === "long"
-                                ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300"
-                                : "border-border hover:border-purple-300"
-                            }`}
-                          >
-                            <AlignLeft className="h-4 w-4" />
-                            <span className="font-medium text-sm">Lungo</span>
-                          </button>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground font-normal">Tipo Media</Label>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setMediaType("video")}
+                              className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                                mediaType === "video"
+                                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300"
+                                  : "border-border hover:border-blue-300"
+                              }`}
+                            >
+                              <Video className="h-4 w-4" />
+                              <span className="font-medium text-sm">Video</span>
+                            </button>
+                            <button
+                              onClick={() => setMediaType("photo")}
+                              className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                                mediaType === "photo"
+                                  ? "border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300"
+                                  : "border-border hover:border-green-300"
+                              }`}
+                            >
+                              <Camera className="h-4 w-4" />
+                              <span className="font-medium text-sm">Foto</span>
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground font-normal">Lunghezza Copy</Label>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setCopyType("short")}
+                              className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                                copyType === "short"
+                                  ? "border-orange-500 bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300"
+                                  : "border-border hover:border-orange-300"
+                              }`}
+                            >
+                              <FileTextIcon className="h-4 w-4" />
+                              <span className="font-medium text-sm">Corto</span>
+                            </button>
+                            <button
+                              onClick={() => setCopyType("long")}
+                              className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                                copyType === "long"
+                                  ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300"
+                                  : "border-border hover:border-purple-300"
+                              }`}
+                            >
+                              <AlignLeft className="h-4 w-4" />
+                              <span className="font-medium text-sm">Lungo</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
 
+                    <div className="border-t border-border/50" />
+
                     {/* Writing Style Selection */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Stile di Scrittura</Label>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-md bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
+                          <Type className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                        </div>
+                        <Label className="text-sm font-semibold">Stile di Scrittura</Label>
+                      </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {WRITING_STYLES.map((style) => (
                           <button
@@ -2227,18 +2264,28 @@ export default function ContentStudioIdeas() {
                       )}
                     </div>
 
-                    {/* Number of ideas - compact */}
-                    <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-                      <Label className="text-sm font-medium whitespace-nowrap">Numero Idee:</Label>
-                      <Slider
-                        value={[ideaCount]}
-                        onValueChange={(value) => setIdeaCount(value[0])}
-                        min={1}
-                        max={5}
-                        step={1}
-                        className="flex-1"
-                      />
-                      <span className="text-lg font-bold text-purple-600 dark:text-purple-400 min-w-[2rem] text-center">{ideaCount}</span>
+                    <div className="border-t border-border/50" />
+
+                    {/* Number of ideas */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-md bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                          <Lightbulb className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <Label className="text-sm font-semibold">Quantità</Label>
+                      </div>
+                      <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg border border-border/50">
+                        <Label className="text-sm text-muted-foreground whitespace-nowrap">Numero Idee:</Label>
+                        <Slider
+                          value={[ideaCount]}
+                          onValueChange={(value) => setIdeaCount(value[0])}
+                          min={1}
+                          max={5}
+                          step={1}
+                          className="flex-1"
+                        />
+                        <span className="text-lg font-bold text-purple-600 dark:text-purple-400 min-w-[2rem] text-center">{ideaCount}</span>
+                      </div>
                     </div>
                   </CardContent>
                   </div>
