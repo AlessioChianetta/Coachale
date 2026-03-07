@@ -1253,7 +1253,8 @@ router.get("/numbers", authenticateToken, requireAnyRole(["consultant", "super_a
         120 AS overflow_timeout_secs,
         true AS overflow_dtmf_enabled,
         true AS overflow_auto_return,
-        NULL::text AS overflow_message
+        NULL::text AS overflow_message,
+        60 AS inactivity_timeout_secs
       FROM consultant_numbers cn
       WHERE cn.status = 'active'
         ${consultantId ? sql`AND cn.consultant_id = ${consultantId}` : sql``}
