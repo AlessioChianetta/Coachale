@@ -64,6 +64,9 @@ import {
   EyeOff,
   ChevronDown,
   ChevronUp,
+  SlidersHorizontal,
+  History,
+  RotateCcw,
 } from "lucide-react";
 
 interface ContentPost {
@@ -141,6 +144,30 @@ const AdVisagePage: React.FC = () => {
   const [copiedCaption, setCopiedCaption] = useState<string | null>(null);
   const [promptPreviewOpen, setPromptPreviewOpen] = useState<Record<string, boolean>>({});
   const [originalTextExpanded, setOriginalTextExpanded] = useState<Record<string, boolean>>({});
+  const [conceptOverrides, setConceptOverrides] = useState<Record<string, Partial<AppSettings>>>({});
+  const [conceptControlsOpen, setConceptControlsOpen] = useState<Record<string, boolean>>({});
+  const [selectedHistoryImage, setSelectedHistoryImage] = useState<Record<string, number>>({});
+
+  const getMergedSettings = (conceptId: string): AppSettings => {
+    const overrides = conceptOverrides[conceptId];
+    if (!overrides) return settings;
+    return { ...settings, ...overrides };
+  };
+
+  const updateConceptOverride = (conceptId: string, field: string, value: any) => {
+    setConceptOverrides(prev => ({
+      ...prev,
+      [conceptId]: { ...(prev[conceptId] || {}), [field]: value }
+    }));
+  };
+
+  const resetConceptOverrides = (conceptId: string) => {
+    setConceptOverrides(prev => {
+      const next = { ...prev };
+      delete next[conceptId];
+      return next;
+    });
+  };
 
   const { data: postsData, isLoading: isLoadingPosts } = useQuery({
     queryKey: ['/api/content/posts'],
@@ -343,14 +370,16 @@ const AdVisagePage: React.FC = () => {
   const handleGenerateOne = async (concept: VisualConcept, variantOverride?: 'clean' | 'text') => {
     if (generatingIds.has(concept.id)) return;
     const variant = variantOverride || variantToggle[concept.id] || 'text';
+    const mergedSettings = getMergedSettings(concept.id);
     setGeneratingIds(prev => new Set(prev).add(concept.id));
     try {
       const ratioMap: any = { "1:1": "1:1", "4:5": "3:4", "9:16": "9:16", "16:9": "16:9", "4:3": "4:3", "3:4": "3:4", "2:3": "2:3", "3:2": "3:2", "5:4": "5:4", "21:9": "21:9" };
-      const userFormat = settings.imageFormat || '1:1';
+      const userFormat = mergedSettings.imageFormat || '1:1';
       const aspectRatio = ratioMap[userFormat] || ratioMap[concept.recommendedFormat] || '1:1';
       const originalText = getOriginalTextForConcept(concept.id);
-      const url = await generateImageConcept(customPrompts[`${concept.id}_${variant}`], aspectRatio, settings, variant, concept.textContent, concept.styleType, concept.promptVisual, concept.description, originalText);
+      const url = await generateImageConcept(customPrompts[`${concept.id}_${variant}`], aspectRatio, mergedSettings, variant, concept.textContent, concept.styleType, concept.promptVisual, concept.description, originalText);
       setGeneratedImages(prev => [{ conceptId: concept.id, imageUrl: url, variant, timestamp: Date.now() }, ...prev]);
+      setSelectedHistoryImage(prev => ({ ...prev, [concept.id]: 0 }));
     } catch (err: any) { 
       setError(err.message); 
     } finally { 
@@ -1097,53 +1126,89 @@ const AdVisagePage: React.FC = () => {
                         {activePost.concepts.map(concept => {
                           const isGen = generatingIds.has(concept.id);
                           const variant = variantToggle[concept.id] || 'text';
-                          const currentImg = generatedImages.find(i => i.conceptId === concept.id && i.variant === variant)?.imageUrl;
+                          const conceptHistory = generatedImages.filter(i => i.conceptId === concept.id);
+                          const selectedIdx = selectedHistoryImage[concept.id] ?? 0;
+                          const currentImg = conceptHistory.length > 0
+                            ? (conceptHistory[selectedIdx] || conceptHistory[0])?.imageUrl
+                            : undefined;
+                          const mergedS = getMergedSettings(concept.id);
+                          const hasOverrides = !!conceptOverrides[concept.id] && Object.keys(conceptOverrides[concept.id]).length > 0;
                           
                           return (
                             <Card key={concept.id} className={`overflow-hidden ${isDark ? 'bg-slate-900/50 border-slate-800' : ''}`}>
                               <div className="flex flex-col lg:flex-row">
-                                <div className={`lg:w-[400px] shrink-0 relative flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'} ${
-                                  (settings.imageFormat === '9:16') ? 'aspect-[9/16]' :
-                                  (settings.imageFormat === '4:5') ? 'aspect-[4/5]' :
-                                  (settings.imageFormat === '2:3') ? 'aspect-[2/3]' :
-                                  (settings.imageFormat === '16:9') ? 'aspect-[16/9]' :
-                                  (settings.imageFormat === '4:3') ? 'aspect-[4/3]' :
-                                  (settings.imageFormat === '3:2') ? 'aspect-[3/2]' :
-                                  (settings.imageFormat === '5:4') ? 'aspect-[5/4]' :
-                                  (settings.imageFormat === '21:9') ? 'aspect-[21/9]' :
-                                  'aspect-square'
-                                }`}>
-                                  {currentImg ? (
-                                    <>
-                                      <img src={currentImg} className="w-full h-full object-cover" alt={concept.title} />
-                                      <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                                        <Button
-                                          size="icon"
-                                          variant="secondary"
-                                          onClick={() => downloadImage(currentImg, `advisage-${concept.title.replace(/\s+/g, '-').toLowerCase()}-${variant}.png`)}
-                                        >
-                                          <Download className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                          size="icon"
-                                          variant="default"
-                                          className="bg-indigo-600 hover:bg-indigo-700"
-                                          onClick={() => handleUploadToPubler(currentImg, concept.id)}
-                                        >
-                                          <CloudUpload className="w-4 h-4" />
-                                        </Button>
+                                <div className={`lg:w-[400px] shrink-0 relative flex flex-col ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                                  <div className={`relative flex items-center justify-center flex-1 ${
+                                    (mergedS.imageFormat === '9:16') ? 'aspect-[9/16]' :
+                                    (mergedS.imageFormat === '4:5') ? 'aspect-[4/5]' :
+                                    (mergedS.imageFormat === '2:3') ? 'aspect-[2/3]' :
+                                    (mergedS.imageFormat === '16:9') ? 'aspect-[16/9]' :
+                                    (mergedS.imageFormat === '4:3') ? 'aspect-[4/3]' :
+                                    (mergedS.imageFormat === '3:2') ? 'aspect-[3/2]' :
+                                    (mergedS.imageFormat === '5:4') ? 'aspect-[5/4]' :
+                                    (mergedS.imageFormat === '21:9') ? 'aspect-[21/9]' :
+                                    'aspect-square'
+                                  }`}>
+                                    {currentImg ? (
+                                      <>
+                                        <img src={currentImg} className="w-full h-full object-cover" alt={concept.title} />
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                          <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            onClick={() => downloadImage(currentImg, `advisage-${concept.title.replace(/\s+/g, '-').toLowerCase()}-${variant}.png`)}
+                                          >
+                                            <Download className="w-4 h-4" />
+                                          </Button>
+                                          <Button
+                                            size="icon"
+                                            variant="default"
+                                            className="bg-indigo-600 hover:bg-indigo-700"
+                                            onClick={() => handleUploadToPubler(currentImg, concept.id)}
+                                          >
+                                            <CloudUpload className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <div className="flex flex-col items-center opacity-30">
+                                        <ImageIcon className="w-16 h-16 mb-4" />
+                                        <p className="text-xs font-semibold uppercase tracking-wider">Pronto per la Generazione</p>
                                       </div>
-                                    </>
-                                  ) : (
-                                    <div className="flex flex-col items-center opacity-30">
-                                      <ImageIcon className="w-16 h-16 mb-4" />
-                                      <p className="text-xs font-semibold uppercase tracking-wider">Pronto per la Generazione</p>
-                                    </div>
-                                  )}
-                                  {isGen && (
-                                    <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center z-10">
-                                      <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-4" />
-                                      <p className="text-xs font-semibold uppercase tracking-wider">Synthesizing...</p>
+                                    )}
+                                    {isGen && (
+                                      <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center z-10">
+                                        <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-4" />
+                                        <p className="text-xs font-semibold uppercase tracking-wider">Synthesizing...</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {conceptHistory.length > 0 && (
+                                    <div className={`p-2 border-t ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-white/80'}`}>
+                                      <div className="flex items-center gap-1.5 mb-1.5">
+                                        <History className="w-3 h-3 text-muted-foreground" />
+                                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                          Storico ({conceptHistory.length})
+                                        </span>
+                                      </div>
+                                      <div className="flex gap-1.5 overflow-x-auto pb-1">
+                                        {conceptHistory.map((img, idx) => (
+                                          <button
+                                            key={`${img.conceptId}-${img.timestamp}-${idx}`}
+                                            onClick={() => {
+                                              setSelectedHistoryImage(prev => ({...prev, [concept.id]: idx}));
+                                            }}
+                                            className={`shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                                              selectedIdx === idx
+                                                ? 'border-indigo-500 ring-1 ring-indigo-500/50'
+                                                : isDark ? 'border-slate-600 hover:border-slate-400' : 'border-slate-300 hover:border-slate-500'
+                                            }`}
+                                            title={`${img.variant === 'text' ? 'Con Testo' : 'Solo Visual'} — ${new Date(img.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`}
+                                          >
+                                            <img src={img.imageUrl} className="w-full h-full object-cover" alt={`Gen ${idx + 1}`} />
+                                          </button>
+                                        ))}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -1222,6 +1287,181 @@ const AdVisagePage: React.FC = () => {
                                     </TabsList>
                                   </Tabs>
 
+                                  <div className={`rounded-xl border ${isDark ? 'border-slate-700/60' : 'border-slate-200'}`}>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className={`w-full justify-between text-xs rounded-b-none ${conceptControlsOpen[concept.id] ? 'rounded-t-xl' : 'rounded-xl'} ${isDark ? 'text-slate-300 hover:text-slate-100 hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+                                      onClick={() => setConceptControlsOpen({...conceptControlsOpen, [concept.id]: !conceptControlsOpen[concept.id]})}
+                                    >
+                                      <span className="flex items-center gap-2">
+                                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                                        Personalizza Generazione
+                                        {hasOverrides && (
+                                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-indigo-500/20 text-indigo-400">
+                                            Modificato
+                                          </Badge>
+                                        )}
+                                      </span>
+                                      {conceptControlsOpen[concept.id] ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                    </Button>
+                                    {conceptControlsOpen[concept.id] && (
+                                      <div className={`p-4 border-t space-y-3 ${isDark ? 'border-slate-700/60 bg-slate-800/30' : 'border-slate-200 bg-slate-50/50'}`}>
+                                        {hasOverrides && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-[10px] text-amber-500 hover:text-amber-400"
+                                            onClick={() => resetConceptOverrides(concept.id)}
+                                          >
+                                            <RotateCcw className="w-3 h-3 mr-1" />
+                                            Ripristina valori globali
+                                          </Button>
+                                        )}
+                                        <div className="grid grid-cols-2 gap-3">
+                                          <div>
+                                            <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Mood</label>
+                                            <Select value={mergedS.mood} onValueChange={(v) => updateConceptOverride(concept.id, 'mood', v)}>
+                                              <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="luxury">Luxury / Elegant</SelectItem>
+                                                <SelectItem value="energetic">Vibrant / Energetic</SelectItem>
+                                                <SelectItem value="professional">Enterprise / Trusted</SelectItem>
+                                                <SelectItem value="minimalist">Minimalist / Zen</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div>
+                                            <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Art Style</label>
+                                            <Select value={mergedS.stylePreference} onValueChange={(v) => updateConceptOverride(concept.id, 'stylePreference', v)}>
+                                              <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="realistic">Photography</SelectItem>
+                                                <SelectItem value="3d-render">3D Product Render</SelectItem>
+                                                <SelectItem value="illustration">Flat Design</SelectItem>
+                                                <SelectItem value="cyberpunk">Cyber / Neon</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div>
+                                            <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Illuminazione</label>
+                                            <Select value={mergedS.lightingStyle || 'studio'} onValueChange={(v) => updateConceptOverride(concept.id, 'lightingStyle', v)}>
+                                              <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="studio">Studio (3 punti)</SelectItem>
+                                                <SelectItem value="natural">Naturale / Golden Hour</SelectItem>
+                                                <SelectItem value="dramatic">Drammatica</SelectItem>
+                                                <SelectItem value="neon">Neon / Club</SelectItem>
+                                                <SelectItem value="soft">Morbida / Eterea</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div>
+                                            <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Color Grading</label>
+                                            <Select value={mergedS.colorGrading || 'neutral'} onValueChange={(v) => updateConceptOverride(concept.id, 'colorGrading', v)}>
+                                              <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="neutral">Naturale</SelectItem>
+                                                <SelectItem value="warm">Caldo / Ambrato</SelectItem>
+                                                <SelectItem value="cold">Freddo / Blu</SelectItem>
+                                                <SelectItem value="cinematic">Cinematografico</SelectItem>
+                                                <SelectItem value="vintage">Vintage / Film</SelectItem>
+                                                <SelectItem value="vibrant">Vibrante / Pop</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div>
+                                            <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Inquadratura</label>
+                                            <Select value={mergedS.cameraAngle || 'standard'} onValueChange={(v) => updateConceptOverride(concept.id, 'cameraAngle', v)}>
+                                              <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="standard">Standard</SelectItem>
+                                                <SelectItem value="closeup">Close-up</SelectItem>
+                                                <SelectItem value="wideshot">Ampia</SelectItem>
+                                                <SelectItem value="flatlay">Flat Lay</SelectItem>
+                                                <SelectItem value="lowangle">Dal basso</SelectItem>
+                                                <SelectItem value="aerial">Aerea / Drone</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div>
+                                            <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Sfondo</label>
+                                            <Select value={mergedS.backgroundStyle || 'studio'} onValueChange={(v) => updateConceptOverride(concept.id, 'backgroundStyle', v)}>
+                                              <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="studio">Studio</SelectItem>
+                                                <SelectItem value="outdoor">Esterno</SelectItem>
+                                                <SelectItem value="gradient">Gradiente</SelectItem>
+                                                <SelectItem value="blur">Sfocato (bokeh)</SelectItem>
+                                                <SelectItem value="contextual">Contestuale</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div>
+                                            <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Formato</label>
+                                            <Select value={mergedS.imageFormat || '1:1'} onValueChange={(v) => updateConceptOverride(concept.id, 'imageFormat', v)}>
+                                              <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="1:1">1:1 Feed</SelectItem>
+                                                <SelectItem value="4:5">4:5 Portrait</SelectItem>
+                                                <SelectItem value="9:16">9:16 Story</SelectItem>
+                                                <SelectItem value="16:9">16:9 Landscape</SelectItem>
+                                                <SelectItem value="4:3">4:3</SelectItem>
+                                                <SelectItem value="2:3">2:3</SelectItem>
+                                                <SelectItem value="3:2">3:2</SelectItem>
+                                                <SelectItem value="5:4">5:4</SelectItem>
+                                                <SelectItem value="21:9">21:9 Ultra-wide</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div>
+                                            <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Qualità</label>
+                                            <Select value={mergedS.imageQuality || 'standard'} onValueChange={(v) => updateConceptOverride(concept.id, 'imageQuality', v)}>
+                                              <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="standard">Standard (2K)</SelectItem>
+                                                <SelectItem value="high">Alta (4K)</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <label className="text-[10px] font-medium text-muted-foreground mb-1 block">Colore Brand</label>
+                                          <div className="flex items-center gap-2">
+                                            <input
+                                              type="color"
+                                              value={mergedS.brandColor || '#6366f1'}
+                                              onChange={(e) => updateConceptOverride(concept.id, 'brandColor', e.target.value)}
+                                              className="w-8 h-8 rounded border cursor-pointer"
+                                            />
+                                            <Input
+                                              value={mergedS.brandColor || '#6366f1'}
+                                              onChange={(e) => updateConceptOverride(concept.id, 'brandColor', e.target.value)}
+                                              className="flex-1 font-mono text-xs h-8"
+                                              placeholder="#6366f1"
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
                                   <div>
                                     <Button
                                       variant="ghost"
@@ -1237,9 +1477,9 @@ const AdVisagePage: React.FC = () => {
                                     </Button>
                                     {promptPreviewOpen[concept.id] && (() => {
                                       const ratioMap: any = { "1:1": "1:1", "4:5": "3:4", "9:16": "9:16", "16:9": "16:9", "4:3": "4:3", "3:4": "3:4", "2:3": "2:3", "3:2": "3:2", "5:4": "5:4", "21:9": "21:9" };
-                                      const userFormat = settings.imageFormat || '1:1';
+                                      const userFormat = mergedS.imageFormat || '1:1';
                                       const previewRatio = ratioMap[userFormat] || ratioMap[concept.recommendedFormat] || '1:1';
-                                      const previewPrompt = buildPromptPreview(concept, settings, variant, previewRatio, activePost?.originalText);
+                                      const previewPrompt = buildPromptPreview(concept, mergedS, variant, previewRatio, activePost?.originalText);
                                       return (
                                         <div className={`mt-3 rounded-xl border ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
                                           <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200/20">
@@ -1259,11 +1499,11 @@ const AdVisagePage: React.FC = () => {
                                               Copia
                                             </Button>
                                           </div>
-                                          <ScrollArea className="max-h-[400px]">
+                                          <div className="max-h-[400px] overflow-y-auto">
                                             <pre className={`p-4 text-[11px] leading-relaxed whitespace-pre-wrap font-mono ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                                               {previewPrompt}
                                             </pre>
-                                          </ScrollArea>
+                                          </div>
                                         </div>
                                       );
                                     })()}
