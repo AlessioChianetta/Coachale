@@ -3137,10 +3137,92 @@ export default function ConsultantWhatsAppPage() {
             <Alert className="bg-violet-50 border-violet-200 dark:bg-violet-950/20 dark:border-violet-800">
               <Key className="h-5 w-5 text-violet-600" />
               <AlertDescription>
-                <strong>Gestione Licenze</strong><br />
-                Monitora le tue licenze Level 2 (Bronze) e Level 3 (Silver), visualizza le sottoscrizioni attive dei tuoi clienti e gestisci il tuo piano.
+                <strong>Come funzionano le licenze</strong><br />
+                Ogni contatto che inserisci nel CRM riceve automaticamente una licenza <strong>Bronze gratuita</strong>: l'AI lo riconosce su WhatsApp come tuo cliente e tiene traccia della sua cronologia. Se vuoi che acceda anche ai corsi, agli esercizi e all'assistente AI personale, passa a <strong>Silver (da €49/mese)</strong>. Per dargli accesso completo alla propria area personale <strong>/client</strong> con dashboard, analytics, roadmap e strumenti avanzati, serve la <strong>Gold (da €99/mese)</strong>. I dipendenti interni sono <strong>gratuiti fino a 5</strong>, poi €20/licenza al mese. Tutti i pagamenti avvengono tramite Stripe Connect — le sottoscrizioni vengono accreditate direttamente a te.
               </AlertDescription>
             </Alert>
+
+            {/* Tier explanation card */}
+            <Card className="border-2 border-violet-100 dark:border-violet-900">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Crown className="h-4 w-4 text-violet-600" />
+                  Cosa include ogni licenza
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Bronze */}
+                  <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <LevelBadge level="2" size="md" />
+                      <div>
+                        <p className="font-semibold text-amber-700 dark:text-amber-400">Bronze</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-500 font-medium">Gratuita — illimitata</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-foreground">
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Contatto registrato nel CRM</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Riconosciuto su WhatsApp — l'AI sa chi è</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Cronologia conversazioni sempre disponibile</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Puoi aggiungere note e info nel CRM</li>
+                      <li className="flex items-start gap-1.5"><span className="text-muted-foreground mt-0.5">✗</span><span className="text-muted-foreground">Nessun accesso alla piattaforma /client</span></li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground italic">Ideale per tutti i contatti CRM: lead, prospect, clienti passati.</p>
+                  </div>
+
+                  {/* Silver */}
+                  <div className="rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-900/20 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <LevelBadge level="3" size="md" />
+                      <div>
+                        <p className="font-semibold text-slate-700 dark:text-slate-300">Silver</p>
+                        <p className="text-xs text-slate-500 font-medium">Da €49/mese · Stripe Connect</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-foreground">
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Tutto il Bronze incluso</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Accesso a corsi e libreria formativa</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Esercizi assegnati dal consulente</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Roadmap personale e obiettivi</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Assistente AI personale dedicato</li>
+                      <li className="flex items-start gap-1.5"><span className="text-muted-foreground mt-0.5">✗</span><span className="text-muted-foreground">Analytics avanzate e strumenti Pro</span></li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground italic">Per clienti che seguono un percorso formativo attivo con te.</p>
+                  </div>
+
+                  {/* Gold */}
+                  <div className="rounded-lg border-2 border-yellow-300 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-950/20 p-4 space-y-3 relative">
+                    <div className="absolute -top-2.5 right-3">
+                      <Badge className="bg-yellow-500 text-white text-xs px-2 py-0.5">Accesso /client completo</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Crown className="h-5 w-5 text-yellow-600" />
+                      <div>
+                        <p className="font-semibold text-yellow-700 dark:text-yellow-400">Gold</p>
+                        <p className="text-xs text-yellow-600 dark:text-yellow-500 font-medium">Da €99/mese · Stripe Connect</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-foreground">
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Tutto il Silver incluso</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Area personale /client con dashboard</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Calendario, consulenze e task giornalieri</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Analytics e analisi dati personali</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Strumenti Pro: venditori AI, agenti umani</li>
+                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Email e password per accedere alla piattaforma</li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground italic">Obbligatoria per chi deve accedere con email e password all'area /client.</p>
+                  </div>
+                </div>
+
+                {/* Employees note */}
+                <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    <strong>Dipendenti interni:</strong> i primi 5 sono gratuiti. Dal sesto in poi ogni dipendente costa <strong>€20/mese</strong> (licenza aggiuntiva). I dipendenti non hanno accesso all'area /client — usano il pannello gestione interno.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* License Dashboard Card */}
