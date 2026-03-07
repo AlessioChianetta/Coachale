@@ -8861,6 +8861,7 @@ export const contentIdeaTemplates = pgTable("content_idea_templates", {
   sophisticationLevel: varchar("sophistication_level", { length: 50 }),
   mediaType: varchar("media_type", { length: 50 }),
   copyType: varchar("copy_type", { length: 50 }),
+  isDefault: boolean("is_default").default(false),
   createdAt: timestamp("created_at").default(sql`now()`),
 }, (table) => ({
   consultantIdx: index("idx_content_idea_templates_consultant").on(table.consultantId),

@@ -445,7 +445,7 @@ router.get("/idea-templates", authenticateToken, requireRole("consultant"), asyn
     const templates = await db.select()
       .from(schema.contentIdeaTemplates)
       .where(eq(schema.contentIdeaTemplates.consultantId, consultantId))
-      .orderBy(desc(schema.contentIdeaTemplates.createdAt));
+      .orderBy(desc(schema.contentIdeaTemplates.isDefault), desc(schema.contentIdeaTemplates.createdAt));
     
     res.json({
       success: true,
@@ -528,6 +528,72 @@ router.post("/idea-templates", authenticateToken, requireRole("consultant"), asy
       success: false,
       error: error.message || "Failed to create idea template"
     });
+  }
+});
+
+// PUT /api/content/idea-templates/:id - Update existing template by ID
+router.put("/idea-templates/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const templateId = req.params.id;
+    const body = req.body;
+    
+    const [updated] = await db.update(schema.contentIdeaTemplates)
+      .set({
+        name: body.name,
+        topic: body.topic,
+        targetAudience: body.targetAudience,
+        objective: body.objective,
+        contentTypes: body.contentTypes,
+        additionalContext: body.additionalContext,
+        awarenessLevel: body.awarenessLevel,
+        sophisticationLevel: body.sophisticationLevel,
+        mediaType: body.mediaType,
+        copyType: body.copyType,
+      })
+      .where(and(
+        eq(schema.contentIdeaTemplates.id, templateId),
+        eq(schema.contentIdeaTemplates.consultantId, consultantId)
+      ))
+      .returning();
+    
+    if (!updated) {
+      return res.status(404).json({ success: false, error: "Template not found" });
+    }
+    
+    res.json({ success: true, data: updated, message: "Template aggiornato" });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error updating idea template:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to update template" });
+  }
+});
+
+// PATCH /api/content/idea-templates/:id/default - Set template as default
+router.patch("/idea-templates/:id/default", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const templateId = req.params.id;
+    
+    await db.update(schema.contentIdeaTemplates)
+      .set({ isDefault: false })
+      .where(eq(schema.contentIdeaTemplates.consultantId, consultantId));
+    
+    const [updated] = await db.update(schema.contentIdeaTemplates)
+      .set({ isDefault: true })
+      .where(and(
+        eq(schema.contentIdeaTemplates.id, templateId),
+        eq(schema.contentIdeaTemplates.consultantId, consultantId)
+      ))
+      .returning();
+    
+    if (!updated) {
+      return res.status(404).json({ success: false, error: "Template not found" });
+    }
+    
+    res.json({ success: true, data: updated, message: "Template impostato come predefinito" });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error setting default template:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to set default" });
   }
 });
 

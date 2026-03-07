@@ -92,6 +92,7 @@ import {
   Scissors,
   LayoutGrid,
   LayoutList,
+  Pencil,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -607,6 +608,9 @@ export default function ContentStudioIdeas() {
 
   const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
+  const [saveMode, setSaveMode] = useState<"new" | "overwrite">("new");
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [activeTemplateName, setActiveTemplateName] = useState<string | null>(null);
   const [showAutopilotSection, setShowAutopilotSection] = useState(false);
   const [autopilotStartDate, setAutopilotStartDate] = useState("");
   const [autopilotEndDate, setAutopilotEndDate] = useState("");
@@ -1087,37 +1091,63 @@ export default function ContentStudioIdeas() {
   };
 
   const handleSaveTemplate = async () => {
-    if (!templateName.trim()) return;
+    const templateData = {
+      topic,
+      targetAudience,
+      objective,
+      additionalContext,
+      awarenessLevel,
+      sophisticationLevel,
+      mediaType,
+      copyType,
+    };
     try {
-      const response = await fetch("/api/content/idea-templates", {
-        method: "POST",
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: templateName,
-          topic,
-          targetAudience,
-          objective,
-          additionalContext,
-          awarenessLevel,
-          sophisticationLevel,
-          mediaType,
-          copyType,
-        }),
-      });
-      if (response.ok) {
-        toast({ title: "Template salvato!", description: `"${templateName}" è stato salvato` });
-        setShowSaveTemplateDialog(false);
-        setTemplateName("");
-        queryClient.invalidateQueries({ queryKey: ["/api/content/idea-templates"] });
+      if (saveMode === "overwrite" && activeTemplateId) {
+        const response = await fetch(`/api/content/idea-templates/${activeTemplateId}`, {
+          method: "PUT",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ ...templateData, name: activeTemplateName }),
+        });
+        if (response.ok) {
+          toast({ title: "Preset aggiornato!", description: `"${activeTemplateName}" è stato aggiornato` });
+          setShowSaveTemplateDialog(false);
+          queryClient.invalidateQueries({ queryKey: ["/api/content/idea-templates"] });
+        }
+      } else {
+        if (!templateName.trim()) return;
+        const response = await fetch("/api/content/idea-templates", {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ ...templateData, name: templateName }),
+        });
+        if (response.ok) {
+          const result = await response.json();
+          setActiveTemplateId(result.data?.id || result.id);
+          setActiveTemplateName(templateName);
+          toast({ title: "Preset salvato!", description: `"${templateName}" è stato creato` });
+          setShowSaveTemplateDialog(false);
+          setTemplateName("");
+          queryClient.invalidateQueries({ queryKey: ["/api/content/idea-templates"] });
+        }
       }
-    } catch (error) {
-      toast({ title: "Errore", description: "Impossibile salvare il template", variant: "destructive" });
+    } catch {
+      toast({ title: "Errore", description: "Impossibile salvare il preset", variant: "destructive" });
     }
+  };
+
+  const openSaveDialog = () => {
+    if (activeTemplateId) {
+      setSaveMode("overwrite");
+    } else {
+      setSaveMode("new");
+    }
+    setTemplateName("");
+    setShowSaveTemplateDialog(true);
   };
 
   const autoLoadedRef = useRef(false);
 
-  const handleLoadTemplate = (template: any) => {
+  const applyTemplate = (template: any) => {
     setTopic(template.topic || "");
     setTargetAudience(template.targetAudience || "");
     setObjective(template.objective || "");
@@ -1126,23 +1156,60 @@ export default function ContentStudioIdeas() {
     setSophisticationLevel(template.sophisticationLevel || "level_3");
     setMediaType(template.mediaType || "photo");
     setCopyType(template.copyType || "short");
-    toast({ title: "Template caricato", description: `"${template.name}" applicato` });
+    setActiveTemplateId(template.id);
+    setActiveTemplateName(template.name);
+  };
+
+  const handleLoadTemplate = (template: any) => {
+    applyTemplate(template);
+    toast({ title: "Preset caricato", description: `"${template.name}" applicato` });
   };
 
   useEffect(() => {
     if (templates.length > 0 && !autoLoadedRef.current) {
       autoLoadedRef.current = true;
-      const first = templates[0];
-      setTopic(first.topic || "");
-      setTargetAudience(first.targetAudience || "");
-      setObjective(first.objective || "");
-      setAdditionalContext(first.additionalContext || "");
-      setAwarenessLevel(first.awarenessLevel || "problem_aware");
-      setSophisticationLevel(first.sophisticationLevel || "level_3");
-      setMediaType(first.mediaType || "photo");
-      setCopyType(first.copyType || "short");
+      const defaultTemplate = templates.find((t: any) => t.isDefault);
+      if (defaultTemplate) {
+        applyTemplate(defaultTemplate);
+      } else {
+        applyTemplate(templates[0]);
+      }
     }
   }, [templates]);
+
+  const handleSetDefault = async (templateId: string) => {
+    try {
+      const response = await fetch(`/api/content/idea-templates/${templateId}/default`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/content/idea-templates"] });
+        toast({ title: "Predefinito impostato", description: "Questo preset verrà caricato automaticamente" });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Impossibile impostare predefinito", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId: string, templateName: string) => {
+    try {
+      const response = await fetch(`/api/content/idea-templates/${templateId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        if (activeTemplateId === templateId) {
+          setActiveTemplateId(null);
+          setActiveTemplateName(null);
+        }
+        queryClient.invalidateQueries({ queryKey: ["/api/content/idea-templates"] });
+        toast({ title: "Preset eliminato", description: `"${templateName}" è stato rimosso` });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Impossibile eliminare il preset", variant: "destructive" });
+    }
+  };
 
   const handleDevelopPost = (idea: Idea) => {
     if (idea.id) {
@@ -1860,34 +1927,89 @@ export default function ContentStudioIdeas() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowSaveTemplateDialog(true)}
-                  disabled={!useBrandVoice && !useKnowledgeBase}
-                >
-                  <Save className="h-4 w-4 mr-1" />
-                  Salva
-                </Button>
-                
-                {templates.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <FolderOpen className="h-4 w-4 mr-1" />
-                        Carica
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      {templates.map((template: any) => (
-                        <DropdownMenuItem key={template.id} onClick={() => handleLoadTemplate(template)}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          {template.name}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                {activeTemplateName && (
+                  <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
+                    <FileText className="h-3 w-3 text-purple-500" />
+                    {activeTemplateName}
+                  </span>
                 )}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                        onClick={openSaveDialog}
+                      >
+                        <Save className="h-4 w-4 text-purple-500" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Salva preset</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30">
+                      <FolderOpen className="h-4 w-4 text-purple-500" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-72">
+                    {templates.length === 0 ? (
+                      <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                        Nessun preset salvato
+                      </div>
+                    ) : (
+                      templates.map((template: any) => (
+                        <div key={template.id} className={`flex items-center gap-1 px-1 py-0.5 group ${activeTemplateId === template.id ? 'bg-purple-50 dark:bg-purple-950/30' : ''}`}>
+                          <DropdownMenuItem
+                            className="flex-1 cursor-pointer"
+                            onClick={() => handleLoadTemplate(template)}
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {template.isDefault ? (
+                                <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 flex-shrink-0" />
+                              ) : (
+                                <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              )}
+                              <span className="truncate">{template.name}</span>
+                              {activeTemplateId === template.id && (
+                                <Check className="h-3.5 w-3.5 text-purple-500 flex-shrink-0 ml-auto" />
+                              )}
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-1 rounded hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => handleSetDefault(template.id)}>
+                                <Star className={`h-3.5 w-3.5 mr-2 ${template.isDefault ? 'text-amber-500 fill-amber-500' : ''}`} />
+                                {template.isDefault ? 'Già predefinito' : 'Imposta predefinito'}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => handleDeleteTemplate(template.id, template.name)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                Elimina
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      ))
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => { setSaveMode("new"); setTemplateName(""); setShowSaveTemplateDialog(true); }}>
+                      <Save className="h-3.5 w-3.5 mr-2 text-purple-500" />
+                      Salva nuovo preset...
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
@@ -3862,30 +3984,70 @@ export default function ContentStudioIdeas() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Save className="h-5 w-5 text-purple-500" />
-              Salva Template
+              Salva Preset
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="template-name">Nome Template</Label>
-              <Input
-                id="template-name"
-                placeholder="Es: Template B2B SaaS..."
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-              />
-            </div>
+            {activeTemplateId && (
+              <div className="flex gap-2">
+                <Button
+                  variant={saveMode === "overwrite" ? "default" : "outline"}
+                  size="sm"
+                  className={`flex-1 ${saveMode === "overwrite" ? "bg-purple-600 hover:bg-purple-700" : ""}`}
+                  onClick={() => setSaveMode("overwrite")}
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  Aggiorna "{activeTemplateName}"
+                </Button>
+                <Button
+                  variant={saveMode === "new" ? "default" : "outline"}
+                  size="sm"
+                  className={`flex-1 ${saveMode === "new" ? "bg-purple-600 hover:bg-purple-700" : ""}`}
+                  onClick={() => setSaveMode("new")}
+                >
+                  <Save className="h-3.5 w-3.5 mr-1.5" />
+                  Nuovo preset
+                </Button>
+              </div>
+            )}
+            
+            {saveMode === "new" && (
+              <div className="space-y-2">
+                <Label htmlFor="template-name">Nome Preset</Label>
+                <Input
+                  id="template-name"
+                  placeholder="Es: B2B SaaS, Fitness Coach..."
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                />
+              </div>
+            )}
+
+            {saveMode === "overwrite" && activeTemplateName && (
+              <div className="p-3 rounded-lg bg-muted/50 border">
+                <p className="text-sm text-muted-foreground">
+                  Le impostazioni correnti sovrascriveranno il preset <span className="font-medium text-foreground">"{activeTemplateName}"</span>
+                </p>
+              </div>
+            )}
+
             <div className="text-sm text-muted-foreground space-y-1">
-              <p>Verranno salvati:</p>
-              <ul className="list-disc list-inside text-xs">
-                {topic && <li>Topic: {topic.slice(0, 50)}...</li>}
-                {targetAudience && <li>Target: {targetAudience.slice(0, 50)}...</li>}
-                {objective && <li>Obiettivo: {objective}</li>}
-              </ul>
+              <p className="font-medium text-xs uppercase tracking-wider">Campi salvati:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {topic && <Badge variant="secondary" className="text-xs">{topic.slice(0, 30)}{topic.length > 30 ? '...' : ''}</Badge>}
+                {objective && <Badge variant="secondary" className="text-xs">{objective}</Badge>}
+                {mediaType && <Badge variant="secondary" className="text-xs">{mediaType}</Badge>}
+                {copyType && <Badge variant="secondary" className="text-xs">{copyType}</Badge>}
+              </div>
             </div>
-            <Button onClick={handleSaveTemplate} disabled={!templateName.trim()} className="w-full">
+            
+            <Button
+              onClick={handleSaveTemplate}
+              disabled={saveMode === "new" && !templateName.trim()}
+              className="w-full bg-purple-600 hover:bg-purple-700"
+            >
               <Save className="h-4 w-4 mr-2" />
-              Salva Template
+              {saveMode === "overwrite" ? `Aggiorna "${activeTemplateName}"` : "Salva Nuovo Preset"}
             </Button>
           </div>
         </DialogContent>
