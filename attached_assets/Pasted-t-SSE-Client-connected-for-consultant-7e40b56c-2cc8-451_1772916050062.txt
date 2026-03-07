@@ -1,0 +1,79 @@
+t
+📡 [SSE] Client connected for consultant 7e40b56c-2cc8-4515-b843-dc105e478f38 (1 active)
+[replit-cartographer] Error processing /home/runner/workspace/client/src/pages/content-studio/ideas.tsx: SyntaxError: Unexpected token, expected "}" (3788:16)
+    at toParseError (/home/runner/workspace/node_modules/@babel/parser/src/parse-error.ts:95:45)
+    at raise (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1507:19)
+    at unexpected (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1547:16)
+    at expect (/home/runner/workspace/node_modules/@babel/parser/src/parser/util.ts:157:12)
+    at jsxParseExpressionContainer (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:394:12)
+    at jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:500:24)
+    at jsxParseElement (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:559:19)
+    at parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:573:21)
+    at parseExprSubscripts (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:742:23)
+    at parseUpdate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:721:21)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:683:23)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3876:20)
+    at parseMaybeUnaryOrPrivate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:417:14)
+    at parseExprOps (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:429:23)
+    at parseMaybeConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:384:23)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+    at fn (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3728:23)
+    at tryParse (/home/runner/workspace/node_modules/@babel/parser/src/parser/util.ts:174:20)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3727:20)
+    at callback (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:257:12)
+    at allowInAnd (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:3202:12)
+    at parseMaybeAssignAllowIn (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:256:17)
+    at parseMaybeAssignAllowInOrVoidPattern (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:3316:17)
+    at parseParenAndDistinguishExpression (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:1822:16)
+    at parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:1170:21)
+    at parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:583:22)
+    at parseExprSubscripts (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:742:23)
+    at parseUpdate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:721:21)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:683:23)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3876:20)
+    at parseMaybeUnaryOrPrivate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:417:14)
+    at parseExprOps (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:429:23)
+    at parseMaybeConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:384:23)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3747:22)
+    at callback (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:257:12)
+    at allowInAnd (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:3202:12)
+    at parseMaybeAssignAllowIn (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:256:17)
+    at parseConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:403:30)
+    at parseConditional (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3396:20)
+    at parseMaybeConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:390:17)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3747:22)
+    at parseConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:405:29)
+    at parseConditional (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3396:20)
+    at parseMaybeConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:390:17)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3747:22)
+    at parseExpressionBase (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:226:23)
+    at <anonymous> (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:217:39) {
+  code: 'BABEL_PARSER_SYNTAX_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 3788, column: 16, index: 195179 },
+  pos: 195179,
+  syntaxPlugin: undefined
+}
+8:40:41 PM [vite] Internal server error: /home/runner/workspace/client/src/pages/content-studio/ideas.tsx: Unexpected token, expected "}" (3788:16)
+
+  3786 |                 )
+  3787 |
+> 3788 |                 {totalPages > 1 && (
+       |                 ^
+  3789 |                   <div className="flex items-center justify-between pt-4">
+  3790 |                     <p className="text-xs text-muted-foreground">
+  3791 |                       {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredAndSortedIdeas.length)} di {filteredAndSortedIdeas.length}
+  Plugin: vite:react-babel
+  File: /home/runner/workspace/client/src/pages/content-studio/ideas.tsx:3788:16
+  3786|                  )
+  3787|  
+  3788|                  {totalPages > 1 && (
+     |                  ^
+  3789|                    <div className="flex items-center justify-between pt-4">
+  3790|                      <p className="text-xs text-muted-foreground">
+      at toParseError (/home/runner/workspace/node_modules/@babel/parser/src/parse-error.ts:95:45)
+      at raise (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1507:19)
+      at unexpected (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/ind

@@ -3500,8 +3500,8 @@ export default function ContentStudioIdeas() {
                 </div>
               ) : filteredAndSortedIdeas.length > 0 ? (
                 <div className="space-y-0">
-                {viewMode === 'list' ? (
-                <div className="border rounded-lg overflow-hidden">
+                  {viewMode === 'list' ? (
+                  <div className="border rounded-lg overflow-hidden">
                   {paginatedIdeas.map((idea, idx) => {
                     const statusInfo = getStatusInfo(idea.status, idea.developedPostId);
                     const StatusIcon = statusInfo.icon;
@@ -3783,9 +3783,9 @@ export default function ContentStudioIdeas() {
                   );
                   })}
                 </div>
-                )
+                  )}
 
-                {totalPages > 1 && (
+                  {totalPages > 1 && (
                   <div className="flex items-center justify-between pt-4">
                     <p className="text-xs text-muted-foreground">
                       {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredAndSortedIdeas.length)} di {filteredAndSortedIdeas.length}
