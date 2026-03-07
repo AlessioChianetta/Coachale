@@ -1,0 +1,15 @@
+6|voice-bridge  | 2026-03-07T04:57:11.574Z [INFO ] [BRIDGE:OVERFLOW-SYNC] 🔄 [SYNC] Sync complete for 0c73bbe5: 11 downloaded, 0 skipped, 0 removed, 11 total
+6|voice-bridge  | 2026-03-07T04:57:11.574Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Audio dir resolved: /opt/sounds/overflow/0c73bbe5-51e1-4108-866b-6be7a52fce3b
+6|voice-bridge  | 2026-03-07T04:57:11.574Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Setting vars on channel: sip_gateway=telnyx-ip | tech_prefix=0312 | queue_position=1 | overflow_audio_dir=/opt/sounds/overflow/0c73bbe5-51e1-4108-866b-6be7a52fce3b | overflow_dtmf_enabled=false uuid=dcb2c58c-482b-4477-bab8-17a8e2ab3d87
+6|voice-bridge  | 2026-03-07T04:57:11.576Z [INFO ] [BRIDGE:SESSION] 📥 [SM-OVERFLOW] addToOverflow: uuid=dcb2c58c-482b-4477-bab8-17a8e2ab3d87 calledNumber=9999 timeoutSecs=120 | queueBefore=0
+6|voice-bridge  | 2026-03-07T04:57:11.576Z [INFO ] [BRIDGE:SESSION] 📥 [SM-OVERFLOW] Added to overflow queue — queueAfter=1 uuid=dcb2c58c-482b-4477-bab8-17a8e2ab3d87 calledNumber=9999 timeoutSecs=120
+6|voice-bridge  | 2026-03-07T04:57:11.576Z [INFO ] [BRIDGE:SESSION] 📊 [SM-OVERFLOW] Queue state (1 entries):
+6|voice-bridge  | 2026-03-07T04:57:11.576Z [INFO ] [BRIDGE:SESSION] 📊 [SM-OVERFLOW]   [0] uuid=dcb2c58c-482b-4477-bab8-17a8e2ab3d87 | calledNumber=9999 | waiting=0s
+6|voice-bridge  | 2026-03-07T04:57:11.576Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Call dcb2c58c-482b-4477-bab8-17a8e2ab3d87 queued in overflow — position=1, timeout=120s, current queue size=1
+6|voice-bridge  | 2026-03-07T04:57:11.576Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-07T04:57:11.577Z [INFO ] [BRIDGE:SERVER] ✅ [OVERFLOW-4429] Call dcb2c58c-482b-4477-bab8-17a8e2ab3d87 successfully routed to overflow queue sessionId=0e9c1086
+6|voice-bridge  | 2026-03-07T04:57:11.577Z [WARN ] [BRIDGE:SERVER] 🔶 [OVERFLOW-4429] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ sessionId=0e9c1086
+6|voice-bridge  | 2026-03-07T04:57:11.617Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] uuid_setvar_multi result: +OK
+6|voice-bridge  |  uuid=dcb2c58c-482b-4477-bab8-17a8e2ab3d87
+6|voice-bridge  | 2026-03-07T04:57:11.677Z [INFO ] [BRIDGE:SERVER] 📥 [ROUTE-OVERFLOW] Transferring dcb2c58c-482b-4477-bab8-17a8e2ab3d87 → overflow_queue XML default uuid=dcb2c58c-482b-4477-bab8-17a8e2ab3d87
+6|voice-bridge  | 2026-03-07T04:57:11.720Z [INFO ] [BRIDGE:SERVER] ✅ [ROUTE-OVERFLOW] Call dcb2c58c-482b-4477-bab8-17a8e2ab3d87 transferred to overflow_queue SUCCESSFULLY
