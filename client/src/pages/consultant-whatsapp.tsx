@@ -3247,6 +3247,192 @@ export default function ConsultantWhatsAppPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Partner Webhook Notifications Card */}
+            <PartnerWebhookCard />
+
+            {/* Pricing Page Link Section */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link className="h-5 w-5 text-violet-600" />
+                  Pagina Prezzi Pubblica
+                </CardTitle>
+                <CardDescription>
+                  Condividi la tua pagina prezzi con i potenziali clienti
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {consultantData?.pricingPageSlug ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 p-3 bg-violet-50 dark:bg-violet-950/20 rounded-lg">
+                      <Input 
+                        readOnly 
+                        value={`${window.location.origin}/c/${consultantData.pricingPageSlug}/pricing`}
+                        className="flex-1 bg-card"
+                      />
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/c/${consultantData.pricingPageSlug}/pricing`);
+                          toast({
+                            title: "✅ Link copiato!",
+                            description: "Il link alla pagina prezzi è stato copiato negli appunti.",
+                          });
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copia
+                      </Button>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => window.open(`/c/${consultantData.pricingPageSlug}/pricing`, "_blank")}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Visualizza Pagina
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => navigate("/consultant/settings")}
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configura Prezzi
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Link className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
+                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                      Pagina prezzi non configurata
+                    </p>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Configura la tua pagina prezzi pubblica per permettere ai clienti di acquistare sottoscrizioni.
+                    </p>
+                    <Button 
+                      variant="outline"
+                      onClick={() => navigate("/consultant/settings")}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Configura Pagina Prezzi
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Default Onboarding Preferences Card */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-violet-600" />
+                  Preferenze Onboarding Predefinite
+                </CardTitle>
+                <CardDescription>
+                  Imposta le preferenze predefinite che verranno applicate ai nuovi clienti durante l'onboarding
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="writingStyle">Stile di Scrittura</Label>
+                    <Select
+                      value={onboardingWritingStyle}
+                      onValueChange={setOnboardingWritingStyle}
+                    >
+                      <SelectTrigger id="writingStyle">
+                        <SelectValue placeholder="Seleziona stile" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Professionale">Professionale</SelectItem>
+                        <SelectItem value="Amichevole">Amichevole</SelectItem>
+                        <SelectItem value="Formale">Formale</SelectItem>
+                        <SelectItem value="Informale">Informale</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="responseLength">Lunghezza Risposte</Label>
+                    <Select
+                      value={onboardingResponseLength}
+                      onValueChange={setOnboardingResponseLength}
+                    >
+                      <SelectTrigger id="responseLength">
+                        <SelectValue placeholder="Seleziona lunghezza" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Breve">Breve</SelectItem>
+                        <SelectItem value="Media">Media</SelectItem>
+                        <SelectItem value="Dettagliata">Dettagliata</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="customInstructions">Istruzioni Personalizzate</Label>
+                  <Textarea
+                    id="customInstructions"
+                    placeholder="Inserisci istruzioni personalizzate per l'AI durante l'onboarding dei nuovi clienti..."
+                    value={onboardingCustomInstructions}
+                    onChange={(e) => setOnboardingCustomInstructions(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={() => saveOnboardingPrefsMutation.mutate({
+                      writingStyle: onboardingWritingStyle,
+                      responseLength: onboardingResponseLength,
+                      customInstructions: onboardingCustomInstructions,
+                    })}
+                    disabled={saveOnboardingPrefsMutation.isPending}
+                  >
+                    {saveOnboardingPrefsMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Salvataggio...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Salva Preferenze
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsBulkApplyDialogOpen(true)}
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    Applica a Tutti i Clienti
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setOnboardingWritingStyle("");
+                      setOnboardingResponseLength("");
+                      setOnboardingCustomInstructions("");
+                      toast({
+                        title: "Preferenze resettate",
+                        description: "I campi sono stati svuotati. Clicca 'Salva Preferenze' per confermare.",
+                      });
+                    }}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Resetta
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
               </TabsContent>
 
               {/* ── DASHBOARD ── */}
@@ -3614,6 +3800,271 @@ export default function ConsultantWhatsAppPage() {
                     })()}
                   </TabsContent>
                 </Tabs>
+              </CardContent>
+            </Card>
+
+            {/* Active Subscriptions List */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-violet-600" />
+                  Sottoscrizioni Attive
+                </CardTitle>
+                <CardDescription>
+                  Clienti con sottoscrizioni Level 2 o Level 3 attive
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {subscriptionsQuery.isLoading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+                  </div>
+                ) : subscriptions.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                    <p className="text-lg font-medium text-muted-foreground mb-2">
+                      Nessuna sottoscrizione attiva
+                    </p>
+                    <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                      Quando i tuoi clienti acquisteranno una licenza Level 2 o Level 3, 
+                      appariranno qui con tutti i dettagli della loro sottoscrizione.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Telefono</TableHead>
+                          <TableHead>Livello</TableHead>
+                          <TableHead>Importo</TableHead>
+                          <TableHead>Stato</TableHead>
+                          <TableHead>Prossimo Rinnovo</TableHead>
+                          <TableHead>Totale Pagato</TableHead>
+                          <TableHead className="text-right">Azioni</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {subscriptions.map((sub: any) => (
+                          <TableRow key={sub.id}>
+                            <TableCell className="font-medium">
+                              {sub.clientName || "—"}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {sub.clientEmail}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {sub.phone || "—"}
+                            </TableCell>
+                            <TableCell>
+                              <LevelBadge level={sub.level} size="sm" />
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {sub.stripe?.amount 
+                                ? `€${(sub.stripe.amount / 100).toFixed(2)}/${sub.stripe.interval === 'year' ? 'anno' : 'mese'}` 
+                                : "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={sub.status === "active" ? "default" : "outline"}
+                                className={
+                                  sub.status === "active" 
+                                    ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" 
+                                    : sub.status === "pending"
+                                    ? "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800"
+                                    : sub.status === "canceled"
+                                    ? "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
+                                    : "bg-muted text-foreground border-border"
+                                }
+                              >
+                                {sub.status === "active" ? "Attivo" 
+                                  : sub.status === "pending" ? "In Attesa"
+                                  : sub.status === "canceled" ? "Annullato"
+                                  : sub.status === "expired" ? "Scaduto"
+                                  : sub.status === "past_due" ? "Scaduto"
+                                  : sub.status}
+                                {sub.stripe?.cancelAtPeriodEnd && " (in scadenza)"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {sub.stripe?.currentPeriodEnd 
+                                ? format(new Date(sub.stripe.currentPeriodEnd), "d MMM yyyy", { locale: it })
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="font-medium text-green-600">
+                              {sub.totalPaid 
+                                ? `€${(sub.totalPaid / 100).toFixed(2)}`
+                                : "€0,00"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setSelectedSubscription(sub);
+                                      setIsSubscriptionDetailOpen(true);
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Visualizza Dettagli
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setPasswordResetTarget({ 
+                                        type: "silver", 
+                                        id: sub.id, 
+                                        email: sub.clientEmail 
+                                      });
+                                      setNewPasswordInput("");
+                                      setIsPasswordResetDialogOpen(true);
+                                    }}
+                                  >
+                                    <KeyRound className="h-4 w-4 mr-2" />
+                                    Reset Password
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  {sub.status === "active" && !sub.stripe?.cancelAtPeriodEnd && (
+                                    <DropdownMenuItem 
+                                      className="text-red-600"
+                                      onClick={() => {
+                                        setSubscriptionToCancel(sub);
+                                        setIsCancelDialogOpen(true);
+                                      }}
+                                    >
+                                      <Ban className="h-4 w-4 mr-2" />
+                                      Annulla Abbonamento
+                                    </DropdownMenuItem>
+                                  )}
+                                  {sub.invoices?.length > 0 && (
+                                    <DropdownMenuItem 
+                                      onClick={() => {
+                                        const lastInvoice = sub.invoices[0];
+                                        if (lastInvoice?.hostedInvoiceUrl) {
+                                          window.open(lastInvoice.hostedInvoiceUrl, "_blank");
+                                        }
+                                      }}
+                                    >
+                                      <FileDown className="h-4 w-4 mr-2" />
+                                      Ultima Fattura
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Employee License Purchases History */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-violet-600" />
+                  Storico Acquisti Licenze
+                </CardTitle>
+                <CardDescription>
+                  I tuoi acquisti di licenze dipendenti
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {purchasesQuery.isLoading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+                  </div>
+                ) : !purchasesQuery.data?.length ? (
+                  <div className="text-center py-8">
+                    <Receipt className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                      Nessun acquisto effettuato
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Gli acquisti di licenze dipendenti appariranno qui
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Licenze</TableHead>
+                          <TableHead>Importo</TableHead>
+                          <TableHead>Stato</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {purchasesQuery.data.map((purchase: any) => (
+                          <TableRow key={purchase.id}>
+                            <TableCell>
+                              {format(new Date(purchase.createdAt), "d MMM yyyy", { locale: it })}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{purchase.quantity} licenze</Badge>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              €{(purchase.amountCents / 100).toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                className={
+                                  purchase.status === "completed" 
+                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+                                    : purchase.status === "pending"
+                                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                    : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                }
+                              >
+                                {purchase.status === "completed" ? "Completato" 
+                                  : purchase.status === "pending" ? "In attesa"
+                                  : "Fallito"}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Monthly Invoices Section */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-violet-600" />
+                  Storico Fatture
+                </CardTitle>
+                <CardDescription>
+                  Riepilogo mensile delle tue entrate e commissioni
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <FileText className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
+                  <p className="text-sm font-medium text-muted-foreground mb-2">
+                    Nessuna fattura disponibile
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Quando avrai transazioni attive, qui troverai il riepilogo mensile con le tue entrate, 
+                    la quota piattaforma e i costi AI.
+                  </p>
+                  <Badge variant="outline" className="text-xs">
+                    Funzionalità in arrivo con Stripe
+                  </Badge>
+                </div>
               </CardContent>
             </Card>
               </TabsContent>
@@ -4071,9 +4522,6 @@ export default function ConsultantWhatsAppPage() {
 
             </Tabs>
 
-            {/* Partner Webhook Notifications Card */}
-            <PartnerWebhookCard />
-
             {/* Password Reset Dialog */}
             <Dialog open={isPasswordResetDialogOpen} onOpenChange={setIsPasswordResetDialogOpen}>
               <DialogContent className="sm:max-w-md">
@@ -4150,454 +4598,6 @@ export default function ConsultantWhatsAppPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-
-            {/* Active Subscriptions List */}
-            <Card className="border-2 border-violet-200 dark:border-violet-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-violet-600" />
-                  Sottoscrizioni Attive
-                </CardTitle>
-                <CardDescription>
-                  Clienti con sottoscrizioni Level 2 o Level 3 attive
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {subscriptionsQuery.isLoading ? (
-                  <div className="flex items-center justify-center p-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
-                  </div>
-                ) : subscriptions.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-                    <p className="text-lg font-medium text-muted-foreground mb-2">
-                      Nessuna sottoscrizione attiva
-                    </p>
-                    <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                      Quando i tuoi clienti acquisteranno una licenza Level 2 o Level 3, 
-                      appariranno qui con tutti i dettagli della loro sottoscrizione.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Telefono</TableHead>
-                          <TableHead>Livello</TableHead>
-                          <TableHead>Importo</TableHead>
-                          <TableHead>Stato</TableHead>
-                          <TableHead>Prossimo Rinnovo</TableHead>
-                          <TableHead>Totale Pagato</TableHead>
-                          <TableHead className="text-right">Azioni</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {subscriptions.map((sub: any) => (
-                          <TableRow key={sub.id}>
-                            <TableCell className="font-medium">
-                              {sub.clientName || "—"}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {sub.clientEmail}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {sub.phone || "—"}
-                            </TableCell>
-                            <TableCell>
-                              <LevelBadge level={sub.level} size="sm" />
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {sub.stripe?.amount 
-                                ? `€${(sub.stripe.amount / 100).toFixed(2)}/${sub.stripe.interval === 'year' ? 'anno' : 'mese'}` 
-                                : "—"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant={sub.status === "active" ? "default" : "outline"}
-                                className={
-                                  sub.status === "active" 
-                                    ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" 
-                                    : sub.status === "pending"
-                                    ? "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800"
-                                    : sub.status === "canceled"
-                                    ? "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
-                                    : "bg-muted text-foreground border-border"
-                                }
-                              >
-                                {sub.status === "active" ? "Attivo" 
-                                  : sub.status === "pending" ? "In Attesa"
-                                  : sub.status === "canceled" ? "Annullato"
-                                  : sub.status === "expired" ? "Scaduto"
-                                  : sub.status === "past_due" ? "Scaduto"
-                                  : sub.status}
-                                {sub.stripe?.cancelAtPeriodEnd && " (in scadenza)"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {sub.stripe?.currentPeriodEnd 
-                                ? format(new Date(sub.stripe.currentPeriodEnd), "d MMM yyyy", { locale: it })
-                                : "—"}
-                            </TableCell>
-                            <TableCell className="font-medium text-green-600">
-                              {sub.totalPaid 
-                                ? `€${(sub.totalPaid / 100).toFixed(2)}`
-                                : "€0,00"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem 
-                                    onClick={() => {
-                                      setSelectedSubscription(sub);
-                                      setIsSubscriptionDetailOpen(true);
-                                    }}
-                                  >
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    Visualizza Dettagli
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => {
-                                      setPasswordResetTarget({ 
-                                        type: "silver", 
-                                        id: sub.id, 
-                                        email: sub.clientEmail 
-                                      });
-                                      setNewPasswordInput("");
-                                      setIsPasswordResetDialogOpen(true);
-                                    }}
-                                  >
-                                    <KeyRound className="h-4 w-4 mr-2" />
-                                    Reset Password
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  {sub.status === "active" && !sub.stripe?.cancelAtPeriodEnd && (
-                                    <DropdownMenuItem 
-                                      className="text-red-600"
-                                      onClick={() => {
-                                        setSubscriptionToCancel(sub);
-                                        setIsCancelDialogOpen(true);
-                                      }}
-                                    >
-                                      <Ban className="h-4 w-4 mr-2" />
-                                      Annulla Abbonamento
-                                    </DropdownMenuItem>
-                                  )}
-                                  {sub.invoices?.length > 0 && (
-                                    <DropdownMenuItem 
-                                      onClick={() => {
-                                        const lastInvoice = sub.invoices[0];
-                                        if (lastInvoice?.hostedInvoiceUrl) {
-                                          window.open(lastInvoice.hostedInvoiceUrl, "_blank");
-                                        }
-                                      }}
-                                    >
-                                      <FileDown className="h-4 w-4 mr-2" />
-                                      Ultima Fattura
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Employee License Purchases History */}
-            <Card className="border-2 border-violet-200 dark:border-violet-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Receipt className="h-5 w-5 text-violet-600" />
-                  Storico Acquisti Licenze
-                </CardTitle>
-                <CardDescription>
-                  I tuoi acquisti di licenze dipendenti
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {purchasesQuery.isLoading ? (
-                  <div className="flex items-center justify-center p-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
-                  </div>
-                ) : !purchasesQuery.data?.length ? (
-                  <div className="text-center py-8">
-                    <Receipt className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
-                      Nessun acquisto effettuato
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Gli acquisti di licenze dipendenti appariranno qui
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Data</TableHead>
-                          <TableHead>Licenze</TableHead>
-                          <TableHead>Importo</TableHead>
-                          <TableHead>Stato</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {purchasesQuery.data.map((purchase: any) => (
-                          <TableRow key={purchase.id}>
-                            <TableCell>
-                              {format(new Date(purchase.createdAt), "d MMM yyyy", { locale: it })}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{purchase.quantity} licenze</Badge>
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              €{(purchase.amountCents / 100).toFixed(2)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                className={
-                                  purchase.status === "completed" 
-                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
-                                    : purchase.status === "pending"
-                                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                    : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                }
-                              >
-                                {purchase.status === "completed" ? "Completato" 
-                                  : purchase.status === "pending" ? "In attesa"
-                                  : "Fallito"}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Monthly Invoices Section */}
-            <Card className="border-2 border-violet-200 dark:border-violet-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-violet-600" />
-                  Storico Fatture
-                </CardTitle>
-                <CardDescription>
-                  Riepilogo mensile delle tue entrate e commissioni
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <FileText className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
-                  <p className="text-sm font-medium text-muted-foreground mb-2">
-                    Nessuna fattura disponibile
-                  </p>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Quando avrai transazioni attive, qui troverai il riepilogo mensile con le tue entrate, 
-                    la quota piattaforma e i costi AI.
-                  </p>
-                  <Badge variant="outline" className="text-xs">
-                    Funzionalità in arrivo con Stripe
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Pricing Page Link Section */}
-            <Card className="border-2 border-violet-200 dark:border-violet-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Link className="h-5 w-5 text-violet-600" />
-                  Pagina Prezzi Pubblica
-                </CardTitle>
-                <CardDescription>
-                  Condividi la tua pagina prezzi con i potenziali clienti
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {consultantData?.pricingPageSlug ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 p-3 bg-violet-50 dark:bg-violet-950/20 rounded-lg">
-                      <Input 
-                        readOnly 
-                        value={`${window.location.origin}/c/${consultantData.pricingPageSlug}/pricing`}
-                        className="flex-1 bg-card"
-                      />
-                      <Button 
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/c/${consultantData.pricingPageSlug}/pricing`);
-                          toast({
-                            title: "✅ Link copiato!",
-                            description: "Il link alla pagina prezzi è stato copiato negli appunti.",
-                          });
-                        }}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copia
-                      </Button>
-                    </div>
-                    <div className="flex gap-3">
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => window.open(`/c/${consultantData.pricingPageSlug}/pricing`, "_blank")}
-                      >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Visualizza Pagina
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => navigate("/consultant/settings")}
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Configura Prezzi
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Link className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
-                      Pagina prezzi non configurata
-                    </p>
-                    <p className="text-xs text-muted-foreground mb-4">
-                      Configura la tua pagina prezzi pubblica per permettere ai clienti di acquistare sottoscrizioni.
-                    </p>
-                    <Button 
-                      variant="outline"
-                      onClick={() => navigate("/consultant/settings")}
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Configura Pagina Prezzi
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Default Onboarding Preferences Card */}
-            <Card className="border-2 border-violet-200 dark:border-violet-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-violet-600" />
-                  Preferenze Onboarding Predefinite
-                </CardTitle>
-                <CardDescription>
-                  Imposta le preferenze predefinite che verranno applicate ai nuovi clienti durante l'onboarding
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="writingStyle">Stile di Scrittura</Label>
-                    <Select
-                      value={onboardingWritingStyle}
-                      onValueChange={setOnboardingWritingStyle}
-                    >
-                      <SelectTrigger id="writingStyle">
-                        <SelectValue placeholder="Seleziona stile" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Professionale">Professionale</SelectItem>
-                        <SelectItem value="Amichevole">Amichevole</SelectItem>
-                        <SelectItem value="Formale">Formale</SelectItem>
-                        <SelectItem value="Informale">Informale</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="responseLength">Lunghezza Risposte</Label>
-                    <Select
-                      value={onboardingResponseLength}
-                      onValueChange={setOnboardingResponseLength}
-                    >
-                      <SelectTrigger id="responseLength">
-                        <SelectValue placeholder="Seleziona lunghezza" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Breve">Breve</SelectItem>
-                        <SelectItem value="Media">Media</SelectItem>
-                        <SelectItem value="Dettagliata">Dettagliata</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="customInstructions">Istruzioni Personalizzate</Label>
-                  <Textarea
-                    id="customInstructions"
-                    placeholder="Inserisci istruzioni personalizzate per l'AI durante l'onboarding dei nuovi clienti..."
-                    value={onboardingCustomInstructions}
-                    onChange={(e) => setOnboardingCustomInstructions(e.target.value)}
-                    rows={4}
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={() => saveOnboardingPrefsMutation.mutate({
-                      writingStyle: onboardingWritingStyle,
-                      responseLength: onboardingResponseLength,
-                      customInstructions: onboardingCustomInstructions,
-                    })}
-                    disabled={saveOnboardingPrefsMutation.isPending}
-                  >
-                    {saveOnboardingPrefsMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Salvataggio...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Salva Preferenze
-                      </>
-                    )}
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsBulkApplyDialogOpen(true)}
-                  >
-                    <Users className="mr-2 h-4 w-4" />
-                    Applica a Tutti i Clienti
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setOnboardingWritingStyle("");
-                      setOnboardingResponseLength("");
-                      setOnboardingCustomInstructions("");
-                      toast({
-                        title: "Preferenze resettate",
-                        description: "I campi sono stati svuotati. Clicca 'Salva Preferenze' per confermare.",
-                      });
-                    }}
-                  >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Resetta
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Bulk Apply Preferences Dialog */}
             <Dialog open={isBulkApplyDialogOpen} onOpenChange={setIsBulkApplyDialogOpen}>
