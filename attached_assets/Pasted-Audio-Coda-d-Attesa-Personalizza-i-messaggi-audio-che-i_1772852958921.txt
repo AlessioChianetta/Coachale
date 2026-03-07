@@ -1,0 +1,177 @@
+Audio Coda d'Attesa
+Personalizza i messaggi audio che i chiamanti sentono durante l'attesa in coda. Puoi generarli con AI o caricare file WAV.
+
+Flusso chiamata in coda
+— sequenza audio che sente il chiamante
+Chiamante entra in coda
+
+Tutte le linee AI sono occupate
+
+Posizione in coda
+
+position_prefix.wav + "Sei in posizione X" + position_suffix.wav
+
+Default
+Musica Attesa A
+
+hold_A.wav
+
+Default
+Posizione in coda
+
+aggiornata
+
+Default
+Musica Attesa B
+
+hold_B.wav
+
+Default
+Posizione in coda
+
+aggiornata
+
+Default
+Musica Attesa C
+
+hold_C.wav
+
+Default
+Posizione in coda
+
+aggiornata
+
+Default
+Musica Attesa D
+
+hold_D.wav
+
+Default
+Posizione in coda
+
+aggiornata
+
+Default
+Musica Attesa E
+
+hold_E.wav
+
+Default
+Loop — ricomincia da Musica Attesa A
+
+Uscite possibili
+
+Linea si libera
+
+Connesso automaticamente all'AI
+
+Premi 1 (se abilitato)
+
+transferring.wav → numero fallback
+
+Audio non configurato
+
+Timeout scaduto
+
+timeout.wav → disconnessione
+
+Audio non configurato
+
+Chiamante riaggancia
+
+In qualsiasi momento
+
+Nota: se un file audio non è configurato, FreeSWITCH usa la musica di sistema come fallback.
+
+0/10 configurati
+Genera tutti con AI
+Musica Attesa A
+
+Primo messaggio di attesa
+
+Non configurato
+Grazie per la sua pazienza. Il nostro consulente sarà con lei a breve. La preghiamo di restare in linea.
+Genera con AI
+Carica WAV
+
+Aoede
+Musica Attesa B
+
+Secondo messaggio di attesa
+
+Non configurato
+La ringraziamo per l'attesa. Stiamo cercando di metterla in contatto con il primo consulente disponibile.
+Genera con AI
+Carica WAV
+
+Musica Attesa C
+
+Terzo messaggio di attesa
+
+Non configurato
+Apprezziamo la sua pazienza. Il suo tempo è importante per noi. Un consulente la assisterà il prima possibile.
+Genera con AI
+Carica WAV
+
+Musica Attesa D
+
+Quarto messaggio di attesa
+
+Non configurato
+Grazie per rimanere in linea. Ci stiamo occupando della sua richiesta e saremo con lei a momenti.
+Genera con AI
+Carica WAV
+
+Musica Attesa E
+
+Quinto messaggio di attesa
+
+Non configurato
+La ringraziamo per la sua attesa. Ci scusiamo per il ritardo, un consulente sarà disponibile a breve.
+Genera con AI
+Carica WAV
+
+Prefisso Posizione
+
+Messaggio prima del numero di posizione in coda
+
+Non configurato
+Lei è attualmente in posizione numero
+Genera con AI
+Carica WAV
+
+Suffisso Posizione
+
+Messaggio dopo il numero di posizione in coda
+
+Non configurato
+nella coda di attesa. La preghiamo di restare in linea.
+Genera con AI
+Carica WAV
+
+Trasferimento
+
+Messaggio durante il trasferimento al consulente
+
+Non configurato
+Stiamo trasferendo la sua chiamata al consulente. Un momento per favore.
+Genera con AI
+Carica WAV
+
+Trasferimento Fallito
+
+Messaggio quando il trasferimento non riesce
+
+Non configurato
+Ci scusiamo, al momento non è possibile completare il trasferimento. La preghiamo di riprovare più tardi.
+Genera con AI
+Carica WAV
+
+Timeout
+
+Messaggio quando il tempo di attesa è scaduto
+
+Non configurato
+Ci scusiamo, il tempo di attesa è stato superato. La preghiamo di richiamare più tardi o lasciare un messaggio.
+Genera con AI
+Carica WAV
