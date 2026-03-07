@@ -1831,6 +1831,7 @@ async function getMarketResearchKeys(): Promise<{ serpApiKey: string | null }> {
 router.post("/ai/generate-market-research", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
+    console.log(`🔬 [MARKET-RESEARCH] Received body keys:`, Object.keys(req.body), `niche: "${req.body.niche}"`);
     const input = generateMarketResearchSchema.parse(req.body);
 
     console.log(`🔬 [MARKET-RESEARCH] Starting deep research for "${input.niche}" / "${input.targetAudience}" (phase: ${input.phase || 'all'})`);
