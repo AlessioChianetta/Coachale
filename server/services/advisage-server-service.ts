@@ -62,39 +62,81 @@ export async function analyzeAdTextServerSide(
     ? `BRAND COLOR: ${settings.brandColor}. BRAND FONT: ${settings.brandFont || 'Modern Sans'}.` 
     : '';
   
-  const prompt = `Sei un direttore creativo esperto in advertising digitale ad alta conversione. Analizza questo copy pubblicitario per ${platform.toUpperCase()}.
+  const prompt = `Sei un direttore creativo senior esperto in Facebook/Meta Ads ad alta conversione. Analizza questo copy pubblicitario per ${platform.toUpperCase()}.
 FACTORY SETTINGS: Mood: ${settings.mood}, Style: ${settings.stylePreference}. ${brandInfo}
 
 TEXT: "${text}"
 
 TASK: 
-1. Crea 3 concept visuali ottimizzati per generazione immagini AI pubblicitarie ad alta conversione.
+1. Crea 3 concept visuali (immagini) ottimizzati per inserzioni pubblicitarie ad alta conversione.
 2. Crea 3 caption social (Emozionale, Tecnico, Diretto) con hashtag strategici.
 3. Fornisci un breve vantaggio competitivo.
+4. Per ogni concept, specifica a quale tipologia appartiene (vedi CONCEPT OBBLIGATORI sotto).
 
+═══════════════════════════════════════════════════
+LINEE GUIDA INSERZIONI IMMAGINE (da rispettare SEMPRE):
+═══════════════════════════════════════════════════
+- Immagini ad ALTA RISOLUZIONE, nessuna sfocatura o sgranatura.
+- Formati obbligatori: 1:1 (feed) e 9:16 (stories). Il recommendedFormat deve alternare tra questi.
+- Usa i COLORI e il LOGO del marchio in modo coerente nell'immagine.
+- Includi il logo del brand ma SENZA sovraccaricare l'immagine.
+- L'immagine deve trasmettere il MESSAGGIO dell'inserzione a COLPO D'OCCHIO.
+- Inserisci sempre una CALL TO ACTION visibile e facilmente identificabile.
+- Scegli visual che evocano EMOZIONI POSITIVE o che mostrano RISULTATI DESIDERABILI.
+- Rispetta le linee guida Facebook/Meta (no testo >20% dell'immagine, no contenuti vietati).
+
+═══════════════════════════════════════════════════
+STRUTTURA TESTI INSERZIONE (per socialCaptions):
+═══════════════════════════════════════════════════
+- Usa modelli di comunicazione: AIDA (Attenzione, Interesse, Desiderio, Azione) o Think-Feel-Do.
+- Usa ELENCHI PUNTATI per evidenziare le USP del prodotto/servizio.
+- Usa PARAGRAFI brevi per facilitare la lettura.
+- Incorpora elementi di RIPROVA SOCIALE (testimonianze, numeri, risultati).
+- Valuta se inserire SCARCITY o URGENCY (se pertinente al contesto).
+- Chiudi SEMPRE con una CALL TO ACTION chiara e diretta.
+- Il titolo deve essere < 125 caratteri e fare leva su una caratteristica del prodotto o un'offerta.
+- La descrizione deve evidenziare i BENEFICI CHIAVE e contenere parole come: senza sforzo, spedizione gratuita, risultati garantiti, ecc.
+
+═══════════════════════════════════════════════════
+CONCEPT OBBLIGATORI (tipologie da usare nei 3 concept):
+═══════════════════════════════════════════════════
+Scegli 3 tra queste tipologie per i concept visuali:
+- "Call Out Benefici": immagine che mette in evidenza i benefici principali del prodotto/servizio
+- "Social Proof Avatar": immagine con avatar/foto di clienti soddisfatti + testimonianza
+- "X Ragioni per Acquistare": visual con elenco numerico dei motivi per acquistare
+- "Offerta / Headline USP": immagine focalizzata sull'offerta principale o sulla USP (Unique Selling Proposition)
+- "Noi vs Competitor": visual comparativo tra il prodotto e la concorrenza
+- "Risultato Desiderabile": visual che mostra il risultato finale ottenibile dal cliente
+Specifica nel campo styleType la tipologia scelta.
+
+═══════════════════════════════════════════════════
 REGOLE PER I PROMPT IMMAGINE (promptClean e promptWithText):
+═══════════════════════════════════════════════════
 - I prompt devono descrivere visual che FERMANO LO SCROLL: alto contrasto, colori vividi, composizione dinamica.
 - Usa la REGOLA DEI TERZI per posizionare gli elementi chiave.
 - Prevedi SPAZIO NEGATIVO (almeno 25% dell'immagine) per overlay di testo pubblicitario.
 - Applica PSICOLOGIA DEI COLORI: rosso/arancio per urgenza, blu per fiducia, verde per crescita.
-- Includi un PATTERN INTERRUPT: un elemento visivo inaspettato che rompe la monotonia del feed.
 - GERARCHIA VISIVA: guida l'occhio dall'hook (alto) → soggetto (centro) → area CTA (basso).
 - Illuminazione drammatica e direzionale, mai piatta. Profondità di campo ridotta per look premium.
 - promptClean: visual puro SENZA testo/loghi/watermark — solo immagine.
-- promptWithText: il prompt deve INCLUDERE istruzioni per renderizzare il testo dell'hook (textContent) in modo prominente e leggibile nell'immagine, con tipografia bold, alto contrasto e posizionamento strategico.
+- promptWithText: il prompt deve INCLUDERE istruzioni per renderizzare il testo dell'hook (textContent) in modo prominente e leggibile nell'immagine, con tipografia bold, alto contrasto e posizionamento strategico. Il testo deve occupare max 20% dell'immagine.
 - Qualità fotorealistica, standard da fotografia pubblicitaria commerciale.
 
-LINGUA: Tutti i campi testuali (title, description, reasoning, textContent, socialCaptions, tone, objective, emotion, cta, competitiveEdge) DEVONO essere in ITALIANO. Solo i prompt immagine (promptClean, promptWithText) restano in inglese per il modello di generazione.
+═══════════════════════════════════════════════════
+LINGUA:
+═══════════════════════════════════════════════════
+Tutti i campi testuali (title, description, reasoning, textContent, socialCaptions, tone, objective, emotion, cta, competitiveEdge, styleType) DEVONO essere in ITALIANO.
+Solo i prompt immagine (promptClean, promptWithText) restano in INGLESE per il modello di generazione.
 
 OUTPUT JSON VALIDO con questa struttura esatta:
 {
   "tone": "string (in italiano)",
   "objective": "string (in italiano)", 
   "emotion": "string (in italiano)",
-  "cta": "string (in italiano)",
+  "cta": "string (in italiano, < 125 caratteri)",
   "context": { "sector": "string (in italiano)", "product": "string (in italiano)", "target": "string (in italiano)" },
-  "concepts": [{ "id": "string", "title": "string (in italiano)", "description": "string (descrizione del visual IN ITALIANO)", "styleType": "string (in italiano)", "recommendedFormat": "1:1|4:5|9:16", "promptClean": "string (prompt IN INGLESE per visual puro senza testo, ottimizzato per ads)", "promptWithText": "string (prompt IN INGLESE con istruzioni per renderizzare il testo hook nell'immagine in modo leggibile e prominente)", "textContent": "string (testo hook IN ITALIANO da mostrare nell'immagine)", "reasoning": "string (IN ITALIANO, spiega perché questo visual converte)" }],
-  "socialCaptions": [{ "tone": "string (in italiano)", "text": "string (in italiano)", "hashtags": ["string"] }],
+  "concepts": [{ "id": "string", "title": "string (in italiano)", "description": "string (descrizione del visual IN ITALIANO)", "styleType": "string (tipologia concept IN ITALIANO: es. Call Out Benefici, Social Proof Avatar, Offerta/Headline USP, Noi vs Competitor, X Ragioni per Acquistare, Risultato Desiderabile)", "recommendedFormat": "1:1|9:16", "promptClean": "string (prompt IN INGLESE per visual puro senza testo, ottimizzato per ads)", "promptWithText": "string (prompt IN INGLESE con istruzioni per renderizzare il testo hook nell'immagine in modo leggibile e prominente, testo max 20% immagine)", "textContent": "string (testo hook IN ITALIANO da mostrare nell'immagine)", "reasoning": "string (IN ITALIANO, spiega perché questo visual converte secondo le linee guida inserzioni)" }],
+  "socialCaptions": [{ "tone": "string (in italiano: Emozionale, Tecnico o Diretto)", "text": "string (in italiano, strutturato con AIDA o Think-Feel-Do, con elenchi puntati USP, riprova sociale e CTA finale)", "hashtags": ["string"] }],
   "competitiveEdge": "string (in italiano)"
 }`;
   

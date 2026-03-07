@@ -1,0 +1,42 @@
+🖼️	Inserzioni - Approfondimento
+🖼️	Raccomandazioni generale per la creazione di inserzioni (immagini)
+FALSE	Seleziona immagini ad alta risoluzione, evitando sfocature o sgranature.
+FALSE	Assicurati che l'immagine sia in formato 1x1 e 9x16
+FALSE	Usa i colori e il logo del marchio in modo coerente.
+FALSE	Includi il logo, ma senza sovraccaricare l'immagine.
+FALSE	L'immagine deve trasmettere il messaggio dell'inserzione a colpo d'occhio.
+FALSE	Usa una "Call to Action" 
+FALSE	Mantieni la "Call to Action" visibile e facilmente identificabile.
+FALSE	Scegli immagini che evocano emozioni positive o che mostrano risultati desiderabili.
+FALSE	Assicurati che le immagini rispettino le linee guida di Facebook.
+🎥	Raccomandazioni generale per la creazione di inserzioni (video) - Approfondimento
+FALSE	Seleziona video ad alta risoluzione per assicurarti che siano nitidi e chiari.
+FALSE	Assicurati che il video sia proporzionato correttamente (ad esempio, 1:1 per il feed, 9:16 per le storie).
+FALSE	Mantieni la coerenza con l'identità visiva del marchio (colori, stile, tono).
+FALSE	Assicurati che il video abbia un ritmo dinamico per mantenere l'attenzione dello spettatore.
+FALSE	Aggiungi sottotitoli per rendere il video accessibile a tutti e per chi visualizza senza audio.
+FALSE	Assicurati che il video rispetti la struttura comunicativa (Hook, Agitazione del problema, risoluzione del problema, social proof, call to action)
+FALSE	Il video contiene un hook iniziale d'impatto (primi 3s di video)
+FALSE	Nel video viene agitato il problema o la situazione in attuale in cui si trova il target
+FALSE	Nel video viene mostrato come il prodotto / servizio risolve il prolema o la situazione attuale del target
+FALSE	Nel video vengono mostrate recensioni o video di altri clienti (social proof)
+FALSE	il video si chiude con una call to action chiara
+FALSE	Assicurati che il video rispetti le linee guida di Facebook.
+✍️	Testi - Approfondimento
+FALSE	Il testo principale utilizza modelli e principi di comunicazione (AIDA; Think, Feel, Do; etc)
+FALSE	Il testo principale utilizza elenchi puntati che evidenziano le USP del prodotto
+FALSE	Il testo principale usa paragrafi per facilitare la lettura
+FALSE	Nel testo principale Incorpora elementi di riprova sociale
+FALSE	Valuta se inserire elementi di Scarcity o Urgency (se pertinenti)
+FALSE	Alla fine del testo principale è presente una call to action
+FALSE	Il titolo è minore di 125 caratteri
+FALSE	Il titolo fa leva su una caratteristica del prodotto o un offerta (titolo del prodotto + caratteristica)
+FALSE	La descrizione evidenzia i benefici chiave del prodotto e contiene parole chiave, come ad esempio: senza sforzo, spedizione gratuita o dettagli sulla spedizione.
+🧑‍🎨	Concept da avere sempre!
+FALSE	Video: User Generated Content (UGC) - Approfondimento
+FALSE	Video: Unboxing
+FALSE	Immagine: Call Out Benefici
+FALSE	Immagine: Social proof Avatar
+FALSE	Immagine o video: X ragioni per acquistare
+FALSE	Immagine: Offerta o Headline USP
+FALSE	Immagine: Noi vs Competitor
