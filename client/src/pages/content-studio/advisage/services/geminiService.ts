@@ -19,7 +19,11 @@ export const analyzeAdText = async (text: string, platform: SocialPlatform, sett
   return result.data;
 };
 
-export const generateImageConcept = async (prompt: string, aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9", settings: AppSettings): Promise<string> => {
+export const generateImageConcept = async (
+  prompt: string, 
+  aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9", 
+  settings: AppSettings
+): Promise<string> => {
   const result = await apiRequest("POST", "/api/content/advisage/generate-image-server", {
     prompt,
     aspectRatio,

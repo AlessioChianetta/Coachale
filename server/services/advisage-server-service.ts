@@ -139,7 +139,7 @@ OUTPUT JSON VALIDO con questa struttura esatta:
   return result;
 }
 
-function buildAdImagePrompt(basePrompt: string, aspectRatio: string): string {
+function buildAdImagePrompt(basePrompt: string, aspectRatio: string, variant: 'text' | 'clean' = 'clean', hookText?: string): string {
   const formatGuide: Record<string, string> = {
     '1:1': 'Square format (Instagram Feed). Center the focal point. Leave 20% margins for text overlay.',
     '3:4': 'Portrait format (Instagram Post 4:5). Vertical composition, subject in upper 2/3, lower 1/3 free for caption overlay.',
@@ -149,6 +149,12 @@ function buildAdImagePrompt(basePrompt: string, aspectRatio: string): string {
   };
 
   const formatInstruction = formatGuide[aspectRatio] || formatGuide['1:1'];
+
+  const textRule = variant === 'text' && hookText
+    ? `- TEXT OVERLAY: Render the following text prominently in the image as a bold, high-contrast typographic overlay. The text must be PERFECTLY LEGIBLE and positioned in the safe zone (15% margin from edges). Use a clean, modern sans-serif font. Text: "${hookText}"
+- TEXT STYLING: The text must have strong contrast against the background — use white text with dark shadow, or dark text on a light gradient bar. Make the text the dominant visual element that catches the eye first.
+- LAYOUT: Position the hook text in the upper third or center of the image. Leave the bottom area clean for CTA elements that will be added later.`
+    : `- NO TEXT IN IMAGE: Do NOT render any text, typography, logos, or watermarks in the image. The image is purely visual — text will be overlaid separately.`;
 
   return `You are an elite advertising creative director generating a high-converting ad visual.
 
@@ -163,7 +169,7 @@ ADVERTISING VISUAL RULES (follow strictly):
 - VISUAL HIERARCHY: Guide the viewer's eye from the hook (top) → product/subject (center) → CTA area (bottom).
 - LIGHTING: Use dramatic, directional lighting (not flat). Rim lighting, golden hour, or studio lighting for product shots.
 - DEPTH OF FIELD: Shallow depth of field to isolate the subject and create a professional, premium look.
-- NO TEXT IN IMAGE: Do NOT render any text, typography, logos, or watermarks in the image. The image is purely visual.
+${textRule}
 - PROFESSIONAL QUALITY: Photorealistic, 8K quality, commercial advertising photography standard.
 
 CONCEPT TO VISUALIZE:
@@ -207,11 +213,13 @@ async function getGeminiApiKeyForImage(consultantId: string): Promise<string | n
 export async function generateImageServerSide(
   consultantId: string,
   prompt: string,
-  aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '1:1'
+  aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '1:1',
+  variant: 'text' | 'clean' = 'clean',
+  hookText?: string
 ): Promise<{ imageUrl: string; error?: string }> {
   console.log(`[ADVISAGE-SERVER] Generating image for consultantId: ${consultantId}`);
   console.log(`[ADVISAGE-SERVER] Prompt: ${prompt.substring(0, 100)}...`);
-  console.log(`[ADVISAGE-SERVER] Aspect ratio: ${aspectRatio}`);
+  console.log(`[ADVISAGE-SERVER] Aspect ratio: ${aspectRatio}, variant: ${variant}${hookText ? ', hookText: ' + hookText.substring(0, 50) + '...' : ''}`);
   
   try {
     const apiKey = await getGeminiApiKeyForImage(consultantId);
@@ -227,7 +235,7 @@ export async function generateImageServerSide(
     const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
     console.log(`[ADVISAGE-SERVER] Using model: ${IMAGE_MODEL}`);
     
-    const adOptimizedPrompt = buildAdImagePrompt(prompt, aspectRatio);
+    const adOptimizedPrompt = buildAdImagePrompt(prompt, aspectRatio, variant, hookText);
     
     const response = await trackedGenerateContent(ai, {
       model: IMAGE_MODEL,

@@ -124,7 +124,7 @@ const AdVisagePage: React.FC = () => {
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
-  const [variantToggle, setVariantToggle] = useState<Record<string, 'clean' | 'text'>>({});
+  
   const [showSettings, setShowSettings] = useState(false);
   const [viewMode, setViewMode] = useState<'factory' | 'pitch'>('factory');
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -323,16 +323,15 @@ const AdVisagePage: React.FC = () => {
     }
   };
 
-  const handleGenerateOne = async (concept: VisualConcept, variantOverride?: 'clean' | 'text') => {
+  const handleGenerateOne = async (concept: VisualConcept) => {
     if (generatingIds.has(concept.id)) return;
-    const variant = variantOverride || variantToggle[concept.id] || 'text';
     setGeneratingIds(prev => new Set(prev).add(concept.id));
     try {
       const ratioMap: any = { "1:1": "1:1", "4:5": "3:4", "9:16": "9:16", "16:9": "16:9", "4:3": "4:3", "3:4": "3:4" };
       const userFormat = settings.imageFormat || '1:1';
       const aspectRatio = ratioMap[userFormat] || ratioMap[concept.recommendedFormat] || '1:1';
-      const url = await generateImageConcept(customPrompts[`${concept.id}_${variant}`], aspectRatio, settings);
-      setGeneratedImages(prev => [{ conceptId: concept.id, imageUrl: url, variant, timestamp: Date.now() }, ...prev]);
+      const url = await generateImageConcept(customPrompts[`${concept.id}_clean`], aspectRatio, settings);
+      setGeneratedImages(prev => [{ conceptId: concept.id, imageUrl: url, variant: 'clean', timestamp: Date.now() }, ...prev]);
     } catch (err: any) { 
       setError(err.message); 
     } finally { 
@@ -898,8 +897,7 @@ const AdVisagePage: React.FC = () => {
 
                         {activePost.concepts.map(concept => {
                           const isGen = generatingIds.has(concept.id);
-                          const variant = variantToggle[concept.id] || 'text';
-                          const currentImg = generatedImages.find(i => i.conceptId === concept.id && i.variant === variant)?.imageUrl;
+                          const currentImg = generatedImages.find(i => i.conceptId === concept.id)?.imageUrl;
                           
                           return (
                             <Card key={concept.id} className={`overflow-hidden ${isDark ? 'bg-slate-900/50 border-slate-800' : ''}`}>
@@ -918,7 +916,7 @@ const AdVisagePage: React.FC = () => {
                                         <Button
                                           size="icon"
                                           variant="secondary"
-                                          onClick={() => downloadImage(currentImg, `advisage-${concept.title.replace(/\s+/g, '-').toLowerCase()}-${variant}.png`)}
+                                          onClick={() => downloadImage(currentImg, `advisage-${concept.title.replace(/\s+/g, '-').toLowerCase()}.png`)}
                                         >
                                           <Download className="w-4 h-4" />
                                         </Button>
@@ -992,13 +990,6 @@ const AdVisagePage: React.FC = () => {
                                     <p className="text-xs leading-relaxed opacity-80">{concept.reasoning}</p>
                                   </div>
                                   
-                                  <Tabs value={variant} onValueChange={(v) => setVariantToggle({...variantToggle, [concept.id]: v as 'text' | 'clean'})}>
-                                    <TabsList className="w-full mb-4">
-                                      <TabsTrigger value="text" className="flex-1">Con Testo</TabsTrigger>
-                                      <TabsTrigger value="clean" className="flex-1">Solo Visual</TabsTrigger>
-                                    </TabsList>
-                                  </Tabs>
-
                                   <Button
                                     className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
                                     onClick={() => handleGenerateOne(concept)}
