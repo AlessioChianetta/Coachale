@@ -946,19 +946,49 @@ const AdVisagePage: React.FC = () => {
                                   )}
                                 </div>
                                 
-                                <div className="flex-1 p-8">
-                                  <div className="flex flex-wrap justify-between items-start mb-6 gap-4">
+                                <div className="flex-1 p-6 lg:p-8 space-y-5">
+                                  <div className="flex flex-wrap justify-between items-start gap-3">
                                     <div>
-                                      <h3 className="text-xl font-bold mb-1">{concept.title}</h3>
-                                      <Badge variant="outline" className="text-indigo-500">{concept.styleType}</Badge>
+                                      <h3 className="text-xl font-bold mb-1.5">{concept.title}</h3>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <Badge variant="outline" className="text-indigo-500">{concept.styleType}</Badge>
+                                        <Badge variant="secondary" className="text-xs">Ratio {concept.recommendedFormat}</Badge>
+                                      </div>
                                     </div>
-                                    <Badge variant="secondary">Ratio {concept.recommendedFormat}</Badge>
                                   </div>
 
-                                  <p className="text-sm opacity-70 italic mb-6">"{concept.description}"</p>
+                                  {concept.textContent && (
+                                    <div className={`relative p-4 rounded-xl border-2 ${isDark ? 'border-amber-500/40 bg-amber-950/20' : 'border-amber-400/60 bg-gradient-to-r from-amber-50 to-orange-50'}`}>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-amber-600 text-xs font-bold uppercase tracking-wider">Hook Copy</span>
+                                        <div className="flex-1 h-px bg-amber-300/40" />
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 text-amber-500 hover:text-amber-700"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(concept.textContent);
+                                            toast({ title: "Hook copiato", description: "Testo copiato negli appunti" });
+                                          }}
+                                        >
+                                          <Copy className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </div>
+                                      <p className={`text-base font-semibold leading-relaxed ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>
+                                        "{concept.textContent}"
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Descrizione Visual</p>
+                                    <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                      {concept.description}
+                                    </p>
+                                  </div>
                                   
-                                  <div className={`p-4 rounded-xl mb-6 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                                    <p className="text-xs font-semibold text-muted-foreground mb-2">Strategy Reasoning</p>
+                                  <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-1.5">Perché converte</p>
                                     <p className="text-xs leading-relaxed opacity-80">{concept.reasoning}</p>
                                   </div>
                                   
