@@ -1810,130 +1810,101 @@ async function getMarketResearchKeys(): Promise<{ serpApiKey: string | null }> {
   };
 }
 
+const marketResearchJobs = new Map<string, {
+  status: 'running' | 'completed' | 'error';
+  currentStep: number;
+  totalSteps: number;
+  stepLabel: string;
+  stepDetails: string;
+  steps: Array<{ label: string; status: 'pending' | 'running' | 'completed' | 'error'; details: string; startedAt?: number; completedAt?: number }>;
+  result?: any;
+  error?: string;
+  createdAt: number;
+}>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, job] of marketResearchJobs) {
+    if (now - job.createdAt > 10 * 60 * 1000) marketResearchJobs.delete(id);
+  }
+}, 60000);
+
+function parseAIJson(rawText: string): any {
+  try {
+    return JSON.parse(rawText);
+  } catch {
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return JSON.parse(jsonMatch[0]);
+    throw new Error("AI response was not valid JSON");
+  }
+}
+
+function normalizeMarketResearchData(parsed: any) {
+  return {
+    currentState: Array.isArray(parsed.currentState) ? parsed.currentState : [""],
+    idealState: Array.isArray(parsed.idealState) ? parsed.idealState : [""],
+    avatar: {
+      nightThought: parsed.avatar?.nightThought || "",
+      biggestFear: parsed.avatar?.biggestFear || "",
+      dailyFrustration: parsed.avatar?.dailyFrustration || "",
+      deepestDesire: parsed.avatar?.deepestDesire || "",
+      currentSituation: parsed.avatar?.currentSituation || "",
+      decisionStyle: parsed.avatar?.decisionStyle || "",
+      languageUsed: parsed.avatar?.languageUsed || "",
+      influencers: parsed.avatar?.influencers || "",
+    },
+    emotionalDrivers: Array.isArray(parsed.emotionalDrivers) ? parsed.emotionalDrivers.map((d: string) => {
+      const keyMap: Record<string, string> = { fuga_dal_dolore: 'fuga_dolore', pulsione_sessuale: 'sessualita', approvazione_sociale: 'approvazione' };
+      return keyMap[d] || d;
+    }) : [],
+    existingSolutionProblems: Array.isArray(parsed.existingSolutionProblems) ? parsed.existingSolutionProblems : [""],
+    internalObjections: Array.isArray(parsed.internalObjections) ? parsed.internalObjections : [""],
+    externalObjections: Array.isArray(parsed.externalObjections) ? parsed.externalObjections : [""],
+    coreLies: Array.isArray(parsed.coreLies) ? parsed.coreLies.map((cl: any) => ({
+      name: cl.name || "",
+      problem: cl.problem || "",
+      cureOrPrevent: cl.cureOrPrevent === 'P' ? 'P' : 'C',
+      isAware: !!cl.isAware,
+      importance: typeof cl.importance === 'number' ? Math.min(10, Math.max(1, cl.importance)) : 5,
+    })) : [],
+    uniqueMechanism: {
+      name: parsed.uniqueMechanism?.name || "",
+      description: parsed.uniqueMechanism?.description || "",
+    },
+    uvp: parsed.uvp || "",
+  };
+}
+
 router.post("/ai/generate-market-research", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    console.log(`🔬 [MARKET-RESEARCH] Received body keys:`, Object.keys(req.body), `niche: "${req.body.niche}"`);
     const input = generateMarketResearchSchema.parse(req.body);
+    const jobId = `mr_${consultantId}_${Date.now()}`;
 
-    console.log(`🔬 [MARKET-RESEARCH] Starting deep research for "${input.niche}" / "${input.targetAudience}" (phase: ${input.phase || 'all'})`);
+    const job = {
+      status: 'running' as const,
+      currentStep: 1,
+      totalSteps: 4,
+      stepLabel: 'Ricerca Google',
+      stepDetails: 'Avvio ricerca su Google con SerpApi e Gemini Grounding...',
+      steps: [
+        { label: '🔍 Ricerca Google (SerpApi + Gemini)', status: 'running' as const, details: 'Raccolta dati reali dal mercato...', startedAt: Date.now() },
+        { label: '🧠 Analisi di Mercato (Gemini Pro)', status: 'pending' as const, details: '' },
+        { label: '👤 Profilo Psicologico & Linguaggio', status: 'pending' as const, details: '' },
+        { label: '🎯 Sintesi Finale — 7 Fasi', status: 'pending' as const, details: '' },
+      ],
+      createdAt: Date.now(),
+    };
+    marketResearchJobs.set(jobId, job);
 
-    // ── Step 1: Dual Web Research (parallel) ──
-    const serpApiPromise = (async () => {
-      try {
-        const keys = await getMarketResearchKeys();
-        if (!keys.serpApiKey) {
-          console.log("[MARKET-RESEARCH] SerpApi key not available, skipping Source A");
-          return [];
-        }
+    res.json({ success: true, jobId });
 
-        const { searchGoogleWeb } = await import("../services/lead-scraper-service");
-        const queries = [
-          `${input.niche} problemi frustrazioni clienti`,
-          `${input.niche} ${input.targetAudience} forum opinioni recensioni`,
-          `${input.niche} concorrenti soluzioni alternative`,
-          `${input.niche} obiezioni paure acquisto`,
-        ];
-
-        const results = await Promise.allSettled(
-          queries.map(q => searchGoogleWeb(q, "", 8, keys.serpApiKey!, 0))
-        );
-
-        const snippets: string[] = [];
-        results.forEach((r, i) => {
-          if (r.status === "fulfilled") {
-            r.value.forEach((item: any) => {
-              if (item.snippet) snippets.push(`[${queries[i]}] ${item.snippet}`);
-            });
-          }
-        });
-
-        console.log(`[MARKET-RESEARCH] SerpApi collected ${snippets.length} snippets`);
-        return snippets;
-      } catch (err: any) {
-        console.warn("[MARKET-RESEARCH] SerpApi source failed:", err.message);
-        return [];
-      }
-    })();
-
-    const geminiGroundingPromise = (async () => {
-      try {
-        const { GoogleGenAI } = await import("@google/genai");
-        const apiKey = await getGeminiApiKeyForClassifier();
-        if (!apiKey) {
-          console.log("[MARKET-RESEARCH] No Gemini API key for grounding, skipping Source B");
-          return { text: "", sources: [] as Array<{ url: string; title: string }>, queries: [] as string[] };
-        }
-
-        const ai = new GoogleGenAI({ apiKey });
-        const groundingPrompt = `Sei un ricercatore di mercato esperto. Cerca informazioni reali e aggiornate su questo mercato:
-
-Nicchia: ${input.niche}
-Target: ${input.targetAudience}
-${input.whatYouSell ? `Prodotto/Servizio: ${input.whatYouSell}` : ''}
-${input.promisedResult ? `Risultato promesso: ${input.promisedResult}` : ''}
-
-Trova e riporta:
-1. Problemi reali e frustrazioni dei clienti in questa nicchia
-2. Soluzioni dei concorrenti e le loro lacune
-3. Recensioni e lamentele reali dei clienti
-4. Pattern emotivi e paure ricorrenti
-5. Obiezioni comuni all'acquisto
-6. Tendenze di mercato attuali
-
-Riporta SOLO informazioni che trovi realmente dalla ricerca. Cita le fonti.`;
-
-        const result = await ai.models.generateContent({
-          model: GEMINI_3_MODEL,
-          contents: [{ role: "user", parts: [{ text: groundingPrompt }] }],
-          config: {
-            temperature: 0.3,
-            maxOutputTokens: 4096,
-            tools: [{ googleSearch: {} }],
-          },
-        });
-
-        const text = typeof result.text === 'function' ? result.text() : (result as any).text || '';
-        const groundingMetadata = (result as any).candidates?.[0]?.groundingMetadata;
-        const groundingChunks = groundingMetadata?.groundingChunks || [];
-        const searchQueries = groundingMetadata?.webSearchQueries || [];
-
-        const sources = groundingChunks
-          .filter((chunk: any) => chunk.web)
-          .map((chunk: any) => ({
-            url: chunk.web.uri,
-            title: chunk.web.title || "Fonte web",
-          }));
-
-        console.log(`[MARKET-RESEARCH] Gemini Grounding: ${text.length} chars, ${sources.length} sources, ${searchQueries.length} queries`);
-        return { text, sources, queries: searchQueries };
-      } catch (err: any) {
-        console.warn("[MARKET-RESEARCH] Gemini grounding source failed:", err.message);
-        return { text: "", sources: [] as Array<{ url: string; title: string }>, queries: [] as string[] };
-      }
-    })();
-
-    const [serpSnippets, groundingResult] = await Promise.all([serpApiPromise, geminiGroundingPromise]);
-
-    // ── Step 2: AI Analysis (second Gemini call, no grounding) ──
-    let webDataSection = "";
-    if (serpSnippets.length > 0 || groundingResult.text) {
-      webDataSection = `\n\n=== DATI REALI DAL MERCATO (Raccolti da ricerca Google) ===\n`;
-      if (serpSnippets.length > 0) {
-        webDataSection += `\n--- Risultati Google Search (SerpApi) ---\n${serpSnippets.slice(0, 30).join("\n")}\n`;
-      }
-      if (groundingResult.text) {
-        webDataSection += `\n--- Ricerca Google con Gemini Grounding ---\n${groundingResult.text}\n`;
-      }
-      if (groundingResult.sources.length > 0) {
-        webDataSection += `\n--- Fonti verificate ---\n${groundingResult.sources.map(s => `- ${s.title}: ${s.url}`).join("\n")}\n`;
-      }
-    }
+    console.log(`🔬 [MARKET-RESEARCH] Job ${jobId} started for "${input.niche}" / "${input.targetAudience}"`);
 
     const brandCtx = input.brandVoiceData || {};
     let brandSection = "";
     if (Object.keys(brandCtx).length > 0) {
-      brandSection = `\n\n=== BRAND VOICE ===\n`;
+      brandSection = `\n=== BRAND VOICE ===\n`;
       if (brandCtx.businessName) brandSection += `Business: ${brandCtx.businessName}\n`;
       if (brandCtx.businessDescription) brandSection += `Descrizione: ${brandCtx.businessDescription}\n`;
       if (brandCtx.usp) brandSection += `USP: ${brandCtx.usp}\n`;
@@ -1946,157 +1917,324 @@ Riporta SOLO informazioni che trovi realmente dalla ricerca. Cita le fonti.`;
       if (brandCtx.guarantees) brandSection += `Garanzie: ${brandCtx.guarantees}\n`;
     }
 
-    const phaseInstructions = input.phase
-      ? `GENERA SOLO la fase "${input.phase}". Lascia le altre fasi vuote/default.`
-      : `Genera TUTTE le 7 fasi della ricerca di mercato in modo completo e dettagliato.`;
+    (async () => {
+      try {
+        // ══════════════════════════════════════════════════════════
+        // STEP 1: Dual Web Research (SerpApi + Gemini Grounding)
+        // ══════════════════════════════════════════════════════════
+        const serpApiPromise = (async () => {
+          try {
+            const keys = await getMarketResearchKeys();
+            if (!keys.serpApiKey) return [];
+            const { searchGoogleWeb } = await import("../services/lead-scraper-service");
+            const queries = [
+              `${input.niche} problemi frustrazioni clienti`,
+              `${input.niche} ${input.targetAudience} forum opinioni recensioni`,
+              `${input.niche} concorrenti soluzioni alternative`,
+              `${input.niche} obiezioni paure acquisto`,
+            ];
+            const results = await Promise.allSettled(
+              queries.map(q => searchGoogleWeb(q, "", 8, keys.serpApiKey!, 0))
+            );
+            const snippets: string[] = [];
+            results.forEach((r, i) => {
+              if (r.status === "fulfilled") {
+                r.value.forEach((item: any) => {
+                  if (item.snippet) snippets.push(`[${queries[i]}] ${item.snippet}`);
+                });
+              }
+            });
+            return snippets;
+          } catch (err: any) {
+            console.warn("[MARKET-RESEARCH] SerpApi failed:", err.message);
+            return [];
+          }
+        })();
 
-    const analysisPrompt = `Sei un esperto di ricerca di mercato e copywriting strategico. Analizza i dati raccolti e genera una ricerca di mercato completa seguendo le 7 fasi del framework.
+        const geminiGroundingPromise = (async () => {
+          try {
+            const { GoogleGenAI } = await import("@google/genai");
+            const apiKey = await getGeminiApiKeyForClassifier();
+            if (!apiKey) return { text: "", sources: [] as Array<{ url: string; title: string }>, queries: [] as string[] };
+            const ai = new GoogleGenAI({ apiKey });
+            const result = await ai.models.generateContent({
+              model: GEMINI_3_MODEL,
+              contents: [{ role: "user", parts: [{ text: `Sei un ricercatore di mercato esperto. Cerca informazioni reali e aggiornate su questo mercato:\n\nNicchia: ${input.niche}\nTarget: ${input.targetAudience}\n${input.whatYouSell ? `Prodotto/Servizio: ${input.whatYouSell}` : ''}\n${input.promisedResult ? `Risultato promesso: ${input.promisedResult}` : ''}\n\nTrova e riporta:\n1. Problemi reali e frustrazioni dei clienti\n2. Soluzioni dei concorrenti e lacune\n3. Recensioni e lamentele reali\n4. Pattern emotivi e paure ricorrenti\n5. Obiezioni comuni all'acquisto\n6. Tendenze di mercato attuali\n7. Il LINGUAGGIO ESATTO che i clienti usano (frasi, espressioni, parole) quando parlano dei loro problemi — cerca nei forum, recensioni, gruppi\n\nRiporta SOLO informazioni reali dalla ricerca. Cita le fonti.` }] }],
+              config: { temperature: 0.3, maxOutputTokens: 4096, tools: [{ googleSearch: {} }] },
+            });
+            const text = typeof result.text === 'function' ? result.text() : (result as any).text || '';
+            const groundingMetadata = (result as any).candidates?.[0]?.groundingMetadata;
+            const chunks = groundingMetadata?.groundingChunks || [];
+            const sources = chunks.filter((c: any) => c.web).map((c: any) => ({ url: c.web.uri, title: c.web.title || "Fonte web" }));
+            return { text, sources, queries: groundingMetadata?.webSearchQueries || [] };
+          } catch (err: any) {
+            console.warn("[MARKET-RESEARCH] Gemini grounding failed:", err.message);
+            return { text: "", sources: [] as Array<{ url: string; title: string }>, queries: [] as string[] };
+          }
+        })();
+
+        const [serpSnippets, groundingResult] = await Promise.all([serpApiPromise, geminiGroundingPromise]);
+
+        job.steps[0].status = 'completed';
+        job.steps[0].details = `${serpSnippets.length} snippet SerpApi, ${groundingResult.sources.length} fonti Gemini`;
+        job.steps[0].completedAt = Date.now();
+        console.log(`[MARKET-RESEARCH] Step 1 done: ${serpSnippets.length} snippets, ${groundingResult.sources.length} sources`);
+
+        let webDataSection = "";
+        if (serpSnippets.length > 0 || groundingResult.text) {
+          webDataSection = `\n\n=== DATI REALI DAL MERCATO ===\n`;
+          if (serpSnippets.length > 0) webDataSection += `\n--- Google Search (SerpApi) ---\n${serpSnippets.slice(0, 30).join("\n")}\n`;
+          if (groundingResult.text) webDataSection += `\n--- Gemini Grounding ---\n${groundingResult.text}\n`;
+          if (groundingResult.sources.length > 0) webDataSection += `\n--- Fonti ---\n${groundingResult.sources.map(s => `- ${s.title}: ${s.url}`).join("\n")}\n`;
+        }
+
+        const { GoogleGenAI } = await import("@google/genai");
+        const apiKey = await getGeminiApiKeyForClassifier();
+        if (!apiKey) throw new Error("No AI API key available");
+        const ai = new GoogleGenAI({ apiKey });
+
+        // ══════════════════════════════════════════════════════════
+        // STEP 2: Market Analysis (Deep strategic analysis)
+        // ══════════════════════════════════════════════════════════
+        job.currentStep = 2;
+        job.stepLabel = 'Analisi di Mercato';
+        job.stepDetails = 'Gemini Pro sta analizzando il mercato, i concorrenti e le opportunità...';
+        job.steps[1].status = 'running';
+        job.steps[1].details = 'Analisi strategica del mercato con Gemini...';
+        job.steps[1].startedAt = Date.now();
+
+        const step2Prompt = `Sei un analista strategico di mercato con 20 anni di esperienza. Analizza TUTTI i dati raccolti dalla ricerca Google e produci un'analisi strategica approfondita.
 
 NICCHIA: ${input.niche}
 TARGET: ${input.targetAudience}
-${input.whatYouSell ? `COSA VENDI: ${input.whatYouSell}` : ''}
+${input.whatYouSell ? `PRODOTTO/SERVIZIO: ${input.whatYouSell}` : ''}
 ${input.promisedResult ? `RISULTATO PROMESSO: ${input.promisedResult}` : ''}
 ${brandSection}
 ${webDataSection}
 
-${phaseInstructions}
+Produci un'analisi strategica che copra:
 
-Rispondi SOLO con un oggetto JSON valido (senza markdown, senza backtick) con questa struttura:
+1. MAPPA DEI PROBLEMI REALI: I 5-7 problemi più sentiti dal target basandoti sui dati reali. Per ogni problema, indica quanto è urgente (1-10) e quanto ne sono consapevoli.
+
+2. PANORAMA COMPETITIVO: Chi sono i concorrenti? Quali soluzioni offrono? Dove falliscono? Cosa manca nel mercato?
+
+3. PATTERN EMOTIVI: Quali emozioni dominano nel target? Quali paure, frustrazioni, desideri emergono dai dati reali? Cosa li tiene svegli di notte?
+
+4. OBIEZIONI E RESISTENZE: Perché il target NON compra? Quali scuse si dà? Quali dubbi ha sulla soluzione?
+
+5. OPPORTUNITÀ NON SFRUTTATE: Cosa nessun concorrente sta facendo che potrebbe fare la differenza?
+
+Rispondi in modo dettagliato e strutturato, basandoti sui dati reali. Non essere generico.`;
+
+        const step2Result = await ai.models.generateContent({
+          model: GEMINI_3_MODEL,
+          contents: [{ role: "user", parts: [{ text: step2Prompt }] }],
+          config: { temperature: 0.5, maxOutputTokens: 8192 },
+        });
+        const marketAnalysis = typeof step2Result.text === 'function' ? step2Result.text() : (step2Result as any).text || '';
+
+        job.steps[1].status = 'completed';
+        job.steps[1].details = `Analisi completata (${marketAnalysis.length} caratteri)`;
+        job.steps[1].completedAt = Date.now();
+        console.log(`[MARKET-RESEARCH] Step 2 done: ${marketAnalysis.length} chars analysis`);
+
+        // ══════════════════════════════════════════════════════════
+        // STEP 3: Psychological Profile & Language Extraction
+        // ══════════════════════════════════════════════════════════
+        job.currentStep = 3;
+        job.stepLabel = 'Profilo Psicologico';
+        job.stepDetails = 'Estrazione del linguaggio reale del cliente e profilo psicologico...';
+        job.steps[2].status = 'running';
+        job.steps[2].details = 'Analisi del linguaggio e della psicologia del target...';
+        job.steps[2].startedAt = Date.now();
+
+        const step3Prompt = `Sei uno psicologo del consumatore e copywriter esperto. Basandoti sui dati della ricerca di mercato e sull'analisi strategica, devi creare un PROFILO PSICOLOGICO DETTAGLIATO del cliente ideale.
+
+NICCHIA: ${input.niche}
+TARGET: ${input.targetAudience}
+${brandSection}
+
+=== DATI DALLA RICERCA ===
+${webDataSection}
+
+=== ANALISI DI MERCATO ===
+${marketAnalysis}
+
+ISTRUZIONE CRITICA: Tutto quello che scrivi deve essere detto CON LE PAROLE DEL CLIENTE. Non usare linguaggio da marketer o da consulente. Usa il linguaggio che il target usa realmente quando parla dei suoi problemi con amici, nei forum, nelle recensioni.
+
+Esempio SBAGLIATO: "Il cliente manifesta insoddisfazione per la mancanza di risultati tangibili"
+Esempio GIUSTO: "Ho provato di tutto ma non cambia niente, butto solo soldi"
+
+Genera un profilo dettagliato con:
+
+1. PENSIERO ALLE 3 DI NOTTE: La frase esatta che il cliente si dice quando non riesce a dormire. Scritta in prima persona, con il suo linguaggio.
+
+2. PAURA PIÙ GRANDE: Cosa lo terrorizza di più? Scritto come lo direbbe a un amico intimo.
+
+3. FRUSTRAZIONE QUOTIDIANA: Cosa lo fa imprecare ogni giorno? Il momento specifico in cui si sente perso.
+
+4. DESIDERIO PROFONDO: Cosa vorrebbe davvero? Non la versione "pulita" — quella vera, emotiva, viscerale.
+
+5. COME VIVE LA SITUAZIONE: Descrivi la sua giornata tipo rispetto a questo problema. Dettagli concreti.
+
+6. COME PRENDE DECISIONI: È impulsivo? Confronta? Chiede consiglio? A chi? Si fa bloccare dai prezzi? Dalle recensioni?
+
+7. PAROLE E FRASI ESATTE: Lista di 10-15 frasi/espressioni che il target usa REALMENTE parlando del problema. Prendi da forum, recensioni, social. Devono suonare autentiche.
+
+8. CHI LO INFLUENZA: Persone, creator, community, amici, familiari — chi ha peso sulle sue decisioni?
+
+9. LEVE EMOTIVE: Quali di queste leve sono più potenti per questo target? Sopravvivenza, Piacere, Fuga dal dolore, Aspetto/Sessualità, Comfort, Status/Vincere, Protezione dei cari, Approvazione sociale. Per ognuna spiega PERCHÉ funziona su questo target specifico.
+
+10. CONVINZIONI ERRATE (CORE LIES): 3-4 convinzioni sbagliate che il target ha sul proprio problema o sulle soluzioni. Per ognuna: nome, perché è un problema, se è una "cura" (C) o "prevenzione" (P), se ne è consapevole, quanto è importante (1-10).
+
+Scrivi TUTTO con il linguaggio del cliente. Ogni frase deve suonare come se il cliente stesso l'avesse detta.`;
+
+        const step3Result = await ai.models.generateContent({
+          model: GEMINI_3_MODEL,
+          contents: [{ role: "user", parts: [{ text: step3Prompt }] }],
+          config: { temperature: 0.7, maxOutputTokens: 8192 },
+        });
+        const psychProfile = typeof step3Result.text === 'function' ? step3Result.text() : (step3Result as any).text || '';
+
+        job.steps[2].status = 'completed';
+        job.steps[2].details = `Profilo psicologico completato (${psychProfile.length} caratteri)`;
+        job.steps[2].completedAt = Date.now();
+        console.log(`[MARKET-RESEARCH] Step 3 done: ${psychProfile.length} chars psych profile`);
+
+        // ══════════════════════════════════════════════════════════
+        // STEP 4: Final Synthesis — Generate structured 7-phase JSON
+        // ══════════════════════════════════════════════════════════
+        job.currentStep = 4;
+        job.stepLabel = 'Sintesi Finale';
+        job.stepDetails = 'Combinazione di tutti i dati nelle 7 fasi del framework...';
+        job.steps[3].status = 'running';
+        job.steps[3].details = 'Generazione della struttura finale...';
+        job.steps[3].startedAt = Date.now();
+
+        const step4Prompt = `Hai a disposizione 3 fonti di ricerca su questa nicchia. Combinale in un output JSON strutturato.
+
+NICCHIA: ${input.niche}
+TARGET: ${input.targetAudience}
+${input.whatYouSell ? `PRODOTTO/SERVIZIO: ${input.whatYouSell}` : ''}
+${input.promisedResult ? `RISULTATO PROMESSO: ${input.promisedResult}` : ''}
+
+=== FONTE 1: DATI GOOGLE ===
+${webDataSection}
+
+=== FONTE 2: ANALISI STRATEGICA DI MERCATO ===
+${marketAnalysis}
+
+=== FONTE 3: PROFILO PSICOLOGICO & LINGUAGGIO DEL CLIENTE ===
+${psychProfile}
+
+ISTRUZIONE FONDAMENTALE: 
+- currentState e idealState devono essere scritti CON LE PAROLE DEL CLIENTE, non con linguaggio da marketer
+- L'avatar deve contenere frasi che il cliente direbbe davvero
+- Le obiezioni devono suonare come le direbbe il cliente
+- Il tutto deve sembrare "preso da un forum" non "scritto da un consulente"
+
+Rispondi SOLO con JSON valido (no markdown, no backtick):
 
 {
-  "currentState": ["problema1", "problema2", "problema3", "problema4", "problema5"],
-  "idealState": ["risultato1", "risultato2", "risultato3", "risultato4", "risultato5"],
+  "currentState": ["frase problema 1 (con le parole del cliente)", "frase problema 2", "frase problema 3", "frase problema 4", "frase problema 5"],
+  "idealState": ["risultato sognato 1 (con le parole del cliente)", "risultato 2", "risultato 3", "risultato 4", "risultato 5"],
   "avatar": {
-    "nightThought": "cosa pensa il cliente alle 3 di notte",
-    "biggestFear": "la sua paura più grande",
-    "dailyFrustration": "la frustrazione quotidiana",
-    "deepestDesire": "il desiderio più profondo",
-    "currentSituation": "come vive la situazione attuale",
+    "nightThought": "frase in prima persona che il cliente si dice alle 3 di notte",
+    "biggestFear": "la paura più grande scritta come la direbbe a un amico",
+    "dailyFrustration": "la frustrazione quotidiana con dettagli specifici",
+    "deepestDesire": "il desiderio profondo, emotivo e viscerale",
+    "currentSituation": "come vive il problema nella vita quotidiana",
     "decisionStyle": "come prende decisioni di acquisto",
-    "languageUsed": "parole e frasi che usa parlando del problema",
-    "influencers": "chi lo influenza (persone, media, community)"
+    "languageUsed": "10-15 frasi/espressioni REALI che il target usa",
+    "influencers": "chi influenza le sue decisioni"
   },
-  "emotionalDrivers": ["sopravvivenza", "piacere", "fuga_dolore", "sessualita", "comfort", "status", "protezione", "approvazione"],
-  "existingSolutionProblems": ["problema con soluzione esistente 1", "..."],
-  "internalObjections": ["obiezione interna 1 (autodubbie)", "..."],
-  "externalObjections": ["obiezione esterna 1 (dubbi sul mercato)", "..."],
+  "emotionalDrivers": ["solo_le_leve_rilevanti"],
+  "existingSolutionProblems": ["cosa non funziona delle soluzioni attuali (parole del cliente)"],
+  "internalObjections": ["obiezione interna scritta come un pensiero del cliente"],
+  "externalObjections": ["dubbio esterno come lo direbbe il cliente"],
   "coreLies": [
-    {
-      "name": "Nome della convinzione errata",
-      "problem": "Perché è un problema",
-      "cureOrPrevent": "C",
-      "isAware": false,
-      "importance": 8
-    }
+    { "name": "nome convinzione errata", "problem": "perché è un problema", "cureOrPrevent": "C", "isAware": false, "importance": 8 }
   ],
   "uniqueMechanism": {
-    "name": "Nome del meccanismo unico",
-    "description": "Descrizione di come funziona e perché è diverso"
+    "name": "nome del meccanismo unico",
+    "description": "come funziona e perché è diverso"
   },
-  "uvp": "Formula UVP: Aiuto [target] a [risultato] senza [problema] grazie a [meccanismo unico]"
+  "uvp": "Aiuto [target specifico] a [risultato concreto] senza [dolore principale] grazie a [meccanismo unico]"
 }
 
 REGOLE:
-- Usa i dati reali dal mercato quando disponibili per fondare le risposte sulla realtà
-- I problemi (currentState) devono essere specifici e sentiti dal target, non generici
-- L'avatar deve usare il linguaggio reale del target
-- Le obiezioni devono riflettere resistenze reali all'acquisto
-- Il meccanismo unico deve differenziare realmente dall'offerta dei concorrenti
-- La UVP deve seguire la formula: "Aiuto [chi] a [cosa] senza [dolore] grazie a [come]"
-- emotionalDrivers: seleziona SOLO quelle rilevanti tra: sopravvivenza, piacere, fuga_dolore, sessualita, comfort, status, protezione, approvazione
-- coreLies: genera 2-4 convinzioni errate con importanza da 1 a 10
-- Rispondi SOLO con JSON valido, niente altro testo`;
+- emotionalDrivers: SOLO tra: sopravvivenza, piacere, fuga_dolore, sessualita, comfort, status, protezione, approvazione
+- coreLies: 2-4 convinzioni con importanza 1-10
+- TUTTO scritto con il linguaggio del cliente, NON linguaggio da marketer
+- Rispondi SOLO con JSON valido`;
 
-    const { GoogleGenAI } = await import("@google/genai");
-    const apiKey = await getGeminiApiKeyForClassifier();
-    if (!apiKey) {
-      return res.status(500).json({ success: false, error: "No AI API key available" });
-    }
+        const step4Result = await ai.models.generateContent({
+          model: GEMINI_3_MODEL,
+          contents: [{ role: "user", parts: [{ text: step4Prompt }] }],
+          config: { temperature: 0.5, maxOutputTokens: 8192, responseMimeType: "application/json" },
+        });
+        const rawText = typeof step4Result.text === 'function' ? step4Result.text() : (step4Result as any).text || '';
+        const parsed = parseAIJson(rawText);
+        const marketResearchData = normalizeMarketResearchData(parsed);
 
-    const ai = new GoogleGenAI({ apiKey });
-    const analysisResult = await ai.models.generateContent({
-      model: GEMINI_3_MODEL,
-      contents: [{ role: "user", parts: [{ text: analysisPrompt }] }],
-      config: {
-        temperature: 0.7,
-        maxOutputTokens: 8192,
-        responseMimeType: "application/json",
-      },
-    });
+        job.steps[3].status = 'completed';
+        job.steps[3].details = 'Framework completo — 7 fasi generate';
+        job.steps[3].completedAt = Date.now();
 
-    const rawText = typeof analysisResult.text === 'function' ? analysisResult.text() : (analysisResult as any).text || '';
-    let parsed: any;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("AI response was not valid JSON");
+        job.status = 'completed';
+        job.currentStep = 4;
+        job.stepLabel = 'Completato';
+        job.stepDetails = 'Deep Research completata con successo!';
+        job.result = {
+          data: marketResearchData,
+          meta: {
+            serpSnippetsCount: serpSnippets.length,
+            groundingSourcesCount: groundingResult.sources.length,
+            groundingQueriesUsed: groundingResult.queries,
+          },
+        };
+
+        console.log(`✅ [MARKET-RESEARCH] Job ${jobId} completed: ${serpSnippets.length} snippets, ${groundingResult.sources.length} sources, 4 AI steps`);
+
+      } catch (error: any) {
+        console.error(`❌ [MARKET-RESEARCH] Job ${jobId} failed:`, error);
+        job.status = 'error';
+        job.stepDetails = error.message || 'Errore sconosciuto';
+        job.error = error.message;
+        const runningStep = job.steps.find(s => s.status === 'running');
+        if (runningStep) {
+          runningStep.status = 'error';
+          runningStep.details = error.message;
+        }
       }
-    }
+    })();
 
-    const marketResearchData = {
-      currentState: Array.isArray(parsed.currentState) ? parsed.currentState : [""],
-      idealState: Array.isArray(parsed.idealState) ? parsed.idealState : [""],
-      avatar: {
-        nightThought: parsed.avatar?.nightThought || "",
-        biggestFear: parsed.avatar?.biggestFear || "",
-        dailyFrustration: parsed.avatar?.dailyFrustration || "",
-        deepestDesire: parsed.avatar?.deepestDesire || "",
-        currentSituation: parsed.avatar?.currentSituation || "",
-        decisionStyle: parsed.avatar?.decisionStyle || "",
-        languageUsed: parsed.avatar?.languageUsed || "",
-        influencers: parsed.avatar?.influencers || "",
-      },
-      emotionalDrivers: Array.isArray(parsed.emotionalDrivers) ? parsed.emotionalDrivers.map((d: string) => {
-        const keyMap: Record<string, string> = { fuga_dal_dolore: 'fuga_dolore', pulsione_sessuale: 'sessualita', approvazione_sociale: 'approvazione' };
-        return keyMap[d] || d;
-      }) : [],
-      existingSolutionProblems: Array.isArray(parsed.existingSolutionProblems) ? parsed.existingSolutionProblems : [""],
-      internalObjections: Array.isArray(parsed.internalObjections) ? parsed.internalObjections : [""],
-      externalObjections: Array.isArray(parsed.externalObjections) ? parsed.externalObjections : [""],
-      coreLies: Array.isArray(parsed.coreLies) ? parsed.coreLies.map((cl: any) => ({
-        name: cl.name || "",
-        problem: cl.problem || "",
-        cureOrPrevent: cl.cureOrPrevent === 'P' ? 'P' : 'C',
-        isAware: !!cl.isAware,
-        importance: typeof cl.importance === 'number' ? Math.min(10, Math.max(1, cl.importance)) : 5,
-      })) : [],
-      uniqueMechanism: {
-        name: parsed.uniqueMechanism?.name || "",
-        description: parsed.uniqueMechanism?.description || "",
-      },
-      uvp: parsed.uvp || "",
-    };
-
-    console.log(`✅ [MARKET-RESEARCH] Deep research complete: ${serpSnippets.length} serp snippets, ${groundingResult.sources.length} grounding sources`);
-
-    res.json({
-      success: true,
-      data: marketResearchData,
-      meta: {
-        serpSnippetsCount: serpSnippets.length,
-        groundingSourcesCount: groundingResult.sources.length,
-        groundingQueriesUsed: groundingResult.queries,
-        phase: input.phase || "all",
-      },
-    });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         success: false,
         error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
-        details: error.errors,
       });
     }
     console.error("❌ [MARKET-RESEARCH] Error:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message || "Failed to generate market research",
-    });
+    res.status(500).json({ success: false, error: error.message || "Failed to start market research" });
   }
+});
+
+router.get("/ai/market-research-status/:jobId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  const job = marketResearchJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ success: false, error: "Job not found" });
+  res.json({
+    success: true,
+    status: job.status,
+    currentStep: job.currentStep,
+    totalSteps: job.totalSteps,
+    stepLabel: job.stepLabel,
+    stepDetails: job.stepDetails,
+    steps: job.steps,
+    result: job.status === 'completed' ? job.result : undefined,
+    error: job.status === 'error' ? job.error : undefined,
+  });
 });
 
 router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {

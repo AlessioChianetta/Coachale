@@ -505,6 +505,17 @@ export default function ContentStudioIdeas() {
   const [marketResearchData, setMarketResearchData] = useState<MarketResearchData>({ ...EMPTY_MARKET_RESEARCH });
   const [isGeneratingResearch, setIsGeneratingResearch] = useState(false);
   const [generatingPhase, setGeneratingPhase] = useState<string | null>(null);
+  const [showResearchDialog, setShowResearchDialog] = useState(false);
+  const [researchJobId, setResearchJobId] = useState<string | null>(null);
+  const [researchProgress, setResearchProgress] = useState<{
+    status: string;
+    currentStep: number;
+    totalSteps: number;
+    stepLabel: string;
+    stepDetails: string;
+    steps: Array<{ label: string; status: string; details: string }>;
+    error?: string;
+  } | null>(null);
   const [expandedResearchPhases, setExpandedResearchPhases] = useState<Set<string>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
@@ -1653,9 +1664,12 @@ export default function ContentStudioIdeas() {
     }
     if (phase) {
       setGeneratingPhase(phase);
-    } else {
-      setIsGeneratingResearch(true);
     }
+
+    setIsGeneratingResearch(true);
+    setShowResearchDialog(true);
+    setResearchProgress(null);
+
     try {
       const response = await fetch("/api/content/ai/generate-market-research", {
         method: "POST",
@@ -1668,26 +1682,57 @@ export default function ContentStudioIdeas() {
         }),
       });
       const data = await response.json();
-      if (data.success && data.data) {
-        if (phase) {
-          setMarketResearchData(prev => ({ ...prev, ...data.data }));
-        } else {
-          setMarketResearchData(data.data);
-        }
-        const syncProblems = data.data.currentState?.filter((s: string) => s.trim()) || [];
-        if (syncProblems.length > 0) setMarketResearchProblems(syncProblems);
-        if (!phase) {
-          setExpandedResearchPhases(new Set(["trasformazione", "avatar", "leve", "obiezioni", "errore", "meccanismo", "posizionamento"]));
-        }
-        toast({ title: phase ? "Fase generata!" : "Deep Research completata!", description: phase ? "Dati aggiornati. Puoi modificarli." : "Tutte le 7 fasi compilate con dati reali dal mercato." });
+      if (data.success && data.jobId) {
+        setResearchJobId(data.jobId);
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`/api/content/ai/market-research-status/${data.jobId}`, {
+              headers: getAuthHeaders(),
+            });
+            const statusData = await statusRes.json();
+            if (!statusData.success) return;
+
+            setResearchProgress({
+              status: statusData.status,
+              currentStep: statusData.currentStep,
+              totalSteps: statusData.totalSteps,
+              stepLabel: statusData.stepLabel,
+              stepDetails: statusData.stepDetails,
+              steps: statusData.steps,
+              error: statusData.error,
+            });
+
+            if (statusData.status === 'completed' && statusData.result) {
+              clearInterval(pollInterval);
+              if (phase) {
+                setMarketResearchData(prev => ({ ...prev, ...statusData.result.data }));
+              } else {
+                setMarketResearchData(statusData.result.data);
+              }
+              const syncProblems = statusData.result.data.currentState?.filter((s: string) => s.trim()) || [];
+              if (syncProblems.length > 0) setMarketResearchProblems(syncProblems);
+              if (!phase) {
+                setExpandedResearchPhases(new Set(["trasformazione", "avatar", "leve", "obiezioni", "errore", "meccanismo", "posizionamento"]));
+              }
+              setIsGeneratingResearch(false);
+              setGeneratingPhase(null);
+              toast({ title: phase ? "Fase generata!" : "Deep Research completata!", description: phase ? "Dati aggiornati." : "Tutte le 7 fasi compilate con dati reali dal mercato." });
+            } else if (statusData.status === 'error') {
+              clearInterval(pollInterval);
+              setIsGeneratingResearch(false);
+              setGeneratingPhase(null);
+            }
+          } catch {
+          }
+        }, 2000);
       } else {
-        throw new Error(data.error || "Errore nella generazione");
+        throw new Error(data.error || "Errore nell'avvio della ricerca");
       }
     } catch (error: any) {
       toast({ title: "Errore nella ricerca", description: error.message, variant: "destructive" });
-    } finally {
       setIsGeneratingResearch(false);
       setGeneratingPhase(null);
+      setShowResearchDialog(false);
     }
   };
 
@@ -4489,6 +4534,81 @@ export default function ContentStudioIdeas() {
           </div>
         </div>
       </div>
+
+      <Dialog open={showResearchDialog} onOpenChange={(open) => { if (!open && researchProgress?.status !== 'running') { setShowResearchDialog(false); setResearchProgress(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-purple-500" />
+              Deep Research con AI
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {researchProgress ? (
+              <>
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Step {researchProgress.currentStep} di {researchProgress.totalSteps}</span>
+                  <span className={researchProgress.status === 'completed' ? 'text-green-600 font-medium' : researchProgress.status === 'error' ? 'text-red-600 font-medium' : 'text-purple-600 font-medium'}>
+                    {researchProgress.status === 'completed' ? 'Completato' : researchProgress.status === 'error' ? 'Errore' : researchProgress.stepLabel}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-700 ${researchProgress.status === 'completed' ? 'bg-green-500' : researchProgress.status === 'error' ? 'bg-red-500' : 'bg-purple-500'}`}
+                    style={{ width: `${researchProgress.status === 'completed' ? 100 : ((researchProgress.currentStep - 0.5) / researchProgress.totalSteps) * 100}%` }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  {researchProgress.steps.map((step, idx) => (
+                    <div key={idx} className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${step.status === 'running' ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' : step.status === 'completed' ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : step.status === 'error' ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 opacity-60'}`}>
+                      <div className="mt-0.5">
+                        {step.status === 'running' ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                        ) : step.status === 'completed' ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : step.status === 'error' ? (
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                        ) : (
+                          <div className="h-4 w-4 rounded-full border-2 border-gray-300 dark:border-gray-600" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium">{step.label}</div>
+                        {step.details && <div className="text-xs text-muted-foreground mt-0.5">{step.details}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {researchProgress.status === 'error' && researchProgress.error && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <p className="text-sm text-red-700 dark:text-red-300">{researchProgress.error}</p>
+                  </div>
+                )}
+                {researchProgress.status === 'completed' && (
+                  <div className="flex justify-end">
+                    <Button onClick={() => { setShowResearchDialog(false); setResearchProgress(null); }} className="bg-green-600 hover:bg-green-700">
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Vedi Risultati
+                    </Button>
+                  </div>
+                )}
+                {researchProgress.status === 'error' && (
+                  <div className="flex justify-end">
+                    <Button variant="outline" onClick={() => { setShowResearchDialog(false); setResearchProgress(null); }}>
+                      Chiudi
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                <p className="text-sm text-muted-foreground">Avvio Deep Research...</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showSaveTemplateDialog} onOpenChange={setShowSaveTemplateDialog}>
         <DialogContent className="max-w-md">
