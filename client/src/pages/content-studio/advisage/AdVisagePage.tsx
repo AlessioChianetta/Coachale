@@ -67,6 +67,9 @@ import {
   SlidersHorizontal,
   History,
   RotateCcw,
+  Maximize2,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 interface ContentPost {
@@ -147,6 +150,7 @@ const AdVisagePage: React.FC = () => {
   const [conceptOverrides, setConceptOverrides] = useState<Record<string, Partial<AppSettings>>>({});
   const [conceptControlsOpen, setConceptControlsOpen] = useState<Record<string, boolean>>({});
   const [selectedHistoryImage, setSelectedHistoryImage] = useState<Record<string, number>>({});
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string } | null>(null);
 
   const getMergedSettings = (conceptId: string): AppSettings => {
     const overrides = conceptOverrides[conceptId];
@@ -209,6 +213,15 @@ const AdVisagePage: React.FC = () => {
     localStorage.setItem('advisage_settings_v3', JSON.stringify(settings));
     localStorage.setItem('advisage_theme', theme);
   }, [postInputs, settings, theme]);
+
+  useEffect(() => {
+    if (!lightboxImage) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxImage(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [lightboxImage]);
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
@@ -1151,12 +1164,21 @@ const AdVisagePage: React.FC = () => {
                                   }`}>
                                     {currentImg ? (
                                       <>
-                                        <img src={currentImg} className="w-full h-full object-cover" alt={concept.title} />
+                                        <img src={currentImg} className="w-full h-full object-contain" alt={concept.title} />
                                         <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                                           <Button
                                             size="icon"
                                             variant="secondary"
+                                            onClick={() => setLightboxImage({ url: currentImg, title: concept.title })}
+                                            title="Visualizza a schermo intero"
+                                          >
+                                            <Maximize2 className="w-4 h-4" />
+                                          </Button>
+                                          <Button
+                                            size="icon"
+                                            variant="secondary"
                                             onClick={() => downloadImage(currentImg, `advisage-${concept.title.replace(/\s+/g, '-').toLowerCase()}-${variant}.png`)}
+                                            title="Scarica"
                                           >
                                             <Download className="w-4 h-4" />
                                           </Button>
@@ -1165,6 +1187,7 @@ const AdVisagePage: React.FC = () => {
                                             variant="default"
                                             className="bg-indigo-600 hover:bg-indigo-700"
                                             onClick={() => handleUploadToPubler(currentImg, concept.id)}
+                                            title="Carica su Publer"
                                           >
                                             <CloudUpload className="w-4 h-4" />
                                           </Button>
@@ -1219,7 +1242,10 @@ const AdVisagePage: React.FC = () => {
                                       <h3 className="text-xl font-bold mb-1.5">{concept.title}</h3>
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <Badge variant="outline" className="text-indigo-500">{concept.styleType}</Badge>
-                                        <Badge variant="secondary" className="text-xs">Ratio {concept.recommendedFormat}</Badge>
+                                        <Badge variant="secondary" className="text-xs" title="Formato suggerito dall'AI">AI: {concept.recommendedFormat}</Badge>
+                                        {mergedS.imageFormat && mergedS.imageFormat !== concept.recommendedFormat && (
+                                          <Badge className="text-xs bg-indigo-500/15 text-indigo-500 border-indigo-500/30" title="Formato attivo per la generazione">Attivo: {mergedS.imageFormat}</Badge>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
@@ -1831,6 +1857,47 @@ const AdVisagePage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center cursor-pointer"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-white/70 hover:text-white hover:bg-white/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                downloadImage(lightboxImage.url, `advisage-${lightboxImage.title.replace(/\s+/g, '-').toLowerCase()}.png`);
+              }}
+              title="Scarica"
+            >
+              <Download className="w-5 h-5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-white/70 hover:text-white hover:bg-white/10"
+              onClick={() => setLightboxImage(null)}
+              title="Chiudi"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+          <div className="absolute top-4 left-4 z-10">
+            <p className="text-white/60 text-sm font-medium">{lightboxImage.title}</p>
+          </div>
+          <img
+            src={lightboxImage.url}
+            alt={lightboxImage.title}
+            className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <p className="text-white/40 text-xs mt-3">Clicca fuori dall'immagine per chiudere</p>
+        </div>
+      )}
     </div>
   );
 };
