@@ -1309,6 +1309,7 @@ router.patch("/numbers/:id/overflow", authenticateToken, requireAnyRole(["consul
       overflow_auto_return,
       overflow_message,
       max_concurrent_calls,
+      inactivity_timeout_secs,
     } = req.body;
 
     const ownerCheck = consultantId
@@ -1325,6 +1326,7 @@ router.patch("/numbers/:id/overflow", authenticateToken, requireAnyRole(["consul
         overflow_auto_return = ${overflow_auto_return ?? true},
         overflow_message = ${overflow_message ?? null},
         max_concurrent_calls = ${max_concurrent_calls ?? sql`max_concurrent_calls`},
+        inactivity_timeout_secs = ${inactivity_timeout_secs ?? sql`inactivity_timeout_secs`},
         updated_at = NOW()
       WHERE id = ${id} ${ownerCheck}
       RETURNING *
@@ -1373,7 +1375,8 @@ router.get("/overflow-config", async (req: any, res: Response) => {
       SELECT 
         id, phone_number, consultant_id, fallback_number,
         overflow_enabled, overflow_timeout_secs, overflow_dtmf_enabled,
-        overflow_auto_return, overflow_message, max_concurrent_calls
+        overflow_auto_return, overflow_message, max_concurrent_calls,
+        inactivity_timeout_secs
       FROM voice_numbers
       WHERE (${orClause})
         AND is_active = true
@@ -1391,6 +1394,7 @@ router.get("/overflow-config", async (req: any, res: Response) => {
         overflow_message: null,
         max_concurrent_calls: 5,
         consultant_id: null,
+        inactivity_timeout_secs: 60,
       };
       console.log(`📞 [OVERFLOW-CONFIG] ⚠️ Number NOT FOUND → returning defaults: overflow_enabled=${defaults.overflow_enabled}, max_concurrent=${defaults.max_concurrent_calls}, timeout=${defaults.overflow_timeout_secs}s`);
       return res.json(defaults);
@@ -1407,6 +1411,7 @@ router.get("/overflow-config", async (req: any, res: Response) => {
       overflow_message: row.overflow_message || null,
       max_concurrent_calls: row.max_concurrent_calls ?? 5,
       consultant_id: row.consultant_id,
+      inactivity_timeout_secs: row.inactivity_timeout_secs ?? 60,
     };
     console.log(`📞 [OVERFLOW-CONFIG] ✅ Found number ${row.phone_number} → overflow_enabled=${response.overflow_enabled}, max_concurrent=${response.max_concurrent_calls}, timeout=${response.overflow_timeout_secs}s, auto_return=${response.overflow_auto_return}, dtmf=${response.overflow_dtmf_enabled}, fallback=${response.fallback_number ? '***' : 'none'}`);
     res.json(response);

@@ -10258,6 +10258,7 @@ export const voiceNumbers = pgTable("voice_numbers", {
   outOfHoursAction: varchar("out_of_hours_action", { length: 50 }).default("voicemail"),
   maxConcurrentCalls: integer("max_concurrent_calls").default(5),
   maxCallDurationMinutes: integer("max_call_duration_minutes").default(30),
+  inactivityTimeoutSecs: integer("inactivity_timeout_secs").default(60),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

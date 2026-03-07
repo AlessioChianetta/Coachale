@@ -152,6 +152,7 @@ export interface CallSession {
   fsWebSocket: WebSocket | null;
   replitClient: ReplitWSClient | null;
   clientContext: ClientContext | null;
+  inactivityTimeoutMs: number;
   audioStats: {
     bytesIn: number;
     bytesOut: number;
@@ -226,7 +227,8 @@ class SessionManager {
     codec: 'PCMU' | 'L16' = 'PCMU',
     sampleRate: number = 8000,
     fsWebSocket: WebSocket,
-    fsUuid?: string
+    fsUuid?: string,
+    inactivityTimeoutMs?: number
   ): CallSession {
     if (!this.canAcceptNewCall()) {
       throw new Error(`Max concurrent calls reached (${config.session.maxConcurrent})`);
@@ -235,6 +237,7 @@ class SessionManager {
     const sessionId = uuidv4();
     const now = new Date();
     const resolvedFsUuid = fsUuid || callId;
+    const effectiveTimeoutMs = inactivityTimeoutMs || config.session.timeoutMs;
 
     const session: CallSession = {
       id: sessionId,
@@ -249,6 +252,7 @@ class SessionManager {
       fsWebSocket,
       replitClient: null,
       clientContext: null,
+      inactivityTimeoutMs: effectiveTimeoutMs,
       audioStats: {
         bytesIn: 0,
         bytesOut: 0,
@@ -352,8 +356,6 @@ class SessionManager {
     if (session) {
       session.audioStats.bytesOut += bytes;
       session.audioStats.packetsOut++;
-      session.audioStats.lastActivityTime = new Date();
-      this.resetInactivityTimeout(session);
     }
   }
 
@@ -417,18 +419,19 @@ class SessionManager {
       clearTimeout(session.timeoutHandle);
     }
 
+    const timeoutMs = session.inactivityTimeoutMs || config.session.timeoutMs;
     session.timeoutHandle = setTimeout(() => {
-      log.warn(`Session timeout (no activity)`, {
+      log.warn(`Session timeout (no caller audio for ${timeoutMs / 1000}s)`, {
         sessionId: session.id.slice(0, 8),
         callId: session.callId,
-        timeoutMs: config.session.timeoutMs,
+        timeoutMs,
       });
       if (this._onTimeoutCallback) {
         this._onTimeoutCallback(session.id, session.callId, session.fsUuid);
       } else {
         this.endSession(session.id, 'timeout');
       }
-    }, config.session.timeoutMs);
+    }, timeoutMs);
   }
 
   private resetInactivityTimeout(session: CallSession): void {

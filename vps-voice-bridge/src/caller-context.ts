@@ -240,6 +240,7 @@ export interface OverflowConfig {
   overflow_message: string | null;
   max_concurrent_calls: number;
   consultant_id: string | null;
+  inactivity_timeout_secs: number;
 }
 
 export async function fetchOverflowConfig(calledNumber: string): Promise<OverflowConfig> {
@@ -253,6 +254,7 @@ export async function fetchOverflowConfig(calledNumber: string): Promise<Overflo
     overflow_message: null,
     max_concurrent_calls: 5,
     consultant_id: null,
+    inactivity_timeout_secs: 60,
   };
 
   if (!config.replit.apiUrl || !config.replit.apiToken) {

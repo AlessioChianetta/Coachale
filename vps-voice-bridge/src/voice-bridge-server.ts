@@ -328,7 +328,7 @@ export function startVoiceBridgeServer(): void {
       }
       log.info(`✅ [OVERFLOW-PRE-CHECK] Limits OK — proceeding to connect to Replit`, { callId });
 
-      handleCallStart(ws, startMsg, uuidFromUrl || callId).then((sid) => {
+      handleCallStart(ws, startMsg, uuidFromUrl || callId, overflowCfg).then((sid) => {
         currentSessionId = sid;
       }).catch(async (e) => {
           log.error(`Session init error: ${e.message}`);
@@ -375,12 +375,16 @@ export function startVoiceBridgeServer(): void {
   });
 }
 
-async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, fsUuid?: string): Promise<string> {
+async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, fsUuid?: string, overflowCfg?: any): Promise<string> {
   const t0 = Date.now();
+
+  const inactivityTimeoutMs = overflowCfg?.inactivity_timeout_secs
+    ? overflowCfg.inactivity_timeout_secs * 1000
+    : undefined;
 
   const session = sessionManager.createSession(
     message.call_id, message.caller_id, message.called_number,
-    message.codec, message.sample_rate, ws, fsUuid
+    message.codec, message.sample_rate, ws, fsUuid, inactivityTimeoutMs
   );
   const tSession = Date.now();
 
@@ -505,12 +509,10 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, 
       onReconnecting: () => {
         log.info(`🔄 Gemini session expired - entering reconnect state, keeping FreeSWITCH call alive`, { sessionId: session.id.slice(0, 8) });
         sessionManager.updateSessionState(session.id, 'reconnecting');
-        sessionManager.pauseInactivityTimeout(session.id);
       },
       onReconnected: () => {
         log.info(`✅ Gemini session resumed - returning to active state`, { sessionId: session.id.slice(0, 8) });
         sessionManager.updateSessionState(session.id, 'active');
-        sessionManager.resumeInactivityTimeout(session.id);
       },
       onClose: (code?: number, reason?: string) => {
         log.info(`📞 [REPLIT-ONCLOSE] Replit connection closed`, { sessionId: session.id.slice(0, 8), code, reason, fsUuid: session.fsUuid, callId: session.callId, calledNumber: message.called_number });
@@ -578,11 +580,26 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, 
   }
 }
 
+function isVoiceActivity(pcmData: Buffer): boolean {
+  if (pcmData.length < 4) return false;
+  let sumSquares = 0;
+  const sampleCount = Math.floor(pcmData.length / 2);
+  for (let i = 0; i < sampleCount; i++) {
+    const sample = pcmData.readInt16LE(i * 2);
+    sumSquares += sample * sample;
+  }
+  const rms = Math.sqrt(sumSquares / sampleCount);
+  return rms > 200;
+}
+
 function handleAudioData(sessionId: string, audioData: Buffer): void {
   const session = sessionManager.getSession(sessionId);
   if (!session || (session.state !== 'active' && session.state !== 'reconnecting')) return;
 
   const pcm = convertForGemini(audioData, session.codec, session.sampleRate);
+  if (isVoiceActivity(pcm)) {
+    sessionManager.recordAudioIn(sessionId, audioData.length);
+  }
   session.replitClient?.sendAudio(pcm);
 }
 
@@ -761,15 +778,28 @@ function handleCallStop(callId: string, reason: string): void {
   }
 
   const duration = Date.now() - session.startTime.getTime();
+  const fsUuid = session.fsUuid;
   log.info(`📞 [CALL-STOP] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   log.info(`📞 [CALL-STOP] callId=${callId} | reason=${reason} | duration=${Math.round(duration/1000)}s`);
-  log.info(`📞 [CALL-STOP] session: id=${session.id.slice(0,8)} | caller=${session.callerId} | called=${session.calledNumber} | state=${session.state} | fsUuid=${session.fsUuid?.slice(0,12)}`);
+  log.info(`📞 [CALL-STOP] session: id=${session.id.slice(0,8)} | caller=${session.callerId} | called=${session.calledNumber} | state=${session.state} | fsUuid=${fsUuid?.slice(0,12)}`);
   log.info(`📞 [CALL-STOP] Before cleanup: activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
 
   cleanupSession(session.id);
 
   notifyCallEnd(session.id, duration, session.audioStats.bytesIn, session.audioStats.bytesOut, reason);
   sessionManager.endSession(session.id, reason);
+
+  if (fsUuid) {
+    const eslConn = getEslConnection();
+    if (eslConn) {
+      log.info(`📞 [CALL-STOP] Sending uuid_kill to FreeSWITCH: fsUuid=${fsUuid} reason=${reason}`);
+      (eslConn as any).bgapi(`uuid_kill ${fsUuid} NORMAL_CLEARING`, (res: any) => {
+        log.info(`📞 [CALL-STOP] uuid_kill result for ${fsUuid}: ${res?.getBody?.() || 'no response'}`);
+      });
+    } else {
+      log.warn(`📞 [CALL-STOP] No ESL connection — cannot kill FreeSWITCH call ${fsUuid}`);
+    }
+  }
 
   log.info(`📞 [CALL-STOP] After cleanup: activeSessions=${sessionManager.activeCount} | overflowQueue=${sessionManager.overflowCount}`);
   if (sessionManager.overflowCount > 0) {

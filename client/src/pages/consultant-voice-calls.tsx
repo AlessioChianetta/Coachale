@@ -5488,6 +5488,7 @@ export default function ConsultantVoiceCallsPage() {
                         const ovFallback = n.fallback_number || '';
                         const ovMessage = n.overflow_message || '';
                         const ovMaxConcurrent = n.max_concurrent_calls ?? 5;
+                        const ovInactivityTimeout = n.inactivity_timeout_secs ?? 60;
 
                         const vpsData = healthData?.vps;
                         const normalizedNum = n.phone_number.replace(/\D/g, '');
@@ -5564,11 +5565,42 @@ export default function ConsultantVoiceCallsPage() {
                                   if (val !== ovMaxConcurrent) {
                                     saveOverflowMutation.mutate({
                                       numberId: n.id,
-                                      data: { overflow_enabled: ovEnabled, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: val },
+                                      data: { overflow_enabled: ovEnabled, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: val, inactivity_timeout_secs: ovInactivityTimeout },
                                     });
                                   }
                                 }}
                               />
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 border rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <Timer className="h-4 w-4 text-orange-500" />
+                                <div>
+                                  <p className="text-sm font-medium">Timeout inattività chiamata</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Secondi di silenzio del chiamante prima di chiudere la chiamata
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  min={30}
+                                  max={300}
+                                  defaultValue={ovInactivityTimeout}
+                                  className="w-20 text-center"
+                                  onBlur={(e) => {
+                                    const val = Math.max(30, Math.min(300, parseInt(e.target.value) || 60));
+                                    if (val !== ovInactivityTimeout) {
+                                      saveOverflowMutation.mutate({
+                                        numberId: n.id,
+                                        data: { overflow_enabled: ovEnabled, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent, inactivity_timeout_secs: val },
+                                      });
+                                    }
+                                  }}
+                                />
+                                <span className="text-xs text-muted-foreground">sec</span>
+                              </div>
                             </div>
 
                             <div className="flex items-center justify-between">

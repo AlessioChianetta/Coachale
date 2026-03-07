@@ -89,7 +89,7 @@ export function loadConfig(): BridgeConfig {
       backgroundEnabled: getEnv('BACKGROUND_AUDIO_ENABLED', 'false') === 'true',
     },
     session: {
-      timeoutMs: parseInt(getEnv('SESSION_TIMEOUT_MS', '30000'), 10),
+      timeoutMs: parseInt(getEnv('SESSION_TIMEOUT_MS', '60000'), 10),
       maxConcurrent: parseInt(getEnv('MAX_CONCURRENT_CALLS', '10'), 10),
     },
     security: {
