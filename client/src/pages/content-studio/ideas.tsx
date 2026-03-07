@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1115,6 +1115,8 @@ export default function ContentStudioIdeas() {
     }
   };
 
+  const autoLoadedRef = useRef(false);
+
   const handleLoadTemplate = (template: any) => {
     setTopic(template.topic || "");
     setTargetAudience(template.targetAudience || "");
@@ -1126,6 +1128,21 @@ export default function ContentStudioIdeas() {
     setCopyType(template.copyType || "short");
     toast({ title: "Template caricato", description: `"${template.name}" applicato` });
   };
+
+  useEffect(() => {
+    if (templates.length > 0 && !autoLoadedRef.current) {
+      autoLoadedRef.current = true;
+      const first = templates[0];
+      setTopic(first.topic || "");
+      setTargetAudience(first.targetAudience || "");
+      setObjective(first.objective || "");
+      setAdditionalContext(first.additionalContext || "");
+      setAwarenessLevel(first.awarenessLevel || "problem_aware");
+      setSophisticationLevel(first.sophisticationLevel || "level_3");
+      setMediaType(first.mediaType || "photo");
+      setCopyType(first.copyType || "short");
+    }
+  }, [templates]);
 
   const handleDevelopPost = (idea: Idea) => {
     if (idea.id) {
@@ -1842,6 +1859,36 @@ export default function ContentStudioIdeas() {
                   Genera idee creative per i tuoi contenuti con l'AI
                 </p>
               </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowSaveTemplateDialog(true)}
+                  disabled={!useBrandVoice && !useKnowledgeBase}
+                >
+                  <Save className="h-4 w-4 mr-1" />
+                  Salva
+                </Button>
+                
+                {templates.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <FolderOpen className="h-4 w-4 mr-1" />
+                        Carica
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {templates.map((template: any) => (
+                        <DropdownMenuItem key={template.id} onClick={() => handleLoadTemplate(template)}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          {template.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
 
             {/* Wizard Form - Clean 3-Step Structure */}
@@ -2553,36 +2600,6 @@ export default function ContentStudioIdeas() {
                       {showAutopilotSection ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
                     </Button>
                     
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowSaveTemplateDialog(true)}
-                        disabled={!useBrandVoice && !useKnowledgeBase}
-                      >
-                        <Save className="h-4 w-4 mr-1" />
-                        Salva
-                      </Button>
-                      
-                      {templates.length > 0 && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <FolderOpen className="h-4 w-4 mr-1" />
-                              Carica
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56">
-                            {templates.map((template: any) => (
-                              <DropdownMenuItem key={template.id} onClick={() => handleLoadTemplate(template)}>
-                                <FileText className="h-4 w-4 mr-2" />
-                                {template.name}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
                   </div>
                 </CardContent>
               </Card>
