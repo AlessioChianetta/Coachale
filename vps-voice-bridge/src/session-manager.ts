@@ -352,6 +352,8 @@ class SessionManager {
     if (session) {
       session.audioStats.bytesOut += bytes;
       session.audioStats.packetsOut++;
+      session.audioStats.lastActivityTime = new Date();
+      this.resetInactivityTimeout(session);
     }
   }
 
