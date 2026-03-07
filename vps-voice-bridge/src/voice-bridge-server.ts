@@ -203,9 +203,43 @@ export function startVoiceBridgeServer(): void {
     }
   });
 
-  app.get('/health', (req, res) => {
+  app.get('/health', async (req, res) => {
     const overflow = sessionManager.getOverflowDetails();
     const stats = sessionManager.getStats();
+
+    let freeswitchCalls: any[] = [];
+    try {
+      const eslConn = getEslConnection();
+      if (eslConn) {
+        const fsData = await new Promise<string>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('ESL timeout')), 3000);
+          eslConn.api('show calls as json', (res: any) => {
+            clearTimeout(timeout);
+            resolve(res.getBody ? res.getBody() : String(res));
+          });
+        });
+        try {
+          const parsed = JSON.parse(fsData);
+          const rows = parsed.rows || [];
+          const nowEpoch = Math.floor(Date.now() / 1000);
+          freeswitchCalls = rows.map((r: any) => ({
+            uuid: r.uuid || r.call_uuid || '',
+            direction: r.direction || '',
+            callerNumber: r.cid_num || r.cid_name || '',
+            calledNumber: r.dest || r.callee_num || '',
+            state: r.state || '',
+            callstate: r.callstate || '',
+            createdEpoch: parseInt(r.created_epoch) || 0,
+            durationSecs: nowEpoch - (parseInt(r.created_epoch) || nowEpoch),
+          }));
+        } catch {
+          log.warn('Failed to parse FreeSWITCH show calls JSON');
+        }
+      }
+    } catch (err: any) {
+      log.warn(`FreeSWITCH show calls failed: ${err.message}`);
+    }
+
     res.json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
@@ -216,6 +250,38 @@ export function startVoiceBridgeServer(): void {
       activeByNumber: sessionManager.getActiveCountByNumber(),
       overflowCount: overflow.count,
       overflowEntries: overflow.entries,
+      freeswitchCalls,
+      freeswitchCallCount: freeswitchCalls.length,
+    });
+  });
+
+  app.post('/freeswitch-kill', express.json(), (req, res) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!validateServiceToken(token)) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { uuid } = req.body;
+    if (!uuid || typeof uuid !== 'string') {
+      return res.status(400).json({ success: false, error: 'Missing uuid' });
+    }
+
+    const eslConn = getEslConnection();
+    if (!eslConn) {
+      return res.status(503).json({ success: false, error: 'ESL not connected' });
+    }
+
+    log.info(`[FREESWITCH-KILL] Killing call uuid=${uuid}`);
+    eslConn.bgapi(`uuid_kill ${uuid} NORMAL_CLEARING`, (result: any) => {
+      const body = result.getBody ? result.getBody() : String(result);
+      log.info(`[FREESWITCH-KILL] Result: ${body}`);
+      if (body && body.startsWith('+OK')) {
+        res.json({ success: true, result: body.trim() });
+      } else {
+        res.status(404).json({ success: false, error: body?.trim() || 'uuid_kill failed' });
+      }
     });
   });
 

@@ -112,6 +112,7 @@ import {
   ExternalLink,
   MessagesSquare,
   Shield,
+  XCircle,
   Voicemail,
   Volume2,
   Headphones,
@@ -4018,6 +4019,112 @@ export default function ConsultantVoiceCallsPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* GHOST CALL DETECTION */}
+                  {(() => {
+                    const vps = healthData?.vps;
+                    const fsCalls = vps?.freeswitchCalls || [];
+                    const bridgeSessions = vps?.activeSessions || 0;
+                    const fsCount = fsCalls.length;
+                    const hasGhosts = fsCount > 0 && fsCount > bridgeSessions;
+
+                    if (!vps || fsCount === 0) return null;
+
+                    const formatFsDuration = (secs: number) => {
+                      const m = Math.floor(secs / 60);
+                      const s = secs % 60;
+                      return m > 0 ? `${m}m ${s}s` : `${s}s`;
+                    };
+
+                    const handleKillCall = async (uuid: string) => {
+                      if (!confirm('Terminare questa chiamata su FreeSWITCH?')) return;
+                      try {
+                        const res = await fetch('/api/voice/freeswitch-kill', {
+                          method: 'POST',
+                          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ uuid }),
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          toast({ title: "Chiamata terminata", description: `UUID: ${uuid.slice(0, 12)}...` });
+                          refetchHealth();
+                        } else {
+                          toast({ title: "Errore", description: data.error, variant: "destructive" });
+                        }
+                      } catch {
+                        toast({ title: "Errore", description: "Impossibile contattare la VPS", variant: "destructive" });
+                      }
+                    };
+
+                    const handleKillAll = async () => {
+                      if (!confirm(`Terminare tutte le ${fsCount} chiamate attive su FreeSWITCH?`)) return;
+                      for (const call of fsCalls) {
+                        try {
+                          await fetch('/api/voice/freeswitch-kill', {
+                            method: 'POST',
+                            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ uuid: call.uuid }),
+                          });
+                        } catch {}
+                      }
+                      toast({ title: "Completato", description: `${fsCount} chiamate terminate` });
+                      refetchHealth();
+                    };
+
+                    return (
+                      <div className={`p-3 rounded-lg border ${hasGhosts ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30' : 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {hasGhosts ? (
+                              <AlertTriangle className="h-4 w-4 text-red-500" />
+                            ) : (
+                              <Shield className="h-4 w-4 text-green-500" />
+                            )}
+                            <span className="text-sm font-medium">
+                              {hasGhosts ? 'Chiamate fantasma rilevate' : 'Centralino sincronizzato'}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              FreeSWITCH: {fsCount} | Bridge: {bridgeSessions}
+                            </span>
+                          </div>
+                          {hasGhosts && fsCalls.length > 1 && (
+                            <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={handleKillAll}>
+                              Termina tutte ({fsCount})
+                            </Button>
+                          )}
+                        </div>
+                        {fsCalls.length > 0 && (
+                          <div className="space-y-1">
+                            {fsCalls.map((call: any) => (
+                              <div key={call.uuid} className="flex items-center justify-between text-xs py-1.5 px-2 rounded bg-white/60 dark:bg-black/20">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${call.direction === 'inbound' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'}`}>
+                                    {call.direction === 'inbound' ? 'IN' : 'OUT'}
+                                  </span>
+                                  <span className="font-mono">{call.callerNumber || '?'}</span>
+                                  <span className="text-muted-foreground">-{'>'}</span>
+                                  <span className="font-mono">{call.calledNumber || '?'}</span>
+                                  <span className="text-muted-foreground">{formatFsDuration(call.durationSecs)}</span>
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] ${call.callstate === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
+                                    {call.callstate}
+                                  </span>
+                                </div>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
+                                  onClick={() => handleKillCall(call.uuid)}
+                                >
+                                  <XCircle className="h-3.5 w-3.5 mr-1" />
+                                  Kill
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* CODA CHIAMATE LIVE */}
                   <CallQueuePanel

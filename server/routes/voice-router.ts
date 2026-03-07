@@ -3884,6 +3884,8 @@ router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_ad
         activeByNumber: vpsHealth.activeByNumber || {},
         overflowCount: vpsHealth.overflowCount || 0,
         overflowEntries: vpsHealth.overflowEntries || [],
+        freeswitchCalls: vpsHealth.freeswitchCalls || [],
+        freeswitchCallCount: vpsHealth.freeswitchCallCount || 0,
       } : null,
     });
   } catch (error) {
@@ -3892,6 +3894,49 @@ router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_ad
       overall: "unhealthy",
       error: "Database connection failed"
     });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// FREESWITCH CALL KILL - Terminate ghost calls on FreeSWITCH via VPS
+// ═══════════════════════════════════════════════════════════════════
+
+router.post("/freeswitch-kill", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { uuid } = req.body;
+    if (!uuid || typeof uuid !== 'string') {
+      return res.status(400).json({ success: false, error: 'Missing uuid' });
+    }
+
+    const globalVoiceResult = await db.execute(sql`
+      SELECT vps_bridge_url, service_token FROM superadmin_voice_config WHERE id = 'default' AND enabled = true LIMIT 1
+    `);
+    const globalVoice = globalVoiceResult.rows[0] as any;
+    const vpsUrl = globalVoice?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
+    const vpsToken = globalVoice?.service_token;
+
+    if (!vpsUrl) {
+      return res.status(503).json({ success: false, error: 'VPS not configured' });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const killRes = await fetch(`${vpsUrl}/freeswitch-kill`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(vpsToken ? { 'Authorization': `Bearer ${vpsToken}` } : {}),
+      },
+      body: JSON.stringify({ uuid }),
+    });
+    clearTimeout(timeout);
+
+    const data = await killRes.json();
+    res.status(killRes.status).json(data);
+  } catch (error: any) {
+    console.error("[Voice] FreeSWITCH kill error:", error.message);
+    res.status(500).json({ success: false, error: 'Failed to reach VPS' });
   }
 });
 
