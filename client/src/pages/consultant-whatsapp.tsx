@@ -3157,283 +3157,316 @@ export default function ConsultantWhatsAppPage() {
               </TabsList>
 
               {/* ── PANORAMICA ── */}
-              <TabsContent value="overview" className="space-y-6 mt-4">
-            <Alert className="bg-violet-50 border-violet-200 dark:bg-violet-950/20 dark:border-violet-800">
-              <Key className="h-5 w-5 text-violet-600" />
-              <AlertDescription>
-                <strong>Come funzionano le licenze</strong><br />
-                Ogni contatto che inserisci nel CRM riceve automaticamente una licenza <strong>Bronze gratuita</strong>: l'AI lo riconosce su WhatsApp come tuo cliente e tiene traccia della sua cronologia. Se vuoi che acceda anche ai corsi, agli esercizi e all'assistente AI personale, passa a <strong>Silver (da €49/mese)</strong>. Per dargli accesso completo alla propria area personale <strong>/client</strong> con dashboard, analytics, roadmap e strumenti avanzati, serve la <strong>Gold (da €99/mese)</strong>. I dipendenti interni sono <strong>gratuiti fino a 5</strong>, poi €20/licenza al mese. Tutti i pagamenti avvengono tramite Stripe Connect — le sottoscrizioni vengono accreditate direttamente a te.
-              </AlertDescription>
-            </Alert>
+                <TabsContent value="overview" className="space-y-6 mt-4">
 
-            {/* Tier explanation card */}
-            <Card className="border-2 border-violet-100 dark:border-violet-900">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Crown className="h-4 w-4 text-violet-600" />
-                  Cosa include ogni licenza
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Bronze */}
-                  <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <LevelBadge level="2" size="md" />
-                      <div>
-                        <p className="font-semibold text-amber-700 dark:text-amber-400">Bronze</p>
-                        <p className="text-xs text-amber-600 dark:text-amber-500 font-medium">Gratuita — illimitata</p>
-                      </div>
+              {/* Pagina Prezzi Pubblica - Hero Card */}
+              <Card className="border-2 border-emerald-300 dark:border-emerald-700 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-cyan-950/20 overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-emerald-200/30 to-transparent rounded-bl-full" />
+                <CardHeader className="pb-2 relative z-10">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/50">
+                      <ExternalLink className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <ul className="space-y-1.5 text-xs text-foreground">
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Contatto registrato nel CRM</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Riconosciuto su WhatsApp — l'AI sa chi è</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Cronologia conversazioni sempre disponibile</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Puoi aggiungere note e info nel CRM</li>
-                      <li className="flex items-start gap-1.5"><span className="text-muted-foreground mt-0.5">✗</span><span className="text-muted-foreground">Nessun accesso alla piattaforma /client</span></li>
-                    </ul>
-                    <p className="text-xs text-muted-foreground italic">Ideale per tutti i contatti CRM: lead, prospect, clienti passati.</p>
+                    <div>
+                      <CardTitle className="text-lg">Pagina Prezzi Pubblica</CardTitle>
+                      <CardDescription className="text-emerald-700/70 dark:text-emerald-400/70">
+                        Condividi il link con i tuoi clienti per farli sottoscrivere
+                      </CardDescription>
+                    </div>
                   </div>
-
-                  {/* Silver */}
-                  <div className="rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-900/20 p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <LevelBadge level="3" size="md" />
-                      <div>
-                        <p className="font-semibold text-slate-700 dark:text-slate-300">Silver</p>
-                        <p className="text-xs text-slate-500 font-medium">Da €49/mese · Stripe Connect</p>
+                </CardHeader>
+                <CardContent className="space-y-4 relative z-10">
+                  {consultantData?.pricingPageSlug ? (
+                    <>
+                      <div className="flex items-center gap-2 p-3 bg-white/70 dark:bg-card/50 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                        <Input 
+                          readOnly 
+                          value={`${window.location.origin}/c/${consultantData.pricingPageSlug}/pricing`}
+                          className="flex-1 bg-transparent border-0 focus-visible:ring-0 text-sm font-mono"
+                        />
+                        <Button 
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/c/${consultantData.pricingPageSlug}/pricing`);
+                            toast({
+                              title: "Link copiato!",
+                              description: "Il link alla pagina prezzi è stato copiato negli appunti.",
+                            });
+                          }}
+                        >
+                          <Copy className="h-4 w-4 mr-1.5" />
+                          Copia
+                        </Button>
                       </div>
-                    </div>
-                    <ul className="space-y-1.5 text-xs text-foreground">
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Tutto il Bronze incluso</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Accesso a corsi e libreria formativa</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Esercizi assegnati dal consulente</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Roadmap personale e obiettivi</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Assistente AI personale dedicato</li>
-                      <li className="flex items-start gap-1.5"><span className="text-muted-foreground mt-0.5">✗</span><span className="text-muted-foreground">Analytics avanzate e strumenti Pro</span></li>
-                    </ul>
-                    <p className="text-xs text-muted-foreground italic">Per clienti che seguono un percorso formativo attivo con te.</p>
-                  </div>
-
-                  {/* Gold */}
-                  <div className="rounded-lg border-2 border-yellow-300 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-950/20 p-4 space-y-3 relative">
-                    <div className="absolute -top-2.5 right-3">
-                      <Badge className="bg-yellow-500 text-white text-xs px-2 py-0.5">Accesso /client completo</Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Crown className="h-5 w-5 text-yellow-600" />
-                      <div>
-                        <p className="font-semibold text-yellow-700 dark:text-yellow-400">Gold</p>
-                        <p className="text-xs text-yellow-600 dark:text-yellow-500 font-medium">Da €99/mese · Stripe Connect</p>
+                      <div className="flex gap-3">
+                        <Button 
+                          variant="outline" 
+                          className="flex-1 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+                          onClick={() => window.open(`/c/${consultantData.pricingPageSlug}/pricing`, "_blank")}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Anteprima Pagina
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          className="flex-1 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+                          onClick={() => navigate("/consultant/settings")}
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          Configura Prezzi
+                        </Button>
                       </div>
-                    </div>
-                    <ul className="space-y-1.5 text-xs text-foreground">
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Tutto il Silver incluso</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Area personale /client con dashboard</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Calendario, consulenze e task giornalieri</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Analytics e analisi dati personali</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Strumenti Pro: venditori AI, agenti umani</li>
-                      <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Email e password per accedere alla piattaforma</li>
-                    </ul>
-                    <p className="text-xs text-muted-foreground italic">Obbligatoria per chi deve accedere con email e password all'area /client.</p>
-                  </div>
-                </div>
-
-                {/* Employees note */}
-                <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    <strong>Dipendenti interni:</strong> i primi 5 sono gratuiti. Dal sesto in poi ogni dipendente costa <strong>€20/mese</strong> (licenza aggiuntiva). I dipendenti non hanno accesso all'area /client — usano il pannello gestione interno.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Partner Webhook Notifications Card */}
-            <PartnerWebhookCard />
-
-            {/* Pricing Page Link Section */}
-            <Card className="border-2 border-violet-200 dark:border-violet-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Link className="h-5 w-5 text-violet-600" />
-                  Pagina Prezzi Pubblica
-                </CardTitle>
-                <CardDescription>
-                  Condividi la tua pagina prezzi con i potenziali clienti
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {consultantData?.pricingPageSlug ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 p-3 bg-violet-50 dark:bg-violet-950/20 rounded-lg">
-                      <Input 
-                        readOnly 
-                        value={`${window.location.origin}/c/${consultantData.pricingPageSlug}/pricing`}
-                        className="flex-1 bg-card"
-                      />
+                    </>
+                  ) : (
+                    <div className="text-center py-6">
+                      <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-900/40 w-fit mx-auto mb-3">
+                        <ExternalLink className="h-8 w-8 text-emerald-500/60" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground mb-1">
+                        Pagina prezzi non configurata
+                      </p>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Configura la tua pagina prezzi pubblica per permettere ai clienti di acquistare sottoscrizioni.
+                      </p>
                       <Button 
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/c/${consultantData.pricingPageSlug}/pricing`);
-                          toast({
-                            title: "✅ Link copiato!",
-                            description: "Il link alla pagina prezzi è stato copiato negli appunti.",
-                          });
-                        }}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copia
-                      </Button>
-                    </div>
-                    <div className="flex gap-3">
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => window.open(`/c/${consultantData.pricingPageSlug}/pricing`, "_blank")}
-                      >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Visualizza Pagina
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
                         onClick={() => navigate("/consultant/settings")}
                       >
                         <Settings className="h-4 w-4 mr-2" />
-                        Configura Prezzi
+                        Configura Pagina Prezzi
                       </Button>
                     </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Alert className="bg-violet-50 border-violet-200 dark:bg-violet-950/20 dark:border-violet-800">
+                <Key className="h-5 w-5 text-violet-600" />
+                <AlertDescription>
+                  <strong>Come funzionano le licenze</strong><br />
+                  Ogni contatto che inserisci nel CRM riceve automaticamente una licenza <strong>Bronze gratuita</strong>: l'AI lo riconosce su WhatsApp come tuo cliente e tiene traccia della sua cronologia. Se vuoi che acceda anche ai corsi, agli esercizi e all'assistente AI personale, passa a <strong>Silver (da €49/mese)</strong>. Per dargli accesso completo alla propria area personale <strong>/client</strong> con dashboard, analytics, roadmap e strumenti avanzati, serve la <strong>Gold (da €99/mese)</strong>. I dipendenti interni sono <strong>gratuiti fino a 5</strong>, poi €20/licenza al mese. Tutti i pagamenti avvengono tramite Stripe Connect — le sottoscrizioni vengono accreditate direttamente a te.
+                </AlertDescription>
+              </Alert>
+
+              {/* Tier explanation card */}
+              <Card className="border-2 border-violet-100 dark:border-violet-900">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Crown className="h-4 w-4 text-violet-600" />
+                    Cosa include ogni licenza
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Bronze */}
+                    <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <LevelBadge level="2" size="md" />
+                        <div>
+                          <p className="font-semibold text-amber-700 dark:text-amber-400">Bronze</p>
+                          <p className="text-xs text-amber-600 dark:text-amber-500 font-medium">Gratuita — illimitata</p>
+                        </div>
+                      </div>
+                      <ul className="space-y-1.5 text-xs text-foreground">
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Contatto registrato nel CRM</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Riconosciuto su WhatsApp — l'AI sa chi è</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Cronologia conversazioni sempre disponibile</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Puoi aggiungere note e info nel CRM</li>
+                        <li className="flex items-start gap-1.5"><span className="text-muted-foreground mt-0.5">✗</span><span className="text-muted-foreground">Nessun accesso alla piattaforma /client</span></li>
+                      </ul>
+                      <p className="text-xs text-muted-foreground italic">Ideale per tutti i contatti CRM: lead, prospect, clienti passati.</p>
+                    </div>
+
+                    {/* Silver */}
+                    <div className="rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-900/20 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <LevelBadge level="3" size="md" />
+                        <div>
+                          <p className="font-semibold text-slate-700 dark:text-slate-300">Silver</p>
+                          <p className="text-xs text-slate-500 font-medium">Da €49/mese · Stripe Connect</p>
+                        </div>
+                      </div>
+                      <ul className="space-y-1.5 text-xs text-foreground">
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Tutto il Bronze incluso</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Accesso a corsi e libreria formativa</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Esercizi assegnati dal consulente</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Roadmap personale e obiettivi</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Assistente AI personale dedicato</li>
+                        <li className="flex items-start gap-1.5"><span className="text-muted-foreground mt-0.5">✗</span><span className="text-muted-foreground">Analytics avanzate e strumenti Pro</span></li>
+                      </ul>
+                      <p className="text-xs text-muted-foreground italic">Per clienti che seguono un percorso formativo attivo con te.</p>
+                    </div>
+
+                    {/* Gold */}
+                    <div className="rounded-lg border-2 border-yellow-300 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-950/20 p-4 space-y-3 relative">
+                      <div className="absolute -top-2.5 right-3">
+                        <Badge className="bg-yellow-500 text-white text-xs px-2 py-0.5">Accesso /client completo</Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Crown className="h-5 w-5 text-yellow-600" />
+                        <div>
+                          <p className="font-semibold text-yellow-700 dark:text-yellow-400">Gold</p>
+                          <p className="text-xs text-yellow-600 dark:text-yellow-500 font-medium">Da €99/mese · Stripe Connect</p>
+                        </div>
+                      </div>
+                      <ul className="space-y-1.5 text-xs text-foreground">
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Tutto il Silver incluso</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Area personale /client con dashboard</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Calendario, consulenze e task giornalieri</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Analytics e analisi dati personali</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Strumenti Pro: venditori AI, agenti umani</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5">✓</span> Email e password per accedere alla piattaforma</li>
+                      </ul>
+                      <p className="text-xs text-muted-foreground italic">Obbligatoria per chi deve accedere con email e password all'area /client.</p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Link className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
-                      Pagina prezzi non configurata
+
+                  {/* Employees note */}
+                  <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      <strong>Dipendenti interni:</strong> i primi 5 sono gratuiti. Dal sesto in poi ogni dipendente costa <strong>€20/mese</strong> (licenza aggiuntiva). I dipendenti non hanno accesso all'area /client — usano il pannello gestione interno.
                     </p>
-                    <p className="text-xs text-muted-foreground mb-4">
-                      Configura la tua pagina prezzi pubblica per permettere ai clienti di acquistare sottoscrizioni.
-                    </p>
-                    <Button 
-                      variant="outline"
-                      onClick={() => navigate("/consultant/settings")}
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Configura Pagina Prezzi
-                    </Button>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Default Onboarding Preferences Card */}
-            <Card className="border-2 border-violet-200 dark:border-violet-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-violet-600" />
-                  Preferenze Onboarding Predefinite
-                </CardTitle>
-                <CardDescription>
-                  Imposta le preferenze predefinite che verranno applicate ai nuovi clienti durante l'onboarding
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="writingStyle">Stile di Scrittura</Label>
-                    <Select
-                      value={onboardingWritingStyle}
-                      onValueChange={setOnboardingWritingStyle}
-                    >
-                      <SelectTrigger id="writingStyle">
-                        <SelectValue placeholder="Seleziona stile" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Professionale">Professionale</SelectItem>
-                        <SelectItem value="Amichevole">Amichevole</SelectItem>
-                        <SelectItem value="Formale">Formale</SelectItem>
-                        <SelectItem value="Informale">Informale</SelectItem>
-                      </SelectContent>
-                    </Select>
+              {/* Preferenze Onboarding - Collapsible */}
+              <Collapsible>
+                <Card className="border border-violet-200 dark:border-violet-800">
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                          <Settings className="h-4 w-4 text-violet-600" />
+                          Preferenze Onboarding Predefinite
+                        </CardTitle>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200" />
+                      </div>
+                      <CardDescription className="text-xs mt-0.5">
+                        Imposta le preferenze predefinite applicate ai nuovi clienti durante l'onboarding
+                      </CardDescription>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="space-y-6 pt-0">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="writingStyle">Stile di Scrittura</Label>
+                          <Select
+                            value={onboardingWritingStyle}
+                            onValueChange={setOnboardingWritingStyle}
+                          >
+                            <SelectTrigger id="writingStyle">
+                              <SelectValue placeholder="Seleziona stile" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Professionale">Professionale</SelectItem>
+                              <SelectItem value="Amichevole">Amichevole</SelectItem>
+                              <SelectItem value="Formale">Formale</SelectItem>
+                              <SelectItem value="Informale">Informale</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="responseLength">Lunghezza Risposte</Label>
+                          <Select
+                            value={onboardingResponseLength}
+                            onValueChange={setOnboardingResponseLength}
+                          >
+                            <SelectTrigger id="responseLength">
+                              <SelectValue placeholder="Seleziona lunghezza" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Breve">Breve</SelectItem>
+                              <SelectItem value="Media">Media</SelectItem>
+                              <SelectItem value="Dettagliata">Dettagliata</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="customInstructions">Istruzioni Personalizzate</Label>
+                        <Textarea
+                          id="customInstructions"
+                          placeholder="Inserisci istruzioni personalizzate per l'AI durante l'onboarding dei nuovi clienti..."
+                          value={onboardingCustomInstructions}
+                          onChange={(e) => setOnboardingCustomInstructions(e.target.value)}
+                          rows={4}
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          onClick={() => saveOnboardingPrefsMutation.mutate({
+                            writingStyle: onboardingWritingStyle,
+                            responseLength: onboardingResponseLength,
+                            customInstructions: onboardingCustomInstructions,
+                          })}
+                          disabled={saveOnboardingPrefsMutation.isPending}
+                        >
+                          {saveOnboardingPrefsMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Salvataggio...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="mr-2 h-4 w-4" />
+                              Salva Preferenze
+                            </>
+                          )}
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsBulkApplyDialogOpen(true)}
+                        >
+                          <Users className="mr-2 h-4 w-4" />
+                          Applica a Tutti i Clienti
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setOnboardingWritingStyle("");
+                            setOnboardingResponseLength("");
+                            setOnboardingCustomInstructions("");
+                            toast({
+                              title: "Preferenze resettate",
+                              description: "I campi sono stati svuotati. Clicca 'Salva Preferenze' per confermare.",
+                            });
+                          }}
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Resetta
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+
+              {/* Notifiche Partner - Collapsible */}
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-orange-200 dark:border-orange-800 bg-card cursor-pointer hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Webhook className="h-4 w-4 text-orange-600" />
+                      <span className="text-sm font-medium">Notifiche Partner (Webhook)</span>
+                      <span className="text-xs text-muted-foreground ml-1 hidden sm:inline">— Configura le notifiche webhook</span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200" />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="responseLength">Lunghezza Risposte</Label>
-                    <Select
-                      value={onboardingResponseLength}
-                      onValueChange={setOnboardingResponseLength}
-                    >
-                      <SelectTrigger id="responseLength">
-                        <SelectValue placeholder="Seleziona lunghezza" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Breve">Breve</SelectItem>
-                        <SelectItem value="Media">Media</SelectItem>
-                        <SelectItem value="Dettagliata">Dettagliata</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2">
+                  <PartnerWebhookCard />
+                </CollapsibleContent>
+              </Collapsible>
 
-                <div className="space-y-2">
-                  <Label htmlFor="customInstructions">Istruzioni Personalizzate</Label>
-                  <Textarea
-                    id="customInstructions"
-                    placeholder="Inserisci istruzioni personalizzate per l'AI durante l'onboarding dei nuovi clienti..."
-                    value={onboardingCustomInstructions}
-                    onChange={(e) => setOnboardingCustomInstructions(e.target.value)}
-                    rows={4}
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={() => saveOnboardingPrefsMutation.mutate({
-                      writingStyle: onboardingWritingStyle,
-                      responseLength: onboardingResponseLength,
-                      customInstructions: onboardingCustomInstructions,
-                    })}
-                    disabled={saveOnboardingPrefsMutation.isPending}
-                  >
-                    {saveOnboardingPrefsMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Salvataggio...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Salva Preferenze
-                      </>
-                    )}
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsBulkApplyDialogOpen(true)}
-                  >
-                    <Users className="mr-2 h-4 w-4" />
-                    Applica a Tutti i Clienti
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setOnboardingWritingStyle("");
-                      setOnboardingResponseLength("");
-                      setOnboardingCustomInstructions("");
-                      toast({
-                        title: "Preferenze resettate",
-                        description: "I campi sono stati svuotati. Clicca 'Salva Preferenze' per confermare.",
-                      });
-                    }}
-                  >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Resetta
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-              </TabsContent>
+                </TabsContent>
 
               {/* ── DASHBOARD ── */}
               <TabsContent value="dashboard" className="space-y-6 mt-4">
