@@ -1,0 +1,59 @@
+nta.c:1328 agent_timer() nta: timer set next to 3 ms
+nta.c:7096 _nta_incoming_timer() nta: timer G fired, retransmitting 500 reply
+tport.c:3290 tport_tsend() tport_tsend(0x74b538033710) tpn = UDP/147.124.221.81:59847
+tport.c:4076 tport_resolve() tport_resolve addrinfo = 147.124.221.81:59847
+tport.c:4713 tport_by_addrinfo() tport_by_addrinfo(0x74b538033710): not found by name UDP/147.124.221.81:59847
+tport.c:3625 tport_vsend() tport_vsend(0x74b538033710): 596 bytes of 596 to udp/147.124.221.81:59847
+tport.c:3526 tport_send_msg() tport_vsend returned 596
+nta.c:7096 _nta_incoming_timer() nta: timer G fired, retransmitting 407 reply
+tport.c:3290 tport_tsend() tport_tsend(0x74b538033710) tpn = UDP/147.124.221.81:59847
+tport.c:4076 tport_resolve() tport_resolve addrinfo = 147.124.221.81:59847
+tport.c:4713 tport_by_addrinfo() tport_by_addrinfo(0x74b538033710): not found by name UDP/147.124.221.81:59847
+tport.c:3625 tport_vsend() tport_vsend(0x74b538033710): 871 bytes of 871 to udp/147.124.221.81:59847
+tport.c:3526 tport_send_msg() tport_vsend returned 871
+nta.c:7281 _nta_incoming_timer() nta_incoming_timer: 2/634 resent, 0/634 tout, 0/1 term, 0/635 free
+nta.c:1328 agent_timer() nta: timer set next to 4 ms
+nta.c:7096 _nta_incoming_timer() nta: timer G fired, retransmitting 500 reply
+tport.c:3290 tport_tsend() tport_tsend(0x74b538033710) tpn = UDP/147.124.221.81:59847
+tport.c:4076 tport_resolve() tport_resolve addrinfo = 147.124.221.81:59847
+tport.c:4713 tport_by_addrinfo() tport_by_addrinfo(0x74b538033710): not found by name UDP/147.124.221.81:59847
+tport.c:3625 tport_vsend() tport_vsend(0x74b538033710): 596 bytes of 596 to udp/147.124.221.81:59847
+tport.c:3526 tport_send_msg() tport_vsend returned 596
+nta.c:7096 _nta_incoming_timer() nta: timer G fired, retransmitting 500 reply
+tport.c:3290 tport_tsend() tport_tsend(0x74b538033710) tpn = UDP/147.124.221.81:59847
+tport.c:4076 tport_resolve() tport_resolve addrinfo = 147.124.221.81:59847
+tport.c:4713 tport_by_addrinfo() tport_by_addrinfo(0x74b538033710): not found by name UDP/147.124.221.81:59847
+tport.c:3625 tport_vsend() tport_vsend(0x74b538033710): 597 bytes of 597 to udp/147.124.221.81:59847
+tport.c:3526 tport_send_msg() tport_vsend returned 597
+nta.c:7281 _nta_incoming_timer() nta_incoming_timer: 2/634 resent, 0/634 tout, 0/1 term, 0/635 free
+nta.c:1328 agent_timer() nta: timer set next to 8 ms
+freeswitch@srv1164256> /exit
+
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# docker exec -it freeswitch fs_cli -x "console loglevel err"
++OK console log level set to ERR
+
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# docker exec -it freeswitch fs_cli -x "show calls"
+
+0 total.
+
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# docker exec -it freeswitch fs_cli -x "sofia status"
+docker exec -it freeswitch fs_cli -x "sofia status profile external reg"
+                     Name          Type                                       Data      State
+=================================================================================================
+            external-ipv6       profile   sip:mod_sofia@[2a02:4780:41:cfdd::1]:5080     RUNNING (0)
+              72.62.50.40         alias                                   internal      ALIASED
+                 external       profile             sip:mod_sofia@72.62.50.40:5080      RUNNING (0)
+    external::example.com       gateway                    sip:joeuser@example.com      NOREG
+      external::telnyx-ip       gateway                sip:not-used@sip.telnyx.com      NOREG
+            internal-ipv6       profile   sip:mod_sofia@[2a02:4780:41:cfdd::1]:5060     RUNNING (0)
+                 internal       profile             sip:mod_sofia@72.62.50.40:5060      RUNNING (0)
+=================================================================================================
+4 profiles 1 alias
+
+
+Registrations:
+=================================================================================================
+Total items returned: 0
+=================================================================================================
+
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# 
