@@ -5956,7 +5956,7 @@ export default function ConsultantVoiceCallsPage() {
                                     Testo letto al chiamante in attesa. Lascia vuoto per il messaggio predefinito.
                                   </p>
                                   <textarea
-                                    placeholder="Tutti i nostri operatori sono al momento occupati. Rimani in linea oppure premi 1 per parlare con un consulente."
+                                    placeholder="Ciao! Siamo tutti occupati in questo momento. Resta in linea oppure premi 1 per parlare con noi direttamente."
                                     defaultValue={ovMessage}
                                     rows={2}
                                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"

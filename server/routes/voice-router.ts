@@ -6246,16 +6246,16 @@ const OVERFLOW_AUDIO_SLOTS = [
 ];
 
 const OVERFLOW_AUDIO_DEFAULTS: Record<string, { text: string; voiceName: string }> = {
-  hold_A: { text: "Grazie per la sua pazienza. Il nostro consulente sarà con lei a breve. La preghiamo di restare in linea.", voiceName: "Achernar" },
-  hold_B: { text: "La ringraziamo per l'attesa. Stiamo cercando di metterla in contatto con il primo consulente disponibile.", voiceName: "Achernar" },
-  hold_C: { text: "Apprezziamo la sua pazienza. Il suo tempo è importante per noi. Un consulente la assisterà il prima possibile.", voiceName: "Achernar" },
-  hold_D: { text: "Grazie per rimanere in linea. Ci stiamo occupando della sua richiesta e saremo con lei a momenti.", voiceName: "Achernar" },
-  hold_E: { text: "La ringraziamo per la sua attesa. Ci scusiamo per il ritardo, un consulente sarà disponibile a breve.", voiceName: "Achernar" },
-  position_prefix: { text: "Lei è attualmente in posizione numero", voiceName: "Achernar" },
-  position_suffix: { text: "nella coda di attesa. La preghiamo di restare in linea.", voiceName: "Achernar" },
-  transferring: { text: "Stiamo trasferendo la sua chiamata al consulente. Un momento per favore.", voiceName: "Achernar" },
-  transfer_failed: { text: "Ci scusiamo, al momento non è possibile completare il trasferimento. La preghiamo di riprovare più tardi.", voiceName: "Achernar" },
-  timeout: { text: "Ci scusiamo, il tempo di attesa è stato superato. La preghiamo di richiamare più tardi o lasciare un messaggio.", voiceName: "Achernar" },
+  hold_A: { text: "Ciao! Sei in coda e ti risponderemo a breve. Resta in linea, ci siamo quasi!", voiceName: "Achernar" },
+  hold_B: { text: "Ancora un momento! Il nostro team è impegnato ma stai per essere il prossimo. Vale la pena aspettare.", voiceName: "Achernar" },
+  hold_C: { text: "Ci stiamo occupando di te! Ogni giorno aiutiamo tante persone — e ora tocca a te. Ancora un attimo.", voiceName: "Achernar" },
+  hold_D: { text: "Sei quasi arrivato! Il consulente si libera a momenti. Grazie per la pazienza, ci vediamo presto.", voiceName: "Achernar" },
+  hold_E: { text: "Tienici compagnia ancora un po'! Sappiamo che il tuo tempo è prezioso e faremo in fretta.", voiceName: "Achernar" },
+  position_prefix: { text: "Sei in posizione", voiceName: "Achernar" },
+  position_suffix: { text: "in coda. Sei quasi lì, grazie per l'attesa!", voiceName: "Achernar" },
+  transferring: { text: "Ti passo subito al consulente, un secondo soltanto!", voiceName: "Achernar" },
+  transfer_failed: { text: "Ops, c'è stato un problema con il trasferimento. Richiamaci tra poco, ci dispiace!", voiceName: "Achernar" },
+  timeout: { text: "Siamo ancora occupati, ma ci teniamo a sentirti. Richiamaci appena puoi, il team è qui per te!", voiceName: "Achernar" },
 };
 
 function getOverflowAudioDir(consultantId: string): string {
