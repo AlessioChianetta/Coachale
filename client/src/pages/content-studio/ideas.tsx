@@ -4600,7 +4600,15 @@ export default function ContentStudioIdeas() {
                         <span>Output: {researchProgress.tokenUsage.outputTokens.toLocaleString()}</span>
                       </div>
                     )}
-                    <div className="flex justify-end">
+                    <p className="text-sm text-muted-foreground">Vuoi salvare i risultati come template per riutilizzarli in futuro?</p>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => { setShowResearchDialog(false); setResearchProgress(null); }}>
+                        Chiudi
+                      </Button>
+                      <Button variant="outline" onClick={() => { setShowResearchDialog(false); setResearchProgress(null); setSaveMode("new"); setTemplateName(""); setShowSaveTemplateDialog(true); }}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Salva Template
+                      </Button>
                       <Button onClick={() => { setShowResearchDialog(false); setResearchProgress(null); }} className="bg-green-600 hover:bg-green-700">
                         <CheckCircle2 className="h-4 w-4 mr-2" />
                         Vedi Risultati
