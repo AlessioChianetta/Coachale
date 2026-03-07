@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -115,6 +115,10 @@ import { getAuthHeaders } from "@/lib/auth";
 import { useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { BrandVoiceSection, BrandVoiceData, KnowledgeBaseSelector, TempFile } from "@/components/brand-voice";
+import { cn } from "@/lib/utils";
+import { Send, Eye } from "lucide-react";
+import ContentStudioPosts from "./posts";
+import AdVisagePage from "./advisage/AdVisagePage";
 import { Checkbox } from "@/components/ui/checkbox";
 import { type MarketResearchData, EMPTY_MARKET_RESEARCH } from "@shared/schema";
 
@@ -494,6 +498,7 @@ function getScoreProgressColor(score: number): string {
 export default function ContentStudioIdeas() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"ideas" | "posts" | "advisage">("ideas");
   const [topic, setTopic] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [objective, setObjective] = useState("");
@@ -2128,7 +2133,41 @@ export default function ContentStudioIdeas() {
           onClose={() => setSidebarOpen(false)}
         />
 
-        <div className="flex-1 overflow-y-auto">
+        <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
+            <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
+              {([
+                { key: "ideas" as const, label: "Generatore Idee", icon: <Lightbulb className="w-4 h-4" />, gradient: "from-amber-500 to-orange-600" },
+                { key: "posts" as const, label: "Gestione Post", icon: <Send className="w-4 h-4" />, gradient: "from-indigo-500 to-blue-600" },
+                { key: "advisage" as const, label: "AdVisage", icon: <Eye className="w-4 h-4" />, gradient: "from-violet-500 to-purple-600" },
+              ] as const).map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                    activeTab === tab.key
+                      ? `bg-gradient-to-r ${tab.gradient} text-white shadow-md`
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {activeTab === "posts" ? (
+            <div className="flex-1 overflow-y-auto">
+              <ContentStudioPosts embedded={true} />
+            </div>
+          ) : activeTab === "advisage" ? (
+            <div className="flex-1 overflow-y-auto">
+              <AdVisagePage embedded={true} />
+            </div>
+          ) : (
+          <div className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -5311,6 +5350,8 @@ export default function ContentStudioIdeas() {
         </DialogContent>
       </Dialog>
 
+          )}
+        </main>
     </div>
   );
 }

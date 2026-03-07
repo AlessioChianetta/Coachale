@@ -97,7 +97,7 @@ interface ContentPost {
   };
 }
 
-const AdVisagePage: React.FC = () => {
+const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
@@ -718,13 +718,8 @@ const AdVisagePage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
-      <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        
-        <div className="flex-1 overflow-y-auto">
+  const innerContent = (
+        <div className={`flex-1 overflow-y-auto ${embedded ? 'h-full' : ''}`}>
           <div className={`min-h-full ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
             <div className="border-b sticky top-0 z-40 backdrop-blur-xl bg-background/80">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
@@ -2220,6 +2215,22 @@ const AdVisagePage: React.FC = () => {
           <p className="text-white/40 text-xs mt-3">Clicca fuori dall'immagine per chiudere</p>
         </div>
       )}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (embedded) {
+    return innerContent;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
+      <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        {innerContent}
+      </div>
     </div>
   );
 };
