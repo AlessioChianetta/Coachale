@@ -1,0 +1,47 @@
+root@srv1164256:/# ls -la /opt/alessia-voice/freeswitch-sounds/overflow/
+ls: cannot access '/opt/alessia-voice/freeswitch-sounds/overflow/': No such file or directory
+root@srv1164256:/# ls -la /opt/sounds/overflow/
+total 12
+drwxr-xr-x 3 root root 4096 Mar  7 04:57 .
+drwxr-xr-x 3 root root 4096 Mar  7 04:57 ..
+drwxr-xr-x 2 root root 4096 Mar  7 04:57 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+root@srv1164256:/# # 1. Crea la cartella
+mkdir -p /opt/alessia-voice/freeswitch-sounds/overflow
+root@srv1164256:/# cd opt
+root@srv1164256:/opt# cd alessia-voice
+root@srv1164256:/opt/alessia-voice# cd freeswitch-sounds/
+root@srv1164256:/opt/alessia-voice/freeswitch-sounds# dir
+overflow
+root@srv1164256:/opt/alessia-voice/freeswitch-sounds# cd overflow/
+root@srv1164256:/opt/alessia-voice/freeswitch-sounds/overflow# # 2. Verifica che Docker la veda
+docker exec -it freeswitch ls -la /usr/share/freeswitch/sounds/overflow/
+total 8
+drwxr-xr-x 2 root root 4096 Mar  7 05:23 .
+drwxr-xr-x 3 root root 4096 Mar  7 05:23 ..
+root@srv1164256:/opt/alessia-voice/freeswitch-sounds/overflow# ln -s /opt/alessia-voice/freeswitch-sounds/overflow /opt/sounds/overflow
+root@srv1164256:/opt/alessia-voice/freeswitch-sounds/overflow# cd /opt/alessia-voice/vps-voice-bridge
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# npm run build
+
+> alessia-voice-bridge@1.0.0 build
+> tsc
+
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# pm2 restart voice.bridge
+Use --update-env to update environment variables
+[PM2][ERROR] Process or Namespace voice.bridge not found
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# pm2 restart voice-bridge
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [voice-bridge](ids: [ 6 ])
+[PM2] [voice-bridge](6) ✓
+┌────┬──────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                 │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼──────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 7  │ Orbitale-locale      │ default     │ 1.0.0   │ fork    │ 2138776  │ 2D     │ 3    │ online    │ 0%       │ 150.0mb  │ root     │ disabled │
+│ 0  │ coachale-dev         │ default     │ N/A     │ fork    │ 2262161  │ 7m     │ 11   │ online    │ 0%       │ 55.4mb   │ root     │ disabled │
+│ 4  │ orbitale-builder     │ default     │ 1.0.0   │ fork    │ 2138731  │ 2D     │ 3    │ online    │ 0%       │ 108.3mb  │ root     │ disabled │
+│ 3  │ orbitale-contract    │ default     │ 1.0.0   │ fork    │ 2138728  │ 2D     │ 3    │ online    │ 0%       │ 114.0mb  │ root     │ disabled │
+│ 2  │ orbitale-crm         │ default     │ 1.0.0   │ fork    │ 2138720  │ 2D     │ 3    │ online    │ 0%       │ 112.1mb  │ root     │ disabled │
+│ 1  │ orbitale-finanza     │ default     │ 1.0.0   │ fork    │ 2138709  │ 2D     │ 3    │ online    │ 0%       │ 122.6mb  │ root     │ disabled │
+│ 5  │ orbitale-turbo       │ default     │ 1.0.0   │ fork    │ 2138753  │ 2D     │ 3    │ online    │ 0%       │ 143.6mb  │ root     │ disabled │
+│ 6  │ voice-bridge         │ default     │ 1.0.0   │ fork    │ 2262507  │ 0s     │ 46   │ online    │ 0%       │ 18.8mb   │ root     │ disabled │
+└────┴──────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
