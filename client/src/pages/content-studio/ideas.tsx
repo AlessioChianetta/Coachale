@@ -515,6 +515,7 @@ export default function ContentStudioIdeas() {
     stepDetails: string;
     steps: Array<{ label: string; status: string; details: string }>;
     error?: string;
+    tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
   } | null>(null);
   const [expandedResearchPhases, setExpandedResearchPhases] = useState<Set<string>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1700,6 +1701,7 @@ export default function ContentStudioIdeas() {
               stepDetails: statusData.stepDetails,
               steps: statusData.steps,
               error: statusData.error,
+              tokenUsage: statusData.tokenUsage,
             });
 
             if (statusData.status === 'completed' && statusData.result) {
@@ -4548,9 +4550,14 @@ export default function ContentStudioIdeas() {
               <>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>Step {researchProgress.currentStep} di {researchProgress.totalSteps}</span>
-                  <span className={researchProgress.status === 'completed' ? 'text-green-600 font-medium' : researchProgress.status === 'error' ? 'text-red-600 font-medium' : 'text-purple-600 font-medium'}>
-                    {researchProgress.status === 'completed' ? 'Completato' : researchProgress.status === 'error' ? 'Errore' : researchProgress.stepLabel}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {researchProgress.tokenUsage && researchProgress.tokenUsage.totalTokens > 0 && researchProgress.status === 'running' && (
+                      <span className="text-xs text-muted-foreground">{researchProgress.tokenUsage.totalTokens.toLocaleString()} token</span>
+                    )}
+                    <span className={researchProgress.status === 'completed' ? 'text-green-600 font-medium' : researchProgress.status === 'error' ? 'text-red-600 font-medium' : 'text-purple-600 font-medium'}>
+                      {researchProgress.status === 'completed' ? 'Completato' : researchProgress.status === 'error' ? 'Errore' : researchProgress.stepLabel}
+                    </span>
+                  </div>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                   <div
@@ -4585,11 +4592,20 @@ export default function ContentStudioIdeas() {
                   </div>
                 )}
                 {researchProgress.status === 'completed' && (
-                  <div className="flex justify-end">
-                    <Button onClick={() => { setShowResearchDialog(false); setResearchProgress(null); }} className="bg-green-600 hover:bg-green-700">
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Vedi Risultati
-                    </Button>
+                  <div className="space-y-3">
+                    {researchProgress.tokenUsage && researchProgress.tokenUsage.totalTokens > 0 && (
+                      <div className="flex items-center gap-4 p-2 bg-gray-50 dark:bg-gray-900 rounded-lg text-xs text-muted-foreground">
+                        <span>Token usati: <strong>{researchProgress.tokenUsage.totalTokens.toLocaleString()}</strong></span>
+                        <span>Input: {researchProgress.tokenUsage.inputTokens.toLocaleString()}</span>
+                        <span>Output: {researchProgress.tokenUsage.outputTokens.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-end">
+                      <Button onClick={() => { setShowResearchDialog(false); setResearchProgress(null); }} className="bg-green-600 hover:bg-green-700">
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Vedi Risultati
+                      </Button>
+                    </div>
                   </div>
                 )}
                 {researchProgress.status === 'error' && (
