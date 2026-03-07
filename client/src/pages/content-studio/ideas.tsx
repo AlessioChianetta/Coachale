@@ -90,6 +90,8 @@ import {
   Type,
   Palette,
   Scissors,
+  LayoutGrid,
+  LayoutList,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -503,6 +505,9 @@ export default function ContentStudioIdeas() {
   const [writingStyle, setWritingStyle] = useState<string>("default");
   const [customWritingInstructions, setCustomWritingInstructions] = useState<string>("");
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    return (localStorage.getItem('ideas_view_mode') as 'grid' | 'list') || 'grid';
+  });
   const [isSuggestingLevels, setIsSuggestingLevels] = useState(false);
   const [isGeneratingNicheTarget, setIsGeneratingNicheTarget] = useState(false);
   const [showLevelsSuggestionDialog, setShowLevelsSuggestionDialog] = useState(false);
@@ -3437,19 +3442,36 @@ export default function ContentStudioIdeas() {
                   <Linkedin className="h-3 w-3" />
                   LinkedIn
                 </button>
+                <span className="text-xs text-muted-foreground self-center mx-2">|</span>
+                <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+                  <button
+                    onClick={() => { setViewMode('grid'); localStorage.setItem('ideas_view_mode', 'grid'); }}
+                    className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    title="Vista griglia"
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => { setViewMode('list'); localStorage.setItem('ideas_view_mode', 'list'); }}
+                    className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    title="Vista lista"
+                  >
+                    <LayoutList className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
 
               {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" : "space-y-2"}>
                   {Array.from({ length: 6 }).map((_, i) => (
                     <Card key={i}>
-                      <CardContent className="p-5 space-y-4">
+                      <CardContent className={viewMode === 'grid' ? "p-5 space-y-4" : "p-3 flex items-center gap-4"}>
                         <div className="flex gap-2">
                           <Skeleton className="h-6 w-16 rounded-full" />
                           <Skeleton className="h-6 w-16 rounded-full" />
                         </div>
-                        <Skeleton className="h-6 w-full" />
-                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className={viewMode === 'grid' ? "h-6 w-full" : "h-5 w-48"} />
+                        {viewMode === 'grid' && <Skeleton className="h-16 w-full" />}
                         <div className="flex gap-2">
                           <Skeleton className="h-9 flex-1" />
                           <Skeleton className="h-9 flex-1" />
@@ -3459,6 +3481,129 @@ export default function ContentStudioIdeas() {
                   ))}
                 </div>
               ) : filteredAndSortedIdeas.length > 0 ? (
+                viewMode === 'list' ? (
+                <div className="space-y-1.5">
+                  {filteredAndSortedIdeas.map((idea) => {
+                    const statusInfo = getStatusInfo(idea.status, idea.developedPostId);
+                    const StatusIcon = statusInfo.icon;
+                    const isDeveloped = idea.developedPostId || idea.status === "developed";
+                    const isArchived = idea.status === "archived";
+                    
+                    return (
+                      <Card key={idea.id} className={`overflow-hidden hover:shadow-md transition-shadow duration-200 ${statusInfo.cardClass} ${isArchived ? "opacity-70" : ""}`}>
+                        <CardContent className="p-3 flex items-center gap-3">
+                          <div className={`flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold shrink-0 ${
+                            (idea.aiScore || 0) >= 85 
+                              ? "bg-gradient-to-br from-green-400 to-green-600 text-white" 
+                              : (idea.aiScore || 0) >= 70 
+                                ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white" 
+                                : (idea.aiScore || 0) > 0
+                                  ? "bg-gradient-to-br from-red-400 to-red-600 text-white"
+                                  : "bg-gradient-to-br from-slate-300 to-slate-400 text-white"
+                          }`}>
+                            {idea.aiScore || "-"}
+                          </div>
+                          
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${statusInfo.color}`}>
+                              <StatusIcon className="h-2.5 w-2.5" />
+                              {statusInfo.label}
+                            </span>
+                            {idea.mediaType && (
+                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                                idea.mediaType === "video"
+                                  ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+                                  : "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                              }`}>
+                                {idea.mediaType === "video" ? <Video className="h-2.5 w-2.5" /> : <Camera className="h-2.5 w-2.5" />}
+                              </span>
+                            )}
+                            {idea.copyType && (
+                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                                idea.copyType === "long"
+                                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                                  : "bg-gradient-to-r from-orange-500 to-amber-500 text-white"
+                              }`}>
+                                {idea.copyType === "long" ? "L" : "S"}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-sm truncate">{idea.title}</h3>
+                            {idea.hook && (
+                              <p className="text-xs text-muted-foreground truncate italic">"{idea.hook}"</p>
+                            )}
+                            {!idea.hook && idea.description && (
+                              <p className="text-xs text-muted-foreground truncate">{idea.description}</p>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isDeveloped ? (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="h-7 px-2 text-xs border-green-300 text-green-600 hover:bg-green-50"
+                                onClick={() => idea.developedPostId && handleGoToPost(idea.developedPostId)}
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Creato
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                className="h-7 px-2 text-xs bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                                onClick={() => handleDevelopPost(idea)}
+                              >
+                                <Zap className="h-3 w-3 mr-1" />
+                                Sviluppa
+                              </Button>
+                            )}
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-7 px-2 text-xs"
+                              onClick={() => setViewingIdea(idea)}
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "new")} disabled={idea.status === "new"}>
+                                  <Sparkles className="h-4 w-4 mr-2" />
+                                  Segna come Nuova
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "in_progress")} disabled={idea.status === "in_progress"}>
+                                  <Clock className="h-4 w-4 mr-2" />
+                                  In Lavorazione
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange(idea.id, "archived")} disabled={idea.status === "archived"}>
+                                  <Archive className="h-4 w-4 mr-2" />
+                                  Archivia
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => deleteIdeaMutation.mutate(idea.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Elimina
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+                ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {filteredAndSortedIdeas.map((idea) => {
                     const statusInfo = getStatusInfo(idea.status, idea.developedPostId);
@@ -3637,6 +3782,7 @@ export default function ContentStudioIdeas() {
                   );
                   })}
                 </div>
+                )
               ) : (
                 <Card>
                   <CardContent className="p-8 text-center">
