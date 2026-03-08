@@ -1486,6 +1486,128 @@ export class FileSearchSyncService {
   }
 
   /**
+   * Pre-sync step: verify DB "indexed" records actually exist on Google.
+   * Resets phantom records (indexed in DB but missing on Google) so the sync will re-upload them.
+   */
+  static async verifyAndResetPhantomRecords(consultantId: string, emitSSE?: (data: any) => void): Promise<{
+    totalChecked: number;
+    phantomsReset: number;
+    storesChecked: number;
+    errors: string[];
+  }> {
+    const startTime = Date.now();
+    console.log(`\n🔍 [FileSync] Pre-sync Google verification for consultant ${consultantId}`);
+
+    const stores = await db.query.fileSearchStores.findMany({
+      where: and(
+        eq(fileSearchStores.isActive, true),
+      ),
+    });
+
+    const consultantStores = stores.filter(s => {
+      if (s.ownerType === 'consultant' && s.ownerId === consultantId) return true;
+      if (s.ownerType === 'autonomous_agent' && s.ownerId.endsWith(consultantId)) return true;
+      return false;
+    });
+
+    const clientStoreIds: string[] = [];
+    for (const s of stores) {
+      if (s.ownerType === 'client') {
+        const [clientUser] = await db.select({ id: users.id })
+          .from(users)
+          .where(and(eq(users.id, s.ownerId), eq(users.consultantId, consultantId)))
+          .limit(1);
+        if (clientUser) {
+          consultantStores.push(s);
+        }
+      } else if (s.ownerType === 'whatsapp_agent') {
+        const agentConfig = await db.select({ id: consultantWhatsappConfig.id })
+          .from(consultantWhatsappConfig)
+          .where(and(eq(consultantWhatsappConfig.id, s.ownerId), eq(consultantWhatsappConfig.consultantId, consultantId)))
+          .limit(1);
+        if (agentConfig.length > 0) {
+          consultantStores.push(s);
+        }
+      }
+    }
+
+    let totalChecked = 0;
+    let phantomsReset = 0;
+    const errors: string[] = [];
+
+    if (emitSSE) {
+      emitSSE({ type: 'log', message: `🔍 Verifica Google API per ${consultantStores.length} store...` });
+    }
+
+    for (const store of consultantStores) {
+      try {
+        const dbDocs = await db
+          .select({ id: fileSearchDocuments.id, googleFileId: fileSearchDocuments.googleFileId, sourceType: fileSearchDocuments.sourceType, sourceId: fileSearchDocuments.sourceId })
+          .from(fileSearchDocuments)
+          .where(and(
+            eq(fileSearchDocuments.storeId, store.id),
+            eq(fileSearchDocuments.status, 'indexed')
+          ));
+
+        if (dbDocs.length === 0) continue;
+
+        const googleResult = await fileSearchService.listDocumentsFromGoogle(store.googleStoreName, consultantId);
+        
+        if (!googleResult.success) {
+          console.log(`⚠️ [FileSync] Could not verify store ${store.displayName}: ${googleResult.error}`);
+          errors.push(`Store ${store.displayName}: ${googleResult.error}`);
+          continue;
+        }
+
+        const googleFileIds = new Set<string>();
+        for (const gDoc of googleResult.documents) {
+          const parts = gDoc.name.split('/');
+          googleFileIds.add(parts[parts.length - 1]);
+        }
+
+        const phantomIds: string[] = [];
+        for (const dbDoc of dbDocs) {
+          totalChecked++;
+          if (dbDoc.googleFileId && !googleFileIds.has(dbDoc.googleFileId)) {
+            phantomIds.push(dbDoc.id);
+          }
+        }
+
+        if (phantomIds.length > 0) {
+          console.log(`👻 [FileSync] Store "${store.displayName}": ${phantomIds.length}/${dbDocs.length} phantom records (DB says indexed, Google says missing)`);
+          
+          for (let i = 0; i < phantomIds.length; i += 100) {
+            const batch = phantomIds.slice(i, i + 100);
+            await db.delete(fileSearchDocuments).where(inArray(fileSearchDocuments.id, batch));
+          }
+          
+          phantomsReset += phantomIds.length;
+
+          if (emitSSE) {
+            emitSSE({ type: 'log', message: `👻 Store "${store.displayName}": ${phantomIds.length} record fantasma rimossi (DB diceva indexed ma Google vuoto)` });
+          }
+        } else {
+          console.log(`✅ [FileSync] Store "${store.displayName}": ${dbDocs.length} docs verified on Google`);
+        }
+      } catch (err: any) {
+        console.error(`❌ [FileSync] Error verifying store ${store.displayName}:`, err.message);
+        errors.push(`Store ${store.displayName}: ${err.message}`);
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`🔍 [FileSync] Google verification complete in ${duration}ms: checked ${totalChecked} docs across ${consultantStores.length} stores, reset ${phantomsReset} phantoms`);
+
+    if (emitSSE && phantomsReset > 0) {
+      emitSSE({ type: 'log', message: `✅ Verifica completata: ${phantomsReset} record fantasma rimossi, il sync li ri-caricherà su Google` });
+    } else if (emitSSE) {
+      emitSSE({ type: 'log', message: `✅ Verifica completata: tutti i documenti risultano presenti su Google` });
+    }
+
+    return { totalChecked, phantomsReset, storesChecked: consultantStores.length, errors };
+  }
+
+  /**
    * Sync ALL documents for a consultant based on enabled settings
    * @param syncType - 'scheduled' or 'manual' - for report tracking
    */
@@ -2889,6 +3011,38 @@ export class FileSearchSyncService {
     // Build SyncContext with cached stores for efficient batch operations
     const syncContext = await this.buildSyncContext(consultantId, clientIds);
     const settings = syncContext.settings;
+
+    // STEP 0: Pre-sync Google verification — detect phantom records
+    console.log(`\n🔍 [FileSync] STEP 0: Verifying DB records against Google API...`);
+    syncProgressEmitter.emit(`sync:${consultantId}`, {
+      consultantId,
+      type: 'log',
+      message: '🔍 Verifica documenti su Google API prima del sync...',
+    });
+    
+    try {
+      const phantomResult = await this.verifyAndResetPhantomRecords(consultantId, (data) => {
+        syncProgressEmitter.emit(`sync:${consultantId}`, { consultantId, ...data });
+      });
+      
+      if (phantomResult.phantomsReset > 0) {
+        console.log(`👻 [FileSync] Pre-sync cleanup: ${phantomResult.phantomsReset} phantom records removed from ${phantomResult.storesChecked} stores`);
+        syncProgressEmitter.emit(`sync:${consultantId}`, {
+          consultantId,
+          type: 'log',
+          message: `👻 ${phantomResult.phantomsReset} documenti fantasma rimossi — verranno ri-caricati durante il sync`,
+        });
+      } else {
+        console.log(`✅ [FileSync] Pre-sync verification: all DB records verified on Google`);
+      }
+    } catch (verifyErr: any) {
+      console.error(`⚠️ [FileSync] Pre-sync verification failed (non-blocking):`, verifyErr.message);
+      syncProgressEmitter.emit(`sync:${consultantId}`, {
+        consultantId,
+        type: 'log',
+        message: `⚠️ Verifica Google non riuscita (il sync continua comunque): ${verifyErr.message}`,
+      });
+    }
 
     // Sync the consultant platform guide if enabled
     if (settings?.autoSyncConsultantGuides !== false) {
