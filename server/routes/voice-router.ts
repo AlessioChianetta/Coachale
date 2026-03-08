@@ -872,13 +872,11 @@ router.get("/recording/:callId", (req: AuthRequest, _res: Response, next: Functi
 }, authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { callId } = req.params;
-    const consultantId = await resolveConsultantId(req.user, req.query.consultant_id as string);
-    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
 
     const callResult = await db.execute(sql`
       SELECT vc.recording_url, vc.consultant_id
       FROM voice_calls vc
-      WHERE vc.id = ${callId} AND vc.consultant_id = ${consultantId}
+      WHERE vc.id = ${callId}
       LIMIT 1
     `);
 
@@ -887,9 +885,13 @@ router.get("/recording/:callId", (req: AuthRequest, _res: Response, next: Functi
       return res.status(404).json({ error: "Registrazione non trovata" });
     }
 
+    if (req.user?.role === 'consultant' && call.consultant_id !== req.user?.id) {
+      return res.status(403).json({ error: "Accesso negato" });
+    }
+
     const settingsResult = await db.execute(sql`
       SELECT token FROM voice_service_tokens
-      WHERE consultant_id = ${consultantId}
+      WHERE consultant_id = ${call.consultant_id}
       ORDER BY created_at DESC
       LIMIT 1
     `);
