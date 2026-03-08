@@ -91,6 +91,7 @@ import {
   ArrowRightLeft,
   Database,
   AlertCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAuthHeaders } from "@/lib/auth";
@@ -920,6 +921,7 @@ export default function SystemDocumentsSection() {
   });
 
   const [syncingDocId, setSyncingDocId] = useState<string | null>(null);
+  const [cleaningAllStores, setCleaningAllStores] = useState(false);
 
   const manualSyncMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -958,6 +960,34 @@ export default function SystemDocumentsSection() {
       setSyncingDocId(null);
     },
   });
+
+  const cleanupAllStores = async () => {
+    if (cleaningAllStores) return;
+    setCleaningAllStores(true);
+    try {
+      const res = await fetch("/api/consultant/knowledge/system-documents/cleanup-all-stores", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Cleanup fallita");
+      }
+      const json = await res.json();
+      const d = json.data;
+      const failures = (d.failedDocuments || 0) + (d.failedStores || 0);
+      toast({
+        title: failures > 0 ? "Cleanup completato (con errori parziali)" : "Cleanup completato",
+        description: `${d.documentsProcessed} documenti analizzati • ${d.staleRemoved} file stale rimossi • ${d.orphansRemoved} orfani Google rimossi • ${d.backfilled} backfill • ${d.storesChecked} store controllati${failures > 0 ? ` • ${failures} errori` : ''}`,
+        variant: failures > 0 ? "destructive" : "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/system-documents"] });
+    } catch (err: any) {
+      toast({ title: "Errore cleanup", description: err.message, variant: "destructive" });
+    } finally {
+      setCleaningAllStores(false);
+    }
+  };
 
   const [historyDocId, setHistoryDocId] = useState<string | null>(null);
   const [historyDocTitle, setHistoryDocTitle] = useState("");
@@ -1968,10 +1998,22 @@ export default function SystemDocumentsSection() {
               Istruzioni personalizzate per l'AI — scegli se iniettarle nel System Prompt o nel File Search
             </p>
           </div>
-          <Button onClick={openCreate} size="sm" className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            Nuovo Documento
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={cleanupAllStores}
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-amber-700 border-amber-300 hover:bg-amber-50"
+              disabled={cleaningAllStores}
+            >
+              <ShieldCheck className={`h-4 w-4 ${cleaningAllStores ? 'animate-spin' : ''}`} />
+              {cleaningAllStores ? 'Pulizia in corso...' : 'Pulisci tutti gli store'}
+            </Button>
+            <Button onClick={openCreate} size="sm" className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              Nuovo Documento
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (

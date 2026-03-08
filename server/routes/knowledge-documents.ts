@@ -2318,6 +2318,107 @@ router.post(
   }
 );
 
+router.post(
+  "/consultant/knowledge/system-documents/cleanup-all-stores",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+
+      const docsResult = await db.execute(sql`
+        SELECT id, title, injection_mode
+        FROM system_prompt_documents
+        WHERE consultant_id = ${consultantId}
+      `);
+      const docs = docsResult.rows as any[];
+
+      let totalRemoved = 0;
+      let totalAdded = 0;
+      let totalOrphansRemoved = 0;
+      let documentsProcessed = 0;
+      const failedDocuments: string[] = [];
+      const failedStores: string[] = [];
+
+      const affectedStoreIds = new Set<string>();
+
+      for (const doc of docs) {
+        const result = await fileSearchSyncService.cleanupStaleStoresForDocument(doc.id, consultantId);
+        if (result.success) {
+          totalRemoved += result.removed;
+          totalAdded += result.added;
+          documentsProcessed++;
+        } else {
+          failedDocuments.push(doc.title || doc.id);
+        }
+
+        if (result.removed > 0) {
+          const storesResult = await db.execute(sql`
+            SELECT DISTINCT fss.id
+            FROM file_search_documents fsd
+            INNER JOIN file_search_stores fss ON fsd.store_id = fss.id
+            WHERE fsd.source_type = 'system_prompt_document'
+              AND fsd.source_id = ${doc.id}
+          `);
+          for (const row of storesResult.rows as any[]) {
+            affectedStoreIds.add(row.id);
+          }
+        }
+      }
+
+      const allClientStoresResult = await db.execute(sql`
+        SELECT fss.id
+        FROM file_search_stores fss
+        WHERE fss.owner_type = 'client'
+          AND EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.id = fss.owner_id
+              AND u.consultant_id = ${consultantId}
+              AND u.is_active = true
+          )
+      `);
+      for (const row of allClientStoresResult.rows as any[]) {
+        affectedStoreIds.add(row.id);
+      }
+
+      const fileSearchServiceInstance = new FileSearchService();
+      for (const storeId of affectedStoreIds) {
+        try {
+          const orphanResult = await fileSearchServiceInstance.cleanupOrphansOnGoogle(storeId, consultantId);
+          if (orphanResult.success) {
+            totalOrphansRemoved += orphanResult.removed;
+          } else {
+            failedStores.push(storeId);
+          }
+        } catch (err: any) {
+          console.error(`[CLEANUP-ALL] Orphan cleanup failed for store ${storeId}:`, err.message);
+          failedStores.push(storeId);
+        }
+      }
+
+      const hasFailures = failedDocuments.length > 0 || failedStores.length > 0;
+      console.log(`🔒 [CLEANUP-ALL] Completed: ${documentsProcessed} docs processed, ${totalRemoved} stale removed, ${totalAdded} backfilled, ${totalOrphansRemoved} orphans removed from ${affectedStoreIds.size} stores${hasFailures ? ` (${failedDocuments.length} doc failures, ${failedStores.length} store failures)` : ''}`);
+
+      res.json({
+        success: true,
+        partial: hasFailures,
+        data: {
+          documentsProcessed,
+          staleRemoved: totalRemoved,
+          orphansRemoved: totalOrphansRemoved,
+          backfilled: totalAdded,
+          storesChecked: affectedStoreIds.size,
+          failedDocuments: failedDocuments.length,
+          failedStores: failedStores.length,
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ [SYSTEM PROMPT DOCS] Error in bulk cleanup:", error);
+      res.status(500).json({ success: false, error: error.message || "Bulk cleanup failed" });
+    }
+  }
+);
+
 router.get(
   "/consultant/knowledge/system-documents/:id/sync-history",
   authenticateToken,
