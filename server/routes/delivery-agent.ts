@@ -104,9 +104,9 @@ ensureTables().catch(err => console.error('[DeliveryAgent] Init error:', err));
 router.post('/sessions', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { mode, simulatorConfig } = req.body;
-    if (!mode || !['onboarding', 'discovery', 'simulator'].includes(mode)) {
-      return res.status(400).json({ success: false, error: 'Mode must be onboarding, discovery, or simulator' });
+    const { mode, simulatorConfig, salesCoachConfig } = req.body;
+    if (!mode || !['onboarding', 'discovery', 'simulator', 'sales_coach'].includes(mode)) {
+      return res.status(400).json({ success: false, error: 'Mode must be onboarding, discovery, simulator, or sales_coach' });
     }
     let initialProfile = null;
     if (mode === 'simulator') {
@@ -115,9 +115,13 @@ router.post('/sessions', authenticateToken, requireRole('consultant'), async (re
       }
       initialProfile = JSON.stringify({ simulator: { niche: simulatorConfig.niche, niche_label: simulatorConfig.niche_label || simulatorConfig.niche, attitude: simulatorConfig.attitude, attitude_label: simulatorConfig.attitude_label || simulatorConfig.attitude } });
     }
+    if (mode === 'sales_coach') {
+      const packages = salesCoachConfig?.packages || ['all'];
+      initialProfile = JSON.stringify({ sales_coach: { packages, package_labels: salesCoachConfig?.package_labels || packages } });
+    }
     const result = await db.execute(sql`
       INSERT INTO delivery_agent_sessions (consultant_id, mode, status, client_profile_json)
-      VALUES (${consultantId}, ${mode}, 'discovery', ${initialProfile}::jsonb)
+      VALUES (${consultantId}, ${mode}, ${mode === 'sales_coach' ? 'assistant' : 'discovery'}, ${initialProfile}::jsonb)
       RETURNING *
     `);
     res.json({ success: true, data: result.rows[0] });

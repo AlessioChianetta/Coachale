@@ -92,7 +92,7 @@ interface DeliveryMessage {
 interface DeliveryChatProps {
   session: {
     id: string;
-    mode: "onboarding" | "discovery" | "simulator";
+    mode: "onboarding" | "discovery" | "simulator" | "sales_coach";
     status: string;
     client_profile_json?: any;
   };

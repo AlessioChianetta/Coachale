@@ -33,6 +33,7 @@ import {
   FlaskConical,
   ArrowLeft,
   Layers,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DeliveryChat } from "./DeliveryChat";
@@ -41,7 +42,7 @@ import { DeliveryCatalogo } from "./DeliveryCatalogo";
 
 interface DeliverySession {
   id: string;
-  mode: "onboarding" | "discovery" | "simulator";
+  mode: "onboarding" | "discovery" | "simulator" | "sales_coach";
   status: "discovery" | "elaborating" | "completed" | "assistant";
   client_profile_json: any;
   created_at: string;
@@ -49,6 +50,19 @@ interface DeliverySession {
   last_message?: string;
   message_count?: number;
 }
+
+const SALES_COACH_PACKAGES = [
+  { key: "setter_ai", label: "SETTER AI", desc: "Acquisizione & Primo Contatto", emoji: "🎯" },
+  { key: "dipendenti_ai", label: "DIPENDENTI AI", desc: "Team AI 24/7", emoji: "🤖" },
+  { key: "hunter", label: "HUNTER", desc: "Lead Generation & Outreach", emoji: "🔍" },
+  { key: "email_journey", label: "EMAIL JOURNEY", desc: "Comunicazione & Nurturing", emoji: "📧" },
+  { key: "lavoro_quotidiano", label: "LAVORO QUOTIDIANO", desc: "Operatività & Consulenze", emoji: "📋" },
+  { key: "formazione", label: "FORMAZIONE", desc: "Academy & Corsi", emoji: "🎓" },
+  { key: "content_studio", label: "CONTENT STUDIO", desc: "Marketing & Contenuti", emoji: "✍️" },
+  { key: "voce_ai", label: "VOCE AI", desc: "Centralino & Chiamate", emoji: "📞" },
+  { key: "pagamenti_stripe", label: "PAGAMENTI & STRIPE", desc: "Monetizzazione & Licenze", emoji: "💳" },
+  { key: "team_dipendenti", label: "TEAM & DIPENDENTI", desc: "Gestione Team Umano", emoji: "👥" },
+] as const;
 
 const SIMULATOR_NICHES = [
   { key: "consulente_finanziario", label: "Consulente Finanziario", emoji: "💰" },
@@ -190,10 +204,12 @@ function SessionItem({
                   ? "border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400"
                   : session.mode === "simulator"
                   ? "border-orange-300 text-orange-700 dark:border-orange-700 dark:text-orange-400"
+                  : session.mode === "sales_coach"
+                  ? "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
                   : "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400"
               )}
             >
-              {session.mode === "onboarding" ? "Onboarding" : session.mode === "simulator" ? "Simulatore" : "Discovery"}
+              {session.mode === "onboarding" ? "Onboarding" : session.mode === "simulator" ? "Simulatore" : session.mode === "sales_coach" ? "Sales Coach" : "Discovery"}
             </Badge>
             <Badge
               variant="secondary"
@@ -205,6 +221,11 @@ function SessionItem({
           {session.mode === "simulator" && session.client_profile_json?.simulator && (
             <p className="text-[10px] text-orange-600 dark:text-orange-400 mb-0.5">
               {session.client_profile_json.simulator.niche_label} — {session.client_profile_json.simulator.attitude_label}
+            </p>
+          )}
+          {session.mode === "sales_coach" && session.client_profile_json?.sales_coach && (
+            <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-0.5">
+              {session.client_profile_json.sales_coach.package_labels?.join(', ') || 'Panoramica Completa'}
             </p>
           )}
           <p className="text-xs text-muted-foreground line-clamp-2">
@@ -247,6 +268,7 @@ export function DeliveryAgentPanel() {
   const [showModeDialog, setShowModeDialog] = useState(false);
   const [simulatorStep, setSimulatorStep] = useState<"niche" | "attitude" | null>(null);
   const [selectedNiche, setSelectedNiche] = useState<typeof SIMULATOR_NICHES[number] | null>(null);
+  const [salesCoachStep, setSalesCoachStep] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo">("chat");
@@ -299,11 +321,14 @@ export function DeliveryAgentPanel() {
   );
 
   const createSession = useCallback(
-    async (mode: "onboarding" | "discovery" | "simulator", simulatorConfig?: { niche: string; niche_label: string; attitude: string; attitude_label: string }) => {
+    async (mode: "onboarding" | "discovery" | "simulator" | "sales_coach", simulatorConfig?: { niche: string; niche_label: string; attitude: string; attitude_label: string }, salesCoachConfig?: { packages: string[]; package_labels: string[] }) => {
       try {
         const body: any = { mode };
         if (mode === "simulator" && simulatorConfig) {
           body.simulatorConfig = simulatorConfig;
+        }
+        if (mode === "sales_coach" && salesCoachConfig) {
+          body.salesCoachConfig = salesCoachConfig;
         }
         const res = await fetch("/api/consultant/delivery-agent/sessions", {
           method: "POST",
@@ -318,6 +343,7 @@ export function DeliveryAgentPanel() {
           setShowModeDialog(false);
           setSimulatorStep(null);
           setSelectedNiche(null);
+          setSalesCoachStep(false);
           toast({
             title: "Sessione creata",
             description:
@@ -325,6 +351,8 @@ export function DeliveryAgentPanel() {
                 ? "Iniziamo l'onboarding per la tua attività"
                 : mode === "simulator"
                 ? `Simulazione avviata: ${simulatorConfig?.niche_label}`
+                : mode === "sales_coach"
+                ? "Sales Coach avviato — Marco è pronto"
                 : "Iniziamo la discovery per il tuo cliente",
           });
         }
@@ -495,6 +523,7 @@ export function DeliveryAgentPanel() {
             )}
           </div>
           {activeSession &&
+            activeSession.mode !== "sales_coach" &&
             (activeSession.status === "completed" ||
               activeSession.status === "assistant") && (
               <div className="flex items-center gap-1">
@@ -556,7 +585,7 @@ export function DeliveryAgentPanel() {
                   Il tuo assistente AI per l'onboarding e la discovery dei clienti.
                 </p>
 
-                <div className="grid grid-cols-3 gap-3 mb-8 max-w-lg mx-auto">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 max-w-2xl mx-auto">
                   <div className="group flex flex-col items-center gap-2.5 p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-indigo-200/60 dark:border-indigo-700/30 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md hover:shadow-indigo-500/5 transition-all duration-200">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
                       <Search className="w-5 h-5 text-white" />
@@ -582,6 +611,15 @@ export function DeliveryAgentPanel() {
                     <div className="text-center">
                       <span className="text-xs font-bold text-foreground block">Assistente</span>
                       <span className="text-[10px] text-muted-foreground/70 leading-tight block mt-0.5">Supporto permanente post-report</span>
+                    </div>
+                  </div>
+                  <div className="group flex flex-col items-center gap-2.5 p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-amber-200/60 dark:border-amber-700/30 hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-md hover:shadow-amber-500/5 transition-all duration-200">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform duration-200">
+                      <TrendingUp className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-center">
+                      <span className="text-xs font-bold text-foreground block">Sales Coach</span>
+                      <span className="text-[10px] text-muted-foreground/70 leading-tight block mt-0.5">Marco ti insegna a vendere</span>
                     </div>
                   </div>
                 </div>
@@ -618,26 +656,28 @@ export function DeliveryAgentPanel() {
 
       <Dialog open={showModeDialog} onOpenChange={(open) => {
         setShowModeDialog(open);
-        if (!open) { setSimulatorStep(null); setSelectedNiche(null); }
+        if (!open) { setSimulatorStep(null); setSelectedNiche(null); setSalesCoachStep(false); }
       }}>
         <DialogContent className={cn(
           "transition-all duration-200",
-          simulatorStep === "niche" ? "sm:max-w-2xl" : simulatorStep === "attitude" ? "sm:max-w-lg" : "sm:max-w-md"
+          simulatorStep === "niche" || salesCoachStep ? "sm:max-w-2xl" : simulatorStep === "attitude" ? "sm:max-w-lg" : "sm:max-w-md"
         )}>
           <DialogHeader>
             <DialogTitle>
-              {simulatorStep === "niche" ? "Scegli la Nicchia del Cliente" :
+              {salesCoachStep ? "Scegli i Pacchetti" :
+               simulatorStep === "niche" ? "Scegli la Nicchia del Cliente" :
                simulatorStep === "attitude" ? "Scegli l'Atteggiamento" :
                "Nuova Sessione"}
             </DialogTitle>
             <DialogDescription>
-              {simulatorStep === "niche" ? "Che tipo di attività gestisce il cliente simulato?" :
+              {salesCoachStep ? "Su quali pacchetti vuoi che Marco ti faccia coaching?" :
+               simulatorStep === "niche" ? "Che tipo di attività gestisce il cliente simulato?" :
                simulatorStep === "attitude" ? `${selectedNiche?.emoji} ${selectedNiche?.label} — come si comporta durante la conversazione?` :
                "Scegli la modalità per la nuova sessione di delivery"}
             </DialogDescription>
           </DialogHeader>
 
-          {!simulatorStep && (
+          {!simulatorStep && !salesCoachStep && (
             <div className="grid gap-3 py-4">
               <button
                 onClick={() => createSession("onboarding")}
@@ -681,8 +721,66 @@ export function DeliveryAgentPanel() {
                   </p>
                 </div>
               </button>
+              <button
+                onClick={() => setSalesCoachStep(true)}
+                className="group flex items-start gap-4 p-4 rounded-xl border border-border hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-all duration-200 text-left hover:shadow-md hover:shadow-amber-500/5"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-amber-500/20 group-hover:shadow-lg group-hover:shadow-amber-500/30 transition-shadow duration-200">
+                  <TrendingUp className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Sales Coach</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Marco ti insegna a vendere ogni pacchetto. Linguaggio, obiezioni, strategie e frasi killer.
+                  </p>
+                </div>
+              </button>
             </div>
           )}
+
+          {salesCoachStep && (
+            <div className="py-3">
+              <button
+                onClick={() => setSalesCoachStep(false)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors"
+              >
+                <ArrowLeft className="w-3 h-3" /> Torna indietro
+              </button>
+              <button
+                onClick={() => {
+                  createSession("sales_coach", undefined, {
+                    packages: ["all"],
+                    package_labels: ["Panoramica Completa"],
+                  });
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/10 hover:bg-amber-100/60 dark:hover:bg-amber-900/20 transition-all text-left mb-3"
+              >
+                <span className="text-2xl">🏆</span>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Panoramica Completa</p>
+                  <p className="text-xs text-muted-foreground">Tutti i 10 pacchetti — ordine di vendita, strategie, bundle</p>
+                </div>
+              </button>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[350px] overflow-y-auto pr-1">
+                {SALES_COACH_PACKAGES.map((pkg) => (
+                  <button
+                    key={pkg.key}
+                    onClick={() => {
+                      createSession("sales_coach", undefined, {
+                        packages: [pkg.key],
+                        package_labels: [pkg.label],
+                      });
+                    }}
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/40 dark:hover:bg-amber-900/10 transition-all text-center"
+                  >
+                    <span className="text-2xl">{pkg.emoji}</span>
+                    <span className="text-xs font-medium text-foreground leading-tight">{pkg.label}</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">{pkg.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
 
           {simulatorStep === "niche" && (
             <div className="py-3">
