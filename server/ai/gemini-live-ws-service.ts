@@ -10180,7 +10180,7 @@ ${compactFeedback}
             if (phoneFsUuid && !phoneFsUuid.startsWith('ws_') && consultantId) {
               try {
                 const vpsBridgeResult = await db.execute(sql`
-                  SELECT vps_bridge_url FROM consultant_ai_settings
+                  SELECT vps_bridge_url FROM consultant_availability_settings
                   WHERE consultant_id = ${consultantId} AND vps_bridge_url IS NOT NULL
                   LIMIT 1
                 `);
