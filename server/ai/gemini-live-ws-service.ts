@@ -4341,7 +4341,7 @@ ${historyContent}
           }
         }
         
-        const PLACEHOLDER_NAMES = ['contatto', 'unknown', 'sconosciuto', ''];
+        const PLACEHOLDER_NAMES = ['contatto', 'cliente', 'unknown', 'sconosciuto', 'lead', 'lead sconosciuto', ''];
         if (!extractedContactName && leadContactData.name && !PLACEHOLDER_NAMES.includes(leadContactData.name.trim().toLowerCase())) {
           extractedContactName = leadContactData.name;
         }

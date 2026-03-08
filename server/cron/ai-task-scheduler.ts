@@ -26,6 +26,14 @@ import { FileSearchService } from '../ai/file-search-service';
 import { fetchSystemDocumentsForAgent } from '../services/system-prompt-documents-service';
 import { emitReasoningEvent } from '../sse/reasoning-stream';
 
+const PLACEHOLDER_CONTACT_NAMES = ['contatto', 'cliente', 'unknown', 'sconosciuto', 'lead', 'lead sconosciuto', ''];
+function filterPlaceholderName(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const trimmed = name.trim();
+  if (PLACEHOLDER_CONTACT_NAMES.includes(trimmed.toLowerCase())) return null;
+  return trimmed;
+}
+
 function isDuplicateTask(newInstruction: string, existingInstruction: string, newContactId?: string, existingContactId?: string): { isDuplicate: boolean; similarity: number; reason: string } {
   if (newContactId && existingContactId && newContactId !== existingContactId) {
     return { isDuplicate: false, similarity: 0, reason: '' };
@@ -599,8 +607,8 @@ async function executeSingleWhatsApp(task: AIScheduledTask): Promise<void> {
   }
 
   const resolvedPhone = task.contact_phone || '';
-  const resolvedName = task.contact_name || additionalContextData.business_name || 'Cliente';
-  const messageText = task.ai_instruction || `Buongiorno ${resolvedName}, la contatto per aggiornarla.`;
+  const resolvedName = task.contact_name || additionalContextData.business_name || '';
+  const messageText = task.ai_instruction || `Buongiorno${resolvedName ? ' ' + resolvedName : ''}, la contatto per aggiornarla.`;
 
   if (!resolvedPhone) {
     console.error(`${LOG} No phone number for task ${task.id}, marking failed`);
@@ -686,7 +694,7 @@ async function executeSingleWhatsApp(task: AIScheduledTask): Promise<void> {
       await ensureProactiveLead({
         consultantId: task.consultant_id,
         phoneNumber: resolvedPhone,
-        contactName: resolvedName !== 'Cliente' ? resolvedName : undefined,
+        contactName: filterPlaceholderName(resolvedName) || undefined,
         source: task.ai_role === 'hunter' ? 'hunter' : 'manual',
         agentConfigId: task.whatsapp_config_id || undefined,
         leadInfo: {
@@ -761,7 +769,7 @@ async function executeSingleEmail(task: AIScheduledTask): Promise<void> {
   const poolId = additionalContextData.pool_id || null;
   let emailAccountId = additionalContextData.email_account_id;
   const leadEmail = additionalContextData.lead_email || '';
-  const resolvedName = task.contact_name || additionalContextData.business_name || 'Cliente';
+  const resolvedName = task.contact_name || additionalContextData.business_name || '';
 
   if (!leadEmail) {
     console.error(`${LOG} No lead email for task ${task.id}, marking failed`);
@@ -904,7 +912,7 @@ async function executeSingleEmail(task: AIScheduledTask): Promise<void> {
       await ensureProactiveLead({
         consultantId: task.consultant_id,
         phoneNumber: task.contact_phone || '',
-        contactName: resolvedName !== 'Cliente' ? resolvedName : undefined,
+        contactName: filterPlaceholderName(resolvedName) || undefined,
         email: leadEmail,
         source: 'hunter',
         leadInfo: {
@@ -1089,7 +1097,7 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
       instructionType: task.task_type === 'single_call' ? 'task' : 'reminder',
       useDefaultTemplate: true, // Added: Required for VPS to use base template
       sourceTaskId: task.id,
-      contactName: task.contact_name
+      contactName: filterPlaceholderName(task.contact_name)
     };
     // Add SIP settings if configured by consultant
     if (sipCallerId) {
@@ -1214,7 +1222,7 @@ async function handleSuccess(task: AIScheduledTask, result: { callId?: string })
       await ensureProactiveLead({
         consultantId: task.consultant_id,
         phoneNumber: task.contact_phone,
-        contactName: task.contact_name || undefined,
+        contactName: filterPlaceholderName(task.contact_name) || undefined,
         source: task.ai_role === 'hunter' ? 'hunter' : 'manual',
         agentConfigId: task.whatsapp_config_id || undefined,
         leadInfo: {

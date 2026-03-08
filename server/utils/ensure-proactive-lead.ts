@@ -27,7 +27,8 @@ export async function ensureProactiveLead(params: EnsureProactiveLeadParams): Pr
     normalizedPhone = '+39' + normalizedPhone;
   }
 
-  const hasRealName = contactName && contactName.trim().length > 0 && contactName.trim().toLowerCase() !== 'contatto';
+  const PLACEHOLDER_NAMES_LEAD = ['contatto', 'cliente', 'unknown', 'sconosciuto', 'lead', 'lead sconosciuto'];
+  const hasRealName = contactName && contactName.trim().length > 0 && !PLACEHOLDER_NAMES_LEAD.includes(contactName.trim().toLowerCase());
   const nameParts = hasRealName ? contactName!.trim().split(' ') : [];
   const firstName = nameParts[0] || '';
   const lastName = nameParts.slice(1).join(' ') || '';

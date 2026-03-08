@@ -9,6 +9,7 @@ export interface HunterLeadContext {
   aiSalesSummary: string | null;
   leadStatus: string | null;
   leadId: string | null;
+  teamMembers: Array<{ name: string; role?: string; email?: string }>;
 }
 
 function normalizePhoneDigits(phone: string): string {
@@ -74,7 +75,7 @@ export async function resolveHunterContext(params: {
     if (hunterLeadId) {
       const lsr = await db.execute(sql`
         SELECT r.id, r.business_name, r.category, r.ai_compatibility_score,
-               r.ai_sales_summary, r.website, r.lead_status
+               r.ai_sales_summary, r.website, r.lead_status, r.website_data
         FROM lead_scraper_results r
         JOIN lead_scraper_searches s ON r.search_id = s.id
         WHERE r.id = ${hunterLeadId}
@@ -95,7 +96,7 @@ export async function resolveHunterContext(params: {
       const normalizedEmail = email.toLowerCase().trim();
       const lsr = await db.execute(sql`
         SELECT r.id, r.business_name, r.category, r.ai_compatibility_score,
-               r.ai_sales_summary, r.website, r.lead_status
+               r.ai_sales_summary, r.website, r.lead_status, r.website_data
         FROM lead_scraper_results r
         JOIN lead_scraper_searches s ON r.search_id = s.id
         WHERE s.consultant_id = ${consultantId}
@@ -116,7 +117,7 @@ export async function resolveHunterContext(params: {
       console.log(`🔍 [HUNTER-CTX] Step 5: Searching lead_scraper_results by phone=${phoneNumber} / normalized=${normalized} / digits=${digitsOnly}`);
       const lsr = await db.execute(sql`
         SELECT r.id, r.business_name, r.category, r.ai_compatibility_score,
-               r.ai_sales_summary, r.website, r.lead_status
+               r.ai_sales_summary, r.website, r.lead_status, r.website_data
         FROM lead_scraper_results r
         JOIN lead_scraper_searches s ON r.search_id = s.id
         WHERE s.consultant_id = ${consultantId}
@@ -145,6 +146,22 @@ export async function resolveHunterContext(params: {
   }
 }
 
+function extractTeamMembers(websiteData: any): Array<{ name: string; role?: string; email?: string }> {
+  if (!websiteData) return [];
+  let wd = websiteData;
+  if (typeof wd === 'string') {
+    try { wd = JSON.parse(wd); } catch { return []; }
+  }
+  if (!wd.teamMembers || !Array.isArray(wd.teamMembers)) return [];
+  return wd.teamMembers
+    .filter((m: any) => m.name && m.name.trim().length > 0)
+    .map((m: any) => ({
+      name: m.name.trim(),
+      role: m.role?.trim() || undefined,
+      email: m.email?.trim() || undefined,
+    }));
+}
+
 function mapRow(row: any): HunterLeadContext {
   return {
     businessName: row.business_name || null,
@@ -154,7 +171,18 @@ function mapRow(row: any): HunterLeadContext {
     aiSalesSummary: row.ai_sales_summary || null,
     leadStatus: row.lead_status || null,
     leadId: row.id || null,
+    teamMembers: extractTeamMembers(row.website_data),
   };
+}
+
+function smartBusinessName(fullName: string): string {
+  const words = fullName.trim().split(/\s+/);
+  if (words.length <= 3) return fullName;
+  const stopWords = ['e', 'di', 'del', 'della', 'dei', 'degli', 'delle', 'per', 'il', 'la', 'lo', 'i', 'gli', 'le', 'un', 'una', 'srl', 's.r.l.', 'spa', 's.p.a.', 'snc', 's.n.c.', 'sas', 's.a.s.'];
+  const meaningful = words.filter(w => !stopWords.includes(w.toLowerCase()));
+  if (meaningful.length === 0) return words.slice(0, 2).join(' ');
+  if (meaningful.length <= 3) return meaningful.join(' ');
+  return meaningful.slice(0, 2).join(' ');
 }
 
 export function formatHunterContextForPrompt(ctx: HunterLeadContext): string {
@@ -167,12 +195,36 @@ export function formatHunterContextForPrompt(ctx: HunterLeadContext): string {
   if (ctx.score) parts.push(`• Score compatibilità: ${ctx.score}/100`);
   if (ctx.website) parts.push(`• Sito web: ${ctx.website}`);
   if (ctx.leadStatus) parts.push(`• Stato lead: ${ctx.leadStatus}`);
+
+  if (ctx.teamMembers.length > 0) {
+    parts.push(`\n👥 Persone chiave:`);
+    for (const m of ctx.teamMembers) {
+      parts.push(`  • ${m.name}${m.role ? ` (${m.role})` : ''}${m.email ? ` — ${m.email}` : ''}`);
+    }
+  }
+
   if (ctx.aiSalesSummary) {
     const summary = ctx.aiSalesSummary.length > 1500
       ? ctx.aiSalesSummary.substring(0, 1500) + '...'
       : ctx.aiSalesSummary;
     parts.push(`\n📊 Analisi AI:\n${summary}`);
   }
+
+  parts.push('');
+  parts.push(`🎯 REGOLE NOME IN CHIAMATA:`);
+  if (ctx.teamMembers.length > 0) {
+    const firstPerson = ctx.teamMembers[0];
+    parts.push(`→ Chiedi della persona: "Parlo con ${firstPerson.name}?" o "Cerco ${firstPerson.name}"`);
+    parts.push(`→ Se rispondono altri: "Potrei parlare con ${firstPerson.name}${firstPerson.role ? `, ${firstPerson.role.toLowerCase()}` : ''}?"`);
+  } else if (ctx.businessName && ctx.businessName.split(/\s+/).length > 3) {
+    const shortName = smartBusinessName(ctx.businessName);
+    parts.push(`→ Il nome azienda è lungo — usa la forma breve: "${shortName}"`);
+    parts.push(`→ NON recitare il nome completo "${ctx.businessName}"`);
+    parts.push(`→ Chiedi: "Parlo con il responsabile di ${shortName}?" o "Cerco il titolare"`);
+  }
+  parts.push(`→ MAI dire "Ciao" seguito da un nome aziendale lungo — abbrevia sempre`);
+  parts.push(`→ Se il contactName passato è chiaramente un nome azienda (più di 3 parole), NON usarlo come saluto personale`);
+
   parts.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   return parts.join('\n');
 }
