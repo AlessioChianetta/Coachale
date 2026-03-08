@@ -5916,24 +5916,28 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
         const safeLimit = Math.min(requestedLimit, 5000);
         result = before
           ? await db.execute(sql`
-              SELECT id, role, content as message, created_at FROM delivery_agent_messages
+              SELECT id::text as id, role, content as message, created_at, 'in_app' as source, NULL::text as sender_name
+              FROM delivery_agent_messages
               WHERE session_id = ${sessionId} AND created_at < ${before}::timestamptz
               ORDER BY created_at DESC LIMIT ${safeLimit}
             `)
           : await db.execute(sql`
-              SELECT id, role, content as message, created_at FROM delivery_agent_messages
+              SELECT id::text as id, role, content as message, created_at, 'in_app' as source, NULL::text as sender_name
+              FROM delivery_agent_messages
               WHERE session_id = ${sessionId}
               ORDER BY created_at DESC LIMIT ${safeLimit}
             `);
       } else {
         result = before
           ? await db.execute(sql`
-              SELECT id, role, content as message, created_at FROM delivery_agent_messages
+              SELECT id::text as id, role, content as message, created_at, 'in_app' as source, NULL::text as sender_name
+              FROM delivery_agent_messages
               WHERE session_id = ${sessionId} AND created_at < ${before}::timestamptz
               ORDER BY created_at ASC
             `)
           : await db.execute(sql`
-              SELECT id, role, content as message, created_at FROM delivery_agent_messages
+              SELECT id::text as id, role, content as message, created_at, 'in_app' as source, NULL::text as sender_name
+              FROM delivery_agent_messages
               WHERE session_id = ${sessionId}
               ORDER BY created_at ASC
             `);
@@ -5943,6 +5947,8 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
         ai_role: 'robert',
         role_name: 'Robert',
         sender: m.role === 'assistant' ? 'agent' : 'consultant',
+        source: m.source,
+        sender_name: m.sender_name,
       }));
       const ordered = requestedLimit > 0 ? messages.reverse() : messages;
       return res.json({ messages: ordered, hasMore: requestedLimit > 0 && ordered.length === requestedLimit });
@@ -6056,7 +6062,8 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
 
       const historyRes = await db.execute(sql`
         SELECT role, content FROM delivery_agent_messages
-        WHERE session_id = ${sessionId} ORDER BY created_at ASC
+        WHERE session_id = ${sessionId}
+        ORDER BY created_at ASC
       `);
       const contents = (historyRes.rows as any[]).map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
@@ -6151,6 +6158,25 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
       await db.execute(sql`
         UPDATE delivery_agent_sessions SET updated_at = NOW() WHERE id = ${sessionId}
       `);
+
+      try {
+        const telegramConfigResult = await db.execute(sql`
+          SELECT tc.bot_token, tl.telegram_chat_id
+          FROM telegram_bot_configs tc
+          JOIN telegram_chat_links tl ON tc.consultant_id = tl.consultant_id AND tc.ai_role = tl.ai_role
+          WHERE tc.consultant_id = ${consultantId}::uuid AND tc.ai_role = 'robert' AND tc.enabled = true AND tl.active = true
+        `);
+        if (telegramConfigResult.rows.length > 0) {
+          const { sendTelegramMessage } = await import("../telegram/telegram-service");
+          for (const row of telegramConfigResult.rows as any[]) {
+            sendTelegramMessage(row.bot_token, row.telegram_chat_id, fullText, "Markdown").catch(err =>
+              console.warn("[TELEGRAM] Failed to forward Robert response to Telegram:", err.message)
+            );
+          }
+        }
+      } catch (tgErr: any) {
+        console.warn("[TELEGRAM] Robert forward error:", tgErr.message);
+      }
 
       return res.json({
         success: true,
@@ -6355,7 +6381,8 @@ router.post("/agent-chat/:roleId/send-media", authenticateToken, requireAnyRole(
 
       const historyRes = await db.execute(sql`
         SELECT role, content FROM delivery_agent_messages
-        WHERE session_id = ${sessionId} ORDER BY created_at ASC
+        WHERE session_id = ${sessionId}
+        ORDER BY created_at ASC
       `);
       const contents = (historyRes.rows as any[]).map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
@@ -6768,6 +6795,19 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
       INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
       VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'consultant', ${message.trim()}, ${metadataJson}::jsonb)
     `);
+    if (roleId === 'robert') {
+      try {
+        const robertSessionId = await findOrCreateSalesCoachSession(consultantId);
+        if (robertSessionId) {
+          await db.execute(sql`
+            INSERT INTO delivery_agent_messages (session_id, role, content)
+            VALUES (${robertSessionId}, 'user', ${message.trim()})
+          `);
+        }
+      } catch (e: any) {
+        console.warn('[ROBERT] Failed to mirror user message to delivery_agent_messages:', e.message);
+      }
+    }
   }
 
   const isOpenMode = options?.isOpenMode === true;
@@ -6793,19 +6833,33 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
       historyQuery = Promise.resolve(emptyResult);
     }
   } else {
-    historyQuery = db.execute(sql`
-      SELECT sender, message, created_at FROM (
-        SELECT sender, message, created_at
-        FROM agent_chat_messages
-        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-        UNION ALL
-        SELECT CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
-          message, created_at
-        FROM telegram_open_mode_messages
-        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-      ) combined
-      ORDER BY created_at DESC
-    `);
+    if (roleId === 'robert') {
+      historyQuery = db.execute(sql`
+        SELECT CASE WHEN role = 'assistant' THEN 'agent' ELSE 'consultant' END as sender,
+          content as message, created_at
+        FROM delivery_agent_messages
+        WHERE session_id = (
+          SELECT id FROM delivery_agent_sessions
+          WHERE consultant_id = ${consultantId}::uuid AND mode = 'sales_coach'
+          ORDER BY created_at DESC LIMIT 1
+        )
+        ORDER BY created_at DESC
+      `);
+    } else {
+      historyQuery = db.execute(sql`
+        SELECT sender, message, created_at FROM (
+          SELECT sender, message, created_at
+          FROM agent_chat_messages
+          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          UNION ALL
+          SELECT CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
+            message, created_at
+          FROM telegram_open_mode_messages
+          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        ) combined
+        ORDER BY created_at DESC
+      `);
+    }
   }
 
   const [historyResult, contextResult, recentActivityResult, activeTasksResult, completedTasksResult] = await Promise.all([
@@ -6847,7 +6901,36 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
   const activeTasks = activeTasksResult.rows as any[];
   const completedTasks = completedTasksResult.rows as any[];
 
-  const personality = ROLE_CHAT_PERSONALITIES[roleId] || ROLE_CHAT_PERSONALITIES.personalizza;
+  let personality = ROLE_CHAT_PERSONALITIES[roleId] || ROLE_CHAT_PERSONALITIES.personalizza;
+  if (roleId === 'robert') {
+    try {
+      const { getDeliveryAgentSystemPrompt } = await import('../prompts/delivery-agent-prompt');
+      let robertActivationStatuses: any[] = [];
+      try {
+        const { getOnboardingStatusForAI } = await import('../routes/onboarding');
+        robertActivationStatuses = await getOnboardingStatusForAI(consultantId);
+      } catch {}
+      let robertCustomDocuments: { title: string; content: string }[] = [];
+      try {
+        const robertCtx = agentCtx as any;
+        const linkedDocIds: string[] = robertCtx?.linkedKbDocumentIds || [];
+        if (linkedDocIds.length > 0) {
+          const docsRes = await db.execute(sql`
+            SELECT title, content FROM consultant_knowledge_documents
+            WHERE id = ANY(${linkedDocIds}::uuid[]) AND consultant_id = ${consultantId}
+          `);
+          robertCustomDocuments = (docsRes.rows as any[]).map((d: any) => ({
+            title: d.title || 'Documento senza titolo',
+            content: (d.content || '').substring(0, 50000),
+          }));
+        }
+      } catch {}
+      personality = getDeliveryAgentSystemPrompt('sales_coach', 'active', null, robertActivationStatuses, robertCustomDocuments);
+    } catch (e: any) {
+      console.warn('[ROBERT] Failed to load delivery agent prompt, using fallback:', e.message);
+      personality = `Sei ROBERT, il Sales Coach personale del consulente. Sei ossessivo, diretto, informale e quando serve anche duro e crudo. Non addolcisci le cose. Parli sempre in modo informale, dai del "tu", usi un linguaggio diretto e concreto. Il tuo obiettivo è aiutare il consulente a vendere i pacchetti della piattaforma.`;
+    }
+  }
   const focusPriorities = agentCtx.focusPriorities || [];
   const customContext = agentCtx.customContext || '';
 
@@ -7426,6 +7509,22 @@ REGOLE ANTI-ALLUCINAZIONE:
       INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
       VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'agent', ${aiResponse}, ${responseMetadata}::jsonb)
     `);
+    if (roleId === 'robert') {
+      try {
+        const robertSessionId = await findOrCreateSalesCoachSession(consultantId);
+        if (robertSessionId) {
+          await db.execute(sql`
+            INSERT INTO delivery_agent_messages (session_id, role, content)
+            VALUES (${robertSessionId}, 'assistant', ${aiResponse})
+          `);
+          await db.execute(sql`
+            UPDATE delivery_agent_sessions SET updated_at = NOW() WHERE id = ${robertSessionId}
+          `);
+        }
+      } catch (e: any) {
+        console.warn('[ROBERT] Failed to mirror AI response to delivery_agent_messages:', e.message);
+      }
+    }
   }
 
   if (!isOpenMode && options?.source !== 'telegram') {
