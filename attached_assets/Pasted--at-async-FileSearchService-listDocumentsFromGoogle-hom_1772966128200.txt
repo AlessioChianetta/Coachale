@@ -1,0 +1,24 @@
+    at async FileSearchService.listDocumentsFromGoogle (/home/runner/workspace/server/ai/file-search-service.ts:1074:26)
+    at async FileSearchService.auditStoreVsGoogle (/home/runner/workspace/server/ai/file-search-service.ts:1145:28)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:503:23) {
+  status: 404
+}
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] List from Google failed: ApiError: {"error":{"message":"","code":404,"status":"Not Found"}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:860:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:493:9)
+    at async Documents.Documents.list (/home/runner/workspace/node_modules/@google/genai/src/documents.ts:43:7)
+    at async FileSearchService.listDocumentsFromGoogle (/home/runner/workspace/server/ai/file-search-service.ts:1074:26)
+    at async FileSearchService.auditStoreVsGoogle (/home/runner/workspace/server/ai/file-search-service.ts:1145:28)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:503:23) {
+  status: 404
+}
+[IMAP] Opened folder "[Gmail]/Posta inviata": server reports 318 total messages
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+❌ [FileSearch] List from Google failed: ApiError: {"error":{"message":"","code":404,"status":"Not Found"}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:860:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:493:9)
+    at async Documents.Documents.list (/home/runner/workspace/node_modules/@google/genai/src/documents.ts:43:7)
+    at async FileSearchService.listDocumentsFromGoo

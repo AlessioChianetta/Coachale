@@ -1083,8 +1083,13 @@ export class FileSearchService {
           }
         }
       } catch (listError: any) {
-        if (listError.message?.includes('not found')) {
-          console.log(`⚠️ [FileSearch] Store ${storeName} not found on Google`);
+        const errStr = String(listError);
+        const is404 = listError.status === 404 || 
+                       listError.message?.toLowerCase().includes('not found') ||
+                       errStr.toLowerCase().includes('not found') ||
+                       errStr.includes('404');
+        if (is404) {
+          console.log(`⚠️ [FileSearch] Store ${storeName} not found on Google (404)`);
           return { success: true, documents: [] };
         }
         throw listError;
@@ -1236,7 +1241,16 @@ export class FileSearchService {
         return { success: true, removed: 0, errors: [] };
       }
 
-      console.log(`🧹 [FileSearch] Cleaning up ${audit.onlyOnGoogle.length} orphaned documents from Google`);
+      const orphanPercent = audit.googleDocuments > 0 
+        ? Math.round((audit.onlyOnGoogle.length / audit.googleDocuments) * 100) 
+        : 0;
+      if (orphanPercent > 80 && audit.dbDocuments >= 5) {
+        const msg = `Safety check ABORTED: would delete ${audit.onlyOnGoogle.length}/${audit.googleDocuments} docs (${orphanPercent}%) from store ${audit.storeName} while DB has ${audit.dbDocuments} records. Likely ID mismatch, not real orphans.`;
+        console.error(`🛑 [FileSearch] ${msg}`);
+        return { success: false, removed: 0, errors: [msg] };
+      }
+
+      console.log(`🧹 [FileSearch] Cleaning up ${audit.onlyOnGoogle.length} orphaned documents from Google (${orphanPercent}% of ${audit.googleDocuments} on Google, DB has ${audit.dbDocuments})`);
 
       const store = await db.query.fileSearchStores.findFirst({
         where: eq(fileSearchStores.id, storeId),

@@ -429,6 +429,167 @@ router.get('/stores/:storeId/audit', authenticateToken, requireRole('consultant'
 });
 
 /**
+ * GET /api/file-search/audit-google
+ * Audit ALL stores for a consultant by comparing local DB vs Google API
+ * Returns per-store breakdown showing real sync status
+ */
+router.get('/audit-google', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const startTime = Date.now();
+
+    console.log(`🔍 [Audit-Google] Starting full Google audit for consultant ${consultantId.substring(0, 8)}...`);
+
+    const allStores = await db.query.fileSearchStores.findMany({
+      where: eq(fileSearchStores.isActive, true),
+    });
+
+    const relevantStores = [];
+    for (const store of allStores) {
+      if (store.ownerType === 'consultant' && store.ownerId === consultantId) {
+        relevantStores.push(store);
+      } else if (store.ownerType === 'autonomous_agent' && store.ownerId.endsWith(consultantId)) {
+        (store as any)._ownerName = store.displayName || 'Agente Autonomo';
+        relevantStores.push(store);
+      } else if (store.ownerType === 'client') {
+        const [clientUser] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+          .from(users)
+          .where(and(eq(users.id, store.ownerId), eq(users.consultantId, consultantId)))
+          .limit(1);
+        if (clientUser) {
+          (store as any)._ownerName = `${clientUser.firstName || ''} ${clientUser.lastName || ''}`.trim();
+          relevantStores.push(store);
+        }
+      } else if (store.ownerType === 'whatsapp_agent') {
+        const agentConfig = await db.select({ id: consultantWhatsappConfig.id, agentName: consultantWhatsappConfig.agentName })
+          .from(consultantWhatsappConfig)
+          .where(and(eq(consultantWhatsappConfig.id, store.ownerId), eq(consultantWhatsappConfig.consultantId, consultantId)))
+          .limit(1);
+        if (agentConfig.length > 0) {
+          (store as any)._ownerName = agentConfig[0].agentName || 'Agente WhatsApp';
+          relevantStores.push(store);
+        }
+      } else if (store.ownerType === 'department') {
+        const dept = await db.execute(sql`
+          SELECT d.id, d.name FROM departments d
+          WHERE d.id = ${store.ownerId} AND d.consultant_id = ${consultantId}
+          LIMIT 1
+        `);
+        if ((dept.rows as any[]).length > 0) {
+          (store as any)._ownerName = (dept.rows as any[])[0].name || 'Dipartimento';
+          relevantStores.push(store);
+        }
+      }
+    }
+
+    console.log(`🔍 [Audit-Google] Found ${relevantStores.length} stores to audit`);
+
+    const storeResults: Array<{
+      storeId: string;
+      storeName: string;
+      ownerName: string;
+      ownerType: string;
+      dbCount: number;
+      googleCount: number;
+      onlyInDb: number;
+      onlyOnGoogle: number;
+      inBoth: number;
+      status: 'ok' | 'mismatch' | 'empty_google' | 'error';
+      error?: string;
+    }> = [];
+
+    for (const store of relevantStores) {
+      try {
+        const audit = await fileSearchService.auditStoreVsGoogle(store.id, consultantId);
+
+        let ownerName = (store as any)._ownerName || '';
+        if (!ownerName && store.ownerType === 'consultant') {
+          const [u] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+            .from(users).where(eq(users.id, store.ownerId)).limit(1);
+          ownerName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : store.ownerId;
+        } else if (!ownerName && store.ownerType === 'autonomous_agent') {
+          ownerName = store.displayName || 'Agente Autonomo';
+        }
+
+        if (!audit.success) {
+          storeResults.push({
+            storeId: store.id,
+            storeName: store.displayName || store.googleStoreName,
+            ownerName,
+            ownerType: store.ownerType,
+            dbCount: 0,
+            googleCount: 0,
+            onlyInDb: 0,
+            onlyOnGoogle: 0,
+            inBoth: 0,
+            status: 'error',
+            error: audit.error,
+          });
+          continue;
+        }
+
+        let status: 'ok' | 'mismatch' | 'empty_google' | 'error' = 'ok';
+        if (audit.googleDocuments === 0 && audit.dbDocuments > 0) {
+          status = 'empty_google';
+        } else if (audit.onlyInDb.length > 0 || audit.onlyOnGoogle.length > 0) {
+          status = 'mismatch';
+        }
+
+        storeResults.push({
+          storeId: store.id,
+          storeName: store.displayName || store.googleStoreName,
+          ownerName,
+          ownerType: store.ownerType,
+          dbCount: audit.dbDocuments,
+          googleCount: audit.googleDocuments,
+          onlyInDb: audit.onlyInDb.length,
+          onlyOnGoogle: audit.onlyOnGoogle.length,
+          inBoth: audit.inBoth,
+          status,
+        });
+      } catch (err: any) {
+        storeResults.push({
+          storeId: store.id,
+          storeName: store.displayName || store.googleStoreName,
+          ownerName: (store as any)._ownerName || store.ownerId,
+          ownerType: store.ownerType,
+          dbCount: 0,
+          googleCount: 0,
+          onlyInDb: 0,
+          onlyOnGoogle: 0,
+          inBoth: 0,
+          status: 'error',
+          error: err.message,
+        });
+      }
+    }
+
+    const summary = {
+      totalStores: storeResults.length,
+      storesOk: storeResults.filter(s => s.status === 'ok').length,
+      storesMismatch: storeResults.filter(s => s.status === 'mismatch').length,
+      storesEmptyGoogle: storeResults.filter(s => s.status === 'empty_google').length,
+      storesError: storeResults.filter(s => s.status === 'error').length,
+      totalDbDocs: storeResults.reduce((sum, s) => sum + s.dbCount, 0),
+      totalGoogleDocs: storeResults.reduce((sum, s) => sum + s.googleCount, 0),
+    };
+
+    const elapsed = Date.now() - startTime;
+    console.log(`✅ [Audit-Google] Complete in ${elapsed}ms: ${summary.storesOk} ok, ${summary.storesMismatch} mismatch, ${summary.storesEmptyGoogle} empty, ${summary.storesError} errors`);
+
+    res.json({
+      success: true,
+      stores: storeResults,
+      summary,
+      elapsedMs: elapsed,
+    });
+  } catch (error: any) {
+    console.error('[Audit-Google] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/file-search/stores/:storeId/cleanup
  * Cleanup orphaned documents from Google that don't exist in local DB
  */

@@ -57,7 +57,9 @@ import {
   Info,
   ScrollText,
   Building2,
-  Globe
+  Globe,
+  Cloud,
+  Shield
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -1526,6 +1528,29 @@ export default function ConsultantFileSearchAnalyticsPage() {
       });
     },
   });
+
+  const [googleAuditData, setGoogleAuditData] = useState<any>(null);
+  const [googleAuditLoading, setGoogleAuditLoading] = useState(false);
+
+  const runGoogleAudit = async () => {
+    setGoogleAuditLoading(true);
+    try {
+      const response = await fetch("/api/file-search/audit-google", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Audit Google failed");
+      const data = await response.json();
+      setGoogleAuditData(data);
+    } catch (error: any) {
+      toast({
+        title: "Errore Audit Google",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setGoogleAuditLoading(false);
+    }
+  };
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (updates: Partial<FileSearchSettings>) => {
@@ -7360,6 +7385,161 @@ export default function ConsultantFileSearchAnalyticsPage() {
                     </Button>
                   </div>
                 )}
+
+                <Card className="border-2 border-blue-200">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Cloud className="h-5 w-5 text-blue-600" />
+                          Verifica Google API
+                        </CardTitle>
+                        <CardDescription>
+                          Confronta i documenti nel database locale con quelli effettivamente presenti su Google
+                        </CardDescription>
+                      </div>
+                      <Button
+                        onClick={runGoogleAudit}
+                        disabled={googleAuditLoading}
+                        variant="outline"
+                        className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                      >
+                        {googleAuditLoading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Verifica in corso...
+                          </>
+                        ) : (
+                          <>
+                            <Shield className="h-4 w-4 mr-2" />
+                            Verifica tutti gli store
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {!googleAuditData && !googleAuditLoading && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Cloud className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <p>Clicca "Verifica tutti gli store" per confrontare DB locale vs Google API</p>
+                        <p className="text-xs mt-1 text-gray-400">L'operazione potrebbe richiedere alcuni secondi</p>
+                      </div>
+                    )}
+
+                    {googleAuditLoading && (
+                      <div className="text-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-500" />
+                        <p className="text-gray-600">Verificando tutti gli store su Google API...</p>
+                        <p className="text-xs mt-1 text-gray-400">Questa operazione controlla ogni store singolarmente</p>
+                      </div>
+                    )}
+
+                    {googleAuditData && !googleAuditLoading && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                          <div className="p-3 bg-gray-50 rounded-lg border text-center">
+                            <p className="text-xl font-bold text-gray-800">{googleAuditData.summary?.totalStores || 0}</p>
+                            <p className="text-xs text-gray-500">Store Totali</p>
+                          </div>
+                          <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-center">
+                            <p className="text-xl font-bold text-emerald-700">{googleAuditData.summary?.storesOk || 0}</p>
+                            <p className="text-xs text-emerald-600">Sincronizzati</p>
+                          </div>
+                          <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-center">
+                            <p className="text-xl font-bold text-amber-700">{googleAuditData.summary?.storesMismatch || 0}</p>
+                            <p className="text-xs text-amber-600">Mismatch</p>
+                          </div>
+                          <div className="p-3 bg-red-50 rounded-lg border border-red-200 text-center">
+                            <p className="text-xl font-bold text-red-700">{googleAuditData.summary?.storesEmptyGoogle || 0}</p>
+                            <p className="text-xs text-red-600">Google Vuoto</p>
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                            <p className="text-xl font-bold text-gray-700">{googleAuditData.summary?.storesError || 0}</p>
+                            <p className="text-xs text-gray-500">Errori</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center gap-2">
+                            <Database className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-800">DB: {googleAuditData.summary?.totalDbDocs || 0} doc</span>
+                          </div>
+                          <span className="text-blue-400">vs</span>
+                          <div className="flex items-center gap-2">
+                            <Cloud className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-800">Google: {googleAuditData.summary?.totalGoogleDocs || 0} doc</span>
+                          </div>
+                          {googleAuditData.elapsedMs && (
+                            <span className="ml-auto text-xs text-blue-400">
+                              <Clock className="h-3 w-3 inline mr-1" />
+                              {(googleAuditData.elapsedMs / 1000).toFixed(1)}s
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                          {(googleAuditData.stores || []).map((store: any) => (
+                            <div
+                              key={store.storeId}
+                              className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                                store.status === 'ok' ? 'bg-emerald-50 border-emerald-200' :
+                                store.status === 'empty_google' ? 'bg-red-50 border-red-200' :
+                                store.status === 'mismatch' ? 'bg-amber-50 border-amber-200' :
+                                'bg-gray-50 border-gray-200'
+                              }`}
+                            >
+                              <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                                store.status === 'ok' ? 'bg-emerald-500' :
+                                store.status === 'empty_google' ? 'bg-red-500' :
+                                store.status === 'mismatch' ? 'bg-amber-500' :
+                                'bg-gray-400'
+                              }`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm truncate">{store.ownerName}</span>
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                    {store.ownerType === 'client' ? 'Cliente' :
+                                     store.ownerType === 'consultant' ? 'Consulente' :
+                                     store.ownerType === 'autonomous_agent' ? 'Agente AI' :
+                                     store.ownerType === 'whatsapp_agent' ? 'WhatsApp' :
+                                     store.ownerType === 'department' ? 'Dipartimento' : store.ownerType}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-gray-500 truncate">{store.storeName}</p>
+                              </div>
+                              <div className="flex items-center gap-3 flex-shrink-0 text-xs">
+                                <div className="text-center">
+                                  <p className="font-bold text-gray-700">{store.dbCount}</p>
+                                  <p className="text-gray-400">DB</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className={`font-bold ${store.googleCount === 0 && store.dbCount > 0 ? 'text-red-600' : 'text-gray-700'}`}>{store.googleCount}</p>
+                                  <p className="text-gray-400">Google</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="font-bold text-emerald-600">{store.inBoth}</p>
+                                  <p className="text-gray-400">OK</p>
+                                </div>
+                              </div>
+                              <Badge className={`text-xs flex-shrink-0 ${
+                                store.status === 'ok' ? 'bg-emerald-100 text-emerald-700' :
+                                store.status === 'empty_google' ? 'bg-red-100 text-red-700' :
+                                store.status === 'mismatch' ? 'bg-amber-100 text-amber-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                                {store.status === 'ok' ? 'Sincronizzato' :
+                                 store.status === 'empty_google' ? 'Google vuoto' :
+                                 store.status === 'mismatch' ? 'Mismatch' :
+                                 'Errore'}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="migration" className="space-y-6">
