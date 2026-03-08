@@ -557,112 +557,135 @@ export default function ConsultantVoiceCallDetailPage() {
                       <div className="relative">
                         <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-border" />
                         <div className="space-y-1">
-                          {safeTimeline.map((event, idx) => {
-                            const eventKey = `${event.type}-${event.id || event.scheduled_call_id || idx}-${event.attempt || 0}`;
-                            const cfg = getTimelineEventConfig(event);
-                            const EventIcon = cfg.icon;
-                            const description = getTimelineEventDescription(event);
-                            const isExpanded = expandedTimelineEvents.has(eventKey);
-                            const isCallWithDetails = event.type === "call" && (event.has_transcript || event.has_recording);
+                          {(() => {
+                            let lastDateLabel = "";
+                            return safeTimeline.map((event, idx) => {
+                              const eventKey = `${event.type}-${event.id || event.scheduled_call_id || idx}-${event.attempt || 0}`;
+                              const cfg = getTimelineEventConfig(event);
+                              const EventIcon = cfg.icon;
+                              const description = getTimelineEventDescription(event);
+                              const isExpanded = expandedTimelineEvents.has(eventKey);
+                              const isCallWithDetails = event.type === "call" && (event.has_transcript || event.has_recording);
 
-                            return (
-                              <div key={eventKey} className="relative pl-12">
-                                <div className={`absolute left-3 top-3 w-5 h-5 rounded-full flex items-center justify-center ${cfg.bgColor} z-10`}>
-                                  <EventIcon className={`h-3 w-3 ${cfg.color}`} />
-                                </div>
+                              let dateSeparator: string | null = null;
+                              if (event.timestamp) {
+                                const d = new Date(event.timestamp);
+                                const dateLabel = format(d, "EEEE d MMMM yyyy", { locale: it });
+                                if (dateLabel !== lastDateLabel) {
+                                  lastDateLabel = dateLabel;
+                                  dateSeparator = dateLabel;
+                                }
+                              }
 
-                                <div
-                                  className={`rounded-lg border p-3 ${isCallWithDetails ? "cursor-pointer hover:bg-muted/30 transition-colors" : ""}`}
-                                  onClick={() => isCallWithDetails && toggleTimelineExpanded(eventKey)}
-                                >
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-sm font-medium">{description}</span>
-                                        {event.outcome && <Badge variant="secondary" className="text-xs">{event.outcome}</Badge>}
-                                        {event.duration_seconds != null && event.duration_seconds > 0 && (
-                                          <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                                            <Clock className="h-3 w-3" />
-                                            {formatDuration(event.duration_seconds)}
-                                          </span>
-                                        )}
+                              return (
+                                <div key={eventKey}>
+                                  {dateSeparator && (
+                                    <div className="relative pl-12 py-2 mt-2 first:mt-0">
+                                      <div className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-muted flex items-center justify-center z-10">
+                                        <Calendar className="h-3 w-3 text-muted-foreground" />
                                       </div>
-
-                                      {event.type === "call" && event.transcript_preview && (
-                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{event.transcript_preview}</p>
-                                      )}
-
-                                      {event.type === "retry_event" && (
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          Tentativo {event.attempt}/{event.max_attempts || "?"}
-                                          {event.hangup_cause && ` · ${event.hangup_cause}`}
-                                          {event.event && ` · ${event.event}`}
-                                        </p>
-                                      )}
-
-                                      {event.type === "scheduled" && (
-                                        <div className="text-xs text-muted-foreground mt-1">
-                                          {event.instruction && <p className="truncate">{event.instruction}</p>}
-                                          {event.instruction_type && <span className="capitalize">Tipo: {event.instruction_type}</span>}
-                                          {event.attempts != null && event.max_attempts != null && (
-                                            <span className="ml-2">· Tentativi: {event.attempts}/{event.max_attempts}</span>
-                                          )}
-                                          {event.retry_reason && <p className="text-orange-600 mt-0.5">{event.retry_reason}</p>}
-                                        </div>
-                                      )}
-
-                                      {event.type === "call_event" && event.eventData && (
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          {typeof event.eventData === "string" ? event.eventData : JSON.stringify(event.eventData).substring(0, 100)}
-                                        </p>
-                                      )}
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{dateSeparator}</p>
+                                    </div>
+                                  )}
+                                  <div className="relative pl-12">
+                                    <div className={`absolute left-3 top-3 w-5 h-5 rounded-full flex items-center justify-center ${cfg.bgColor} z-10`}>
+                                      <EventIcon className={`h-3 w-3 ${cfg.color}`} />
                                     </div>
 
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                      {event.timestamp && (
-                                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                          {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true, locale: it })}
-                                        </span>
-                                      )}
-                                      {isCallWithDetails && (
-                                        isExpanded
-                                          ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                          : <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                      )}
-                                      {event.type === "call" && event.id && (
-                                        <Link href={`/consultant/voice-calls/${event.id}`}>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => e.stopPropagation()}>
-                                            <ExternalLink className="h-3 w-3" />
-                                          </Button>
-                                        </Link>
+                                    <div
+                                      className={`rounded-lg border p-3 overflow-hidden ${isCallWithDetails ? "cursor-pointer hover:bg-muted/30 transition-colors" : ""}`}
+                                      onClick={() => isCallWithDetails && toggleTimelineExpanded(eventKey)}
+                                    >
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-sm font-medium">{description}</span>
+                                            {event.outcome && <Badge variant="secondary" className="text-xs">{event.outcome}</Badge>}
+                                            {event.duration_seconds != null && event.duration_seconds > 0 && (
+                                              <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                                <Clock className="h-3 w-3" />
+                                                {formatDuration(event.duration_seconds)}
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          {event.type === "call" && event.transcript_preview && (
+                                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">{event.transcript_preview}</p>
+                                          )}
+
+                                          {event.type === "retry_event" && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                              Tentativo {event.attempt}/{event.max_attempts || "?"}
+                                              {event.hangup_cause && ` · ${event.hangup_cause}`}
+                                              {event.event && ` · ${event.event}`}
+                                            </p>
+                                          )}
+
+                                          {event.type === "scheduled" && (
+                                            <div className="text-xs text-muted-foreground mt-1 overflow-hidden">
+                                              {event.instruction && <p className="line-clamp-2 break-words">{event.instruction}</p>}
+                                              {event.instruction_type && <span className="capitalize">Tipo: {event.instruction_type}</span>}
+                                              {event.attempts != null && event.max_attempts != null && (
+                                                <span className="ml-2">· Tentativi: {event.attempts}/{event.max_attempts}</span>
+                                              )}
+                                              {event.retry_reason && <p className="text-orange-600 mt-0.5 break-words">{event.retry_reason}</p>}
+                                            </div>
+                                          )}
+
+                                          {event.type === "call_event" && event.eventData && (
+                                            <p className="text-xs text-muted-foreground mt-1 break-words">
+                                              {typeof event.eventData === "string" ? event.eventData : JSON.stringify(event.eventData).substring(0, 100)}
+                                            </p>
+                                          )}
+                                        </div>
+
+                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                          {event.timestamp && (
+                                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                              {format(new Date(event.timestamp), "HH:mm", { locale: it })}
+                                            </span>
+                                          )}
+                                          {isCallWithDetails && (
+                                            isExpanded
+                                              ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                              : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                          )}
+                                          {event.type === "call" && event.id && (
+                                            <Link href={`/consultant/voice-calls/${event.id}`}>
+                                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => e.stopPropagation()}>
+                                                <ExternalLink className="h-3 w-3" />
+                                              </Button>
+                                            </Link>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {isExpanded && event.type === "call" && event.id && (
+                                        <div className="mt-3 pt-3 border-t space-y-3">
+                                          {event.has_transcript && (
+                                            <div>
+                                              <div className="text-sm font-medium mb-1 flex items-center gap-1.5">
+                                                <MessageSquare className="h-3.5 w-3.5" />Trascrizione
+                                              </div>
+                                              <TimelineCallTranscript callId={event.id} />
+                                            </div>
+                                          )}
+                                          {event.has_recording && (
+                                            <div>
+                                              <div className="text-sm font-medium mb-1 flex items-center gap-1.5">
+                                                <Volume2 className="h-3.5 w-3.5" />Registrazione
+                                              </div>
+                                              <TimelineCallRecording callId={event.id} />
+                                            </div>
+                                          )}
+                                        </div>
                                       )}
                                     </div>
                                   </div>
-
-                                  {isExpanded && event.type === "call" && event.id && (
-                                    <div className="mt-3 pt-3 border-t space-y-3">
-                                      {event.has_transcript && (
-                                        <div>
-                                          <div className="text-sm font-medium mb-1 flex items-center gap-1.5">
-                                            <MessageSquare className="h-3.5 w-3.5" />Trascrizione
-                                          </div>
-                                          <TimelineCallTranscript callId={event.id} />
-                                        </div>
-                                      )}
-                                      {event.has_recording && (
-                                        <div>
-                                          <div className="text-sm font-medium mb-1 flex items-center gap-1.5">
-                                            <Volume2 className="h-3.5 w-3.5" />Registrazione
-                                          </div>
-                                          <TimelineCallRecording callId={event.id} />
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            });
+                          })()}
                         </div>
                       </div>
                     )}
@@ -1215,8 +1238,8 @@ function TimelineCallTranscript({ callId }: { callId: string }) {
     queryFn: async () => {
       const res = await fetch(`/api/voice/calls/${callId}`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
-      const call = await res.json();
-      return call?.full_transcript || null;
+      const json = await res.json();
+      return json?.call?.full_transcript || null;
     },
   });
 
@@ -1236,13 +1259,14 @@ function TimelineCallRecording({ callId }: { callId: string }) {
     queryFn: async () => {
       const res = await fetch(`/api/voice/calls/${callId}`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
-      const call = await res.json();
-      return call?.recording_url || null;
+      const json = await res.json();
+      return json?.call?.recording_url ? true : false;
     },
   });
 
   if (isLoading) return <div className="text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin inline mr-1" />Caricamento...</div>;
   if (!data) return <div className="text-xs text-muted-foreground">Registrazione non disponibile</div>;
 
-  return <audio controls className="w-full h-8"><source src={data} type="audio/wav" /></audio>;
+  const token = localStorage.getItem('token') || '';
+  return <audio controls className="w-full h-8"><source src={`/api/voice/recording/${callId}?token=${token}`} type="audio/wav" /></audio>;
 }
