@@ -1606,57 +1606,75 @@ export default function ConsultantKnowledgeDocuments({ embedded = false }: { emb
         )}
 
         <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
-          <div className="mb-4 sm:mb-6 md:mb-8">
-            <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1 sm:space-y-2">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl">
-                      <Database className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
+          <div className="mb-4 sm:mb-6">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-950 via-orange-950 to-slate-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent" />
+              <div className="absolute top-0 right-0 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-500/5 rounded-full blur-3xl" />
+
+              <div className="relative z-10 space-y-5">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/30">
+                      <Database className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
                     </div>
                     <div>
-                      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">
-                        Base di Conoscenza - Documenti
+                      <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
+                        Base di Conoscenza
                       </h1>
-                      <p className="text-amber-100 text-xs sm:text-sm md:text-base lg:text-lg hidden sm:block">
+                      <p className="text-amber-200/70 text-sm mt-0.5">
                         Carica e gestisci documenti per arricchire le risposte AI
                       </p>
                     </div>
                   </div>
+
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
+                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                      <span className="text-xs text-green-300 font-medium">Sistema Attivo</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="hidden lg:flex items-center space-x-4">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
-                    <div className="text-3xl font-bold">{stats?.documents.total ?? 0}</div>
-                    <div className="text-sm text-amber-100">Documenti</div>
-                  </div>
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
-                    <div className="text-3xl font-bold">{stats?.documents.indexed ?? 0}</div>
-                    <div className="text-sm text-amber-100">Indicizzati</div>
-                  </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: "Documenti", value: stats?.documents.total ?? 0, icon: FileText, iconColor: "text-amber-300" },
+                    { label: "Indicizzati", value: stats?.documents.indexed ?? 0, icon: CheckCircle2, iconColor: "text-green-300" },
+                    { label: "In Elaborazione", value: stats?.documents.processing ?? 0, icon: StickyNote, iconColor: "text-violet-300" },
+                    { label: "Utilizzo Totale", value: stats?.totalUsage ?? 0, icon: Bot, iconColor: "text-blue-300" },
+                  ].map((stat, i) => (
+                    <div key={i} className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4 hover:bg-white/15 transition-colors">
+                      <div className="flex items-center gap-2 mb-2">
+                        <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">{stat.label}</span>
+                      </div>
+                      <p className="text-[28px] md:text-[32px] font-black tracking-tighter leading-none text-white">{stat.value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
 
           <Tabs defaultValue="documenti" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-              <TabsTrigger value="guida" className="gap-2">
+            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex rounded-xl h-auto p-1">
+              <TabsTrigger value="guida" className="gap-2 rounded-lg px-4 py-2">
                 <HelpCircle className="w-4 h-4" />
                 <span className="hidden sm:inline">Guida</span>
               </TabsTrigger>
-              <TabsTrigger value="documenti" className="gap-2">
+              <TabsTrigger value="documenti" className="gap-2 rounded-lg px-4 py-2">
                 <FileText className="w-4 h-4" />
                 <span className="hidden sm:inline">Documenti</span>
               </TabsTrigger>
-              <TabsTrigger value="sistema" className="gap-2">
+              <TabsTrigger value="sistema" className="gap-2 rounded-lg px-4 py-2">
                 <StickyNote className="w-4 h-4" />
                 <span className="hidden sm:inline">Istruzioni AI</span>
               </TabsTrigger>
-              <TabsTrigger value="agenti" className="gap-2">
+              <TabsTrigger value="agenti" className="gap-2 rounded-lg px-4 py-2">
                 <Bot className="w-4 h-4" />
                 <span className="hidden sm:inline">Agenti AI</span>
               </TabsTrigger>
-              <TabsTrigger value="drive" className="gap-2">
+              <TabsTrigger value="drive" className="gap-2 rounded-lg px-4 py-2">
                 <Cloud className="w-4 h-4" />
                 <span className="hidden sm:inline">Google Drive</span>
               </TabsTrigger>
