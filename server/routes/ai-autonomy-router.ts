@@ -5956,34 +5956,68 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
       const safeLimit = Math.min(requestedLimit, 5000);
       if (before) {
         result = await db.execute(sql`
-          SELECT id, ai_role, role_name, sender, message, created_at, metadata
-          FROM agent_chat_messages
-          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-            AND created_at < ${before}::timestamptz
+          SELECT * FROM (
+            SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+            FROM agent_chat_messages
+            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+              AND created_at < ${before}::timestamptz
+            UNION ALL
+            SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
+              CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
+              message, created_at, NULL as metadata, 'telegram' as source, sender_name
+            FROM telegram_open_mode_messages
+            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+              AND created_at < ${before}::timestamptz
+          ) combined
           ORDER BY created_at DESC LIMIT ${safeLimit}
         `);
       } else {
         result = await db.execute(sql`
-          SELECT id, ai_role, role_name, sender, message, created_at, metadata
-          FROM agent_chat_messages
-          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          SELECT * FROM (
+            SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+            FROM agent_chat_messages
+            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+            UNION ALL
+            SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
+              CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
+              message, created_at, NULL as metadata, 'telegram' as source, sender_name
+            FROM telegram_open_mode_messages
+            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          ) combined
           ORDER BY created_at DESC LIMIT ${safeLimit}
         `);
       }
     } else {
       if (before) {
         result = await db.execute(sql`
-          SELECT id, ai_role, role_name, sender, message, created_at, metadata
-          FROM agent_chat_messages
-          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-            AND created_at < ${before}::timestamptz
+          SELECT * FROM (
+            SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+            FROM agent_chat_messages
+            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+              AND created_at < ${before}::timestamptz
+            UNION ALL
+            SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
+              CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
+              message, created_at, NULL as metadata, 'telegram' as source, sender_name
+            FROM telegram_open_mode_messages
+            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+              AND created_at < ${before}::timestamptz
+          ) combined
           ORDER BY created_at ASC
         `);
       } else {
         result = await db.execute(sql`
-          SELECT id, ai_role, role_name, sender, message, created_at, metadata
-          FROM agent_chat_messages
-          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          SELECT * FROM (
+            SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+            FROM agent_chat_messages
+            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+            UNION ALL
+            SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
+              CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
+              message, created_at, NULL as metadata, 'telegram' as source, sender_name
+            FROM telegram_open_mode_messages
+            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          ) combined
           ORDER BY created_at ASC
         `);
       }
@@ -6760,8 +6794,16 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
     }
   } else {
     historyQuery = db.execute(sql`
-      SELECT sender, message, created_at FROM agent_chat_messages
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      SELECT sender, message, created_at FROM (
+        SELECT sender, message, created_at
+        FROM agent_chat_messages
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        UNION ALL
+        SELECT CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
+          message, created_at
+        FROM telegram_open_mode_messages
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      ) combined
       ORDER BY created_at DESC
     `);
   }
@@ -7018,7 +7060,7 @@ Rispondi in modo utile e professionale basandoti sulla conversazione con questa 
     }
   }
 
-  if (isTelegram) {
+  if (isTelegram && isOpenMode) {
     const marcoTelegramExtra = roleId === 'marco' ? `\n- Sei su Telegram ma sei SEMPRE Marco il coach: diretto, crudo, senza filtri. Niente tono da assistente gentile. Provoca, spingi, chiedi conto.` : '';
     const groupExtra = isGroupChat ? `\n- Sei in un GRUPPO: rispondi alla persona che ti ha scritto (${senderName || 'l\'utente'}) per nome. Persone diverse nel gruppo possono scriverti e devi adattare il tono a ciascuno.` : '';
     systemPrompt += `\nSTAI RISPONDENDO SU TELEGRAM — REGOLE CHAT:

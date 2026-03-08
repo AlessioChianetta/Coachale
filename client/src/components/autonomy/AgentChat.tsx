@@ -17,6 +17,8 @@ interface ChatMessage {
   sender: "consultant" | "agent";
   message: string;
   created_at: string;
+  source?: "in_app" | "telegram";
+  sender_name?: string | null;
 }
 
 interface AgentChatProps {
@@ -542,6 +544,15 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
           ) : (
             messages.map((msg) => (
               <div key={msg.id}>
+                {msg.source === "telegram" && (
+                  <div className={cn(
+                    "flex items-center gap-1 mb-0.5 text-[10px] text-blue-500 dark:text-blue-400",
+                    msg.sender === "consultant" ? "justify-end pr-1" : "ml-12"
+                  )}>
+                    <Send className="h-2.5 w-2.5" />
+                    <span>Telegram{msg.sender_name ? ` · ${msg.sender_name}` : ""}</span>
+                  </div>
+                )}
                 <Message
                   message={{
                     id: msg.id,
