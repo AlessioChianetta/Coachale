@@ -780,7 +780,7 @@ export function DeliveryAgentPanel() {
                 ))}
               </div>
             </div>
-          )
+          )}
 
           {simulatorStep === "niche" && (
             <div className="py-3">
