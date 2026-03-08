@@ -765,60 +765,84 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
               </div>
             </div>
 
-            <main className={`mx-auto px-4 sm:px-6 py-8 ${batchResults.length ? 'max-w-full' : 'max-w-7xl'}`}>
+            <main className="mx-auto px-4 sm:px-6 py-8 max-w-full">
               {!batchResults.length ? (
-                <div className="flex flex-col lg:flex-row gap-8">
-                  <aside className="lg:w-80 shrink-0 space-y-6">
-                    <Card className={isDark ? 'bg-slate-900/50 border-slate-800' : ''}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-indigo-500" />
-                          Factory Styles
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className={`flex items-center gap-2 p-2.5 rounded-lg border ${
-                          stylesMode === 'auto' 
-                            ? 'bg-indigo-500/10 border-indigo-500/30' 
-                            : isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
-                        }`}>
-                          <button
-                            onClick={() => {
-                              if (cachedManualSettings) {
-                                setSettings(cachedManualSettings);
-                                setCachedManualSettings(null);
-                              }
-                              setStylesMode('manual');
-                            }}
-                            className={`flex-1 text-[11px] font-semibold py-1.5 rounded-md transition-all ${
-                              stylesMode === 'manual' 
-                                ? isDark ? 'bg-slate-700 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm'
-                                : 'text-muted-foreground hover:text-foreground'
-                            }`}
-                          >
-                            Manuale
-                          </button>
-                          <button
-                            onClick={() => {
-                              setCachedManualSettings({ ...settings });
-                              setStylesMode('auto');
-                            }}
-                            className={`flex-1 text-[11px] font-semibold py-1.5 rounded-md transition-all flex items-center justify-center gap-1 ${
-                              stylesMode === 'auto' 
-                                ? 'bg-indigo-500 text-white shadow-sm'
-                                : 'text-muted-foreground hover:text-foreground'
+                <div className="flex flex-col gap-6">
+                  <div className={`rounded-xl border ${isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div className={`flex items-center gap-3 px-5 py-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+                      <Sparkles className="w-4 h-4 text-indigo-500" />
+                      <span className="text-sm font-semibold">Factory Styles</span>
+                      <div className={`flex items-center gap-2 p-1.5 rounded-lg border ml-4 ${
+                        stylesMode === 'auto' 
+                          ? 'bg-indigo-500/10 border-indigo-500/30' 
+                          : isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
+                      }`}>
+                        <button
+                          onClick={() => {
+                            if (cachedManualSettings) {
+                              setSettings(cachedManualSettings);
+                              setCachedManualSettings(null);
+                            }
+                            setStylesMode('manual');
+                          }}
+                          className={`text-[11px] font-semibold py-1 px-3 rounded-md transition-all ${
+                            stylesMode === 'manual' 
+                              ? isDark ? 'bg-slate-700 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Manuale
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCachedManualSettings({ ...settings });
+                            setStylesMode('auto');
+                          }}
+                          className={`text-[11px] font-semibold py-1 px-3 rounded-md transition-all flex items-center justify-center gap-1 ${
+                            stylesMode === 'auto' 
+                              ? 'bg-indigo-500 text-white shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
                             }`}
                           >
                             <Zap className="w-3 h-3" />
                             AI Auto
                           </button>
                         </div>
-                        {stylesMode === 'auto' && (
-                          <p className="text-[10px] text-indigo-400 leading-tight">
-                            L'AI analizzerà il testo e sceglierà automaticamente mood, stile, illuminazione, colori, inquadratura e sfondo ottimali per ogni ads.
-                          </p>
-                        )}
-                        <div className={stylesMode === 'auto' ? 'opacity-50 pointer-events-none' : ''}>
+                      {stylesMode === 'auto' && (
+                        <p className="text-[10px] text-indigo-400 leading-tight ml-2">
+                          L'AI sceglierà automaticamente mood, stile, illuminazione, colori, inquadratura e sfondo.
+                        </p>
+                      )}
+                      <div className="flex-1" />
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => setShowImportDialog(true)}
+                        >
+                          <FileText className="w-3.5 h-3.5 mr-1.5" />
+                          Importa Post
+                          <Badge variant="secondary" className="ml-1.5 text-[10px]">{existingPosts.length}</Badge>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={fetchFromExternalSource}
+                          disabled={isFetchingFromSource}
+                        >
+                          {isFetchingFromSource ? (
+                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                          )}
+                          Importa da Generatore
+                        </Button>
+                      </div>
+                    </div>
+                    <div className={`px-5 py-4 ${stylesMode === 'auto' ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 xl:grid-cols-8 gap-3">
                         <div>
                           <label className="text-xs font-medium text-muted-foreground mb-2 block">Mood</label>
                           <Select value={settings.mood} onValueChange={(v) => setSettings({...settings, mood: v as any})}>
@@ -1005,46 +1029,11 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                           </div>
                           <p className="text-[10px] text-muted-foreground mt-1">Usato come accento visivo nell'immagine</p>
                         </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
+                  </div>
 
-                    <Card className={isDark ? 'bg-slate-900/50 border-slate-800' : ''}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-blue-500" />
-                          Importa Contenuti
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start"
-                          onClick={() => setShowImportDialog(true)}
-                        >
-                          <FileText className="w-4 h-4 mr-2" />
-                          Importa da Post Esistenti
-                          <Badge variant="secondary" className="ml-auto">{existingPosts.length}</Badge>
-                        </Button>
-                        
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start"
-                          onClick={fetchFromExternalSource}
-                          disabled={isFetchingFromSource}
-                        >
-                          {isFetchingFromSource ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                          )}
-                          Importa da Generatore
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </aside>
-
-                  <div className="flex-1 space-y-4">
+                  <div className="space-y-4">
                     {postInputs.map((post, idx) => {
                       const getStatusBadge = (status?: string) => {
                         switch (status) {
