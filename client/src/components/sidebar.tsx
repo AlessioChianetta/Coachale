@@ -178,10 +178,8 @@ const consultantCategories: SidebarCategoryExtended[] = [
     items: [
       { name: "Dashboard", href: "/consultant/content-studio", icon: LayoutGrid, color: "indigo" },
       { name: "Idee", href: "/consultant/content-studio/ideas", icon: Lightbulb, color: "yellow" },
-      { name: "Contenuti", href: "/consultant/content-studio/posts", icon: PenLine, color: "purple" },
       { name: "Calendario", href: "/consultant/content-studio/calendar", icon: Calendar, color: "emerald" },
       { name: "Brand Assets", href: "/consultant/content-studio/brand", icon: Palette, color: "pink" },
-      { name: "AdVisage AI", href: "/consultant/content-studio/advisage", icon: Zap, color: "orange" },
     ]
   },
   {
