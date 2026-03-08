@@ -5917,24 +5917,24 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
         result = before
           ? await db.execute(sql`
               SELECT id, role, content as message, created_at FROM delivery_agent_messages
-              WHERE session_id = ${sessionId}::uuid AND created_at < ${before}::timestamptz
+              WHERE session_id = ${sessionId} AND created_at < ${before}::timestamptz
               ORDER BY created_at DESC LIMIT ${safeLimit}
             `)
           : await db.execute(sql`
               SELECT id, role, content as message, created_at FROM delivery_agent_messages
-              WHERE session_id = ${sessionId}::uuid
+              WHERE session_id = ${sessionId}
               ORDER BY created_at DESC LIMIT ${safeLimit}
             `);
       } else {
         result = before
           ? await db.execute(sql`
               SELECT id, role, content as message, created_at FROM delivery_agent_messages
-              WHERE session_id = ${sessionId}::uuid AND created_at < ${before}::timestamptz
+              WHERE session_id = ${sessionId} AND created_at < ${before}::timestamptz
               ORDER BY created_at ASC
             `)
           : await db.execute(sql`
               SELECT id, role, content as message, created_at FROM delivery_agent_messages
-              WHERE session_id = ${sessionId}::uuid
+              WHERE session_id = ${sessionId}
               ORDER BY created_at ASC
             `);
       }
@@ -6017,12 +6017,12 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
 
       await db.execute(sql`
         INSERT INTO delivery_agent_messages (session_id, role, content)
-        VALUES (${sessionId}::uuid, 'user', ${message.trim()})
+        VALUES (${sessionId}, 'user', ${message.trim()})
       `);
 
       const historyRes = await db.execute(sql`
         SELECT role, content FROM delivery_agent_messages
-        WHERE session_id = ${sessionId}::uuid ORDER BY created_at ASC
+        WHERE session_id = ${sessionId} ORDER BY created_at ASC
       `);
       const contents = (historyRes.rows as any[]).map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
@@ -6103,10 +6103,10 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
 
       await db.execute(sql`
         INSERT INTO delivery_agent_messages (session_id, role, content)
-        VALUES (${sessionId}::uuid, 'assistant', ${fullText})
+        VALUES (${sessionId}, 'assistant', ${fullText})
       `);
       await db.execute(sql`
-        UPDATE delivery_agent_sessions SET updated_at = NOW() WHERE id = ${sessionId}::uuid
+        UPDATE delivery_agent_sessions SET updated_at = NOW() WHERE id = ${sessionId}
       `);
 
       return res.json({
@@ -6307,12 +6307,12 @@ router.post("/agent-chat/:roleId/send-media", authenticateToken, requireAnyRole(
 
       await db.execute(sql`
         INSERT INTO delivery_agent_messages (session_id, role, content)
-        VALUES (${sessionId}::uuid, 'user', ${fullMessage.trim()})
+        VALUES (${sessionId}, 'user', ${fullMessage.trim()})
       `);
 
       const historyRes = await db.execute(sql`
         SELECT role, content FROM delivery_agent_messages
-        WHERE session_id = ${sessionId}::uuid ORDER BY created_at ASC
+        WHERE session_id = ${sessionId} ORDER BY created_at ASC
       `);
       const contents = (historyRes.rows as any[]).map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
@@ -6391,10 +6391,10 @@ router.post("/agent-chat/:roleId/send-media", authenticateToken, requireAnyRole(
 
       await db.execute(sql`
         INSERT INTO delivery_agent_messages (session_id, role, content)
-        VALUES (${sessionId}::uuid, 'assistant', ${aiText})
+        VALUES (${sessionId}, 'assistant', ${aiText})
       `);
       await db.execute(sql`
-        UPDATE delivery_agent_sessions SET updated_at = NOW() WHERE id = ${sessionId}::uuid
+        UPDATE delivery_agent_sessions SET updated_at = NOW() WHERE id = ${sessionId}
       `);
 
       return res.json({ response: { message: aiText } });

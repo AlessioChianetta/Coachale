@@ -69,6 +69,11 @@ const ROLE_SUGGESTIONS: Record<string, string[]> = {
     "Strategie anti-churn attive",
     "Report retention mensile",
   ],
+  robert: [
+    "Come posso vendere il pacchetto più adatto ai miei clienti?",
+    "Quali obiezioni devo aspettarmi e come gestirle?",
+    "Dammi una strategia di vendita per questa settimana",
+  ],
   personalizza: [
     "Qual è il tuo stato attuale?",
     "Cosa hai fatto di recente?",
