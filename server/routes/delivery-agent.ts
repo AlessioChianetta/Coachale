@@ -7,6 +7,7 @@ import { searchGoogleMaps, scrapeWebsiteWithFirecrawl } from '../services/lead-s
 import { decrypt } from '../encryption';
 import { superadminLeadScraperConfig } from '../../shared/schema';
 import { getOnboardingStatusForAI } from './onboarding';
+import { fileSearchService } from '../ai/file-search-service';
 
 const fileSearchBootstrapped = new Set<string>();
 
@@ -258,6 +259,19 @@ router.post('/chat', authenticateToken, requireRole('consultant'), async (req: A
       provider.setFeature('delivery-agent', 'consultant');
     }
 
+    let fileSearchTool: any = null;
+    try {
+      const { storeNames, breakdown } = await fileSearchService.getStoreBreakdownForGeneration(consultantId, 'consultant');
+      if (storeNames.length > 0) {
+        fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
+        console.log(`🔍 [DeliveryAgent] File Search enabled with ${storeNames.length} stores:`, breakdown.map(b => `${b.storeDisplayName} (${b.totalDocs} docs)`).join(', '));
+      } else {
+        console.log(`⚠️ [DeliveryAgent] No File Search stores found for consultant ${consultantId}`);
+      }
+    } catch (fsErr: any) {
+      console.warn(`[DeliveryAgent] File Search setup failed (non-blocking):`, fsErr.message);
+    }
+
     const { model, useThinking, thinkingLevel } = getModelWithThinking(provider.metadata?.providerName);
 
     const generationConfig: any = {
@@ -268,12 +282,17 @@ router.post('/chat', authenticateToken, requireRole('consultant'), async (req: A
       generationConfig.thinkingConfig = { thinkingBudget: thinkingLevel === 'high' ? 8192 : thinkingLevel === 'medium' ? 4096 : 2048 };
     }
 
-    const stream = await provider.client.generateContentStream({
+    const streamConfig: any = {
       model,
       contents,
       generationConfig,
       systemInstruction: { role: 'system', parts: [{ text: systemPromptText }] },
-    });
+    };
+    if (fileSearchTool) {
+      streamConfig.tools = [fileSearchTool];
+    }
+
+    const stream = await provider.client.generateContentStream(streamConfig);
 
     let fullText = '';
     let thinkingText = '';
