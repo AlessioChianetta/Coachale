@@ -1,0 +1,151 @@
+così com’è lo storico chiamate è molto difficile da leggere. Il problema principale è che ci sono troppe informazioni nella stessa riga e gli stati non sono organizzati bene. Ti propongo una soluzione pratica di redesign semplice che migliora leggibilità e velocità.
+
+Problemi della schermata attuale ⚠️
+
+Troppe colonne
+
+Contatto
+
+Numero
+
+Cliente
+
+Stato
+
+Origine
+
+Tipo
+
+Durata
+
+Esito
+
+👉 molte sono inutili nella lista.
+
+Informazioni duplicate
+
+Contatto + Numero
+
+Stato + Esito
+
+Colori confusi
+
+rosso, verde, viola, arancione tutti insieme.
+
+Le chiamate multiple sono poco chiare
+
+“2 chiamate”, “7 completate”, ecc.
+
+La gerarchia visiva è sbagliata
+
+non capisci subito:
+
+chi ha chiamato
+
+quando
+
+se è andata a buon fine
+
+Layout molto più chiaro (consigliato) ⭐
+
+Trasforma la tabella in lista compatta stile CRM / call center.
+
+Struttura riga
+[Avatar]  Nome / Numero
+          +39 361 4451530
+
+📅 08 Mar 20:16
+📞 In entrata
+
+🟢 Completata
+⏱ 0:53
+
+            > Dettagli
+Versione tabella semplificata
+Contatto	Data	Tipo	Stato	Durata	
+Mario Rossi	08 Mar 20:16	In entrata	🟢 Completata	0:53	Dettagli
++39 3614451530	07 Mar 23:24	In entrata	🟢 7 / 🔴 1	4:32	Dettagli
+1000	07 Mar 09:00	AI Task	🔴 Non risponde	-	Dettagli
+
+👉 massimo 6 colonne
+
+Raggruppare le chiamate (molto importante)
+
+Invece di:
+
+2 chiamate
+7 completate
+1 fallita
+
+usa un collapsible group
+
+▶ 08 Mar 20:16 — 2 chiamate
+   ✔ completata
+   ✖ fallita
+
+Quando clicchi:
+
+▼ 08 Mar 20:16 — 2 chiamate
+
+   ✔ 20:16 completata — 0:53
+   ✖ 19:56 fallita
+Migliora gli stati (molto più chiari)
+
+Usa solo 4 colori
+
+Stato	Colore
+Completata	🟢 verde
+Fallita	🔴 rosso
+Non risponde	🟠 arancio
+Occupato	🟡 giallo
+
+Evita badge tipo
+ghost_cleanup o normal_end nella lista.
+
+Mettili solo nel dettaglio.
+
+Se vuoi una UI davvero moderna
+
+Falla stile timeline chiamate:
+
+08 MARZO
+────────────
+
+🟢 20:16
+Mario Rossi
+In entrata • 0:53
+
+🔴 19:56
+Mario Rossi
+Fallita
+
+────────────
+07 MARZO
+
+🟢 23:24
++39 3614451530
+7 chiamate • 4:32 tot
+
+Molto più leggibile.
+
+Filtri migliori
+
+Sposta i filtri in alto così:
+
+🔎 Cerca numero o contatto
+
+[ Tutte ] [ Entrata ] [ Uscita ] [ AI ]
+[ Tutti stati ] [ Oggi ] [ 7 giorni ]
+Bonus UX 🔥
+
+Aggiungi azioni rapide al passaggio mouse:
+
+📞 richiama
+💬 messaggio
+📄 dettagli
+
+✅ Risultato:
+
+60% meno confusione
+
+si capisce subito cosa è successo

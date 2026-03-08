@@ -1489,6 +1489,8 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [numberFilter, setNumberFilter] = useState<string>("all");
+  const [directionFilter, setDirectionFilter] = useState<string>("all");
+  const [timeFilter, setTimeFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [period, setPeriod] = useState<string>("day");
   const [vpsBridgeUrl, setVpsBridgeUrl] = useState<string>("");
@@ -2901,14 +2903,37 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
   const filteredCalls = calls.filter((c: any) => {
     const matchesSearch = !search || 
       c.caller_id?.includes(search) ||
+      c.called_number?.includes(search) ||
       c.client_name?.toLowerCase().includes(search.toLowerCase());
     
     const matchesClientType = 
       clientTypeFilter === 'all' ||
       (clientTypeFilter === 'client' && c.client_id) ||
       (clientTypeFilter === 'non-client' && !c.client_id);
+
+    const isAiTask = c.source_task_id || c.ai_task_type;
+    const isOutbound = c.call_direction === 'outbound';
+    const matchesDirection =
+      directionFilter === 'all' ||
+      (directionFilter === 'inbound' && !isOutbound && !isAiTask) ||
+      (directionFilter === 'outbound' && isOutbound && !isAiTask) ||
+      (directionFilter === 'ai-task' && isAiTask);
+
+    let matchesTime = true;
+    if (timeFilter !== 'all' && c.started_at) {
+      const callDate = new Date(c.started_at);
+      const now = new Date();
+      if (timeFilter === 'today') {
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        matchesTime = callDate >= todayStart;
+      } else if (timeFilter === '7days') {
+        matchesTime = callDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      } else if (timeFilter === '30days') {
+        matchesTime = callDate >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
+    }
     
-    return matchesSearch && matchesClientType;
+    return matchesSearch && matchesClientType && matchesDirection && matchesTime;
   });
 
   const crmContacts = useMemo(() => {
@@ -3290,49 +3315,43 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                     <div className="relative flex-1 min-w-[140px]">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Cerca..."
+                        placeholder="Cerca numero o contatto..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="pl-9 h-8 text-sm"
                       />
                     </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[130px] h-8 text-xs sm:text-sm">
+                        <SelectValue placeholder="Stato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti gli stati</SelectItem>
+                        <SelectItem value="completed">Completata</SelectItem>
+                        <SelectItem value="failed">Fallita</SelectItem>
+                        <SelectItem value="no_answer">Non risponde</SelectItem>
+                        <SelectItem value="busy">Occupato</SelectItem>
+                        <SelectItem value="short_call">Breve</SelectItem>
+                        <SelectItem value="voicemail">Segreteria</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Select value={clientTypeFilter} onValueChange={(v) => setClientTypeFilter(v as 'all' | 'client' | 'non-client')}>
-                      <SelectTrigger className="w-[110px] sm:w-[140px] h-8 text-xs sm:text-sm">
+                      <SelectTrigger className="w-[110px] h-8 text-xs sm:text-sm">
                         <SelectValue placeholder="Tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">
-                          <span className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            Tutti
-                          </span>
-                        </SelectItem>
-                        <SelectItem value="client">
-                          <span className="flex items-center gap-2">
-                            <UserCheck className="h-4 w-4 text-green-500" />
-                            Clienti
-                          </span>
-                        </SelectItem>
-                        <SelectItem value="non-client">
-                          <span className="flex items-center gap-2">
-                            <UserX className="h-4 w-4 text-orange-500" />
-                            Non Clienti
-                          </span>
-                        </SelectItem>
+                        <SelectItem value="all">Tutti</SelectItem>
+                        <SelectItem value="client">Clienti</SelectItem>
+                        <SelectItem value="non-client">Non Clienti</SelectItem>
                       </SelectContent>
                     </Select>
                     {myVoiceNumbers.length > 1 && (
                       <Select value={numberFilter} onValueChange={(v) => { setNumberFilter(v); setPage(1); }}>
-                        <SelectTrigger className="w-[130px] sm:w-[160px] h-8 text-xs sm:text-sm">
+                        <SelectTrigger className="w-[130px] h-8 text-xs sm:text-sm">
                           <SelectValue placeholder="Numero" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">
-                            <span className="flex items-center gap-2">
-                              <Phone className="h-4 w-4" />
-                              Tutti i numeri
-                            </span>
-                          </SelectItem>
+                          <SelectItem value="all">Tutti i numeri</SelectItem>
                           {myVoiceNumbers.map((n) => (
                             <SelectItem key={n.id} value={n.phone_number}>
                               {n.display_name && n.display_name !== n.phone_number ? n.display_name : n.phone_number}
@@ -3341,19 +3360,6 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                         </SelectContent>
                       </Select>
                     )}
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-[110px] sm:w-[130px] h-8 text-xs sm:text-sm">
-                        <SelectValue placeholder="Stato" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tutti gli stati</SelectItem>
-                        {Object.entries(STATUS_CONFIG).map(([value, config]) => (
-                          <SelectItem key={value} value={value}>
-                            {config.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
               </CardHeader>
@@ -3372,293 +3378,208 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                   </div>
                 ) : (
                   <>
-                    <div className="overflow-x-auto -mx-0 sm:mx-0">
-                    <Table className="min-w-[900px]">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="whitespace-nowrap">Data</TableHead>
-                          <TableHead className="whitespace-nowrap">Contatto</TableHead>
-                          {myVoiceNumbers.length > 1 && <TableHead className="whitespace-nowrap">Numero</TableHead>}
-                          <TableHead className="whitespace-nowrap">Cliente</TableHead>
-                          <TableHead className="whitespace-nowrap">Stato</TableHead>
-                          <TableHead className="whitespace-nowrap">Origine</TableHead>
-                          <TableHead className="whitespace-nowrap">Tipo</TableHead>
-                          <TableHead className="whitespace-nowrap">Durata</TableHead>
-                          <TableHead className="whitespace-nowrap">Esito</TableHead>
-                          <TableHead></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {groupedCalls.map((group) => {
+                    <div className="divide-y">
+                      {(() => {
+                        let lastDateLabel = '';
+                        return groupedCalls.map((group) => {
                           const call = group.latest;
-                          const statusConfig = STATUS_CONFIG[call.status] || STATUS_CONFIG.ended;
-                          const StatusIcon = statusConfig.icon;
                           const contactPhone = call.call_direction === 'outbound' ? (call.called_number || call.caller_id) : (call.caller_id || '');
                           const groupKey = `${contactPhone}__${call.started_at ? new Date(call.started_at).toISOString().slice(0, 10) : ''}`;
                           const isExpanded = expandedGroups.has(groupKey);
                           const isGrouped = group.count > 1;
-                          
-                          const renderCallRow = (c: any, isSubRow = false) => {
-                            const sc = STATUS_CONFIG[c.status] || STATUS_CONFIG.ended;
-                            const SIcon = sc.icon;
+                          const contactName = call.client_name || '';
+                          const initials = contactName
+                            ? contactName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+                            : contactPhone.slice(-2);
+
+                          const getSimpleStatus = (status: string) => {
+                            switch (status) {
+                              case 'completed': case 'transferred': return { label: 'Completata', dot: 'bg-green-500', bg: 'bg-green-50 text-green-700' };
+                              case 'failed': case 'no_answer': return { label: status === 'no_answer' ? 'Non risponde' : 'Fallita', dot: 'bg-red-500', bg: 'bg-red-50 text-red-700' };
+                              case 'busy': case 'short_call': return { label: status === 'busy' ? 'Occupato' : 'Breve', dot: 'bg-amber-500', bg: 'bg-amber-50 text-amber-700' };
+                              case 'voicemail': return { label: 'Segreteria', dot: 'bg-violet-500', bg: 'bg-violet-50 text-violet-700' };
+                              case 'ringing': case 'answered': case 'talking': return { label: 'In corso', dot: 'bg-blue-500', bg: 'bg-blue-50 text-blue-700' };
+                              default: return { label: 'Terminata', dot: 'bg-gray-400', bg: 'bg-gray-50 text-gray-600' };
+                            }
+                          };
+
+                          const getCallDirection = (c: any) => {
+                            if (c.source_task_id || c.ai_task_type) return { label: 'AI Task', icon: Bot, color: 'text-violet-600' };
+                            if (c.svc_direct_match || c.svc_phone_match) return { label: 'Programmata', icon: Calendar, color: 'text-blue-600' };
+                            if (c.call_direction === 'outbound') return { label: 'In uscita', icon: PhoneOutgoing, color: 'text-slate-500' };
+                            return { label: 'In entrata', icon: PhoneIncoming, color: 'text-slate-500' };
+                          };
+
+                          const dateLabel = call.started_at
+                            ? format(toItalianTime(call.started_at), "dd MMMM yyyy", { locale: it }).toUpperCase()
+                            : '';
+                          const showDateSeparator = dateLabel !== lastDateLabel;
+                          if (showDateSeparator) lastDateLabel = dateLabel;
+
+                          const renderSingleCall = (c: any, isSubRow = false) => {
+                            const st = getSimpleStatus(c.status);
+                            const dir = getCallDirection(c);
+                            const DirIcon = dir.icon;
+                            const cPhone = c.call_direction === 'outbound' ? (c.called_number || c.caller_id) : (c.caller_id || '');
+                            const cName = c.client_name || '';
+                            const cInitials = cName
+                              ? cName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+                              : cPhone.slice(-2);
+
                             return (
-                              <TableRow key={c.id} className={isSubRow ? "bg-muted/30" : ""}>
-                                <TableCell>
-                                  <div className="flex items-center gap-1">
-                                    {isSubRow && <span className="text-muted-foreground text-xs ml-2">↳</span>}
-                                    <div>
-                                      <div className="text-sm">
-                                        {format(toItalianTime(c.started_at), "dd/MM HH:mm", { locale: it })}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {formatDistanceToNow(parseUTCDate(c.started_at), { addSuffix: true, locale: it })}
-                                      </div>
-                                    </div>
+                              <div key={c.id} className={`flex items-center gap-3 px-3 sm:px-6 py-3 hover:bg-muted/40 transition-colors ${isSubRow ? 'pl-12 sm:pl-16 bg-muted/20' : ''}`}>
+                                {!isSubRow && (
+                                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                    cName ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                  }`}>
+                                    {cInitials}
                                   </div>
-                                </TableCell>
-                                <TableCell className="font-mono text-sm">{c.call_direction === 'outbound' ? (c.called_number || c.caller_id) : c.caller_id}</TableCell>
-                                {myVoiceNumbers.length > 1 && (
-                                  <TableCell className="text-xs text-muted-foreground">
-                                    {c.call_direction === 'outbound' ? c.caller_id : c.called_number || '-'}
-                                  </TableCell>
                                 )}
-                                <TableCell>
-                                  {c.client_name ? (
-                                    <div className="flex items-center gap-2">
-                                      <User className="h-4 w-4 text-muted-foreground" />
-                                      <span className="text-sm">{c.client_name}</span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted-foreground">-</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge className={sc.color}>
-                                    <SIcon className="h-3 w-3 mr-1" />
-                                    {sc.label}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  {c.source_task_id || c.ai_task_type ? (
-                                    <div className="flex flex-col gap-0.5">
-                                      <div className="flex items-center gap-1 text-sm">
-                                        <Bot className="h-3 w-3 text-purple-500" />
-                                        <span className="font-medium">AI Task</span>
-                                      </div>
-                                      {c.svc_attempts && c.svc_attempts > 1 && (
-                                        <span className="text-xs text-orange-600">
-                                          Tentativo {c.svc_attempts}/{c.svc_max_attempts || 5}
-                                        </span>
-                                      )}
-                                    </div>
-                                  ) : c.svc_direct_match || c.svc_phone_match ? (
-                                    <div className="flex items-center gap-1 text-sm">
-                                      <Calendar className="h-3 w-3 text-blue-500" />
-                                      <span className="font-medium">Programmata</span>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                      <PhoneIncoming className="h-3 w-3" />
-                                      <span>In entrata</span>
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {c.instruction_type === 'task' ? (
-                                    <div className="flex items-center gap-1 text-sm">
-                                      <ClipboardList className="h-3 w-3 text-blue-500" />
-                                      <span>Task</span>
-                                    </div>
-                                  ) : c.instruction_type === 'reminder' ? (
-                                    <div className="flex items-center gap-1 text-sm">
-                                      <Bell className="h-3 w-3 text-orange-500" />
-                                      <span>Reminder</span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted-foreground text-sm">-</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>{formatDuration(c.duration_seconds)}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    {c.outcome ? (
-                                      <Badge variant="outline">{c.outcome}</Badge>
-                                    ) : (
-                                      <span className="text-muted-foreground">-</span>
-                                    )}
+                                {isSubRow && (
+                                  <div className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`font-medium text-sm truncate ${isSubRow ? 'text-muted-foreground' : ''}`}>
+                                      {!isSubRow ? (cName || cPhone) : format(toItalianTime(c.started_at), "HH:mm", { locale: it })}
+                                    </span>
+                                    <Badge className={`${st.bg} border-0 text-[10px] px-1.5 py-0 font-medium`}>
+                                      {st.label}
+                                    </Badge>
                                     {c.metadata?.bookingCreated && (
-                                      <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white text-[10px] px-1.5 py-0 gap-1">
-                                        <CalendarCheck className="h-3 w-3" />
+                                      <Badge className="bg-green-600 text-white text-[10px] px-1.5 py-0 gap-0.5">
+                                        <CalendarCheck className="h-2.5 w-2.5" />
                                         Appuntamento
                                       </Badge>
                                     )}
                                   </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-1">
-                                    <Link href={`/consultant/voice-calls/${c.id}`}>
-                                      <Button variant="ghost" size="sm">
-                                        Dettagli
-                                      </Button>
-                                    </Link>
-                                    <Link href={`/consultant/voice-calls/contact/${encodeURIComponent((c.target_phone || c.called_number || c.caller_id || '').replace(/\s+/g, ''))}`}>
-                                      <Button variant="ghost" size="sm" title="Profilo contatto">
-                                        <User className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </Link>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          };
-
-                          if (!isGrouped) {
-                            return renderCallRow(call);
-                          }
-
-                          const completedCount = group.statuses['completed'] || 0;
-                          const failedCount = group.statuses['failed'] || 0;
-                          const noAnswerCount = group.statuses['no_answer'] || 0;
-                          const busyCount = group.statuses['busy'] || 0;
-                          const shortCallCount = group.statuses['short_call'] || 0;
-                          const voicemailCount = group.statuses['voicemail'] || 0;
-                          
-                          const groupRows: React.ReactNode[] = [];
-                          groupRows.push(
-                            <TableRow 
-                              key={`${groupKey}-header`}
-                              className="cursor-pointer hover:bg-muted/50"
-                              onClick={() => setExpandedGroups(prev => {
-                                const next = new Set(prev);
-                                if (next.has(groupKey)) next.delete(groupKey);
-                                else next.add(groupKey);
-                                return next;
-                              })}
-                            >
-                                <TableCell>
-                                  <div className="flex items-center gap-1.5">
-                                    <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                                    <div>
-                                      <div className="text-sm">
-                                        {format(toItalianTime(call.started_at), "dd/MM HH:mm", { locale: it })}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {formatDistanceToNow(parseUTCDate(call.started_at), { addSuffix: true, locale: it })}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="font-mono text-sm">{contactPhone}</div>
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 mt-0.5">
-                                    {group.count} chiamate
-                                  </Badge>
-                                </TableCell>
-                                {myVoiceNumbers.length > 1 && (
-                                  <TableCell className="text-xs text-muted-foreground">
-                                    {call.call_direction === 'outbound' ? call.caller_id : call.called_number || '-'}
-                                  </TableCell>
-                                )}
-                                <TableCell>
-                                  {call.client_name ? (
-                                    <div className="flex items-center gap-2">
-                                      <User className="h-4 w-4 text-muted-foreground" />
-                                      <span className="text-sm">{call.client_name}</span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted-foreground">-</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-wrap gap-1">
-                                    {completedCount > 0 && (
-                                      <Badge className="bg-green-500/20 text-green-700 text-[10px] px-1.5 py-0">
-                                        {completedCount} completate
-                                      </Badge>
+                                  <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                                    {!isSubRow && cName && <span className="font-mono">{cPhone}</span>}
+                                    {!isSubRow && cName && <span>·</span>}
+                                    {!isSubRow && (
+                                      <span>{format(toItalianTime(c.started_at), "dd MMM HH:mm", { locale: it })}</span>
                                     )}
-                                    {failedCount > 0 && (
-                                      <Badge className="bg-red-500/20 text-red-700 text-[10px] px-1.5 py-0">
-                                        {failedCount} fallite
-                                      </Badge>
-                                    )}
-                                    {noAnswerCount > 0 && (
-                                      <Badge className="bg-red-400/20 text-red-600 text-[10px] px-1.5 py-0">
-                                        {noAnswerCount} non risponde
-                                      </Badge>
-                                    )}
-                                    {busyCount > 0 && (
-                                      <Badge className="bg-orange-500/20 text-orange-700 text-[10px] px-1.5 py-0">
-                                        {busyCount} occupato
-                                      </Badge>
-                                    )}
-                                    {shortCallCount > 0 && (
-                                      <Badge className="bg-yellow-500/20 text-yellow-700 text-[10px] px-1.5 py-0">
-                                        {shortCallCount} brevi
-                                      </Badge>
-                                    )}
-                                    {voicemailCount > 0 && (
-                                      <Badge className="bg-purple-500/20 text-purple-700 text-[10px] px-1.5 py-0">
-                                        {voicemailCount} segreteria
-                                      </Badge>
+                                    {isSubRow && <span>{cName || cPhone}</span>}
+                                    <span>·</span>
+                                    <span className={`flex items-center gap-0.5 ${dir.color}`}>
+                                      <DirIcon className="h-3 w-3" />
+                                      {dir.label}
+                                    </span>
+                                    {c.duration_seconds > 0 && (
+                                      <>
+                                        <span>·</span>
+                                        <span>{formatDuration(c.duration_seconds)}</span>
+                                      </>
                                     )}
                                   </div>
-                                </TableCell>
-                                <TableCell>
-                                  {call.source_task_id || call.ai_task_type ? (
-                                    <div className="flex items-center gap-1 text-sm">
-                                      <Bot className="h-3 w-3 text-purple-500" />
-                                      <span className="font-medium">AI Task</span>
-                                    </div>
-                                  ) : call.svc_direct_match || call.svc_phone_match ? (
-                                    <div className="flex items-center gap-1 text-sm">
-                                      <Calendar className="h-3 w-3 text-blue-500" />
-                                      <span>Programmata</span>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                      <PhoneIncoming className="h-3 w-3" />
-                                      <span>In entrata</span>
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-muted-foreground text-sm">-</span>
-                                </TableCell>
-                                <TableCell>
-                                  {group.totalDuration > 0 ? (
-                                    <span className="text-sm">{formatDuration(group.totalDuration)} tot</span>
-                                  ) : (
-                                    <span className="text-muted-foreground">-</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {call.outcome ? (
-                                    <Badge variant="outline">{call.outcome}</Badge>
-                                  ) : (
-                                    <span className="text-muted-foreground">-</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <Link href={`/consultant/voice-calls/contact/${encodeURIComponent(contactPhone.replace(/\s+/g, ''))}`}>
-                                    <Button variant="ghost" size="sm" title="Profilo contatto">
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Link href={`/consultant/voice-calls/${c.id}`}>
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2">
+                                      Dettagli
+                                    </Button>
+                                  </Link>
+                                  <Link href={`/consultant/voice-calls/contact/${encodeURIComponent((c.target_phone || c.called_number || c.caller_id || '').replace(/\s+/g, ''))}`}>
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Profilo contatto">
                                       <User className="h-3.5 w-3.5" />
                                     </Button>
                                   </Link>
-                                </TableCell>
-                            </TableRow>
-                          );
-                          if (isExpanded) {
-                            group.allCalls
-                              .sort((a: any, b: any) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
-                              .forEach((c: any) => groupRows.push(renderCallRow(c, true)));
+                                </div>
+                              </div>
+                            );
+                          };
+
+                          const elements: React.ReactNode[] = [];
+
+                          if (showDateSeparator) {
+                            elements.push(
+                              <div key={`date-${dateLabel}`} className="px-3 sm:px-6 py-2 bg-muted/50 border-b">
+                                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{dateLabel}</span>
+                              </div>
+                            );
                           }
-                          return groupRows;
-                        })}
-                      </TableBody>
-                    </Table>
+
+                          if (!isGrouped) {
+                            elements.push(renderSingleCall(call));
+                            return elements;
+                          }
+
+                          const completedCount = group.statuses['completed'] || 0;
+                          const failedCount = (group.statuses['failed'] || 0) + (group.statuses['no_answer'] || 0);
+                          const otherCount = group.count - completedCount - failedCount;
+
+                          elements.push(
+                            <div key={`${groupKey}-header`}>
+                              <div
+                                className="flex items-center gap-3 px-3 sm:px-6 py-3 hover:bg-muted/40 cursor-pointer transition-colors"
+                                onClick={() => setExpandedGroups(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(groupKey)) next.delete(groupKey);
+                                  else next.add(groupKey);
+                                  return next;
+                                })}
+                              >
+                                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                  contactName ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                }`}>
+                                  {initials}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium text-sm truncate">{contactName || contactPhone}</span>
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                      {group.count} chiamate
+                                    </Badge>
+                                    {completedCount > 0 && (
+                                      <span className="flex items-center gap-0.5 text-[10px] text-green-700">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                        {completedCount}
+                                      </span>
+                                    )}
+                                    {failedCount > 0 && (
+                                      <span className="flex items-center gap-0.5 text-[10px] text-red-700">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                        {failedCount}
+                                      </span>
+                                    )}
+                                    {otherCount > 0 && (
+                                      <span className="flex items-center gap-0.5 text-[10px] text-amber-700">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                        {otherCount}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                                    {contactName && <span className="font-mono">{contactPhone}</span>}
+                                    {contactName && <span>·</span>}
+                                    <span>{format(toItalianTime(call.started_at), "dd MMM HH:mm", { locale: it })}</span>
+                                    {group.totalDuration > 0 && (
+                                      <>
+                                        <span>·</span>
+                                        <span>{formatDuration(group.totalDuration)} tot</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="shrink-0">
+                                  <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                                </div>
+                              </div>
+                              {isExpanded && (
+                                <div className="border-t border-dashed">
+                                  {group.allCalls
+                                    .sort((a: any, b: any) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
+                                    .map((c: any) => renderSingleCall(c, true))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                          return elements;
+                        });
+                      })()}
                     </div>
 
-                    <div className="flex items-center justify-between mt-4 px-2 sm:px-0">
+                    <div className="flex items-center justify-between mt-4 px-3 sm:px-6">
                       <p className="text-sm text-muted-foreground">
                         {pagination.total} chiamate totali
                       </p>
