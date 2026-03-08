@@ -5,6 +5,7 @@ import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_
 import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png";
 import marcoAvatar from "@assets/generated_images/marco_ai_executive_coach_avatar.png";
 import hunterAvatar from "@assets/generated_images/spec_ai_researcher_avatar.png";
+import robertAvatar from "@assets/generated_images/robert_ai_sales_coach_avatar.png";
 import type { AutonomySettings, TaskLibraryItem, NewTaskData } from "./types";
 
 export const DAYS_OF_WEEK = [
@@ -207,6 +208,7 @@ export const AI_ROLE_PROFILES: Record<string, { avatar: string; quote: string; r
   nova: { avatar: novaAvatar, quote: "Gestisco i tuoi social e il calendario editoriale.", role: "Social Media Manager" },
   stella: { avatar: stellaAvatar, quote: "Monitoro le conversazioni WhatsApp e suggerisco azioni.", role: "WhatsApp Assistant" },
   marco: { avatar: marcoAvatar, quote: "Ti spingo oltre i tuoi limiti. Niente scuse, solo risultati.", role: "Executive Coach" },
+  robert: { avatar: robertAvatar, quote: "Ti insegno a vendere i pacchetti come un professionista. Niente teoria — solo chiusure.", role: "Sales Coach" },
   hunter: { avatar: hunterAvatar, quote: "Trovo i lead migliori e li passo al team per il primo contatto.", role: "Lead Prospector" },
   personalizza: { avatar: "", quote: "Configurami come vuoi: definisci tu le mie regole.", role: "Assistente Custom" },
 };
@@ -218,6 +220,7 @@ export const AI_ROLE_ACCENT_COLORS: Record<string, { ring: string; badge: string
   emerald: { ring: "ring-emerald-400", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300", border: "border-emerald-300 dark:border-emerald-700", text: "text-emerald-600 dark:text-emerald-400" },
   teal: { ring: "ring-teal-400", badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300", border: "border-teal-300 dark:border-teal-700", text: "text-teal-600 dark:text-teal-400" },
   indigo: { ring: "ring-indigo-400", badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300", border: "border-indigo-300 dark:border-indigo-700", text: "text-indigo-600 dark:text-indigo-400" },
+  amber: { ring: "ring-amber-400", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300", border: "border-amber-300 dark:border-amber-700", text: "text-amber-600 dark:text-amber-400" },
   gray: { ring: "ring-gray-400", badge: "bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300", border: "border-gray-300 dark:border-gray-700", text: "text-gray-600 dark:text-gray-400" },
 };
 
@@ -304,6 +307,17 @@ export const AI_ROLE_EXECUTION_PIPELINES: Record<string, ExecutionPipelineInfo> 
     direction: "Contatta TE (il consulente) — mai i clienti",
     directionIcon: "🎯",
     directionColor: "text-indigo-600 dark:text-indigo-400",
+  },
+  robert: {
+    steps: [
+      { id: "fetch_client_data", icon: "📊", label: "Raccolta dati", description: "Analizza stato piattaforma, clienti attivi e moduli configurati" },
+      { id: "analyze_patterns", icon: "🧠", label: "Analisi vendita", description: "Identifica opportunità di upsell, cross-sell e nuovi pacchetti da proporre" },
+      { id: "generate_report", icon: "📝", label: "Strategia vendita", description: "Prepara consigli specifici su come vendere e posizionare i pacchetti" },
+      { id: "contact", icon: "💬📧", label: "Coaching diretto", description: "Ti contatta con frasi killer, obiezioni gestite e strategie concrete" },
+    ],
+    direction: "Contatta TE (il consulente) — coaching vendita proattivo",
+    directionIcon: "🎯",
+    directionColor: "text-amber-600 dark:text-amber-400",
   },
   hunter: {
     steps: [
@@ -435,6 +449,24 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "💬", text: "Non manda messaggi WhatsApp ai clienti" },
     ],
     workflow: "Ogni 30 minuti → Legge roadmap, obiettivi, documenti KB, agenda e dati reali → Valuta se stai facendo abbastanza per scalare → Ti chiama/scrive per spingerti ad agire",
+  },
+  robert: {
+    canDo: [
+      { icon: "🎯", text: "Ti insegna a vendere i 10 pacchetti servizio della piattaforma" },
+      { icon: "💡", text: "Identifica opportunità di upsell e cross-sell tra i tuoi clienti" },
+      { icon: "🗣️", text: "Ti prepara con frasi killer, gestione obiezioni e tecniche di chiusura" },
+      { icon: "📊", text: "Analizza lo stato della piattaforma e suggerisce cosa vendere per primo" },
+      { icon: "💬", text: "Ti contatta via WhatsApp con consigli di vendita rapidi e mirati" },
+      { icon: "📧", text: "Ti manda email con strategie di vendita dettagliate" },
+      { icon: "🔥", text: "Tono diretto e provocatorio — come un coach di vendita al bar" },
+      { icon: "📋", text: "Monitora i moduli da configurare e li trasforma in opportunità di vendita" },
+    ],
+    cantDo: [
+      { icon: "📞", text: "Non contatta i clienti direttamente — lavora solo su di te" },
+      { icon: "🤝", text: "Non gestisce trattative — ti prepara per chiuderle tu" },
+      { icon: "📱", text: "Non gestisce i social media" },
+    ],
+    workflow: "Ogni ciclo → Analizza stato piattaforma e clienti attivi → Identifica opportunità vendita e upsell → Ti contatta con strategie concrete e frasi killer",
   },
   hunter: {
     canDo: [

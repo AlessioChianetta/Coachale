@@ -22,6 +22,7 @@ const ROLE_COLORS: Record<string, string> = {
   nova: 'emerald',
   stella: 'teal',
   marco: 'gray',
+  robert: 'amber',
   personalizza: 'gray',
 };
 
@@ -32,6 +33,7 @@ const ROLE_GRADIENT: Record<string, string> = {
   emerald: "from-emerald-500 to-green-400",
   teal: "from-teal-500 to-cyan-400",
   indigo: "from-indigo-500 to-blue-400",
+  amber: "from-amber-500 to-yellow-400",
   gray: "from-gray-500 to-slate-400",
 };
 
@@ -42,6 +44,7 @@ const ROLE_BG: Record<string, string> = {
   emerald: "bg-emerald-50 dark:bg-emerald-950/20",
   teal: "bg-teal-50 dark:bg-teal-950/20",
   indigo: "bg-indigo-50 dark:bg-indigo-950/20",
+  amber: "bg-amber-50 dark:bg-amber-950/20",
   gray: "bg-gray-50 dark:bg-gray-950/20",
 };
 
@@ -52,6 +55,7 @@ const ROLE_TEXT: Record<string, string> = {
   emerald: "text-emerald-600 dark:text-emerald-400",
   teal: "text-teal-600 dark:text-teal-400",
   indigo: "text-indigo-600 dark:text-indigo-400",
+  amber: "text-amber-600 dark:text-amber-400",
   gray: "text-gray-600 dark:text-gray-400",
 };
 

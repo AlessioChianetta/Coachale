@@ -40,7 +40,7 @@ import type { AgentContext, AgentFocusItem } from "@shared/schema";
 
 const AI_ROLE_NAMES_MAP: Record<string, string> = {
   alessia: 'Alessia', millie: 'Millie', echo: 'Echo', nova: 'Nova',
-  stella: 'Stella', marco: 'Marco', hunter: 'Hunter', personalizza: 'Personalizza',
+  stella: 'Stella', marco: 'Marco', robert: 'Robert', hunter: 'Hunter', personalizza: 'Personalizza',
 };
 
 const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: string[] }[]> = {
@@ -78,6 +78,11 @@ const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: s
     { label: "Monitoraggio Clienti", icon: "👥", items: ["Limite consultazioni mensili per cliente", "Consultazioni usate vs disponibili", "Gap di scheduling (3 mesi)"] },
     { label: "Task", icon: "✅", items: ["Task personali del consulente (titolo, priorità, scadenza)", "Task clienti da consultazioni (con statistiche per cliente)", "Task scaduti e completamento"] },
     { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Marco"] },
+  ],
+  robert: [
+    { label: "Piattaforma", icon: "📊", items: ["Stato moduli e configurazione piattaforma", "Pacchetti servizio attivi e disponibili"] },
+    { label: "Clienti", icon: "👥", items: ["Clienti attivi e loro pacchetti", "Opportunità di upsell e cross-sell"] },
+    { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Robert", "Strategie di vendita personalizzate"] },
   ],
   personalizza: [
     { label: "Consultazioni", icon: "📋", items: ["Consultazioni recenti per contesto"] },
@@ -734,6 +739,7 @@ const ROLE_GRADIENT_MAP: Record<string, string> = {
   emerald: "from-emerald-400 to-green-500",
   teal: "from-teal-400 to-cyan-500",
   indigo: "from-indigo-400 to-blue-500",
+  amber: "from-amber-400 to-yellow-500",
   gray: "from-gray-400 to-gray-500",
 };
 
