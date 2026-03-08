@@ -1,0 +1,15 @@
+6|voice-bridge  | 2026-03-08T18:57:28.405Z [INFO ] [BRIDGE:REPLIT-WS] 🔄 [SESSION HANDLE] Saved resume handle for proactive restart sessionId=6e3600c0 handlePreview=Cih3aHczcDl0NjQ2NndidmZmY...
+6|voice-bridge  | 2026-03-08T18:57:30.989Z [INFO ] [BRIDGE:SERVER] WebSocket closed (Session: 6e3600c0-9aa2-41f5-abc3-559d8b87a6b5)
+6|voice-bridge  | 2026-03-08T18:57:30.990Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-08T18:57:30.990Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] callId=sc_1772996163675_mlgp0xzib | reason=websocket_closed | duration=82s
+6|voice-bridge  | 2026-03-08T18:57:30.990Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] session: id=6e3600c0 | caller=1000 | called=1000 | state=active | fsUuid=outbound-177
+6|voice-bridge  | 2026-03-08T18:57:30.990Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] Before cleanup: activeSessions=1 | overflowQueue=0
+6|voice-bridge  | 2026-03-08T18:57:30.991Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=6e3600c0 callId=sc_1772996163675_mlgp0xzib reason=websocket_closed duration=1m 21s bytesIn=246400 bytesOut=0 packetsIn=770 packetsOut=0
+6|voice-bridge  | 2026-03-08T18:57:30.991Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] Sending uuid_kill to FreeSWITCH: fsUuid=outbound-1772996165857-zssi34 reason=websocket_closed
+6|voice-bridge  | 2026-03-08T18:57:30.992Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] After cleanup: activeSessions=0 | overflowQueue=0
+6|voice-bridge  | 2026-03-08T18:57:30.992Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-03-08T18:57:30.992Z [INFO ] [BRIDGE:SERVER] 🔄 [DEQUEUE] No overflow callers to dequeue
+6|voice-bridge  | 2026-03-08T18:57:31.034Z [INFO ] [BRIDGE:SERVER] 📞 [CALL-STOP] uuid_kill result for outbound-1772996165857-zssi34: -ERR No such channel!
+6|voice-bridge  | 2026-03-08T18:57:31.144Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=6e3600c0 code=1000 reason=Session ended hasPendingResume=false
+6|voice-bridge  | 2026-03-08T18:57:31.144Z [INFO ] [BRIDGE:SERVER] 📞 [REPLIT-ONCLOSE] Replit connection closed sessionId=6e3600c0 code=1000 reason=Session ended fsUuid=outbound-1772996165857-zssi34 callId=sc_1772996163675_mlgp0xzib calledNumber=1000
+6|voice-bridge  | 2026-03-08T18:57:49.819Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 596ms

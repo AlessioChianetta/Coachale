@@ -1,0 +1,56 @@
+6|voice-br | 2026-03-08T18:53:49.835Z [INFO ] [BRIDGE:REPLIT-WS] 🔥 [TLS WARMUP] Replit connection warmed in 641ms
+
+6|voice-bridge  | 2026-03-08T18:56:05.857Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1772996163675_mlgp0xzib targetPhone=1000 aiMode=assistenza
+6|voice-bridge  | 2026-03-08T18:56:05.857Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Calling LOCAL extension 1000 (no gateway, no tech prefix) amdEnabled=true
+6|voice-bridge  | 2026-03-08T18:56:05.857Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1772996165857-zssi34 dialString={origination_caller_id_number=+390902041022,effective_caller_id_number=+390902041022,originate_timeout=30,origination_uuid=outbound-1772996165857-zssi34}user/1000 &park()
+6|voice-bridge  | 2026-03-08T18:56:05.857Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Pre-registered uuid=outbound-1772996165857-zssi34 → callId=sc_1772996163675_mlgp0xzib + metadata (before originate)
+6|voice-bridge  | 2026-03-08T18:56:05.857Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Executing originate: {origination_caller_id_number=+390902041022,effective_caller_id_number=+390902041022,originate_timeout=30,origination_uuid=outbound-1772996165857-zssi34}user/1000 &park()
+6|voice-bridge  | 2026-03-08T18:56:08.316Z [INFO ] [BRIDGE:ESL] 🔍 [CHANNEL_ANSWER DEBUG] uuid=outbound-1772996165857-zssi34 otherLeg= direction=outbound dest=1000 caller=+390902041022 isOutbound=true
+6|voice-bridge  | 2026-03-08T18:56:08.316Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call ANSWERED — starting audio stream uuid=outbound-1772996165857-zssi34 ringTimeMs=0
+6|voice-bridge  | 2026-03-08T18:56:08.317Z [INFO ] [BRIDGE:ESL] 🔄 [AUDIO-STREAM] Sending preventive STOP before START uuid=outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:08.317Z [INFO ] [BRIDGE:ESL] 🤖 [AMD] Starting AMD detection via ESL (ANSWER-direct) for uuid=outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:08.362Z [INFO ] [BRIDGE:ESL] [OUTBOUND] Originate result response=+OK outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:08.363Z [INFO ] [BRIDGE:OUTBOUND] [BRIDGE:OUTBOUND] Call originated callId=sc_1772996163675_mlgp0xzib uuid=outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:08.364Z [INFO ] [BRIDGE:ESL] 🅿️  Call parked type=OUTBOUND uuid=outbound-1772996165857-zssi34 callerIdNumber=1000 calledNumber=1000
+6|voice-bridge  | 2026-03-08T18:56:08.365Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] CHANNEL_PARK at 1772996168364 uuid=outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:08.365Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call parked — linking callId=sc_1772996163675_mlgp0xzib to uuid=outbound-1772996165857-zssi34 uuid=outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:08.365Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=sc_1772996163675_mlgp0xzib, uuid=outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:08.365Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
+6|voice-bridge  | 2026-03-08T18:56:08.365Z [INFO ] [BRIDGE:ESL] 🔄 [AUDIO-STREAM] Preventive STOP result: -ERR Operation Failed uuid=outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:08.365Z [INFO ] [BRIDGE:ESL] 🤖 [AMD] uuid_execute result uuid=outbound-1772996165857-zssi34 response=-ERR uuid_execute Command not found!
+6|voice-bridge  | 2026-03-08T18:56:08.466Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] Executing uuid_audio_stream after 150ms uuid=outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:08.521Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+6|voice-bridge  | 2026-03-08T18:56:08.521Z [INFO ] [BRIDGE:SERVER] 🔍 WEBSOCKET CONNECTION path=/stream/outbound-1772996165857-zssi34 uuidFromUrl=outbound-1772996165857-zssi34 pendingCallsCount=1 pendingIds=[{"uuid":"outbound-1772996165857-zssi34","callId":"sc_1772996163675_mlgp0xzib"}] timestamp=1772996168521
+6|voice-bridge  | 2026-03-08T18:56:08.521Z [INFO ] [BRIDGE:SERVER] ✅ Consumed pending call: callId=sc_1772996163675_mlgp0xzib, uuid=outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:08.521Z [INFO ] [BRIDGE:SERVER] 📞 OUTBOUND call matched: callId=sc_1772996163675_mlgp0xzib, uuid=outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:08.522Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] CHANNEL_PARK → WebSocket connection: 158ms (FreeSWITCH audio_stream setup + WS open) callId=sc_1772996163675_mlgp0xzib
+6|voice-bridge  | 2026-03-08T18:56:08.522Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=sc_1772996163675_mlgp0xzib | CallerId=1000 | CallerName=Outbound Call
+6|voice-bridge  | 2026-03-08T18:56:08.522Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ callId=sc_1772996163675_mlgp0xzib
+6|voice-bridge  | 2026-03-08T18:56:08.522Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] Checking limits for calledNumber=1000 uuid=outbound-1772996165857-zssi34 callId=sc_1772996163675_mlgp0xzib
+6|voice-bridge  | 2026-03-08T18:56:08.578Z [INFO ] [BRIDGE:ESL] ✅ Audio stream started in 112ms (total: 262ms) uuid=outbound-1772996165857-zssi34
+6|voice-bridge  | 2026-03-08T18:56:09.388Z [INFO ] [BRIDGE:CONTEXT] 📋 Overflow config loaded calledNumber=+1000 found=false overflow_enabled=true fallback_number=null overflow_timeout_secs=120 overflow_dtmf_enabled=true overflow_auto_return=true
+6|voice-bridge  | 2026-03-08T18:56:09.388Z [INFO ] [BRIDGE:SESSION] 📊 [SM] canAcceptCallForNumber(1000, max=5): active=0 → YES
+6|voice-bridge  | 2026-03-08T18:56:09.388Z [INFO ] [BRIDGE:SESSION] 📊 [SM] canAcceptNewCall: 0/10 → YES
+6|voice-bridge  | 2026-03-08T18:56:09.388Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] perNumber: 0/5 (full=false) | global: 0/10 (full=false) callId=sc_1772996163675_mlgp0xzib
+6|voice-bridge  | 2026-03-08T18:56:09.388Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] overflowCfg: enabled=true, timeout=120s, auto_return=true, dtmf=true, fallback=none, max_concurrent=5 callId=sc_1772996163675_mlgp0xzib
+6|voice-bridge  | 2026-03-08T18:56:09.388Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] Active sessions (0): callId=sc_1772996163675_mlgp0xzib
+6|voice-bridge  | 2026-03-08T18:56:09.388Z [INFO ] [BRIDGE:SERVER] 📊 [OVERFLOW-PRE-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ callId=sc_1772996163675_mlgp0xzib
+6|voice-bridge  | 2026-03-08T18:56:09.388Z [INFO ] [BRIDGE:SERVER] ✅ [OVERFLOW-PRE-CHECK] Limits OK — proceeding to connect to Replit callId=sc_1772996163675_mlgp0xzib
+6|voice-bridge  | 2026-03-08T18:56:09.389Z [INFO ] [BRIDGE:SESSION] 📊 [SM] canAcceptNewCall: 0/10 → YES
+6|voice-bridge  | 2026-03-08T18:56:09.390Z [INFO ] [BRIDGE:SESSION] Session created sessionId=6e3600c0 callId=sc_1772996163675_mlgp0xzib callerId=1000 calledNumber=1000 codec=L16 sampleRate=8000 activeSessions=1
+6|voice-bridge  | 2026-03-08T18:56:09.396Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] handleCallStart setup: session=1ms, bgInit+queue=6ms sessionId=6e3600c0
+6|voice-bridge  | 2026-03-08T18:56:09.397Z [INFO ] [BRIDGE:SERVER] 🎵 Adaptive audio timer started (prefill=4) sessionId=6e3600c0
+6|voice-bridge  | 2026-03-08T18:56:09.397Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Pre-connect overhead: 8ms sessionId=6e3600c0
+6|voice-bridge  | 2026-03-08T18:56:09.397Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=6e3600c0 url=wss://685bb85e-fd72-4d8a-9bcf-1898c90e408f-00-1d7gfxx0mp3bv.spock.replit.dev/ws/ai-voice voice=Puck isResume=false
+6|voice-bridge  | 2026-03-08T18:56:09.478Z [INFO ] [BRIDGE:SERVER] 🎙️ [RECORDING] Started recording for outbound-1772996165857-zssi34 → /tmp/alessia_recordings/outbound-1772996165857-zssi34.wav
+6|voice-bridge  | 2026-03-08T18:56:10.015Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] TLS+HTTP upgrade handshake: 618ms sessionId=6e3600c0 resumed=false
+6|voice-bridge  | 2026-03-08T18:56:10.016Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Replit WS connected in 619ms (TLS handshake + HTTP upgrade) sessionId=6e3600c0
+6|voice-bridge  | 2026-03-08T18:56:10.016Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=6e3600c0
+6|voice-bridge  | 2026-03-08T18:56:10.016Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=6e3600c0 from=connecting to=active
+6|voice-bridge  | 2026-03-08T18:56:10.016Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Total handleCallStart: 627ms (setup=8ms, connect=619ms, post=0ms) sessionId=6e3600c0
+6|voice-bridge  | 2026-03-08T18:56:11.450Z [INFO ] [BRIDGE:SERVER] 📞 [NUMBER LOOKUP] Called number 1000 not found in voice_numbers
+6|voice-bridge  | 2026-03-08T18:56:12.944Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Ciao Contatto!
+6|voice-bridge  | 2026-03-08T18:56:12.945Z [INFO ] [BRIDGE:SERVER] [AI]: "Ciao Contatto!"
+6|voice-bridge  | 2026-03-08T18:56:13.684Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] First BINARY audio byte received 3669ms after WS open sessionId=6e3600c0
+6|voice-bridge  | 2026-03-08T18:56:13.684Z [INFO ] [BRIDGE:SERVER] 
+6|voice-bridge  | ⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
