@@ -249,6 +249,10 @@ router.post('/chat', authenticateToken, requireRole('consultant'), async (req: A
       systemPromptText = `You are a delivery agent assistant. Mode: ${session.mode}. Status: ${session.status}. Help the consultant with onboarding and discovery.`;
     }
 
+    if (session.mode === 'sales_coach') {
+      console.log(`\n${'='.repeat(80)}\n[SALES COACH] FULL SYSTEM PROMPT (${systemPromptText.length} chars):\n${'='.repeat(80)}\n${systemPromptText}\n${'='.repeat(80)}\n`);
+    }
+
     const provider = await getAIProvider(consultantId);
     if (provider.setFeature) {
       provider.setFeature('delivery-agent', 'consultant');
