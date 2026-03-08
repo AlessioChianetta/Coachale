@@ -27,8 +27,9 @@ export async function ensureProactiveLead(params: EnsureProactiveLeadParams): Pr
     normalizedPhone = '+39' + normalizedPhone;
   }
 
-  const nameParts = (contactName || 'Contatto').split(' ');
-  const firstName = nameParts[0] || 'Contatto';
+  const hasRealName = contactName && contactName.trim().length > 0 && contactName.trim().toLowerCase() !== 'contatto';
+  const nameParts = hasRealName ? contactName!.trim().split(' ') : [];
+  const firstName = nameParts[0] || '';
   const lastName = nameParts.slice(1).join(' ') || '';
   const resolvedSource = source || 'manual';
   const leadInfoJson = leadInfo ? JSON.stringify(leadInfo) : '{}';
@@ -67,7 +68,7 @@ export async function ensureProactiveLead(params: EnsureProactiveLeadParams): Pr
         const autoResult = await scheduleAutoCall({
           consultantId,
           phoneNumber: normalizedPhone,
-          leadName: contactName || 'Contatto',
+          leadName: hasRealName ? contactName! : '',
           leadInfo: leadInfo || undefined,
           source: `ensure-lead-${resolvedSource}`,
         });

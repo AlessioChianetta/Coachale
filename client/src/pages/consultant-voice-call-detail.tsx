@@ -368,8 +368,10 @@ export default function ConsultantVoiceCallDetailPage() {
     };
     const statusStyle = getStatusStyle(focusedCall.status);
 
-    const hiddenOutcomes = ['normal_end', 'ghost_cleanup', 'originator_cancel', 'system_error', 'NO_ANSWER', 'NORMAL_CLEARING', 'ORIGINATOR_CANCEL'];
+    const hiddenOutcomes = ['normal_end', 'ghost_cleanup', 'originator_cancel', 'system_error', 'stale_talking_cleanup', 'NO_ANSWER', 'NORMAL_CLEARING', 'ORIGINATOR_CANCEL', 'UNALLOCATED_NUMBER', 'NO_USER_RESPONSE', 'USER_BUSY', 'CALL_REJECTED', 'RECOVERY_ON_TIMER_EXPIRE'];
     const showOutcome = focusedCall.outcome && !hiddenOutcomes.includes(focusedCall.outcome);
+
+    const VOICEMAIL_KEYWORDS = ['messaggio', 'segnale acustico', 'segreteria', 'non disponibile', 'non è al momento', 'lasci', 'dopo il', 'beep', 'registra'];
 
     const formatTranscript = (text: string) => {
       const lines = text.split('\n').filter(l => l.trim());
@@ -400,12 +402,31 @@ export default function ConsultantVoiceCallDetailPage() {
             </div>
           );
         }
+
+        if (/^\d+$/.test(line.trim())) {
+          return null;
+        }
+
+        const isVoicemail = VOICEMAIL_KEYWORDS.some(kw => line.toLowerCase().includes(kw));
+        if (isVoicemail) {
+          return (
+            <div key={i} className="flex justify-center mb-3">
+              <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 max-w-[85%]">
+                <Volume2 className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-400">{line}</p>
+              </div>
+            </div>
+          );
+        }
+
         return (
-          <div key={i} className="text-center mb-2">
-            <span className="text-xs text-muted-foreground italic">{line}</span>
+          <div key={i} className="flex justify-center mb-2">
+            <div className="bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-1.5 max-w-[85%]">
+              <p className="text-xs text-muted-foreground">{line}</p>
+            </div>
           </div>
         );
-      });
+      }).filter(Boolean);
     };
 
     return (

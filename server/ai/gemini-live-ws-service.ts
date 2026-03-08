@@ -4341,9 +4341,12 @@ ${historyContent}
           }
         }
         
-        // Use leadContactData to populate extractedContactName if not already set from call history
-        if (!extractedContactName && leadContactData.name) {
+        const PLACEHOLDER_NAMES = ['contatto', 'unknown', 'sconosciuto', ''];
+        if (!extractedContactName && leadContactData.name && !PLACEHOLDER_NAMES.includes(leadContactData.name.trim().toLowerCase())) {
           extractedContactName = leadContactData.name;
+        }
+        if (extractedContactName && PLACEHOLDER_NAMES.includes(extractedContactName.trim().toLowerCase())) {
+          extractedContactName = '';
         }
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
