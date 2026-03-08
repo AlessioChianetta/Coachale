@@ -35,6 +35,7 @@ export default function ConsultantAIAutonomyPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dipendenti");
   const isSettingsTab = ["panoramica", "autonomia", "canali", "dipendenti"].includes(activeTab);
+  const isEmbeddedTab = ["knowledge-docs", "whatsapp", "lead-scraper", "voice-calls"].includes(activeTab);
   const [settings, setSettings] = useState<AutonomySettings>(DEFAULT_SETTINGS);
   const [chatOpenRoleId, setChatOpenRoleId] = useState<string | null>(null);
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
@@ -548,7 +549,7 @@ export default function ConsultantAIAutonomyPage() {
         <div className="flex-1 flex min-h-0">
           <main className={cn("flex-1 p-6 lg:px-8 overflow-auto transition-all duration-300", chatOpenRoleId ? "mr-0" : "")}>
             <div className={cn("mx-auto space-y-8 transition-all duration-300", chatOpenRoleId ? "max-w-6xl" : "max-w-[1600px]")}>
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl">
+              {!isEmbeddedTab && <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
                 <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl" />
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl" />
@@ -682,7 +683,7 @@ export default function ConsultantAIAutonomyPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div>}
 
               <SettingsTab
                 settings={settings}
