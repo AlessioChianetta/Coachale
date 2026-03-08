@@ -1480,7 +1480,7 @@ function CallQueuePanel({ scheduledCalls, onCancel, onTriggerNow, onCancelBatch,
   );
 }
 
-export default function ConsultantVoiceCallsPage() {
+export default function ConsultantVoiceCallsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const isMobile = useIsMobile();
   const { currentRole } = useRoleSwitch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -3117,10 +3117,10 @@ export default function ConsultantVoiceCallsPage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} role="consultant" />
+    <div className={embedded ? "flex h-full bg-background" : "flex min-h-screen bg-background"}>
+      {!embedded && <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} role="consultant" />}
       <div className={`flex-1 flex flex-col min-w-0 ${isMobile ? "w-full" : "ml-0"}`}>
-        <main className="flex-1 p-4 lg:p-6 overflow-auto min-w-0">
+        <main className={`flex-1 ${embedded ? "p-2 lg:p-4" : "p-4 lg:p-6"} overflow-auto min-w-0`}>
           <div className="w-full min-w-0 space-y-4">
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950 via-teal-950 to-cyan-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl min-w-0">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />

@@ -306,7 +306,7 @@ function timeAgo(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
 }
 
-export default function ConsultantLeadScraper() {
+export default function ConsultantLeadScraper({ embedded = false }: { embedded?: boolean } = {}) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -1487,8 +1487,8 @@ export default function ConsultantLeadScraper() {
     setLocation(`/consultant/lead-scraper/lead/${leadId}${qs ? `?${qs}` : ""}`);
   };
 
-  return (
-    <PageLayout role="consultant">
+  const content = (
+    <>
       <div className="space-y-6">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-950 via-purple-950 to-fuchsia-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-500/10 via-transparent to-transparent" />
@@ -5473,6 +5473,16 @@ export default function ConsultantLeadScraper() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <PageLayout role="consultant">
+      {content}
     </PageLayout>
   );
 }

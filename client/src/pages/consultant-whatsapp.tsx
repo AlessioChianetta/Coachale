@@ -827,7 +827,7 @@ const emptyConfig: WhatsAppConfig = {
   selectedTemplate: "receptionist",
 };
 
-export default function ConsultantWhatsAppPage() {
+export default function ConsultantWhatsAppPage({ embedded = false }: { embedded?: boolean }) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1822,6 +1822,7 @@ export default function ConsultantWhatsAppPage() {
   return (
     <WhatsAppLayout 
       showHeader={false}
+      embedded={embedded}
     >
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Unified Header with KPI */}

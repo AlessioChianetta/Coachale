@@ -26,7 +26,7 @@ import {
   ChevronLeft, ChevronRight,
   ArrowRight, Cog, ChevronDown, ChevronUp, BookOpen, ExternalLink,
   Eye, Sparkles, Timer, User, Lightbulb, Target, RefreshCw, AlertCircle,
-  Plus, Trash2, FileText, Calendar, Flag, Database, Search, GripVertical, Thermometer
+  Plus, Trash2, FileText, Calendar, Flag, Database, Search, GripVertical, Thermometer, MapPin
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -780,6 +780,10 @@ interface SettingsTabProps {
   activityContent: React.ReactNode;
   dashboardContent: React.ReactNode;
   dataCatalogContent: React.ReactNode;
+  knowledgeDocsContent: React.ReactNode;
+  whatsappContent: React.ReactNode;
+  leadScraperContent: React.ReactNode;
+  voiceCallsContent: React.ReactNode;
 }
 
 function formatSummaryHtml(text: string): string {
@@ -1070,6 +1074,10 @@ function SettingsTab({
   activityContent,
   dashboardContent,
   dataCatalogContent,
+  knowledgeDocsContent,
+  whatsappContent,
+  leadScraperContent,
+  voiceCallsContent,
 }: SettingsTabProps) {
   const [, navigate] = useLocation();
   const { data: settingsVoiceNumbers = [] } = useQuery<{ phone_number: string; display_name?: string }[]>({
@@ -1361,24 +1369,24 @@ function SettingsTab({
     >
       <Tabs value={activeTab} onValueChange={onTabChange}>
         <div className="bg-card rounded-2xl border border-border shadow-sm p-1.5 overflow-x-auto no-scrollbar">
-          <TabsList className="flex w-full sm:grid sm:grid-cols-5 gap-1 bg-transparent h-auto p-0 min-w-max sm:min-w-0">
+          <TabsList className="flex w-full gap-1 bg-transparent h-auto p-0 min-w-max">
             <TabsTrigger
               value="dipendenti"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+              className="py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
               <Bot className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Dipendenti AI</span>
             </TabsTrigger>
             <TabsTrigger
               value="autonomia"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+              className="py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
               <Zap className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Autonomia & Modalità</span>
+              <span className="hidden sm:inline">Autonomia</span>
             </TabsTrigger>
             <TabsTrigger
               value="activity"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+              className="py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
               <Activity className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Feed</span>
@@ -1390,10 +1398,39 @@ function SettingsTab({
             </TabsTrigger>
             <TabsTrigger
               value="dashboard"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+              className="py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
               <ListTodo className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Task</span>
+            </TabsTrigger>
+            <div className="w-px h-8 bg-border mx-1 self-center flex-shrink-0" />
+            <TabsTrigger
+              value="knowledge-docs"
+              className="py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <Database className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Documenti KB</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="whatsapp"
+              className="py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-green-50 dark:hover:bg-green-950/30 transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <MessageSquare className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">WhatsApp</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="lead-scraper"
+              className="py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <MapPin className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Lead Scraper</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="voice-calls"
+              className="py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <Phone className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Chiamate</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -3164,6 +3201,22 @@ function SettingsTab({
 
         <TabsContent value="dashboard" className="mt-5 space-y-5">
           {dashboardContent}
+        </TabsContent>
+
+        <TabsContent value="knowledge-docs" className="mt-5">
+          {knowledgeDocsContent}
+        </TabsContent>
+
+        <TabsContent value="whatsapp" className="mt-5">
+          {whatsappContent}
+        </TabsContent>
+
+        <TabsContent value="lead-scraper" className="mt-5">
+          {leadScraperContent}
+        </TabsContent>
+
+        <TabsContent value="voice-calls" className="mt-5">
+          {voiceCallsContent}
         </TabsContent>
 
       </Tabs>

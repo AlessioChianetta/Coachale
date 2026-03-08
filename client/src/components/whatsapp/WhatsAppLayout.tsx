@@ -24,6 +24,7 @@ interface WhatsAppLayoutProps {
   fullWidth?: boolean;
   sidebarOpen?: boolean;
   onSidebarOpenChange?: (open: boolean) => void;
+  embedded?: boolean;
 }
 
 export default function WhatsAppLayout({
@@ -36,12 +37,21 @@ export default function WhatsAppLayout({
   fullWidth = false,
   sidebarOpen: controlledSidebarOpen,
   onSidebarOpenChange,
+  embedded = false,
 }: WhatsAppLayoutProps) {
   const isMobile = useIsMobile();
   const [internalSidebarOpen, setInternalSidebarOpen] = useState(false);
 
   const sidebarOpen = controlledSidebarOpen ?? internalSidebarOpen;
   const setSidebarOpen = onSidebarOpenChange ?? setInternalSidebarOpen;
+
+  if (embedded) {
+    return (
+      <div className={fullWidth ? "" : "p-4 lg:p-8"}>
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">

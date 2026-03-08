@@ -326,7 +326,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-export default function ConsultantKnowledgeDocuments() {
+export default function ConsultantKnowledgeDocuments({ embedded = false }: { embedded?: boolean }) {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
@@ -1598,10 +1598,12 @@ export default function ConsultantKnowledgeDocuments() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
-      <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className={embedded ? "h-full" : "min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900"}>
+      {!embedded && isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
+      <div className={embedded ? "flex h-full" : `flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
+        {!embedded && (
+          <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        )}
 
         <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
           <div className="mb-4 sm:mb-6 md:mb-8">

@@ -23,6 +23,12 @@ import SettingsTab from "./SettingsTab";
 import ActivityTab from "./ActivityTab";
 import DashboardTab from "./DashboardTab";
 import DataCatalogTab from "./DataCatalogTab";
+import { lazy, Suspense } from "react";
+
+const ConsultantKnowledgeDocuments = lazy(() => import("@/pages/consultant-knowledge-documents"));
+const ConsultantWhatsAppPage = lazy(() => import("@/pages/consultant-whatsapp"));
+const ConsultantLeadScraper = lazy(() => import("@/pages/consultant-lead-scraper"));
+const ConsultantVoiceCallsPage = lazy(() => import("@/pages/consultant-voice-calls"));
 
 export default function ConsultantAIAutonomyPage() {
   const isMobile = useIsMobile();
@@ -798,6 +804,26 @@ export default function ConsultantAIAutonomyPage() {
                     showArchDetails={showArchDetails}
                     setShowArchDetails={setShowArchDetails}
                   />
+                }
+                knowledgeDocsContent={
+                  <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" /></div>}>
+                    <ConsultantKnowledgeDocuments embedded={true} />
+                  </Suspense>
+                }
+                whatsappContent={
+                  <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500" /></div>}>
+                    <ConsultantWhatsAppPage embedded={true} />
+                  </Suspense>
+                }
+                leadScraperContent={
+                  <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500" /></div>}>
+                    <ConsultantLeadScraper embedded={true} />
+                  </Suspense>
+                }
+                voiceCallsContent={
+                  <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" /></div>}>
+                    <ConsultantVoiceCallsPage embedded={true} />
+                  </Suspense>
                 }
               />
             </div>
