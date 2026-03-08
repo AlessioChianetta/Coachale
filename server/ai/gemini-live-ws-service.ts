@@ -10174,6 +10174,24 @@ ${compactFeedback}
             const isFailedInit = code === 4500 || (code !== 1000 && durationSeconds <= 3 && conversationMessages.length === 0);
             const vcStatus = isFailedInit ? 'failed' : 'completed';
 
+            let recordingUrl: string | null = null;
+            if (freeswitchUuid && !freeswitchUuid.startsWith('ws_') && consultantId) {
+              try {
+                const vpsBridgeResult = await db.execute(sql`
+                  SELECT vps_bridge_url FROM consultant_ai_settings
+                  WHERE consultant_id = ${consultantId} AND vps_bridge_url IS NOT NULL
+                  LIMIT 1
+                `);
+                const vpsBridgeUrl = (vpsBridgeResult.rows[0] as any)?.vps_bridge_url;
+                if (vpsBridgeUrl) {
+                  recordingUrl = `${vpsBridgeUrl}/recordings/${freeswitchUuid}.wav`;
+                  console.log(`🎙️ [${connectionId}] Recording URL: ${recordingUrl}`);
+                }
+              } catch (vpErr) {
+                console.warn(`⚠️ [${connectionId}] Could not fetch vps_bridge_url for recording:`, vpErr);
+              }
+            }
+
             await db
               .update(voiceCalls)
               .set({
@@ -10183,6 +10201,7 @@ ${compactFeedback}
                 fullTranscript: transcriptText || null,
                 aiConversationId: currentAiConversationId || null,
                 outcome: code === 1000 ? 'normal_end' : `disconnect_${code}`,
+                recordingUrl: recordingUrl,
                 updatedAt: new Date(),
               })
               .where(eq(voiceCalls.id, voiceCallId));

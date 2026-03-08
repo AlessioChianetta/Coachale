@@ -422,7 +422,7 @@ export default function ConsultantVoiceCallDetailPage() {
                     <Separator />
                     <div>
                       <div className="text-sm font-medium mb-2 flex items-center gap-1.5"><Volume2 className="h-4 w-4" />Registrazione</div>
-                      <audio controls className="w-full"><source src={focusedCall.recording_url} type="audio/wav" /></audio>
+                      <audio controls className="w-full"><source src={`/api/voice/recording/${focusedCall.id}?token=${localStorage.getItem('token') || ''}`} type="audio/wav" /></audio>
                     </div>
                   </>
                 )}
@@ -761,7 +761,7 @@ export default function ConsultantVoiceCallDetailPage() {
                                           Registrazione
                                         </div>
                                         <audio controls className="w-full">
-                                          <source src={call.recording_url} type="audio/wav" />
+                                          <source src={`/api/voice/recording/${call.id}?token=${localStorage.getItem('token') || ''}`} type="audio/wav" />
                                         </audio>
                                       </div>
                                     )}

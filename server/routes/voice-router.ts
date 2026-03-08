@@ -863,6 +863,81 @@ router.get("/calls/:id", authenticateToken, requireAnyRole(["consultant", "super
   }
 });
 
+// GET /api/voice/recording/:callId - Proxy per servire le registrazioni dal VPS bridge
+router.get("/recording/:callId", (req: AuthRequest, _res: Response, next: Function) => {
+  if (!req.headers['authorization'] && req.query.token) {
+    req.headers['authorization'] = `Bearer ${req.query.token}`;
+  }
+  next();
+}, authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { callId } = req.params;
+    const consultantId = await resolveConsultantId(req.user, req.query.consultant_id as string);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    const callResult = await db.execute(sql`
+      SELECT vc.recording_url, vc.consultant_id
+      FROM voice_calls vc
+      WHERE vc.id = ${callId} AND vc.consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+
+    const call = callResult.rows[0] as any;
+    if (!call || !call.recording_url) {
+      return res.status(404).json({ error: "Registrazione non trovata" });
+    }
+
+    const settingsResult = await db.execute(sql`
+      SELECT voice_service_token FROM consultant_ai_settings
+      WHERE consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+    const serviceToken = (settingsResult.rows[0] as any)?.voice_service_token || '';
+
+    const separator = call.recording_url.includes('?') ? '&' : '?';
+    const proxyUrl = `${call.recording_url}${separator}token=${serviceToken}`;
+
+    const upstream = await fetch(proxyUrl, {
+      headers: {
+        ...(req.headers.range ? { 'Range': req.headers.range } : {}),
+      },
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!upstream.ok && upstream.status !== 206) {
+      return res.status(upstream.status).json({ error: "Registrazione non disponibile dal VPS" });
+    }
+
+    res.setHeader('Content-Type', 'audio/wav');
+    res.setHeader('Accept-Ranges', 'bytes');
+    if (upstream.headers.get('content-length')) {
+      res.setHeader('Content-Length', upstream.headers.get('content-length')!);
+    }
+    if (upstream.headers.get('content-range')) {
+      res.setHeader('Content-Range', upstream.headers.get('content-range')!);
+      res.status(206);
+    }
+
+    const reader = upstream.body?.getReader();
+    if (!reader) return res.status(500).json({ error: "Cannot read upstream" });
+
+    const pump = async () => {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(Buffer.from(value));
+      }
+      res.end();
+    };
+    await pump();
+  } catch (error: any) {
+    console.error("[Voice] Error proxying recording:", error.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Errore nel recupero della registrazione" });
+    }
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════
 // CONTACT PROFILE — Scheda contatto unificata per numero di telefono
 // ═══════════════════════════════════════════════════════════════════

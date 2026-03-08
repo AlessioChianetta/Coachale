@@ -2,6 +2,8 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer, type IncomingMessage } from 'http';
 import express from 'express';
 import { parse as parseUrl } from 'url';
+import * as fs from 'fs';
+import * as path from 'path';
 import { config } from './config.js';
 import { logger } from './logger.js';
 import { sessionManager, syncOverflowAudio } from './session-manager.js';
@@ -155,6 +157,7 @@ function validateServiceToken(token: string | undefined): boolean {
 }
 
 const GHOST_CALL_MIN_SECS = 300;
+const RECORDINGS_DIR = '/tmp/alessia_recordings';
 const GHOST_WATCHDOG_INTERVAL_MS = 3 * 60 * 1000;
 
 async function runGhostCallWatchdog(): Promise<void> {
@@ -349,6 +352,54 @@ export function startVoiceBridgeServer(): void {
     });
   });
 
+  app.get('/recordings/:filename', (req, res) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '') || (req.query.token as string);
+
+    if (!validateServiceToken(token)) {
+      const ip = normalizeIp(req.ip || req.socket.remoteAddress || 'unknown');
+      log.warn(`🚫 [SECURITY] Unauthorized recording request from ${ip}: ${req.params.filename}`);
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const filename = path.basename(req.params.filename);
+    if (!filename.endsWith('.wav')) {
+      return res.status(400).json({ error: 'Only .wav files supported' });
+    }
+
+    const filePath = path.join(RECORDINGS_DIR, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Recording not found' });
+    }
+
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+
+    const range = req.headers.range;
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': 'audio/wav',
+      });
+      fs.createReadStream(filePath, { start, end }).pipe(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Content-Type': 'audio/wav',
+        'Accept-Ranges': 'bytes',
+      });
+      fs.createReadStream(filePath).pipe(res);
+    }
+  });
+
   const server = createServer(app);
 
   const wss = new WebSocketServer({ server });
@@ -533,6 +584,26 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, 
   });
 
   bgInitSession(session.id);
+
+  if (fsUuid) {
+    try {
+      fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
+      const recordingPath = `${RECORDINGS_DIR}/${fsUuid}.wav`;
+      const eslConn = getEslConnection();
+      if (eslConn) {
+        (eslConn as any).bgapi(`uuid_record ${fsUuid} start ${recordingPath}`, (res: any) => {
+          const body = res?.getBody?.() || '';
+          if (body.includes('+OK')) {
+            log.info(`🎙️ [RECORDING] Started recording for ${fsUuid} → ${recordingPath}`);
+          } else {
+            log.warn(`⚠️ [RECORDING] Failed to start recording for ${fsUuid}: ${body.trim()}`);
+          }
+        });
+      }
+    } catch (recErr: any) {
+      log.warn(`⚠️ [RECORDING] Error starting recording: ${recErr.message}`);
+    }
+  }
 
   audioOutputQueues.set(session.id, []);
   const tSetup = Date.now();
