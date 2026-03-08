@@ -109,6 +109,25 @@ router.post('/sessions', authenticateToken, requireRole('consultant'), async (re
     if (!mode || !['onboarding', 'discovery', 'simulator', 'sales_coach'].includes(mode)) {
       return res.status(400).json({ success: false, error: 'Mode must be onboarding, discovery, simulator, or sales_coach' });
     }
+
+    if (mode === 'sales_coach') {
+      const existing = await db.execute(sql`
+        SELECT * FROM delivery_agent_sessions
+        WHERE consultant_id = ${consultantId} AND mode = 'sales_coach'
+        ORDER BY updated_at DESC LIMIT 1
+      `);
+      if (existing.rows.length > 0) {
+        return res.json({ success: true, data: existing.rows[0] });
+      }
+      const initialProfile = JSON.stringify({ sales_coach: { packages: ['all'], package_labels: ['Panoramica Completa'] } });
+      const result = await db.execute(sql`
+        INSERT INTO delivery_agent_sessions (consultant_id, mode, status, client_profile_json)
+        VALUES (${consultantId}, 'sales_coach', 'assistant', ${initialProfile}::jsonb)
+        RETURNING *
+      `);
+      return res.json({ success: true, data: result.rows[0] });
+    }
+
     let initialProfile = null;
     if (mode === 'simulator') {
       if (!simulatorConfig || !simulatorConfig.niche || !simulatorConfig.attitude) {
@@ -116,13 +135,9 @@ router.post('/sessions', authenticateToken, requireRole('consultant'), async (re
       }
       initialProfile = JSON.stringify({ simulator: { niche: simulatorConfig.niche, niche_label: simulatorConfig.niche_label || simulatorConfig.niche, attitude: simulatorConfig.attitude, attitude_label: simulatorConfig.attitude_label || simulatorConfig.attitude } });
     }
-    if (mode === 'sales_coach') {
-      const packages = salesCoachConfig?.packages || ['all'];
-      initialProfile = JSON.stringify({ sales_coach: { packages, package_labels: salesCoachConfig?.package_labels || packages } });
-    }
     const result = await db.execute(sql`
       INSERT INTO delivery_agent_sessions (consultant_id, mode, status, client_profile_json)
-      VALUES (${consultantId}, ${mode}, ${mode === 'sales_coach' ? 'assistant' : 'discovery'}, ${initialProfile}::jsonb)
+      VALUES (${consultantId}, ${mode}, 'discovery', ${initialProfile}::jsonb)
       RETURNING *
     `);
     res.json({ success: true, data: result.rows[0] });
@@ -242,10 +257,36 @@ router.post('/chat', authenticateToken, requireRole('consultant'), async (req: A
       console.warn('[DeliveryAgent] Could not fetch activation statuses:', e.message);
     }
 
+    let customDocuments: { title: string; content: string }[] = [];
+    if (session.mode === 'sales_coach') {
+      try {
+        const settingsRes = await db.execute(sql`
+          SELECT agent_contexts FROM ai_autonomy_settings
+          WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+        `);
+        const agentContexts = (settingsRes.rows[0] as any)?.agent_contexts || {};
+        const robertCtx = agentContexts.robert || {};
+        const linkedDocIds: string[] = robertCtx.linkedKbDocumentIds || [];
+        if (linkedDocIds.length > 0) {
+          const docsRes = await db.execute(sql`
+            SELECT title, content FROM consultant_knowledge_documents
+            WHERE id = ANY(${linkedDocIds}::uuid[]) AND consultant_id = ${consultantId}
+          `);
+          customDocuments = (docsRes.rows as any[]).map((d: any) => ({
+            title: d.title || 'Documento senza titolo',
+            content: (d.content || '').substring(0, 50000),
+          }));
+          if (customDocuments.length === 0) console.warn('[DeliveryAgent] Robert linkedKbDocumentIds resolved to 0 documents');
+        }
+      } catch (e: any) {
+        console.warn('[DeliveryAgent] Failed to fetch Robert custom documents:', e.message);
+      }
+    }
+
     let systemPromptText = '';
     try {
       const { getDeliveryAgentSystemPrompt } = await import('../prompts/delivery-agent-prompt');
-      systemPromptText = getDeliveryAgentSystemPrompt(session.mode, session.status, session.client_profile_json, activationStatuses);
+      systemPromptText = getDeliveryAgentSystemPrompt(session.mode, session.status, session.client_profile_json, activationStatuses, customDocuments);
     } catch {
       systemPromptText = `You are a delivery agent assistant. Mode: ${session.mode}. Status: ${session.status}. Help the consultant with onboarding and discovery.`;
     }

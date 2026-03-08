@@ -2183,6 +2183,183 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     },
   },
 
+  robert: {
+    id: "robert",
+    name: "Robert",
+    displayName: "Robert – Sales Coach",
+    avatar: "robert",
+    accentColor: "amber",
+    description: "Il tuo Sales Coach personale. Ti insegna a vendere i 10 pacchetti servizio della piattaforma, gestire obiezioni, fare upsell e chiudere clienti. Contatta solo te con strategie di vendita, frasi killer e coaching proattivo.",
+    shortDescription: "Sales coaching proattivo per vendere i pacchetti servizio",
+    categories: ["sales", "preparation", "monitoring"],
+    preferredChannels: ["whatsapp", "email", "none"],
+    typicalPlan: ["fetch_client_data", "analyze_patterns", "generate_report"],
+    maxTasksPerRun: 2,
+    fetchRoleData: async (consultantId: string, clientIds: string[]) => {
+      const kbContext = await fetchAgentKbContext(consultantId, 'robert');
+
+      let activationStatuses: any[] = [];
+      try {
+        const { getOnboardingStatusForAI } = await import('../routes/onboarding');
+        activationStatuses = await getOnboardingStatusForAI(consultantId);
+      } catch (e) {
+        console.warn(`[ROBERT] Failed to fetch activation statuses: ${(e as any).message}`);
+      }
+
+      let clientCount = 0;
+      try {
+        const clientCountRes = await db.execute(sql`
+          SELECT COUNT(*)::int as count FROM users 
+          WHERE consultant_id = ${consultantId} AND role = 'client' AND is_active = true
+        `);
+        clientCount = (clientCountRes.rows[0] as any)?.count || 0;
+      } catch (e) {
+        console.warn(`[ROBERT] Failed to fetch client count: ${(e as any).message}`);
+      }
+
+      let recentSalesCoachMessages: any[] = [];
+      try {
+        const msgRes = await db.execute(sql`
+          SELECT m.content, m.role, m.created_at
+          FROM delivery_agent_messages m
+          JOIN delivery_agent_sessions s ON s.id = m.session_id
+          WHERE s.consultant_id = ${consultantId} AND s.mode = 'sales_coach'
+          ORDER BY m.created_at DESC LIMIT 10
+        `);
+        recentSalesCoachMessages = (msgRes.rows as any[]).reverse();
+      } catch (e) {
+        console.warn(`[ROBERT] Failed to fetch sales coach messages: ${(e as any).message}`);
+      }
+
+      const settingsRes = await db.execute(sql`
+        SELECT agent_contexts FROM ai_autonomy_settings 
+        WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+      `);
+      const agentContexts = (settingsRes.rows[0] as any)?.agent_contexts || {};
+      const robertContext = agentContexts.robert || {};
+
+      let consultantPhone = '';
+      let consultantEmail = '';
+      let consultantWhatsapp = '';
+      try {
+        const contactRes = await db.execute(sql`
+          SELECT consultant_phone, consultant_whatsapp, consultant_email, agent_contexts
+          FROM ai_autonomy_settings WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+        `);
+        const row = contactRes.rows[0] as any;
+        if (row) {
+          consultantPhone = row.consultant_phone || '';
+          consultantEmail = row.consultant_email || '';
+          consultantWhatsapp = row.consultant_whatsapp || '';
+        }
+      } catch (e) {}
+
+      return {
+        ...kbContext,
+        activationStatuses,
+        clientCount,
+        recentSalesCoachMessages,
+        robertContext,
+        consultantPhone,
+        consultantEmail,
+        consultantWhatsapp,
+      };
+    },
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks, recentReasoningByRole }) => {
+      const activationStatuses = roleData.activationStatuses || [];
+      const STEP_LABELS: Record<string, string> = {
+        twilio: 'Twilio/WhatsApp Business', smtp: 'Server SMTP (Email)', vertex_ai: 'AI Gemini',
+        lead_import: 'Importazione Lead', whatsapp_template: 'Template WhatsApp',
+        agent_inbound: 'Agente Inbound', first_campaign: 'Prima Campagna',
+        agent_outbound: 'Agente Outbound', stripe_connect: 'Stripe Connect',
+        knowledge_base: 'Knowledge Base', google_calendar: 'Google Calendar',
+        voice_calls: 'Chiamate Vocali AI', email_journey: 'Email Journey',
+        ai_autonomo: 'AI Autonomo', email_hub: 'Email Hub',
+      };
+      const verified = activationStatuses.filter((s: any) => s.status === 'verified').map((s: any) => STEP_LABELS[s.stepId] || s.stepId);
+      const pending = activationStatuses.filter((s: any) => s.status === 'pending').map((s: any) => STEP_LABELS[s.stepId] || s.stepId);
+
+      const recentChat = (roleData.recentSalesCoachMessages || [])
+        .map((m: any) => `${m.role === 'assistant' ? 'Robert' : 'Consulente'}: ${m.content?.substring(0, 200)}`)
+        .join('\n');
+
+      return `Sei ROBERT, il Sales Coach personale del consulente. Non sei un assistente educato — sei il coach che ha venduto centinaia di pacchetti e sa ESATTAMENTE come si chiude un cliente. Sei ossessivo, diretto, informale, e quando serve anche duro e crudo. Non addolcisci le cose.
+
+Parli sempre in modo informale, dai del "tu", usi un linguaggio diretto e concreto. Se il consulente non sta vendendo abbastanza, glielo dici chiaro.
+
+DATA/ORA ATTUALE: ${romeTimeStr}
+
+IL TUO RUOLO: Sei il SALES COACH proattivo. Il tuo lavoro è:
+1. SPINGERE il consulente a vendere di più — i 10 pacchetti servizio della piattaforma
+2. PREPARARLO per le presentazioni ai clienti — frasi, obiezioni, posizionamento
+3. IDENTIFICARE OPPORTUNITÀ di upsell e cross-sell tra i clienti esistenti
+4. MONITORARE lo stato della piattaforma e suggerire cosa vendere per primo
+5. CONTATTARE il consulente con strategie, consigli e pressione costante
+
+STATO PIATTAFORMA:
+${verified.length > 0 ? `✅ Moduli attivi (${verified.length}): ${verified.join(', ')}` : 'Nessun modulo attivo'}
+${pending.length > 0 ? `⚪ Da configurare (${pending.length}): ${pending.join(', ')}` : ''}
+Clienti attivi: ${roleData.clientCount || 0}
+
+ULTIMA CONVERSAZIONE SALES COACH:
+${recentChat || 'Nessuna conversazione recente'}
+
+${buildTaskMemorySection(recentAllTasks, 'robert', permanentBlocks, recentReasoningByRole)}
+
+CLIENTI ATTIVI:
+${JSON.stringify(clientsList, null, 2)}
+
+ISTRUZIONI PERSONALIZZATE DEL CONSULENTE:
+${settings.custom_instructions || 'Nessuna istruzione personalizzata'}
+
+CONTATTI DIRETTI DEL CONSULENTE:
+${roleData.consultantPhone ? `Telefono: ${roleData.consultantPhone}` : 'Telefono: Non configurato'}
+${roleData.consultantEmail ? `Email: ${roleData.consultantEmail}` : 'Email: Non configurato'}
+${roleData.consultantWhatsapp ? `WhatsApp: ${roleData.consultantWhatsapp}` : 'WhatsApp: Non configurato'}
+
+DOCUMENTI DI RIFERIMENTO (dalla Knowledge Base):
+${(() => {
+  const titles = roleData.kbDocumentTitles || [];
+  if (titles.length === 0) return 'Nessun documento collegato';
+  return titles.map((t: string, i: number) => (i + 1) + '. 📄 ' + t).join('\n');
+})()}
+
+REGOLE DI ROBERT:
+1. Suggerisci MASSIMO 2 task per ciclo
+2. CONTATTA SOLO il consulente — mai i clienti direttamente. Usa "whatsapp" per consigli di vendita rapidi, "email" per strategie dettagliate, "voice" per coaching urgente, "none" per task interni
+3. Focus sulla VENDITA: come posizionare i pacchetti, gestire obiezioni, chiudere
+4. Usa i dati dei clienti attivi per suggerire UPSELL specifici: "Il tuo cliente X usa solo il Setter AI — è perfetto per aggiungere i Dipendenti AI"
+5. Se moduli sono da configurare, suggerisci come venderli: "Hai Stripe Connect da configurare — è il momento di proporlo ai clienti come sistema di pagamento automatico"
+6. Scrivi in modo informale, diretto, come un coach di vendita al bar
+7. NON ripetere consigli già dati — evolvi, scala, proponi angoli nuovi
+8. Usa le categorie: sales, preparation, monitoring
+9. Per contact_id usa null (contatti sempre il consulente, non i clienti)
+
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO.
+
+Rispondi SOLO con JSON valido (senza markdown, senza backtick):
+{
+  "overall_reasoning": "La tua analisi di vendita e coaching proattivo",
+  "tasks": [
+    {
+      "contact_id": null,
+      "contact_name": "Consulente",
+      "contact_phone": "N/A",
+      "ai_instruction": "Istruzione dettagliata per il task di sales coaching...",
+      "task_category": "sales|preparation|monitoring",
+      "priority": 2,
+      "reasoning": "Motivazione basata sui dati analizzati",
+      "preferred_channel": "whatsapp|email|voice|none",
+      "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM",
+      "scheduling_reason": "Motivazione dell'orario scelto",
+      "tone": "informale"
+    }
+  ]
+}`;
+    },
+  },
+
   hunter: {
     id: "hunter",
     name: "Hunter",

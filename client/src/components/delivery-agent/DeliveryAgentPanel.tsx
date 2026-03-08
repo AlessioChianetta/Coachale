@@ -51,19 +51,6 @@ interface DeliverySession {
   message_count?: number;
 }
 
-const SALES_COACH_PACKAGES = [
-  { key: "setter_ai", label: "SETTER AI", desc: "Acquisizione & Primo Contatto", emoji: "🎯" },
-  { key: "dipendenti_ai", label: "DIPENDENTI AI", desc: "Team AI 24/7", emoji: "🤖" },
-  { key: "hunter", label: "HUNTER", desc: "Lead Generation & Outreach", emoji: "🔍" },
-  { key: "email_journey", label: "EMAIL JOURNEY", desc: "Comunicazione & Nurturing", emoji: "📧" },
-  { key: "lavoro_quotidiano", label: "LAVORO QUOTIDIANO", desc: "Operatività & Consulenze", emoji: "📋" },
-  { key: "formazione", label: "FORMAZIONE", desc: "Academy & Corsi", emoji: "🎓" },
-  { key: "content_studio", label: "CONTENT STUDIO", desc: "Marketing & Contenuti", emoji: "✍️" },
-  { key: "voce_ai", label: "VOCE AI", desc: "Centralino & Chiamate", emoji: "📞" },
-  { key: "pagamenti_stripe", label: "PAGAMENTI & STRIPE", desc: "Monetizzazione & Licenze", emoji: "💳" },
-  { key: "team_dipendenti", label: "TEAM & DIPENDENTI", desc: "Gestione Team Umano", emoji: "👥" },
-] as const;
-
 const SIMULATOR_NICHES = [
   { key: "consulente_finanziario", label: "Consulente Finanziario", emoji: "💰" },
   { key: "personal_trainer", label: "Personal Trainer", emoji: "🏋️" },
@@ -268,7 +255,6 @@ export function DeliveryAgentPanel() {
   const [showModeDialog, setShowModeDialog] = useState(false);
   const [simulatorStep, setSimulatorStep] = useState<"niche" | "attitude" | null>(null);
   const [selectedNiche, setSelectedNiche] = useState<typeof SIMULATOR_NICHES[number] | null>(null);
-  const [salesCoachStep, setSalesCoachStep] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo">("chat");
@@ -343,7 +329,6 @@ export function DeliveryAgentPanel() {
           setShowModeDialog(false);
           setSimulatorStep(null);
           setSelectedNiche(null);
-          setSalesCoachStep(false);
           toast({
             title: "Sessione creata",
             description:
@@ -352,7 +337,7 @@ export function DeliveryAgentPanel() {
                 : mode === "simulator"
                 ? `Simulazione avviata: ${simulatorConfig?.niche_label}`
                 : mode === "sales_coach"
-                ? "Sales Coach avviato — Marco è pronto"
+                ? "Sales Coach avviato — Robert è pronto"
                 : "Iniziamo la discovery per il tuo cliente",
           });
         }
@@ -656,28 +641,26 @@ export function DeliveryAgentPanel() {
 
       <Dialog open={showModeDialog} onOpenChange={(open) => {
         setShowModeDialog(open);
-        if (!open) { setSimulatorStep(null); setSelectedNiche(null); setSalesCoachStep(false); }
+        if (!open) { setSimulatorStep(null); setSelectedNiche(null); }
       }}>
         <DialogContent className={cn(
           "transition-all duration-200",
-          simulatorStep === "niche" || salesCoachStep ? "sm:max-w-2xl" : simulatorStep === "attitude" ? "sm:max-w-lg" : "sm:max-w-md"
+          simulatorStep === "niche" ? "sm:max-w-2xl" : simulatorStep === "attitude" ? "sm:max-w-lg" : "sm:max-w-md"
         )}>
           <DialogHeader>
             <DialogTitle>
-              {salesCoachStep ? "Scegli i Pacchetti" :
-               simulatorStep === "niche" ? "Scegli la Nicchia del Cliente" :
+              {simulatorStep === "niche" ? "Scegli la Nicchia del Cliente" :
                simulatorStep === "attitude" ? "Scegli l'Atteggiamento" :
                "Nuova Sessione"}
             </DialogTitle>
             <DialogDescription>
-              {salesCoachStep ? "Su quali pacchetti vuoi che Marco ti faccia coaching?" :
-               simulatorStep === "niche" ? "Che tipo di attività gestisce il cliente simulato?" :
+              {simulatorStep === "niche" ? "Che tipo di attività gestisce il cliente simulato?" :
                simulatorStep === "attitude" ? `${selectedNiche?.emoji} ${selectedNiche?.label} — come si comporta durante la conversazione?` :
                "Scegli la modalità per la nuova sessione di delivery"}
             </DialogDescription>
           </DialogHeader>
 
-          {!simulatorStep && !salesCoachStep && (
+          {!simulatorStep && (
             <div className="grid gap-3 py-4">
               <button
                 onClick={() => createSession("onboarding")}
@@ -722,7 +705,15 @@ export function DeliveryAgentPanel() {
                 </div>
               </button>
               <button
-                onClick={() => setSalesCoachStep(true)}
+                onClick={() => {
+                  const existingSC = sessions.find(s => s.mode === "sales_coach");
+                  if (existingSC) {
+                    loadSession(existingSC.id);
+                    setShowModeDialog(false);
+                  } else {
+                    createSession("sales_coach", undefined, { packages: ["all"], package_labels: ["Panoramica Completa"] });
+                  }
+                }}
                 className="group flex items-start gap-4 p-4 rounded-xl border border-border hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-all duration-200 text-left hover:shadow-md hover:shadow-amber-500/5"
               >
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-amber-500/20 group-hover:shadow-lg group-hover:shadow-amber-500/30 transition-shadow duration-200">
@@ -731,54 +722,10 @@ export function DeliveryAgentPanel() {
                 <div>
                   <p className="font-semibold text-foreground">Sales Coach</p>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    Marco ti insegna a vendere ogni pacchetto. Linguaggio, obiezioni, strategie e frasi killer.
+                    Robert ti insegna a vendere ogni pacchetto. Linguaggio, obiezioni, strategie e frasi killer.
                   </p>
                 </div>
               </button>
-            </div>
-          )}
-
-          {salesCoachStep && (
-            <div className="py-3">
-              <button
-                onClick={() => setSalesCoachStep(false)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors"
-              >
-                <ArrowLeft className="w-3 h-3" /> Torna indietro
-              </button>
-              <button
-                onClick={() => {
-                  createSession("sales_coach", undefined, {
-                    packages: ["all"],
-                    package_labels: ["Panoramica Completa"],
-                  });
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/10 hover:bg-amber-100/60 dark:hover:bg-amber-900/20 transition-all text-left mb-3"
-              >
-                <span className="text-2xl">🏆</span>
-                <div>
-                  <p className="text-sm font-bold text-foreground">Panoramica Completa</p>
-                  <p className="text-xs text-muted-foreground">Tutti i 10 pacchetti — ordine di vendita, strategie, bundle</p>
-                </div>
-              </button>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[350px] overflow-y-auto pr-1">
-                {SALES_COACH_PACKAGES.map((pkg) => (
-                  <button
-                    key={pkg.key}
-                    onClick={() => {
-                      createSession("sales_coach", undefined, {
-                        packages: [pkg.key],
-                        package_labels: [pkg.label],
-                      });
-                    }}
-                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/40 dark:hover:bg-amber-900/10 transition-all text-center"
-                  >
-                    <span className="text-2xl">{pkg.emoji}</span>
-                    <span className="text-xs font-medium text-foreground leading-tight">{pkg.label}</span>
-                    <span className="text-[10px] text-muted-foreground leading-tight">{pkg.desc}</span>
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 

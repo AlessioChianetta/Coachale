@@ -4461,7 +4461,7 @@ router.post("/trigger-role/:roleId", authenticateToken, requireAnyRole(["consult
 
     const { roleId } = req.params;
 
-    const validRoleIds = ['alessia', 'millie', 'echo', 'nova', 'stella', 'marco', 'personalizza', 'hunter'];
+    const validRoleIds = ['alessia', 'millie', 'echo', 'nova', 'stella', 'marco', 'robert', 'personalizza', 'hunter'];
     if (!validRoleIds.includes(roleId)) {
       return res.status(400).json({ error: "Ruolo non valido" });
     }
@@ -5879,6 +5879,22 @@ router.get("/telegram-conversations/:roleId/:chatId/profile", authenticateToken,
   }
 });
 
+async function findOrCreateSalesCoachSession(consultantId: string): Promise<string | null> {
+  const existing = await db.execute(sql`
+    SELECT id FROM delivery_agent_sessions
+    WHERE consultant_id = ${consultantId} AND mode = 'sales_coach'
+    ORDER BY created_at DESC LIMIT 1
+  `);
+  if (existing.rows.length > 0) return (existing.rows[0] as any).id;
+  const initialProfile = JSON.stringify({ sales_coach: { packages: ['all'], package_labels: ['Panoramica Completa'] } });
+  const created = await db.execute(sql`
+    INSERT INTO delivery_agent_sessions (consultant_id, mode, status, client_profile_json)
+    VALUES (${consultantId}, 'sales_coach', 'assistant', ${initialProfile}::jsonb)
+    RETURNING id
+  `);
+  return created.rows.length > 0 ? (created.rows[0] as any).id : null;
+}
+
 router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;
@@ -5889,6 +5905,49 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
     if (!validRoleIds.includes(roleId)) {
       return res.status(400).json({ error: "Invalid role ID" });
     }
+
+    if (roleId === 'robert') {
+      const sessionId = await findOrCreateSalesCoachSession(consultantId);
+      if (!sessionId) return res.json({ messages: [], hasMore: false });
+      const requestedLimit = parseInt(req.query.limit as string) || 0;
+      const before = req.query.before as string;
+      let result;
+      if (requestedLimit > 0) {
+        const safeLimit = Math.min(requestedLimit, 5000);
+        result = before
+          ? await db.execute(sql`
+              SELECT id, role, content as message, created_at FROM delivery_agent_messages
+              WHERE session_id = ${sessionId}::uuid AND created_at < ${before}::timestamptz
+              ORDER BY created_at DESC LIMIT ${safeLimit}
+            `)
+          : await db.execute(sql`
+              SELECT id, role, content as message, created_at FROM delivery_agent_messages
+              WHERE session_id = ${sessionId}::uuid
+              ORDER BY created_at DESC LIMIT ${safeLimit}
+            `);
+      } else {
+        result = before
+          ? await db.execute(sql`
+              SELECT id, role, content as message, created_at FROM delivery_agent_messages
+              WHERE session_id = ${sessionId}::uuid AND created_at < ${before}::timestamptz
+              ORDER BY created_at ASC
+            `)
+          : await db.execute(sql`
+              SELECT id, role, content as message, created_at FROM delivery_agent_messages
+              WHERE session_id = ${sessionId}::uuid
+              ORDER BY created_at ASC
+            `);
+      }
+      const messages = (result.rows as any[]).map(m => ({
+        ...m,
+        ai_role: 'robert',
+        role_name: 'Robert',
+        sender: m.role === 'assistant' ? 'agent' : 'consultant',
+      }));
+      const ordered = requestedLimit > 0 ? messages.reverse() : messages;
+      return res.json({ messages: ordered, hasMore: requestedLimit > 0 && ordered.length === requestedLimit });
+    }
+
     const requestedLimit = parseInt(req.query.limit as string) || 0;
     const before = req.query.before as string;
 
@@ -5950,6 +6009,110 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
     const { message } = req.body;
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
       return res.status(400).json({ error: "Message is required" });
+    }
+
+    if (roleId === 'robert') {
+      const sessionId = await findOrCreateSalesCoachSession(consultantId);
+      if (!sessionId) return res.status(500).json({ error: "Failed to find/create sales coach session" });
+
+      await db.execute(sql`
+        INSERT INTO delivery_agent_messages (session_id, role, content)
+        VALUES (${sessionId}::uuid, 'user', ${message.trim()})
+      `);
+
+      const historyRes = await db.execute(sql`
+        SELECT role, content FROM delivery_agent_messages
+        WHERE session_id = ${sessionId}::uuid ORDER BY created_at ASC
+      `);
+      const contents = (historyRes.rows as any[]).map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+
+      let activationStatuses: any[] = [];
+      try {
+        const { getOnboardingStatusForAI } = await import('../routes/onboarding');
+        activationStatuses = await getOnboardingStatusForAI(consultantId);
+      } catch (e: any) {}
+
+      let customDocuments: { title: string; content: string }[] = [];
+      try {
+        const settingsRes = await db.execute(sql`
+          SELECT agent_contexts FROM ai_autonomy_settings
+          WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+        `);
+        const robertCtx = (settingsRes.rows[0] as any)?.agent_contexts?.robert || {};
+        const linkedDocIds: string[] = robertCtx.linkedKbDocumentIds || [];
+        if (linkedDocIds.length > 0) {
+          const docsRes = await db.execute(sql`
+            SELECT title, content FROM consultant_knowledge_documents
+            WHERE id = ANY(${linkedDocIds}::uuid[]) AND consultant_id = ${consultantId}
+          `);
+          customDocuments = (docsRes.rows as any[]).map((d: any) => ({
+            title: d.title || 'Documento senza titolo',
+            content: (d.content || '').substring(0, 50000),
+          }));
+          if (customDocuments.length === 0) console.warn('[ROBERT] linkedKbDocumentIds resolved to 0 documents');
+        }
+      } catch (e: any) { console.warn('[ROBERT] Failed to fetch custom docs:', e.message); }
+
+      let systemPromptText = '';
+      try {
+        const { getDeliveryAgentSystemPrompt } = await import('../prompts/delivery-agent-prompt');
+        systemPromptText = getDeliveryAgentSystemPrompt('sales_coach', 'active', null, activationStatuses, customDocuments);
+      } catch {
+        systemPromptText = 'You are Robert, a Sales Coach. Help the consultant sell platform packages.';
+      }
+
+      const { getAIProvider } = await import('../ai/provider-factory');
+      const provider = await getAIProvider(consultantId);
+      if (provider.setFeature) provider.setFeature('delivery-agent', 'consultant');
+
+      let fileSearchTool: any = null;
+      try {
+        const { fileSearchService } = await import('../services/file-search-service');
+        const { storeNames } = await fileSearchService.getStoreBreakdownForGeneration(consultantId, 'consultant');
+        if (storeNames.length > 0) fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
+      } catch {}
+
+      const { getModelWithThinking } = await import('../ai/provider-factory');
+      const { model, useThinking, thinkingLevel } = getModelWithThinking(provider.metadata?.providerName);
+      const generationConfig: any = { maxOutputTokens: 12288, temperature: 0.7 };
+      if (useThinking) {
+        generationConfig.thinkingConfig = { thinkingBudget: thinkingLevel === 'high' ? 8192 : thinkingLevel === 'medium' ? 4096 : 2048 };
+      }
+
+      const genConfig: any = {
+        model, contents, generationConfig,
+        systemInstruction: { role: 'system', parts: [{ text: systemPromptText }] },
+      };
+      if (fileSearchTool) genConfig.tools = [fileSearchTool];
+
+      const result = await provider.client.generateContent(genConfig);
+      let fullText = '';
+      if (result.candidates) {
+        for (const candidate of result.candidates) {
+          if (candidate.content?.parts) {
+            for (const part of candidate.content.parts) {
+              if (part.text && !(part as any).thought) fullText += part.text;
+            }
+          }
+        }
+      }
+      if (!fullText) fullText = typeof result.text === 'function' ? result.text() : (result.text || '');
+
+      await db.execute(sql`
+        INSERT INTO delivery_agent_messages (session_id, role, content)
+        VALUES (${sessionId}::uuid, 'assistant', ${fullText})
+      `);
+      await db.execute(sql`
+        UPDATE delivery_agent_sessions SET updated_at = NOW() WHERE id = ${sessionId}::uuid
+      `);
+
+      return res.json({
+        success: true,
+        response: { role_name: 'Robert', message: fullText, ai_role: 'robert' },
+      });
     }
 
     const aiResponse = await processAgentChatInternal(consultantId, roleId, message.trim());
@@ -6136,6 +6299,105 @@ router.post("/agent-chat/:roleId/send-media", authenticateToken, requireAnyRole(
 
     if (!fullMessage) {
       return res.status(400).json({ error: "Could not process file" });
+    }
+
+    if (roleId === 'robert') {
+      const sessionId = await findOrCreateSalesCoachSession(consultantId);
+      if (!sessionId) return res.status(500).json({ error: "Failed to find/create sales coach session" });
+
+      await db.execute(sql`
+        INSERT INTO delivery_agent_messages (session_id, role, content)
+        VALUES (${sessionId}::uuid, 'user', ${fullMessage.trim()})
+      `);
+
+      const historyRes = await db.execute(sql`
+        SELECT role, content FROM delivery_agent_messages
+        WHERE session_id = ${sessionId}::uuid ORDER BY created_at ASC
+      `);
+      const contents = (historyRes.rows as any[]).map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+
+      let activationStatuses: any[] = [];
+      try {
+        const { getOnboardingStatusForAI } = await import('../routes/onboarding');
+        activationStatuses = await getOnboardingStatusForAI(consultantId);
+      } catch {}
+
+      let customDocs: { title: string; content: string }[] = [];
+      try {
+        const settingsRes2 = await db.execute(sql`
+          SELECT agent_contexts FROM ai_autonomy_settings
+          WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+        `);
+        const rCtx = (settingsRes2.rows[0] as any)?.agent_contexts?.robert || {};
+        const docIds: string[] = rCtx.linkedKbDocumentIds || [];
+        if (docIds.length > 0) {
+          const docsRes = await db.execute(sql`
+            SELECT title, content FROM consultant_knowledge_documents
+            WHERE id = ANY(${docIds}::uuid[]) AND consultant_id = ${consultantId}
+          `);
+          customDocs = (docsRes.rows as any[]).map((d: any) => ({
+            title: d.title || 'Documento senza titolo',
+            content: (d.content || '').substring(0, 50000),
+          }));
+        }
+      } catch (e: any) { console.warn('[ROBERT] Failed to fetch custom docs for media:', e.message); }
+
+      let systemPromptText = '';
+      try {
+        const { getDeliveryAgentSystemPrompt } = await import('../prompts/delivery-agent-prompt');
+        systemPromptText = getDeliveryAgentSystemPrompt('sales_coach', 'active', null, activationStatuses, customDocs);
+      } catch {
+        systemPromptText = 'You are Robert, a Sales Coach.';
+      }
+
+      const { getAIProvider, getModelWithThinking } = await import('../ai/provider-factory');
+      const provider = await getAIProvider(consultantId);
+      if (provider.setFeature) provider.setFeature('delivery-agent', 'consultant');
+
+      let fileSearchTool: any = null;
+      try {
+        const { fileSearchService } = await import('../services/file-search-service');
+        const { storeNames } = await fileSearchService.getStoreBreakdownForGeneration(consultantId, 'consultant');
+        if (storeNames.length > 0) fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
+      } catch {}
+
+      const { model, useThinking, thinkingLevel } = getModelWithThinking(provider.metadata?.providerName);
+      const generationConfig: any = { maxOutputTokens: 12288, temperature: 0.7 };
+      if (useThinking) {
+        generationConfig.thinkingConfig = { thinkingBudget: thinkingLevel === 'high' ? 8192 : thinkingLevel === 'medium' ? 4096 : 2048 };
+      }
+
+      const genConfig: any = {
+        model, contents, generationConfig,
+        systemInstruction: { role: 'system', parts: [{ text: systemPromptText }] },
+      };
+      if (fileSearchTool) genConfig.tools = [fileSearchTool];
+
+      const result = await provider.client.generateContent(genConfig);
+      let aiText = '';
+      if (result.candidates) {
+        for (const candidate of result.candidates) {
+          if (candidate.content?.parts) {
+            for (const part of candidate.content.parts) {
+              if (part.text && !(part as any).thought) aiText += part.text;
+            }
+          }
+        }
+      }
+      if (!aiText) aiText = typeof result.text === 'function' ? result.text() : (result.text || '');
+
+      await db.execute(sql`
+        INSERT INTO delivery_agent_messages (session_id, role, content)
+        VALUES (${sessionId}::uuid, 'assistant', ${aiText})
+      `);
+      await db.execute(sql`
+        UPDATE delivery_agent_sessions SET updated_at = NOW() WHERE id = ${sessionId}::uuid
+      `);
+
+      return res.json({ response: { message: aiText } });
     }
 
     const role = AI_ROLES[roleId];

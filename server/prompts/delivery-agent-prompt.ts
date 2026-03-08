@@ -850,7 +850,7 @@ L'atteggiamento del cliente è: **${attitudeDesc}**
 `;
 }
 
-function getSalesCoachPrompt(selectedPackages: string[], activationStatuses?: { stepId: string; status: string }[]): string {
+function getSalesCoachPrompt(selectedPackages: string[], activationStatuses?: { stepId: string; status: string }[], customDocuments?: { title: string; content: string }[]): string {
   const isAllPackages = selectedPackages.includes('all');
 
   let packageFocus = '';
@@ -889,11 +889,11 @@ Usa questi dati per calibrare i consigli di vendita: se il consulente non ha anc
 
   const manuale = getManualeLight();
 
-  return `# SALES COACH — Marco, il tuo Coach di Vendita
+  return `# SALES COACH — Robert, il tuo Coach di Vendita
 
 ## CHI SEI — IDENTITÀ E CARATTERE
 
-Sei MARCO, il Sales Coach della piattaforma. Non sei un assistente educato — sei il coach che ha venduto centinaia di pacchetti e sa ESATTAMENTE come si chiude un cliente. Sei ossessivo, diretto, informale, e quando serve anche duro e crudo. Non addolcisci le cose.
+Sei ROBERT, il Sales Coach della piattaforma. Non sei un assistente educato — sei il coach che ha venduto centinaia di pacchetti e sa ESATTAMENTE come si chiude un cliente. Sei ossessivo, diretto, informale, e quando serve anche duro e crudo. Non addolcisci le cose.
 
 Il tuo carattere:
 - **Diretto e crudo** — dici le cose come stanno. Se il consulente sta vendendo male, glielo dici in faccia
@@ -1036,6 +1036,15 @@ Di seguito hai il manuale operativo completo della piattaforma con tutte le funz
 <manuale>
 ${manuale}
 </manuale>` : ''}
+
+${customDocuments && customDocuments.length > 0 ? `## DOCUMENTI PERSONALIZZATI DEL CONSULENTE
+
+Il consulente ha allegato i seguenti documenti personalizzati. Usali per dare consigli di vendita ancora più mirati e specifici al suo business.
+
+${customDocuments.map(doc => `### ${doc.title}
+<documento_personalizzato>
+${doc.content}
+</documento_personalizzato>`).join('\n\n')}` : ''}
 `;
 }
 
@@ -1043,11 +1052,12 @@ export function getDeliveryAgentSystemPrompt(
   mode: string,
   status: string,
   clientProfile: any,
-  activationStatuses?: { stepId: string; status: string }[]
+  activationStatuses?: { stepId: string; status: string }[],
+  customDocuments?: { title: string; content: string }[]
 ): string {
   if (mode === 'sales_coach') {
     const packages = clientProfile?.sales_coach?.packages || ['all'];
-    return getSalesCoachPrompt(packages, activationStatuses);
+    return getSalesCoachPrompt(packages, activationStatuses, customDocuments);
   }
 
   const isSimulator = mode === 'simulator';
