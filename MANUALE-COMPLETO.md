@@ -146,10 +146,10 @@ Come consulente, hai accesso all'area `/consultant` dove puoi:
 |-----------|---------------|
 | 🏠 PRINCIPALE | Dashboard, AI Assistant, Setup Iniziale |
 | 📋 LAVORO QUOTIDIANO | Clienti, Calendario, Task, Email Journey, Analisi Dati |
-| 📣 COMUNICAZIONE | HUB Lead, I tuoi dipendenti, Email Hub, Chiamate Voice, AI Autonomo |
+| 📣 COMUNICAZIONE | HUB Lead, Email Hub, **AI Autonomo** (hub centrale con tab Documenti KB, WhatsApp, Lead Scraper, Chiamate), Venditori Autonomi |
 | 🎨 CONTENT STUDIO | Dashboard, Idee (AI), Contenuti, Calendario, Brand Assets, AdVisage AI (PRO) |
 | 📚 FORMAZIONE | Università, Esercizi, Template, Corsi |
-| 🧠 CERVELLO AI | Memoria & Documenti, API Esterne |
+| 🧠 CERVELLO AI | File Search, Skill Store, Costi AI |
 | ⚙️ IMPOSTAZIONI | API Keys, Automazioni Pagamento |
 | 📘 GUIDE | Centro Guide (questo manuale) |
 | 🤖 AI AVANZATO | Consulenze AI, File Search Analytics |
@@ -239,11 +239,8 @@ La sidebar è la barra laterale sinistra presente in ogni pagina. È il tuo menu
 | Voce | Dove Porta | Quando Usarla |
 |------|------------|---------------|
 | HUB Lead | `/consultant/lead-hub` | Centro controllo acquisizione clienti |
-| I tuoi dipendenti | `/consultant/whatsapp` | Gestire agenti AI WhatsApp |
 | Email Hub | `/consultant/email-hub` | Gestire email con risposte AI |
-| Chiamate Voice | `/consultant/voice-calls` | Gestire chiamate vocali AI (Alessia) |
-| AI Autonomo | `/consultant/ai-autonomy` | Configurare i 9 dipendenti AI autonomi (incluso Hunter) |
-| Lead Scraper | `/consultant/lead-scraper` | Cercare lead su Google Maps/Search, CRM, Hunter outreach |
+| AI Autonomo | `/consultant/ai-autonomy` | **Hub centrale operativo**: 9 dipendenti AI autonomi + tab integrate per Documenti KB, WhatsApp, Lead Scraper e Chiamate Voice |
 | Venditori Autonomi | `/consultant/sales-agents` | Agenti AI per conversazioni di vendita su landing page pubblica |
 
 **FORMAZIONE**
@@ -257,8 +254,11 @@ La sidebar è la barra laterale sinistra presente in ogni pagina. È il tuo menu
 **CERVELLO AI**
 | Voce | Dove Porta | Quando Usarla |
 |------|------------|---------------|
-| Memoria & Documenti | `/consultant/knowledge-documents` | Caricare documenti per l'AI |
-| API Esterne | `/consultant/knowledge-apis` | Collegare fonti dati esterne |
+| File Search | `/consultant/file-search-analytics` | Analytics ricerche documenti |
+| Skill Store | `/consultant/skills-store` | Gestire skill AI personalizzate |
+| Costi AI | `/consultant/ai-usage` | Monitorare consumi e costi AI |
+
+> **Nota:** "Memoria & Documenti" (Knowledge Documents) è ora integrato come tab dentro **AI Autonomo** (`/consultant/ai-autonomy` → tab "Documenti KB"). Rimane accessibile anche dalla URL diretta `/consultant/knowledge-documents`.
 
 **IMPOSTAZIONI**
 | Voce | Dove Porta | Quando Usarla |
@@ -289,7 +289,7 @@ In tutto il manuale, troverai istruzioni di navigazione in questo formato:
 |------------|-------------|
 | `Sidebar → PRINCIPALE → Dashboard` | Clicca su Dashboard nella sezione PRINCIPALE |
 | `Sidebar → FORMAZIONE → Università` | Espandi FORMAZIONE, poi clicca Università |
-| `Sidebar → COMUNICAZIONE → I tuoi dipendenti → [Agente]` | Vai a I tuoi dipendenti, poi seleziona un agente |
+| `Sidebar → COMUNICAZIONE → AI Autonomo → Tab WhatsApp → [Agente]` | Vai a I tuoi dipendenti, poi seleziona un agente |
 
 ### 2.3 Elementi dell'Interfaccia
 
@@ -585,7 +585,7 @@ Una volta completata la Fase 1, puoi creare i tuoi "dipendenti virtuali".
 
 #### 4.3.1 Creare Template WhatsApp (ESSENZIALE)
 
-**Dove:** `Sidebar → COMUNICAZIONE → I tuoi dipendenti → Tab "Template"`
+**Dove:** `Sidebar → COMUNICAZIONE → AI Autonomo → Tab WhatsApp → Tab "Template"`
 
 **Perché sono obbligatori:**
 WhatsApp non permette di contattare persone "a freddo" con messaggi liberi. DEVI usare template pre-approvati da Meta.
@@ -624,7 +624,7 @@ Hai 5 minuti per una chiacchierata?
 
 #### 4.3.2 Creare il Primo Agente AI
 
-**Dove:** `Sidebar → COMUNICAZIONE → I tuoi dipendenti → "Nuovo Agente"`
+**Dove:** `Sidebar → COMUNICAZIONE → AI Autonomo → Tab WhatsApp → "Nuovo Agente"`
 
 Un agente AI è un "dipendente virtuale" che:
 - Risponde ai messaggi WhatsApp
@@ -1195,7 +1195,7 @@ Azione: Assegna a consulente, pausa agente AI
 
 ### 8.1 Dashboard Agenti
 
-**Dove trovarlo:** `Sidebar → COMUNICAZIONE → I tuoi dipendenti`
+**Dove trovarlo:** `Sidebar → COMUNICAZIONE → AI Autonomo → Tab WhatsApp`
 
 Questa è la centrale di controllo per i tuoi "dipendenti virtuali".
 
@@ -1375,7 +1375,7 @@ A presto!
 
 ### 8.4 Gestire le Conversazioni
 
-**Dove:** Clicca il pulsante "Chat Agenti" in **alto a destra** nella pagina `Sidebar → COMUNICAZIONE → I tuoi dipendenti`
+**Dove:** Clicca il pulsante "Chat Agenti" in **alto a destra** nella pagina `Sidebar → COMUNICAZIONE → AI Autonomo → Tab WhatsApp`
 
 Questo ti porta a `/consultant/whatsapp-agents-chat` dove puoi:
 - Vedere tutte le conversazioni attive
@@ -1592,7 +1592,7 @@ Vista a griglia di tutti i tuoi corsi con:
 
 Il Cervello AI (precedentemente "Knowledge Base") è l'archivio centrale di documenti, memorie e istruzioni che l'AI usa per rispondere alle domande e operare autonomamente. Più documenti carichi e più istruzioni configuri, più intelligenti e accurate saranno le risposte e le azioni dell'AI.
 
-**Dove:** `Sidebar → CERVELLO AI → Memoria & Documenti`
+**Dove:** `Sidebar → COMUNICAZIONE → AI Autonomo → Tab Documenti KB`
 **URL:** `/consultant/knowledge-documents`
 
 La pagina è organizzata in **5 tab** principali:
@@ -1899,7 +1899,7 @@ Se hai creato agenti WhatsApp, puoi usarli anche nella chat:
 
 ### 10.7 File Search Analytics
 
-**Dove:** `Sidebar → AI AVANZATO → File Search`
+**Dove:** `Sidebar → COMUNICAZIONE → File Search`
 
 Monitora come l'AI usa i tuoi documenti:
 - Documenti più consultati
@@ -3837,7 +3837,7 @@ Il sistema monitora in tempo reale:
 
 ### 21.9 Provisioning Numeri VoIP
 
-**Dove trovarlo:** `Sidebar → COMUNICAZIONE → Chiamate Vocali → Scheda Configurazione → Sub-tab "Numeri & Voce"`
+**Dove trovarlo:** `Sidebar → COMUNICAZIONE → AI Autonomo → Tab Chiamate → Scheda Configurazione → Sub-tab "Numeri & Voce"`
 
 Il sistema permette di acquistare e gestire numeri di telefono VoIP per le chiamate in entrata e uscita.
 
@@ -3922,7 +3922,7 @@ Il sistema supporta **10 slot audio** personalizzabili per la coda d'attesa:
 
 ### 21.12 Tab Conversazioni (Dettaglio)
 
-**Dove trovarlo:** `Sidebar → COMUNICAZIONE → Chiamate Vocali → Scheda Conversazioni`
+**Dove trovarlo:** `Sidebar → COMUNICAZIONE → AI Autonomo → Tab Chiamate → Scheda Conversazioni`
 
 Per ogni chiamata completata:
 - **Trascrizione real-time**: testo parola per parola della conversazione
@@ -4015,6 +4015,14 @@ Le impostazioni delle chiamate vocali sono organizzate in 4 sub-tab:
 ### 22.1 Panoramica del Sistema
 
 Il sistema AI Autonomy è un team di **9 dipendenti AI specializzati** che lavorano autonomamente per il consulente. Ogni dipendente ha un ruolo specifico, analizza dati reali della piattaforma, e genera task (azioni) che possono essere eseguiti automaticamente o previa approvazione del consulente.
+
+**Hub Centrale Operativo:** La pagina AI Autonomo (`/consultant/ai-autonomy`) è il centro di comando unificato della piattaforma. Oltre alle tab core (Dipendenti AI, Autonomia, Feed, Task), include **4 tab integrate** che danno accesso diretto a:
+- **Documenti KB** — Gestione documenti della Knowledge Base (precedentemente nella sidebar sotto CERVELLO AI)
+- **WhatsApp** — Gestione agenti e conversazioni WhatsApp (precedentemente "I tuoi dipendenti" nella sidebar)
+- **Lead Scraper** — Ricerca lead su Google Maps/Search e CRM (precedentemente nella sidebar sotto COMUNICAZIONE)
+- **Chiamate** — Monitoraggio e gestione chiamate vocali AI (precedentemente "Chiamate Voice" nella sidebar)
+
+Tutte queste sezioni rimangono accessibili anche dalle loro URL dirette (`/consultant/knowledge-documents`, `/consultant/whatsapp`, `/consultant/lead-scraper`, `/consultant/voice-calls`).
 
 **Concetto chiave:** Non è un singolo bot generico, ma un **team coordinato** dove ogni membro ha competenze diverse e accede a dati diversi.
 
@@ -6093,7 +6101,7 @@ Il Setter AI opera attraverso gli agenti WhatsApp e Instagram della piattaforma.
 
 Il Setter AI non è un chatbot con risposte predefinite. Usa Gemini AI con accesso alla tua Knowledge Base, al tuo System Prompt e (se il cliente è Gold) alla memoria delle conversazioni precedenti. Questo significa che può rispondere a domande specifiche sul tuo business che un chatbot tradizionale non potrebbe gestire.
 
-**Dove trovarlo:** Sidebar → AI AVANZATO → WhatsApp Agents
+**Dove trovarlo:** Sidebar → COMUNICAZIONE → WhatsApp Agents
 
 ## Lezione 1.2: Configurare il primo agente inbound
 
@@ -6106,7 +6114,7 @@ Prima di creare l'agente, assicurati di avere:
 - Knowledge Base popolata con almeno i documenti fondamentali del tuo business
 
 **Passo 1 — Crea l'agente:**
-Vai su Sidebar → AI AVANZATO → WhatsApp Agents e clicca "Nuovo Agente". Scegli il tipo "Inbound" e assegnagli un nome riconoscibile (es. "Assistente Principale").
+Vai su Sidebar → COMUNICAZIONE → WhatsApp Agents e clicca "Nuovo Agente". Scegli il tipo "Inbound" e assegnagli un nome riconoscibile (es. "Assistente Principale").
 
 **Passo 2 — Configura il System Prompt:**
 Questo è il cuore dell'agente. Il System Prompt definisce la personalità, le regole e il comportamento. Scrivi istruzioni chiare e specifiche:
@@ -6130,7 +6138,7 @@ Una volta soddisfatto, genera il link pubblico dell'agente (wa.me/numero) e inse
 - Knowledge Base vuota → l'agente inventerà le risposte
 - Non testare prima di andare live → potresti perdere lead reali
 
-**Dove trovarlo:** Sidebar → AI AVANZATO → WhatsApp Agents
+**Dove trovarlo:** Sidebar → COMUNICAZIONE → WhatsApp Agents
 
 ## Lezione 1.3: Strategia di qualifica lead
 
@@ -6160,7 +6168,7 @@ Il Setter AI non lavora da solo. Si integra con:
 - **Hunter** (Pacchetto 3): i lead trovati dal Lead Scraper possono essere contattati dal Setter AI in modalità outbound
 - **Stripe** (Pacchetto 9): i lead qualificati possono ricevere un link di pagamento diretto
 
-**Dove trovarlo:** Sidebar → AI AVANZATO → WhatsApp Agents → System Prompt dell'agente
+**Dove trovarlo:** Sidebar → COMUNICAZIONE → WhatsApp Agents → System Prompt dell'agente
 
 ---
 
@@ -6194,14 +6202,14 @@ Ogni 30 minuti (durante l'orario lavorativo configurato), il sistema di AI Auton
 
 Un reminder ti dice "chiama il cliente". Un dipendente AI analizza PERCHÉ dovresti chiamare quel cliente specifico, COSA dirgli (basandosi sulle conversazioni precedenti), e QUANDO è il momento migliore. Poi, se glielo permetti, lo fa direttamente.
 
-**Dove trovarlo:** Sidebar → AI AVANZATO → AI Autonomo
+**Dove trovarlo:** Sidebar → COMUNICAZIONE → AI Autonomo
 
 ## Lezione 2.2: Attivare e configurare l'AI Autonomo
 
 L'AI Autonomo è il motore che fa funzionare i 9 dipendenti. Senza attivarlo, i dipendenti restano "dormienti". Ecco come configurarlo correttamente.
 
 **Passo 1 — Attiva l'autonomia:**
-Vai su Sidebar → AI AVANZATO → AI Autonomo. Troverai un interruttore principale ON/OFF. Attivalo per abilitare i cicli automatici.
+Vai su Sidebar → COMUNICAZIONE → AI Autonomo. Troverai un interruttore principale ON/OFF. Attivalo per abilitare i cicli automatici.
 
 **Passo 2 — Configura l'orario lavorativo:**
 Imposta le fasce orarie in cui i dipendenti possono operare. Di default è 08:00-20:00, fuso orario Europa/Roma. I dipendenti NON faranno azioni fuori da questo orario (non invieranno messaggi WhatsApp alle 3 di notte).
@@ -6227,7 +6235,7 @@ Nella dashboard AI Autonomo vedi in tempo reale:
 - Quali dipendenti sono più attivi
 - Log dettagliato di ogni azione
 
-**Dove trovarlo:** Sidebar → AI AVANZATO → AI Autonomo
+**Dove trovarlo:** Sidebar → COMUNICAZIONE → AI Autonomo
 
 ## Lezione 2.3: Monitorare e gestire i task AI
 
@@ -6259,7 +6267,7 @@ Ogni task contiene il ragionamento del dipendente. Esempio:
 - Controlla la dashboard almeno una volta al giorno
 - Se un dipendente genera troppi task inutili, rivedi il suo prompt e le sue istruzioni
 
-**Dove trovarlo:** Sidebar → AI AVANZATO → AI Autonomo → Tab Task
+**Dove trovarlo:** Sidebar → COMUNICAZIONE → AI Autonomo → Tab Task
 
 ---
 
@@ -6734,7 +6742,7 @@ Puoi creare template per diversi tipi di chiamate:
 
 Ogni template definisce il flusso della conversazione, gli obiettivi (cosa deve ottenere la chiamata) e le informazioni da raccogliere.
 
-**Dove trovarlo:** Sidebar → AI AVANZATO → Chiamate Vocali
+**Dove trovarlo:** Sidebar → COMUNICAZIONE → Chiamate Vocali
 
 ## Lezione 8.2: Centralino AI e coda d'attesa
 
@@ -6756,7 +6764,7 @@ Puoi personalizzare la voce e il tono del centralino per riflettere il brand del
 - Lingua (italiano, inglese, altre)
 - Frase di benvenuto personalizzata
 
-**Dove trovarlo:** Sidebar → AI AVANZATO → Chiamate Vocali → Centralino
+**Dove trovarlo:** Sidebar → COMUNICAZIONE → Chiamate Vocali → Centralino
 
 ## Lezione 8.3: Provisioning numeri VoIP
 
