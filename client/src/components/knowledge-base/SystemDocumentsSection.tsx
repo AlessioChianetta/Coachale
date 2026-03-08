@@ -1601,40 +1601,19 @@ export default function SystemDocumentsSection() {
                         </span>
                       ))}
                       {clientStores.length > 0 && (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer">
+                        <>
+                          {clientStores.map((store, idx) => (
+                            <span key={`cs-${idx}`} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <Database className="h-2.5 w-2.5" />
-                              {clientStores.length} Private Store clienti
-                              {indexedCount === totalCount ? (
+                              {store.clientName || store.storeName || store.storeOwnerId.substring(0, 8)}
+                              {store.documentStatus === 'indexed' ? (
                                 <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
                               ) : (
-                                <span className="text-amber-600">{indexedCount}/{totalCount}</span>
+                                <Clock className="h-2.5 w-2.5 text-amber-500" />
                               )}
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-64 p-3" align="start">
-                            <div className="space-y-1.5">
-                              <p className="text-xs font-semibold text-slate-700 mb-2">
-                                {clientStores.length} Private Store clienti
-                              </p>
-                              <div className="max-h-48 overflow-y-auto space-y-1">
-                                {clientStores.map((store, idx) => (
-                                  <div key={`cs-${idx}`} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-slate-50 text-[11px]">
-                                    <span className="truncate text-slate-700 font-medium">
-                                      {store.clientName || store.storeName || store.storeOwnerId.substring(0, 8)}
-                                    </span>
-                                    {store.documentStatus === 'indexed' ? (
-                                      <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                                    ) : (
-                                      <Clock className="h-3 w-3 text-amber-500 shrink-0" />
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
+                            </span>
+                          ))}
+                        </>
                       )}
                     </>
                   );
