@@ -6795,18 +6795,19 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
       INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
       VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'consultant', ${message.trim()}, ${metadataJson}::jsonb)
     `);
-    if (roleId === 'robert') {
-      try {
-        const robertSessionId = await findOrCreateSalesCoachSession(consultantId);
-        if (robertSessionId) {
-          await db.execute(sql`
-            INSERT INTO delivery_agent_messages (session_id, role, content)
-            VALUES (${robertSessionId}, 'user', ${message.trim()})
-          `);
-        }
-      } catch (e: any) {
-        console.warn('[ROBERT] Failed to mirror user message to delivery_agent_messages:', e.message);
+  }
+
+  if (roleId === 'robert') {
+    try {
+      const robertSessionId = await findOrCreateSalesCoachSession(consultantId);
+      if (robertSessionId) {
+        await db.execute(sql`
+          INSERT INTO delivery_agent_messages (session_id, role, content)
+          VALUES (${robertSessionId}, 'user', ${message.trim()})
+        `);
       }
+    } catch (e: any) {
+      console.warn('[ROBERT] Failed to mirror user message to delivery_agent_messages:', e.message);
     }
   }
 
