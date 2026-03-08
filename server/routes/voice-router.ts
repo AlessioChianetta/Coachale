@@ -888,11 +888,12 @@ router.get("/recording/:callId", (req: AuthRequest, _res: Response, next: Functi
     }
 
     const settingsResult = await db.execute(sql`
-      SELECT voice_service_token FROM consultant_ai_settings
+      SELECT token FROM voice_service_tokens
       WHERE consultant_id = ${consultantId}
+      ORDER BY created_at DESC
       LIMIT 1
     `);
-    const serviceToken = (settingsResult.rows[0] as any)?.voice_service_token || '';
+    const serviceToken = (settingsResult.rows[0] as any)?.token || '';
 
     const separator = call.recording_url.includes('?') ? '&' : '?';
     const proxyUrl = `${call.recording_url}${separator}token=${serviceToken}`;
