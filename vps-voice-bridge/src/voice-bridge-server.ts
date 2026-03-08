@@ -591,13 +591,15 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, 
       const recordingPath = `${RECORDINGS_DIR}/${fsUuid}.wav`;
       const eslConn = getEslConnection();
       if (eslConn) {
-        (eslConn as any).bgapi(`uuid_record ${fsUuid} start ${recordingPath}`, (res: any) => {
-          const body = res?.getBody?.() || '';
-          if (body.includes('+OK')) {
-            log.info(`🎙️ [RECORDING] Started recording for ${fsUuid} → ${recordingPath}`);
-          } else {
-            log.warn(`⚠️ [RECORDING] Failed to start recording for ${fsUuid}: ${body.trim()}`);
-          }
+        (eslConn as any).bgapi(`uuid_setvar ${fsUuid} RECORD_STEREO false`, () => {
+          (eslConn as any).bgapi(`uuid_record ${fsUuid} start ${recordingPath}`, (res: any) => {
+            const body = res?.getBody?.() || '';
+            if (body.includes('+OK')) {
+              log.info(`🎙️ [RECORDING] Started mono recording for ${fsUuid} → ${recordingPath}`);
+            } else {
+              log.warn(`⚠️ [RECORDING] Failed to start recording for ${fsUuid}: ${body.trim()}`);
+            }
+          });
         });
       }
     } catch (recErr: any) {
