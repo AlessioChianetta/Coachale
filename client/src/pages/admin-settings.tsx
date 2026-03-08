@@ -3274,7 +3274,22 @@ export default function AdminSettings() {
                           <CreditCard className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                         </div>
                         <div>
-                          <CardTitle>Panoramica Stripe Connect</CardTitle>
+                          <CardTitle className="flex items-center gap-2">
+                            Panoramica Stripe Connect
+                            {stripeConfigData?.config?.stripePublishableKey && (
+                              stripeConfigData.config.stripePublishableKey.startsWith('pk_test_') ? (
+                                <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700 text-xs font-semibold">
+                                  <AlertCircle className="w-3 h-3 mr-1" />
+                                  TEST MODE
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700 text-xs font-semibold">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  LIVE
+                                </Badge>
+                              )
+                            )}
+                          </CardTitle>
                           <CardDescription>Revenue e transazioni della piattaforma</CardDescription>
                         </div>
                       </div>
@@ -3288,6 +3303,15 @@ export default function AdminSettings() {
                       </div>
                     ) : stripeStatsData ? (
                       <div className="space-y-6">
+                        {stripeConfigData?.config?.stripePublishableKey?.startsWith('pk_test_') && (
+                          <div className="flex items-center gap-3 p-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                            <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">Modalità Test attiva</p>
+                              <p className="text-xs text-yellow-600 dark:text-yellow-400">I dati mostrati sono relativi alle API key di test. Per dati reali, configura le chiavi live (sk_live_ / pk_live_).</p>
+                            </div>
+                          </div>
+                        )}
                         {/* Stats Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800">
@@ -3457,8 +3481,19 @@ export default function AdminSettings() {
                         )}
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-gray-900 dark:text-white">
+                        <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
                           {stripeConfigData?.configured ? "Configurato" : "Non Configurato"}
+                          {stripeConfigData?.configured && stripeConfigData.config?.stripePublishableKey && (
+                            stripeConfigData.config.stripePublishableKey.startsWith('pk_test_') ? (
+                              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700 text-[10px] font-semibold px-1.5 py-0">
+                                TEST
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700 text-[10px] font-semibold px-1.5 py-0">
+                                LIVE
+                              </Badge>
+                            )
+                          )}
                         </p>
                         <p className="text-sm text-gray-500">
                           {stripeConfigData?.configured
