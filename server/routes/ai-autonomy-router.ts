@@ -6090,16 +6090,25 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
 
       const result = await provider.client.generateContent(genConfig);
       let fullText = '';
-      if (result.candidates) {
-        for (const candidate of result.candidates) {
-          if (candidate.content?.parts) {
-            for (const part of candidate.content.parts) {
-              if (part.text && !(part as any).thought) fullText += part.text;
+      try { fullText = (result as any).response.text(); } catch {}
+      if (!fullText) {
+        const parts = (result as any).response?.candidates?.[0]?.content?.parts || [];
+        fullText = parts.filter((p: any) => p.text && !p.thought).map((p: any) => p.text).join('');
+      }
+      if (!fullText) {
+        try {
+          if (result.candidates) {
+            for (const candidate of result.candidates) {
+              if (candidate.content?.parts) {
+                for (const part of candidate.content.parts) {
+                  if (part.text && !(part as any).thought) fullText += part.text;
+                }
+              }
             }
           }
-        }
+        } catch {}
       }
-      if (!fullText) fullText = typeof result.text === 'function' ? result.text() : (result.text || '');
+      if (!fullText) fullText = typeof result.text === 'function' ? result.text() : (result.text || 'Mi dispiace, non sono riuscito a generare una risposta. Riprova.');
 
       await db.execute(sql`
         INSERT INTO delivery_agent_messages (session_id, role, content)
@@ -6378,16 +6387,25 @@ router.post("/agent-chat/:roleId/send-media", authenticateToken, requireAnyRole(
 
       const result = await provider.client.generateContent(genConfig);
       let aiText = '';
-      if (result.candidates) {
-        for (const candidate of result.candidates) {
-          if (candidate.content?.parts) {
-            for (const part of candidate.content.parts) {
-              if (part.text && !(part as any).thought) aiText += part.text;
+      try { aiText = (result as any).response.text(); } catch {}
+      if (!aiText) {
+        const parts = (result as any).response?.candidates?.[0]?.content?.parts || [];
+        aiText = parts.filter((p: any) => p.text && !p.thought).map((p: any) => p.text).join('');
+      }
+      if (!aiText) {
+        try {
+          if (result.candidates) {
+            for (const candidate of result.candidates) {
+              if (candidate.content?.parts) {
+                for (const part of candidate.content.parts) {
+                  if (part.text && !(part as any).thought) aiText += part.text;
+                }
+              }
             }
           }
-        }
+        } catch {}
       }
-      if (!aiText) aiText = typeof result.text === 'function' ? result.text() : (result.text || '');
+      if (!aiText) aiText = typeof result.text === 'function' ? result.text() : (result.text || 'Mi dispiace, non sono riuscito a generare una risposta. Riprova.');
 
       await db.execute(sql`
         INSERT INTO delivery_agent_messages (session_id, role, content)
