@@ -9078,7 +9078,7 @@ export class FileSearchSyncService {
       case 'all': {
         const allClients = await db.execute(sql`
           SELECT u.id FROM users u
-          WHERE u.consultant_id = ${consultantId} AND u.role = 'client'
+          WHERE u.consultant_id = ${consultantId}
         `);
         return (allClients.rows as any[]).map((c: any) => ({ ownerId: c.id, ownerType: 'client' as const }));
       }
@@ -9086,7 +9086,7 @@ export class FileSearchSyncService {
       case 'clients_only': {
         const clients = await db.execute(sql`
           SELECT u.id FROM users u
-          WHERE u.consultant_id = ${consultantId} AND u.role = 'client' AND u.is_employee = false
+          WHERE u.consultant_id = ${consultantId} AND u.is_employee = false
         `);
         return (clients.rows as any[]).map((c: any) => ({ ownerId: c.id, ownerType: 'client' as const }));
       }
@@ -9097,7 +9097,7 @@ export class FileSearchSyncService {
         const validClients = await db.execute(sql`
           SELECT u.id FROM users u
           WHERE u.id IN (${sql.join(inputClientIds.map((cid: string) => sql`${cid}`), sql`,`)})
-            AND u.consultant_id = ${consultantId} AND u.role = 'client'
+            AND u.consultant_id = ${consultantId}
         `);
         const validIds = new Set((validClients.rows as any[]).map((c: any) => c.id));
         const rejected = inputClientIds.filter((cid: string) => !validIds.has(cid));
@@ -9110,7 +9110,7 @@ export class FileSearchSyncService {
       case 'employees_only': {
         const employees = await db.execute(sql`
           SELECT u.id FROM users u
-          WHERE u.consultant_id = ${consultantId} AND u.role = 'client' AND u.is_employee = true
+          WHERE u.consultant_id = ${consultantId} AND u.is_employee = true
         `);
         return (employees.rows as any[]).map((c: any) => ({ ownerId: c.id, ownerType: 'client' as const }));
       }
