@@ -1,0 +1,105 @@
+ [TokenTracker] Buffered: dashboard-insights | gemini-3-flash-preview | 970 tokens | $0.0015 | consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b client=self
+🔓 [Semaphore] Released slot (0/3 in use)
+[Dashboard Insights] Raw AI response (1411 chars): {
+  "summary": "Oggi, domenica 8 marzo, la priorità assoluta è smaltire l'arretrato critico di 472 esercizi in attesa di revisione per prepararsi alla consulenza con Gloria del 10/3, dato il basso tasso di completamento generale del 6%.",
+  "highlights": [
+    "Arretrato critico di 481 esercizi totali (472 in attesa + 9 in gestione) a fronte di soli 31 completati.",
+    "Tasso di completamento globale estremamente basso (6%), indicando un potenziale collo d'bottiglia nel feedback ai 40 clienti a
+5:35:17 AM [express] GET /api/dashboard/insights 200 in 8975ms :: {"summary":"Oggi, domenica 8 marzo…
+✅ [TokenTracker] Flushed 1 entries to DB
+[replit-cartographer] Error processing /home/runner/workspace/client/src/pages/content-studio/ideas.tsx: SyntaxError: Identifier 'Eye' has already been declared. (119:15)
+    at toParseError (/home/runner/workspace/node_modules/@babel/parser/src/parse-error.ts:95:45)
+    at raise (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1507:19)
+    at declareName (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/scope.ts:72:21)
+    at declareNameFromIdentifier (/home/runner/workspace/node_modules/@babel/parser/src/parser/lval.ts:852:16)
+    at checkIdentifier (/home/runner/workspace/node_modules/@babel/parser/src/parser/lval.ts:847:12)
+    at checkLVal (/home/runner/workspace/node_modules/@babel/parser/src/parser/lval.ts:739:12)
+    at finishImportSpecifier (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:3229:10)
+    at parseImportSpecifier (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:3486:17)
+    at parseImportSpecifier (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:4387:20)
+    at parseNamedImportSpecifiers (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:3447:36)
+    at parseImportSpecifiersAndAfter (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:3179:37)
+    at parseImport (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:3148:17)
+    at parseImport (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:2973:28)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:647:25)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3223:20)
+    at parseStatementLike (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:482:17)
+    at parseModuleItem (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:419:17)
+    at parseBlockOrModuleBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1443:16)
+    at parseBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1417:10)
+    at parseProgram (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:229:10)
+    at parseTopLevel (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:203:25)
+    at parse (/home/runner/workspace/node_modules/@babel/parser/src/parser/index.ts:88:25)
+    at parse (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:4337:20)
+    at parse (/home/runner/workspace/node_modules/@babel/parser/src/index.ts:86:38)
+    at TransformPluginContext.handler (/home/runner/workspace/node_modules/@replit/vite-plugin-cartographer/dist/index.mjs:74:23)
+    at PluginContainer.transform (/home/runner/workspace/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49100:19)
+    at loadAndTransform (/home/runner/workspace/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:49) {
+  code: 'BABEL_PARSER_SYNTAX_ERROR',
+  reasonCode: 'VarRedeclaration',
+  loc: Position { line: 119, column: 15, index: 2502 },
+  pos: 2502,
+  syntaxPlugin: undefined
+}
+5:35:22 AM [vite] Internal server error: /home/runner/workspace/client/src/pages/content-studio/ideas.tsx: Identifier 'Eye' has already been declared. (119:15)
+
+  117 | import { BrandVoiceSection, BrandVoiceData, KnowledgeBaseSelector, TempFile } from "@/components/brand-voice";
+  118 | import { cn } from "@/lib/utils";
+> 119 | import { Send, Eye } from "lucide-react";
+      |                ^
+  120 | import ContentStudioPosts from "./posts";
+  121 | import AdVisagePage from "./advisage/AdVisagePage";
+  122 | import { Checkbox } from "@/components/ui/checkbox";
+  Plugin: vite:react-babel
+  File: /home/runner/workspace/client/src/pages/content-studio/ideas.tsx:119:15
+  117|  import { BrandVoiceSection, BrandVoiceData, KnowledgeBaseSelector, TempFile } from "@/components/brand-voice";
+  118|  import { cn } from "@/lib/utils";
+  119|  import { Send, Eye } from "lucide-react";
+     |                 ^
+  120|  import ContentStudioPosts from "./posts";
+  121|  import AdVisagePage from "./advisage/AdVisagePage";
+      at toParseError (/home/runner/workspace/node_modules/@babel/parser/src/parse-error.ts:95:45)
+      at raise (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1507:19)
+      at declareName (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/scope.ts:72:21)
+      at declareNameFromIdentifier (/home/runner/workspace/node_modules/@babel/parser/src/parser/lval.ts:852:16)
+      at checkIdentifier (/home/runner/workspace/node_modules/@babel/parser/src/parser/lval.ts:847:12)
+      at checkLVal (/home/runner/workspace/node_modules/@babel/parser/src/parser/lval.ts:739:12)
+      at finishImportSpecifier (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:3229:10)
+      at parseImportSpecifier (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:3486:17)
+      at parseImportSpecifier (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:4387:20)
+      at parseNamedImportSpecifiers (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:3447:36)
+      at parseImportSpecifiersAndAfter (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:3179:37)
+      at parseImport (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:3148:17)
+      at parseImport (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:2973:28)
+      at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:647:25)
+      at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3223:20)
+      at parseStatementLike (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:482:17)
+      at parseModuleItem (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:419:17)
+      at parseBlockOrModuleBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1443:16)
+      at parseBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1417:10)
+      at parseProgram (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:229:10)
+      at parseTopLevel (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:203:25)
+      at parse (/home/runner/workspace/node_modules/@babel/parser/src/parser/index.ts:88:25)
+      at parse (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:4337:20)
+      at parse (/home/runner/workspace/node_modules/@babel/parser/src/index.ts:86:38)
+      at parser (/home/runner/workspace/node_modules/@babel/core/src/parser/index.ts:29:19)
+      at parser.next (<anonymous>)
+      at normalizeFile (/home/runner/workspace/node_modules/@babel/core/src/transformation/normalize-file.ts:50:24)
+      at normalizeFile.next (<anonymous>)
+      at run (/home/runner/workspace/node_modules/@babel/core/src/transformation/index.ts:41:36)
+      at run.next (<anonymous>)
+      at transform (/home/runner/workspace/node_modules/@babel/core/src/transform.ts:29:20)
+      at transform.next (<anonymous>)
+      at step (/home/runner/workspace/node_modules/gensync/index.js:261:32)
+      at /home/runner/workspace/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/home/runner/workspace/node_modules/gensync/index.js:223:11)
+      at /home/runner/workspace/node_modules/gensync/index.js:189:28
+      at <anonymous> (/home/runner/workspace/node_modules/@babel/core/src/gensync-utils/async.ts:90:7)
+      at /home/runner/workspace/node_modules/gensync/index.js:113:33
+      at step (/home/runner/workspace/node_modules/gensync/index.js:287:14)
+      at /home/runner/workspace/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/home/runner/workspace/node_modules/gensync/index.js:223:11)
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.11.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.11.0
+npm notice To update run: npm install -g npm@11.11.0
