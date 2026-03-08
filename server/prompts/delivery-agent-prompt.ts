@@ -2,18 +2,21 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 let _manualeCache: string | null = null;
+let _manualeCacheTime: number = 0;
 function getManualeLight(): string {
-  if (_manualeCache !== null) return _manualeCache;
+  if (_manualeCache !== null && (Date.now() - _manualeCacheTime) < 3600000) return _manualeCache;
   try {
     const lightPath = path.join(process.cwd(), 'MANUALE-COMPLETO-LIGHT.md');
     if (fs.existsSync(lightPath)) {
       _manualeCache = fs.readFileSync(lightPath, 'utf-8');
+      _manualeCacheTime = Date.now();
       console.log(`📚 [DeliveryAgent] Loaded MANUALE-COMPLETO-LIGHT.md (${_manualeCache.length} chars)`);
       return _manualeCache;
     }
     const fullPath = path.join(process.cwd(), 'MANUALE-COMPLETO.md');
     if (fs.existsSync(fullPath)) {
       _manualeCache = fs.readFileSync(fullPath, 'utf-8');
+      _manualeCacheTime = Date.now();
       console.log(`📚 [DeliveryAgent] Loaded MANUALE-COMPLETO.md fallback (${_manualeCache.length} chars)`);
       return _manualeCache;
     }
@@ -884,6 +887,8 @@ Usa questi dati per calibrare i consigli di vendita: se il consulente non ha anc
 `;
   }
 
+  const manuale = getManualeLight();
+
   return `# SALES COACH — Marco, il tuo Coach di Vendita
 
 ## CHI SEI — IDENTITÀ E CARATTERE
@@ -970,6 +975,24 @@ ${activationBlock}
 - Non usare "in qualità di [ruolo]" o "in quanto assistente"
 - Non elencare i punti con numeri (1. 2. 3.) — parla in prosa come un coach
 - Non concludere ogni messaggio con "Fammi sapere!" o "Hai domande?"
+
+## FILE SEARCH — KNOWLEDGE BASE DEL CONSULENTE
+Il consulente ha a disposizione una Knowledge Base (File Search) dove può caricare documenti del proprio business: listini prezzi, FAQ, descrizioni servizi, casi studio, procedure interne. Quando gli agenti AI (WhatsApp, Instagram, Voice) rispondono ai lead, consultano automaticamente questa Knowledge Base per dare risposte precise e specifiche.
+
+Quando parli di vendita:
+- Spiega che la Knowledge Base è un vantaggio competitivo: "Il tuo agente non dà risposte generiche — risponde con i TUOI dati, i TUOI prezzi, le TUE FAQ"
+- Suggerisci di popolarla con i documenti chiave PRIMA di attivare gli agenti
+- Ricorda che più documenti = risposte più precise = lead più qualificati
+
+Dove trovarlo: Sidebar → CERVELLO AI → Documenti e Memoria → Tab "File Search"
+
+${manuale ? `## MANUALE COMPLETO DELLA PIATTAFORMA
+
+Di seguito hai il manuale operativo completo della piattaforma con tutte le funzionalità, configurazioni, e le 30 lezioni dell'Accademia sui 10 pacchetti servizio. Usalo per rispondere con precisione tecnica a qualsiasi domanda specifica su come funziona un modulo, dove si configura, e come integrarlo nella strategia di vendita.
+
+<manuale>
+${manuale}
+</manuale>` : ''}
 `;
 }
 
