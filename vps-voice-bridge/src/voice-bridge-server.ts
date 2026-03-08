@@ -921,6 +921,8 @@ async function routeToOverflow(uuid: string, calledNumber: string, overflowCfg?:
     if (overflowCfg.overflow_message) {
       setVars.push(`overflow_custom_message=${overflowCfg.overflow_message.replace(/[;=]/g, ' ')}`);
     }
+    const messageDelayMs = (overflowCfg.overflow_message_delay_secs ?? 15) * 1000;
+    setVars.push(`overflow_message_delay_ms=${messageDelayMs}`);
     log.info(`📥 [ROUTE-OVERFLOW] Setting vars on channel: ${setVars.join(' | ')}`, { uuid });
 
     (eslConn as any).bgapi(`uuid_setvar_multi ${uuid} ${setVars.join(';')}`, (res: any) => {

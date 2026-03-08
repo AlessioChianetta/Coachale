@@ -10317,6 +10317,7 @@ export const voiceNumbers = pgTable("voice_numbers", {
   maxConcurrentCalls: integer("max_concurrent_calls").default(5),
   maxCallDurationMinutes: integer("max_call_duration_minutes").default(30),
   inactivityTimeoutSecs: integer("inactivity_timeout_secs").default(60),
+  overflowMessageDelaySecs: integer("overflow_message_delay_secs").default(15),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

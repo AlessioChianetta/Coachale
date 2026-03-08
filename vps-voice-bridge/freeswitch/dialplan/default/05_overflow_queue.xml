@@ -43,6 +43,7 @@
   
   VARIABILI CHANNEL AGGIUNTIVE:
   - overflow_audio_dir: directory audio per-consulente (default: /opt/sounds/overflow/default)
+  - overflow_message_delay_ms: pausa in millisecondi tra un messaggio e l'altro (default: 15000)
   
   PERCORSO DEPLOY:
   /usr/local/freeswitch/etc/freeswitch/dialplan/default/05_overflow_queue.xml
@@ -71,25 +72,32 @@
       <action application="bind_digit_action" data="overflow,1,exec:transfer,transfer_to_fallback XML default"/>
       <action application="digit_action_set_realm" data="overflow"/>
 
-      <!-- Ciclo 1: posizione + messaggio A -->
+      <action application="set" data="overflow_message_delay_ms=${overflow_message_delay_ms:-15000}"/>
+
+      <!-- Ciclo 1: posizione + messaggio A + pausa -->
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_A XML default"/>
+      <action application="sleep" data="${overflow_message_delay_ms}"/>
 
-      <!-- Ciclo 2: posizione + messaggio B -->
+      <!-- Ciclo 2: posizione + messaggio B + pausa -->
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_B XML default"/>
+      <action application="sleep" data="${overflow_message_delay_ms}"/>
 
-      <!-- Ciclo 3: posizione + messaggio C -->
+      <!-- Ciclo 3: posizione + messaggio C + pausa -->
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_C XML default"/>
+      <action application="sleep" data="${overflow_message_delay_ms}"/>
 
-      <!-- Ciclo 4: posizione + messaggio D -->
+      <!-- Ciclo 4: posizione + messaggio D + pausa -->
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_D XML default"/>
+      <action application="sleep" data="${overflow_message_delay_ms}"/>
 
-      <!-- Ciclo 5: posizione + messaggio E -->
+      <!-- Ciclo 5: posizione + messaggio E + pausa -->
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_E XML default"/>
+      <action application="sleep" data="${overflow_message_delay_ms}"/>
 
       <!-- Fine setup iniziale: avvia il loop continuo dei messaggi -->
       <action application="log" data="INFO [OVERFLOW] Chiamata ${uuid} - setup completato, avvio message loop"/>
@@ -110,18 +118,23 @@
 
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_A XML default"/>
+      <action application="sleep" data="${overflow_message_delay_ms}"/>
 
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_B XML default"/>
+      <action application="sleep" data="${overflow_message_delay_ms}"/>
 
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_C XML default"/>
+      <action application="sleep" data="${overflow_message_delay_ms}"/>
 
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_D XML default"/>
+      <action application="sleep" data="${overflow_message_delay_ms}"/>
 
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_E XML default"/>
+      <action application="sleep" data="${overflow_message_delay_ms}"/>
 
       <action application="log" data="INFO [OVERFLOW] Chiamata ${uuid} - ciclo A-E completato, riparto dal loop"/>
       <action application="transfer" data="overflow_message_loop XML default"/>

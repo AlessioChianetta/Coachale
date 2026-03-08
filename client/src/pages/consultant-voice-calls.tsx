@@ -5501,35 +5501,43 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                           </div>
 
                           {[
-                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Sei il numero X in coda', isPosition: true },
-                            { slots: ['hold_A'], emoji: '🗣️', label: 'Messaggio A (sopra la musica)', isPosition: false },
-                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true },
-                            { slots: ['hold_B'], emoji: '🗣️', label: 'Messaggio B (sopra la musica)', isPosition: false },
-                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true },
-                            { slots: ['hold_C'], emoji: '🗣️', label: 'Messaggio C (sopra la musica)', isPosition: false },
-                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true },
-                            { slots: ['hold_D'], emoji: '🗣️', label: 'Messaggio D (sopra la musica)', isPosition: false },
-                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true },
-                            { slots: ['hold_E'], emoji: '🗣️', label: 'Messaggio E (sopra la musica)', isPosition: false },
-                          ].map((step, i) => {
-                            const isConfigured = step.slots.some(s => configuredAudioSlots.has(s));
-                            const dotColor = isConfigured
-                              ? step.isPosition ? 'bg-violet-400' : 'bg-indigo-400'
-                              : 'bg-muted-foreground/30';
-                            const isLast = i === 9;
+                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Sei il numero X in coda', isPosition: true, isPause: false },
+                            { slots: ['hold_A'], emoji: '🗣️', label: 'Messaggio A (sopra la musica)', isPosition: false, isPause: false },
+                            { slots: [], emoji: '🎵', label: 'Pausa — solo musica', isPosition: false, isPause: true },
+                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true, isPause: false },
+                            { slots: ['hold_B'], emoji: '🗣️', label: 'Messaggio B (sopra la musica)', isPosition: false, isPause: false },
+                            { slots: [], emoji: '🎵', label: 'Pausa — solo musica', isPosition: false, isPause: true },
+                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true, isPause: false },
+                            { slots: ['hold_C'], emoji: '🗣️', label: 'Messaggio C (sopra la musica)', isPosition: false, isPause: false },
+                            { slots: [], emoji: '🎵', label: 'Pausa — solo musica', isPosition: false, isPause: true },
+                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true, isPause: false },
+                            { slots: ['hold_D'], emoji: '🗣️', label: 'Messaggio D (sopra la musica)', isPosition: false, isPause: false },
+                            { slots: [], emoji: '🎵', label: 'Pausa — solo musica', isPosition: false, isPause: true },
+                            { slots: ['position_prefix', 'position_suffix'], emoji: '📍', label: 'Posizione aggiornata', isPosition: true, isPause: false },
+                            { slots: ['hold_E'], emoji: '🗣️', label: 'Messaggio E (sopra la musica)', isPosition: false, isPause: false },
+                          ].map((step, i, arr) => {
+                            const isConfigured = step.isPause ? true : step.slots.some(s => configuredAudioSlots.has(s));
+                            const dotColor = step.isPause
+                              ? 'bg-teal-200 dark:bg-teal-800'
+                              : isConfigured
+                                ? step.isPosition ? 'bg-violet-400' : 'bg-indigo-400'
+                                : 'bg-muted-foreground/30';
+                            const isLast = i === arr.length - 1;
                             return (
                               <div key={i} className="flex items-start gap-3">
                                 <div className="flex flex-col items-center pt-1">
-                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs ${dotColor} ${isConfigured ? 'shadow-sm' : 'border border-dashed border-muted-foreground/30'}`}>
+                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs ${dotColor} ${(isConfigured || step.isPause) ? 'shadow-sm' : 'border border-dashed border-muted-foreground/30'}`}>
                                     <span>{step.emoji}</span>
                                   </div>
                                   {!isLast && <div className="w-0.5 h-5 bg-border mt-1" />}
                                 </div>
                                 <div className="pt-1 flex items-center gap-2">
-                                  <p className={`text-xs font-medium ${isConfigured ? (step.isPosition ? 'text-violet-700 dark:text-violet-300' : 'text-indigo-700 dark:text-indigo-300') : 'text-muted-foreground'}`}>{step.label}</p>
-                                  {isConfigured
-                                    ? <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${step.isPosition ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'}`}>personalizzato</span>
-                                    : <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">default sistema</span>
+                                  <p className={`text-xs font-medium ${step.isPause ? 'text-teal-600 dark:text-teal-400 italic' : isConfigured ? (step.isPosition ? 'text-violet-700 dark:text-violet-300' : 'text-indigo-700 dark:text-indigo-300') : 'text-muted-foreground'}`}>{step.label}</p>
+                                  {step.isPause
+                                    ? <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400">configurabile</span>
+                                    : isConfigured
+                                      ? <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${step.isPosition ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'}`}>personalizzato</span>
+                                      : <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">default sistema</span>
                                   }
                                 </div>
                               </div>
@@ -5766,6 +5774,7 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                         const ovMessage = n.overflow_message || '';
                         const ovMaxConcurrent = n.max_concurrent_calls ?? 5;
                         const ovInactivityTimeout = n.inactivity_timeout_secs ?? 60;
+                        const ovMessageDelay = n.overflow_message_delay_secs ?? 15;
 
                         const vpsData = healthData?.vps;
                         const normalizedNum = n.phone_number.replace(/\D/g, '');
@@ -5842,7 +5851,7 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                                   if (val !== ovMaxConcurrent) {
                                     saveOverflowMutation.mutate({
                                       numberId: n.id,
-                                      data: { overflow_enabled: ovEnabled, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: val, inactivity_timeout_secs: ovInactivityTimeout },
+                                      data: { overflow_enabled: ovEnabled, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: val, inactivity_timeout_secs: ovInactivityTimeout, overflow_message_delay_secs: ovMessageDelay },
                                     });
                                   }
                                 }}
@@ -5871,7 +5880,38 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                                     if (val !== ovInactivityTimeout) {
                                       saveOverflowMutation.mutate({
                                         numberId: n.id,
-                                        data: { overflow_enabled: ovEnabled, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent, inactivity_timeout_secs: val },
+                                        data: { overflow_enabled: ovEnabled, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent, inactivity_timeout_secs: val, overflow_message_delay_secs: ovMessageDelay },
+                                      });
+                                    }
+                                  }}
+                                />
+                                <span className="text-xs text-muted-foreground">sec</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 border rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <Music className="h-4 w-4 text-teal-500" />
+                                <div>
+                                  <p className="text-sm font-medium">Pausa tra messaggi in coda</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Secondi di sola musica tra un messaggio e l'altro durante l'attesa
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  min={5}
+                                  max={60}
+                                  defaultValue={ovMessageDelay}
+                                  className="w-20 text-center"
+                                  onBlur={(e) => {
+                                    const val = Math.max(5, Math.min(60, parseInt(e.target.value) || 15));
+                                    if (val !== ovMessageDelay) {
+                                      saveOverflowMutation.mutate({
+                                        numberId: n.id,
+                                        data: { overflow_enabled: ovEnabled, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent, inactivity_timeout_secs: ovInactivityTimeout, overflow_message_delay_secs: val },
                                       });
                                     }
                                   }}
@@ -5891,7 +5931,7 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                                   onCheckedChange={(checked) => {
                                     saveOverflowMutation.mutate({
                                       numberId: n.id,
-                                      data: { overflow_enabled: checked, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
+                                      data: { overflow_enabled: checked, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent, overflow_message_delay_secs: ovMessageDelay },
                                     });
                                   }}
                                 />
@@ -5913,7 +5953,7 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                                     onCheckedChange={(checked) => {
                                       saveOverflowMutation.mutate({
                                         numberId: n.id,
-                                        data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: checked, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
+                                        data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: checked, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent, overflow_message_delay_secs: ovMessageDelay },
                                       });
                                     }}
                                   />
@@ -5932,7 +5972,7 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                                     onCheckedChange={(checked) => {
                                       saveOverflowMutation.mutate({
                                         numberId: n.id,
-                                        data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: checked, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
+                                        data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: checked, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent, overflow_message_delay_secs: ovMessageDelay },
                                       });
                                     }}
                                   />
@@ -5955,7 +5995,7 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                                           if (val !== ovFallback) {
                                             saveOverflowMutation.mutate({
                                               numberId: n.id,
-                                              data: { overflow_enabled: true, fallback_number: val || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: true, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
+                                              data: { overflow_enabled: true, fallback_number: val || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: true, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent, overflow_message_delay_secs: ovMessageDelay },
                                             });
                                           }
                                         }}
@@ -5991,7 +6031,7 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                                         if (val !== ovTimeout) {
                                           saveOverflowMutation.mutate({
                                             numberId: n.id,
-                                            data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: val, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
+                                            data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: val, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent, overflow_message_delay_secs: ovMessageDelay },
                                           });
                                         }
                                       }}
@@ -6000,7 +6040,7 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                                         if (val !== ovTimeout) {
                                           saveOverflowMutation.mutate({
                                             numberId: n.id,
-                                            data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: val, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent },
+                                            data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: val, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: ovMessage || null, max_concurrent_calls: ovMaxConcurrent, overflow_message_delay_secs: ovMessageDelay },
                                           });
                                         }
                                       }}
@@ -6029,7 +6069,7 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                                       if (val !== ovMessage) {
                                         saveOverflowMutation.mutate({
                                           numberId: n.id,
-                                          data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: val || null, max_concurrent_calls: ovMaxConcurrent },
+                                          data: { overflow_enabled: true, fallback_number: ovFallback || null, overflow_timeout_secs: ovTimeout, overflow_dtmf_enabled: ovDtmf, overflow_auto_return: ovAutoReturn, overflow_message: val || null, max_concurrent_calls: ovMaxConcurrent, overflow_message_delay_secs: ovMessageDelay },
                                         });
                                       }
                                     }}
