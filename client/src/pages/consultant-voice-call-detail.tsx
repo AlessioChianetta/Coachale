@@ -355,80 +355,173 @@ export default function ConsultantVoiceCallDetailPage() {
     const st = CALL_STATUS[focusedCall.status] || CALL_STATUS.ended;
     const StIcon = st.icon;
     const isInbound = focusedCall.call_direction === "inbound" || (!focusedCall.call_direction && focusedCall.caller_id === contact.phone);
+
+    const getStatusStyle = (status: string) => {
+      switch (status) {
+        case 'completed': case 'transferred': return { bg: 'bg-green-50 dark:bg-green-950/30', border: 'border-green-200 dark:border-green-800', text: 'text-green-700 dark:text-green-400', dot: 'bg-green-500' };
+        case 'failed': case 'no_answer': return { bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-200 dark:border-red-800', text: 'text-red-700 dark:text-red-400', dot: 'bg-red-500' };
+        case 'busy': case 'short_call': return { bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200 dark:border-amber-800', text: 'text-amber-700 dark:text-amber-400', dot: 'bg-amber-500' };
+        case 'voicemail': return { bg: 'bg-violet-50 dark:bg-violet-950/30', border: 'border-violet-200 dark:border-violet-800', text: 'text-violet-700 dark:text-violet-400', dot: 'bg-violet-500' };
+        case 'ringing': case 'answered': case 'talking': return { bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200 dark:border-blue-800', text: 'text-blue-700 dark:text-blue-400', dot: 'bg-blue-500' };
+        default: return { bg: 'bg-slate-50 dark:bg-slate-950/30', border: 'border-slate-200 dark:border-slate-800', text: 'text-slate-600 dark:text-slate-400', dot: 'bg-slate-400' };
+      }
+    };
+    const statusStyle = getStatusStyle(focusedCall.status);
+
+    const hiddenOutcomes = ['normal_end', 'ghost_cleanup', 'originator_cancel', 'system_error', 'NO_ANSWER', 'NORMAL_CLEARING', 'ORIGINATOR_CANCEL'];
+    const showOutcome = focusedCall.outcome && !hiddenOutcomes.includes(focusedCall.outcome);
+
+    const formatTranscript = (text: string) => {
+      const lines = text.split('\n').filter(l => l.trim());
+      return lines.map((line, i) => {
+        const alessiaMatch = line.match(/^\[Alessia\]\s*(.*)/i);
+        const utenteMatch = line.match(/^\[Utente\]\s*(.*)/i);
+        if (alessiaMatch) {
+          return (
+            <div key={i} className="flex gap-3 mb-3">
+              <div className="w-7 h-7 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-xs font-bold text-violet-600 dark:text-violet-400">AI</span>
+              </div>
+              <div className="flex-1 bg-violet-50 dark:bg-violet-950/20 rounded-xl rounded-tl-sm px-3 py-2">
+                <p className="text-sm text-foreground">{alessiaMatch[1]}</p>
+              </div>
+            </div>
+          );
+        }
+        if (utenteMatch) {
+          return (
+            <div key={i} className="flex gap-3 mb-3 flex-row-reverse">
+              <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                <User className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="flex-1 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl rounded-tr-sm px-3 py-2">
+                <p className="text-sm text-foreground">{utenteMatch[1]}</p>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div key={i} className="text-center mb-2">
+            <span className="text-xs text-muted-foreground italic">{line}</span>
+          </div>
+        );
+      });
+    };
+
     return (
       <div className="flex min-h-screen bg-background">
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} role="consultant" />
         <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
           <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
           <main className="flex-1 p-4 lg:p-6 lg:px-8 overflow-auto">
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="max-w-3xl mx-auto space-y-5">
+
               <div className="flex items-center gap-3">
                 <Link href="/consultant/voice-calls">
                   <Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button>
                 </Link>
-                <div>
-                  <h1 className="text-xl font-bold">{isInbound ? "Chiamata in entrata" : "Chiamata in uscita"}</h1>
-                  <p className="text-sm text-muted-foreground font-mono">{contact.phone}</p>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                    contact.name ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                  }`}>
+                    {getInitials(contact.name, contact.phone)}
+                  </div>
+                  <div className="min-w-0">
+                    <h1 className="text-lg font-bold truncate">{contact.name || contact.phone}</h1>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {contact.name && <span className="font-mono text-xs">{contact.phone}</span>}
+                      <span className="flex items-center gap-1">
+                        {isInbound ? <PhoneIncoming className="h-3 w-3" /> : <PhoneOutgoing className="h-3 w-3" />}
+                        {isInbound ? "In entrata" : "In uscita"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <Link href={`/consultant/voice-calls/contact/${encodeURIComponent(contact.phone.replace(/\s+/g, ''))}`} className="ml-auto">
+                <Link href={`/consultant/voice-calls/contact/${encodeURIComponent(contact.phone.replace(/\s+/g, ''))}`} className="shrink-0">
                   <Button variant="outline" size="sm">
-                    <User className="h-4 w-4 mr-2" />
-                    Profilo contatto
+                    <User className="h-4 w-4 mr-1.5" />
+                    Profilo
                   </Button>
                 </Link>
               </div>
 
-              <div className="rounded-2xl border bg-card p-6 space-y-5">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${st.color}`}>
-                    <StIcon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Badge variant="outline">{st.label}</Badge>
-                      {focusedCall.outcome && <Badge variant="secondary">{focusedCall.outcome}</Badge>}
+              <div className={`rounded-2xl border ${statusStyle.border} ${statusStyle.bg} p-4`}>
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${statusStyle.dot}`}>
+                      <StIcon className="h-5 w-5 text-white" />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {focusedCall.started_at && format(new Date(focusedCall.started_at), "dd/MM/yyyy HH:mm", { locale: it })}
-                      {focusedCall.duration_seconds ? ` · ${formatDuration(focusedCall.duration_seconds)}` : ""}
-                    </p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                  <div><span className="text-muted-foreground block text-xs">Chiamante</span><span className="font-mono">{focusedCall.caller_id}</span></div>
-                  <div><span className="text-muted-foreground block text-xs">Chiamato</span><span className="font-mono">{focusedCall.called_number}</span></div>
-                  {focusedCall.ai_mode && <div><span className="text-muted-foreground block text-xs">Modalità AI</span><span className="capitalize">{focusedCall.ai_mode}</span></div>}
-                  {focusedCall.hangup_cause && <div><span className="text-muted-foreground block text-xs">Causa chiusura</span><span>{focusedCall.hangup_cause}</span></div>}
-                  {focusedCall.client_name && <div><span className="text-muted-foreground block text-xs">Cliente</span><span>{focusedCall.client_name}</span></div>}
-                </div>
-
-                {focusedCall.full_transcript && (
-                  <>
-                    <Separator />
                     <div>
-                      <div className="text-sm font-medium mb-2 flex items-center gap-1.5"><MessageSquare className="h-4 w-4" />Trascrizione</div>
-                      <ScrollArea className="h-[300px]">
-                        <div className="whitespace-pre-wrap font-mono text-xs bg-muted/50 p-3 rounded-lg">{focusedCall.full_transcript}</div>
-                      </ScrollArea>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-semibold ${statusStyle.text}`}>{st.label}</span>
+                        {showOutcome && <Badge variant="secondary" className="text-xs">{focusedCall.outcome}</Badge>}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {focusedCall.started_at && format(new Date(focusedCall.started_at), "EEEE d MMMM yyyy · HH:mm", { locale: it })}
+                      </p>
                     </div>
-                  </>
+                  </div>
+                  {focusedCall.duration_seconds != null && focusedCall.duration_seconds > 0 && (
+                    <div className="flex items-center gap-1.5 bg-white/60 dark:bg-black/20 rounded-lg px-3 py-1.5">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold text-sm">{formatDuration(focusedCall.duration_seconds)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl border bg-card p-3">
+                  <span className="text-muted-foreground text-xs flex items-center gap-1"><PhoneIncoming className="h-3 w-3" />Chiamante</span>
+                  <span className="font-mono text-sm font-medium block mt-1">{focusedCall.caller_id}</span>
+                </div>
+                <div className="rounded-xl border bg-card p-3">
+                  <span className="text-muted-foreground text-xs flex items-center gap-1"><PhoneOutgoing className="h-3 w-3" />Chiamato</span>
+                  <span className="font-mono text-sm font-medium block mt-1">{focusedCall.called_number}</span>
+                </div>
+                {focusedCall.ai_mode && (
+                  <div className="rounded-xl border bg-card p-3">
+                    <span className="text-muted-foreground text-xs flex items-center gap-1"><Zap className="h-3 w-3" />Modalità AI</span>
+                    <span className="text-sm font-medium block mt-1 capitalize">{focusedCall.ai_mode}</span>
+                  </div>
                 )}
-
-                {focusedCall.recording_url && (
-                  <>
-                    <Separator />
-                    <div>
-                      <div className="text-sm font-medium mb-2 flex items-center gap-1.5"><Volume2 className="h-4 w-4" />Registrazione</div>
-                      <audio controls className="w-full"><source src={`/api/voice/recording/${focusedCall.id}?token=${localStorage.getItem('token') || ''}`} type="audio/wav" /></audio>
-                    </div>
-                  </>
+                {focusedCall.client_name && (
+                  <div className="rounded-xl border bg-card p-3">
+                    <span className="text-muted-foreground text-xs flex items-center gap-1"><User className="h-3 w-3" />Cliente</span>
+                    <span className="text-sm font-medium block mt-1">{focusedCall.client_name}</span>
+                  </div>
                 )}
               </div>
 
-              <div className="text-center">
+              {focusedCall.full_transcript && (
+                <div className="rounded-2xl border bg-card overflow-hidden">
+                  <div className="px-4 py-3 border-b flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Trascrizione</span>
+                  </div>
+                  <ScrollArea className="h-[400px]">
+                    <div className="p-4">
+                      {formatTranscript(focusedCall.full_transcript)}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
+              {focusedCall.recording_url && (
+                <div className="rounded-2xl border bg-card overflow-hidden">
+                  <div className="px-4 py-3 border-b flex items-center gap-2">
+                    <Volume2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Registrazione</span>
+                  </div>
+                  <div className="p-4">
+                    <audio controls className="w-full">
+                      <source src={`/api/voice/recording/${focusedCall.id}?token=${localStorage.getItem('token') || ''}`} type="audio/wav" />
+                    </audio>
+                  </div>
+                </div>
+              )}
+
+              <div className="text-center pb-4">
                 <Link href={`/consultant/voice-calls/contact/${encodeURIComponent(contact.phone.replace(/\s+/g, ''))}`}>
                   <Button variant="ghost" size="sm" className="text-muted-foreground">
                     Vedi tutte le chiamate di {displayName || contact.phone} →

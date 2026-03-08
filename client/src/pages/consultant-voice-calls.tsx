@@ -3311,6 +3311,41 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                       <span className="hidden sm:inline">Pulisci</span>
                     </Button>
                   </div>
+                  <div className="flex gap-1 flex-wrap">
+                    {[
+                      { value: 'all', label: 'Tutte' },
+                      { value: 'inbound', label: 'In entrata' },
+                      { value: 'outbound', label: 'In uscita' },
+                      { value: 'ai-task', label: 'AI Task' },
+                    ].map(opt => (
+                      <Button
+                        key={opt.value}
+                        variant={directionFilter === opt.value ? "default" : "outline"}
+                        size="sm"
+                        className={`h-7 text-xs px-3 ${directionFilter === opt.value ? 'bg-violet-600 hover:bg-violet-700' : ''}`}
+                        onClick={() => { setDirectionFilter(opt.value); setPage(1); }}
+                      >
+                        {opt.label}
+                      </Button>
+                    ))}
+                    <span className="mx-1 border-l" />
+                    {[
+                      { value: 'all', label: 'Sempre' },
+                      { value: 'today', label: 'Oggi' },
+                      { value: '7days', label: '7gg' },
+                      { value: '30days', label: '30gg' },
+                    ].map(opt => (
+                      <Button
+                        key={opt.value}
+                        variant={timeFilter === opt.value ? "default" : "outline"}
+                        size="sm"
+                        className={`h-7 text-xs px-3 ${timeFilter === opt.value ? 'bg-slate-700 hover:bg-slate-800' : ''}`}
+                        onClick={() => { setTimeFilter(opt.value); setPage(1); }}
+                      >
+                        {opt.label}
+                      </Button>
+                    ))}
+                  </div>
                   <div className="flex gap-2 flex-wrap">
                     <div className="relative flex-1 min-w-[140px]">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
