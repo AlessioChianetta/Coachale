@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -117,10 +117,10 @@ import { useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { BrandVoiceSection, BrandVoiceData, KnowledgeBaseSelector, TempFile } from "@/components/brand-voice";
 import { cn } from "@/lib/utils";
-import ContentStudioPosts from "./posts";
-import AdVisagePage from "./advisage/AdVisagePage";
 import { Checkbox } from "@/components/ui/checkbox";
 import { type MarketResearchData, EMPTY_MARKET_RESEARCH } from "@shared/schema";
+import ContentStudioPosts from "./posts";
+import AdVisagePage from "./advisage/AdVisagePage";
 
 interface Idea {
   id: string;
@@ -2167,6 +2167,7 @@ export default function ContentStudioIdeas() {
               <AdVisagePage embedded={true} />
             </div>
           ) : (
+          <>
           <div className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div className="flex items-center justify-between">
@@ -4618,8 +4619,7 @@ export default function ContentStudioIdeas() {
               )}
             </div>
           </div>
-        </div>
-      </div>
+          </div>
 
       <Dialog open={showPhaseConfirmDialog} onOpenChange={setShowPhaseConfirmDialog}>
         <DialogContent className="max-w-sm">
@@ -5349,9 +5349,10 @@ export default function ContentStudioIdeas() {
           </div>
         </DialogContent>
       </Dialog>
-
+          </>
           )}
         </main>
+      </div>
     </div>
   );
 }

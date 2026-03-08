@@ -599,7 +599,7 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
   );
 }
 
-export default function ContentStudioPosts({ embedded = false }: { embedded?: boolean } = {}) {
+export default function ContentStudioPosts({ embedded = false }: { embedded?: boolean }) {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -2197,8 +2197,19 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
     </div>
   );
 
-  const innerContent = (
-        <div className={`flex flex-1 overflow-hidden ${embedded ? 'h-full' : ''}`}>
+  return (
+    <div className={embedded ? "h-full" : "min-h-screen bg-background"}>
+      {!embedded && isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
+      <div className={embedded ? "flex h-full" : `flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
+        {!embedded && (
+          <Sidebar
+            role="consultant"
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+          />
+        )}
+
+        <div className="flex flex-1 overflow-hidden">
           {!isMobile && <FolderSidebar />}
           
           <div className="flex-1 overflow-y-auto">
@@ -4550,25 +4561,6 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
         onOpenChange={setBulkPublishDialogOpen}
         posts={posts}
       />
-        </div>
-      </div>
-    </>
-  );
-
-  if (embedded) {
-    return innerContent;
-  }
-
-  return (
-    <div className="min-h-screen bg-background">
-      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
-      <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
-        <Sidebar
-          role="consultant"
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-        {innerContent}
       </div>
     </div>
   );
