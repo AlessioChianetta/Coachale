@@ -19,13 +19,9 @@
   1. Answer difensivo (se canale non gia answered)
   2. Avvia musica di sottofondo in loop (background_music.wav se presente)
   3. Bind DTMF "1" per trasferimento (se overflow_dtmf_enabled=true)
-  4. Ciclo 1: posizione + messaggio_A (sopra la musica)
-  5. Ciclo 2: posizione + messaggio_B
-  6. Ciclo 3: posizione + messaggio_C
-  7. Ciclo 4: posizione + messaggio_D
-  8. Ciclo 5: posizione + messaggio_E
-  9. Ciclo 6: posizione + messaggio_A (riparte la rotazione)
-  10. Timeout -> park (il Voice Bridge gestisce il timeout)
+  4. Primo ciclo: posizione + A, posizione + B, posizione + C, posizione + D, posizione + E
+  5. Transfer a overflow_message_loop (loop infinito A→B→C→D→E→A→...)
+  6. Il loop si interrompe solo quando il Voice Bridge fa uuid_transfer (dequeue o timeout)
   
   FILE AUDIO in /opt/sounds/overflow/<consultant_id>/:
   RACCOMANDATO:
@@ -95,12 +91,40 @@
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_E XML default"/>
 
-      <!-- Ciclo 6: riparte la rotazione con A -->
+      <!-- Fine setup iniziale: avvia il loop continuo dei messaggi -->
+      <action application="log" data="INFO [OVERFLOW] Chiamata ${uuid} - setup completato, avvio message loop"/>
+      <action application="transfer" data="overflow_message_loop XML default"/>
+
+    </condition>
+  </extension>
+
+  <!-- ============================================================
+       Extension: overflow_message_loop
+       Loop continuo dei messaggi hold A→B→C→D→E con annuncio posizione.
+       Usa transfer a se stesso per creare un loop infinito senza
+       rischio di stack overflow. Si interrompe automaticamente quando
+       il Voice Bridge fa uuid_transfer (dequeue o timeout).
+  ============================================================ -->
+  <extension name="overflow_message_loop">
+    <condition field="destination_number" expression="^overflow_message_loop$">
+
       <action application="execute_extension" data="announce_position XML default"/>
       <action application="execute_extension" data="play_hold_A XML default"/>
 
-      <action application="log" data="WARNING [OVERFLOW] Chiamata ${uuid} - loop completato senza dequeue, parking"/>
-      <action application="park"/>
+      <action application="execute_extension" data="announce_position XML default"/>
+      <action application="execute_extension" data="play_hold_B XML default"/>
+
+      <action application="execute_extension" data="announce_position XML default"/>
+      <action application="execute_extension" data="play_hold_C XML default"/>
+
+      <action application="execute_extension" data="announce_position XML default"/>
+      <action application="execute_extension" data="play_hold_D XML default"/>
+
+      <action application="execute_extension" data="announce_position XML default"/>
+      <action application="execute_extension" data="play_hold_E XML default"/>
+
+      <action application="log" data="INFO [OVERFLOW] Chiamata ${uuid} - ciclo A-E completato, riparto dal loop"/>
+      <action application="transfer" data="overflow_message_loop XML default"/>
 
     </condition>
   </extension>

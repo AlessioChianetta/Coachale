@@ -873,6 +873,7 @@ async function routeToOverflow(uuid: string, calledNumber: string, overflowCfg?:
     const timeoutSecs = overflowCfg.overflow_timeout_secs || 120;
     sessionManager.addToOverflow(uuid, calledNumber, timeoutSecs, (ovUuid) => {
       log.warn(`⏰ [ROUTE-OVERFLOW] Timeout reached (${timeoutSecs}s) — transferring call ${ovUuid} to timeout announcement`);
+
       const conn = getEslConnection();
       if (conn) {
         (conn as any).bgapi(`uuid_transfer ${ovUuid} overflow_timeout XML default`, (res: any) => {
@@ -887,7 +888,7 @@ async function routeToOverflow(uuid: string, calledNumber: string, overflowCfg?:
       } else {
         log.error(`🔴 [ROUTE-OVERFLOW] No ESL connection for timeout transfer of ${ovUuid}`);
       }
-    });
+    }, overflowAudioDir);
 
     log.info(`📥 [ROUTE-OVERFLOW] Call ${uuid} queued in overflow — position=${queuePosition}, timeout=${timeoutSecs}s, current queue size=${sessionManager.overflowCount}`);
     log.info(`📥 [ROUTE-OVERFLOW] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -1044,6 +1045,17 @@ async function tryDequeueOverflow(): Promise<void> {
         recentlyDequeuedUuids.delete(next.uuid);
         continue;
       }
+
+      const bgMusicPath = `${next.overflowAudioDir}/background_music.wav`;
+      log.info(`🔄 [DEQUEUE] Stopping background music before transfer: uuid_displace ${next.uuid} stop ${bgMusicPath}`);
+      await new Promise<void>((resolve) => {
+        (eslConn as any).bgapi(`uuid_displace ${next.uuid} stop ${bgMusicPath}`, (res: any) => {
+          const body = res?.getBody?.() || '';
+          log.info(`🔄 [DEQUEUE] uuid_displace stop result: ${body.trim()}`);
+          resolve();
+        });
+      });
+      await new Promise(r => setTimeout(r, 300));
 
       const transferDest = next.calledNumber || '9999';
       log.info(`🔄 [DEQUEUE] Transferring ${next.uuid} back to AI → ${transferDest} XML public`);

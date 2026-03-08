@@ -170,6 +170,7 @@ export interface OverflowEntry {
   calledNumber: string;
   enqueuedAt: number;
   timeoutHandle: NodeJS.Timeout | null;
+  overflowAudioDir: string;
 }
 
 class SessionManager {
@@ -452,8 +453,8 @@ class SessionManager {
     this._dequeueInProgress = v;
   }
 
-  addToOverflow(uuid: string, calledNumber: string, timeoutSecs: number, onTimeout: (uuid: string) => void): void {
-    log.info(`📥 [SM-OVERFLOW] addToOverflow: uuid=${uuid} calledNumber=${calledNumber} timeoutSecs=${timeoutSecs} | queueBefore=${this._overflowQueue.length}`);
+  addToOverflow(uuid: string, calledNumber: string, timeoutSecs: number, onTimeout: (uuid: string) => void, overflowAudioDir: string = '/usr/share/freeswitch/sounds/overflow/default'): void {
+    log.info(`📥 [SM-OVERFLOW] addToOverflow: uuid=${uuid} calledNumber=${calledNumber} timeoutSecs=${timeoutSecs} audioDir=${overflowAudioDir} | queueBefore=${this._overflowQueue.length}`);
     this.removeFromOverflow(uuid);
 
     const timeoutHandle = setTimeout(() => {
@@ -467,6 +468,7 @@ class SessionManager {
       calledNumber,
       enqueuedAt: Date.now(),
       timeoutHandle,
+      overflowAudioDir,
     };
 
     this._overflowQueue.push(entry);
