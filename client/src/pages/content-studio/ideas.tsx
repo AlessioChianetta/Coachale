@@ -98,6 +98,7 @@ import {
   Flame,
   Shield,
   Search,
+  Send,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -116,7 +117,6 @@ import { useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { BrandVoiceSection, BrandVoiceData, KnowledgeBaseSelector, TempFile } from "@/components/brand-voice";
 import { cn } from "@/lib/utils";
-import { Send, Eye } from "lucide-react";
 import ContentStudioPosts from "./posts";
 import AdVisagePage from "./advisage/AdVisagePage";
 import { Checkbox } from "@/components/ui/checkbox";
