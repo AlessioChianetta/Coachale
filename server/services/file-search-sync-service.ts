@@ -1647,6 +1647,17 @@ export class FileSearchSyncService {
     const allErrors: string[] = [];
     let totalSynced = 0, totalUpdated = 0, totalSkipped = 0, totalFailed = 0;
 
+    // STEP 0: Pre-sync Google verification (same as manual sync)
+    try {
+      console.log(`🔍 [Scheduled] Pre-sync Google verification...`);
+      const phantomResult = await this.verifyAndResetPhantomRecords(consultantId);
+      if (phantomResult.phantomsReset > 0) {
+        console.log(`👻 [Scheduled] Pre-sync cleanup: ${phantomResult.phantomsReset} phantom records removed`);
+      }
+    } catch (verifyErr: any) {
+      console.error(`⚠️ [Scheduled] Pre-sync verification failed (non-blocking):`, verifyErr.message);
+    }
+
     // 1. Consultant Guide
     if (settings.autoSyncConsultantGuides) {
       console.log(`📚 [Scheduled] Syncing Consultant Guide...`);
