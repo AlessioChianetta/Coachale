@@ -5882,14 +5882,14 @@ router.get("/telegram-conversations/:roleId/:chatId/profile", authenticateToken,
 async function findOrCreateSalesCoachSession(consultantId: string): Promise<string | null> {
   const existing = await db.execute(sql`
     SELECT id FROM delivery_agent_sessions
-    WHERE consultant_id = ${consultantId} AND mode = 'sales_coach'
+    WHERE consultant_id = ${consultantId}::uuid AND mode = 'sales_coach'
     ORDER BY created_at DESC LIMIT 1
   `);
   if (existing.rows.length > 0) return (existing.rows[0] as any).id;
   const initialProfile = JSON.stringify({ sales_coach: { packages: ['all'], package_labels: ['Panoramica Completa'] } });
   const created = await db.execute(sql`
     INSERT INTO delivery_agent_sessions (consultant_id, mode, status, client_profile_json)
-    VALUES (${consultantId}, 'sales_coach', 'assistant', ${initialProfile}::jsonb)
+    VALUES (${consultantId}::uuid, 'sales_coach', 'assistant', ${initialProfile}::jsonb)
     RETURNING id
   `);
   return created.rows.length > 0 ? (created.rows[0] as any).id : null;
