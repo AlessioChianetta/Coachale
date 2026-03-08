@@ -678,6 +678,7 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, 
       callerId: message.caller_id,
       calledNumber: message.called_number,
       callId: message.call_id,
+      fsUuid: session.fsUuid,
       scheduledCallId: message.call_id.startsWith('sc_') ? message.call_id : undefined,
       onAudioResponse: (audio) => {
         if (!firstAudioReceived) {

@@ -1062,6 +1062,7 @@ async function getUserIdFromRequest(req: any): Promise<{
       const calledNumber = url.searchParams.get('calledNumber');
       const scheduledCallIdParam = url.searchParams.get('scheduledCallId');
       const voiceCallIdParam = url.searchParams.get('voiceCallId');
+      const fsUuidParam = url.searchParams.get('fsUuid');
       if (!callerId) {
         console.error('❌ No callerId provided for phone_service mode');
         return null;
@@ -1447,7 +1448,7 @@ async function getUserIdFromRequest(req: any): Promise<{
 
         // ⚡ FIRE-AND-FORGET: Voice call record creation doesn't block auth completion
         const voiceCallId = `vc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const freeswitchUuid = url.searchParams.get('uuid') || `ws_${Date.now()}`;
+        const freeswitchUuid = fsUuidParam || `ws_${Date.now()}`;
         const detectedDirection = (scheduledCallId && scheduledCallId.startsWith('sc_')) || (voiceCallIdParam && voiceCallIdParam.startsWith('outbound-')) ? 'outbound' : 'inbound';
         
         db.insert(voiceCalls).values({
@@ -1533,6 +1534,7 @@ async function getUserIdFromRequest(req: any): Promise<{
           phoneInstructionType: instructionType,
           phoneScheduledCallId: scheduledCallId,
           phoneVoiceCallId: voiceCallIdParam,
+          phoneFsUuid: freeswitchUuid,
           phoneSourceTaskId: callSourceTaskId,
         };
       } catch (jwtError) {
@@ -1906,7 +1908,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     const authDoneTime = Date.now();
     console.log(`⏱️ [LATENCY-E2E] Auth completed: +${authDoneTime - wsArrivalTime}ms from WS arrival`);
 
-    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneCallLeadContext, phoneInstructionType, phoneScheduledCallId, phoneVoiceCallId, phoneSourceTaskId } = authResult;
+    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneCallLeadContext, phoneInstructionType, phoneScheduledCallId, phoneVoiceCallId, phoneFsUuid, phoneSourceTaskId } = authResult;
 
     // ⚡ O4: EARLY-START parallel queries immediately after auth
     // These queries start running while 1400+ lines of variable declarations and function definitions execute
@@ -10175,7 +10177,7 @@ ${compactFeedback}
             const vcStatus = isFailedInit ? 'failed' : 'completed';
 
             let recordingUrl: string | null = null;
-            if (freeswitchUuid && !freeswitchUuid.startsWith('ws_') && consultantId) {
+            if (phoneFsUuid && !phoneFsUuid.startsWith('ws_') && consultantId) {
               try {
                 const vpsBridgeResult = await db.execute(sql`
                   SELECT vps_bridge_url FROM consultant_ai_settings
@@ -10184,7 +10186,7 @@ ${compactFeedback}
                 `);
                 const vpsBridgeUrl = (vpsBridgeResult.rows[0] as any)?.vps_bridge_url;
                 if (vpsBridgeUrl) {
-                  recordingUrl = `${vpsBridgeUrl}/recordings/${freeswitchUuid}.wav`;
+                  recordingUrl = `${vpsBridgeUrl}/recordings/${phoneFsUuid}.wav`;
                   console.log(`🎙️ [${connectionId}] Recording URL: ${recordingUrl}`);
                 }
               } catch (vpErr) {

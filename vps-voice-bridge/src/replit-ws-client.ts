@@ -41,6 +41,7 @@ export interface ReplitClientOptions {
   callerId: string;
   calledNumber?: string;
   callId?: string;
+  fsUuid?: string;
 scheduledCallId?: string;
   mode?: string;
   voice?: string;
@@ -117,6 +118,10 @@ if (this.scheduledCallId) {
 
     if (this.callId) {
       wsUrl += `&voiceCallId=${encodeURIComponent(this.callId)}`;
+    }
+
+    if (this.options.fsUuid) {
+      wsUrl += `&fsUuid=${encodeURIComponent(this.options.fsUuid)}`;
     }
 
     if (resumeHandle) {
