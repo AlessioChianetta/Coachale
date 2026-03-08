@@ -2222,7 +2222,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         const msgRes = await db.execute(sql`
           SELECT m.content, m.role, m.created_at
           FROM delivery_agent_messages m
-          JOIN delivery_agent_sessions s ON s.id = m.session_id
+          JOIN delivery_agent_sessions s ON s.id::text = m.session_id
           WHERE s.consultant_id = ${consultantId} AND s.mode = 'sales_coach'
           ORDER BY m.created_at DESC LIMIT 10
         `);
