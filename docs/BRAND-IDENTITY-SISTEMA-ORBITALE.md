@@ -178,9 +178,9 @@ Dipendente AI personalizzato che spiega il menu, accetta ordini speciali e gesti
 | **Livello 1 — Free** | Gratuito | Test di un dipendente AI predefinito. Il cliente prova la piattaforma senza impegno. |
 | **Livello 2 — Starter** | 47€/mese | Stesso dipendente AI con messaggi illimitati. Primo step per chi vuole iniziare. |
 | **Livello 3 — Professional** | 97€/mese | Corsi, supporto AI, interazione vocale illimitata, memoria AI persistente. Per chi vuole sfruttare la piattaforma completa. |
-| **Livello 4 — Setter AI** | 1.000€ setup + 297€/mese | Il prodotto di punta: dipendente AI setter che prende appuntamenti su WhatsApp, Instagram ed Email. Setup personalizzato con Knowledge Base, Brand Voice e System Prompt. |
-| **Livello 5 — Enterprise & Partnership** | 2.000€ setup + 497€/mese | Infrastruttura completa per creare e distribuire agenti AI. Onboarding dedicato. Possibilità di rivendere i Livelli 1-3 ai propri clienti e guadagnare il 35-50% del MRR. |
-| **Livello 6 — Enterprise + Consulenza Strategica** | 2.000€ setup + 997€/mese | Tutto il Livello 5 più consulenze esclusive per analisi processi aziendali e raccomandazione software di ottimizzazione. Il pacchetto premium per aziende che vogliono trasformazione completa. |
+| **Livello 4 — Setter AI + Hunter** | 1.000€ setup + 497€/mese | Il prodotto di punta: dipendente AI setter che prende appuntamenti su WhatsApp, Instagram ed Email + Hunter che scrapa e trova nuovi lead automaticamente. Setup personalizzato con Knowledge Base, Brand Voice e System Prompt. |
+| **Livello 5 — Enterprise & Partnership** | 2.000€ setup + 997€/mese | Infrastruttura completa per creare e distribuire agenti AI. Onboarding dedicato. Possibilità di rivendere i Livelli 1-3 ai propri clienti e guadagnare il 35-50% del MRR. |
+| **Livello 6 — Enterprise + Consulenza Strategica** | 2.000€ setup + 1.997€/mese | Tutto il Livello 5 più consulenze esclusive per analisi processi aziendali e raccomandazione software di ottimizzazione. Il pacchetto premium per aziende che vogliono trasformazione completa. |
 
 **Nota sui costi API AI:** I costi API AI sono inclusi nei Livelli 1-4. Per i Livelli 5-6 e rivenditori ad alto consumo, il cliente può usare la propria API key oppure pagare un add-on basato sul consumo effettivo.
 
@@ -192,6 +192,7 @@ Include:
 - Agente WhatsApp personalizzato con Knowledge Base completa
 - Qualifica lead automatica con framework BANT
 - Prenotazione appuntamenti integrata con Google Calendar
+- **Hunter Lead Scraper**: ricerca automatica di nuovi lead su Google Maps e Google Search con AI scoring
 - Notifiche al consulente per ogni lead qualificato
 - Setup personalizzato e ottimizzazione del System Prompt
 
