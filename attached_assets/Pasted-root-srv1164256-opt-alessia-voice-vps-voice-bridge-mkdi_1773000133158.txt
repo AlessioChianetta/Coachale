@@ -1,0 +1,34 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# mkdir -p /opt/alessia-voice/vps-voice-bridge/recordings
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# dir
+DEPLOY.md  assets          dist        node_modules       package.json  security  systemd        vars.xml
+RDP.md     audio_mixer.py  freeswitch  package-lock.json  recordings    src       tsconfig.json  venv
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# cd recordings/root@srv1164256:/opt/alessia-voice/vps-voice-bridge/recordings# dir
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/recordings# docker cp freeswitch:/tmp/alessia_recordings/. /opt/alessia-voice/vps-voice-bridge/recordings/
+Successfully copied 4.32MB to /opt/alessia-voice/vps-voice-bridge/recordings/
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/recordings# dir
+outbound-1772996165857-zssi34.wav  outbound-1772997371306-alnwhj.wav
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/recordings# # 3. Crea il servizio systemd per il mount automatico
+cat > /etc/systemd/system/alessia-recordings-mount.service << 'EOF'
+[Unit]
+Description=Mount FreeSWITCH recordings from Docker container
+After=docker.service
+Requires=docker.service
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/bin/mkdir -p /opt/alessia-voice/vps-voice-bridge/recordings
+ExecStart=/bin/bash -c 'MERGE=$(docker inspect freeswitch --format "{{.GraphDriver.Data.MergedDir}}") && mount --bind ${MERGE}/tmp/alessia_recordings /opt/alessia-voice/vps-voice-bridge/recordings'
+ExecStop=/bin/umount /opt/alessia-voice/vps-voice-bridge/recordings
+[Install]
+WantedBy=multi-user.target
+EOF
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/recordings# # 4. Attiva e avvia il servizio
+systemctl daemon-reload
+systemctl enable alessia-recordings-mount.service
+systemctl start alessia-recordings-mount.service
+Created symlink /etc/systemd/system/multi-user.target.wants/alessia-recordings-mount.service → /etc/systemd/system/alessia-recordings-mount.service.
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/recordings# ls -la /opt/alessia-voice/vps-voice-bridge/recordings/
+total 8
+drwxr-xr-x  2 root root 4096 Mar  8 18:56 .
+drwx------ 11 root root 4096 Mar  8 19:59 ..
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/recordings# 
