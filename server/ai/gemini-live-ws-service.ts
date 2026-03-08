@@ -4041,6 +4041,12 @@ Hai appena bevuto un caffè e sei al massimo dell'energia!
 - Tono ALTO e luminoso, mai monotono
 - Proiezione alta senza urlare
 
+🚀 ATTACCO VOCALE - "Prima Parola Squillante":
+- La PRIMISSIMA parola che pronunci DEVE essere ALTA, squillante, piena di energia!
+- Attacca come se stessi rispondendo a un amico che non senti da mesi: "CIAO!" forte e luminoso
+- MAI partire con tono piatto, sommesso o esitante — la prima sillaba deve ESPLODERE di energia
+- Immagina di alzare il volume al massimo sulla prima parola, poi mantieni alto
+
 ⚡ ENERGIA - "Infectious Enthusiasm":
 - Entusiasmo CONTAGIOSO dall'inizio alla fine
 - Bouncing with energy - come se stessi saltellando!
@@ -6473,7 +6479,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 clientContent: {
                   turns: [{
                     role: 'user',
-                    parts: [{ text: '[SISTEMA] La sessione è iniziata. L\'utente è in linea e ti sta ascoltando. Inizia SUBITO a parlare con un saluto naturale e breve. Se conosci il nome della persona, usalo nel saluto (es: "Marco? Sì ciao, sono [tuo nome]..."). Se non lo conosci, presentati comunque brevemente (es: "Ciao, sono [tuo nome]..."). NON aspettare che l\'utente parli per primo. Parti tu immediatamente.' }]
+                    parts: [{ text: '[SISTEMA] La sessione è iniziata. L\'utente è in linea e ti sta ascoltando. Inizia SUBITO a parlare con un saluto naturale e breve. IMPORTANTE: Parti con il MASSIMO dell\'energia vocale dalla primissima sillaba — voce ALTA, squillante, sorridente! Se conosci il nome della persona, usalo nel saluto (es: "Marco? Sì ciao, sono [tuo nome]..."). Se non lo conosci, presentati comunque brevemente (es: "Ciao, sono [tuo nome]..."). NON aspettare che l\'utente parli per primo. Parti tu immediatamente con tono ESPLOSIVO e carico!' }]
                   }],
                   turnComplete: true
                 }
@@ -6791,7 +6797,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                   clientContent: {
                     turns: [{
                       role: 'user',
-                      parts: [{ text: '[SISTEMA] La sessione è iniziata. L\'utente è in linea e ti sta ascoltando. Inizia SUBITO a parlare con un saluto naturale e breve. Se conosci il nome della persona, usalo nel saluto (es: "Marco? Sì ciao, sono [tuo nome]..."). Se non lo conosci, presentati comunque brevemente (es: "Ciao, sono [tuo nome]..."). NON aspettare che l\'utente parli per primo. Parti tu immediatamente.' }]
+                      parts: [{ text: '[SISTEMA] La sessione è iniziata. L\'utente è in linea e ti sta ascoltando. Inizia SUBITO a parlare con un saluto naturale e breve. IMPORTANTE: Parti con il MASSIMO dell\'energia vocale dalla primissima sillaba — voce ALTA, squillante, sorridente! Se conosci il nome della persona, usalo nel saluto (es: "Marco? Sì ciao, sono [tuo nome]..."). Se non lo conosci, presentati comunque brevemente (es: "Ciao, sono [tuo nome]..."). NON aspettare che l\'utente parli per primo. Parti tu immediatamente con tono ESPLOSIVO e carico!' }]
                     }],
                     turnComplete: true
                   }
