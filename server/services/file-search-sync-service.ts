@@ -5060,6 +5060,21 @@ export class FileSearchSyncService {
     console.log(`${'═'.repeat(60)}\n`);
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 0: VERIFY DB vs GOOGLE — remove phantom "indexed" records first
+    // ═══════════════════════════════════════════════════════════════════════════
+    try {
+      console.log(`🔍 [Audit] Phase 0: Verifying indexed records against Google API...`);
+      const phantomResult = await this.verifyAndResetPhantomRecords(consultantId);
+      if (phantomResult.phantomsReset > 0) {
+        console.log(`👻 [Audit] Phase 0: Removed ${phantomResult.phantomsReset} phantom records from ${phantomResult.storesChecked} stores — audit will now reflect reality`);
+      } else {
+        console.log(`✅ [Audit] Phase 0: All indexed records verified on Google (${phantomResult.totalChecked} docs, ${phantomResult.storesChecked} stores)`);
+      }
+    } catch (verifyErr: any) {
+      console.error(`⚠️ [Audit] Phase 0: Google verification failed (audit continues with DB data):`, verifyErr.message);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // PHASE 1: BULK LOAD CONSULTANT DATA (library, knowledge, exercises, university)
     // ═══════════════════════════════════════════════════════════════════════════
     const phase1Start = Date.now();
