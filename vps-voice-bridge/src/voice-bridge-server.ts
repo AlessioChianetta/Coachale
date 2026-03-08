@@ -157,7 +157,7 @@ function validateServiceToken(token: string | undefined): boolean {
 }
 
 const GHOST_CALL_MIN_SECS = 300;
-const RECORDINGS_DIR = '/tmp/alessia_recordings';
+const RECORDINGS_DIR = '/opt/alessia-voice/vps-voice-bridge/recordings';
 const GHOST_WATCHDOG_INTERVAL_MS = 3 * 60 * 1000;
 
 async function runGhostCallWatchdog(): Promise<void> {

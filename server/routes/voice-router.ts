@@ -872,6 +872,7 @@ router.get("/recording/:callId", (req: AuthRequest, _res: Response, next: Functi
 }, authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { callId } = req.params;
+    console.log(`[Recording Proxy] Request for callId=${callId} by user=${req.user?.id} role=${req.user?.role}`);
 
     const callResult = await db.execute(sql`
       SELECT vc.recording_url, vc.consultant_id
@@ -882,10 +883,12 @@ router.get("/recording/:callId", (req: AuthRequest, _res: Response, next: Functi
 
     const call = callResult.rows[0] as any;
     if (!call || !call.recording_url) {
+      console.warn(`[Recording Proxy] Not found: callId=${callId} found=${!!call} recording_url=${call?.recording_url || 'null'}`);
       return res.status(404).json({ error: "Registrazione non trovata" });
     }
 
     if (req.user?.role === 'consultant' && call.consultant_id !== req.user?.id) {
+      console.warn(`[Recording Proxy] Access denied: callId=${callId} call.consultant=${call.consultant_id} user=${req.user?.id}`);
       return res.status(403).json({ error: "Accesso negato" });
     }
 
@@ -896,6 +899,7 @@ router.get("/recording/:callId", (req: AuthRequest, _res: Response, next: Functi
       LIMIT 1
     `);
     const serviceToken = (settingsResult.rows[0] as any)?.token || '';
+    console.log(`[Recording Proxy] callId=${callId} recording_url=${call.recording_url} token=${serviceToken ? 'present' : 'MISSING'}`);
 
     const separator = call.recording_url.includes('?') ? '&' : '?';
     const proxyUrl = `${call.recording_url}${separator}token=${serviceToken}`;
@@ -907,7 +911,10 @@ router.get("/recording/:callId", (req: AuthRequest, _res: Response, next: Functi
       signal: AbortSignal.timeout(30000),
     });
 
+    console.log(`[Recording Proxy] Upstream response: status=${upstream.status} content-length=${upstream.headers.get('content-length') || 'none'}`);
+
     if (!upstream.ok && upstream.status !== 206) {
+      console.error(`[Recording Proxy] Upstream error: status=${upstream.status} for callId=${callId}`);
       return res.status(upstream.status).json({ error: "Registrazione non disponibile dal VPS" });
     }
 
@@ -934,7 +941,7 @@ router.get("/recording/:callId", (req: AuthRequest, _res: Response, next: Functi
     };
     await pump();
   } catch (error: any) {
-    console.error("[Voice] Error proxying recording:", error.message);
+    console.error(`[Recording Proxy] Error: ${error.message}`);
     if (!res.headersSent) {
       res.status(500).json({ error: "Errore nel recupero della registrazione" });
     }
