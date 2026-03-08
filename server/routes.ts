@@ -7298,12 +7298,21 @@ REGOLE IMPORTANTI:
         return res.status(404).json({ message: "Category not found" });
       }
 
-      // Get current assignments to determine new clients
       const currentAssignments = await storage.getCategoryClientAssignments(categoryId, consultantId);
       const currentClientIds = currentAssignments.map(a => a.clientId);
       const newClientIds = (clientIds || []).filter((id: string) => !currentClientIds.includes(id));
+      const removedClientIds = currentClientIds.filter(id => !(clientIds || []).includes(id));
 
       await storage.assignCategoryToClients(categoryId, clientIds || [], consultantId);
+
+      if (removedClientIds.length > 0) {
+        for (const clientId of removedClientIds) {
+          fileSearchSyncService.removeLibraryCategoryFromClient(categoryId, clientId, consultantId).catch(err => {
+            console.error(`[FileSync] Failed to remove library category from unassigned client ${clientId}:`, err.message);
+          });
+        }
+        console.log(`🗑️ [CourseAssignment] Cleanup: removing library docs from ${removedClientIds.length} unassigned clients`);
+      }
       
       // AUTO-ASSIGN EXERCISES to ALL selected clients (only if includeExercises is true)
       let autoAssignedExercises = 0;
@@ -11586,6 +11595,11 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
       if (!deleted) {
         return res.status(404).json({ message: "Assignment not found" });
       }
+
+      fileSearchSyncService.removeUniversityYearFromClient(yearId, clientId, req.user!.id).catch(err => {
+        console.error(`[FileSync] Failed to remove university year from unassigned client ${clientId}:`, err.message);
+      });
+
       res.json({ message: "Assignment deleted successfully" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

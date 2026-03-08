@@ -1887,11 +1887,17 @@ router.get(
             fsd.status as document_status,
             fss.display_name as store_name,
             fss.owner_type as store_owner_type,
-            fss.owner_id as store_owner_id
+            fss.owner_id as store_owner_id,
+            CASE WHEN fss.owner_type = 'client' THEN COALESCE(CONCAT(u.first_name, ' ', u.last_name), u.username, fss.display_name) ELSE NULL END as client_name
           FROM file_search_documents fsd
           INNER JOIN file_search_stores fss ON fsd.store_id = fss.id
+          LEFT JOIN users u ON fss.owner_type = 'client' AND fss.owner_id = u.id
           WHERE fsd.source_type = 'system_prompt_document'
             AND fsd.source_id IN (${sql.join(fileSearchDocIds.map(id => sql`${id}`), sql`,`)})
+            AND (
+              fss.owner_type != 'client'
+              OR (u.id IS NOT NULL AND u.is_active = true AND u.consultant_id = ${consultantId})
+            )
         `);
         
         for (const row of syncResult.rows as any[]) {
@@ -1903,6 +1909,7 @@ router.get(
             storeOwnerType: row.store_owner_type,
             storeOwnerId: row.store_owner_id,
             documentStatus: row.document_status,
+            clientName: row.client_name || null,
           });
         }
       }
@@ -2064,42 +2071,10 @@ router.put(
       if (updatedDoc) {
         setImmediate(async () => {
           try {
-            if (updatedDoc.injection_mode === 'file_search' && updatedDoc.is_active) {
-              await fileSearchSyncService.removeSystemPromptDocumentFromAllStores(id);
-              if (updatedDoc.target_client_assistant) {
-                const updatedClientMode = updatedDoc.target_client_mode || 'all';
-                const updatedClientIds = (typeof updatedDoc.target_client_ids === 'string' ? JSON.parse(updatedDoc.target_client_ids) : updatedDoc.target_client_ids) || [];
-                const updatedDeptIds = (typeof updatedDoc.target_department_ids === 'string' ? JSON.parse(updatedDoc.target_department_ids) : updatedDoc.target_department_ids) || [];
-                const stores = await fileSearchSyncService.resolveClientAssistantStores(updatedClientMode, updatedClientIds, updatedDeptIds, consultantId);
-                for (const store of stores) {
-                  await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'client_assistant', store.ownerId, store.ownerType);
-                }
-              }
-              const autoAgents = (typeof updatedDoc.target_autonomous_agents === 'string' ? JSON.parse(updatedDoc.target_autonomous_agents) : updatedDoc.target_autonomous_agents) || {};
-              for (const [agentId, enabled] of Object.entries(autoAgents)) {
-                if (enabled) {
-                  await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'autonomous_agent', agentId, 'autonomous_agent');
-                }
-              }
-              const waAgents = (typeof updatedDoc.target_whatsapp_agents === 'string' ? JSON.parse(updatedDoc.target_whatsapp_agents) : updatedDoc.target_whatsapp_agents) || {};
-              for (const [agentId, enabled] of Object.entries(waAgents)) {
-                if (enabled) {
-                  await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'whatsapp_agent', agentId, 'whatsapp_agent');
-                }
-              }
-            } else if (updatedDoc.injection_mode === 'system_prompt' || !updatedDoc.is_active) {
-              await fileSearchSyncService.removeSystemPromptDocumentFromAllStores(id);
-              const autoAgents = (typeof updatedDoc.target_autonomous_agents === 'string' ? JSON.parse(updatedDoc.target_autonomous_agents) : updatedDoc.target_autonomous_agents) || {};
-              for (const agentId of Object.keys(autoAgents)) {
-                await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, `${agentId}_${consultantId}`, 'autonomous_agent');
-              }
-              const waAgents = (typeof updatedDoc.target_whatsapp_agents === 'string' ? JSON.parse(updatedDoc.target_whatsapp_agents) : updatedDoc.target_whatsapp_agents) || {};
-              for (const agentId of Object.keys(waAgents)) {
-                await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, agentId, 'whatsapp_agent');
-              }
-            }
+            const cleanupResult = await fileSearchSyncService.cleanupStaleStoresForDocument(id, consultantId);
+            console.log(`🔒 [SYSTEM PROMPT DOCS] Security cleanup on update: removed=${cleanupResult.removed}, added=${cleanupResult.added}, remaining=${cleanupResult.remaining}`);
           } catch (err: any) {
-            console.error('❌ [SYSTEM PROMPT DOCS] Background file_search sync failed:', err.message);
+            console.error('❌ [SYSTEM PROMPT DOCS] Background file_search sync/cleanup failed:', err.message);
           }
         });
       }
@@ -2310,6 +2285,35 @@ router.post(
     } catch (error: any) {
       console.error("❌ [SYSTEM PROMPT DOCS] Error syncing:", error);
       res.status(500).json({ success: false, error: error.message || "Failed to sync" });
+    }
+  }
+);
+
+router.post(
+  "/consultant/knowledge/system-documents/:id/resync-stores",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { id } = req.params;
+
+      const result = await fileSearchSyncService.cleanupStaleStoresForDocument(id, consultantId);
+      if (!result.success) {
+        return res.status(400).json({ success: false, error: result.error });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          removed: result.removed,
+          added: result.added,
+          remaining: result.remaining,
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ [SYSTEM PROMPT DOCS] Error resyncing stores:", error);
+      res.status(500).json({ success: false, error: error.message || "Resync failed" });
     }
   }
 );

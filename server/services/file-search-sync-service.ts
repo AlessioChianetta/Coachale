@@ -9091,8 +9091,21 @@ export class FileSearchSyncService {
         return (clients.rows as any[]).map((c: any) => ({ ownerId: c.id, ownerType: 'client' as const }));
       }
 
-      case 'specific_clients':
-        return (targetClientIds || []).map(id => ({ ownerId: id, ownerType: 'client' as const }));
+      case 'specific_clients': {
+        const inputClientIds = targetClientIds || [];
+        if (inputClientIds.length === 0) return [];
+        const validClients = await db.execute(sql`
+          SELECT u.id FROM users u
+          WHERE u.id IN (${sql.join(inputClientIds.map((cid: string) => sql`${cid}`), sql`,`)})
+            AND u.consultant_id = ${consultantId} AND u.role = 'client'
+        `);
+        const validIds = new Set((validClients.rows as any[]).map((c: any) => c.id));
+        const rejected = inputClientIds.filter((cid: string) => !validIds.has(cid));
+        if (rejected.length > 0) {
+          console.warn(`🔒 [SECURITY] resolveClientAssistantStores: Rejected ${rejected.length} client IDs not belonging to consultant ${consultantId}: ${rejected.join(', ')}`);
+        }
+        return Array.from(validIds).map(id => ({ ownerId: id, ownerType: 'client' as const }));
+      }
 
       case 'employees_only': {
         const employees = await db.execute(sql`
@@ -9102,11 +9115,37 @@ export class FileSearchSyncService {
         return (employees.rows as any[]).map((c: any) => ({ ownerId: c.id, ownerType: 'client' as const }));
       }
 
-      case 'specific_departments':
-        return (targetDepartmentIds || []).map(id => ({ ownerId: id, ownerType: 'department' as const }));
+      case 'specific_departments': {
+        const inputDeptIds = targetDepartmentIds || [];
+        if (inputDeptIds.length === 0) return [];
+        const validDepts = await db.execute(sql`
+          SELECT d.id FROM departments d
+          WHERE d.id IN (${sql.join(inputDeptIds.map((did: string) => sql`${did}`), sql`,`)})
+            AND d.consultant_id = ${consultantId}
+        `);
+        const validDeptIds = new Set((validDepts.rows as any[]).map((d: any) => d.id));
+        const rejectedDepts = inputDeptIds.filter((did: string) => !validDeptIds.has(did));
+        if (rejectedDepts.length > 0) {
+          console.warn(`🔒 [SECURITY] resolveClientAssistantStores: Rejected ${rejectedDepts.length} department IDs not belonging to consultant ${consultantId}`);
+        }
+        return Array.from(validDeptIds).map(id => ({ ownerId: id, ownerType: 'department' as const }));
+      }
 
-      case 'specific_employees':
-        return (targetClientIds || []).map(id => ({ ownerId: id, ownerType: 'client' as const }));
+      case 'specific_employees': {
+        const inputEmpIds = targetClientIds || [];
+        if (inputEmpIds.length === 0) return [];
+        const validEmps = await db.execute(sql`
+          SELECT u.id FROM users u
+          WHERE u.id IN (${sql.join(inputEmpIds.map((eid: string) => sql`${eid}`), sql`,`)})
+            AND u.consultant_id = ${consultantId} AND u.role = 'client' AND u.is_employee = true
+        `);
+        const validEmpIds = new Set((validEmps.rows as any[]).map((e: any) => e.id));
+        const rejectedEmps = inputEmpIds.filter((eid: string) => !validEmpIds.has(eid));
+        if (rejectedEmps.length > 0) {
+          console.warn(`🔒 [SECURITY] resolveClientAssistantStores: Rejected ${rejectedEmps.length} employee IDs not belonging to consultant ${consultantId}: ${rejectedEmps.join(', ')}`);
+        }
+        return Array.from(validEmpIds).map(id => ({ ownerId: id, ownerType: 'client' as const }));
+      }
 
       default:
         return [{ ownerId: consultantId, ownerType: 'consultant' }];
@@ -9272,6 +9311,248 @@ export class FileSearchSyncService {
     } catch (error: any) {
       console.error(`[FileSync] Error removing system prompt doc from file search:`, error);
       return { success: false, error: error.message };
+    }
+  }
+
+  static async removeLibraryCategoryFromClient(
+    categoryId: string,
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; removed: number; error?: string }> {
+    try {
+      const clientCheck = await db.execute(sql`
+        SELECT id FROM users WHERE id = ${clientId} AND consultant_id = ${consultantId} AND role = 'client' LIMIT 1
+      `);
+      if (!clientCheck.rows?.length) {
+        console.warn(`🔒 [SECURITY] removeLibraryCategoryFromClient: Client ${clientId} does not belong to consultant ${consultantId}`);
+        return { success: false, removed: 0, error: 'Client does not belong to consultant' };
+      }
+
+      const categoryCheck = await db.execute(sql`
+        SELECT id FROM library_categories WHERE id = ${categoryId} AND consultant_id = ${consultantId} LIMIT 1
+      `);
+      if (!categoryCheck.rows?.length) {
+        console.warn(`🔒 [SECURITY] removeLibraryCategoryFromClient: Category ${categoryId} does not belong to consultant ${consultantId}`);
+        return { success: false, removed: 0, error: 'Category does not belong to consultant' };
+      }
+
+      const subcategories = await db.query.librarySubcategories.findMany({
+        where: eq(librarySubcategories.categoryId, categoryId),
+      });
+      const subcategoryIds = subcategories.map(s => s.id);
+
+      const docs = await db.query.libraryDocuments.findMany({
+        where: subcategoryIds.length > 0
+          ? and(inArray(libraryDocuments.subcategoryId, subcategoryIds), eq(libraryDocuments.isPublished, true))
+          : and(eq(libraryDocuments.createdBy, consultantId), eq(libraryDocuments.isPublished, true)),
+      });
+
+      if (docs.length === 0) return { success: true, removed: 0 };
+
+      const store = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, clientId),
+          eq(fileSearchStores.ownerType, 'client'),
+        ),
+      });
+      if (!store) return { success: true, removed: 0 };
+
+      let removed = 0;
+      for (const doc of docs) {
+        const existing = await db.query.fileSearchDocuments.findFirst({
+          where: and(
+            eq(fileSearchDocuments.storeId, store.id),
+            eq(fileSearchDocuments.sourceType, 'library'),
+            eq(fileSearchDocuments.sourceId, doc.id),
+          ),
+        });
+        if (existing) {
+          try {
+            await fileSearchService.deleteDocument(existing.id);
+            removed++;
+          } catch (err: any) {
+            console.error(`[FileSync] Failed to remove library doc ${doc.id} from client ${clientId}:`, err.message);
+          }
+        }
+      }
+
+      console.log(`🗑️ [FileSync] Removed ${removed} library docs (category ${categoryId}) from client ${clientId.substring(0, 8)}`);
+      return { success: true, removed };
+    } catch (error: any) {
+      console.error(`[FileSync] Error removing library category from client:`, error);
+      return { success: false, removed: 0, error: error.message };
+    }
+  }
+
+  static async removeUniversityYearFromClient(
+    yearId: string,
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; removed: number; error?: string }> {
+    try {
+      const clientCheck = await db.execute(sql`
+        SELECT id FROM users WHERE id = ${clientId} AND consultant_id = ${consultantId} AND role = 'client' LIMIT 1
+      `);
+      if (!clientCheck.rows?.length) {
+        console.warn(`🔒 [SECURITY] removeUniversityYearFromClient: Client ${clientId} does not belong to consultant ${consultantId}`);
+        return { success: false, removed: 0, error: 'Client does not belong to consultant' };
+      }
+
+      const yearCheck = await db.execute(sql`
+        SELECT id FROM university_years WHERE id = ${yearId} AND consultant_id = ${consultantId} LIMIT 1
+      `);
+      if (!yearCheck.rows?.length) {
+        console.warn(`🔒 [SECURITY] removeUniversityYearFromClient: Year ${yearId} does not belong to consultant ${consultantId}`);
+        return { success: false, removed: 0, error: 'Year does not belong to consultant' };
+      }
+
+      const trimesters = await db.query.universityTrimesters.findMany({
+        where: eq(universityTrimesters.yearId, yearId),
+      });
+      const trimesterIds = trimesters.map(t => t.id);
+
+      let allModules: any[] = [];
+      if (trimesterIds.length > 0) {
+        allModules = await db.query.universityModules.findMany({
+          where: inArray(universityModules.trimesterId, trimesterIds),
+        });
+      }
+      const moduleIds = allModules.map(m => m.id);
+
+      let allLessons: any[] = [];
+      if (moduleIds.length > 0) {
+        allLessons = await db.query.universityLessons.findMany({
+          where: inArray(universityLessons.moduleId, moduleIds),
+        });
+      }
+
+      if (allLessons.length === 0) return { success: true, removed: 0 };
+
+      const store = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, clientId),
+          eq(fileSearchStores.ownerType, 'client'),
+        ),
+      });
+      if (!store) return { success: true, removed: 0 };
+
+      let removed = 0;
+      for (const lesson of allLessons) {
+        const existing = await db.query.fileSearchDocuments.findFirst({
+          where: and(
+            eq(fileSearchDocuments.storeId, store.id),
+            eq(fileSearchDocuments.sourceType, 'university_lesson'),
+            eq(fileSearchDocuments.sourceId, lesson.id),
+          ),
+        });
+        if (existing) {
+          try {
+            await fileSearchService.deleteDocument(existing.id);
+            removed++;
+          } catch (err: any) {
+            console.error(`[FileSync] Failed to remove university lesson ${lesson.id} from client ${clientId}:`, err.message);
+          }
+        }
+      }
+
+      console.log(`🗑️ [FileSync] Removed ${removed} university lessons (year ${yearId}) from client ${clientId.substring(0, 8)}`);
+      return { success: true, removed };
+    } catch (error: any) {
+      console.error(`[FileSync] Error removing university year from client:`, error);
+      return { success: false, removed: 0, error: error.message };
+    }
+  }
+
+  static async cleanupStaleStoresForDocument(
+    documentId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; removed: number; added: number; remaining: number; error?: string }> {
+    try {
+      const docResult = await db.execute(sql`
+        SELECT id, title, content, injection_mode, is_active,
+          target_client_assistant, target_client_mode, target_client_ids, target_department_ids,
+          target_autonomous_agents, target_whatsapp_agents
+        FROM system_prompt_documents
+        WHERE id = ${documentId} AND consultant_id = ${consultantId}
+      `);
+      const doc = (docResult.rows as any[])[0];
+      if (!doc) {
+        return { success: false, removed: 0, added: 0, remaining: 0, error: 'Document not found' };
+      }
+
+      if (doc.injection_mode !== 'file_search' || !doc.is_active) {
+        const removeResult = await this.removeSystemPromptDocumentFromAllStores(documentId);
+        return { success: true, removed: removeResult.removed, added: 0, remaining: 0 };
+      }
+
+      const targetOwners = new Set<string>();
+
+      if (doc.target_client_assistant) {
+        const clientMode = doc.target_client_mode || 'all';
+        const clientIds = (typeof doc.target_client_ids === 'string' ? JSON.parse(doc.target_client_ids) : doc.target_client_ids) || [];
+        const deptIds = (typeof doc.target_department_ids === 'string' ? JSON.parse(doc.target_department_ids) : doc.target_department_ids) || [];
+        const stores = await this.resolveClientAssistantStores(clientMode, clientIds, deptIds, consultantId);
+        for (const s of stores) {
+          targetOwners.add(`${s.ownerType}:${s.ownerId}`);
+        }
+      }
+
+      const autoAgents = (typeof doc.target_autonomous_agents === 'string' ? JSON.parse(doc.target_autonomous_agents) : doc.target_autonomous_agents) || {};
+      for (const [agentId, enabled] of Object.entries(autoAgents)) {
+        if (enabled) targetOwners.add(`autonomous_agent:${agentId}`);
+      }
+      const waAgents = (typeof doc.target_whatsapp_agents === 'string' ? JSON.parse(doc.target_whatsapp_agents) : doc.target_whatsapp_agents) || {};
+      for (const [agentId, enabled] of Object.entries(waAgents)) {
+        if (enabled) targetOwners.add(`whatsapp_agent:${agentId}`);
+      }
+
+      const existingDocs = await db.execute(sql`
+        SELECT fsd.id, fsd.store_id, fss.owner_id, fss.owner_type
+        FROM file_search_documents fsd
+        INNER JOIN file_search_stores fss ON fsd.store_id = fss.id
+        WHERE fsd.source_type = 'system_prompt_document'
+          AND fsd.source_id = ${documentId}
+      `);
+
+      let removed = 0;
+      const existingOwnerKeys = new Set<string>();
+      for (const row of existingDocs.rows as any[]) {
+        const ownerKey = `${row.owner_type}:${row.owner_id}`;
+        existingOwnerKeys.add(ownerKey);
+        if (!targetOwners.has(ownerKey)) {
+          try {
+            await fileSearchService.deleteDocument(row.id);
+            removed++;
+            console.log(`🗑️ [SECURITY CLEANUP] Removed stale file from store ${row.owner_type}:${row.owner_id} for doc "${doc.title}"`);
+          } catch (err: any) {
+            console.error(`[SECURITY CLEANUP] Failed to remove stale doc ${row.id}:`, err.message);
+          }
+        }
+      }
+
+      let added = 0;
+      for (const ownerKey of targetOwners) {
+        if (!existingOwnerKeys.has(ownerKey)) {
+          const [ownerType, ownerId] = ownerKey.split(':');
+          try {
+            let target: 'client_assistant' | 'whatsapp_agent' | 'autonomous_agent' | 'department' = 'client_assistant';
+            if (ownerType === 'autonomous_agent') target = 'autonomous_agent';
+            else if (ownerType === 'whatsapp_agent') target = 'whatsapp_agent';
+            else if (ownerType === 'department') target = 'department';
+            await this.syncSystemPromptDocumentToFileSearch(documentId, consultantId, target, ownerId, ownerType as any);
+            added++;
+          } catch (err: any) {
+            console.error(`[SECURITY CLEANUP] Failed to sync to missing store ${ownerKey}:`, err.message);
+          }
+        }
+      }
+
+      const remaining = targetOwners.size;
+      console.log(`🔒 [SECURITY CLEANUP] Doc "${doc.title}": removed ${removed} stale, added ${added} missing, ${remaining} target stores`);
+      return { success: true, removed, added, remaining };
+    } catch (error: any) {
+      console.error(`[SECURITY CLEANUP] Error cleaning up stale stores:`, error);
+      return { success: false, removed: 0, added: 0, remaining: 0, error: error.message };
     }
   }
 }

@@ -39,6 +39,11 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Plus,
   Edit3,
   Trash2,
@@ -139,6 +144,7 @@ interface SystemDocument {
     storeOwnerType: string;
     storeOwnerId: string;
     documentStatus: string;
+    clientName?: string | null;
   }>;
   priority: number;
   google_drive_file_id: string | null;
@@ -918,19 +924,33 @@ export default function SystemDocumentsSection() {
   const manualSyncMutation = useMutation({
     mutationFn: async (id: string) => {
       setSyncingDocId(id);
-      const res = await fetch(`/api/consultant/knowledge/system-documents/${id}/sync`, {
+      const driveRes = await fetch(`/api/consultant/knowledge/system-documents/${id}/sync`, {
         method: "POST",
         headers: getAuthHeaders(),
       });
-      if (!res.ok) {
-        const err = await res.json();
+      if (!driveRes.ok) {
+        const err = await driveRes.json();
         throw new Error(err.error || "Sync fallita");
       }
-      return res.json();
+      const storeRes = await fetch(`/api/consultant/knowledge/system-documents/${id}/resync-stores`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!storeRes.ok) {
+        const err = await storeRes.json();
+        throw new Error(err.error || "Resync store fallito");
+      }
+      const storeData = await storeRes.json();
+      return storeData;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/system-documents"] });
-      toast({ title: "Sincronizzato", description: "Documento aggiornato da Google Drive" });
+      const info = data?.data;
+      const parts = [];
+      if (info?.removed > 0) parts.push(`${info.removed} store obsoleti rimossi`);
+      if (info?.added > 0) parts.push(`${info.added} store mancanti aggiunti`);
+      if (parts.length === 0) parts.push("Documento aggiornato da Google Drive");
+      toast({ title: "Sincronizzato", description: parts.join(", ") });
       setSyncingDocId(null);
     },
     onError: (err: any) => {
@@ -1581,15 +1601,40 @@ export default function SystemDocumentsSection() {
                         </span>
                       ))}
                       {clientStores.length > 0 && (
-                        <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <Database className="h-2.5 w-2.5" />
-                          {clientStores.length} Private Store clienti
-                          {indexedCount === totalCount ? (
-                            <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
-                          ) : (
-                            <span className="text-amber-600">{indexedCount}/{totalCount}</span>
-                          )}
-                        </span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer">
+                              <Database className="h-2.5 w-2.5" />
+                              {clientStores.length} Private Store clienti
+                              {indexedCount === totalCount ? (
+                                <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+                              ) : (
+                                <span className="text-amber-600">{indexedCount}/{totalCount}</span>
+                              )}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-3" align="start">
+                            <div className="space-y-1.5">
+                              <p className="text-xs font-semibold text-slate-700 mb-2">
+                                {clientStores.length} Private Store clienti
+                              </p>
+                              <div className="max-h-48 overflow-y-auto space-y-1">
+                                {clientStores.map((store, idx) => (
+                                  <div key={`cs-${idx}`} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-slate-50 text-[11px]">
+                                    <span className="truncate text-slate-700 font-medium">
+                                      {store.clientName || store.storeName || store.storeOwnerId.substring(0, 8)}
+                                    </span>
+                                    {store.documentStatus === 'indexed' ? (
+                                      <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                                    ) : (
+                                      <Clock className="h-3 w-3 text-amber-500 shrink-0" />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       )}
                     </>
                   );
