@@ -1,0 +1,153 @@
+import {
+  Facebook,
+  Search,
+  Instagram,
+  Music2,
+  Users,
+  Leaf,
+  Globe,
+  FileText,
+  Magnet,
+  Webhook,
+  FileSpreadsheet,
+  Target,
+  Bot,
+  MessageCircle,
+  Mail,
+  Phone,
+  MessageSquare,
+  Send,
+  Calendar,
+  PhoneCall,
+  PhoneForwarded,
+  CheckCircle,
+  CreditCard,
+  UserPlus,
+  Briefcase,
+  RefreshCw,
+  Puzzle,
+  type LucideIcon,
+} from "lucide-react";
+
+export type NodeCategory =
+  | "sorgenti"
+  | "cattura"
+  | "gestione"
+  | "comunicazione"
+  | "conversione"
+  | "delivery"
+  | "custom";
+
+export interface FunnelNodeType {
+  type: string;
+  label: string;
+  category: NodeCategory;
+  icon: LucideIcon;
+  description: string;
+}
+
+export interface FunnelNodeData {
+  type: string;
+  label: string;
+  subtitle?: string;
+  notes?: string;
+  conversionRate?: number;
+  category: NodeCategory;
+  linkedEntity?: LinkedEntity | null;
+}
+
+export interface LinkedEntity {
+  entityType: "ad" | "post" | "campaign" | "agent" | "voice" | "service";
+  entityId: string;
+  name: string;
+  imageUrl?: string | null;
+  platform?: string;
+  status?: string;
+  metrics?: Record<string, string | number>;
+}
+
+export const CATEGORY_COLORS: Record<NodeCategory, { bg: string; border: string; text: string; accent: string }> = {
+  sorgenti: { bg: "bg-blue-50 dark:bg-blue-950/40", border: "border-blue-400 dark:border-blue-500", text: "text-blue-700 dark:text-blue-300", accent: "#3b82f6" },
+  cattura: { bg: "bg-green-50 dark:bg-green-950/40", border: "border-green-400 dark:border-green-500", text: "text-green-700 dark:text-green-300", accent: "#22c55e" },
+  gestione: { bg: "bg-violet-50 dark:bg-violet-950/40", border: "border-violet-400 dark:border-violet-500", text: "text-violet-700 dark:text-violet-300", accent: "#8b5cf6" },
+  comunicazione: { bg: "bg-indigo-50 dark:bg-indigo-950/40", border: "border-indigo-400 dark:border-indigo-500", text: "text-indigo-700 dark:text-indigo-300", accent: "#6366f1" },
+  conversione: { bg: "bg-orange-50 dark:bg-orange-950/40", border: "border-orange-400 dark:border-orange-500", text: "text-orange-700 dark:text-orange-300", accent: "#f97316" },
+  delivery: { bg: "bg-emerald-50 dark:bg-emerald-950/40", border: "border-emerald-400 dark:border-emerald-500", text: "text-emerald-700 dark:text-emerald-300", accent: "#10b981" },
+  custom: { bg: "bg-gray-50 dark:bg-gray-800/40", border: "border-gray-400 dark:border-gray-500", text: "text-gray-700 dark:text-gray-300", accent: "#6b7280" },
+};
+
+export const CATEGORY_LABELS: Record<NodeCategory, string> = {
+  sorgenti: "Sorgenti",
+  cattura: "Cattura",
+  gestione: "Gestione",
+  comunicazione: "Comunicazione",
+  conversione: "Conversione",
+  delivery: "Delivery",
+  custom: "Custom",
+};
+
+export const NODE_TYPES: FunnelNodeType[] = [
+  { type: "facebook_ads", label: "Facebook Ads", category: "sorgenti", icon: Facebook, description: "Campagna Facebook/Meta Ads" },
+  { type: "google_ads", label: "Google Ads", category: "sorgenti", icon: Search, description: "Campagna Google Ads" },
+  { type: "instagram_ads", label: "Instagram Ads", category: "sorgenti", icon: Instagram, description: "Campagna Instagram Ads" },
+  { type: "tiktok_ads", label: "TikTok Ads", category: "sorgenti", icon: Music2, description: "Campagna TikTok Ads" },
+  { type: "offline_referral", label: "Referral Offline", category: "sorgenti", icon: Users, description: "Passaparola e referral" },
+  { type: "organic", label: "Organico", category: "sorgenti", icon: Leaf, description: "Traffico organico" },
+
+  { type: "landing_page", label: "Landing Page", category: "cattura", icon: Globe, description: "Pagina di atterraggio" },
+  { type: "form_modulo", label: "Form / Modulo", category: "cattura", icon: FileText, description: "Form di contatto" },
+  { type: "lead_magnet", label: "Lead Magnet", category: "cattura", icon: Magnet, description: "Contenuto gratuito di valore" },
+  { type: "webhook", label: "Webhook", category: "cattura", icon: Webhook, description: "Integrazione via webhook" },
+
+  { type: "import_excel", label: "Import Excel", category: "gestione", icon: FileSpreadsheet, description: "Importa contatti da file" },
+  { type: "crm_hunter", label: "CRM Hunter", category: "gestione", icon: Target, description: "Ricerca lead automatica" },
+  { type: "setter_ai", label: "Setter AI", category: "gestione", icon: Bot, description: "Qualifica lead con AI" },
+
+  { type: "whatsapp", label: "WhatsApp", category: "comunicazione", icon: MessageCircle, description: "Messaggio WhatsApp" },
+  { type: "email", label: "Email", category: "comunicazione", icon: Mail, description: "Email automatica" },
+  { type: "voice_call", label: "Chiamata Voice", category: "comunicazione", icon: Phone, description: "Chiamata vocale AI" },
+  { type: "sms", label: "SMS", category: "comunicazione", icon: MessageSquare, description: "Messaggio SMS" },
+  { type: "instagram_dm", label: "Instagram DM", category: "comunicazione", icon: Send, description: "Messaggio diretto Instagram" },
+
+  { type: "appuntamento", label: "Appuntamento", category: "conversione", icon: Calendar, description: "Prenotazione appuntamento" },
+  { type: "prima_call", label: "Prima Call", category: "conversione", icon: PhoneCall, description: "Prima chiamata di vendita" },
+  { type: "seconda_call", label: "Seconda Call", category: "conversione", icon: PhoneForwarded, description: "Follow-up chiamata" },
+  { type: "chiusura", label: "Chiusura", category: "conversione", icon: CheckCircle, description: "Chiusura vendita" },
+  { type: "pagamento", label: "Pagamento", category: "conversione", icon: CreditCard, description: "Pagamento ricevuto" },
+
+  { type: "onboarding", label: "Onboarding", category: "delivery", icon: UserPlus, description: "Onboarding cliente" },
+  { type: "servizio", label: "Servizio", category: "delivery", icon: Briefcase, description: "Erogazione servizio" },
+  { type: "followup", label: "Follow-up", category: "delivery", icon: RefreshCw, description: "Follow-up post-vendita" },
+
+  { type: "custom_step", label: "Step Custom", category: "custom", icon: Puzzle, description: "Step personalizzato" },
+];
+
+export function getNodeTypeDefinition(type: string): FunnelNodeType | undefined {
+  return NODE_TYPES.find((n) => n.type === type);
+}
+
+export function getNodesByCategory(category: NodeCategory): FunnelNodeType[] {
+  return NODE_TYPES.filter((n) => n.category === category);
+}
+
+export function getEntityTypeForNode(nodeType: string): string | null {
+  const adTypes = ["facebook_ads", "google_ads", "instagram_ads", "tiktok_ads"];
+  if (adTypes.includes(nodeType)) return "ads";
+
+  const postTypes = ["landing_page", "organic"];
+  if (postTypes.includes(nodeType)) return "posts";
+
+  const agentTypes = ["whatsapp", "instagram_dm"];
+  if (agentTypes.includes(nodeType)) return "agents";
+
+  const voiceTypes = ["voice_call"];
+  if (voiceTypes.includes(nodeType)) return "voice-numbers";
+
+  const serviceTypes = ["servizio", "pagamento"];
+  if (serviceTypes.includes(nodeType)) return "services";
+
+  const campaignTypes = ["crm_hunter", "lead_magnet"];
+  if (campaignTypes.includes(nodeType)) return "campaigns";
+
+  return null;
+}

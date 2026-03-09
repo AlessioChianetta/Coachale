@@ -63,6 +63,7 @@ import { Request, Response } from 'express'; // Import Request and Response type
 import crypto from 'crypto'; // Import crypto for UUID generation
 import { generateCertificatePDF } from "./pdfGenerator";
 import financeSettingsRouter from "./routes/finance-settings";
+import funnelRouter from "./routes/funnel-router";
 import consultationTasksRouter from "./routes/consultation-tasks";
 import consultantPersonalTasksRouter from "./routes/consultant-personal-tasks";
 import clientStateRouter from "./routes/client-state";
@@ -14065,6 +14066,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // WhatsApp Agent Instructions Configuration routes
   app.use("/api", agentInstructionsRouter);
+
+  // Funnel Builder routes
+  app.use("/api/funnels", funnelRouter);
 
   // WhatsApp Agent Knowledge Base routes
   app.use("/api", agentKnowledgeRouter);

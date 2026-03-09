@@ -101,6 +101,7 @@ import {
   Send,
   Plus,
   X,
+  GitBranch,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -123,6 +124,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { type MarketResearchData, EMPTY_MARKET_RESEARCH } from "@shared/schema";
 import ContentStudioPosts from "./posts";
 import AdVisagePage from "./advisage/AdVisagePage";
+import FunnelBuilderTab from "@/components/funnel-builder/FunnelBuilderTab";
 
 interface Idea {
   id: string;
@@ -500,7 +502,7 @@ function getScoreProgressColor(score: number): string {
 export default function ContentStudioIdeas() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"ideas" | "posts" | "advisage">("ideas");
+  const [activeTab, setActiveTab] = useState<"ideas" | "posts" | "advisage" | "funnel">("ideas");
   const [topic, setTopic] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [objective, setObjective] = useState("");
@@ -2256,6 +2258,7 @@ export default function ContentStudioIdeas() {
                 { key: "ideas" as const, label: "Generatore Idee", icon: <Lightbulb className="w-4 h-4" />, gradient: "from-amber-500 to-orange-600" },
                 { key: "posts" as const, label: "Gestione Post", icon: <Send className="w-4 h-4" />, gradient: "from-indigo-500 to-blue-600" },
                 { key: "advisage" as const, label: "AdVisage", icon: <Eye className="w-4 h-4" />, gradient: "from-violet-500 to-purple-600" },
+                { key: "funnel" as const, label: "Funnel Builder", icon: <GitBranch className="w-4 h-4" />, gradient: "from-cyan-500 to-teal-600" },
               ] as const).map(tab => (
                 <button
                   key={tab.key}
@@ -2281,6 +2284,10 @@ export default function ContentStudioIdeas() {
           ) : activeTab === "advisage" ? (
             <div className="flex-1 overflow-y-auto">
               <AdVisagePage embedded={true} />
+            </div>
+          ) : activeTab === "funnel" ? (
+            <div className="flex-1 overflow-hidden">
+              <FunnelBuilderTab />
             </div>
           ) : (
           <>

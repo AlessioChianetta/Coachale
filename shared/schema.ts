@@ -11005,3 +11005,18 @@ export type ClientPurchasedItem = typeof clientPurchasedItems.$inferSelect;
 export type InsertClientPurchasedItem = typeof clientPurchasedItems.$inferInsert;
 
 export type HunterAction = typeof hunterActions.$inferSelect;
+
+export const consultantFunnels = pgTable("consultant_funnels", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull().default("Nuovo Funnel"),
+  description: text("description"),
+  nodesData: jsonb("nodes_data").notNull().default(sql`'[]'::jsonb`),
+  edgesData: jsonb("edges_data").notNull().default(sql`'[]'::jsonb`),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ConsultantFunnel = typeof consultantFunnels.$inferSelect;
+export type InsertConsultantFunnel = typeof consultantFunnels.$inferInsert;
