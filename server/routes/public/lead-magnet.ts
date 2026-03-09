@@ -110,19 +110,37 @@ router.post('/start', async (req: Request, res: Response) => {
     }
 
     const consultantId = await resolveConsultantId(reqConsultantId);
-    const publicToken = randomUUID();
 
-    const sessionRes = await db.execute(sql`
-      INSERT INTO delivery_agent_sessions (
-        consultant_id, mode, status, is_public, public_token,
-        lead_name, lead_email, lead_phone
-      ) VALUES (
-        ${consultantId}, 'onboarding', 'discovery', true, ${publicToken},
-        ${name.trim()}, ${email.trim()}, ${phone.trim()}
-      )
-      RETURNING id
+    const existingSession = await db.execute(sql`
+      SELECT id, public_token FROM delivery_agent_sessions
+      WHERE consultant_id = ${consultantId}
+        AND lead_email = ${email.trim()}
+        AND mode = 'onboarding'
+        AND is_public = true
+      ORDER BY created_at DESC
+      LIMIT 1
     `);
-    const sessionId = (sessionRes.rows[0] as any).id;
+
+    let sessionId: string;
+    let publicToken: string;
+
+    if (existingSession.rows.length > 0) {
+      sessionId = (existingSession.rows[0] as any).id;
+      publicToken = (existingSession.rows[0] as any).public_token;
+    } else {
+      publicToken = randomUUID();
+      const sessionRes = await db.execute(sql`
+        INSERT INTO delivery_agent_sessions (
+          consultant_id, mode, status, is_public, public_token,
+          lead_name, lead_email, lead_phone
+        ) VALUES (
+          ${consultantId}, 'onboarding', 'discovery', true, ${publicToken},
+          ${name.trim()}, ${email.trim()}, ${phone.trim()}
+        )
+        RETURNING id
+      `);
+      sessionId = (sessionRes.rows[0] as any).id;
+    }
 
     const nameParts = name.trim().split(' ');
     const firstName = nameParts[0] || '';
