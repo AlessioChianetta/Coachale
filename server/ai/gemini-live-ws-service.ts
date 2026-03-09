@@ -4463,18 +4463,37 @@ ${historyContent}
               // Combine: agent_instructions (PRIORITY) + Brand Voice (supplementary context)
               if (agent.agent_instructions) {
                 // Interpolate agent instructions with actual values from agent data
+                const agentDisplayName = agent.name || 'Alessia';
+                const toText = (val: any): string => {
+                  if (!val) return '';
+                  if (typeof val === 'string') return val;
+                  if (Array.isArray(val)) return val.map((item: any) => typeof item === 'object' && item.name ? `${item.name}${item.description ? ': ' + item.description : ''}` : String(item)).join(', ');
+                  return String(val);
+                };
                 const interpolateAgentInstructions = (text: string): string => {
                   return text
-                    // JavaScript template literal style ${placeholder}
                     .replace(/\$\{consultantName\}/g, consultantName)
                     .replace(/\$\{businessName\}/g, agent.business_name || consultantBusinessName || '')
-                    .replace(/\$\{whoWeHelp\}/g, agent.who_we_help || '')
+                    .replace(/\$\{whoWeHelp\}/g, toText(agent.who_we_help))
                     .replace(/\$\{businessDescription\}/g, agent.business_description || '')
-                    // Mustache style {{placeholder}}
+                    .replace(/\$\{contactName\}/g, extractedContactName || '')
+                    .replace(/\$\{firstName\}/g, extractedContactName || '')
+                    .replace(/\$\{aiName\}/g, agentDisplayName)
+                    .replace(/\$\{services\}/g, toText(agent.services_offered))
+                    .replace(/\$\{targetAudience\}/g, toText(agent.who_we_help))
+                    .replace(/\$\{usp\}/g, agent.usp || '')
+                    .replace(/\$\{sector\}/g, agent.business_description || '')
                     .replace(/\{\{consultantName\}\}/g, consultantName)
                     .replace(/\{\{businessName\}\}/g, agent.business_name || consultantBusinessName || '')
-                    .replace(/\{\{whoWeHelp\}\}/g, agent.who_we_help || '')
-                    .replace(/\{\{businessDescription\}\}/g, agent.business_description || '');
+                    .replace(/\{\{whoWeHelp\}\}/g, toText(agent.who_we_help))
+                    .replace(/\{\{businessDescription\}\}/g, agent.business_description || '')
+                    .replace(/\{\{contactName\}\}/g, extractedContactName || '')
+                    .replace(/\{\{firstName\}\}/g, extractedContactName || '')
+                    .replace(/\{\{aiName\}\}/g, agentDisplayName)
+                    .replace(/\{\{services\}\}/g, toText(agent.services_offered))
+                    .replace(/\{\{targetAudience\}\}/g, toText(agent.who_we_help))
+                    .replace(/\{\{usp\}\}/g, agent.usp || '')
+                    .replace(/\{\{sector\}\}/g, agent.business_description || '');
                 };
                 
                 const interpolatedInstructions = interpolateAgentInstructions(agent.agent_instructions);
