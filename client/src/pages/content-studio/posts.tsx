@@ -2815,9 +2815,9 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
 
                         {selectedCopyType === "long" && (
                           <div className="space-y-3">
-                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border border-purple-200 dark:border-purple-800 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-purple-700 dark:text-purple-300 font-semibold flex items-center gap-1">
-                                🎣 Hook
+                            <div className="border rounded-lg p-3 space-y-2">
+                              <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                Hook
                               </Label>
                               <Input
                                 placeholder="La frase che cattura l'attenzione..."
@@ -2825,9 +2825,9 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                                 onChange={(e) => setFormData({ ...formData, hook: e.target.value })}
                               />
                             </div>
-                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
-                                📝 Copy Completo
+                            <div className="border rounded-lg p-3 space-y-2">
+                              <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                Copy Completo
                               </Label>
                               <Textarea
                                 placeholder="Il contenuto principale del post..."
@@ -2837,9 +2837,9 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                                 style={{ fieldSizing: 'content' } as React.CSSProperties}
                               />
                             </div>
-                            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-indigo-700 dark:text-indigo-300 font-semibold flex items-center gap-1">
-                                🎯 Call to Action
+                            <div className="border rounded-lg p-3 space-y-2">
+                              <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                Call to Action
                               </Label>
                               <Input
                                 placeholder="Chiamata all'azione finale..."
@@ -3278,9 +3278,8 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
 
             <Dialog open={showVariationsDialog} onOpenChange={setShowVariationsDialog}>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-yellow-500" />
+                <DialogHeader className="pb-4 border-b">
+                  <DialogTitle className="text-lg font-semibold">
                     Scegli una Variazione - {getCopyTypeLabel(selectedCopyType)}
                   </DialogTitle>
                 </DialogHeader>
@@ -3296,12 +3295,12 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                         <CardContent className="p-4 space-y-3">
                           {variation.outputType === "copy_short" && (
                             <>
-                              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg">
-                                <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold">📝 HOOK</Label>
+                              <div className="border rounded-lg p-3">
+                                <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Hook</Label>
                                 <p className="text-sm font-medium mt-1">{variation.hook}</p>
                               </div>
-                              <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg">
-                                <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">🎯 CTA</Label>
+                              <div className="border rounded-lg p-3">
+                                <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">CTA</Label>
                                 <p className="text-sm font-medium mt-1">{variation.cta}</p>
                               </div>
                             </>
@@ -3309,28 +3308,28 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                           
                           {variation.outputType === "copy_long" && (
                             <>
-                              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg">
-                                <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold">1. 🎣 HOOK</Label>
+                              <div className="border rounded-lg p-3">
+                                <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">1. Hook</Label>
                                 <p className="text-sm font-medium mt-1">{variation.hook}</p>
                               </div>
-                              <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
-                                <Label className="text-xs text-blue-600 dark:text-blue-400 font-semibold">2. 👤 CHI-COSA-COME</Label>
+                              <div className="border rounded-lg p-3">
+                                <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">2. Chi-Cosa-Come</Label>
                                 <p className="text-sm mt-1">{variation.chiCosaCome}</p>
                               </div>
-                              <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg">
-                                <Label className="text-xs text-red-600 dark:text-red-400 font-semibold">3. ❌ ERRORE</Label>
+                              <div className="border rounded-lg p-3">
+                                <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">3. Errore</Label>
                                 <p className="text-sm mt-1">{variation.errore}</p>
                               </div>
-                              <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg">
-                                <Label className="text-xs text-green-600 dark:text-green-400 font-semibold">4. ✅ SOLUZIONE</Label>
+                              <div className="border rounded-lg p-3">
+                                <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">4. Soluzione</Label>
                                 <p className="text-sm mt-1">{variation.soluzione}</p>
                               </div>
-                              <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg">
-                                <Label className="text-xs text-amber-600 dark:text-amber-400 font-semibold">5. 📊 RIPROVA SOCIALE</Label>
+                              <div className="border rounded-lg p-3">
+                                <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">5. Riprova Sociale</Label>
                                 <p className="text-sm mt-1">{variation.riprovaSociale}</p>
                               </div>
-                              <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg">
-                                <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">6. 🎯 CTA</Label>
+                              <div className="border rounded-lg p-3">
+                                <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">6. CTA</Label>
                                 <p className="text-sm font-medium mt-1">{variation.cta}</p>
                               </div>
                             </>
@@ -3339,26 +3338,20 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                           {variation.outputType === "video_script" && (
                             <>
                               {variation.segments?.map((segment, segIdx) => (
-                                <div key={segIdx} className={`p-3 rounded-lg ${
-                                  segIdx === 0 ? "bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20" :
-                                  segIdx === 1 ? "bg-blue-50 dark:bg-blue-950/20" :
-                                  segIdx === 2 ? "bg-red-50 dark:bg-red-950/20" :
-                                  segIdx === 3 ? "bg-green-50 dark:bg-green-950/20" :
-                                  "bg-indigo-50 dark:bg-indigo-950/20"
-                                }`}>
+                                <div key={segIdx} className="border rounded-lg p-3">
                                   <div className="flex items-center gap-2 mb-2">
                                     <Badge variant="outline" className="text-xs font-mono">{segment.timing}</Badge>
-                                    <span className="text-xs text-muted-foreground">
-                                      {segIdx === 0 ? "HOOK" : segIdx === 1 ? "CHI-COSA-COME" : segIdx === 2 ? "ERRORE" : segIdx === 3 ? "SOLUZIONE + RIPROVA" : "CTA"}
+                                    <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                                      {segIdx === 0 ? "Hook" : segIdx === 1 ? "Chi-Cosa-Come" : segIdx === 2 ? "Errore" : segIdx === 3 ? "Soluzione + Riprova" : "CTA"}
                                     </span>
                                   </div>
                                   <div className="space-y-1">
                                     <div className="flex items-start gap-2">
-                                      <span className="text-xs font-semibold text-muted-foreground">🎬 Visual:</span>
+                                      <span className="text-xs font-medium text-muted-foreground">Visual:</span>
                                       <p className="text-xs text-muted-foreground italic">{segment.visual}</p>
                                     </div>
                                     <div className="flex items-start gap-2">
-                                      <span className="text-xs font-semibold">🎤 Voiceover:</span>
+                                      <span className="text-xs font-medium">Voiceover:</span>
                                       <p className="text-sm font-medium">{segment.voiceover}</p>
                                     </div>
                                   </div>
@@ -3369,16 +3362,16 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                           
                           {variation.outputType === "image_copy" && (
                             <>
-                              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-4 rounded-lg text-center">
-                                <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold">🖼️ TESTO SULL'IMMAGINE</Label>
+                              <div className="border rounded-lg p-4 text-center">
+                                <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Testo sull'Immagine</Label>
                                 <p className="text-lg font-bold mt-2 leading-tight">{variation.imageText}</p>
                               </div>
-                              <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
-                                <Label className="text-xs text-blue-600 dark:text-blue-400 font-semibold">📝 SOTTOTITOLO / CAPTION</Label>
+                              <div className="border rounded-lg p-3">
+                                <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Sottotitolo / Caption</Label>
                                 <p className="text-sm mt-1">{variation.subtitle}</p>
                               </div>
-                              <div className="bg-gray-50 dark:bg-gray-950/20 p-3 rounded-lg">
-                                <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold">🎨 CONCEPT VISIVO</Label>
+                              <div className="border rounded-lg p-3">
+                                <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Concept Visivo</Label>
                                 <p className="text-sm mt-1 italic text-muted-foreground">{variation.conceptDescription}</p>
                               </div>
                             </>
