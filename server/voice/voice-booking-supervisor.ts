@@ -23,6 +23,8 @@ export interface AvailableSlot {
 export interface VoiceBookingSupervisorState {
   stage: 'nessun_intento' | 'raccolta_dati' | 'dati_completi' | 'confermato' | 'completato' | 'errore';
   bookingInProgress: boolean;
+  emailConfirmed: boolean;
+  emailSource: 'pre_populated' | 'speech_extracted' | 'user_corrected';
   extractedData: {
     date: string | null;
     time: string | null;
@@ -68,6 +70,7 @@ export interface LLMAnalysisResult {
   email: string | null;
   name: string | null;
   correction: boolean;
+  emailConfirmed: boolean;
   aiProposedSlot: { date: string; time: string } | null;
   reasoning: string;
 }
@@ -103,15 +106,18 @@ export class VoiceBookingSupervisor {
     this.availableSlots = params.availableSlots;
     this.slotsLoaded = params.availableSlots.length > 0;
 
+    const prePopulatedEmail = params.prePopulatedData?.email || null;
     this.state = {
       stage: 'nessun_intento',
       bookingInProgress: false,
+      emailConfirmed: false,
+      emailSource: prePopulatedEmail ? 'pre_populated' : 'speech_extracted',
       extractedData: {
         date: null,
         time: null,
         confirmed: false,
         phone: params.prePopulatedData?.phone || params.outboundTargetPhone || null,
-        email: params.prePopulatedData?.email || null,
+        email: prePopulatedEmail,
         name: params.prePopulatedData?.name || null,
         duration: 60,
         notes: null,
@@ -223,7 +229,10 @@ export class VoiceBookingSupervisor {
       if (analysisResult.date !== null) this.state.extractedData.date = null;
       if (analysisResult.time !== null) this.state.extractedData.time = null;
       if (analysisResult.phone !== null) this.state.extractedData.phone = null;
-      if (analysisResult.email !== null) this.state.extractedData.email = null;
+      if (analysisResult.email !== null) {
+        this.state.extractedData.email = null;
+        this.state.emailConfirmed = false;
+      }
       if (analysisResult.name !== null) this.state.extractedData.name = null;
       this.state.extractedData.confirmed = false;
       this.state.stage = 'raccolta_dati';
@@ -241,7 +250,24 @@ export class VoiceBookingSupervisor {
     if (analysisResult.date !== null) this.state.extractedData.date = analysisResult.date;
     if (analysisResult.time !== null) this.state.extractedData.time = analysisResult.time;
     if (analysisResult.phone !== null) this.state.extractedData.phone = analysisResult.phone;
-    if (analysisResult.email !== null) this.state.extractedData.email = analysisResult.email;
+    if (analysisResult.email !== null) {
+      if (this.state.emailSource === 'pre_populated' && analysisResult.email !== this.state.extractedData.email && !analysisResult.correction) {
+        console.log(`📧 [VOICE-BOOKING-SUPERVISOR] Ignoring speech-extracted email "${analysisResult.email}", keeping pre-populated "${this.state.extractedData.email}" (no explicit correction detected) for call ${this.voiceCallId}`);
+      } else {
+        this.state.extractedData.email = analysisResult.email;
+        if (analysisResult.correction) {
+          this.state.emailSource = 'user_corrected';
+          this.state.emailConfirmed = false;
+          console.log(`📧 [VOICE-BOOKING-SUPERVISOR] Email corrected by user to "${analysisResult.email}" for call ${this.voiceCallId}`);
+        } else if (this.state.emailSource !== 'pre_populated') {
+          this.state.emailSource = 'speech_extracted';
+        }
+      }
+    }
+    if (analysisResult.emailConfirmed) {
+      this.state.emailConfirmed = true;
+      console.log(`📧 [VOICE-BOOKING-SUPERVISOR] Email CONFIRMED by caller (source: ${this.state.emailSource}, email: ${this.state.extractedData.email}) for call ${this.voiceCallId}`);
+    }
     if (analysisResult.name !== null) this.state.extractedData.name = analysisResult.name;
 
     if (analysisResult.confirmed && this.state.lastProposedSlot) {
@@ -274,6 +300,20 @@ export class VoiceBookingSupervisor {
     });
 
     if (this.state.stage === 'confermato') {
+      if (!this.clientId && !this.state.emailConfirmed) {
+        const currentEmail = this.state.extractedData.email;
+        const msg = currentEmail
+          ? (this.state.emailSource === 'pre_populated'
+            ? `Chiedi: "L'email per l'invito è ${currentEmail}, è corretta?"`
+            : `Ripeti l'email "${currentEmail}" lentamente e chiedi conferma.`)
+          : `Chiedi l'email al chiamante per l'invito calendario.`;
+        console.log(`📧 [VOICE-BOOKING-SUPERVISOR] BLOCKING booking - email not confirmed yet (email: ${currentEmail || 'MISSING'}, source: ${this.state.emailSource}) for call ${this.voiceCallId}`);
+        this.state.stage = 'dati_completi';
+        return {
+          action: 'notify_ai',
+          notifyMessage: `[SYSTEM] Prima di procedere con la prenotazione, devi confermare l'email con il chiamante. ${msg}`
+        };
+      }
       this.state.bookingInProgress = true;
       return await this.executeBooking();
     }
@@ -313,6 +353,8 @@ Usa questa data per risolvere riferimenti relativi come "domani", "dopodomani", 
 STATO ATTUALE:
 - Fase: ${stage}
 - Dati raccolti: date=${extractedData.date}, time=${extractedData.time}, phone=${extractedData.phone}, email=${extractedData.email}, name=${extractedData.name}, confirmed=${extractedData.confirmed}
+- Email confermata: ${this.state.emailConfirmed ? 'SÌ' : 'NO'}
+- Fonte email: ${this.state.emailSource}
 - Ultimo slot proposto dall'AI: ${lastProposedSlotText}
 - Tipo chiamante: ${isClient ? "Cliente registrato (servono solo data+ora+conferma)" : "Non-cliente (servono data+ora+telefono+email+conferma)"}
 - Campi richiesti: ${requiredFieldsText}
@@ -331,6 +373,7 @@ Analizza la conversazione e rispondi SOLO con JSON valido nel seguente formato:
   "email": "x@y.com" o null,
   "name": "nome" o null,
   "correction": true/false,
+  "emailConfirmed": true/false,
   "aiProposedSlot": {"date":"YYYY-MM-DD","time":"HH:MM"} o null,
   "reasoning": "breve spiegazione in italiano"
 }
@@ -369,7 +412,12 @@ Se l'utente chiede un promemoria o un richiamo, mantieni newStage="nessun_intent
 6. Per "nessun_intento": nessuna menzione di appuntamenti, prenotazioni, disponibilità. ANCHE per promemoria/reminder/richiami.
 7. Per "raccolta_dati": conversazione in corso su booking A CALENDARIO ma mancano dati
 8. Per "dati_completi": tutti i dati presenti ma manca conferma esplicita
-9. Per "confermato": confirmed=true E tutti i dati richiesti sono presenti`;
+9. Per "confermato": confirmed=true E tutti i dati richiesti sono presenti
+
+📧 REGOLA EMAIL:
+10. "emailConfirmed" = true SOLO SE il chiamante ha esplicitamente confermato l'email (ha detto "sì" quando l'AI ha proposto l'email a sistema, oppure ha dettato un'email e ha confermato dopo che l'AI l'ha ripetuta)
+11. Se l'email era già nota a sistema e il chiamante NON l'ha corretta, NON restituire un'email diversa estratta dal parlato. Restituisci null per il campo email (mantieni quella a sistema).
+12. Restituisci email nel campo "email" SOLO se il chiamante ha esplicitamente dettato un'email NUOVA o ha corretto quella proposta (in quel caso imposta anche "correction": true).`;
   }
 
   private async executeBooking(): Promise<SupervisorResult> {
@@ -518,15 +566,19 @@ Se l'utente chiede un promemoria o un richiamo, mantieni newStage="nessun_intent
       confirmStep = "3";
       waitStep = "4";
     } else if (hasAllContactData) {
-      collectDataStep = `\n3. Conferma i dati di contatto: "${hasPrePopulatedName ? `${name}, c` : 'C'}onfermo: numero ${phone}${hasPrePopulatedEmail ? ` e email ${email}` : ''}. Vanno bene per l'invito?"`;
+      collectDataStep = `\n3. Conferma i dati: dì "Il numero che abbiamo è ${phone} e l'email è ${email}, sono corretti per l'invito calendario?" — aspetta conferma sì/no`;
+      confirmStep = "4";
+      waitStep = "5";
+    } else if (hasPrePopulatedPhone && hasPrePopulatedEmail) {
+      collectDataStep = `\n3. Conferma il numero (${phone}) e l'email (${email}): "Abbiamo ${phone} e ${email}, vanno bene?" — aspetta conferma sì/no`;
       confirmStep = "4";
       waitStep = "5";
     } else if (hasPrePopulatedPhone) {
-      collectDataStep = `\n3. Conferma il numero (${phone}) e chiedi email per l'invito calendario`;
+      collectDataStep = `\n3. Conferma il numero (${phone}) e chiedi l'email per l'invito calendario. Dopo che te la dice, ripetila lentamente per conferma`;
       confirmStep = "4";
       waitStep = "5";
     } else {
-      collectDataStep = "\n3. Chiedi telefono e email per l'invito calendario";
+      collectDataStep = "\n3. Chiedi telefono e email per l'invito calendario. Dopo che ti dicono l'email, ripetila lentamente per conferma";
       confirmStep = "4";
       waitStep = "5";
     }
@@ -564,7 +616,20 @@ ${waitStep}. Attendi conferma esplicita ("sì", "confermo", "va bene")${prePopul
 NON affermare MAI che l'appuntamento è "confermato", "creato", "prenotato" o "fissato".
 NON dire "ho confermato", "è prenotato", "ti mando l'invito".
 Puoi dire "sto verificando la disponibilità..." o "un momento, controllo...".
-Dirai la conferma SOLO quando riceverai un messaggio di sistema [BOOKING_CONFIRMED].`;
+Dirai la conferma SOLO quando riceverai un messaggio di sistema [BOOKING_CONFIRMED].
+
+📧 VERIFICA EMAIL (REGOLA OBBLIGATORIA):
+${hasPrePopulatedEmail
+  ? `L'email a sistema è: ${email}
+- Dì al chiamante: "L'email per l'invito calendario che abbiamo è ${email}, è corretta?"
+- NON chiedere MAI di dettare l'email se è già nota a sistema.
+- Aspetta SOLO conferma sì/no.
+- Se dicono che è sbagliata, chiedi la nuova email e ripetila lentamente per conferma.`
+  : `- Chiedi l'email al chiamante per l'invito calendario.
+- Dopo che te l'ha detta, RIPETILA LENTAMENTE per conferma (es: "Ho capito mario@gmail.com, è corretto?").
+- Se non sei sicura di aver capito bene, chiedi di ripeterla più piano.
+- NON procedere finché il chiamante non conferma esplicitamente l'email.`}
+- MAI procedere con la prenotazione se l'email non è stata confermata dal chiamante.`;
   }
 
   updateSlots(slots: AvailableSlot[]): string | null {
@@ -653,6 +718,8 @@ Dirai la conferma SOLO quando riceverai un messaggio di sistema [BOOKING_CONFIRM
     this.state = {
       stage: 'nessun_intento',
       bookingInProgress: false,
+      emailConfirmed: false,
+      emailSource: 'speech_extracted',
       extractedData: {
         date: null,
         time: null,
