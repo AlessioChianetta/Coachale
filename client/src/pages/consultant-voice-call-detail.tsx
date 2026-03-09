@@ -11,11 +11,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useToast } from "@/hooks/use-toast";
 import {
   Phone, PhoneIncoming, PhoneOff, PhoneMissed, PhoneForwarded,
-  PhoneOutgoing, Clock, User, ArrowLeft, Loader2, RefreshCw,
+  PhoneOutgoing, Clock, User, Users, ArrowLeft, Loader2, RefreshCw,
   MessageSquare, FileText, Calendar, Activity, CheckCircle,
-  AlertCircle, Ban, Volume2, CalendarCheck, ExternalLink,
+  AlertCircle, Ban, Volume2, ExternalLink,
   Globe, Target, Zap, Timer, ChevronDown, ChevronRight,
-  Search, Building2, Mail, Hash, BarChart3, History,
+  Search, Building2, Mail, Hash, BarChart3, History, Briefcase,
+  Star, TrendingUp,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -82,6 +83,7 @@ interface HunterContext {
   aiSalesSummary: string | null;
   leadStatus: string | null;
   leadId: string | null;
+  teamMembers?: Array<{ name: string; role?: string; email?: string }>;
 }
 
 interface ProactiveLead {
@@ -94,6 +96,10 @@ interface ProactiveLead {
   hook: string | null;
   source: string | null;
   outreach_status: string | null;
+  lead_info: any | null;
+  lead_category: string | null;
+  metadata: any | null;
+  campaign_snapshot: any | null;
   created_at: string;
 }
 
@@ -1060,279 +1066,362 @@ export default function ConsultantVoiceCallDetailPage() {
 
               <div className="space-y-4">
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Profilo
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-mono">{contact.phone}</span>
+                <Card className="overflow-hidden">
+                  <div className="bg-gradient-to-br from-primary/8 to-primary/3 dark:from-primary/15 dark:to-primary/5 px-4 pt-5 pb-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-14 h-14 rounded-full bg-primary/15 dark:bg-primary/25 border-2 border-primary/20 flex items-center justify-center text-primary font-bold text-lg flex-shrink-0">
+                        {getInitials(contact.name, contact.phone)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-base leading-tight truncate">
+                          {contact.name || contact.phone}
+                        </h3>
+                        {hunterContext?.businessName && (
+                          <p className="text-sm text-muted-foreground truncate mt-0.5">{hunterContext.businessName}</p>
+                        )}
+                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                          <Badge variant={typeBadge.variant} className="text-xs">{typeBadge.label}</Badge>
+                          {hunterContext?.leadStatus && (
+                            <Badge variant="secondary" className="text-xs capitalize">{hunterContext.leadStatus}</Badge>
+                          )}
+                          {proactiveLead?.outreach_status && (
+                            <Badge variant="outline" className="text-xs capitalize">{proactiveLead.outreach_status}</Badge>
+                          )}
+                          {hunterContext?.score !== null && hunterContext?.score !== undefined && (
+                            <Badge
+                              variant={hunterContext.score >= 70 ? "default" : hunterContext.score >= 40 ? "secondary" : "outline"}
+                              className="text-xs"
+                            >
+                              <Star className="h-3 w-3 mr-0.5" />
+                              {hunterContext.score}/100
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    {contact.name && (
-                      <div className="flex items-center gap-2">
-                        <User className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span>{contact.name}</span>
+                  </div>
+
+                  <CardContent className="p-0">
+                    <div className="px-4 py-3 space-y-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Contatto</p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2.5 text-sm group">
+                          <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          <span className="font-mono text-xs flex-1 truncate">{contact.phone}</span>
+                        </div>
+                        {contact.email && (
+                          <div className="flex items-center gap-2.5 text-sm group">
+                            <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <span className="text-xs flex-1 truncate">{contact.email}</span>
+                          </div>
+                        )}
+                        {proactiveLead?.email && proactiveLead.email !== contact.email && (
+                          <div className="flex items-center gap-2.5 text-sm group">
+                            <Mail className="h-3.5 w-3.5 text-violet-400 flex-shrink-0" />
+                            <span className="text-xs flex-1 truncate">{proactiveLead.email}</span>
+                          </div>
+                        )}
+                        {hunterContext?.website && (
+                          <div className="flex items-center gap-2.5 text-sm">
+                            <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <a
+                              href={hunterContext.website.startsWith("http") ? hunterContext.website : `https://${hunterContext.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate"
+                            >
+                              {hunterContext.website.replace(/^https?:\/\//, '')}
+                            </a>
+                          </div>
+                        )}
                       </div>
+                    </div>
+
+                    {(hunterContext?.sector || proactiveLead?.lead_category || proactiveLead?.source) && (
+                      <>
+                        <Separator />
+                        <div className="px-4 py-3 space-y-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Business</p>
+                          <div className="space-y-1.5">
+                            {hunterContext?.sector && (
+                              <div className="flex items-center gap-2.5 text-sm">
+                                <Target className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                <span className="text-xs truncate">{hunterContext.sector}</span>
+                              </div>
+                            )}
+                            {proactiveLead?.lead_category && proactiveLead.lead_category !== hunterContext?.sector && (
+                              <div className="flex items-center gap-2.5 text-sm">
+                                <Briefcase className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                <span className="text-xs truncate">{proactiveLead.lead_category}</span>
+                              </div>
+                            )}
+                            {(proactiveLead?.source || (proactiveLead?.lead_info as any)?.fonte) && (
+                              <div className="flex items-center gap-2.5 text-sm">
+                                <Zap className="h-3.5 w-3.5 text-violet-500 flex-shrink-0" />
+                                <span className="text-xs">{proactiveLead?.source || (proactiveLead?.lead_info as any)?.fonte}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
                     )}
-                    {contact.email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="truncate">{contact.email}</span>
-                      </div>
-                    )}
+
                     {contact.userId && (
-                      <Link href={`/consultant/clients/${contact.userId}`}>
-                        <Button variant="outline" size="sm" className="w-full mt-2">
-                          <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                          Vai al Profilo Cliente
-                        </Button>
-                      </Link>
+                      <>
+                        <Separator />
+                        <div className="px-4 py-3">
+                          <Link href={`/consultant/clients/${contact.userId}`}>
+                            <Button variant="outline" size="sm" className="w-full text-xs">
+                              <ExternalLink className="h-3 w-3 mr-1.5" />
+                              Apri Profilo Cliente
+                            </Button>
+                          </Link>
+                        </div>
+                      </>
                     )}
                   </CardContent>
                 </Card>
 
-                {hunterContext && (
-                  <Card className="border-blue-200 dark:border-blue-800">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Search className="h-4 w-4 text-blue-600" />
-                        Dati Hunter
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      {hunterContext.score !== null && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">Score</span>
-                          <Badge variant={hunterContext.score >= 70 ? "default" : hunterContext.score >= 40 ? "secondary" : "outline"}>
-                            {hunterContext.score}/100
-                          </Badge>
+                {hunterContext?.teamMembers && hunterContext.teamMembers.length > 0 && (
+                  <Card>
+                    <CardContent className="p-0">
+                      <div className="px-4 py-3 space-y-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <Users className="h-3 w-3" />
+                          Persone Chiave
+                        </p>
+                        <div className="space-y-2">
+                          {hunterContext.teamMembers.map((member, idx) => (
+                            <div key={idx} className="flex items-start gap-2.5">
+                              <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground flex-shrink-0 mt-0.5">
+                                {member.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium leading-tight truncate">{member.name}</p>
+                                {member.role && (
+                                  <p className="text-[11px] text-muted-foreground truncate">{member.role}</p>
+                                )}
+                                {member.email && (
+                                  <p className="text-[11px] text-muted-foreground truncate">{member.email}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      )}
-                      {hunterContext.businessName && (
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate">{hunterContext.businessName}</span>
-                        </div>
-                      )}
-                      {hunterContext.sector && (
-                        <div className="flex items-center gap-2">
-                          <Target className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate">{hunterContext.sector}</span>
-                        </div>
-                      )}
-                      {hunterContext.website && (
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                          <a href={hunterContext.website.startsWith("http") ? hunterContext.website : `https://${hunterContext.website}`}
-                             target="_blank" rel="noopener noreferrer"
-                             className="text-blue-600 hover:underline truncate">
-                            {hunterContext.website}
-                          </a>
-                        </div>
-                      )}
-                      {hunterContext.leadStatus && (
-                        <div className="flex items-center gap-2">
-                          <Hash className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                          <Badge variant="outline" className="capitalize">{hunterContext.leadStatus}</Badge>
-                        </div>
-                      )}
-                      {hunterContext.aiSalesSummary && (
-                        <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/30 rounded text-xs">
-                          {hunterContext.aiSalesSummary}
-                        </div>
-                      )}
+                      </div>
                     </CardContent>
                   </Card>
                 )}
 
-                {proactiveLead && (
-                  <Card className="border-violet-200 dark:border-violet-800">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-violet-600" />
-                        Lead Proattivo
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      {proactiveLead.lead_name && (
-                        <div><span className="text-muted-foreground">Nome:</span> <span className="font-medium">{proactiveLead.lead_name}</span></div>
-                      )}
-                      {proactiveLead.source && (
-                        <div><span className="text-muted-foreground">Fonte:</span> <span>{proactiveLead.source}</span></div>
-                      )}
-                      {proactiveLead.outreach_status && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">Stato:</span>
-                          <Badge variant="outline" className="capitalize">{proactiveLead.outreach_status}</Badge>
-                        </div>
-                      )}
-                      {proactiveLead.objectives && (
-                        <div className="mt-1">
-                          <span className="text-muted-foreground text-xs">Obiettivi:</span>
-                          <p className="text-xs mt-0.5">{proactiveLead.objectives}</p>
-                        </div>
-                      )}
-                      {proactiveLead.desires && (
-                        <div className="mt-1">
-                          <span className="text-muted-foreground text-xs">Desideri:</span>
-                          <p className="text-xs mt-0.5">{proactiveLead.desires}</p>
-                        </div>
-                      )}
-                      {proactiveLead.hook && (
-                        <div className="mt-1">
-                          <span className="text-muted-foreground text-xs">Uncino:</span>
-                          <p className="text-xs mt-0.5">{proactiveLead.hook}</p>
-                        </div>
-                      )}
+                {hunterContext?.aiSalesSummary && (
+                  <Card>
+                    <CardContent className="p-0">
+                      <div className="px-4 py-3 space-y-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <TrendingUp className="h-3 w-3" />
+                          Analisi AI
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+                          {hunterContext.aiSalesSummary.length > 500
+                            ? hunterContext.aiSalesSummary.substring(0, 500) + '...'
+                            : hunterContext.aiSalesSummary}
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
                 )}
+
+                {proactiveLead && (() => {
+                  const li = proactiveLead.lead_info && typeof proactiveLead.lead_info === 'object' ? proactiveLead.lead_info : null;
+                  const cs = proactiveLead.campaign_snapshot && typeof proactiveLead.campaign_snapshot === 'object' ? proactiveLead.campaign_snapshot : null;
+                  const obiettivi = proactiveLead.objectives || li?.obiettivi || cs?.obiettivi;
+                  const desideri = proactiveLead.desires || li?.desideri || cs?.desideri;
+                  const uncino = proactiveLead.hook || li?.uncino || cs?.uncino;
+                  const fonte = proactiveLead.source || li?.fonte;
+                  const statoIdeale = cs?.statoIdeale;
+                  const hasContent = obiettivi || desideri || uncino || statoIdeale;
+                  if (!hasContent) return null;
+                  return (
+                    <Card>
+                      <CardContent className="p-0">
+                        <div className="px-4 py-3 space-y-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                            <Zap className="h-3 w-3 text-violet-500" />
+                            Intel Lead
+                            {fonte && <span className="normal-case font-normal ml-1">({fonte})</span>}
+                          </p>
+                          <div className="space-y-2">
+                            {obiettivi && (
+                              <div>
+                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-0.5">Obiettivi</p>
+                                <p className="text-xs leading-relaxed">{obiettivi}</p>
+                              </div>
+                            )}
+                            {desideri && (
+                              <div>
+                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-0.5">Desideri</p>
+                                <p className="text-xs leading-relaxed">{desideri}</p>
+                              </div>
+                            )}
+                            {uncino && (
+                              <div>
+                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-0.5">Uncino</p>
+                                <p className="text-xs leading-relaxed">{uncino}</p>
+                              </div>
+                            )}
+                            {statoIdeale && (
+                              <div>
+                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-0.5">Stato Ideale</p>
+                                <p className="text-xs leading-relaxed">{statoIdeale}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
 
                 {nextRetry && (
-                  <Card className="border-orange-200 dark:border-orange-800">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Timer className="h-4 w-4 text-orange-600" />
-                        Prossimo Retry
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Stato</span>
-                        <Badge variant="outline" className="capitalize">
-                          {CALL_STATUS[nextRetry.status]?.label || nextRetry.status}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Tentativi</span>
-                        <span className="font-medium">{nextRetry.attempts}/{nextRetry.max_attempts}</span>
-                      </div>
-                      {nextRetry.next_retry_at && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">Prossimo</span>
-                          <span className="font-medium text-orange-600">
-                            {formatDistanceToNow(new Date(nextRetry.next_retry_at), { addSuffix: true, locale: it })}
-                          </span>
+                  <Card className="border-orange-200/60 dark:border-orange-800/40">
+                    <CardContent className="p-0">
+                      <div className="px-4 py-3 space-y-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-1.5">
+                          <Timer className="h-3 w-3" />
+                          Retry Programmato
+                        </p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Stato</span>
+                          <Badge variant="outline" className="capitalize text-[11px]">
+                            {CALL_STATUS[nextRetry.status]?.label || nextRetry.status}
+                          </Badge>
                         </div>
-                      )}
-                      {nextRetry.retry_reason && (
-                        <div className="p-2 bg-orange-50 dark:bg-orange-950/30 rounded text-xs">
-                          {nextRetry.retry_reason}
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Tentativi</span>
+                          <span className="font-medium">{nextRetry.attempts}/{nextRetry.max_attempts}</span>
                         </div>
-                      )}
+                        {nextRetry.next_retry_at && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">Prossimo</span>
+                            <span className="font-medium text-orange-600 dark:text-orange-400">
+                              {formatDistanceToNow(new Date(nextRetry.next_retry_at), { addSuffix: true, locale: it })}
+                            </span>
+                          </div>
+                        )}
+                        {nextRetry.retry_reason && (
+                          <p className="text-[11px] text-muted-foreground bg-orange-50 dark:bg-orange-950/20 rounded px-2 py-1.5 mt-1">
+                            {nextRetry.retry_reason}
+                          </p>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 )}
 
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Activity className="h-4 w-4" />
-                      Riepilogo
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Chiamate</span>
-                      <span className="font-medium">{safeStats.totalCalls}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <CheckCircle className="h-3 w-3 text-green-600" /> Completate
-                      </span>
-                      <span className="font-medium">{safeStats.completed}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <PhoneMissed className="h-3 w-3 text-red-500" /> Non risponde
-                      </span>
-                      <span className="font-medium">{safeStats.noAnswer}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <PhoneOff className="h-3 w-3 text-orange-500" /> Occupato
-                      </span>
-                      <span className="font-medium">{safeStats.busy}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3 text-yellow-600" /> Brevi
-                      </span>
-                      <span className="font-medium">{safeStats.shortCall}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Volume2 className="h-3 w-3 text-purple-500" /> Segreteria
-                      </span>
-                      <span className="font-medium">{safeStats.voicemail}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <PhoneMissed className="h-3 w-3 text-red-600" /> Fallite
-                      </span>
-                      <span className="font-medium">{safeStats.failed}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tempo totale</span>
-                      <span className="font-medium">{formatDuration(safeStats.totalDuration)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Durata media</span>
-                      <span className="font-medium">{formatDuration(safeStats.avgDuration)}</span>
-                    </div>
-                    {safeStats.lastContact && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Ultimo contatto</span>
-                        <span className="text-xs">
-                          {formatDistanceToNow(new Date(safeStats.lastContact), { addSuffix: true, locale: it })}
-                        </span>
+                  <CardContent className="p-0">
+                    <div className="px-4 py-3 space-y-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <BarChart3 className="h-3 w-3" />
+                        Statistiche
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="text-center p-2 rounded-md bg-muted/40">
+                          <p className="text-lg font-bold leading-none">{safeStats.totalCalls}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1">Chiamate</p>
+                        </div>
+                        <div className="text-center p-2 rounded-md bg-green-50 dark:bg-green-950/20">
+                          <p className="text-lg font-bold leading-none text-green-600">{safeStats.completed}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1">Completate</p>
+                        </div>
+                        <div className="text-center p-2 rounded-md bg-muted/40">
+                          <p className="text-lg font-bold leading-none">{formatDuration(safeStats.avgDuration)}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1">Media</p>
+                        </div>
                       </div>
-                    )}
-                    {safeStats.firstContact && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Primo contatto</span>
-                        <span className="text-xs">
-                          {format(new Date(safeStats.firstContact), "dd/MM/yyyy", { locale: it })}
-                        </span>
+                      {(safeStats.noAnswer > 0 || safeStats.busy > 0 || safeStats.voicemail > 0 || safeStats.shortCall > 0 || safeStats.failed > 0) && (
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">
+                          {safeStats.noAnswer > 0 && (
+                            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <PhoneMissed className="h-3 w-3 text-red-400" />{safeStats.noAnswer} non risponde
+                            </span>
+                          )}
+                          {safeStats.busy > 0 && (
+                            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <PhoneOff className="h-3 w-3 text-orange-400" />{safeStats.busy} occupato
+                            </span>
+                          )}
+                          {safeStats.voicemail > 0 && (
+                            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <Volume2 className="h-3 w-3 text-purple-400" />{safeStats.voicemail} segreteria
+                            </span>
+                          )}
+                          {safeStats.shortCall > 0 && (
+                            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <AlertCircle className="h-3 w-3 text-yellow-500" />{safeStats.shortCall} brevi
+                            </span>
+                          )}
+                          {safeStats.failed > 0 && (
+                            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <PhoneMissed className="h-3 w-3 text-red-600" />{safeStats.failed} fallite
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <Separator />
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Tempo totale</span>
+                          <span className="font-medium">{formatDuration(safeStats.totalDuration)}</span>
+                        </div>
+                        {safeStats.lastContact && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Ultimo</span>
+                            <span>{formatDistanceToNow(new Date(safeStats.lastContact), { addSuffix: true, locale: it })}</span>
+                          </div>
+                        )}
+                        {safeStats.firstContact && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Primo</span>
+                            <span>{format(new Date(safeStats.firstContact), "dd/MM/yyyy", { locale: it })}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </CardContent>
                 </Card>
 
                 {recentTimelineEvents.length > 0 && (
                   <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <History className="h-4 w-4" />
-                        Attività Recente
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {recentTimelineEvents.map((event, idx) => {
-                        const cfg = getTimelineEventConfig(event);
-                        const EventIcon = cfg.icon;
-                        const desc = getTimelineEventDescription(event);
-                        return (
-                          <div key={idx} className="flex items-start gap-2 text-xs">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.bgColor}`}>
-                              <EventIcon className={`h-3 w-3 ${cfg.color}`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{desc}</p>
-                              {event.timestamp && (
-                                <p className="text-muted-foreground">
-                                  {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true, locale: it })}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <CardContent className="p-0">
+                      <div className="px-4 py-3 space-y-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <History className="h-3 w-3" />
+                          Attività Recente
+                        </p>
+                        <div className="space-y-2">
+                          {recentTimelineEvents.map((event, idx) => {
+                            const cfg = getTimelineEventConfig(event);
+                            const EventIcon = cfg.icon;
+                            const desc = getTimelineEventDescription(event);
+                            return (
+                              <div key={idx} className="flex items-start gap-2 text-xs">
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.bgColor}`}>
+                                  <EventIcon className={`h-3 w-3 ${cfg.color}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{desc}</p>
+                                  {event.timestamp && (
+                                    <p className="text-muted-foreground text-[11px]">
+                                      {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true, locale: it })}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 )}
