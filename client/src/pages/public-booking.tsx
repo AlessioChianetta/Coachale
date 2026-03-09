@@ -277,133 +277,135 @@ export default function PublicBooking() {
     );
   }
 
-  if (step === 'success' && bookingResult) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <Card className="max-w-lg w-full border-0 shadow-xl">
-          <CardContent className="pt-8 pb-8">
-            <SuccessScreen result={bookingResult} />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (step === 'form' || step === 'confirm') {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <Card className="max-w-lg w-full border-0 shadow-xl">
-          <CardContent className="pt-6">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goBack}
-              className="mb-4 -ml-2 text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Indietro
-            </Button>
-
-            {step === 'form' && (
-              <BookingForm
-                formData={formData}
-                onChange={setFormData}
-                onSubmit={handleFormSubmit}
-                selectedDate={selectedDate}
-                selectedTime={selectedTime}
-                duration={consultantInfo.appointmentDuration}
-              />
-            )}
-
-            {step === 'confirm' && selectedDate && selectedTime && (
-              <ConfirmStep
-                consultantName={consultantInfo.consultantName}
-                date={selectedDate}
-                time={selectedTime}
-                duration={consultantInfo.appointmentDuration}
-                formData={formData}
-                onConfirm={handleConfirmBooking}
-                loading={bookMutation.isPending}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto p-4 md:p-8">
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-          <div className="lg:w-[320px] flex-shrink-0">
-            <ConsultantInfoPanel 
-              consultantInfo={consultantInfo}
-            />
-          </div>
+        <Card className="border shadow-sm overflow-hidden">
+          <div className="flex flex-col lg:flex-row">
+            <div className="lg:w-[300px] flex-shrink-0 bg-white p-6 lg:p-8 border-b lg:border-b-0 lg:border-r border-gray-200">
+              <ConsultantInfoPanel consultantInfo={consultantInfo} />
+            </div>
 
-          <div className="flex-1 border-l-0 lg:border-l border-gray-200 lg:pl-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">
-              Select a Date & Time
-            </h2>
+            <div className="flex-1 bg-white p-6 lg:p-8">
+              {step === 'success' && bookingResult ? (
+                <SuccessScreen result={bookingResult} />
+              ) : step === 'form' || step === 'confirm' ? (
+                <div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={goBack}
+                    className="mb-6 -ml-2 text-gray-500 hover:text-gray-900"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-1" />
+                    Indietro
+                  </Button>
 
-            <CalendarGrid
-              currentMonth={currentMonth}
-              availableDates={availableDates}
-              selectedDate={selectedDate}
-              onSelectDate={handleDateSelect}
-              onPrevMonth={goToPrevMonth}
-              onNextMonth={goToNextMonth}
-              canGoPrev={canGoPrev}
-              loading={loadingSlots}
-            />
+                  {selectedDate && selectedTime && (
+                    <div className="mb-6 flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
+                      <CalendarDays className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {format(selectedDate, "EEEE d MMMM yyyy", { locale: it })} alle {selectedTime}
+                        </p>
+                        <p className="text-xs text-gray-500">{consultantInfo.appointmentDuration} minuti con {consultantInfo.consultantName}</p>
+                      </div>
+                    </div>
+                  )}
 
-            {!hasAvailabilityThisMonth && !loadingSlots && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-gray-600 text-sm">
-                  No times in {format(currentMonth, 'MMMM', { locale: it })}
-                </p>
-                <button 
-                  onClick={goToNextMonth}
-                  className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1 mt-1"
-                >
-                  View next month <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
+                  {step === 'form' && (
+                    <BookingForm
+                      formData={formData}
+                      onChange={setFormData}
+                      onSubmit={handleFormSubmit}
+                      selectedDate={selectedDate}
+                      selectedTime={selectedTime}
+                      duration={consultantInfo.appointmentDuration}
+                    />
+                  )}
 
-            {selectedDate && (
-              <div className="mt-6">
-                <TimeSlotList
-                  date={selectedDate}
-                  slots={timeSlotsForSelectedDate}
-                  selectedTime={selectedTime}
-                  onSelectTime={handleTimeSelect}
-                  duration={consultantInfo.appointmentDuration}
-                />
-              </div>
-            )}
+                  {step === 'confirm' && selectedDate && selectedTime && (
+                    <ConfirmStep
+                      consultantName={consultantInfo.consultantName}
+                      date={selectedDate}
+                      time={selectedTime}
+                      duration={consultantInfo.appointmentDuration}
+                      formData={formData}
+                      onConfirm={handleConfirmBooking}
+                      loading={bookMutation.isPending}
+                    />
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-6">
+                    Seleziona Data e Orario
+                  </h2>
 
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <div className="flex items-center gap-2 text-gray-600">
-                <Globe className="w-4 h-4" />
-                <span className="text-sm font-medium">Time zone</span>
-              </div>
-              <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
-                <SelectTrigger className="mt-2 w-full max-w-xs border-gray-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEZONES.map((tz) => (
-                    <SelectItem key={tz.value} value={tz.value}>
-                      {tz.label} ({format(new Date(), 'HH:mm')})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <div className="flex flex-col md:flex-row gap-6">
+                    <div className="flex-1 min-w-0">
+                      <CalendarGrid
+                        currentMonth={currentMonth}
+                        availableDates={availableDates}
+                        selectedDate={selectedDate}
+                        onSelectDate={handleDateSelect}
+                        onPrevMonth={goToPrevMonth}
+                        onNextMonth={goToNextMonth}
+                        canGoPrev={canGoPrev}
+                        loading={loadingSlots}
+                      />
+
+                      {!hasAvailabilityThisMonth && !loadingSlots && (
+                        <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-gray-600 text-sm">
+                            Nessuna disponibilita in {format(currentMonth, 'MMMM', { locale: it })}
+                          </p>
+                          <button 
+                            onClick={goToNextMonth}
+                            className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1 mt-1"
+                          >
+                            Vedi mese successivo <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {selectedDate && (
+                      <div className="md:w-[200px] flex-shrink-0 md:border-l md:border-gray-200 md:pl-6">
+                        <TimeSlotList
+                          date={selectedDate}
+                          slots={timeSlotsForSelectedDate}
+                          selectedTime={selectedTime}
+                          onSelectTime={handleTimeSelect}
+                          duration={consultantInfo.appointmentDuration}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <Globe className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">Fuso orario</span>
+                    </div>
+                    <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
+                      <SelectTrigger className="mt-1.5 w-full max-w-xs border-gray-200 h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIMEZONES.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>
+                            {tz.label} ({format(new Date(), 'HH:mm')})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
@@ -411,38 +413,39 @@ export default function PublicBooking() {
 
 function ConsultantInfoPanel({ consultantInfo }: { consultantInfo: ConsultantInfo }) {
   return (
-    <div className="space-y-4">
-      <Avatar className="w-16 h-16 border-2 border-gray-100">
+    <div className="space-y-5">
+      <Avatar className="w-14 h-14 border-2 border-gray-100">
         {consultantInfo.consultantAvatar ? (
           <AvatarImage src={consultantInfo.consultantAvatar} alt={consultantInfo.consultantName} />
         ) : null}
-        <AvatarFallback className="text-lg bg-blue-600 text-white">
+        <AvatarFallback className="text-sm font-semibold bg-gray-900 text-white">
           {consultantInfo.consultantName.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
 
       <div>
-        <p className="text-sm text-gray-500 mb-1">{consultantInfo.consultantName}</p>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">{consultantInfo.consultantName}</p>
+        <h1 className="text-xl font-bold text-gray-900 leading-tight">
           {consultantInfo.title || 'Consulenza'}
         </h1>
       </div>
 
-      <div className="flex items-center gap-2 text-gray-600">
-        <Clock className="w-4 h-4" />
-        <span className="text-sm">{consultantInfo.appointmentDuration} min</span>
+      <div className="space-y-2.5 pt-2 border-t border-gray-100">
+        <div className="flex items-center gap-2.5 text-gray-500">
+          <Clock className="w-4 h-4 flex-shrink-0" />
+          <span className="text-sm">{consultantInfo.appointmentDuration} min</span>
+        </div>
+        <div className="flex items-center gap-2.5 text-gray-500">
+          <Video className="w-4 h-4 flex-shrink-0" />
+          <span className="text-sm">Google Meet</span>
+        </div>
       </div>
 
       {consultantInfo.description && (
-        <p className="text-sm text-gray-600 leading-relaxed">
+        <p className="text-sm text-gray-500 leading-relaxed pt-2 border-t border-gray-100">
           {consultantInfo.description}
         </p>
       )}
-
-      <div className="flex items-center gap-2 text-gray-600">
-        <Video className="w-4 h-4" />
-        <span className="text-sm">Google Meet</span>
-      </div>
     </div>
   );
 }
@@ -479,7 +482,7 @@ function CalendarGrid({
     day = addDays(day, 1);
   }
 
-  const weekDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+  const weekDays = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
 
   return (
     <div>
@@ -487,20 +490,20 @@ function CalendarGrid({
         <button
           onClick={onPrevMonth}
           disabled={!canGoPrev}
-          className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${!canGoPrev ? 'opacity-30 cursor-not-allowed' : ''}`}
+          className={`p-1.5 rounded-md hover:bg-gray-100 transition-colors ${!canGoPrev ? 'opacity-30 cursor-not-allowed' : ''}`}
         >
-          <ChevronLeft className="w-5 h-5 text-gray-600" />
+          <ChevronLeft className="w-4 h-4 text-gray-600" />
         </button>
         
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-sm font-semibold text-gray-900 capitalize">
           {format(currentMonth, 'MMMM yyyy', { locale: it })}
         </h3>
         
         <button
           onClick={onNextMonth}
-          className="p-2 rounded-full hover:bg-gray-100 transition-colors bg-blue-600 text-white hover:bg-blue-700"
+          className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
         >
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className="w-4 h-4 text-gray-600" />
         </button>
       </div>
 
@@ -573,27 +576,27 @@ function TimeSlotList({
 }) {
   if (slots.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">Nessun orario disponibile per questa data.</p>
+      <div className="text-center py-6">
+        <p className="text-gray-400 text-sm">Nessun orario disponibile</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h3 className="font-medium text-gray-900 mb-3">
-        {format(date, "EEEE, d MMMM", { locale: it })}
+      <h3 className="text-sm font-medium text-gray-900 mb-3">
+        {format(date, "EEE d MMM", { locale: it })}
       </h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-2">
+      <div className="flex flex-col gap-1.5 max-h-[320px] overflow-y-auto pr-1">
         {slots.map((slot) => (
           <button
             key={slot.time}
             onClick={() => onSelectTime(slot.time)}
             className={`
-              py-3 px-4 rounded-lg border text-sm font-medium transition-all
+              py-2 px-3 rounded-md border text-sm font-medium transition-all text-center
               ${selectedTime === slot.time
                 ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-blue-600 border-blue-600 hover:bg-blue-50'
+                : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400 hover:text-blue-600'
               }
             `}
           >
@@ -622,15 +625,6 @@ function BookingForm({
 }) {
   return (
     <form onSubmit={onSubmit}>
-      {selectedDate && selectedTime && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-800 font-medium">
-            {format(selectedDate, "EEEE d MMMM yyyy", { locale: it })} alle {selectedTime}
-          </p>
-          <p className="text-xs text-blue-600 mt-1">{duration} minuti</p>
-        </div>
-      )}
-
       <h3 className="font-semibold text-gray-900 mb-4">I tuoi dati</h3>
 
       <div className="space-y-4">
