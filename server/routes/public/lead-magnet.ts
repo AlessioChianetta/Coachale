@@ -111,10 +111,12 @@ router.post('/start', async (req: Request, res: Response) => {
 
     const consultantId = await resolveConsultantId(reqConsultantId);
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const existingSession = await db.execute(sql`
       SELECT id, public_token FROM delivery_agent_sessions
       WHERE consultant_id = ${consultantId}
-        AND lead_email = ${email.trim()}
+        AND LOWER(TRIM(lead_email)) = ${normalizedEmail}
         AND mode = 'onboarding'
         AND is_public = true
       ORDER BY created_at DESC
@@ -127,6 +129,11 @@ router.post('/start', async (req: Request, res: Response) => {
     if (existingSession.rows.length > 0) {
       sessionId = (existingSession.rows[0] as any).id;
       publicToken = (existingSession.rows[0] as any).public_token;
+      await db.execute(sql`
+        UPDATE delivery_agent_sessions
+        SET lead_name = ${name.trim()}, lead_phone = ${phone.trim()}, updated_at = NOW()
+        WHERE id = ${sessionId}
+      `);
     } else {
       publicToken = randomUUID();
       const sessionRes = await db.execute(sql`
@@ -135,7 +142,7 @@ router.post('/start', async (req: Request, res: Response) => {
           lead_name, lead_email, lead_phone
         ) VALUES (
           ${consultantId}, 'onboarding', 'discovery', true, ${publicToken},
-          ${name.trim()}, ${email.trim()}, ${phone.trim()}
+          ${name.trim()}, ${normalizedEmail}, ${phone.trim()}
         )
         RETURNING id
       `);

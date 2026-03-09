@@ -34,6 +34,9 @@ import {
   ArrowLeft,
   Layers,
   TrendingUp,
+  Sparkles,
+  User,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DeliveryChat } from "./DeliveryChat";
@@ -49,6 +52,9 @@ interface DeliverySession {
   updated_at: string;
   last_message?: string;
   message_count?: number;
+  is_public?: boolean;
+  lead_name?: string;
+  lead_email?: string;
 }
 
 const SIMULATOR_NICHES = [
@@ -259,6 +265,7 @@ export function DeliveryAgentPanel({ initialSessionId }: { initialSessionId?: st
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo">("chat");
   const [initialSessionLoaded, setInitialSessionLoaded] = useState(false);
+  const [showLeadMagnet, setShowLeadMagnet] = useState<boolean | null>(null);
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -283,9 +290,11 @@ export function DeliveryAgentPanel({ initialSessionId }: { initialSessionId?: st
   useEffect(() => {
     if (initialSessionId && !loading && !initialSessionLoaded) {
       setInitialSessionLoaded(true);
+      const isLeadSession = sessions.find(s => s.id === initialSessionId && s.is_public);
+      if (isLeadSession) setShowLeadMagnet(true);
       loadSession(initialSessionId);
     }
-  }, [initialSessionId, loading, initialSessionLoaded]);
+  }, [initialSessionId, loading, initialSessionLoaded, sessions]);
 
   const loadSession = useCallback(
     async (sessionId: string) => {
@@ -403,6 +412,13 @@ export function DeliveryAgentPanel({ initialSessionId }: { initialSessionId?: st
     [activeSession]
   );
 
+  const mySessions = sessions.filter(s => !s.is_public);
+  const leadMagnetSessions = sessions.filter(s => s.is_public);
+
+  const isLeadMagnetExpanded = showLeadMagnet === null
+    ? (mySessions.length === 0 && leadMagnetSessions.length > 0)
+    : showLeadMagnet;
+
   const sidebarContent = (
     <div className="flex flex-col h-full bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-900/80 dark:to-slate-950">
       <div className="p-3 border-b border-border/40">
@@ -417,33 +433,103 @@ export function DeliveryAgentPanel({ initialSessionId }: { initialSessionId?: st
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+          </div>
+        ) : sessions.length === 0 ? (
+          <div className="text-center py-10 px-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/30 dark:to-indigo-900/30 flex items-center justify-center mx-auto mb-3 shadow-inner">
+              <Bot className="w-6 h-6 text-violet-400 dark:text-violet-500" />
             </div>
-          ) : sessions.length === 0 ? (
-            <div className="text-center py-10 px-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/30 dark:to-indigo-900/30 flex items-center justify-center mx-auto mb-3 shadow-inner">
-                <Bot className="w-6 h-6 text-violet-400 dark:text-violet-500" />
+            <p className="text-sm font-medium text-muted-foreground">Nessuna sessione</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">
+              Crea una nuova sessione per iniziare
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            <div className="px-3 pt-3 pb-1">
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                <User className="w-3 h-3" />
+                Le mie sessioni
               </div>
-              <p className="text-sm font-medium text-muted-foreground">Nessuna sessione</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">
-                Crea una nuova sessione per iniziare
-              </p>
             </div>
-          ) : (
-            sessions.map((session) => (
-              <SessionItem
-                key={session.id}
-                session={session}
-                isActive={activeSessionId === session.id}
-                onClick={() => loadSession(session.id)}
-                onDelete={() => deleteSession(session.id)}
-              />
-            ))
-          )}
-        </div>
+            <div className="p-2 pt-1 space-y-1">
+              {mySessions.length === 0 ? (
+                <p className="text-xs text-muted-foreground/50 px-2 py-3 text-center">Nessuna sessione personale</p>
+              ) : (
+                mySessions.map((session) => (
+                  <SessionItem
+                    key={session.id}
+                    session={session}
+                    isActive={activeSessionId === session.id}
+                    onClick={() => loadSession(session.id)}
+                    onDelete={() => deleteSession(session.id)}
+                  />
+                ))
+              )}
+            </div>
+
+            {leadMagnetSessions.length > 0 && (
+              <>
+                <div className="mx-3 border-t border-border/40" />
+                <button
+                  onClick={() => setShowLeadMagnet(!isLeadMagnetExpanded)}
+                  className="flex items-center justify-between px-3 pt-3 pb-1 w-full hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                    <Sparkles className="w-3 h-3" />
+                    Lead Magnet ({leadMagnetSessions.length})
+                  </div>
+                  <ChevronDown className={cn("w-3 h-3 text-muted-foreground/50 transition-transform", isLeadMagnetExpanded && "rotate-180")} />
+                </button>
+                {isLeadMagnetExpanded && (
+                  <div className="p-2 pt-1 space-y-1">
+                    {leadMagnetSessions.map((session) => (
+                      <button
+                        key={session.id}
+                        onClick={() => loadSession(session.id)}
+                        className={cn(
+                          "w-full text-left p-3 rounded-xl transition-all group relative",
+                          activeSessionId === session.id
+                            ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700"
+                            : "hover:bg-muted/60 border border-transparent"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-foreground truncate">
+                              {session.lead_name || "Lead senza nome"}
+                            </p>
+                            {session.lead_email && (
+                              <p className="text-[10px] text-muted-foreground/70 truncate">{session.lead_email}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                              {session.last_message || "Nuova sessione"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground/70 mt-1 flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5" />
+                              {new Date(session.created_at).toLocaleDateString("it-IT", {
+                                day: "2-digit",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400 shrink-0">
+                            {session.status === "completed" || session.status === "assistant" ? "Completato" : "In corso"}
+                          </Badge>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </ScrollArea>
     </div>
   );
