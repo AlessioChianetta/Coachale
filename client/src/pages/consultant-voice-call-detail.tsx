@@ -22,6 +22,7 @@ import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ChatMarkdown } from "@/components/shared/ChatMarkdown";
 import { format, formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 
@@ -1221,11 +1222,14 @@ export default function ConsultantVoiceCallDetailPage() {
                           <TrendingUp className="h-3 w-3" />
                           Analisi AI
                         </p>
-                        <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
-                          {hunterContext.aiSalesSummary.length > 500
-                            ? hunterContext.aiSalesSummary.substring(0, 500) + '...'
-                            : hunterContext.aiSalesSummary}
-                        </p>
+                        <ScrollArea className="max-h-[360px] overflow-auto">
+                          <div className="prose-compact-ai text-xs leading-relaxed">
+                            <ChatMarkdown
+                              content={hunterContext.aiSalesSummary}
+                              className="ai-sales-summary"
+                            />
+                          </div>
+                        </ScrollArea>
                       </div>
                     </CardContent>
                   </Card>
