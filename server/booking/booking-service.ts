@@ -1812,18 +1812,6 @@ export async function getPublicAvailableSlots(
 
   const current = new Date(effectiveStartDate);
   current.setHours(0, 0, 0, 0);
-  
-  // Calculate timezone offset for consultant's timezone
-  // This converts local times (e.g., 09:00 Europe/Rome) to UTC for comparison
-  const getTimezoneOffset = (date: Date, tz: string): number => {
-    try {
-      const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-      const tzDate = new Date(date.toLocaleString('en-US', { timeZone: tz }));
-      return (utcDate.getTime() - tzDate.getTime()) / (60 * 1000); // offset in minutes
-    } catch {
-      return -60; // Default to Europe/Rome winter time (UTC+1 = -60 minutes)
-    }
-  };
 
   while (current <= effectiveEndDate && availableSlots.length < limit) {
     const dayOfWeek = current.getDay();
@@ -1839,22 +1827,14 @@ export async function getPublicAvailableSlots(
         let slotStartMin = startMin;
 
         while (slotStartHour < endHour || (slotStartHour === endHour && slotStartMin < endMin)) {
-          // Create slot time in consultant's timezone by adjusting for offset
-          const dateStr = current.toISOString().slice(0, 10); // YYYY-MM-DD
-          const timeStr = `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}:00`;
+          const slotTimeDisplay = `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}`;
           
-          // Parse as local time in consultant's timezone
-          const localSlotStart = new Date(`${dateStr}T${timeStr}`);
-          const tzOffset = getTimezoneOffset(localSlotStart, timezone);
-          
-          // Convert to UTC for comparison with Google Calendar events (which are in UTC)
-          const slotStart = new Date(localSlotStart.getTime() + tzOffset * 60 * 1000);
-          
+          const slotStart = localTimeToUtc(current, slotTimeDisplay, timezone);
           const slotEnd = new Date(slotStart.getTime() + appointmentDuration * 60 * 1000);
           
-          const slotEndHour = slotEnd.getHours();
-          const slotEndMin = slotEnd.getMinutes();
-          if (slotEndHour > endHour || (slotEndHour === endHour && slotEndMin > endMin)) {
+          const slotEndLocalHour = slotStartHour + Math.floor((slotStartMin + appointmentDuration) / 60);
+          const slotEndLocalMin = (slotStartMin + appointmentDuration) % 60;
+          if (slotEndLocalHour > endHour || (slotEndLocalHour === endHour && slotEndLocalMin > endMin)) {
             break;
           }
           
@@ -1863,11 +1843,12 @@ export async function getPublicAvailableSlots(
             const bufferedEnd = new Date(slotEnd.getTime() + bufferAfter * 60 * 1000);
             
             if (!isSlotBusy(bufferedStart, bufferedEnd)) {
+              const currentDateStr = current.toISOString().slice(0, 10);
               availableSlots.push({
-                date: slotStart.toISOString().slice(0, 10),
+                date: currentDateStr,
                 dayOfWeek: dayName,
-                time: `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}`,
-                dateFormatted: slotStart.toLocaleDateString('it-IT', {
+                time: slotTimeDisplay,
+                dateFormatted: current.toLocaleDateString('it-IT', {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long'
@@ -1893,6 +1874,8 @@ export async function getPublicAvailableSlots(
 
     current.setDate(current.getDate() + 1);
   }
+
+  console.log(`[PUBLIC BOOKING] Slots generated: ${availableSlots.length} available, ${busyRanges.length} busy ranges loaded (consultant: ${consultantId})`);
 
   return availableSlots;
 }
