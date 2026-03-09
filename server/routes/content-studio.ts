@@ -1920,16 +1920,66 @@ router.post("/ai/generate-market-research", authenticateToken, requireRole("cons
     let brandSection = "";
     if (Object.keys(brandCtx).length > 0) {
       brandSection = `\n=== BRAND VOICE ===\n`;
+      if (brandCtx.consultantDisplayName) brandSection += `Consulente: ${brandCtx.consultantDisplayName}\n`;
       if (brandCtx.businessName) brandSection += `Business: ${brandCtx.businessName}\n`;
       if (brandCtx.businessDescription) brandSection += `Descrizione: ${brandCtx.businessDescription}\n`;
+      if (brandCtx.consultantBio) brandSection += `Bio: ${brandCtx.consultantBio}\n`;
       if (brandCtx.usp) brandSection += `USP: ${brandCtx.usp}\n`;
       if (brandCtx.whatWeDo) brandSection += `Cosa facciamo: ${brandCtx.whatWeDo}\n`;
       if (brandCtx.whoWeHelp) brandSection += `Chi aiutiamo: ${brandCtx.whoWeHelp}\n`;
+      if (brandCtx.whoWeDontHelp) brandSection += `Chi NON aiutiamo: ${brandCtx.whoWeDontHelp}\n`;
       if (brandCtx.howWeDoIt) brandSection += `Come lo facciamo: ${brandCtx.howWeDoIt}\n`;
       if (brandCtx.vision) brandSection += `Vision: ${brandCtx.vision}\n`;
       if (brandCtx.mission) brandSection += `Mission: ${brandCtx.mission}\n`;
-      if (brandCtx.values && brandCtx.values.length > 0) brandSection += `Valori: ${brandCtx.values.join(", ")}\n`;
+      if (Array.isArray(brandCtx.values) && brandCtx.values.length > 0) brandSection += `Valori: ${brandCtx.values.join(", ")}\n`;
       if (brandCtx.guarantees) brandSection += `Garanzie: ${brandCtx.guarantees}\n`;
+
+      const swArr = Array.isArray(brandCtx.softwareCreated) ? brandCtx.softwareCreated : [];
+      const bkArr = Array.isArray(brandCtx.booksPublished) ? brandCtx.booksPublished : [];
+      const csArr = Array.isArray(brandCtx.caseStudies) ? brandCtx.caseStudies : [];
+      const hasCredentials = brandCtx.yearsExperience || brandCtx.clientsHelped || brandCtx.resultsGenerated ||
+        swArr.length > 0 || bkArr.length > 0 || csArr.length > 0;
+      if (hasCredentials) {
+        brandSection += `\n--- Credibilità & Prove Sociali ---\n`;
+        if (brandCtx.yearsExperience) brandSection += `Anni di esperienza: ${brandCtx.yearsExperience}\n`;
+        if (brandCtx.clientsHelped) brandSection += `Clienti aiutati: ${brandCtx.clientsHelped}+\n`;
+        if (brandCtx.resultsGenerated) brandSection += `Risultati generati: ${brandCtx.resultsGenerated}\n`;
+        if (swArr.length > 0) {
+          brandSection += `Software creati: ${swArr.map((s: any) => `${s.emoji || ''} ${s.name || ''}${s.description ? ': ' + s.description : ''}`).join('; ')}\n`;
+        }
+        if (bkArr.length > 0) {
+          brandSection += `Libri pubblicati: ${bkArr.map((b: any) => `"${b.title || ''}"${b.year ? ' (' + b.year + ')' : ''}`).join('; ')}\n`;
+        }
+        if (csArr.length > 0) {
+          brandSection += `Case studies: ${csArr.map((c: any) => `${c.client || ''} → ${c.result || ''}`).join('; ')}\n`;
+        }
+      }
+
+      const svArr = Array.isArray(brandCtx.servicesOffered) ? brandCtx.servicesOffered : [];
+      if (svArr.length > 0) {
+        brandSection += `\n--- Servizi Offerti ---\n`;
+        svArr.forEach((s: any) => {
+          brandSection += `- ${s.name || ''}${s.price ? ' (' + s.price + ')' : ''}${s.description ? ': ' + s.description : ''}\n`;
+        });
+      }
+
+      const weArr = Array.isArray(brandCtx.writingExamples) ? brandCtx.writingExamples : [];
+      const spArr = Array.isArray(brandCtx.signaturePhrases) ? brandCtx.signaturePhrases : [];
+      const hasStyle = brandCtx.personalTone || brandCtx.contentPersonality || brandCtx.audienceLanguage ||
+        brandCtx.avoidPatterns || weArr.length > 0 || spArr.length > 0;
+      if (hasStyle) {
+        brandSection += `\n--- Stile di Comunicazione ---\n`;
+        if (brandCtx.personalTone) brandSection += `Tono: ${brandCtx.personalTone}\n`;
+        if (brandCtx.contentPersonality) brandSection += `Personalità contenuti: ${brandCtx.contentPersonality}\n`;
+        if (brandCtx.audienceLanguage) brandSection += `Linguaggio del pubblico: ${brandCtx.audienceLanguage}\n`;
+        if (brandCtx.avoidPatterns) brandSection += `Da evitare: ${brandCtx.avoidPatterns}\n`;
+        if (weArr.length > 0) {
+          brandSection += `Esempi di scrittura reale:\n${weArr.map((e: string) => `  "${e}"`).join('\n')}\n`;
+        }
+        if (spArr.length > 0) {
+          brandSection += `Frasi firma: ${spArr.join('; ')}\n`;
+        }
+      }
     }
 
     (async () => {
@@ -2257,6 +2307,7 @@ NICCHIA: ${input.niche}
 TARGET: ${input.targetAudience}
 ${input.whatYouSell ? `PRODOTTO/SERVIZIO: ${input.whatYouSell}` : ''}
 ${input.promisedResult ? `RISULTATO PROMESSO: ${input.promisedResult}` : ''}
+${brandSection}
 
 === FONTE 1: DATI GOOGLE ===
 ${webDataSection}
