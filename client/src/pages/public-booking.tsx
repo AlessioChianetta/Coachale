@@ -252,10 +252,10 @@ export default function PublicBooking() {
 
   if (loadingInfo) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-3" />
-          <p className="text-sm text-gray-400">Caricamento in corso...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-500">Caricamento in corso...</p>
         </div>
       </div>
     );
@@ -263,12 +263,12 @@ export default function PublicBooking() {
 
   if (infoError || !consultantInfo) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full border shadow-sm">
-          <CardContent className="pt-8 pb-8 text-center">
-            <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h1 className="text-lg font-semibold text-gray-900 mb-2">Pagina non disponibile</h1>
-            <p className="text-sm text-gray-500">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <Card className="max-w-md w-full border-0 shadow-lg">
+          <CardContent className="pt-6 text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h1 className="text-xl font-semibold mb-2">Pagina non disponibile</h1>
+            <p className="text-gray-500">
               {(infoError as Error)?.message || 'Questa pagina di prenotazione non è attiva o il consulente non esiste.'}
             </p>
           </CardContent>
@@ -343,7 +343,7 @@ export default function PublicBooking() {
                   </h2>
 
                   <div className="flex flex-col md:flex-row gap-6">
-                    <div className="max-w-[400px]">
+                    <div className="flex-1 min-w-0">
                       <CalendarGrid
                         currentMonth={currentMonth}
                         availableDates={availableDates}
