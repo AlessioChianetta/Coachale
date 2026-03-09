@@ -7542,34 +7542,55 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                     const serverProcessing = turnWatchdogStartedTime > 0 ? turnWatchdogStartedTime - userFinishedSpeakingTime : 0;
                     const geminiThinking = turnWatchdogStartedTime > 0 ? now - turnWatchdogStartedTime : totalTurnLatencyMs;
                     
-                    console.log(`\n⏱️ ┌─── TURN LATENCY #${turnCount} ────────────────────────────────────────────┐`);
-                    console.log(`⏱️ │  🏁 User→AI first audio: ${String(totalTurnLatencyMs).padStart(5)}ms (${(totalTurnLatencyMs / 1000).toFixed(1)}s)${totalTurnLatencyMs > 2000 ? ' ⚠️ SLOW!' : totalTurnLatencyMs > 1000 ? ' ⚡' : ' ✅'}  │`);
-                    console.log(`⏱️ │  ─────────────────────────────────────────                    │`);
-                    console.log(`⏱️ │  Server processing: ${String(serverProcessing).padStart(5)}ms  (${serverProcessing > 0 ? ((serverProcessing / totalTurnLatencyMs) * 100).toFixed(0) : '0'  }%)                           │`);
-                    if (turnSalesTrackerDoneTime > 0) {
-                      const salesMs = turnSalesTrackerDoneTime - userFinishedSpeakingTime;
-                      console.log(`⏱️ │    └─ salesTracker:    ${String(salesMs).padStart(5)}ms${salesMs > 100 ? ' ⚠️' : ''}                            │`);
+                    const vadSilenceConfig = voiceVadSilenceMs;
+                    const downstreamEstimate = 250;
+                    const upstreamVpsToReplit = 100;
+                    const fullPerceivedMs = vadSilenceConfig + totalTurnLatencyMs + downstreamEstimate;
+                    const vadToTranscript = isPhoneCall && lastPhoneAudioReceivedTime > 0 ? Math.max(0, userFinishedSpeakingTime - lastPhoneAudioReceivedTime) : 0;
+                    
+                    console.log(`\n⏱️ ┌─── FULL LATENCY CHAIN #${turnCount} ──────────────────────────────────────┐`);
+                    console.log(`⏱️ │                                                                │`);
+                    console.log(`⏱️ │  ☎️  UPSTREAM (User voice → Gemini)                            │`);
+                    console.log(`⏱️ │    Phone→FreeSWITCH→VPS:        ~fixed (SIP)                   │`);
+                    console.log(`⏱️ │    VPS resample (8→16kHz):       ~2ms                          │`);
+                    console.log(`⏱️ │    VPS→Replit (network):       ~${String(upstreamVpsToReplit).padStart(3)}ms                         │`);
+                    console.log(`⏱️ │    Gemini VAD silence wait:    ${String(vadSilenceConfig).padStart(4)}ms ← HIDDEN COST             │`);
+                    if (vadToTranscript > 0) {
+                      console.log(`⏱️ │    VAD actual (audio→isFinal): ${String(vadToTranscript).padStart(4)}ms (measured)               │`);
                     }
+                    console.log(`⏱️ │                                                                │`);
+                    console.log(`⏱️ │  🖥️  SERVER PROCESSING                                        │`);
+                    console.log(`⏱️ │    Feedback+commit+watchdog:   ${String(serverProcessing).padStart(4)}ms                          │`);
                     if (turnFeedbackInjectedTime > 0) {
-                      const fbMs = turnFeedbackInjectedTime - (turnSalesTrackerDoneTime || userFinishedSpeakingTime);
-                      console.log(`⏱️ │    └─ feedback inject: ${String(fbMs).padStart(5)}ms                            │`);
+                      const fbMs = turnFeedbackInjectedTime - userFinishedSpeakingTime;
+                      console.log(`⏱️ │      └─ feedback inject:      ${String(fbMs).padStart(4)}ms                          │`);
                     }
                     if (turnCommitDoneTime > 0) {
-                      const cmMs = turnCommitDoneTime - (turnFeedbackInjectedTime || turnSalesTrackerDoneTime || userFinishedSpeakingTime);
-                      console.log(`⏱️ │    └─ commit:          ${String(cmMs).padStart(5)}ms                            │`);
+                      const cmMs = turnCommitDoneTime - (turnFeedbackInjectedTime || userFinishedSpeakingTime);
+                      console.log(`⏱️ │      └─ commit:               ${String(cmMs).padStart(4)}ms                          │`);
                     }
-                    console.log(`⏱️ │  Gemini thinking:  ${String(geminiThinking).padStart(5)}ms  (${geminiThinking > 0 ? ((geminiThinking / totalTurnLatencyMs) * 100).toFixed(0) : '0'}%) ← AI processing            │`);
-                    if (isPhoneCall && lastPhoneAudioReceivedTime > 0) {
-                      const e2eLatency = Date.now() - lastPhoneAudioReceivedTime;
-                      const vadToTranscript = userFinishedSpeakingTime - lastPhoneAudioReceivedTime;
-                      console.log(`⏱️ │  ─────────────────────────────────────────                    │`);
-                      console.log(`⏱️ │  📞 E2E PHONE LATENCY (estimated):                          │`);
-                      console.log(`⏱️ │    Last phone audio → now: ${String(e2eLatency).padStart(5)}ms                            │`);
-                      console.log(`⏱️ │    VAD gap (audio→transcript): ${String(Math.max(0, vadToTranscript)).padStart(5)}ms                        │`);
-                      console.log(`⏱️ │    + downstream VPS→phone: ~300-500ms                        │`);
-                      console.log(`⏱️ │    ≈ PERCEIVED: ${String(e2eLatency + 400).padStart(5)}ms (${((e2eLatency + 400) / 1000).toFixed(1)}s)${(e2eLatency + 400) > 3000 ? ' ⚠️ SLOW' : ' ⚡'}                       │`);
-                    }
-                    console.log(`⏱️ └──────────────────────────────────────────────────────────────┘\n`);
+                    console.log(`⏱️ │    salesTracker:               async (non-blocking)            │`);
+                    console.log(`⏱️ │                                                                │`);
+                    console.log(`⏱️ │  🤖 GEMINI THINKING                                           │`);
+                    console.log(`⏱️ │    AI processing:             ${String(geminiThinking).padStart(4)}ms (${(geminiThinking / 1000).toFixed(1)}s)                   │`);
+                    console.log(`⏱️ │                                                                │`);
+                    console.log(`⏱️ │  📡 DOWNSTREAM (Gemini → Phone)                               │`);
+                    console.log(`⏱️ │    Replit→VPS (network):       ~${String(upstreamVpsToReplit).padStart(3)}ms                         │`);
+                    console.log(`⏱️ │    VPS resample (24→8kHz):      ~2ms                          │`);
+                    console.log(`⏱️ │    VPS queue+prefill:           ~40ms                          │`);
+                    console.log(`⏱️ │    VPS→FreeSWITCH→Phone:      ~${String(downstreamEstimate - 40 - upstreamVpsToReplit).padStart(3)}ms (SIP/RTP)                  │`);
+                    console.log(`⏱️ │                                                                │`);
+                    console.log(`⏱️ │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │`);
+                    console.log(`⏱️ │  📊 MEASURED (isFinal→1st audio):  ${String(totalTurnLatencyMs).padStart(5)}ms (${(totalTurnLatencyMs / 1000).toFixed(1)}s)              │`);
+                    console.log(`⏱️ │     └─ server: ${String(serverProcessing).padStart(4)}ms + gemini: ${String(geminiThinking).padStart(4)}ms                    │`);
+                    console.log(`⏱️ │                                                                │`);
+                    const perceivedSec = (fullPerceivedMs / 1000).toFixed(1);
+                    const perceivedIcon = fullPerceivedMs > 3000 ? '⚠️ SLOW' : fullPerceivedMs > 2000 ? '⚡' : '✅';
+                    console.log(`⏱️ │  🎯 FULL PERCEIVED (user ears):   ${String(fullPerceivedMs).padStart(5)}ms (${perceivedSec}s) ${perceivedIcon}     │`);
+                    console.log(`⏱️ │     = VAD(${vadSilenceConfig}) + measured(${totalTurnLatencyMs}) + downstream(${downstreamEstimate})        │`);
+                    console.log(`⏱️ │                                                                │`);
+                    console.log(`⏱️ │  ⚙️  CONFIG: vadSilence=${vadSilenceConfig}ms endSens=${voiceVadEndSensitivity}  │`);
+                    console.log(`⏱️ └────────────────────────────────────────────────────────────────┘\n`);
                   }
                 } else {
                   // Assicurati che rimanga true durante tutto lo streaming
@@ -7843,41 +7864,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 vadConcatBuffer = '';
                 vadLastChunkTime = 0;
                 
-                // 🔧 FIX: Use try/finally to ensure both commit AND reset happen
-                // even if salesTracker throws an error
-                try {
-                  // Track with salesTracker if available
-                  if (salesTracker && salesLogger) {
-                    try {
-                      await salesTracker.trackUserMessage(finalTranscript);
-                      const state = salesTracker.getState();
-                      salesLogger.logUserMessage(finalTranscript, state.currentPhase);
-                      
-                      // Check if response was vague (ladder continuation logic)
-                      const lastLadder = state.ladderActivations[state.ladderActivations.length - 1];
-                      if (lastLadder && salesLogger) {
-                        salesLogger.logLadderResponse(lastLadder.wasVague, lastLadder.wasVague);
-                      }
-                      
-                      // 🤖➡️😊 CONTEXTUAL RESPONSE DETECTION: Check if user is asking a question
-                      if (isProspectQuestion(finalTranscript)) {
-                        lastProspectQuestion = finalTranscript;
-                        console.log(`🤖➡️😊 [${connectionId}] PROSPECT QUESTION DETECTED: "${finalTranscript.substring(0, 80)}..."`);
-                        console.log(`   → AI should respond to this before continuing script (Anti-Robot Mode)`);
-                      }
-                    } catch (trackError: any) {
-                      console.error(`❌ [${connectionId}] Sales tracking error (user isFinal):`, trackError.message);
-                    }
-                  }
-                  turnSalesTrackerDoneTime = Date.now();
-                } finally {
-                  // 🔧 FIX: Always commit user message to conversationMessages and reset buffer
-                  // This runs AFTER salesTracker, ensuring no duplicates from fallback path
-                  
-                  // 🆕 PIGGYBACK STRATEGY (Trojan Horse): Inject combined message to Gemini
-                  // We send the feedback as a TEXT message AFTER user's audio is processed
-                  // This works because Gemini Live API uses turnComplete:false to add context
-                  // before generating a response
+                {
                   if (pendingFeedbackForAI && geminiSession) {
                     console.log(`\n📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                     console.log(`📤 [${connectionId}] PIGGYBACK INJECTION - Sending feedback to Gemini`);
@@ -7887,28 +7874,23 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                     console.log(`   🎯 Strategy: Inject AFTER audio, BEFORE response (Trojan Horse)`);
                     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                     
-                    // Send feedback to Gemini with turnComplete:false (adds context, doesn't trigger response)
                     const feedbackPayload = {
                       clientContent: {
                         turns: [{
                           role: 'user',
                           parts: [{ text: pendingFeedbackForAI }]
                         }],
-                        turnComplete: false // CRITICAL: Don't trigger response, just add context
+                        turnComplete: false
                       }
                     };
                     geminiSession.send(JSON.stringify(feedbackPayload));
                     
-                    // Save combined message in local history (user msg + feedback)
                     const combinedMessage = finalTranscript + '\n\n' + pendingFeedbackForAI;
                     commitUserMessage(combinedMessage);
                     
-                    // Clear feedback from RAM buffer
-                    const usedFeedback = pendingFeedbackForAI; // Save before clearing for logging
                     pendingFeedbackForAI = null;
                     turnFeedbackInjectedTime = Date.now();
                     
-                    // 🆕 Clear feedback from DB as well (consumed)
                     if (conversationId) {
                       db.update(clientSalesConversations)
                         .set({ pendingFeedback: null, pendingFeedbackCreatedAt: null })
@@ -7917,29 +7899,49 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                         .catch((err: any) => console.error(`   ⚠️ Failed to clear feedback from DB: ${err.message}`));
                     }
                   } else {
-                    // No feedback pending - just commit the user message
                     commitUserMessage(finalTranscript);
                   }
                   turnCommitDoneTime = Date.now();
                   
                   pendingUserTranscript = { text: '', hasFinalChunk: false };
                   
-                  // 🆕 WATCHDOG: Avvia il timer - Gemini deve rispondere entro 2 secondi
                   if (geminiSession) {
                     startResponseWatchdog(finalTranscript, geminiSession);
                   }
                   turnWatchdogStartedTime = Date.now();
                   
-                  // ⏱️ TURN LATENCY: Log server-side processing time
                   const serverProcessingMs = turnWatchdogStartedTime - userFinishedSpeakingTime;
-                  console.log(`⏱️ [TURN LATENCY] Turn #${turnCount} server processing: ${serverProcessingMs}ms`);
-                  if (turnSalesTrackerDoneTime > 0) {
-                    console.log(`   └─ salesTracker: ${turnSalesTrackerDoneTime - userFinishedSpeakingTime}ms`);
-                  }
+                  console.log(`⏱️ [TURN LATENCY] Turn #${turnCount} server processing: ${serverProcessingMs}ms (feedback+commit+watchdog, NON-BLOCKING)`);
                   if (turnFeedbackInjectedTime > 0) {
-                    console.log(`   └─ feedbackInjection: ${turnFeedbackInjectedTime - (turnSalesTrackerDoneTime || userFinishedSpeakingTime)}ms`);
+                    console.log(`   └─ feedbackInjection: ${turnFeedbackInjectedTime - userFinishedSpeakingTime}ms`);
                   }
                   console.log(`   └─ commit+watchdog: ${turnWatchdogStartedTime - turnCommitDoneTime}ms`);
+                  
+                  if (isProspectQuestion(finalTranscript)) {
+                    lastProspectQuestion = finalTranscript;
+                    console.log(`🤖➡️😊 [${connectionId}] PROSPECT QUESTION DETECTED: "${finalTranscript.substring(0, 80)}..."`);
+                  }
+                  
+                  if (salesTracker && salesLogger) {
+                    const salesTrackStart = Date.now();
+                    (async () => {
+                      try {
+                        await salesTracker.trackUserMessage(finalTranscript);
+                        const state = salesTracker.getState();
+                        salesLogger.logUserMessage(finalTranscript, state.currentPhase);
+                        
+                        const lastLadder = state.ladderActivations[state.ladderActivations.length - 1];
+                        if (lastLadder && salesLogger) {
+                          salesLogger.logLadderResponse(lastLadder.wasVague, lastLadder.wasVague);
+                        }
+                        
+                        turnSalesTrackerDoneTime = Date.now();
+                        console.log(`⏱️ [SALES-TRACKER] Completed in ${turnSalesTrackerDoneTime - salesTrackStart}ms (non-blocking, did NOT delay AI response)`);
+                      } catch (trackError: any) {
+                        console.error(`❌ [${connectionId}] Sales tracking error (non-blocking):`, trackError.message);
+                      }
+                    })();
+                  }
                 }
               }
               
