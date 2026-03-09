@@ -1506,7 +1506,7 @@ function DashboardTab({
                         >
                           <Ban className="h-3 w-3" />
                         </Button>
-                        {task.role === 'nova' && (
+                        {task.ai_role === 'nova' && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -3063,7 +3063,7 @@ function DashboardTab({
                         Approva Task
                       </Button>
                     )}
-                    {task.role === 'nova' && (
+                    {task.ai_role === 'nova' && (
                       <Button
                         variant="outline"
                         className="border-purple-200 text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-950/30 gap-1.5"

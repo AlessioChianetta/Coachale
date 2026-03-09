@@ -2448,6 +2448,91 @@ router.get("/ai/market-research-status/:jobId", authenticateToken, requireRole("
   });
 });
 
+const improveAdSchema = z.object({
+  adIdea: z.string().min(1),
+  niche: z.string().optional(),
+  targetAudience: z.string().optional(),
+  brandVoiceData: z.record(z.any()).optional(),
+});
+
+router.post("/ai/improve-ad", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    let validatedBody;
+    try {
+      validatedBody = improveAdSchema.parse(req.body);
+    } catch (zodError: any) {
+      return res.status(400).json({ success: false, error: zodError.errors?.[0]?.message || "Dati non validi" });
+    }
+    const { adIdea, niche, targetAudience, brandVoiceData } = validatedBody;
+
+    let brandSection = "";
+    if (brandVoiceData && Object.keys(brandVoiceData).length > 0) {
+      const parts: string[] = [];
+      if (brandVoiceData.businessName) parts.push(`Business: ${brandVoiceData.businessName}`);
+      if (brandVoiceData.whoWeHelp) parts.push(`Target: ${brandVoiceData.whoWeHelp}`);
+      if (brandVoiceData.usp) parts.push(`USP: ${brandVoiceData.usp}`);
+      if (brandVoiceData.whatWeDo) parts.push(`Cosa facciamo: ${brandVoiceData.whatWeDo}`);
+      if (Array.isArray(brandVoiceData.servicesOffered)) {
+        parts.push(`Servizi: ${brandVoiceData.servicesOffered.map((s: any) => s.name).join(", ")}`);
+      }
+      if (brandVoiceData.vision) parts.push(`Vision: ${brandVoiceData.vision}`);
+      if (parts.length > 0) brandSection = `\n\nCONTESTO BRAND:\n${parts.join("\n")}`;
+    }
+
+    const nicheContext = niche ? `\nNICCHIA: ${niche}` : "";
+    const audienceContext = targetAudience ? `\nPUBBLICO TARGET: ${targetAudience}` : "";
+
+    const prompt = `Sei un esperto di copywriting e advertising per social media. Il consulente ha un'idea di inserzione/post e vuole il tuo consiglio per migliorarla.
+
+IDEA ORIGINALE DEL CONSULENTE:
+"${adIdea}"${nicheContext}${audienceContext}${brandSection}
+
+ANALIZZA l'idea e restituisci una versione migliorata. Per ogni miglioramento:
+1. HOOK più forte e d'impatto (prima riga che cattura l'attenzione)
+2. ANGOLO specifico e differenziante
+3. STRUTTURA ottimizzata per il formato social
+4. CALL TO ACTION chiara e convincente
+5. SUGGERIMENTI su cosa aggiungere o togliere
+
+Rispondi in italiano in formato JSON:
+{
+  "improved_ad": "Il testo completo dell'inserzione migliorata, pronta da usare",
+  "hook": "L'hook migliorato (prima riga)",
+  "angle": "L'angolo specifico scelto e perché",
+  "improvements": ["lista di miglioramenti applicati"],
+  "tips": ["suggerimenti aggiuntivi per massimizzare l'efficacia"]
+}`;
+
+    const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, "content-improve-ad");
+    setFeature?.('content-improve-ad');
+    const { model } = getModelWithThinking(metadata?.name);
+
+    const result = await trackedGenerateContent({
+      model,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2000,
+        responseMimeType: "application/json",
+      },
+    } as any, { consultantId, feature: 'content-improve-ad', callerRole: 'consultant' });
+
+    const responseText = result.response.text().trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(responseText);
+    } catch {
+      parsed = { improved_ad: responseText, hook: "", angle: "", improvements: [], tips: [] };
+    }
+
+    res.json({ success: true, data: parsed });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-AI] Error improving ad:", error);
+    res.status(500).json({ success: false, error: error.message || "Errore nel miglioramento" });
+  }
+});
+
 router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;

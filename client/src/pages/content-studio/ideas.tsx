@@ -99,6 +99,8 @@ import {
   Shield,
   Search,
   Send,
+  Plus,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -1070,6 +1072,103 @@ export default function ContentStudioIdeas() {
       setPostSchema("");
     }
   }, [objective, targetPlatform]);
+
+  const [adIdeaDraft, setAdIdeaDraft] = useState("");
+  const [isImprovingAd, setIsImprovingAd] = useState(false);
+  const [improvedAd, setImprovedAd] = useState<{ improved_ad: string; hook: string; angle: string; improvements: string[]; tips: string[] } | null>(null);
+  const [adOriginalSnapshot, setAdOriginalSnapshot] = useState("");
+  const [adHistory, setAdHistory] = useState<Array<{ original: string; improved: string; timestamp: Date }>>([]);
+  const [showAdHistory, setShowAdHistory] = useState(false);
+
+  const handleImproveAd = async () => {
+    if (!adIdeaDraft.trim()) return;
+    const snapshot = adIdeaDraft.trim();
+    setAdOriginalSnapshot(snapshot);
+    setIsImprovingAd(true);
+    try {
+      const response = await fetch("/api/content/ai/improve-ad", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adIdea: snapshot,
+          niche: topic || undefined,
+          targetAudience: targetAudience || undefined,
+          brandVoiceData: useBrandVoice && Object.keys(brandVoiceData).length > 0 ? brandVoiceData : undefined,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setImprovedAd(data.data);
+      } else {
+        throw new Error(data.error || "Errore");
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsImprovingAd(false);
+    }
+  };
+
+  const handleUseImprovedAd = () => {
+    if (!improvedAd) return;
+    setAdditionalContext((prev) => prev ? `${prev}\n\n--- INSERZIONE MIGLIORATA ---\n${improvedAd.improved_ad}` : `--- INSERZIONE MIGLIORATA ---\n${improvedAd.improved_ad}`);
+    setAdHistory((prev) => [{ original: adOriginalSnapshot, improved: improvedAd.improved_ad, timestamp: new Date() }, ...prev]);
+    setImprovedAd(null);
+    setAdIdeaDraft("");
+    setAdOriginalSnapshot("");
+    toast({ title: "Inserzione aggiunta al contesto", description: "Verrà usata nella generazione delle idee" });
+  };
+
+  const [isSavingSegment, setIsSavingSegment] = useState(false);
+  
+  const handleAddSegmentInline = async () => {
+    if (!topic.trim() || !targetAudience.trim()) return;
+    const newSegment = { name: topic.trim(), description: targetAudience.trim() };
+    const currentSegments = Array.isArray(brandVoiceData.audienceSegments) ? brandVoiceData.audienceSegments : [];
+    const alreadyExists = currentSegments.some((s: any) => s.name === newSegment.name && s.description === newSegment.description);
+    if (alreadyExists) {
+      toast({ title: "Segmento già esistente", variant: "destructive" });
+      return;
+    }
+    const updatedSegments = [...currentSegments, newSegment];
+    const updatedBrandVoice = { ...brandVoiceData, audienceSegments: updatedSegments };
+    setIsSavingSegment(true);
+    try {
+      const response = await fetch("/api/content/brand-voice", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ brandVoice: updatedBrandVoice, enabled: useBrandVoice }),
+      });
+      if (response.ok) {
+        setBrandVoiceData(updatedBrandVoice);
+        toast({ title: "Segmento aggiunto", description: `"${newSegment.name}" salvato` });
+      } else { throw new Error("Errore nel salvataggio"); }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally { setIsSavingSegment(false); }
+  };
+
+  const handleRemoveSegmentInline = async (idx: number) => {
+    const currentSegments = Array.isArray(brandVoiceData.audienceSegments) ? [...brandVoiceData.audienceSegments] : [];
+    const removed = currentSegments.splice(idx, 1)[0];
+    const updatedBrandVoice = { ...brandVoiceData, audienceSegments: currentSegments };
+    try {
+      const response = await fetch("/api/content/brand-voice", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ brandVoice: updatedBrandVoice, enabled: useBrandVoice }),
+      });
+      if (response.ok) {
+        setBrandVoiceData(updatedBrandVoice);
+        if (topic === removed?.name && targetAudience === removed?.description) {
+          setTopic(""); setTargetAudience("");
+        }
+        toast({ title: "Segmento rimosso" });
+      } else { throw new Error("Errore"); }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    }
+  };
 
   // Save Brand Voice to Content Studio config
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -2370,72 +2469,228 @@ export default function ContentStudioIdeas() {
                           </Button>
                         )}
                       </div>
-                      {useBrandVoice && Array.isArray(brandVoiceData.audienceSegments) && brandVoiceData.audienceSegments.length > 0 && (
+                      {Array.isArray(brandVoiceData.audienceSegments) && brandVoiceData.audienceSegments.length > 0 && (
                         <div className="space-y-2">
                           <Label className="text-xs text-muted-foreground font-normal">Seleziona un segmento</Label>
                           <div className="space-y-1.5">
                             {brandVoiceData.audienceSegments.map((seg: { name: string; description: string }, idx: number) => {
                               const isActive = topic === seg.name && targetAudience === seg.description;
                               return (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => {
-                                    if (isActive) {
-                                      setTopic("");
-                                      setTargetAudience("");
-                                    } else {
-                                      setTopic(seg.name);
-                                      setTargetAudience(seg.description);
-                                    }
-                                  }}
-                                  className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-all flex items-start gap-3 ${
-                                    isActive
-                                      ? "bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/40 dark:to-pink-950/40 border-2 border-purple-400 dark:border-purple-600 shadow-sm"
-                                      : "bg-muted/50 hover:bg-muted border border-border/50 hover:border-border"
-                                  }`}
-                                >
-                                  <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                                    isActive ? "border-purple-500 bg-purple-500" : "border-muted-foreground/40"
-                                  }`}>
-                                    {isActive && <Check className="h-2.5 w-2.5 text-white" />}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className={`font-medium ${isActive ? "text-purple-700 dark:text-purple-300" : "text-foreground"}`}>
-                                      {seg.name}
+                                <div key={idx} className="flex items-start gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isActive) {
+                                        setTopic("");
+                                        setTargetAudience("");
+                                      } else {
+                                        setTopic(seg.name);
+                                        setTargetAudience(seg.description);
+                                      }
+                                    }}
+                                    className={`flex-1 text-left px-4 py-2.5 rounded-lg text-sm transition-all flex items-start gap-3 ${
+                                      isActive
+                                        ? "bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/40 dark:to-pink-950/40 border-2 border-purple-400 dark:border-purple-600 shadow-sm"
+                                        : "bg-muted/50 hover:bg-muted border border-border/50 hover:border-border"
+                                    }`}
+                                  >
+                                    <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                      isActive ? "border-purple-500 bg-purple-500" : "border-muted-foreground/40"
+                                    }`}>
+                                      {isActive && <Check className="h-2.5 w-2.5 text-white" />}
                                     </div>
-                                    <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                                      {seg.description}
+                                    <div className="min-w-0 flex-1">
+                                      <div className={`font-medium ${isActive ? "text-purple-700 dark:text-purple-300" : "text-foreground"}`}>
+                                        {seg.name}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                        {seg.description}
+                                      </div>
                                     </div>
-                                  </div>
-                                </button>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveSegmentInline(idx)}
+                                    className="mt-2.5 p-1 rounded hover:bg-red-100 dark:hover:bg-red-950/30 text-muted-foreground hover:text-red-500 transition-colors shrink-0"
+                                    title="Rimuovi segmento"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                               );
                             })}
                           </div>
                         </div>
                       )}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="niche-field" className="text-xs text-muted-foreground font-normal">Nicchia / Settore</Label>
-                          <Input
-                            id="niche-field"
-                            placeholder="es. Fitness, Finanza personale, Marketing digitale..."
-                            value={topic}
-                            onChange={(e) => setTopic(e.target.value)}
-                            className="h-10"
-                          />
+                      <div className="flex gap-2 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="niche-field" className="text-xs text-muted-foreground font-normal">Nicchia / Settore</Label>
+                            <Input
+                              id="niche-field"
+                              placeholder="es. Fitness, Finanza personale, Marketing digitale..."
+                              value={topic}
+                              onChange={(e) => setTopic(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="audience-field" className="text-xs text-muted-foreground font-normal">Pubblico Target</Label>
+                            <Input
+                              id="audience-field"
+                              placeholder="es. Imprenditori 35-50, Mamme sportive, Freelancer..."
+                              value={targetAudience}
+                              onChange={(e) => setTargetAudience(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="audience-field" className="text-xs text-muted-foreground font-normal">Pubblico Target</Label>
-                          <Input
-                            id="audience-field"
-                            placeholder="es. Imprenditori 35-50, Mamme sportive, Freelancer..."
-                            value={targetAudience}
-                            onChange={(e) => setTargetAudience(e.target.value)}
-                            className="h-10"
-                          />
-                        </div>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-10 w-10 shrink-0 border-purple-200 text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400"
+                          disabled={!topic.trim() || !targetAudience.trim() || isSavingSegment}
+                          onClick={handleAddSegmentInline}
+                          title="Salva come segmento"
+                        >
+                          {isSavingSegment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                        </Button>
                       </div>
+                    </div>
+
+                    <div className="border-t border-border/50" />
+
+                    {/* Consiglia Inserzione */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-md bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                          <Megaphone className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <Label className="text-sm font-semibold">Consiglia Inserzione</Label>
+                        <span className="text-xs text-muted-foreground">(opzionale)</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Hai un'idea per un post o inserzione? Scrivila e l'AI la migliorerà con hook, angolo e struttura ottimizzata.
+                      </p>
+                      <Textarea
+                        placeholder="es. Voglio fare un post su come l'AI aiuta le PMI a rispondere più velocemente ai lead..."
+                        value={adIdeaDraft}
+                        onChange={(e) => setAdIdeaDraft(e.target.value)}
+                        rows={3}
+                        className="resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!adIdeaDraft.trim() || isImprovingAd}
+                          onClick={handleImproveAd}
+                          className="gap-1.5 border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400"
+                        >
+                          {isImprovingAd ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                          Migliora con AI
+                        </Button>
+                        {improvedAd && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setImprovedAd(null); setAdIdeaDraft(""); }}
+                            className="text-xs text-muted-foreground"
+                          >
+                            Cancella
+                          </Button>
+                        )}
+                      </div>
+                      {improvedAd && (
+                        <div className="space-y-3 p-4 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800">
+                          <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-amber-800 dark:text-amber-300">Inserzione migliorata</Label>
+                            <div className="text-sm whitespace-pre-wrap bg-white dark:bg-background/80 p-3 rounded-md border">
+                              {improvedAd.improved_ad}
+                            </div>
+                          </div>
+                          {improvedAd.hook && (
+                            <div className="text-xs">
+                              <span className="font-semibold text-amber-700 dark:text-amber-400">Hook: </span>
+                              <span className="text-foreground">{improvedAd.hook}</span>
+                            </div>
+                          )}
+                          {improvedAd.angle && (
+                            <div className="text-xs">
+                              <span className="font-semibold text-amber-700 dark:text-amber-400">Angolo: </span>
+                              <span className="text-foreground">{improvedAd.angle}</span>
+                            </div>
+                          )}
+                          {Array.isArray(improvedAd.improvements) && improvedAd.improvements.length > 0 && (
+                            <div className="text-xs space-y-1">
+                              <span className="font-semibold text-amber-700 dark:text-amber-400">Miglioramenti:</span>
+                              <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                                {improvedAd.improvements.map((imp: string, i: number) => <li key={i}>{imp}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                          {Array.isArray(improvedAd.tips) && improvedAd.tips.length > 0 && (
+                            <div className="text-xs space-y-1">
+                              <span className="font-semibold text-amber-700 dark:text-amber-400">Suggerimenti:</span>
+                              <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                                {improvedAd.tips.map((tip: string, i: number) => <li key={i}>{tip}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                          <div className="flex gap-2 pt-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleUseImprovedAd}
+                              className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                              Usa come contesto
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      {adHistory.length > 0 && !improvedAd && (
+                        <div className="space-y-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowAdHistory(!showAdHistory)}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <Clock className="h-3 w-3" />
+                            <span>Storico ({adHistory.length})</span>
+                            {showAdHistory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          </button>
+                          {showAdHistory && (
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {adHistory.map((entry, i) => (
+                                <div key={i} className="p-2.5 rounded-md bg-muted/50 border border-border/50 text-xs space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground">{entry.timestamp.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</span>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-5 px-1.5 text-xs text-purple-600 hover:text-purple-700"
+                                      onClick={() => {
+                                        setAdditionalContext((prev) => prev ? `${prev}\n\n--- INSERZIONE MIGLIORATA ---\n${entry.improved}` : `--- INSERZIONE MIGLIORATA ---\n${entry.improved}`);
+                                        toast({ title: "Riutilizzata inserzione dallo storico" });
+                                      }}
+                                    >
+                                      Riusa
+                                    </Button>
+                                  </div>
+                                  <div className="text-muted-foreground line-clamp-1"><span className="font-medium">Originale:</span> {entry.original}</div>
+                                  <div className="text-foreground line-clamp-2"><span className="font-medium">Migliorata:</span> {entry.improved}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="border-t border-border/50" />
