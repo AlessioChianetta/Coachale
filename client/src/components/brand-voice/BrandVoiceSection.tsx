@@ -33,6 +33,7 @@ export interface BrandVoiceData {
   usp?: string;
   whoWeHelp?: string;
   whoWeDontHelp?: string;
+  audienceSegments?: { name: string; description: string }[];
   whatWeDo?: string;
   howWeDoIt?: string;
   yearsExperience?: number;
@@ -145,6 +146,22 @@ export function BrandVoiceSection({
   const handleRemoveCaseStudy = (index: number) => {
     const current = data.caseStudies || [];
     updateField("caseStudies", current.filter((_, i) => i !== index));
+  };
+
+  const handleAddSegment = () => {
+    const current = data.audienceSegments || [];
+    updateField("audienceSegments", [...current, { name: "", description: "" }]);
+  };
+
+  const handleUpdateSegment = (index: number, field: "name" | "description", value: string) => {
+    const current = [...(data.audienceSegments || [])];
+    current[index] = { ...current[index], [field]: value };
+    updateField("audienceSegments", current);
+  };
+
+  const handleRemoveSegment = (index: number) => {
+    const current = data.audienceSegments || [];
+    updateField("audienceSegments", current.filter((_, i) => i !== index));
   };
 
   const handleAddService = () => {
@@ -402,6 +419,44 @@ export function BrandVoiceSection({
                   />
                 </div>
               </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Segmenti di Pubblico</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddSegment}>
+                    <Plus className="w-3 h-3 mr-1" /> Aggiungi Segmento
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Definisci i segmenti specifici del tuo pubblico target. Verranno usati sia nella generazione idee che nella ricerca di mercato.
+                </p>
+                {(data.audienceSegments || []).map((segment, index: number) => (
+                  <div key={index} className="flex gap-2 p-3 border rounded-lg bg-card mb-2">
+                    <Input
+                      value={segment.name}
+                      onChange={(e) => handleUpdateSegment(index, "name", e.target.value)}
+                      placeholder="Nome segmento (es. SaaS B2B)"
+                      className="w-1/3"
+                    />
+                    <Input
+                      value={segment.description}
+                      onChange={(e) => handleUpdateSegment(index, "description", e.target.value)}
+                      placeholder="Descrizione (es. Software house 5-30 dipendenti con alto volume lead)"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveSegment(index)}
+                      className="shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="bv-whatWeDo">Cosa Facciamo</Label>

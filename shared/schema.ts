@@ -4170,6 +4170,7 @@ export const leadNurturingConfig = pgTable("lead_nurturing_config", {
     usp?: string;
     whoWeHelp?: string;
     whoWeDontHelp?: string;
+    audienceSegments?: { name: string; description: string }[];
     whatWeDo?: string;
     howWeDoIt?: string;
     yearsExperience?: number;
@@ -9654,6 +9655,7 @@ export const contentStudioConfig = pgTable("content_studio_config", {
     usp?: string;
     whoWeHelp?: string;
     whoWeDontHelp?: string;
+    audienceSegments?: { name: string; description: string }[];
     whatWeDo?: string;
     howWeDoIt?: string;
     yearsExperience?: number;

@@ -1569,6 +1569,7 @@ export default function ConsultantAIConfigPage() {
     usp?: string;
     whoWeHelp?: string;
     whoWeDontHelp?: string;
+    audienceSegments?: { name: string; description: string }[];
     whatWeDo?: string;
     howWeDoIt?: string;
     yearsExperience?: number;
@@ -2368,6 +2369,7 @@ export default function ConsultantAIConfigPage() {
           usp: agent.usp,
           whoWeHelp: agent.whoWeHelp,
           whoWeDontHelp: agent.whoWeDontHelp,
+          audienceSegments: agent.audienceSegments,
           whatWeDo: agent.whatWeDo,
           howWeDoIt: agent.howWeDoIt,
           yearsExperience: agent.yearsExperience,

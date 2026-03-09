@@ -24,6 +24,7 @@ export interface BrandVoiceData {
   usp?: string;
   whoWeHelp?: string;
   whoWeDontHelp?: string;
+  audienceSegments?: { name: string; description: string }[];
   whatWeDo?: string;
   howWeDoIt?: string;
   yearsExperience?: number;
@@ -258,6 +259,10 @@ function buildBrandVoiceContext(brandVoice?: BrandVoiceData): string {
   }
   if (brandVoice.whoWeDontHelp) {
     context += `- Chi NON Aiutiamo: ${brandVoice.whoWeDontHelp}\n`;
+  }
+  const segArr = Array.isArray(brandVoice.audienceSegments) ? brandVoice.audienceSegments : [];
+  if (segArr.length > 0) {
+    context += `- Segmenti di Pubblico:\n${segArr.map(s => `    • ${s.name}: ${s.description}`).join("\n")}\n`;
   }
   if (brandVoice.whatWeDo) {
     context += `- Cosa Facciamo: ${brandVoice.whatWeDo}\n`;

@@ -1151,6 +1151,7 @@ export default function ContentStudioIdeas() {
           usp: agent.usp,
           whoWeHelp: agent.whoWeHelp,
           whoWeDontHelp: agent.whoWeDontHelp,
+          audienceSegments: agent.audienceSegments,
           whatWeDo: agent.whatWeDo,
           howWeDoIt: agent.howWeDoIt,
           yearsExperience: agent.yearsExperience,
@@ -2341,6 +2342,34 @@ export default function ContentStudioIdeas() {
                           </Button>
                         )}
                       </div>
+                      {useBrandVoice && Array.isArray(brandVoiceData.audienceSegments) && brandVoiceData.audienceSegments.length > 0 && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground font-normal">Segmenti salvati</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {brandVoiceData.audienceSegments.map((seg: { name: string; description: string }, idx: number) => {
+                              const isActive = topic === seg.name && targetAudience === seg.description;
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => {
+                                    setTopic(seg.name);
+                                    setTargetAudience(seg.description);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                                    isActive
+                                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md"
+                                      : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border/50"
+                                  }`}
+                                >
+                                  <Users className="h-3 w-3" />
+                                  {seg.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <Label htmlFor="niche-field" className="text-xs text-muted-foreground font-normal">Nicchia / Settore</Label>

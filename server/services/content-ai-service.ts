@@ -41,6 +41,7 @@ export interface GenerateIdeasParams {
     values?: string[];
     usp?: string;
     whoWeHelp?: string;
+    audienceSegments?: { name: string; description: string }[];
     whatWeDo?: string;
     howWeDoIt?: string;
     yearsExperience?: number;
@@ -1501,6 +1502,7 @@ export interface GeneratePostCopyParams {
     usp?: string;
     whoWeHelp?: string;
     whoWeDontHelp?: string;
+    audienceSegments?: { name: string; description: string }[];
     whatWeDo?: string;
     howWeDoIt?: string;
     yearsExperience?: number;
@@ -1555,6 +1557,7 @@ export interface GenerateCampaignParams {
     usp?: string;
     whoWeHelp?: string;
     whoWeDontHelp?: string;
+    audienceSegments?: { name: string; description: string }[];
     whatWeDo?: string;
     howWeDoIt?: string;
     yearsExperience?: number;
@@ -1699,6 +1702,10 @@ function buildBrandVoiceContext(brandVoiceData?: GenerateContentIdeasParams["bra
   if (bv.mission) identityParts.push(`Mission: ${bv.mission}`);
   if (bv.values?.length) identityParts.push(`Valori: ${bv.values.join(", ")}`);
   if (bv.whoWeHelp) identityParts.push(`Target: ${bv.whoWeHelp}`);
+  const segArr = Array.isArray(bv.audienceSegments) ? bv.audienceSegments : [];
+  if (segArr.length > 0) {
+    identityParts.push(`Segmenti di pubblico:\n${segArr.map((s: { name: string; description: string }) => `  • ${s.name}: ${s.description}`).join("\n")}`);
+  }
   if (bv.whatWeDo) identityParts.push(`Servizi: ${bv.whatWeDo}`);
   if (bv.howWeDoIt) identityParts.push(`Metodo: ${bv.howWeDoIt}`);
   if (bv.yearsExperience) identityParts.push(`Esperienza: ${bv.yearsExperience} anni`);

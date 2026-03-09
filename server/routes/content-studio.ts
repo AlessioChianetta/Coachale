@@ -1667,6 +1667,7 @@ const generateIdeasSchema = z.object({
     values: z.array(z.string()).nullish(),
     usp: z.string().nullish(),
     whoWeHelp: z.string().nullish(),
+    audienceSegments: z.array(z.object({ name: z.string(), description: z.string() })).nullish(),
     whatWeDo: z.string().nullish(),
     howWeDoIt: z.string().nullish(),
     yearsExperience: z.number().nullish(),
@@ -1725,6 +1726,7 @@ const generateCopySchema = z.object({
     values: z.array(z.string()).optional(),
     usp: z.string().optional(),
     whoWeHelp: z.string().optional(),
+    audienceSegments: z.array(z.object({ name: z.string(), description: z.string() })).optional(),
     whatWeDo: z.string().optional(),
     howWeDoIt: z.string().optional(),
     yearsExperience: z.number().optional(),
@@ -1758,6 +1760,7 @@ const generateCampaignSchema = z.object({
     values: z.array(z.string()).optional(),
     usp: z.string().optional(),
     whoWeHelp: z.string().optional(),
+    audienceSegments: z.array(z.object({ name: z.string(), description: z.string() })).optional(),
     whatWeDo: z.string().optional(),
     howWeDoIt: z.string().optional(),
     yearsExperience: z.number().optional(),
@@ -1928,6 +1931,13 @@ router.post("/ai/generate-market-research", authenticateToken, requireRole("cons
       if (brandCtx.whatWeDo) brandSection += `Cosa facciamo: ${brandCtx.whatWeDo}\n`;
       if (brandCtx.whoWeHelp) brandSection += `Chi aiutiamo: ${brandCtx.whoWeHelp}\n`;
       if (brandCtx.whoWeDontHelp) brandSection += `Chi NON aiutiamo: ${brandCtx.whoWeDontHelp}\n`;
+      const segArr = Array.isArray(brandCtx.audienceSegments) ? brandCtx.audienceSegments : [];
+      if (segArr.length > 0) {
+        brandSection += `\n--- Segmenti di Pubblico ---\n`;
+        segArr.forEach((s: any) => {
+          brandSection += `• ${s.name || ''}: ${s.description || ''}\n`;
+        });
+      }
       if (brandCtx.howWeDoIt) brandSection += `Come lo facciamo: ${brandCtx.howWeDoIt}\n`;
       if (brandCtx.vision) brandSection += `Vision: ${brandCtx.vision}\n`;
       if (brandCtx.mission) brandSection += `Mission: ${brandCtx.mission}\n`;
