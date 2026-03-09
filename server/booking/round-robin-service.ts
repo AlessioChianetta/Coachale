@@ -681,7 +681,23 @@ export async function getAvailableSlotsFromPool(
       });
 
       const busySlots = data.calendars?.[calendarId]?.busy || [];
+      console.log(`   📊 [POOL-SLOTS] ${member.agentName}: ${busySlots.length} busy ranges from Google Calendar`);
       let memberSlotCount = 0;
+
+      const poolLocalTimeToUtc = (date: Date, timeStr: string, tz: string): Date => {
+        const [hour, min] = timeStr.split(':').map(Number);
+        const ymd = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
+        const localStr = `${ymd}T${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:00`;
+        const localDate = new Date(localStr);
+        try {
+          const utcRef = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }));
+          const tzRef = new Date(localDate.toLocaleString('en-US', { timeZone: tz }));
+          const offsetMinutes = (utcRef.getTime() - tzRef.getTime()) / (60 * 1000);
+          return new Date(localDate.getTime() + offsetMinutes * 60 * 1000);
+        } catch {
+          return new Date(localDate.getTime() - 60 * 60 * 1000);
+        }
+      };
 
       const current = new Date(startDate);
       while (current <= endDate) {
@@ -692,10 +708,10 @@ export async function getAvailableSlotsFromPool(
           const timeSlots = generateTimeSlotsForRanges(timeRanges, durationMinutes);
 
           for (const slotTime of timeSlots) {
-            const slotDate = current.toISOString().slice(0, 10);
+            const slotDate = `${current.getFullYear()}-${(current.getMonth()+1).toString().padStart(2,'0')}-${current.getDate().toString().padStart(2,'0')}`;
             const slotKey = `${slotDate}|${slotTime}`;
 
-            const slotStart = new Date(`${slotDate}T${slotTime}:00`);
+            const slotStart = poolLocalTimeToUtc(current, slotTime, timezone);
             const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60 * 1000);
 
             if (slotStart < minNoticeDate) continue;
