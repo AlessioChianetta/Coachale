@@ -183,6 +183,23 @@ router.get('/sessions', authenticateToken, requireRole('consultant'), async (req
   }
 });
 
+router.get('/lead-magnet-sessions', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const sessions = await db.execute(sql`
+      SELECT s.*,
+        (SELECT content FROM delivery_agent_messages WHERE session_id = s.id::text ORDER BY created_at DESC LIMIT 1) as last_message
+      FROM delivery_agent_sessions s
+      WHERE s.consultant_id = ${consultantId} AND s.is_public = true AND s.mode = 'onboarding'
+      ORDER BY s.created_at DESC
+    `);
+    res.json({ success: true, data: sessions.rows });
+  } catch (err: any) {
+    console.error('[DeliveryAgent] GET lead-magnet-sessions error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.get('/sessions/:id', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
