@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea } from "@/components/ai-assistant/InputArea";
+import { DiscoveryCompleteDialog } from "./DiscoveryCompleteDialog";
 
 const GENERATION_PHASES = [
   { icon: Search, label: "Ricerca informazioni sulla tua attività...", sub: "Google Maps, sito web, presenza online" },
@@ -117,6 +118,8 @@ export function DeliveryChat({
   const [isSimRunning, setIsSimRunning] = useState(false);
   const [simStatus, setSimStatus] = useState("");
   const [simTurn, setSimTurn] = useState(0);
+  const [showDiscoveryDialog, setShowDiscoveryDialog] = useState(false);
+  const hasShownDialogRef = useRef(false);
 
   useEffect(() => {
     setMessages([]);
@@ -282,7 +285,12 @@ export function DeliveryChat({
                 );
               }
             } else if (data.type === "phase_change") {
-              onStatusChange(data.phase || data.newPhase || "elaborating");
+              const newPhase = data.phase || data.newPhase || "elaborating";
+              if (newPhase === "elaborating" && !hasShownDialogRef.current) {
+                hasShownDialogRef.current = true;
+                setShowDiscoveryDialog(true);
+              }
+              onStatusChange(newPhase);
             } else if (data.type === "complete") {
               setMessages((prev) =>
                 prev.map((m) =>
@@ -568,23 +576,15 @@ export function DeliveryChat({
       )}
 
       {session.status === "elaborating" && !isGeneratingReport && (
-        <div className="px-4 py-3 border-t border-border/60 bg-amber-50/50 dark:bg-amber-900/10 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                Discovery completata! Pronto per generare il report.
-              </span>
-            </div>
-            <Button
-              onClick={handleGenerateReport}
-              className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
-              size="sm"
-            >
-              <FileText className="w-4 h-4" />
-              Genera Report
-            </Button>
-          </div>
+        <div className="px-4 py-2 border-t border-border/60 bg-indigo-50/40 dark:bg-indigo-900/10 flex items-center justify-center flex-shrink-0">
+          <Button
+            onClick={() => setShowDiscoveryDialog(true)}
+            className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-sm"
+            size="sm"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Genera Report
+          </Button>
         </div>
       )}
 
@@ -635,6 +635,12 @@ export function DeliveryChat({
           </Button>
         </div>
       )}
+
+      <DiscoveryCompleteDialog
+        open={showDiscoveryDialog}
+        onOpenChange={setShowDiscoveryDialog}
+        onGenerateReport={handleGenerateReport}
+      />
     </div>
   );
 }

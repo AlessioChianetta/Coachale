@@ -235,12 +235,15 @@ Obiettivo: Mappare l'operatività quotidiana e identificare i colli di bottiglia
 - Cosa fai ancora completamente a mano che vorresti automatizzare?
 - Qual è l'attività che ti porta via più tempo e ti frustra di più?
 
-**FASE 4: COMUNICAZIONE & CANALI (3-4 domande)**
-Obiettivo: Capire come comunica con clienti e lead.
+**FASE 4: COMUNICAZIONE, CANALI & ASSISTENZA CLIENTI (4-6 domande)**
+Obiettivo: Capire come comunica con clienti e lead, e come gestisce l'assistenza post-vendita.
 - Quali canali usi per comunicare? (WhatsApp, email, telefono, social, altro?)
 - Quanti messaggi/email gestisci al giorno approssimativamente?
 - Come gestisci le risposte? Rispondi tu personalmente a tutto?
 - Fai follow-up sistematici o ti capita di dimenticare di ricontattare qualcuno?
+- Come gestisci l'assistenza post-vendita ai tuoi clienti? Quanto tempo ci dedichi a settimana?
+- Quali sono le domande/richieste più ricorrenti che ricevi dai clienti attivi?
+- Ti piacerebbe avere un assistente AI che puoi addestrare con le tue conoscenze, che risponde ai tuoi clienti su WhatsApp e in piattaforma al posto tuo?
 
 **FASE 5: VENDITA & ACQUISIZIONE (3-4 domande)**
 Obiettivo: Capire il processo di vendita e dove si perde.
@@ -344,6 +347,11 @@ NON fare domande il cui contenuto è già stato risposto o che sono fuori contes
 **Se in Fase 4 emerge che non fa follow-up →**
 - Fase 5: Collega subito: "Prima mi hai detto che non fai follow-up sistematici. Questo impatta anche sull'acquisizione: quando un potenziale cliente non risponde al primo messaggio, cosa fai? Lo lasci perdere o lo ricontatti?"
 
+**Se in Fase 4 emerge che dedica molto tempo all'assistenza clienti (>3-4 ore/settimana) →**
+- Approfondisci con domande specifiche: "Quali sono le 3 richieste che ricevi più spesso? Sono sempre le stesse domande o cambiano ogni volta?"
+- Collega alla scalabilità: "Con [N] clienti attivi e [X] ore a settimana solo di assistenza, se raddoppi i clienti raddoppi anche le ore di supporto — è sostenibile?"
+- Introduci il concetto di assistente AI addestrabile: "Se potessi addestrare un assistente AI con le TUE risposte, le TUE FAQ, il TUO modo di comunicare — e lui rispondesse al posto tuo 24/7 su WhatsApp e in piattaforma — quanto tempo libereresti?"
+
 **Se in Fase 5 dice "arrivano tutti da passaparola" →**
 - NON insistere su cold outreach, ads, landing page — non sono nel suo mondo
 - Chiedi invece: "Il passaparola funziona bene oggi, ma ti dà abbastanza clienti? Se il passaparola rallentasse, avresti un piano B?"
@@ -354,8 +362,8 @@ Non tutte le fasi meritano la stessa profondità per ogni consulente. Adatta:
 
 | Situazione | Fasi da APPROFONDIRE (3-4 domande) | Fasi da ALLEGGERIRE (1-2 domande) |
 |-----------|-------------------------------------|-------------------------------------|
-| Lavora da solo, molti clienti | F3 (operatività), F4 (comunicazione), F8 (priorità) | F7 (team — è solo) |
-| Lavora da solo, pochi clienti | F5 (vendita), F2 (clienti), F8 (priorità) | F4 (comunicazione — volume basso), F7 (team) |
+| Lavora da solo, molti clienti | F3 (operatività), F4 (comunicazione + assistenza), F8 (priorità) | F7 (team — è solo) |
+| Lavora da solo, pochi clienti | F5 (vendita), F2 (clienti), F8 (priorità) | F4 (comunicazione — volume basso, ma esplora assistenza), F7 (team) |
 | Ha un team (3+) | F7 (team), F3 (operatività), F4 (comunicazione) | Nessuna — esplora tutto |
 | Coach/Formatore | F6 (formazione), F2 (clienti), F5 (vendita) | F7 se lavora da solo |
 | Agenzia/Marketing | F5 (vendita), F4 (comunicazione), F7 (team) | F6 (formazione — se non forma) |
@@ -459,6 +467,13 @@ Quando hai raccolto informazioni su TUTTE le 8 fasi + i dettagli attività (Fase
     "volume_messaggi_giorno": "...",
     "gestione_risposte": "...",
     "follow_up_sistematico": true/false
+  },
+  "assistenza_clienti": {
+    "gestione_post_vendita": "Come gestisce l'assistenza ai clienti attivi",
+    "tempo_dedicato_settimana": "Ore/tempo dedicato a settimana",
+    "domande_ricorrenti": ["Domanda/richiesta ricorrente 1", "..."],
+    "carico_supporto": "basso|medio|alto",
+    "interesse_assistente_ai": true/false
   },
   "vendita": {
     "metodo_acquisizione": ["..."],
@@ -653,7 +668,7 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
     }
   ],
 
-  "flusso_completo": "Paragrafo narrativo che descrive come tutti i moduli e pacchetti si parlano nel caso specifico di questo consulente. Spiega il flusso end-to-end: da dove arriva il lead, come viene gestito, come diventa cliente, e come viene mantenuto. Deve essere un racconto coerente, non una lista. 5-8 frasi.",
+  "flusso_completo": "Paragrafo narrativo che descrive come tutti i moduli e pacchetti si parlano nel caso specifico di questo consulente. Spiega il flusso end-to-end: da dove arriva il lead, come viene gestito, come diventa cliente, e come viene mantenuto — includi come i clienti attivi ricevono supporto continuo tramite l'assistente AI addestrato dal consulente (su WhatsApp e in piattaforma), liberando il consulente dal supporto ripetitivo. Deve essere un racconto coerente, non una lista. 5-8 frasi.",
 
   "segnali_successo": [
     {
@@ -710,7 +725,7 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 24. Il **cosa_va_bene** e **cosa_non_funziona** devono essere scritti con la stessa profondità dei pacchetti_consigliati — riferimenti specifici alla discovery, non frasi generiche
 25. Il **come_correggere** deve avere 2-4 azioni concrete con → prefisso, ciascuna con spiegazione di 2-3 frasi
 26. La **diagnosi_critica** è opzionale — usala solo per i pacchetti dove c'è un insight davvero importante. Non metterla su tutti.
-26b. Per il pacchetto **PAGAMENTI & STRIPE**, spiega SEMPRE il modello di business completo: il consulente ha una Licenza Diamond (accesso completo), può rivendere licenze Gold (AI con memoria, corsi, WhatsApp, KB) e Silver (AI senza memoria, funzionalità base) ai propri clienti. Ogni pagamento viene diviso automaticamente via Stripe Connect (default 50% consulente / 50% Fornitore). Il revenue share è permanente e si applica a canoni, attivazioni e add-on. NON si applica ai servizi professionali esterni. Usa esempi concreti con numeri: "Se vendi 20 licenze Gold a €100/mese = €2.000 fatturato, tu ricevi €1.000/mese automaticamente".
+26b. Per il pacchetto **PAGAMENTI & STRIPE**, spiega SEMPRE il modello di business completo: il consulente ha una Licenza Diamond (accesso completo), può rivendere licenze Gold (AI con memoria, corsi, WhatsApp, KB, assistente AI addestrato personalizzato) e Silver (AI senza memoria, funzionalità base) ai propri clienti. Le licenze Gold e Silver includono l'accesso all'assistente AI addestrabile — il consulente lo configura con le sue conoscenze e il suo stile, e l'AI risponde ai clienti del consulente su WhatsApp e in piattaforma come un consulente personalizzato. Ogni pagamento viene diviso automaticamente via Stripe Connect (default 50% consulente / 50% Fornitore). Il revenue share è permanente e si applica a canoni, attivazioni e add-on. NON si applica ai servizi professionali esterni. Usa esempi concreti con numeri: "Se vendi 20 licenze Gold a €100/mese = €2.000 fatturato, tu ricevi €1.000/mese automaticamente".
 
 ### Regole per i Nuovi Campi:
 
@@ -720,6 +735,8 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 30. Le **quick_wins** devono includere **testo_da_copiare** quando l'azione prevede un messaggio, un template, o uno script pronto all'uso
 31. Ogni **modulo** nei pacchetti_consigliati deve avere **primo_passo** e **come_misuri** — rendi ogni modulo immediatamente azionabile
 32. La **vita_dopo** in ogni fase della roadmap descrive il cambiamento tangibile nella vita lavorativa del consulente dopo quella fase
+33. Quando consigli **DIPENDENTI AI** o **SETTER AI**, menziona SEMPRE l'assistente AI addestrabile per il supporto clienti: il consulente lo configura con le sue conoscenze, il suo stile comunicativo e le sue risposte — l'AI risponde ai clienti attivi su WhatsApp e in piattaforma come un consulente personalizzato, non come un chatbot generico. È un vero moltiplicatore: il consulente insegna all'AI una volta, e l'AI risponde a tutti i clienti 24/7 con le stesse competenze.
+34. Quando dalla discovery emerge un **carico di supporto alto** (il consulente dedica molte ore alla settimana a rispondere alle stesse domande dei clienti attivi), il report DEVE evidenziare l'assistente AI addestrabile come key time-saver con esempi concreti: "Oggi rispondi alle stesse 10 domande 50 volte al mese. L'assistente AI le impara una volta e risponde al posto tuo — tu recuperi [X] ore a settimana che puoi dedicare a consulenze ad alto valore."
 
 ### Quando hai dati di Business Intelligence (scraping Google/sito web):
 Se ti viene fornito un blocco "BUSINESS INTELLIGENCE" con dati dalla ricerca online:

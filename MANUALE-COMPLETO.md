@@ -5664,9 +5664,9 @@ La piattaforma offre un ecosistema completo di strumenti e funzionalità. Per fa
 
 ### 36.1 SETTER AI – Acquisizione & Primo Contatto
 
-**Descrizione:** Il pacchetto fondamentale per acquisire nuovi clienti e gestire il primo contatto in modo automatizzato. Trasforma lead freddi in appuntamenti qualificati grazie agli agenti AI su WhatsApp, email di outreach e presa appuntamento automatica.
+**Descrizione:** Il pacchetto fondamentale per acquisire nuovi clienti e gestire il primo contatto in modo automatizzato. Trasforma lead freddi in appuntamenti qualificati grazie agli agenti AI su WhatsApp, email di outreach e presa appuntamento automatica. Include anche la possibilità di configurare agenti WhatsApp dedicati all'assistenza clienti post-vendita: il consulente addestra l'agente con le proprie conoscenze, tono e metodo, e l'AI gestisce le domande ricorrenti dei clienti attivi 24/7 su WhatsApp e in piattaforma, liberando il consulente dal lavoro ripetitivo di supporto.
 
-**Per chi è pensato:** Qualsiasi professionista che vuole automatizzare l'acquisizione clienti e non perdere mai un lead.
+**Per chi è pensato:** Qualsiasi professionista che vuole automatizzare l'acquisizione clienti, non perdere mai un lead, e delegare l'assistenza clienti a un AI addestrato che lavora al posto suo.
 
 **Prerequisiti:** Fase 1 del Setup Wizard completata (API Key Gemini, SMTP, Twilio/WhatsApp).
 
@@ -5686,9 +5686,9 @@ La piattaforma offre un ecosistema completo di strumenti e funzionalità. Per fa
 
 ### 36.2 DIPENDENTI AI AUTONOMI – Team AI 24/7
 
-**Descrizione:** Un team completo di 9 dipendenti AI che lavorano autonomamente 24 ore su 24. Ogni dipendente ha un ruolo specifico: dalla gestione email alla ricerca lead, dall'analisi executive al supporto clienti. Configurali una volta e lascia che lavorino per te.
+**Descrizione:** Un team completo di 9 dipendenti AI che lavorano autonomamente 24 ore su 24. Ogni dipendente ha un ruolo specifico: dalla gestione email alla ricerca lead, dall'analisi executive al supporto clienti. Configurali una volta e lascia che lavorino per te. Inoltre, i tuoi clienti con licenza Gold hanno accesso al proprio AI Assistant personale in piattaforma — un assistente AI con memoria persistente che il consulente può addestrare tramite System Prompt e Knowledge Base per rispondere alle domande specifiche del cliente, fornire supporto e follow-up continuo senza intervento manuale del consulente.
 
-**Per chi è pensato:** Consulenti e professionisti che vogliono delegare attività operative all'AI senza supervisione costante.
+**Per chi è pensato:** Consulenti e professionisti che vogliono delegare attività operative all'AI senza supervisione costante, e che vogliono offrire ai propri clienti un'esperienza premium con un assistente AI personalizzato che lavora al posto del consulente.
 
 **Prerequisiti:** API Key Gemini configurata. Per alcuni dipendenti: SMTP (Millie), Twilio (Stella), Lead Scraper attivo (Hunter).
 
@@ -6169,6 +6169,81 @@ Il Setter AI non lavora da solo. Si integra con:
 - **Stripe** (Pacchetto 9): i lead qualificati possono ricevere un link di pagamento diretto
 
 **Dove trovarlo:** Sidebar → COMUNICAZIONE → WhatsApp Agents → System Prompt dell'agente
+
+## Lezione 1.4: Assistente AI per i tuoi clienti — Addestra l'AI che lavora al posto tuo
+
+Una delle funzionalità più potenti della piattaforma è la possibilità di creare un **assistente AI personalizzato per i tuoi clienti** — su WhatsApp e in piattaforma — che lavora al posto tuo. Non è un chatbot generico con risposte preimpostate: è un consulente AI che tu addestri con le tue conoscenze, il tuo metodo, il tuo tono di voce.
+
+**Il problema che risolve:**
+Se hai 15, 30 o 50 clienti attivi, l'assistenza post-vendita diventa un lavoro a tempo pieno. I clienti ti scrivono su WhatsApp alle 22, ti chiedono cose già spiegate, hanno bisogno di risposte rapide che tu non puoi dare perché sei in una call o stai dormendo. Il risultato: o rispondi a tutto e non hai più tempo per vendere e fare delivery, oppure rispondi in ritardo e il cliente si sente trascurato.
+
+**Come funziona:**
+
+Il consulente ha due canali per fornire assistenza AI ai propri clienti:
+
+1. **Agente WhatsApp dedicato all'assistenza**: Configuri un agente WhatsApp con System Prompt specifico per l'assistenza clienti (diverso da quello per i lead). L'agente risponde alle domande ricorrenti, fornisce istruzioni, fa follow-up — tutto basato sulle tue conoscenze caricate nella Knowledge Base.
+
+2. **AI Assistant in piattaforma (per clienti Gold)**: Ogni cliente con licenza Gold ha il proprio AI Assistant accessibile dal pannello cliente. L'AI ha memoria persistente (ricorda le conversazioni precedenti), accesso ai corsi e ai materiali del consulente, e può rispondere a domande specifiche sul percorso del cliente. Il consulente configura il comportamento dell'AI tramite System Prompt e Knowledge Base.
+
+**Come addestrare l'AI — Guida passo-passo:**
+
+**Passo 1 — Definisci le istruzioni (System Prompt):**
+Vai su Sidebar → AI SUITE → System Prompt e scrivi le istruzioni che definiscono il comportamento dell'AI per i tuoi clienti:
+- Chi sei: "Sei l'assistente di [Nome Consulente], esperto in [settore]"
+- Cosa fare: "Rispondi alle domande dei clienti sul percorso formativo, suggerisci azioni concrete"
+- Tono: "Usa un tono professionale ma amichevole, come se fossi il consulente stesso"
+- Limiti: "Se la domanda è troppo complessa o richiede una decisione strategica, rimanda al consulente"
+- Specificità: "Quando un cliente chiede di [argomento specifico], rispondi con [metodo specifico]"
+
+**Passo 2 — Carica la Knowledge Base (File Search):**
+Vai su Sidebar → AI SUITE → File Search e carica i documenti chiave:
+- FAQ dei clienti (le domande che ricevi più spesso)
+- Guide e procedure del tuo metodo di lavoro
+- Materiali formativi e dispense dei corsi
+- Listino prezzi e condizioni di servizio
+- Casi studio e best practice
+
+**Passo 3 — Configura l'agente WhatsApp per assistenza:**
+Vai su Sidebar → COMUNICAZIONE → WhatsApp Agents e crea un agente dedicato all'assistenza:
+- Tipo: Inbound (risponde ai messaggi dei clienti)
+- System Prompt: focalizzato sul supporto, non sulla vendita
+- Knowledge Base: collegata ai tuoi documenti di supporto
+- Obiettivo: risolvere problemi, non qualificare lead
+
+**Passo 4 — Testa con un cliente reale:**
+Invia al tuo agente WhatsApp le domande tipiche che ricevi dai clienti. Verifica che:
+- Le risposte siano accurate e basate sulla tua Knowledge Base
+- Il tono sia coerente con il tuo stile di comunicazione
+- L'AI rimandi al consulente quando appropriato
+- La memoria funzioni (per Gold): fai più domande sullo stesso argomento e verifica che ricordi il contesto
+
+**Differenze tra Gold e Silver:**
+
+| Funzionalità | Silver | Gold |
+|--------------|--------|------|
+| AI Assistant in piattaforma | Base (senza memoria) | Con memoria persistente |
+| Accesso Knowledge Base | Limitato | Completo |
+| WhatsApp Agent dedicato | Non incluso | Incluso |
+| Ricorda conversazioni passate | No | Sì |
+| Corsi e materiali formativi | Accesso base | Accesso completo + esercizi |
+| Gamification e analytics | Non incluso | Incluso |
+
+**Il risultato per il consulente:**
+- I clienti ricevono risposte immediate 24/7, senza aspettare
+- Il consulente si libera dalle domande ripetitive e può concentrarsi su vendita e delivery
+- La qualità percepita del servizio aumenta (il cliente si sente sempre supportato)
+- Il consulente può scalare il numero di clienti senza aumentare il carico di lavoro manuale
+
+**Il risultato per il cliente:**
+- Ha un "consulente AI" sempre disponibile che lo segue nel percorso
+- Le risposte sono personalizzate e basate sulle conoscenze reali del consulente
+- Con licenza Gold: l'AI ricorda tutto il contesto delle conversazioni precedenti
+- Può chiedere aiuto su esercizi, corsi, strategie — senza aspettare la prossima call
+
+**Dove trovarlo:**
+- Agente WhatsApp: Sidebar → COMUNICAZIONE → WhatsApp Agents
+- System Prompt: Sidebar → AI SUITE → System Prompt
+- Knowledge Base: Sidebar → AI SUITE → File Search
 
 ---
 

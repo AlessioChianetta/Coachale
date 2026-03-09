@@ -73,6 +73,7 @@ function RichText({ text, className }: { text: string; className?: string }) {
 interface DeliveryCatalogoProps {
   sessionId: string;
   onBackToChat: () => void;
+  publicToken?: string;
 }
 
 interface SidebarChapter {
@@ -84,7 +85,8 @@ interface SidebarChapter {
   already_recommended: boolean;
 }
 
-export function DeliveryCatalogo({ sessionId, onBackToChat }: DeliveryCatalogoProps) {
+export function DeliveryCatalogo({ sessionId, onBackToChat, publicToken }: DeliveryCatalogoProps) {
+  const isPublic = !!publicToken;
   const { toast } = useToast();
   const [packages, setPackages] = useState<CatalogPackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,13 +97,19 @@ export function DeliveryCatalogo({ sessionId, onBackToChat }: DeliveryCatalogoPr
   useEffect(() => {
     const loadCatalog = async () => {
       try {
-        const res = await fetch(
-          `/api/consultant/delivery-agent/reports/${sessionId}`,
-          { headers: getAuthHeaders() }
-        );
+        const url = isPublic
+          ? `/api/public/lead-magnet/${publicToken}/session`
+          : `/api/consultant/delivery-agent/reports/${sessionId}`;
+        const headers = isPublic ? {} : getAuthHeaders();
+        const res = await fetch(url, { headers });
         if (res.ok) {
           const data = await res.json();
-          const reportData = data.data || data.report || data;
+          let reportData;
+          if (isPublic) {
+            reportData = data.data?.report || data.data || data;
+          } else {
+            reportData = data.data || data.report || data;
+          }
           let rawReport = reportData.report_json || reportData;
           if (typeof rawReport === "string") {
             try { rawReport = JSON.parse(rawReport); } catch { rawReport = {}; }
@@ -117,7 +125,7 @@ export function DeliveryCatalogo({ sessionId, onBackToChat }: DeliveryCatalogoPr
       }
     };
     loadCatalog();
-  }, [sessionId, toast]);
+  }, [sessionId, toast, isPublic, publicToken]);
 
   const chapters: SidebarChapter[] = packages.map((pkg, i) => ({
     id: `cat-${i}`,

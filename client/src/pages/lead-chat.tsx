@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { getAuthHeaders, getAuthUser, removeToken, removeAuthUser } from "@/lib/auth";
 import { DeliveryChat } from "@/components/delivery-agent/DeliveryChat";
 import { DeliveryReport } from "@/components/delivery-agent/DeliveryReport";
+import { DeliveryCatalogo } from "@/components/delivery-agent/DeliveryCatalogo";
 import { cn } from "@/lib/utils";
 import {
   Search,
@@ -13,6 +14,7 @@ import {
   Circle,
   MessageSquare,
   LogOut,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -90,7 +92,7 @@ export default function LeadChat() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [viewMode, setViewMode] = useState<"chat" | "report">("chat");
+  const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo">("chat");
   const [status, setStatus] = useState("discovery");
 
   useEffect(() => {
@@ -219,6 +221,20 @@ export default function LeadChat() {
             <FileText className="w-4 h-4" />
             Report
           </button>
+          {(status === "completed" || status === "assistant") && (
+            <button
+              onClick={() => setViewMode("catalogo")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors border-b-2",
+                viewMode === "catalogo"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Layers className="w-4 h-4" />
+              Catalogo
+            </button>
+          )}
         </div>
       </header>
 
@@ -235,6 +251,12 @@ export default function LeadChat() {
             }}
             onStatusChange={handleStatusChange}
             onViewReport={handleViewReport}
+            publicToken={session.publicToken}
+          />
+        ) : viewMode === "catalogo" ? (
+          <DeliveryCatalogo
+            sessionId={session.sessionId}
+            onBackToChat={() => setViewMode("chat")}
             publicToken={session.publicToken}
           />
         ) : (

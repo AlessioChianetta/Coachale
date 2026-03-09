@@ -101,6 +101,55 @@ Il Setter AI non lavora da solo. Si integra con:
 
 **Dove trovarlo:** Sidebar → AI AVANZATO → WhatsApp Agents → System Prompt dell'agente
 
+## Lezione 1.4: Assistente AI per i tuoi clienti — Addestra l'AI che lavora al posto tuo
+
+Una delle funzionalità più potenti della piattaforma è la possibilità di creare un **assistente AI personalizzato per i tuoi clienti** — su WhatsApp e in piattaforma — che lavora al posto tuo. Non è un chatbot generico con risposte preimpostate: è un consulente AI che tu addestri con le tue conoscenze, il tuo metodo, il tuo tono di voce.
+
+**Il problema che risolve:**
+Se hai 15, 30 o 50 clienti attivi, l'assistenza post-vendita diventa un lavoro a tempo pieno. I clienti ti scrivono su WhatsApp alle 22, ti chiedono cose già spiegate, hanno bisogno di risposte rapide che tu non puoi dare perché sei in una call o stai dormendo. Il risultato: o rispondi a tutto e non hai più tempo per vendere e fare delivery, oppure rispondi in ritardo e il cliente si sente trascurato.
+
+**Come funziona:**
+
+Il consulente ha due canali per fornire assistenza AI ai propri clienti:
+
+1. **Agente WhatsApp dedicato all'assistenza**: Configuri un agente WhatsApp con System Prompt specifico per l'assistenza clienti (diverso da quello per i lead). L'agente risponde alle domande ricorrenti, fornisce istruzioni, fa follow-up — tutto basato sulle tue conoscenze caricate nella Knowledge Base.
+
+2. **AI Assistant in piattaforma (per clienti Gold)**: Ogni cliente con licenza Gold ha il proprio AI Assistant accessibile dal pannello cliente. L'AI ha memoria persistente (ricorda le conversazioni precedenti), accesso ai corsi e ai materiali del consulente, e può rispondere a domande specifiche sul percorso del cliente. Il consulente configura il comportamento dell'AI tramite System Prompt e Knowledge Base.
+
+**Come addestrare l'AI:**
+
+L'addestramento avviene tramite due strumenti:
+
+- **System Prompt** (Sidebar → AI SUITE → System Prompt): Scrivi le istruzioni che definiscono come l'AI deve comportarsi, rispondere, e quale tono usare. Esempio: "Sei l'assistente di [Nome Consulente], esperto in [settore]. Rispondi alle domande dei clienti sul percorso formativo, suggerisci azioni concrete, e se la domanda è troppo complessa rimanda al consulente."
+
+- **Knowledge Base / File Search** (Sidebar → AI SUITE → File Search): Carica i documenti che contengono le tue conoscenze — FAQ, guide, procedure, metodi, materiali formativi. L'AI consulterà questi documenti per dare risposte precise e specifiche, non generiche.
+
+**Differenze tra Gold e Silver:**
+
+| Funzionalità | Silver | Gold |
+|--------------|--------|------|
+| AI Assistant in piattaforma | Base (senza memoria) | Con memoria persistente |
+| Accesso Knowledge Base | Limitato | Completo |
+| WhatsApp Agent dedicato | Non incluso | Incluso |
+| Ricorda conversazioni passate | No | Sì |
+
+**Il risultato per il consulente:**
+- I clienti ricevono risposte immediate 24/7, senza aspettare
+- Il consulente si libera dalle domande ripetitive e può concentrarsi su vendita e delivery
+- La qualità percepita del servizio aumenta (il cliente si sente sempre supportato)
+- Il consulente può scalare il numero di clienti senza aumentare il carico di lavoro manuale
+
+**Il risultato per il cliente:**
+- Ha un "consulente AI" sempre disponibile che lo segue nel percorso
+- Le risposte sono personalizzate e basate sulle conoscenze reali del consulente
+- Con licenza Gold: l'AI ricorda tutto il contesto delle conversazioni precedenti
+- Può chiedere aiuto su esercizi, corsi, strategie — senza aspettare la prossima call
+
+**Dove trovarlo:**
+- Agente WhatsApp: Sidebar → AI AVANZATO → WhatsApp Agents
+- System Prompt: Sidebar → AI SUITE → System Prompt
+- Knowledge Base: Sidebar → AI SUITE → File Search
+
 ---
 
 # PACCHETTO 2: DIPENDENTI AI AUTONOMI — Team AI 24/7
