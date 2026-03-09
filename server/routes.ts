@@ -94,6 +94,7 @@ import salesAgentKnowledgeRouter from "./routes/client/sales-agent-knowledge";
 import publicSalesAgentRouter from "./routes/public/sales-agent";
 import publicConsultationInvitesRouter from "./routes/public/consultation-invites";
 import publicVideoMeetingRouter from "./routes/public/video-meeting";
+import publicLeadMagnetRouter from "./routes/public/lead-magnet";
 import publicBookingRouter from "./routes/public-booking";
 import trainingAssistantRouter from "./routes/training-assistant";
 import salesScriptsRouter from "./routes/sales-scripts";
@@ -14090,6 +14091,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Public Sales Agent routes (unauthenticated access for prospects)
   app.use("/api/public/sales-agent", publicSalesAgentRouter);
+
+  // Public Lead Magnet routes (unauthenticated onboarding for prospects)
+  app.use("/api/public/lead-magnet", publicLeadMagnetRouter);
 
   // Public Consultation Invites routes (unauthenticated access for prospects via invite links)
   app.use("/api/public/invite", publicConsultationInvitesRouter);

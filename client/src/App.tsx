@@ -166,6 +166,7 @@ const AdminUsers = lazy(() => import("@/pages/admin-users"));
 const AdminSettings = lazy(() => import("@/pages/admin-settings"));
 const AdminAcademy = lazy(() => import("@/pages/admin-academy"));
 const SasLanding = lazy(() => import("@/pages/sas-landing"));
+const PublicLeadMagnet = lazy(() => import("@/pages/public-lead-magnet"));
 const PrivacyPolicy = lazy(() => import("@/pages/privacy-policy"));
 
 // Content Marketing Studio pages
@@ -244,6 +245,7 @@ function Router() {
 
           {/* SaaS Landing Page - no auth required */}
           <Route path="/Sas" component={SasLanding} />
+          <Route path="/onboarding-gratuito" component={PublicLeadMagnet} />
 
           {/* Privacy Policy - no auth required (for Meta App Review) */}
           <Route path="/privacy" component={PrivacyPolicy} />

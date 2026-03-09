@@ -74,6 +74,11 @@ async function ensureTables() {
       mode VARCHAR NOT NULL DEFAULT 'onboarding',
       status VARCHAR NOT NULL DEFAULT 'discovery',
       client_profile_json JSONB,
+      public_token VARCHAR UNIQUE,
+      lead_name VARCHAR,
+      lead_email VARCHAR,
+      lead_phone VARCHAR,
+      is_public BOOLEAN DEFAULT false,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     )`,
@@ -96,6 +101,19 @@ async function ensureTables() {
   for (const stmt of statements) {
     try { await db.execute(stmt); } catch (e: any) {
       if (!e.message?.includes('already exists')) console.warn('[DeliveryAgent] Table warn:', e.message);
+    }
+  }
+
+  const alterStatements = [
+    sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS public_token VARCHAR UNIQUE`,
+    sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS lead_name VARCHAR`,
+    sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS lead_email VARCHAR`,
+    sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS lead_phone VARCHAR`,
+    sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false`,
+  ];
+  for (const stmt of alterStatements) {
+    try { await db.execute(stmt); } catch (e: any) {
+      console.warn('[DeliveryAgent] Alter warn:', e.message);
     }
   }
 }
