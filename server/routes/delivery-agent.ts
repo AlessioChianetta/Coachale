@@ -110,6 +110,7 @@ async function ensureTables() {
     sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS lead_email VARCHAR`,
     sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS lead_phone VARCHAR`,
     sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false`,
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE`,
   ];
   for (const stmt of alterStatements) {
     try { await db.execute(stmt); } catch (e: any) {

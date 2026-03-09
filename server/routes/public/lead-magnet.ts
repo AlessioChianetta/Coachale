@@ -14,12 +14,16 @@ const FALLBACK_CONSULTANT_ID = '0c73bbe5-51e1-4108-866b-6be7a52fce3b';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function resolveConsultantId(consultantId?: string): Promise<string> {
-  if (consultantId && consultantId.trim()) {
-    const res = await db.execute(sql`SELECT id FROM users WHERE id = ${consultantId.trim()} AND role = 'consultant' LIMIT 1`);
-    if (res.rows.length > 0) return consultantId.trim();
-    const res2 = await db.execute(sql`SELECT id FROM users WHERE id = ${consultantId.trim()} AND role = 'super_admin' LIMIT 1`);
-    if (res2.rows.length > 0) return consultantId.trim();
+async function resolveConsultantId(consultantIdOrSlug?: string): Promise<string> {
+  if (consultantIdOrSlug && consultantIdOrSlug.trim()) {
+    const val = consultantIdOrSlug.trim();
+    if (UUID_REGEX.test(val)) {
+      const res = await db.execute(sql`SELECT id FROM users WHERE id = ${val} AND role IN ('consultant', 'super_admin') LIMIT 1`);
+      if (res.rows.length > 0) return val;
+    } else {
+      const res = await db.execute(sql`SELECT id FROM users WHERE slug = ${val.toLowerCase()} AND role IN ('consultant', 'super_admin') LIMIT 1`);
+      if (res.rows.length > 0) return (res.rows[0] as any).id;
+    }
   }
   return FALLBACK_CONSULTANT_ID;
 }

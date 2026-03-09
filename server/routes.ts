@@ -292,6 +292,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword,
       });
 
+      try {
+        let baseSlug = `${validatedData.firstName}-${validatedData.lastName}`.toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        if (baseSlug.length >= 3) {
+          let slug = baseSlug;
+          let counter = 2;
+          while (true) {
+            const existing = await db.execute(sql`SELECT id FROM users WHERE slug = ${slug} AND id != ${user.id}`);
+            if (existing.rows.length === 0) break;
+            slug = `${baseSlug}-${counter}`;
+            counter++;
+          }
+          await db.execute(sql`UPDATE users SET slug = ${slug} WHERE id = ${user.id}`);
+        }
+      } catch {}
+
       // Initialize email journey records for new clients
       if (user.role === 'client' && user.consultantId) {
         console.log(`🔄 [NEW CLIENT] Initializing email journey for ${user.firstName} ${user.lastName}`);
@@ -946,6 +963,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscriptionLevel = parseInt(subscription.level, 10);
       }
 
+      let userSlug: string | null = null;
+      try {
+        const slugRes = await db.execute(sql`SELECT slug FROM users WHERE id = ${user.id}`);
+        if (slugRes.rows.length > 0) userSlug = (slugRes.rows[0] as any).slug;
+      } catch {}
+
       res.json({
         id: user.id,
         username: user.username,
@@ -956,7 +979,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         avatar: user.avatar,
         geminiApiKeys: user.geminiApiKeys,
         subscriptionLevel,
+        slug: userSlug,
       });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/auth/slug", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { slug } = req.body;
+      if (!slug || typeof slug !== 'string') {
+        return res.status(400).json({ message: "Slug richiesto" });
+      }
+      const cleanSlug = slug.trim().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      if (cleanSlug.length < 3 || cleanSlug.length > 60) {
+        return res.status(400).json({ message: "Lo slug deve avere tra 3 e 60 caratteri" });
+      }
+      const existing = await db.execute(sql`SELECT id FROM users WHERE slug = ${cleanSlug} AND id != ${req.user!.id}`);
+      if (existing.rows.length > 0) {
+        return res.status(409).json({ message: "Questo slug è già in uso da un altro utente" });
+      }
+      await db.execute(sql`UPDATE users SET slug = ${cleanSlug} WHERE id = ${req.user!.id}`);
+      res.json({ slug: cleanSlug });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,7 @@ import {
   ExternalLink,
   Sparkles,
   Brain,
+  Pencil,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -152,6 +153,22 @@ export default function ConsultantReferralsPage() {
   const [viewMode, setViewMode] = useState<"referral" | "optin" | "leadmagnet">("referral");
   const [linkCopied, setLinkCopied] = useState(false);
   const [lmLinkCopied, setLmLinkCopied] = useState(false);
+  const [editingSlug, setEditingSlug] = useState(false);
+  const [slugInput, setSlugInput] = useState("");
+  const [slugSaving, setSlugSaving] = useState(false);
+  const [currentSlug, setCurrentSlug] = useState<string | null>((user as any)?.slug || null);
+
+  const fetchCurrentSlug = async () => {
+    try {
+      const res = await fetch("/api/auth/me", { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.slug) setCurrentSlug(data.slug);
+      }
+    } catch {}
+  };
+
+  useEffect(() => { fetchCurrentSlug(); }, []);
   
   const [activeTab, setActiveTab] = useState<"all" | ReferralStatus>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -250,7 +267,32 @@ export default function ConsultantReferralsPage() {
 
   const getLeadMagnetLink = () => {
     if (!user?.id) return "";
-    return `${window.location.origin}/onboarding-gratuito/${user.id}`;
+    const identifier = currentSlug || user.id;
+    return `${window.location.origin}/onboarding-gratuito/${identifier}`;
+  };
+
+  const saveSlug = async () => {
+    if (!slugInput.trim()) return;
+    setSlugSaving(true);
+    try {
+      const res = await fetch("/api/auth/slug", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: slugInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Errore", description: data.message, variant: "destructive" });
+        return;
+      }
+      setCurrentSlug(data.slug);
+      setEditingSlug(false);
+      toast({ title: "Slug aggiornato!", description: `Il tuo link ora usa: ${data.slug}` });
+    } catch {
+      toast({ title: "Errore", description: "Impossibile salvare lo slug", variant: "destructive" });
+    } finally {
+      setSlugSaving(false);
+    }
   };
 
   const copyOptinLink = async () => {
@@ -498,23 +540,58 @@ export default function ConsultantReferralsPage() {
                 </div>
               )}
               {viewMode === "leadmagnet" && (
-                <div className="mt-4 p-3 bg-white/10 backdrop-blur-sm rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-sm flex-1 min-w-0">
-                    <Sparkles className="w-4 h-4 text-violet-300 flex-shrink-0" />
-                    <span className="text-white/80 flex-shrink-0">Link Lead Magnet:</span>
-                    <code className="bg-white/20 px-2 py-1 rounded text-xs truncate max-w-[300px]">
-                      {getLeadMagnetLink()}
-                    </code>
+                <div className="mt-4 space-y-2">
+                  <div className="p-3 bg-white/10 backdrop-blur-sm rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm flex-1 min-w-0">
+                      <Sparkles className="w-4 h-4 text-violet-300 flex-shrink-0" />
+                      <span className="text-white/80 flex-shrink-0">Link Lead Magnet:</span>
+                      <code className="bg-white/20 px-2 py-1 rounded text-xs truncate max-w-[300px]">
+                        {getLeadMagnetLink()}
+                      </code>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => { setSlugInput(currentSlug || ""); setEditingSlug(!editingSlug); }}
+                        className="text-white hover:bg-white/20"
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        <span className="hidden sm:inline">Modifica URL</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={copyLeadMagnetLink}
+                        className="text-white hover:bg-white/20"
+                      >
+                        {lmLinkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                        {lmLinkCopied ? "Copiato!" : "Copia Link"}
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={copyLeadMagnetLink}
-                    className="text-white hover:bg-white/20"
-                  >
-                    {lmLinkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                    {lmLinkCopied ? "Copiato!" : "Copia Link"}
-                  </Button>
+                  {editingSlug && (
+                    <div className="p-3 bg-white/10 backdrop-blur-sm rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      <div className="flex items-center gap-2 flex-1 min-w-0 w-full">
+                        <span className="text-white/60 text-xs flex-shrink-0">{window.location.origin}/onboarding-gratuito/</span>
+                        <Input
+                          value={slugInput}
+                          onChange={(e) => setSlugInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+                          placeholder="il-tuo-nome"
+                          className="bg-white/20 border-white/30 text-white placeholder:text-white/40 h-8 text-sm flex-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" onClick={saveSlug} disabled={slugSaving || !slugInput.trim()} className="bg-violet-500 hover:bg-violet-600 text-white">
+                          {slugSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+                          Salva
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingSlug(false)} className="text-white/70 hover:bg-white/10">
+                          Annulla
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
