@@ -100,7 +100,6 @@ router.post("/:slug/book", async (req: Request, res: Response) => {
     }
     
     const requestedDate = new Date(date);
-    const poolInfo = await getPoolForConsultant(consultant.consultantId);
 
     const availableSlots = await getPublicAvailableSlots(
       consultant.consultantId,
