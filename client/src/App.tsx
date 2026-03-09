@@ -84,7 +84,6 @@ const ConsultantEmailJourney = lazy(() => import("@/pages/consultant-email-journ
 const ConsultantEchoDashboard = lazy(() => import("@/pages/consultant-echo-dashboard"));
 const ConsultantKnowledgeDocuments = lazy(() => import("@/pages/consultant-knowledge-documents"));
 const ConsultantKnowledgeApis = lazy(() => import("@/pages/consultant-knowledge-apis"));
-const ConsultantLeadMagnets = lazy(() => import("@/pages/consultant-lead-magnets"));
 const ConsultantReferrals = lazy(() => import("@/pages/consultant-referrals"));
 const ConsultantReferralSettings = lazy(() => import("@/pages/consultant-referral-settings"));
 const PartnerDashboard = lazy(() => import("@/pages/partner-dashboard"));
@@ -474,12 +473,6 @@ function Router() {
           <Route path="/consultant/lead-hub">
             <AuthGuard requiredRole="consultant">
               <ConsultantLeadHub />
-            </AuthGuard>
-          </Route>
-
-          <Route path="/consultant/lead-magnets">
-            <AuthGuard requiredRole="consultant">
-              <ConsultantLeadMagnets />
             </AuthGuard>
           </Route>
 

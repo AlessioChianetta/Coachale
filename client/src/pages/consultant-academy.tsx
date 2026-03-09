@@ -587,7 +587,14 @@ export default function ConsultantAcademy() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [location] = useLocation();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"academy" | "delivery" | "setup-assistant" | "setup-wizard">("academy");
+  const urlSessionId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("sessionId") || null;
+  }, []);
+
+  const [activeTab, setActiveTab] = useState<"academy" | "delivery" | "setup-assistant" | "setup-wizard">(
+    urlSessionId ? "delivery" : "academy"
+  );
   const [setupChatStarted, setSetupChatStarted] = useState(false);
   const [setupAutoMessage, setSetupAutoMessage] = useState<string | null>(null);
   const [setupChatKey, setSetupChatKey] = useState(0);
@@ -799,7 +806,7 @@ export default function ConsultantAcademy() {
 
           {activeTab === "delivery" ? (
             <div className="flex-1 min-h-0 overflow-hidden">
-              <DeliveryAgentPanel />
+              <DeliveryAgentPanel initialSessionId={urlSessionId} />
             </div>
           ) : activeTab === "setup-wizard" ? (
             <div className="flex-1 min-h-0 overflow-hidden">

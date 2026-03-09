@@ -163,7 +163,6 @@ const consultantCategories: SidebarCategoryExtended[] = [
     defaultExpanded: true,
     items: [
       { name: "HUB Lead", href: "/consultant/lead-hub", icon: Target, color: "red" },
-      { name: "Lead Magnet", href: "/consultant/lead-magnets", icon: Sparkles, color: "emerald" },
       { name: "Email Hub", href: "/consultant/email-hub", icon: Mail, color: "sky" },
       { name: "AI Autonomo", href: "/consultant/ai-autonomy", icon: Bot, color: "purple" },
       { name: "Venditori Autonomi", href: "/consultant/sales-agents", icon: UserCheck, color: "amber" },

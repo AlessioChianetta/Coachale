@@ -1137,6 +1137,18 @@ export default function ConsultantReferralsPage() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
+                                {lead.leadInfo?.lead_magnet_session_id && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setLocation(`/consultant/academy?sessionId=${lead.leadInfo!.lead_magnet_session_id}`)}
+                                    className="border-violet-200 hover:bg-violet-50 text-violet-600"
+                                    title="Visualizza Onboarding"
+                                  >
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    <span className="hidden sm:inline text-xs">Chat</span>
+                                  </Button>
+                                )}
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -1145,8 +1157,9 @@ export default function ConsultantReferralsPage() {
                                     setOptinDetailsModalOpen(true);
                                   }}
                                   className="border-slate-200 hover:bg-slate-50"
+                                  title="Dettagli Lead"
                                 >
-                                  <Eye className="w-4 h-4" />
+                                  <FileText className="w-4 h-4" />
                                 </Button>
                                 <Button
                                   variant="outline"

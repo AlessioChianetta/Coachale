@@ -246,7 +246,7 @@ function SessionItem({
   );
 }
 
-export function DeliveryAgentPanel() {
+export function DeliveryAgentPanel({ initialSessionId }: { initialSessionId?: string | null } = {}) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [sessions, setSessions] = useState<DeliverySession[]>([]);
@@ -258,6 +258,7 @@ export function DeliveryAgentPanel() {
   const [loading, setLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo">("chat");
+  const [initialSessionLoaded, setInitialSessionLoaded] = useState(false);
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -278,6 +279,13 @@ export function DeliveryAgentPanel() {
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  useEffect(() => {
+    if (initialSessionId && !loading && !initialSessionLoaded) {
+      setInitialSessionLoaded(true);
+      loadSession(initialSessionId);
+    }
+  }, [initialSessionId, loading, initialSessionLoaded]);
 
   const loadSession = useCallback(
     async (sessionId: string) => {
