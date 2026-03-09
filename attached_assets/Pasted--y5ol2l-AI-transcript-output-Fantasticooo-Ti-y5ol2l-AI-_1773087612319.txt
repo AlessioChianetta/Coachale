@@ -1,0 +1,35 @@
+📝 [y5ol2l] AI transcript (output): Fantasticooo! Ti
+🎤 [y5ol2l] AI started speaking (audio streaming)
+
+⏱️ ┌─── FULL LATENCY CHAIN #1 ──────────────────────────────────────┐
+⏱️ │                                                                │
+⏱️ │  ☎️  UPSTREAM (User voice → Gemini)                            │
+⏱️ │    Phone→FreeSWITCH→VPS:        ~fixed (SIP)                   │
+⏱️ │    VPS resample (8→16kHz):       ~2ms                          │
+⏱️ │    VPS→Replit (network):       ~100ms                         │
+⏱️ │    Gemini VAD silence wait:     500ms ← HIDDEN COST             │
+⏱️ │                                                                │
+⏱️ │  🖥️  SERVER PROCESSING                                        │
+⏱️ │    Feedback+commit+watchdog:      0ms                          │
+⏱️ │    salesTracker:               async (non-blocking)            │
+⏱️ │                                                                │
+⏱️ │  🤖 GEMINI THINKING                                           │
+⏱️ │    AI processing:             1391ms (1.4s)                   │
+⏱️ │                                                                │
+⏱️ │  📡 DOWNSTREAM (Gemini → Phone)                               │
+⏱️ │    Replit→VPS (network):       ~100ms                         │
+⏱️ │    VPS resample (24→8kHz):      ~2ms                          │
+⏱️ │    VPS queue+prefill:           ~40ms                          │
+⏱️ │    VPS→FreeSWITCH→Phone:      ~110ms (SIP/RTP)                  │
+⏱️ │                                                                │
+⏱️ │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+⏱️ │  📊 MEASURED (isFinal→1st audio):   1391ms (1.4s)              │
+⏱️ │     └─ server:    0ms + gemini: 1391ms                    │
+⏱️ │                                                                │
+⏱️ │  🎯 FULL PERCEIVED (user ears):    2141ms (2.1s) ⚡     │
+⏱️ │     = VAD(500) + measured(1391) + downstream(250)        │
+⏱️ │                                                                │
+⏱️ │  ⚙️  CONFIG: vadSilence=500ms endSens=END_SENSITIVITY_LOW  │
+⏱️ └────────────────────────────────────────────────────────────────┘
+
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another pr
