@@ -5416,9 +5416,8 @@ export default function ContentStudioIdeas() {
 
       <Dialog open={!!viewingIdea} onOpenChange={(open) => !open && setViewingIdea(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-purple-500" />
+          <DialogHeader className="pb-4 border-b">
+            <DialogTitle className="text-lg font-semibold">
               Dettagli Idea
             </DialogTitle>
           </DialogHeader>
@@ -5428,97 +5427,78 @@ export default function ContentStudioIdeas() {
             const isViewDeveloped = viewingIdea.developedPostId || viewingIdea.status === "developed";
             
             return (
-            <div className="space-y-6">
-              <div className="flex flex-wrap gap-2">
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${viewStatusInfo.color}`}>
-                  <ViewStatusIcon className="h-4 w-4" />
+            <div className="space-y-5">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded border bg-muted/50">
+                  <ViewStatusIcon className="h-3 w-3" />
                   {viewStatusInfo.label}
                 </span>
                 {viewingIdea.mediaType && (
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
-                    viewingIdea.mediaType === "video"
-                      ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
-                      : "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
-                  }`}>
-                    {viewingIdea.mediaType === "video" ? (
-                      <><Video className="h-4 w-4" /> Video</>
-                    ) : (
-                      <><Camera className="h-4 w-4" /> Foto</>
-                    )}
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded border bg-muted/50">
+                    {viewingIdea.mediaType === "video" ? <Video className="h-3 w-3" /> : <Camera className="h-3 w-3" />}
+                    {viewingIdea.mediaType === "video" ? "Video" : "Foto"}
                   </span>
                 )}
                 {viewingIdea.copyType && (
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
-                    viewingIdea.copyType === "long"
-                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-                      : "bg-gradient-to-r from-orange-500 to-amber-500 text-white"
-                  }`}>
-                    {viewingIdea.copyType === "long" ? (
-                      <><AlignLeft className="h-4 w-4" /> Copy Lungo</>
-                    ) : (
-                      <><FileTextIcon className="h-4 w-4" /> Copy Corto</>
-                    )}
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded border bg-muted/50">
+                    {viewingIdea.copyType === "long" ? <AlignLeft className="h-3 w-3" /> : <FileTextIcon className="h-3 w-3" />}
+                    {viewingIdea.copyType === "long" ? "Copy Lungo" : "Copy Corto"}
                   </span>
                 )}
-                <div className={`flex items-center justify-center px-3 py-1.5 rounded-full text-sm font-bold ${
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded font-medium ${
                   (viewingIdea.score || 0) >= 85 
-                    ? "bg-gradient-to-br from-green-400 to-green-600 text-white" 
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" 
                     : (viewingIdea.score || 0) >= 70 
-                      ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white" 
-                      : "bg-gradient-to-br from-red-400 to-red-600 text-white"
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400" 
+                      : "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
                 }`}>
                   Score: {viewingIdea.score || 0}
-                </div>
+                </span>
               </div>
 
               {isViewDeveloped && viewingIdea.developedPostId && (
-                <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                      <CheckCircle className="h-5 w-5" />
-                      <span className="font-medium">Questa idea è stata sviluppata in un post</span>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-green-300 text-green-600 hover:bg-green-100"
-                      onClick={() => {
-                        handleGoToPost(viewingIdea.developedPostId!);
-                        setViewingIdea(null);
-                      }}
-                    >
-                      <ExternalLink className="h-4 w-4 mr-1" />
-                      Vai al Post
-                    </Button>
+                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="h-4 w-4 text-emerald-500" />
+                    <span>Idea sviluppata in un post</span>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      handleGoToPost(viewingIdea.developedPostId!);
+                      setViewingIdea(null);
+                    }}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Vai al Post
+                  </Button>
                 </div>
               )}
 
               <div>
-                <h3 className="text-xl font-bold mb-2">{viewingIdea.title}</h3>
+                <h3 className="text-lg font-semibold leading-snug mb-1.5">{viewingIdea.title}</h3>
                 {viewingIdea.description && (
-                  <p className="text-muted-foreground">{viewingIdea.description}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{viewingIdea.description}</p>
                 )}
               </div>
 
               {viewingIdea.hook && (
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 p-4 rounded-xl">
-                  <p className="text-sm text-purple-600 dark:text-purple-400 font-medium mb-2 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    Hook
-                  </p>
-                  <p className="text-lg italic">"{viewingIdea.hook}"</p>
+                <div className="p-4 rounded-lg border bg-muted/30">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Hook</p>
+                  <p className="text-base italic leading-relaxed">"{viewingIdea.hook}"</p>
                 </div>
               )}
 
               {viewingIdea.mediaType === "video" && viewingIdea.videoScript && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                    <Video className="h-5 w-5" />
-                    <span className="font-semibold">Script Video</span>
-                  </div>
-                  <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                    <p className="whitespace-pre-wrap leading-relaxed">{viewingIdea.videoScript}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Video className="h-3.5 w-3.5" />
+                    Script Video
+                  </p>
+                  <div className="p-4 rounded-lg border bg-muted/20">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{viewingIdea.videoScript}</p>
                   </div>
                 </div>
               )}
@@ -5527,19 +5507,19 @@ export default function ContentStudioIdeas() {
                 <div className="space-y-4">
                   {viewingIdea.imageDescription && (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                        <Camera className="h-5 w-5" />
-                        <span className="font-semibold">Descrizione Immagine</span>
-                      </div>
-                      <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
-                        <p>{viewingIdea.imageDescription}</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <Camera className="h-3.5 w-3.5" />
+                        Descrizione Immagine
+                      </p>
+                      <div className="p-4 rounded-lg border bg-muted/20">
+                        <p className="text-sm leading-relaxed">{viewingIdea.imageDescription}</p>
                       </div>
                     </div>
                   )}
                   {viewingIdea.imageOverlayText && (
                     <div className="space-y-2">
-                      <span className="font-semibold text-green-600 dark:text-green-400">Testo Overlay:</span>
-                      <div className="bg-black text-white p-4 rounded-xl text-center font-bold text-lg">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Testo Overlay</p>
+                      <div className="bg-foreground text-background p-4 rounded-lg text-center font-semibold">
                         "{viewingIdea.imageOverlayText}"
                       </div>
                     </div>
@@ -5549,23 +5529,21 @@ export default function ContentStudioIdeas() {
 
               {viewingIdea.copyContent && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
-                    {viewingIdea.copyType === "long" ? <AlignLeft className="h-5 w-5" /> : <FileTextIcon className="h-5 w-5" />}
-                    <span className="font-semibold">
-                      {viewingIdea.copyType === "long" ? "Copy Lungo" : "Copy Corto"}
-                    </span>
-                  </div>
-                  <div className="bg-purple-50 dark:bg-purple-950/20 p-4 rounded-xl border border-purple-200 dark:border-purple-800">
-                    <p className="whitespace-pre-wrap leading-relaxed">{viewingIdea.copyContent}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    {viewingIdea.copyType === "long" ? <AlignLeft className="h-3.5 w-3.5" /> : <FileTextIcon className="h-3.5 w-3.5" />}
+                    {viewingIdea.copyType === "long" ? "Copy Lungo" : "Copy Corto"}
+                  </p>
+                  <div className="p-4 rounded-lg border bg-muted/20">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{viewingIdea.copyContent}</p>
                   </div>
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4 border-t">
+              <div className="flex gap-2 pt-4 border-t">
                 {isViewDeveloped ? (
                   <Button 
                     variant="outline"
-                    className="flex-1 border-green-300 text-green-600 hover:bg-green-50"
+                    className="flex-1"
                     onClick={() => {
                       if (viewingIdea.developedPostId) {
                         handleGoToPost(viewingIdea.developedPostId);
@@ -5573,12 +5551,12 @@ export default function ContentStudioIdeas() {
                       setViewingIdea(null);
                     }}
                   >
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <ExternalLink className="h-4 w-4 mr-2" />
                     Vai al Post
                   </Button>
                 ) : (
                   <Button 
-                    className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                    className="flex-1"
                     onClick={() => {
                       handleDevelopPost(viewingIdea);
                       setViewingIdea(null);
@@ -5589,14 +5567,14 @@ export default function ContentStudioIdeas() {
                   </Button>
                 )}
                 <Button 
-                  variant="destructive" 
+                  variant="outline"
+                  className="text-destructive hover:bg-destructive/10 border-destructive/30"
                   onClick={() => {
                     deleteIdeaMutation.mutate(viewingIdea.id);
                     setViewingIdea(null);
                   }}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Elimina
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
