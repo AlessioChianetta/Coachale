@@ -510,6 +510,7 @@ function RoadmapCard({ phase, index, total }: { phase: RoadmapPhase; index: numb
 interface DeliveryReportProps {
   sessionId: string;
   onBackToChat: () => void;
+  publicToken?: string;
 }
 
 interface Chapter {
@@ -519,7 +520,8 @@ interface Chapter {
   subtitle?: string;
 }
 
-export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps) {
+export function DeliveryReport({ sessionId, onBackToChat, publicToken }: DeliveryReportProps) {
+  const isPublic = !!publicToken;
   const { toast } = useToast();
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -531,15 +533,23 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
   useEffect(() => {
     const loadReport = async () => {
       try {
-        const res = await fetch(
-          `/api/consultant/delivery-agent/reports/${sessionId}`,
-          { headers: getAuthHeaders() }
-        );
+        const url = isPublic
+          ? `/api/public/lead-magnet/${publicToken}/session`
+          : `/api/consultant/delivery-agent/reports/${sessionId}`;
+        const headers = isPublic ? {} : getAuthHeaders();
+        const res = await fetch(url, { headers });
         if (res.ok) {
           const data = await res.json();
-          const reportData = data.data || data.report || data;
-          const rawReport = reportData.report_json || reportData;
-          setReport(normalizeReport(rawReport));
+          let rawReport;
+          if (isPublic) {
+            rawReport = data.data?.report?.report_json || data.data?.report;
+          } else {
+            const reportData = data.data || data.report || data;
+            rawReport = reportData.report_json || reportData;
+          }
+          if (rawReport) {
+            setReport(normalizeReport(rawReport));
+          }
         }
       } catch (err) {
         console.error("Failed to load report:", err);
@@ -549,7 +559,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
       }
     };
     loadReport();
-  }, [sessionId, toast]);
+  }, [sessionId, toast, isPublic, publicToken]);
 
   const chapters: Chapter[] = [];
   if (report) {
@@ -590,6 +600,7 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
   }, [report, chapters.length]);
 
   const handleDownloadPdf = async () => {
+    if (isPublic) return;
     try {
       const res = await fetch(`/api/consultant/delivery-agent/reports/${sessionId}/pdf`, { headers: getAuthHeaders() });
       if (res.ok) {
@@ -720,14 +731,16 @@ export function DeliveryReport({ sessionId, onBackToChat }: DeliveryReportProps)
               {sidebarOpen ? "Nascondi indice" : "Indice"}
             </Button>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5 text-xs">
-              <Share2 className="w-3.5 h-3.5" /> Condividi
-            </Button>
-            <Button size="sm" onClick={handleDownloadPdf} className="gap-1.5 text-xs bg-foreground text-background hover:bg-foreground/90">
-              <Download className="w-3.5 h-3.5" /> Scarica PDF
-            </Button>
-          </div>
+          {!isPublic && (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5 text-xs">
+                <Share2 className="w-3.5 h-3.5" /> Condividi
+              </Button>
+              <Button size="sm" onClick={handleDownloadPdf} className="gap-1.5 text-xs bg-foreground text-background hover:bg-foreground/90">
+                <Download className="w-3.5 h-3.5" /> Scarica PDF
+              </Button>
+            </div>
+          )}
         </div>
 
         <ScrollArea className="flex-1" ref={contentRef}>

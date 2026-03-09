@@ -14,7 +14,7 @@ export interface AuthUser {
   profileId?: string;
   consultantId?: string | null;
   siteUrl?: string | null;
-  tier?: "bronze" | "silver" | "gold";
+  tier?: "bronze" | "silver" | "gold" | "lead_magnet";
   agentSlug?: string | null;
 }
 

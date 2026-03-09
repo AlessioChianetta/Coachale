@@ -10,6 +10,11 @@ export default function RoleBasedRedirect() {
     const user = getAuthUser();
     
     if (user) {
+      const userTier = (user as any).tier;
+      if (userTier === "lead_magnet") {
+        setLocation("/lead/chat");
+        return;
+      }
       if (user.role === "super_admin") {
         setLocation("/admin");
       } else if (user.role === "consultant") {

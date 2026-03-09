@@ -70,7 +70,9 @@ export default function Login() {
     // Small delay before redirect to ensure login flag is processed
     setTimeout(() => {
       // Redirect based on user role and tier
-      if (data.user.role === "super_admin") {
+      if (data.user.tier === "lead_magnet") {
+        setLocation("/lead/chat");
+      } else if (data.user.role === "super_admin") {
         setLocation("/admin");
       } else if (data.user.role === "consultant") {
         preloadAfterLogin('consultant');

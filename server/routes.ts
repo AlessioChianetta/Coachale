@@ -95,6 +95,7 @@ import publicSalesAgentRouter from "./routes/public/sales-agent";
 import publicConsultationInvitesRouter from "./routes/public/consultation-invites";
 import publicVideoMeetingRouter from "./routes/public/video-meeting";
 import publicLeadMagnetRouter from "./routes/public/lead-magnet";
+import leadSessionRouter from "./routes/lead/session";
 import publicBookingRouter from "./routes/public-booking";
 import trainingAssistantRouter from "./routes/training-assistant";
 import salesScriptsRouter from "./routes/sales-scripts";
@@ -178,8 +179,16 @@ const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your
 
 // Helper function to determine user's actual subscription tier
 // Priority: Gold (level 3) > Silver (level 2) > Bronze > No tier
-async function getUserTier(email: string): Promise<{ tier: "bronze" | "silver" | "gold" | undefined; subscriptionId?: string; consultantId?: string }> {
+async function getUserTier(email: string): Promise<{ tier: "bronze" | "silver" | "gold" | "lead_magnet" | undefined; subscriptionId?: string; consultantId?: string }> {
   const emailLower = email.toLowerCase();
+
+  // 0. Check lead_magnet flag
+  const leadMagnetRes = await db.execute(sql`
+    SELECT is_lead_magnet, consultant_id FROM users WHERE LOWER(email) = ${emailLower} LIMIT 1
+  `);
+  if (leadMagnetRes.rows.length > 0 && (leadMagnetRes.rows[0] as any).is_lead_magnet === true) {
+    return { tier: 'lead_magnet' as any, consultantId: (leadMagnetRes.rows[0] as any).consultant_id };
+  }
   
   // 1. Check Gold subscription (level 3)
   const [goldSub] = await db
@@ -498,11 +507,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tierType = userTierInfo.tier || undefined;
         
         const tokenPayload: any = { userId: user.id, profileId: activeProfile.id };
-        if (subscriptionId && tierType) {
+        if (tierType === 'lead_magnet') {
+          tokenPayload.consultantId = userTierInfo.consultantId || user.consultantId;
+          tokenPayload.email = user.email;
+          tokenPayload.type = 'lead_magnet';
+        } else if (subscriptionId && tierType) {
           tokenPayload.subscriptionId = subscriptionId;
           tokenPayload.consultantId = userTierInfo.consultantId || user.consultantId;
           tokenPayload.email = user.email;
-          tokenPayload.type = tierType; // Use actual tier from getUserTier() (gold, silver, or bronze)
+          tokenPayload.type = tierType;
         }
         
         const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
@@ -14143,6 +14156,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Public Lead Magnet routes (unauthenticated onboarding for prospects)
   app.use("/api/public/lead-magnet", publicLeadMagnetRouter);
+
+  // Lead magnet authenticated session route
+  app.use("/api/lead/my-session", leadSessionRouter);
 
   // Public Consultation Invites routes (unauthenticated access for prospects via invite links)
   app.use("/api/public/invite", publicConsultationInvitesRouter);

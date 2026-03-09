@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useParams } from 'wouter';
+import { useParams, useLocation } from 'wouter';
+import { setToken, setAuthUser } from '@/lib/auth';
 
 type Phase = 'landing' | 'chat' | 'report';
 
@@ -15,7 +16,7 @@ interface SessionData {
   leadName: string;
 }
 
-function LandingSection({ onStart, consultantId }: { onStart: (data: SessionData) => void; consultantId?: string }) {
+function LandingSection({ onStart, consultantId }: { onStart: (data: SessionData, authToken?: string, user?: any) => void; consultantId?: string }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -34,7 +35,7 @@ function LandingSection({ onStart, consultantId }: { onStart: (data: SessionData
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Errore');
-      onStart({ token: data.data.token, sessionId: data.data.sessionId, leadName: name.trim() });
+      onStart({ token: data.data.token, sessionId: data.data.sessionId, leadName: name.trim() }, data.data.authToken, data.data.user);
     } catch (err: any) {
       setError(err.message || 'Si è verificato un errore. Riprova.');
     } finally {
@@ -479,7 +480,15 @@ export default function PublicLeadMagnet() {
   const [session, setSession] = useState<SessionData | null>(null);
   const [report, setReport] = useState<any>(null);
 
-  const handleStart = (data: SessionData) => {
+  const [, setLocation] = useLocation();
+
+  const handleStart = (data: SessionData, authToken?: string, user?: any) => {
+    if (authToken && user) {
+      setToken(authToken);
+      setAuthUser(user);
+      setLocation('/lead/chat');
+      return;
+    }
     setSession(data);
     setPhase('chat');
   };

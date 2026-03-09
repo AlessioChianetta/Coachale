@@ -98,13 +98,16 @@ interface DeliveryChatProps {
   };
   onStatusChange: (newStatus: string) => void;
   onViewReport: () => void;
+  publicToken?: string;
 }
 
 export function DeliveryChat({
   session,
   onStatusChange,
   onViewReport,
+  publicToken,
 }: DeliveryChatProps) {
+  const isPublic = !!publicToken;
   const { toast } = useToast();
   const [messages, setMessages] = useState<DeliveryMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -120,17 +123,20 @@ export function DeliveryChat({
     const loadMessages = async () => {
       setLoadingMessages(true);
       try {
-        const res = await fetch(
-          `/api/consultant/delivery-agent/sessions/${session.id}`,
-          { headers: getAuthHeaders() }
-        );
+        const url = isPublic
+          ? `/api/public/lead-magnet/${publicToken}/session`
+          : `/api/consultant/delivery-agent/sessions/${session.id}`;
+        const headers = isPublic ? {} : getAuthHeaders();
+        const res = await fetch(url, { headers });
         if (res.ok) {
           const data = await res.json();
-          const msgs = data.data?.messages || data.messages || [];
+          const msgs = isPublic
+            ? (data.data?.messages || [])
+            : (data.data?.messages || data.messages || []);
           if (msgs.length > 0) {
             setMessages(
               msgs.map((m: any) => ({
-                id: m.id,
+                id: m.id || crypto.randomUUID(),
                 role: m.role,
                 content: m.content,
                 thinking: m.metadata_json?.thinking,
@@ -147,7 +153,7 @@ export function DeliveryChat({
       }
     };
     loadMessages();
-  }, [session.id]);
+  }, [session.id, isPublic, publicToken]);
 
   const handleSend = useCallback(async (message: string) => {
     const trimmed = message.trim();
@@ -173,16 +179,21 @@ export function DeliveryChat({
     abortControllerRef.current = controller;
 
     try {
-      const response = await fetch("/api/consultant/delivery-agent/chat", {
+      const chatUrl = isPublic
+        ? `/api/public/lead-magnet/${publicToken}/chat`
+        : "/api/consultant/delivery-agent/chat";
+      const chatHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(isPublic ? {} : getAuthHeaders()),
+      };
+      const chatBody = isPublic
+        ? { message: trimmed }
+        : { sessionId: session.id, message: trimmed };
+
+      const response = await fetch(chatUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({
-          sessionId: session.id,
-          message: trimmed,
-        }),
+        headers: chatHeaders,
+        body: JSON.stringify(chatBody),
         signal: controller.signal,
       });
 
@@ -322,18 +333,19 @@ export function DeliveryChat({
         variant: "destructive",
       });
     }
-  }, [isTyping, session.id, onStatusChange, toast]);
+  }, [isTyping, session.id, onStatusChange, toast, isPublic, publicToken]);
 
   const handleGenerateReport = useCallback(async () => {
     setIsGeneratingReport(true);
     try {
-      const res = await fetch(
-        `/api/consultant/delivery-agent/generate-report/${session.id}`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-        }
-      );
+      const reportUrl = isPublic
+        ? `/api/public/lead-magnet/${publicToken}/generate-report`
+        : `/api/consultant/delivery-agent/generate-report/${session.id}`;
+      const reportHeaders = isPublic ? {} : getAuthHeaders();
+      const res = await fetch(reportUrl, {
+        method: "POST",
+        headers: reportHeaders,
+      });
       if (res.ok) {
         onStatusChange("assistant");
         toast({
@@ -354,7 +366,7 @@ export function DeliveryChat({
     } finally {
       setIsGeneratingReport(false);
     }
-  }, [session.id, onStatusChange, onViewReport, toast]);
+  }, [session.id, onStatusChange, onViewReport, toast, isPublic, publicToken]);
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgCountRef = useRef(0);
@@ -372,6 +384,7 @@ export function DeliveryChat({
 
     pollIntervalRef.current = setInterval(async () => {
       try {
+        if (isPublic) return;
         const [msgsRes, statusRes] = await Promise.all([
           fetch(`/api/consultant/delivery-agent/sessions/${session.id}`, { headers: getAuthHeaders() }),
           fetch(`/api/consultant/delivery-agent/simulator/status/${session.id}`, { headers: getAuthHeaders() }),

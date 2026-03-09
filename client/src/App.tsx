@@ -167,6 +167,7 @@ const AdminSettings = lazy(() => import("@/pages/admin-settings"));
 const AdminAcademy = lazy(() => import("@/pages/admin-academy"));
 const SasLanding = lazy(() => import("@/pages/sas-landing"));
 const PublicLeadMagnet = lazy(() => import("@/pages/public-lead-magnet"));
+const LeadChat = lazy(() => import("@/pages/lead-chat"));
 const PrivacyPolicy = lazy(() => import("@/pages/privacy-policy"));
 
 // Content Marketing Studio pages
@@ -822,6 +823,12 @@ function Router() {
           <Route path="/consultant/client-data-analysis">
             <AuthGuard requiredRole="consultant">
               <ConsultantClientDataAnalysis />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/lead/chat">
+            <AuthGuard requiredRole="client">
+              <LeadChat />
             </AuthGuard>
           </Route>
 

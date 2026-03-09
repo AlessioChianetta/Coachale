@@ -44,6 +44,13 @@ export default function AuthGuard({ children, requiredRole, fallback, blockTiers
       }
     }
 
+    if (user?.tier === 'lead_magnet' && location !== '/lead/chat') {
+      setLocation('/lead/chat');
+      setShouldRender("redirect");
+      setIsChecking(false);
+      return;
+    }
+
     if (blockTiers && user?.tier && blockTiers.includes(user.tier as "bronze" | "silver")) {
       const agentSlug = user.agentSlug || localStorage.getItem('agentSlug');
       if (agentSlug) {

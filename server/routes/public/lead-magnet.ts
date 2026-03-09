@@ -7,8 +7,24 @@ import { decrypt } from '../../encryption';
 import { superadminLeadScraperConfig } from '../../../shared/schema';
 import { ensureProactiveLead } from '../../utils/ensure-proactive-lead';
 import { randomUUID } from 'crypto';
+import crypto from 'crypto';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { sendEmail } from '../../services/email-scheduler';
+
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key';
 
 const router = Router();
+
+(async () => {
+  try {
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_lead_magnet BOOLEAN DEFAULT false`);
+    await db.execute(sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS lead_user_id VARCHAR`);
+    console.log('[LeadMagnet] DB columns ensured');
+  } catch (e) {
+    console.error('[LeadMagnet] DB migration error:', e);
+  }
+})();
 
 const FALLBACK_CONSULTANT_ID = '0c73bbe5-51e1-4108-866b-6be7a52fce3b';
 
@@ -124,9 +140,126 @@ router.post('/start', async (req: Request, res: Response) => {
       consultantNotes: `Lead da Onboarding Gratuito. Nome: ${name.trim()}. Email: ${email.trim()}.`,
     });
 
-    console.log(`[LeadMagnet] New session ${sessionId} for ${name.trim()} (${email.trim()}, ${phone.trim()})`);
+    let userId: string | null = null;
+    let username: string = '';
+    let plainPassword: string | null = null;
+    let isNewUser = false;
+    let authToken: string | null = null;
+    let userObject: any = null;
 
-    res.json({ success: true, data: { token: publicToken, sessionId } });
+    const emailLower = email.trim().toLowerCase();
+    const existingUserRes = await db.execute(sql`
+      SELECT id, username, is_lead_magnet FROM users WHERE LOWER(email) = ${emailLower} LIMIT 1
+    `);
+
+    if (existingUserRes.rows.length > 0) {
+      const existingUser = existingUserRes.rows[0] as any;
+      if (existingUser.is_lead_magnet === true) {
+        userId = existingUser.id;
+        username = existingUser.username;
+
+        await db.execute(sql`
+          UPDATE delivery_agent_sessions SET lead_user_id = ${userId} WHERE id = ${sessionId}
+        `);
+
+        const profileRes = await db.execute(sql`
+          SELECT id FROM user_profiles WHERE user_id = ${userId} AND role = 'client' LIMIT 1
+        `);
+        const profileId = profileRes.rows.length > 0 ? (profileRes.rows[0] as any).id : null;
+        const tokenPayload: any = { userId, profileId, type: 'lead_magnet', consultantId, email: emailLower };
+        authToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
+        userObject = {
+          id: userId, username, email: emailLower, firstName, lastName,
+          role: 'client', tier: 'lead_magnet', isActive: true, consultantId,
+        };
+      } else {
+        await db.execute(sql`
+          UPDATE delivery_agent_sessions SET lead_user_id = ${existingUser.id} WHERE id = ${sessionId}
+        `);
+        console.log(`[LeadMagnet] Email ${emailLower} exists as non-lead user — session linked, no auto-login`);
+      }
+    } else {
+      plainPassword = crypto.randomBytes(6).toString('hex');
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+      const emailPrefix = emailLower.split('@')[0].replace(/[^a-z0-9]/gi, '').toLowerCase().substring(0, 15);
+      const randomSuffix = crypto.randomBytes(2).toString('hex');
+      username = `lm_${emailPrefix}_${randomSuffix}`;
+
+      const newUserRes = await db.execute(sql`
+        INSERT INTO users (username, email, password, first_name, last_name, role, consultant_id, is_active, is_lead_magnet)
+        VALUES (${username}, ${emailLower}, ${hashedPassword}, ${firstName}, ${lastName}, 'client', ${consultantId}, true, true)
+        RETURNING id
+      `);
+      userId = (newUserRes.rows[0] as any).id;
+      isNewUser = true;
+
+      const profileRes = await db.execute(sql`
+        SELECT id FROM user_profiles WHERE user_id = ${userId} AND role = 'client' LIMIT 1
+      `);
+      let profileId: string | null = null;
+      if (profileRes.rows.length === 0) {
+        const newProfileRes = await db.execute(sql`
+          INSERT INTO user_profiles (user_id, role, consultant_id, is_active)
+          VALUES (${userId}, 'client', ${consultantId}, true)
+          RETURNING id
+        `);
+        profileId = (newProfileRes.rows[0] as any).id;
+      } else {
+        profileId = (profileRes.rows[0] as any).id;
+      }
+
+      await db.execute(sql`
+        UPDATE delivery_agent_sessions SET lead_user_id = ${userId} WHERE id = ${sessionId}
+      `);
+
+      const tokenPayload: any = { userId, profileId, type: 'lead_magnet', consultantId, email: emailLower };
+      authToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
+      userObject = {
+        id: userId, username, email: emailLower, firstName, lastName,
+        role: 'client', tier: 'lead_magnet', isActive: true, consultantId,
+      };
+
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      try {
+        await sendEmail({
+          to: emailLower,
+          subject: `Ciao ${firstName} — La tua Analisi AI è pronta`,
+          consultantId,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 40px 32px; border-radius: 16px;">
+              <div style="text-align: center; margin-bottom: 32px;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #06b6d4); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; color: #fff;">SO</div>
+                <h2 style="margin: 16px 0 0; font-size: 22px; font-weight: 700;">Sistema Orbitale</h2>
+              </div>
+              <p style="font-size: 16px; line-height: 1.6; margin: 0 0 20px;">Ciao <strong>${firstName}</strong>,</p>
+              <p style="font-size: 15px; line-height: 1.6; color: #94a3b8; margin: 0 0 24px;">Abbiamo creato il tuo accesso alla piattaforma. Ecco le tue credenziali per accessi futuri:</p>
+              <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin: 0 0 24px;">
+                <p style="margin: 0 0 8px; font-size: 14px; color: #94a3b8;">Email</p>
+                <p style="margin: 0 0 16px; font-size: 16px; font-weight: 600;">${emailLower}</p>
+                <p style="margin: 0 0 8px; font-size: 14px; color: #94a3b8;">Password</p>
+                <p style="margin: 0; font-size: 16px; font-weight: 600; font-family: monospace; letter-spacing: 1px;">${plainPassword}</p>
+              </div>
+              <div style="text-align: center; margin: 0 0 24px;">
+                <a href="${baseUrl}/login" style="display: inline-block; padding: 12px 32px; background: linear-gradient(135deg, #10b981, #06b6d4); color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">Accedi alla Piattaforma</a>
+              </div>
+              <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin: 0;">Se sei già connesso, trovi la tua analisi direttamente nella piattaforma. In caso di disconnessione, usa questi dati per rientrare.</p>
+            </div>
+          `,
+        });
+        console.log(`[LeadMagnet] Welcome email sent to ${emailLower}`);
+      } catch (emailErr) {
+        console.error('[LeadMagnet] Failed to send welcome email:', emailErr);
+      }
+    }
+
+    console.log(`[LeadMagnet] New session ${sessionId} for ${name.trim()} (${email.trim()}, ${phone.trim()}) userId=${userId || 'existing-non-lead'}`);
+
+    const responseData: any = { token: publicToken, sessionId };
+    if (authToken && userObject) {
+      responseData.authToken = authToken;
+      responseData.user = userObject;
+    }
+    res.json({ success: true, data: responseData });
   } catch (err: any) {
     console.error('[LeadMagnet] Start error:', err);
     res.status(500).json({ success: false, error: 'Errore durante la registrazione. Riprova.' });
