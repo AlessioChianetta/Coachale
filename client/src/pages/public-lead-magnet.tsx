@@ -20,18 +20,23 @@ function LandingSection({ onStart, consultantId }: { onStart: (data: SessionData
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (password.length < 6) {
+      setError('La password deve avere almeno 6 caratteri.');
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch('/api/public/lead-magnet/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), phone: phone.trim(), consultantId }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), phone: phone.trim(), password, consultantId }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Errore');
@@ -91,6 +96,12 @@ function LandingSection({ onStart, consultantId }: { onStart: (data: SessionData
           <input
             type="tel" required value={phone} onChange={e => setPhone(e.target.value)}
             placeholder="Il tuo numero di telefono"
+            style={{ width: '100%', padding: '14px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.07)', color: '#f8fafc', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+          />
+          <input
+            type="password" required value={password} onChange={e => setPassword(e.target.value)}
+            placeholder="Scegli una password (min. 6 caratteri)"
+            minLength={6}
             style={{ width: '100%', padding: '14px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.07)', color: '#f8fafc', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
           />
           {error && <div style={{ color: '#f87171', fontSize: '14px', textAlign: 'center' }}>{error}</div>}

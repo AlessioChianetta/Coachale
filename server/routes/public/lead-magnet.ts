@@ -94,7 +94,7 @@ router.post('/start', async (req: Request, res: Response) => {
       return res.status(429).json({ success: false, error: 'Troppe richieste. Riprova tra un minuto.' });
     }
 
-    const { name, email, phone, consultantId: reqConsultantId } = req.body;
+    const { name, email, phone, password, consultantId: reqConsultantId } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, error: 'Nome è obbligatorio' });
@@ -104,6 +104,9 @@ router.post('/start', async (req: Request, res: Response) => {
     }
     if (!phone || !phone.trim()) {
       return res.status(400).json({ success: false, error: 'Telefono è obbligatorio' });
+    }
+    if (!password || password.trim().length < 6) {
+      return res.status(400).json({ success: false, error: 'La password deve avere almeno 6 caratteri' });
     }
 
     const consultantId = await resolveConsultantId(reqConsultantId);
@@ -142,19 +145,23 @@ router.post('/start', async (req: Request, res: Response) => {
 
     let userId: string | null = null;
     let username: string = '';
-    let plainPassword: string | null = null;
     let isNewUser = false;
     let authToken: string | null = null;
     let userObject: any = null;
 
     const emailLower = email.trim().toLowerCase();
     const existingUserRes = await db.execute(sql`
-      SELECT id, username, is_lead_magnet FROM users WHERE LOWER(email) = ${emailLower} LIMIT 1
+      SELECT id, username, password, is_lead_magnet FROM users WHERE LOWER(email) = ${emailLower} LIMIT 1
     `);
 
     if (existingUserRes.rows.length > 0) {
       const existingUser = existingUserRes.rows[0] as any;
       if (existingUser.is_lead_magnet === true) {
+        const passwordMatch = await bcrypt.compare(password.trim(), existingUser.password);
+        if (!passwordMatch) {
+          return res.status(401).json({ success: false, error: 'Password non corretta per questo account. Se hai dimenticato la password, accedi dalla pagina di login.' });
+        }
+
         userId = existingUser.id;
         username = existingUser.username;
 
@@ -179,8 +186,7 @@ router.post('/start', async (req: Request, res: Response) => {
         console.log(`[LeadMagnet] Email ${emailLower} exists as non-lead user — session linked, no auto-login`);
       }
     } else {
-      plainPassword = crypto.randomBytes(6).toString('hex');
-      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+      const hashedPassword = await bcrypt.hash(password.trim(), 10);
       const emailPrefix = emailLower.split('@')[0].replace(/[^a-z0-9]/gi, '').toLowerCase().substring(0, 15);
       const randomSuffix = crypto.randomBytes(2).toString('hex');
       username = `lm_${emailPrefix}_${randomSuffix}`;
@@ -232,12 +238,12 @@ router.post('/start', async (req: Request, res: Response) => {
                 <h2 style="margin: 16px 0 0; font-size: 22px; font-weight: 700;">Sistema Orbitale</h2>
               </div>
               <p style="font-size: 16px; line-height: 1.6; margin: 0 0 20px;">Ciao <strong>${firstName}</strong>,</p>
-              <p style="font-size: 15px; line-height: 1.6; color: #94a3b8; margin: 0 0 24px;">Abbiamo creato il tuo accesso alla piattaforma. Ecco le tue credenziali per accessi futuri:</p>
+              <p style="font-size: 15px; line-height: 1.6; color: #94a3b8; margin: 0 0 24px;">Abbiamo creato il tuo accesso alla piattaforma. Per accedere in futuro usa le credenziali che hai scelto durante la registrazione:</p>
               <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin: 0 0 24px;">
                 <p style="margin: 0 0 8px; font-size: 14px; color: #94a3b8;">Email</p>
                 <p style="margin: 0 0 16px; font-size: 16px; font-weight: 600;">${emailLower}</p>
                 <p style="margin: 0 0 8px; font-size: 14px; color: #94a3b8;">Password</p>
-                <p style="margin: 0; font-size: 16px; font-weight: 600; font-family: monospace; letter-spacing: 1px;">${plainPassword}</p>
+                <p style="margin: 0; font-size: 14px; color: #94a3b8;">Quella che hai scelto durante la registrazione</p>
               </div>
               <div style="text-align: center; margin: 0 0 24px;">
                 <a href="${baseUrl}/login" style="display: inline-block; padding: 12px 32px; background: linear-gradient(135deg, #10b981, #06b6d4); color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">Accedi alla Piattaforma</a>
