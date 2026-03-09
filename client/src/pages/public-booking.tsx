@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useParams } from 'wouter';
 import { 
@@ -183,6 +183,13 @@ export default function PublicBooking() {
         return dates;
       }, [] as string[]) || [];
   }, [slotsData]);
+
+  useEffect(() => {
+    if (availableDates.length > 0 && !selectedDate && step === 'date') {
+      const firstAvailable = new Date(availableDates[0] + 'T00:00:00');
+      setSelectedDate(firstAvailable);
+    }
+  }, [availableDates]);
 
   const timeSlotsForSelectedDate = selectedDate
     ? slotsData?.slots.filter(
