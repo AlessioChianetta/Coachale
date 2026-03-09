@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Search, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import {
@@ -92,7 +91,7 @@ export function FunnelPalette({ className }: FunnelPaletteProps) {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="p-2 space-y-1">
           {ALL_CATEGORIES.map((cat) => {
             const items = groupedTypes[cat];
@@ -168,7 +167,7 @@ export function FunnelPalette({ className }: FunnelPaletteProps) {
             </p>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
