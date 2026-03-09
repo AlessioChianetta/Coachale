@@ -169,11 +169,7 @@ router.post('/start', async (req: Request, res: Response) => {
           UPDATE delivery_agent_sessions SET lead_user_id = ${userId} WHERE id = ${sessionId}
         `);
 
-        const profileRes = await db.execute(sql`
-          SELECT id FROM user_profiles WHERE user_id = ${userId} AND role = 'client' LIMIT 1
-        `);
-        const profileId = profileRes.rows.length > 0 ? (profileRes.rows[0] as any).id : null;
-        const tokenPayload: any = { userId, profileId, type: 'lead_magnet', consultantId, email: emailLower };
+        const tokenPayload: any = { userId, profileId: null, type: 'lead_magnet', consultantId, email: emailLower };
         authToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
         userObject = {
           id: userId, username, email: emailLower, firstName, lastName,
@@ -199,26 +195,11 @@ router.post('/start', async (req: Request, res: Response) => {
       userId = (newUserRes.rows[0] as any).id;
       isNewUser = true;
 
-      const profileRes = await db.execute(sql`
-        SELECT id FROM user_profiles WHERE user_id = ${userId} AND role = 'client' LIMIT 1
-      `);
-      let profileId: string | null = null;
-      if (profileRes.rows.length === 0) {
-        const newProfileRes = await db.execute(sql`
-          INSERT INTO user_profiles (user_id, role, consultant_id, is_active)
-          VALUES (${userId}, 'client', ${consultantId}, true)
-          RETURNING id
-        `);
-        profileId = (newProfileRes.rows[0] as any).id;
-      } else {
-        profileId = (profileRes.rows[0] as any).id;
-      }
-
       await db.execute(sql`
         UPDATE delivery_agent_sessions SET lead_user_id = ${userId} WHERE id = ${sessionId}
       `);
 
-      const tokenPayload: any = { userId, profileId, type: 'lead_magnet', consultantId, email: emailLower };
+      const tokenPayload: any = { userId, profileId: null, type: 'lead_magnet', consultantId, email: emailLower };
       authToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
       userObject = {
         id: userId, username, email: emailLower, firstName, lastName,

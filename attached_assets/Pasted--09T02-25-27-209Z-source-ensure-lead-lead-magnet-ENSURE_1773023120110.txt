@@ -1,0 +1,52 @@
+-09T02:25:27.209Z [source: ensure-lead-lead_magnet]
+📋 [ENSURE-LEAD] 📞 Auto-call scheduled: autocall_1773023097209_roano
+[LeadMagnet] Start error: error: relation "user_profiles" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/public/lead-magnet.ts:202:26) {
+  length: 112,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '25',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+2:24:57 AM [express] POST /api/public/lead-magnet/start 500 in 1465ms :: {"success":false,"error":"E…
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping... (rowCount=0, rows=0, keys=command,rowCount,oid,rows,fields,_parsers,_types,RowCtor,rowAsArray,_prebuiltEmptyResultObject)
+📋 [ENSURE-LEAD] ↩ Existing proactive lead dd6ba9b4-df74-4d7a-ba3f-0e3152ca204b for +393312323333 (roberto sinistra, source: lead_magnet)
+[LeadMagnet] Start error: error: relation "user_profiles" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/public/lead-magnet.ts:172:28) {
+  length: 112,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '27',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+2:25:02 AM [express] POST /api/public/lead-magnet/start 500 in 941ms :: {"success":false,"error":"Er…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+2:25:07 AM [express] POST /api/activity/session/heartbeat 200 in 446ms :: {"success":true,"lastActiv…
