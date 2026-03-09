@@ -1506,6 +1506,19 @@ function DashboardTab({
                         >
                           <Ban className="h-3 w-3" />
                         </Button>
+                        {task.role === 'nova' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2.5 text-xs border-purple-200 text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 gap-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/consultant/content-studio?novaContext=${encodeURIComponent(task.ai_instruction || '')}`);
+                            }}
+                          >
+                            <Sparkles className="h-3 w-3" /> Content Studio
+                          </Button>
+                        )}
                       </>
                     )}
                     {task.status === 'waiting_input' && (
@@ -3048,6 +3061,18 @@ function DashboardTab({
                       >
                         <CheckCircle className="h-4 w-4 mr-1.5" />
                         Approva Task
+                      </Button>
+                    )}
+                    {task.role === 'nova' && (
+                      <Button
+                        variant="outline"
+                        className="border-purple-200 text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-950/30 gap-1.5"
+                        onClick={() => {
+                          navigate(`/consultant/content-studio?novaContext=${encodeURIComponent(task.ai_instruction || '')}`);
+                        }}
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        Content Studio
                       </Button>
                     )}
                     {['scheduled', 'draft', 'waiting_approval', 'paused', 'approved'].includes(task.status) && (
