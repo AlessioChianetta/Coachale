@@ -10,9 +10,19 @@ import { randomUUID } from 'crypto';
 
 const router = Router();
 
-const OWNER_CONSULTANT_ID = '0c73bbe5-51e1-4108-866b-6be7a52fce3b';
+const FALLBACK_CONSULTANT_ID = '0c73bbe5-51e1-4108-866b-6be7a52fce3b';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function resolveConsultantId(consultantId?: string): Promise<string> {
+  if (consultantId && consultantId.trim()) {
+    const res = await db.execute(sql`SELECT id FROM users WHERE id = ${consultantId.trim()} AND role = 'consultant' LIMIT 1`);
+    if (res.rows.length > 0) return consultantId.trim();
+    const res2 = await db.execute(sql`SELECT id FROM users WHERE id = ${consultantId.trim()} AND role = 'super_admin' LIMIT 1`);
+    if (res2.rows.length > 0) return consultantId.trim();
+  }
+  return FALLBACK_CONSULTANT_ID;
+}
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -64,7 +74,7 @@ router.post('/start', async (req: Request, res: Response) => {
       return res.status(429).json({ success: false, error: 'Troppe richieste. Riprova tra un minuto.' });
     }
 
-    const { name, email, phone } = req.body;
+    const { name, email, phone, consultantId: reqConsultantId } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, error: 'Nome è obbligatorio' });
@@ -76,6 +86,7 @@ router.post('/start', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Telefono è obbligatorio' });
     }
 
+    const consultantId = await resolveConsultantId(reqConsultantId);
     const publicToken = randomUUID();
 
     const sessionRes = await db.execute(sql`
@@ -83,7 +94,7 @@ router.post('/start', async (req: Request, res: Response) => {
         consultant_id, mode, status, is_public, public_token,
         lead_name, lead_email, lead_phone
       ) VALUES (
-        ${OWNER_CONSULTANT_ID}, 'onboarding', 'discovery', true, ${publicToken},
+        ${consultantId}, 'onboarding', 'discovery', true, ${publicToken},
         ${name.trim()}, ${email.trim()}, ${phone.trim()}
       )
       RETURNING id
@@ -95,7 +106,7 @@ router.post('/start', async (req: Request, res: Response) => {
     const lastName = nameParts.slice(1).join(' ') || '';
 
     await ensureProactiveLead({
-      consultantId: OWNER_CONSULTANT_ID,
+      consultantId,
       phoneNumber: phone.trim(),
       contactName: name.trim(),
       email: email.trim(),
@@ -226,7 +237,7 @@ router.post('/:token/chat', async (req: Request, res: Response) => {
       systemPromptText = `Sei Luca, un consulente AI esperto. Aiuta il visitatore a capire come l'intelligenza artificiale può migliorare il suo business. Fai domande sul suo lavoro e i suoi processi.`;
     }
 
-    const provider = await getAIProvider(OWNER_CONSULTANT_ID);
+    const provider = await getAIProvider(session.consultant_id || FALLBACK_CONSULTANT_ID);
     if (provider.setFeature) {
       provider.setFeature('delivery-agent', 'consultant');
     }
@@ -403,7 +414,7 @@ router.post('/:token/generate-report', async (req: Request, res: Response) => {
       reportPrompt = `Generate a structured onboarding report in JSON format.`;
     }
 
-    const provider = await getAIProvider(OWNER_CONSULTANT_ID);
+    const provider = await getAIProvider(session.consultant_id || FALLBACK_CONSULTANT_ID);
     if (provider.setFeature) {
       provider.setFeature('delivery-agent-report', 'consultant');
     }
@@ -499,7 +510,7 @@ Ragiona in modo strutturato e critico.`,
 
     await db.execute(sql`
       INSERT INTO delivery_agent_reports (session_id, consultant_id, report_json)
-      VALUES (${sessionId}, ${OWNER_CONSULTANT_ID}, ${JSON.stringify(reportJson)}::jsonb)
+      VALUES (${sessionId}, ${session.consultant_id || FALLBACK_CONSULTANT_ID}, ${JSON.stringify(reportJson)}::jsonb)
     `);
 
     await db.execute(sql`
@@ -532,7 +543,7 @@ Ragiona in modo strutturato e critico.`,
               consultant_notes = ${enrichedNotes},
               lead_category = 'tiepido',
               updated_at = NOW()
-          WHERE consultant_id = ${OWNER_CONSULTANT_ID}
+          WHERE consultant_id = ${session.consultant_id || FALLBACK_CONSULTANT_ID}
             AND phone_number = ${normalizedPhone}
         `);
         console.log(`[LeadMagnet] Enriched proactive lead for ${normalizedPhone}`);

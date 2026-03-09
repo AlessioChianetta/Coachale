@@ -52,6 +52,8 @@ import {
   Copy,
   Check,
   ExternalLink,
+  Sparkles,
+  Brain,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -130,6 +132,12 @@ interface ProactiveLead {
     fieldOfStudy?: string;
     university?: string;
     notes?: string;
+    tipo_business?: string;
+    settore?: string;
+    pain_points?: string[];
+    pacchetti_consigliati?: string[];
+    lead_magnet_session_id?: string;
+    [key: string]: any;
   };
 }
 
@@ -141,9 +149,9 @@ export default function ConsultantReferralsPage() {
   const queryClient = useQueryClient();
   const user = getAuthUser();
 
-  // Switch tra Referral e Optin
-  const [viewMode, setViewMode] = useState<"referral" | "optin">("referral");
+  const [viewMode, setViewMode] = useState<"referral" | "optin" | "leadmagnet">("referral");
   const [linkCopied, setLinkCopied] = useState(false);
+  const [lmLinkCopied, setLmLinkCopied] = useState(false);
   
   const [activeTab, setActiveTab] = useState<"all" | ReferralStatus>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -222,10 +230,27 @@ export default function ConsultantReferralsPage() {
 
   const optinLeads = optinLeadsData?.leads || [];
 
-  // Helper per copiare il link optin
+  const { data: lmLeadsData, isLoading: lmLoading } = useQuery<{ leads: ProactiveLead[] }>({
+    queryKey: ["/api/proactive-leads", "lead_magnet"],
+    queryFn: async () => {
+      const response = await fetch("/api/proactive-leads?source=lead_magnet", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch lead magnet leads");
+      return response.json();
+    },
+    enabled: viewMode === "leadmagnet",
+  });
+  const lmLeads = lmLeadsData?.leads || [];
+
   const getOptinLink = () => {
     if (!user?.id) return "";
     return `${window.location.origin}/optin/${user.id}`;
+  };
+
+  const getLeadMagnetLink = () => {
+    if (!user?.id) return "";
+    return `${window.location.origin}/onboarding-gratuito/${user.id}`;
   };
 
   const copyOptinLink = async () => {
@@ -237,6 +262,24 @@ export default function ConsultantReferralsPage() {
         description: "Il link optin è stato copiato negli appunti",
       });
       setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Errore",
+        description: "Impossibile copiare il link",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyLeadMagnetLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getLeadMagnetLink());
+      setLmLinkCopied(true);
+      toast({
+        title: "Link copiato!",
+        description: "Il link Lead Magnet è stato copiato negli appunti",
+      });
+      setTimeout(() => setLmLinkCopied(false), 2000);
     } catch (err) {
       toast({
         title: "Errore",
@@ -333,11 +376,15 @@ export default function ConsultantReferralsPage() {
             <div className={`rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl relative overflow-hidden ${
               viewMode === "referral" 
                 ? "bg-slate-900" 
+                : viewMode === "leadmagnet"
+                ? "bg-gradient-to-br from-violet-900 to-indigo-900"
                 : "bg-gradient-to-br from-teal-800 to-emerald-900"
             }`}>
               <div className={`absolute inset-x-0 top-0 h-1 ${
                 viewMode === "referral"
                   ? "bg-gradient-to-r from-fuchsia-400 via-purple-400 to-pink-400"
+                  : viewMode === "leadmagnet"
+                  ? "bg-gradient-to-r from-violet-400 via-indigo-400 to-purple-400"
                   : "bg-gradient-to-r from-teal-400 via-emerald-400 to-green-400"
               }`}></div>
               <div className="flex items-center justify-between">
@@ -346,10 +393,14 @@ export default function ConsultantReferralsPage() {
                     <div className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl ${
                       viewMode === "referral"
                         ? "bg-gradient-to-br from-fuchsia-500 to-purple-500"
+                        : viewMode === "leadmagnet"
+                        ? "bg-gradient-to-br from-violet-500 to-indigo-500"
                         : "bg-gradient-to-br from-teal-500 to-emerald-500"
                     }`}>
                       {viewMode === "referral" ? (
                         <Gift className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
+                      ) : viewMode === "leadmagnet" ? (
+                        <Brain className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
                       ) : (
                         <FileText className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
                       )}
@@ -357,7 +408,7 @@ export default function ConsultantReferralsPage() {
                     <div>
                       <div className="flex items-center gap-3">
                         <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">
-                          {viewMode === "referral" ? "Gestione Referral" : "Lead Optin"}
+                          {viewMode === "referral" ? "Gestione Referral" : viewMode === "leadmagnet" ? "Lead Magnet AI" : "Lead Optin"}
                         </h1>
                         <div className="hidden sm:flex bg-white/10 rounded-full p-1">
                           <button
@@ -380,11 +431,23 @@ export default function ConsultantReferralsPage() {
                           >
                             Optin
                           </button>
+                          <button
+                            onClick={() => setViewMode("leadmagnet")}
+                            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                              viewMode === "leadmagnet"
+                                ? "bg-white text-slate-900"
+                                : "text-white/70 hover:text-white"
+                            }`}
+                          >
+                            Lead Magnet
+                          </button>
                         </div>
                       </div>
                       <p className="text-slate-400 text-xs sm:text-sm md:text-base lg:text-lg hidden sm:block">
                         {viewMode === "referral" 
                           ? "Gestisci tutti i referral dai tuoi clienti"
+                          : viewMode === "leadmagnet"
+                          ? "Lead acquisiti tramite analisi AI gratuita"
                           : "Lead che si sono iscritti direttamente dal tuo link optin"
                         }
                       </p>
@@ -414,7 +477,6 @@ export default function ConsultantReferralsPage() {
                 </div>
               </div>
               
-              {/* Link Optin Box */}
               {viewMode === "optin" && (
                 <div className="mt-4 p-3 bg-white/10 backdrop-blur-sm rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-sm flex-1 min-w-0">
@@ -432,6 +494,26 @@ export default function ConsultantReferralsPage() {
                   >
                     {linkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
                     {linkCopied ? "Copiato!" : "Copia Link"}
+                  </Button>
+                </div>
+              )}
+              {viewMode === "leadmagnet" && (
+                <div className="mt-4 p-3 bg-white/10 backdrop-blur-sm rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm flex-1 min-w-0">
+                    <Sparkles className="w-4 h-4 text-violet-300 flex-shrink-0" />
+                    <span className="text-white/80 flex-shrink-0">Link Lead Magnet:</span>
+                    <code className="bg-white/20 px-2 py-1 rounded text-xs truncate max-w-[300px]">
+                      {getLeadMagnetLink()}
+                    </code>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={copyLeadMagnetLink}
+                    className="text-white hover:bg-white/20"
+                  >
+                    {lmLinkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                    {lmLinkCopied ? "Copiato!" : "Copia Link"}
                   </Button>
                 </div>
               )}
@@ -690,8 +772,7 @@ export default function ConsultantReferralsPage() {
             </CardContent>
           </Card>
           </>
-          ) : (
-            /* OPTIN VIEW */
+          ) : viewMode === "optin" ? (
             <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -843,7 +924,174 @@ export default function ConsultantReferralsPage() {
                 )}
               </CardContent>
             </Card>
-          )}
+          ) : viewMode === "leadmagnet" ? (
+            <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-xl font-bold text-slate-800 mb-1">Lead da Analisi AI Gratuita</CardTitle>
+                    <p className="text-sm text-slate-600">
+                      Lead acquisiti tramite il tuo link Lead Magnet ({lmLeads.length} totali)
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1 sm:flex-none sm:w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                      <Input
+                        placeholder="Cerca lead..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 bg-white/80 border-slate-200 focus:border-violet-400 focus:ring-violet-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-4">
+                {lmLoading ? (
+                  <div className="text-center py-16">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-violet-500" />
+                    <p className="mt-4 text-slate-600">Caricamento lead...</p>
+                  </div>
+                ) : lmLeads.length === 0 ? (
+                  <div className="text-center py-16 px-4">
+                    <div className="w-20 h-20 bg-violet-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                      <Brain size={40} className="text-violet-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-slate-800 mb-2">Nessun lead dal Lead Magnet</h3>
+                    <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                      Condividi il tuo link Lead Magnet per acquisire contatti qualificati tramite analisi AI gratuita
+                    </p>
+                    <Button
+                      onClick={copyLeadMagnetLink}
+                      className="bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600"
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copia Link Lead Magnet
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="min-w-[200px]">Nome</TableHead>
+                          <TableHead className="min-w-[180px]">Contatti</TableHead>
+                          <TableHead className="min-w-[150px]">Business</TableHead>
+                          <TableHead className="min-w-[130px]">Categoria</TableHead>
+                          <TableHead className="min-w-[120px]">Data</TableHead>
+                          <TableHead className="min-w-[100px] text-right">Azioni</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {lmLeads
+                          .filter(lead => {
+                            if (!searchTerm) return true;
+                            const term = searchTerm.toLowerCase();
+                            return (
+                              lead.firstName?.toLowerCase().includes(term) ||
+                              lead.lastName?.toLowerCase().includes(term) ||
+                              lead.email?.toLowerCase().includes(term) ||
+                              lead.phoneNumber?.includes(term) ||
+                              lead.leadInfo?.tipo_business?.toLowerCase().includes(term) ||
+                              lead.leadInfo?.settore?.toLowerCase().includes(term)
+                            );
+                          })
+                          .map((lead) => (
+                          <TableRow key={lead.id} className="hover:bg-slate-50">
+                            <TableCell>
+                              <div className="space-y-1">
+                                <p className="font-medium text-slate-800">
+                                  {lead.firstName} {lead.lastName}
+                                </p>
+                                {lead.leadInfo?.pacchetti_consigliati && Array.isArray(lead.leadInfo.pacchetti_consigliati) && lead.leadInfo.pacchetti_consigliati.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {(lead.leadInfo.pacchetti_consigliati as string[]).slice(0, 2).map((pkg: string, i: number) => (
+                                      <span key={i} className="inline-block bg-violet-100 text-violet-700 text-[10px] px-1.5 py-0.5 rounded-full">{pkg}</span>
+                                    ))}
+                                    {(lead.leadInfo.pacchetti_consigliati as string[]).length > 2 && (
+                                      <span className="text-[10px] text-slate-400">+{(lead.leadInfo.pacchetti_consigliati as string[]).length - 2}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                {(lead.email || lead.leadInfo?.email) && (
+                                  <div className="flex items-center gap-1 text-xs text-slate-500">
+                                    <Mail className="w-3 h-3" />
+                                    {lead.email || lead.leadInfo?.email}
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1 text-xs text-slate-500">
+                                  <Phone className="w-3 h-3" />
+                                  {lead.phoneNumber}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-0.5">
+                                {lead.leadInfo?.tipo_business && (
+                                  <p className="text-sm text-slate-700">{lead.leadInfo.tipo_business}</p>
+                                )}
+                                {lead.leadInfo?.settore && (
+                                  <p className="text-xs text-slate-400">{lead.leadInfo.settore}</p>
+                                )}
+                                {!lead.leadInfo?.tipo_business && !lead.leadInfo?.settore && (
+                                  <span className="text-xs text-slate-400">In attesa di analisi</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={`${
+                                lead.leadInfo?.tipo_business ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700'
+                              } border-0`}>
+                                {lead.leadInfo?.tipo_business ? 'Tiepido' : 'Nuovo'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-slate-600">
+                                {lead.createdAt
+                                  ? format(new Date(lead.createdAt), "d MMM yyyy", { locale: it })
+                                  : "-"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedOptinLead(lead);
+                                    setOptinDetailsModalOpen(true);
+                                  }}
+                                  className="border-slate-200 hover:bg-slate-50"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  asChild
+                                  className="border-slate-200 hover:bg-slate-50"
+                                >
+                                  <a href={`tel:${lead.phoneNumber}`}>
+                                    <Phone className="w-4 h-4" />
+                                  </a>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
 

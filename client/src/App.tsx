@@ -245,6 +245,7 @@ function Router() {
 
           {/* SaaS Landing Page - no auth required */}
           <Route path="/Sas" component={SasLanding} />
+          <Route path="/onboarding-gratuito/:consultantId" component={PublicLeadMagnet} />
           <Route path="/onboarding-gratuito" component={PublicLeadMagnet} />
 
           {/* Privacy Policy - no auth required (for Meta App Review) */}

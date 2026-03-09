@@ -1,0 +1,40 @@
+ex.ts:3223:20)
+    at parseStatementLike (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:482:17)
+    at parseStatementListItem (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:431:17)
+    at parseBlockOrModuleBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1444:16)
+    at parseBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1417:10)
+    at parseBlock (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1385:10)
+    at parseFunctionBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:2626:24) {
+  code: 'BABEL_PARSER_SYNTAX_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 928, column: 12, index: 42354 },
+  pos: 42354,
+  syntaxPlugin: undefined
+}
+1:12:06 AM [vite] Internal server error: /home/runner/workspace/client/src/pages/consultant-referrals.tsx: Unexpected token, expected "}" (928:12)
+
+  926 |               </CardContent>
+  927 |             </Card>
+> 928 |           ) : viewMode === "leadmagnet" ? (
+      |             ^
+  929 |             <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+  930 |               <CardHeader className="pb-4">
+  931 |                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+  Plugin: vite:react-babel
+  File: /home/runner/workspace/client/src/pages/consultant-referrals.tsx:928:12
+  926|                </CardContent>
+  927|              </Card>
+  928|            ) : viewMode === "leadmagnet" ? (
+     |              ^
+  929|              <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+  930|                <CardHeader className="pb-4">
+      at toParseError (/home/runner/workspace/node_modules/@babel/parser/src/parse-error.ts:95:45)
+      at raise (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1507:19)
+      at unexpected (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1547:16)
+      at expect (/home/runner/workspace/node_modules/@babel/parser/src/parser/util.ts:157:12)
+      at jsxParseExpressionContainer (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:394:12)
+      at jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:500:24)
+      at jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:483:34)
+      at jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:483:34)
+      at jsxParseElement (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:559:19)
+      at parseExprAtom (/home/runner/workspace/node_modules/@babel/par

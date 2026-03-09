@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useParams } from 'wouter';
 
 type Phase = 'landing' | 'chat' | 'report';
 
@@ -14,7 +15,7 @@ interface SessionData {
   leadName: string;
 }
 
-function LandingSection({ onStart }: { onStart: (data: SessionData) => void }) {
+function LandingSection({ onStart, consultantId }: { onStart: (data: SessionData) => void; consultantId?: string }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -29,7 +30,7 @@ function LandingSection({ onStart }: { onStart: (data: SessionData) => void }) {
       const res = await fetch('/api/public/lead-magnet/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), phone: phone.trim() }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), phone: phone.trim(), consultantId }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Errore');
@@ -472,6 +473,8 @@ function ReportSection({ report, leadName }: { report: any; leadName: string }) 
 }
 
 export default function PublicLeadMagnet() {
+  const params = useParams<{ consultantId?: string }>();
+  const consultantId = params.consultantId || undefined;
   const [phase, setPhase] = useState<Phase>('landing');
   const [session, setSession] = useState<SessionData | null>(null);
   const [report, setReport] = useState<any>(null);
@@ -487,7 +490,7 @@ export default function PublicLeadMagnet() {
   };
 
   if (phase === 'landing') {
-    return <LandingSection onStart={handleStart} />;
+    return <LandingSection onStart={handleStart} consultantId={consultantId} />;
   }
 
   if (phase === 'chat' && session) {
