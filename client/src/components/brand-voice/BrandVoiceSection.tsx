@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -110,6 +110,7 @@ export function BrandVoiceSection({
   } | null>(null);
   const [showPhaseConfirmDialog, setShowPhaseConfirmDialog] = useState(false);
   const [pendingPhaseGen, setPendingPhaseGen] = useState<{ phase: string; mode: 'add' | 'overwrite' | null }>({ phase: '', mode: null });
+  const mrSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!marketResearchOpen || isLoadingMR) return;
@@ -1091,7 +1092,8 @@ export function BrandVoiceSection({
                   data={marketResearchData}
                   onDataChange={(newData) => {
                     setMarketResearchData(newData);
-                    saveMarketResearchGlobal(newData);
+                    if (mrSaveTimeoutRef.current) clearTimeout(mrSaveTimeoutRef.current);
+                    mrSaveTimeoutRef.current = setTimeout(() => saveMarketResearchGlobal(newData), 1500);
                   }}
                   isGenerating={isGeneratingMR}
                   generatingPhase={generatingPhaseMR}

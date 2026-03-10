@@ -127,6 +127,7 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   } | null>(null);
   const [showPhaseConfirmDialog, setShowPhaseConfirmDialog] = useState(false);
   const [pendingPhaseGen, setPendingPhaseGen] = useState<{ phase: string; mode: 'add' | 'overwrite' | null }>({ phase: '', mode: null });
+  const mrSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!marketResearchOpen || isLoadingMR) return;
@@ -1585,7 +1586,8 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
                   data={marketResearchData}
                   onDataChange={(newData) => {
                     setMarketResearchData(newData);
-                    saveMarketResearchGlobal(newData);
+                    if (mrSaveTimeoutRef.current) clearTimeout(mrSaveTimeoutRef.current);
+                    mrSaveTimeoutRef.current = setTimeout(() => saveMarketResearchGlobal(newData), 1500);
                   }}
                   isGenerating={isGeneratingMR}
                   generatingPhase={generatingPhaseMR}
