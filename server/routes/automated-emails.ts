@@ -1159,7 +1159,6 @@ router.post("/consultant/email-drafts/:id/approve", authenticateToken, requireRo
       isTest: false
     });
 
-    // Generate tracking pixel URL and enhance HTML
     const { generateTrackingPixelUrl, enhanceEmailTypography, getEmailTrackingBaseUrl } = await import("../services/email-html-wrapper");
     const trackingBaseUrl = getEmailTrackingBaseUrl();
     const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, trackingBaseUrl);
@@ -1168,7 +1167,15 @@ router.post("/consultant/email-drafts/:id/approve", authenticateToken, requireRo
     console.log(`🔍 [TRACKING PIXEL] Full pixel URL: ${trackingPixelUrl}`);
     const htmlWithTracking = enhanceEmailTypography(draft.body, trackingPixelUrl);
 
-    // Send email with tracking pixel
+    try {
+      const { automatedEmailsLog } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const { db } = await import("../db");
+      await db.update(automatedEmailsLog).set({ trackingPixelUrl: trackingPixelUrl }).where(eq(automatedEmailsLog.id, emailLog.id));
+    } catch (e) {
+      console.warn(`⚠️ [TRACKING PIXEL] Failed to save tracking URL for email log ${emailLog.id}:`, e);
+    }
+
     await sendEmail({
       to: client.email,
       subject: draft.subject,

@@ -6,6 +6,9 @@ import { generateMotivationalEmail } from "../ai/email-template-generator";
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
+import { db } from "../db";
+import { automatedEmailsLog } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const ITALY_TIMEZONE = "Europe/Rome";
 const DEFAULT_SEND_WINDOW_START = "13:00";
@@ -363,6 +366,18 @@ async function getClientsForEmail(consultantId: string): Promise<Array<{ id: str
           console.log(`🔍 [TRACKING PIXEL] Full pixel URL: ${trackingPixelUrl}`);
           const htmlWithTracking = enhanceEmailTypography(todayDraft.body, trackingPixelUrl);
           
+          const pixelPresent = htmlWithTracking.includes(trackingPixelUrl);
+          console.log(`🔍 [TRACKING PIXEL] ${pixelPresent ? '✅ Pixel VERIFIED in HTML' : '⚠️ Pixel NOT FOUND in HTML'}`);
+          if (!pixelPresent) {
+            console.log(`🔍 [TRACKING PIXEL] HTML tail (last 300 chars): ${htmlWithTracking.slice(-300)}`);
+          }
+          
+          try {
+            await db.update(automatedEmailsLog).set({ trackingPixelUrl: trackingPixelUrl }).where(eq(automatedEmailsLog.id, emailLog.id));
+          } catch (e) {
+            console.warn(`⚠️ [TRACKING PIXEL] Failed to save tracking URL for email log ${emailLog.id}:`, e);
+          }
+          
           await sendEmail({
             to: client.email,
             subject: todayDraft.subject,
@@ -693,7 +708,6 @@ async function sendAutomatedEmailToClient(client: {
         goalsCount: activeGoals.length
       });
       
-      // Generate tracking pixel and enhance email body
       const { generateTrackingPixelUrl, enhanceEmailTypography, getEmailTrackingBaseUrl } = await import("./email-html-wrapper");
       const trackingBaseUrl = getEmailTrackingBaseUrl();
       const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, trackingBaseUrl);
@@ -702,7 +716,18 @@ async function sendAutomatedEmailToClient(client: {
       console.log(`🔍 [TRACKING PIXEL] Full pixel URL: ${trackingPixelUrl}`);
       const htmlWithTracking = enhanceEmailTypography(emailContent.body, trackingPixelUrl);
       
-      // Send email with tracking pixel
+      const pixelPresent = htmlWithTracking.includes(trackingPixelUrl);
+      console.log(`🔍 [TRACKING PIXEL] ${pixelPresent ? '✅ Pixel VERIFIED in HTML' : '⚠️ Pixel NOT FOUND in HTML'}`);
+      if (!pixelPresent) {
+        console.log(`🔍 [TRACKING PIXEL] HTML tail (last 300 chars): ${htmlWithTracking.slice(-300)}`);
+      }
+      
+      try {
+        await db.update(automatedEmailsLog).set({ trackingPixelUrl: trackingPixelUrl }).where(eq(automatedEmailsLog.id, emailLog.id));
+      } catch (e) {
+        console.warn(`⚠️ [TRACKING PIXEL] Failed to save tracking URL for email log ${emailLog.id}:`, e);
+      }
+      
       console.log(`📧 Sending email to ${client.email}...`);
       await sendEmail({
         to: client.email,

@@ -32,7 +32,7 @@ export function wrapEmailInProfessionalTemplate(
 ): string {
   const consultantSignature = options.consultantName || "Il Tuo Consulente";
   const trackingPixel = options.trackingPixelUrl 
-    ? `<img src="${options.trackingPixelUrl}" alt="" width="1" height="1" style="display:block;border:0;width:1px;height:1px;opacity:0;" />`
+    ? `<img src="${options.trackingPixelUrl}" alt="" width="1" height="1" style="display:block;border:0;width:1px;height:1px;" />`
     : '';
 
   return `
@@ -168,10 +168,8 @@ export function enhanceEmailTypography(html: string, trackingPixelUrl?: string):
   // Then apply typography enhancements
   let enhanced = processContentForPerfectTypography(htmlWithoutMarkdown);
   
-  // Add tracking pixel at the end if provided
   if (trackingPixelUrl) {
-    const trackingPixel = `<img src="${trackingPixelUrl}" alt="" width="1" height="1" style="display:block;border:0;width:1px;height:1px;opacity:0;position:absolute;" />`;
-    // Insert before closing body or at the end
+    const trackingPixel = `<img src="${trackingPixelUrl}" alt="" width="1" height="1" style="display:block;border:0;width:1px;height:1px;" />`;
     if (enhanced.includes('</body>')) {
       enhanced = enhanced.replace('</body>', `${trackingPixel}</body>`);
     } else if (enhanced.includes('</html>')) {

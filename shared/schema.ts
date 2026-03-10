@@ -653,6 +653,7 @@ export const automatedEmailsLog = pgTable("automated_emails_log", {
   includesState: boolean("includes_state").notNull().default(false),
   tasksCount: integer("tasks_count").notNull().default(0),
   goalsCount: integer("goals_count").notNull().default(0),
+  trackingPixelUrl: text("tracking_pixel_url"),
 });
 
 // Email Drafts Table - Bozze email generate dall'AI in attesa di approvazione
