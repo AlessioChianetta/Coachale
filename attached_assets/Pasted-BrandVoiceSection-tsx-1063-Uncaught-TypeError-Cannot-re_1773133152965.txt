@@ -1,0 +1,44 @@
+BrandVoiceSection.tsx:1063 Uncaught TypeError: Cannot read properties of undefined (reading 'some')
+    at BrandVoiceSection.tsx:1063:40
+    at BrandVoiceSection (BrandVoiceSection.tsx:1075:19)
+
+BrandVoiceSection.tsx:1063 Uncaught TypeError: Cannot read properties of undefined (reading 'some')
+    at BrandVoiceSection.tsx:1063:40
+    at BrandVoiceSection (BrandVoiceSection.tsx:1075:19)
+injected.js:37 The above error occurred in the <BrandVoiceSection> component:
+
+    at BrandVoiceSection (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/components/brand-voice/BrandVoiceSection.tsx:50:3)
+    at div
+    at _c9 (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at div
+    at div
+    at _c (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at div
+    at div
+    at main
+    at div
+    at div
+    at ContentStudioIdeas (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/pages/content-studio/ideas.tsx:459:20)
+    at AuthGuard (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2547ce87:226:16)
+    at Switch (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2547ce87:283:17)
+    at Suspense
+    at Router (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/App.tsx?v=zitQDDHyT-sa7lg58WZE_:353:35)
+    at Provider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…unner/workspace/node_modules/.vite/deps/chunk-E5NDDLFL.js?v=2547ce87:38:15)
+    at TooltipProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=2547ce87:160:5)
+    at TourProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=2547ce87:3096:3)
+    at V (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=2547ce87:44:25)
+    at J (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=2547ce87:42:18)
+    at App (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/App.tsx?v=zitQDDHyT-sa7lg58WZE_:2307:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-XQLYTHWV.js?v=2547ce87:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'some')
+    at BrandVoiceSection.tsx:1063:40
+    at BrandVoiceSection (BrandVoiceSection.tsx:1075:19)

@@ -1060,13 +1060,13 @@ export function BrandVoiceSection({
                   {!marketResearchOpen && (() => {
                     const d = marketResearchData;
                     let c = 0;
-                    if (d.currentState.some(s => s.trim()) || d.idealState.some(s => s.trim())) c++;
-                    if (Object.values(d.avatar).some(v => v.trim())) c++;
-                    if (d.emotionalDrivers.length > 0) c++;
-                    if (d.existingSolutionProblems.some(s => s.trim()) || d.internalObjections.some(s => s.trim()) || d.externalObjections.some(s => s.trim())) c++;
-                    if (d.coreLies.length > 0 && d.coreLies.some(cl => cl.name.trim())) c++;
-                    if (d.uniqueMechanism.name.trim() || d.uniqueMechanism.description.trim()) c++;
-                    if (d.uvp.trim()) c++;
+                    if ((d.currentState || []).some(s => s.trim()) || (d.idealState || []).some(s => s.trim())) c++;
+                    if (d.avatar && Object.values(d.avatar).some(v => typeof v === 'string' && v.trim())) c++;
+                    if ((d.emotionalDrivers || []).length > 0) c++;
+                    if ((d.existingSolutionProblems || []).some(s => s.trim()) || (d.internalObjections || []).some(s => s.trim()) || (d.externalObjections || []).some(s => s.trim())) c++;
+                    if ((d.coreLies || []).length > 0 && (d.coreLies || []).some(cl => cl.name?.trim())) c++;
+                    if (d.uniqueMechanism && (d.uniqueMechanism.name?.trim() || d.uniqueMechanism.description?.trim())) c++;
+                    if ((d.uvp || '').trim()) c++;
                     return c > 0 ? (
                       <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
                         {c}/7 fasi
