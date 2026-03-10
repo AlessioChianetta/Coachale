@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect, createContext, useContext } from "react";
 import {
   ReactFlow,
   addEdge,
@@ -85,6 +85,18 @@ interface FunnelVersion {
 const nodeTypes: NodeTypes = { funnelNode: FunnelNode } as any;
 const edgeTypes: EdgeTypes = { funnelEdge: FunnelEdge } as any;
 
+interface HistorySnapshot {
+  nodes: Node[];
+  edges: Edge[];
+}
+
+const MAX_HISTORY = 50;
+
+interface UndoContextType {
+  pushHistory: () => void;
+}
+
+export const UndoContext = createContext<UndoContextType>({ pushHistory: () => {} });
 
 function autoLayout(nodes: Node[], edges: Edge[]): Node[] {
   if (nodes.length === 0) return nodes;
@@ -129,6 +141,69 @@ function FunnelBuilderInner() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const historyRef = useRef<HistorySnapshot[]>([]);
+  const futureRef = useRef<HistorySnapshot[]>([]);
+  const nodesRef = useRef<Node[]>(nodes);
+  const edgesRef = useRef<Edge[]>(edges);
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
+
+  const pushHistory = useCallback(() => {
+    const snapshot: HistorySnapshot = {
+      nodes: JSON.parse(JSON.stringify(nodesRef.current)),
+      edges: JSON.parse(JSON.stringify(edgesRef.current)),
+    };
+    historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), snapshot];
+    futureRef.current = [];
+  }, []);
+
+  const undo = useCallback(() => {
+    if (historyRef.current.length === 0) return;
+    const current: HistorySnapshot = {
+      nodes: JSON.parse(JSON.stringify(nodesRef.current)),
+      edges: JSON.parse(JSON.stringify(edgesRef.current)),
+    };
+    futureRef.current = [...futureRef.current, current];
+    const prev = historyRef.current[historyRef.current.length - 1];
+    historyRef.current = historyRef.current.slice(0, -1);
+    setNodes(prev.nodes);
+    setEdges(prev.edges);
+    toast({ title: "Annullato", description: "Ctrl+Z", duration: 1500 });
+  }, [toast]);
+
+  const redo = useCallback(() => {
+    if (futureRef.current.length === 0) return;
+    const current: HistorySnapshot = {
+      nodes: JSON.parse(JSON.stringify(nodesRef.current)),
+      edges: JSON.parse(JSON.stringify(edgesRef.current)),
+    };
+    historyRef.current = [...historyRef.current, current];
+    const next = futureRef.current[futureRef.current.length - 1];
+    futureRef.current = futureRef.current.slice(0, -1);
+    setNodes(next.nodes);
+    setEdges(next.edges);
+    toast({ title: "Ripristinato", description: "Ctrl+Shift+Z", duration: 1500 });
+  }, [toast]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) {
+        e.preventDefault();
+        redo();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "y") {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [undo, redo]);
 
   useEffect(() => {
     loadFunnelList();
@@ -270,6 +345,7 @@ function FunnelBuilderInner() {
       if (res.ok) {
         const data = await res.json();
         const funnel = data.funnel;
+        pushHistory();
         setNodes(funnel.nodes_data || []);
         setEdges(funnel.edges_data || []);
         setShowHistory(false);
@@ -288,25 +364,30 @@ function FunnelBuilderInner() {
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
+      const hasRemove = changes.some((c) => c.type === "remove");
+      if (hasRemove) pushHistory();
       setNodes((nds) => applyNodeChanges(changes, nds));
     },
-    []
+    [pushHistory]
   );
 
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
+      const hasRemove = changes.some((c) => c.type === "remove");
+      if (hasRemove) pushHistory();
       setEdges((eds) => applyEdgeChanges(changes, eds));
     },
-    []
+    [pushHistory]
   );
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      pushHistory();
       setEdges((eds) =>
         addEdge({ ...connection, type: "funnelEdge" }, eds)
       );
     },
-    []
+    [pushHistory]
   );
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -352,9 +433,10 @@ function FunnelBuilderInner() {
         } satisfies FunnelNodeData as any,
       };
 
+      pushHistory();
       setNodes((nds) => [...nds, newNode]);
     },
-    [screenToFlowPosition]
+    [screenToFlowPosition, pushHistory]
   );
 
   const updateNodeData = useCallback(
@@ -432,6 +514,7 @@ function FunnelBuilderInner() {
       });
     }
 
+    pushHistory();
     setNodes(finalNodes);
     setEdges(generatedEdges);
     setFunnelName(appliedName);
@@ -486,7 +569,10 @@ function FunnelBuilderInner() {
     );
   }
 
+  const undoContextValue = useMemo(() => ({ pushHistory }), [pushHistory]);
+
   return (
+    <UndoContext.Provider value={undoContextValue}>
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
         <DropdownMenu>
@@ -635,6 +721,7 @@ function FunnelBuilderInner() {
             fitView
             fitViewOptions={{ padding: 0.2 }}
             defaultEdgeOptions={{ type: "funnelEdge" }}
+            deleteKeyCode={["Backspace", "Delete"]}
             className="bg-gray-50 dark:bg-gray-950"
             proOptions={{ hideAttribution: true }}
           >
@@ -760,6 +847,7 @@ function FunnelBuilderInner() {
         </SheetContent>
       </Sheet>
     </div>
+    </UndoContext.Provider>
   );
 }
 
