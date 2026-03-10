@@ -67,7 +67,10 @@ import {
   Award,
   Star,
   Plus,
-  Download
+  Download,
+  Flame,
+  Thermometer,
+  ClipboardList
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { EmailLogsContent } from "@/pages/consultant-email-logs";
@@ -1680,6 +1683,35 @@ export default function ConsultantAIConfigPage() {
     queryKey: ["/api/lead-nurturing/analytics"],
     queryFn: async () => {
       const res = await fetch("/api/lead-nurturing/analytics", { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
+  const { data: emailAccountsData } = useQuery({
+    queryKey: ["/api/email-hub/accounts"],
+    queryFn: async () => {
+      const res = await fetch("/api/email-hub/accounts", { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.accounts || data || [];
+    },
+  });
+
+  const { data: nurturingLeadsData, isLoading: nurturingLeadsLoading } = useQuery({
+    queryKey: ["/api/lead-nurturing/leads"],
+    queryFn: async () => {
+      const res = await fetch("/api/lead-nurturing/leads", { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
+  const [nurturingLogsPage, setNurturingLogsPage] = useState(1);
+  const { data: nurturingLogsData, isLoading: nurturingLogsLoading } = useQuery({
+    queryKey: ["/api/lead-nurturing/logs", nurturingLogsPage],
+    queryFn: async () => {
+      const res = await fetch(`/api/lead-nurturing/logs?page=${nurturingLogsPage}&limit=30`, { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
     },
@@ -4075,6 +4107,8 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   { id: "templates", label: "Templates", icon: FileText },
                   { id: "variabili", label: "Variabili", icon: Settings },
                   { id: "invio", label: "Invio", icon: Send },
+                  { id: "destinatari", label: "Destinatari", icon: Users },
+                  { id: "log-email", label: "Log Email", icon: ClipboardList },
                   { id: "guida", label: "Guida", icon: HelpCircle },
                 ].map((tab) => (
                   <button
@@ -5245,166 +5279,429 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
               {/* Invio Sub-tab */}
               {nurturingSubTab === "invio" && (
-              <div className="space-y-6">
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                    <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg">
-                      <CalendarDays className="h-4 w-4 text-white" />
-                    </div>
-                    Impostazioni Invio
-                  </CardTitle>
-                  <CardDescription className="text-slate-500 dark:text-slate-400">
-                    Configura quando e come inviare le email di nurturing
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div className="space-y-1">
-                      <Label htmlFor="nurturing-enabled" className="text-base font-semibold">
-                        Attiva Nurturing Automatico
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        {nurturingConfig?.config?.isEnabled 
-                          ? "Le email vengono inviate automaticamente ai lead" 
-                          : "Nurturing disattivato - attivalo per iniziare"}
-                      </p>
-                    </div>
-                    <Switch
-                      id="nurturing-enabled"
-                      checked={nurturingConfig?.config?.isEnabled || false}
-                      onCheckedChange={(checked) => {
-                        updateNurturingConfigMutation.mutate({ isEnabled: checked });
-                      }}
-                      disabled={updateNurturingConfigMutation.isPending}
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <input
-                      type="checkbox"
-                      id="skip-weekends"
-                      checked={nurturingConfig?.config?.skipWeekends || false}
-                      onChange={(e) => {
-                        updateNurturingConfigMutation.mutate({ skipWeekends: e.target.checked });
-                      }}
-                      className="w-4 h-4 rounded border-gray-300 text-emerald-600 accent-emerald-600"
-                    />
-                    <div>
-                      <Label htmlFor="skip-weekends" className="cursor-pointer">
-                        Salta i weekend
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Non inviare email il sabato e la domenica
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-lg border border-emerald-200 dark:border-emerald-700">
-                    <div className="space-y-3">
+              <div className="space-y-4">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100 text-lg">
+                      <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg">
+                        <Send className="h-4 w-4 text-white" />
+                      </div>
+                      Impostazioni Invio
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                       <div>
-                        <Label className="text-base font-semibold text-emerald-800 dark:text-emerald-200">
-                          Attiva Nurturing su Tutti i Lead
-                        </Label>
-                        <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-1">
-                          Abilita il nurturing per tutti i lead che hanno un'email (esclusi solo gli inattivi)
+                        <Label htmlFor="nurturing-enabled" className="font-semibold">Nurturing Automatico</Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {nurturingConfig?.config?.isEnabled 
+                            ? "Attivo — email inviate automaticamente" 
+                            : "Disattivato"}
                         </p>
+                      </div>
+                      <Switch
+                        id="nurturing-enabled"
+                        checked={nurturingConfig?.config?.isEnabled || false}
+                        onCheckedChange={(checked) => {
+                          updateNurturingConfigMutation.mutate({ isEnabled: checked });
+                        }}
+                        disabled={updateNurturingConfigMutation.isPending}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <Label className="font-semibold flex items-center gap-1.5 mb-2">
+                          <Clock className="h-3.5 w-3.5" /> Orario Invio
+                        </Label>
+                        <div className="flex gap-2 items-center">
+                          <Select
+                            value={String(nurturingConfig?.config?.sendHour ?? 9)}
+                            onValueChange={(val) => updateNurturingConfigMutation.mutate({ sendHour: parseInt(val) })}
+                          >
+                            <SelectTrigger className="w-20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 17 }, (_, i) => i + 6).map(h => (
+                                <SelectItem key={h} value={String(h)}>{String(h).padStart(2, '0')}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <span className="text-lg font-bold">:</span>
+                          <Select
+                            value={String(nurturingConfig?.config?.sendMinute ?? 0)}
+                            onValueChange={(val) => updateNurturingConfigMutation.mutate({ sendMinute: parseInt(val) })}
+                          >
+                            <SelectTrigger className="w-20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[0, 15, 30, 45].map(m => (
+                                <SelectItem key={m} value={String(m)}>{String(m).padStart(2, '0')}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <span className="text-xs text-muted-foreground ml-1">(Europa/Roma)</span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <Label className="font-semibold flex items-center gap-1.5 mb-2">
+                          <Mail className="h-3.5 w-3.5" /> Email Inviante
+                        </Label>
+                        <Select
+                          value={nurturingConfig?.config?.senderAccountId || "auto"}
+                          onValueChange={(val) => updateNurturingConfigMutation.mutate({ senderAccountId: val === "auto" ? "" : val })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona account..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="auto">Automatico (primo account)</SelectItem>
+                            {(emailAccountsData || []).map((acc: any) => (
+                              <SelectItem key={acc.id} value={acc.id}>
+                                {acc.emailAddress} {acc.displayName ? `(${acc.displayName})` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <input
+                        type="checkbox"
+                        id="skip-weekends"
+                        checked={nurturingConfig?.config?.skipWeekends || false}
+                        onChange={(e) => updateNurturingConfigMutation.mutate({ skipWeekends: e.target.checked })}
+                        className="w-4 h-4 rounded border-gray-300 text-emerald-600 accent-emerald-600"
+                      />
+                      <div>
+                        <Label htmlFor="skip-weekends" className="cursor-pointer font-medium">Salta i weekend</Label>
+                        <p className="text-xs text-muted-foreground">Non inviare il sabato e la domenica</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-700">
+                      <div>
+                        <Label className="font-semibold text-emerald-800 dark:text-emerald-200">Gestione Lead</Label>
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">Attiva/disattiva nurturing per tutti i lead con email</p>
                       </div>
                       <div className="flex gap-2">
                         <Button
-                          variant="default"
                           size="sm"
                           className="bg-emerald-600 hover:bg-emerald-700"
-                          onClick={() => bulkNurturingMutation.mutate({ 
-                            enable: true, 
-                            excludeStatuses: ["inactive"] 
-                          })}
+                          onClick={() => bulkNurturingMutation.mutate({ enable: true, excludeStatuses: ["inactive"] })}
                           disabled={bulkNurturingMutation.isPending}
                         >
-                          {bulkNurturingMutation.isPending ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Attivazione...
-                            </>
-                          ) : (
-                            <>
-                              <Users className="h-4 w-4 mr-2" />
-                              Attiva per Tutti
-                            </>
-                          )}
+                          {bulkNurturingMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5 mr-1" />}
+                          Attiva Tutti
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => bulkNurturingMutation.mutate({ 
-                            enable: false, 
-                            excludeStatuses: [] 
-                          })}
+                        <Button variant="outline" size="sm"
+                          onClick={() => bulkNurturingMutation.mutate({ enable: false, excludeStatuses: [] })}
                           disabled={bulkNurturingMutation.isPending}
                         >
-                          Disattiva per Tutti
+                          Disattiva Tutti
                         </Button>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                    <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
                       <div>
-                        <Label className="text-base font-semibold text-blue-800 dark:text-blue-200">
-                          Test e Validazione
-                        </Label>
-                        <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                          Invia subito le email di test o verifica la validità delle email dei lead
-                        </p>
+                        <Label className="font-semibold text-blue-800 dark:text-blue-200">Test</Label>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">Invia subito o valida le email</p>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700"
+                      <div className="flex gap-2">
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700"
                           onClick={() => sendNowMutation.mutate()}
                           disabled={sendNowMutation.isPending}
                         >
-                          {sendNowMutation.isPending ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Invio in corso...
-                            </>
-                          ) : (
-                            <>
-                              <Send className="h-4 w-4 mr-2" />
-                              Invia Ora (Test)
-                            </>
-                          )}
+                          {sendNowMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
+                          Invia Ora
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
+                        <Button variant="outline" size="sm"
                           onClick={() => validateEmailsMutation.mutate()}
                           disabled={validateEmailsMutation.isPending}
                         >
-                          {validateEmailsMutation.isPending ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Validazione...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Valida Email
-                            </>
-                          )}
+                          {validateEmailsMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5 mr-1" />}
+                          Valida Email
                         </Button>
                       </div>
-                      <p className="text-xs text-blue-500 dark:text-blue-400">
-                        "Invia Ora" manda subito le email di nurturing senza aspettare le 09:00.
-                        "Valida Email" disabilita il nurturing per email non valide.
-                      </p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
+              )}
+
+              {/* Destinatari Sub-tab */}
+              {nurturingSubTab === "destinatari" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <Card className="border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg">
+                        <Users className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">{nurturingLeadsData?.summary?.total || 0}</p>
+                        <p className="text-xs text-slate-500">Lead Attivi</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border border-red-200 dark:border-red-700 bg-red-50/50 dark:bg-red-900/10">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg">
+                        <Flame className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xl font-bold text-red-600 dark:text-red-400">{nurturingLeadsData?.summary?.hot || 0}</p>
+                        <p className="text-xs text-red-500">Caldi</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border border-amber-200 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/10">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-lg">
+                        <Thermometer className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{nurturingLeadsData?.summary?.warm || 0}</p>
+                        <p className="text-xs text-amber-500">Tiepidi</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border border-blue-200 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/10">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
+                        <Thermometer className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{nurturingLeadsData?.summary?.cold || 0}</p>
+                        <p className="text-xs text-blue-500">Freddi</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100 text-lg">
+                      <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg">
+                        <Users className="h-4 w-4 text-white" />
+                      </div>
+                      Destinatari Nurturing
+                    </CardTitle>
+                    <CardDescription className="text-slate-500 dark:text-slate-400">
+                      Lead attivi nel nurturing ordinati per engagement (i più caldi in alto)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {nurturingLeadsLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+                      </div>
+                    ) : !nurturingLeadsData?.leads?.length ? (
+                      <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                        <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Nessun lead con nurturing attivo</p>
+                        <p className="text-sm text-slate-500 mt-2">Attiva il nurturing nella tab Invio per iniziare</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Lead</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead className="text-center">Giorno</TableHead>
+                              <TableHead className="text-center">Aperte</TableHead>
+                              <TableHead className="text-center">Click</TableHead>
+                              <TableHead>Ultima Apertura</TableHead>
+                              <TableHead className="text-center">Temperatura</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {nurturingLeadsData.leads.map((lead: any) => (
+                              <TableRow key={lead.id}>
+                                <TableCell className="font-medium">{lead.firstName} {lead.lastName}</TableCell>
+                                <TableCell className="text-sm text-slate-600 dark:text-slate-400 max-w-[200px] truncate">{lead.email}</TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant="outline" className="font-mono">{lead.currentDay}/365</Badge>
+                                </TableCell>
+                                <TableCell className="text-center font-medium">{lead.totalOpens}</TableCell>
+                                <TableCell className="text-center font-medium">{lead.totalClicks}</TableCell>
+                                <TableCell className="text-sm text-slate-500">
+                                  {lead.lastOpenedAt ? new Date(lead.lastOpenedAt).toLocaleDateString('it-IT') : '—'}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        {lead.warmthLevel === "hot" && (
+                                          <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-700">
+                                            <Flame className="h-3 w-3 mr-1" /> Caldo
+                                          </Badge>
+                                        )}
+                                        {lead.warmthLevel === "warm" && (
+                                          <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-700">
+                                            <Thermometer className="h-3 w-3 mr-1" /> Tiepido
+                                          </Badge>
+                                        )}
+                                        {lead.warmthLevel === "cold" && (
+                                          <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-700">
+                                            <Thermometer className="h-3 w-3 mr-1" /> Freddo
+                                          </Badge>
+                                        )}
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Punteggio: {lead.warmthScore} (aperture x1 + click x3)</p>
+                                        <p className="text-xs text-muted-foreground">Caldo: 10+, Tiepido: 3-9, Freddo: 0-2</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+              )}
+
+              {/* Log Email Sub-tab */}
+              {nurturingSubTab === "log-email" && (
+              <div className="space-y-4">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100 text-lg">
+                      <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg">
+                        <ClipboardList className="h-4 w-4 text-white" />
+                      </div>
+                      Log Email Nurturing
+                    </CardTitle>
+                    <CardDescription className="text-slate-500 dark:text-slate-400">
+                      Storico degli invii con stato apertura e click
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {nurturingLogsLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                      </div>
+                    ) : !nurturingLogsData?.logs?.length ? (
+                      <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <Mail className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                        <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Nessun log di invio</p>
+                        <p className="text-sm text-slate-500 mt-2">I log appariranno qui dopo il primo invio</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Data Invio</TableHead>
+                                <TableHead>Lead</TableHead>
+                                <TableHead className="text-center">Giorno</TableHead>
+                                <TableHead>Oggetto</TableHead>
+                                <TableHead className="text-center">Stato</TableHead>
+                                <TableHead className="text-center">Aperta</TableHead>
+                                <TableHead className="text-center">Click</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {nurturingLogsData.logs.map((log: any) => (
+                                <TableRow key={log.id}>
+                                  <TableCell className="text-sm whitespace-nowrap">
+                                    {log.sentAt ? new Date(log.sentAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    {log.leadFirstName || ''} {log.leadLastName || ''}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="outline" className="font-mono text-xs">{log.dayNumber}</Badge>
+                                  </TableCell>
+                                  <TableCell className="max-w-[250px] truncate text-sm">{log.subjectSent || '—'}</TableCell>
+                                  <TableCell className="text-center">
+                                    {log.status === 'sent' && <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200">Inviata</Badge>}
+                                    {log.status === 'failed' && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger>
+                                            <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200">Fallita</Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent><p>{log.errorMessage || 'Errore sconosciuto'}</p></TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                    {log.status === 'skipped' && <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 border-slate-200">Saltata</Badge>}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {log.openedAt ? (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger>
+                                            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200">
+                                              <Eye className="h-3 w-3" />
+                                            </Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent><p>{new Date(log.openedAt).toLocaleString('it-IT')}</p></TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    ) : (
+                                      <span className="text-slate-400">—</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {log.clickedAt ? (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger>
+                                            <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200">
+                                              <MousePointer className="h-3 w-3" />
+                                            </Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent><p>{new Date(log.clickedAt).toLocaleString('it-IT')}</p></TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    ) : (
+                                      <span className="text-slate-400">—</span>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        {nurturingLogsData.pagination && nurturingLogsData.pagination.totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+                            <p className="text-sm text-slate-500">
+                              Pagina {nurturingLogsData.pagination.page} di {nurturingLogsData.pagination.totalPages} ({nurturingLogsData.pagination.total} totali)
+                            </p>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm"
+                                disabled={nurturingLogsPage <= 1}
+                                onClick={() => setNurturingLogsPage(p => Math.max(1, p - 1))}
+                              >
+                                Precedente
+                              </Button>
+                              <Button variant="outline" size="sm"
+                                disabled={nurturingLogsPage >= nurturingLogsData.pagination.totalPages}
+                                onClick={() => setNurturingLogsPage(p => p + 1)}
+                              >
+                                Successiva
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
               )}
 

@@ -4163,6 +4163,10 @@ export const leadNurturingConfig = pgTable("lead_nurturing_config", {
   sendTime: text("send_time").default("09:00"),
   sendDays: jsonb("send_days").$type<number[]>()
     .default(sql`'[1,2,3,4,5]'::jsonb`),
+  skipWeekends: boolean("skip_weekends").default(false),
+  sendHour: integer("send_hour").default(9),
+  sendMinute: integer("send_minute").default(0),
+  senderAccountId: varchar("sender_account_id"),
   
   // Stato sistema nurturing
   isActive: boolean("is_active").default(false).notNull(),

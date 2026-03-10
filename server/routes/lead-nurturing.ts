@@ -3,7 +3,7 @@ import { authenticateToken, requireRole, type AuthRequest } from "../middleware/
 import { upload } from "../middleware/upload";
 import { storage } from "../storage";
 import { db } from "../db";
-import { eq, and, desc, asc, inArray, sql, notInArray, gte, lte } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, sql, notInArray, gte, lte, isNull } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { generateNurturingTemplates, regenerateTemplate, getTemplateCount, generatePreviewTemplate, generateRemainingTemplates, getGenerationStatus, generateWeekBlock } from "../services/lead-nurturing-generation-service";
 import { validateTemplate } from "../services/template-compiler";
@@ -55,6 +55,7 @@ router.get("/lead-nurturing/config", authenticateToken, requireRole("consultant"
           sendMinute: 0,
           timezone: "Europe/Rome",
           skipWeekends: false,
+          senderAccountId: null,
         },
       });
     }
@@ -73,28 +74,34 @@ router.get("/lead-nurturing/config", authenticateToken, requireRole("consultant"
 router.put("/lead-nurturing/config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    // Support both isEnabled (frontend) and isActive (schema) for compatibility
-    const { isEnabled, isActive, sendHour, sendMinute, timezone, skipWeekends } = req.body;
+    const { isEnabled, isActive, sendHour, sendMinute, timezone, skipWeekends, senderAccountId } = req.body;
     const activeValue = isEnabled ?? isActive;
     
     const existing = await storage.getNurturingConfig(consultantId);
     
+    const updateFields: Record<string, any> = { updatedAt: new Date() };
+    if (activeValue !== undefined) updateFields.isActive = activeValue;
+    if (skipWeekends !== undefined) updateFields.skipWeekends = skipWeekends;
+    if (sendHour !== undefined) updateFields.sendHour = sendHour;
+    if (sendMinute !== undefined) updateFields.sendMinute = sendMinute;
+    if (senderAccountId !== undefined) updateFields.senderAccountId = senderAccountId || null;
+    
     if (existing) {
       await db.update(schema.leadNurturingConfig)
-        .set({
-          isActive: activeValue ?? existing.isActive,
-          updatedAt: new Date(),
-        })
+        .set(updateFields)
         .where(eq(schema.leadNurturingConfig.consultantId, consultantId));
     } else {
       await db.insert(schema.leadNurturingConfig).values({
         consultantId,
         isActive: activeValue ?? false,
+        skipWeekends: skipWeekends ?? false,
+        sendHour: sendHour ?? 9,
+        sendMinute: sendMinute ?? 0,
+        senderAccountId: senderAccountId || null,
       });
     }
     
     const updated = await storage.getNurturingConfig(consultantId);
-    // Map isActive to isEnabled for frontend compatibility
     res.json({ 
       success: true, 
       config: updated ? { ...updated, isEnabled: updated.isActive } : null 
@@ -793,6 +800,131 @@ router.get("/lead-nurturing/analytics", authenticateToken, requireRole("consulta
     res.json({ success: true, analytics });
   } catch (error: any) {
     console.error("[NURTURING] Error fetching analytics:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/lead-nurturing/leads", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const leads = await db.select()
+      .from(schema.proactiveLeads)
+      .where(
+        and(
+          eq(schema.proactiveLeads.consultantId, consultantId),
+          eq(schema.proactiveLeads.nurturingEnabled, true),
+          isNull(schema.proactiveLeads.nurturingOptOutAt)
+        )
+      );
+    
+    const leadsWithEngagement = await Promise.all(leads.map(async (lead) => {
+      const email = lead.email || (lead.qualificationData as any)?.email || "";
+      const currentDay = lead.nurturingStartDate 
+        ? Math.min(Math.floor((Date.now() - new Date(lead.nurturingStartDate).getTime()) / (1000 * 60 * 60 * 24)) + 1, 365)
+        : 0;
+      
+      const [engagement] = await db.select({
+        totalSent: sql<number>`count(*)`,
+        totalOpens: sql<number>`count(case when ${schema.leadNurturingLogs.openedAt} is not null then 1 end)`,
+        totalClicks: sql<number>`count(case when ${schema.leadNurturingLogs.clickedAt} is not null then 1 end)`,
+        lastOpenedAt: sql<string>`max(${schema.leadNurturingLogs.openedAt})`,
+        lastClickedAt: sql<string>`max(${schema.leadNurturingLogs.clickedAt})`,
+      })
+        .from(schema.leadNurturingLogs)
+        .where(
+          and(
+            eq(schema.leadNurturingLogs.leadId, lead.id),
+            eq(schema.leadNurturingLogs.status, 'sent')
+          )
+        );
+      
+      const totalOpens = Number(engagement?.totalOpens) || 0;
+      const totalClicks = Number(engagement?.totalClicks) || 0;
+      const totalSent = Number(engagement?.totalSent) || 0;
+      const warmthScore = totalOpens * 1 + totalClicks * 3;
+      
+      let warmthLevel: "cold" | "warm" | "hot" = "cold";
+      if (warmthScore >= 10) warmthLevel = "hot";
+      else if (warmthScore >= 3) warmthLevel = "warm";
+      
+      return {
+        id: lead.id,
+        firstName: lead.firstName || "",
+        lastName: lead.lastName || "",
+        email,
+        currentDay,
+        nurturingStartDate: lead.nurturingStartDate,
+        totalSent,
+        totalOpens,
+        totalClicks,
+        lastOpenedAt: engagement?.lastOpenedAt || null,
+        lastClickedAt: engagement?.lastClickedAt || null,
+        warmthScore,
+        warmthLevel,
+      };
+    }));
+    
+    leadsWithEngagement.sort((a, b) => b.warmthScore - a.warmthScore);
+    
+    const summary = {
+      total: leadsWithEngagement.length,
+      hot: leadsWithEngagement.filter(l => l.warmthLevel === "hot").length,
+      warm: leadsWithEngagement.filter(l => l.warmthLevel === "warm").length,
+      cold: leadsWithEngagement.filter(l => l.warmthLevel === "cold").length,
+    };
+    
+    res.json({ success: true, leads: leadsWithEngagement, summary });
+  } catch (error: any) {
+    console.error("[NURTURING] Error fetching leads:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/lead-nurturing/logs", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    const offset = (page - 1) * limit;
+    
+    const logs = await db.select({
+      id: schema.leadNurturingLogs.id,
+      leadId: schema.leadNurturingLogs.leadId,
+      dayNumber: schema.leadNurturingLogs.dayNumber,
+      status: schema.leadNurturingLogs.status,
+      errorMessage: schema.leadNurturingLogs.errorMessage,
+      subjectSent: schema.leadNurturingLogs.subjectSent,
+      sentAt: schema.leadNurturingLogs.sentAt,
+      openedAt: schema.leadNurturingLogs.openedAt,
+      clickedAt: schema.leadNurturingLogs.clickedAt,
+      leadFirstName: schema.proactiveLeads.firstName,
+      leadLastName: schema.proactiveLeads.lastName,
+      leadEmail: schema.proactiveLeads.email,
+    })
+      .from(schema.leadNurturingLogs)
+      .leftJoin(schema.proactiveLeads, eq(schema.leadNurturingLogs.leadId, schema.proactiveLeads.id))
+      .where(eq(schema.leadNurturingLogs.consultantId, consultantId))
+      .orderBy(desc(schema.leadNurturingLogs.sentAt))
+      .limit(limit)
+      .offset(offset);
+    
+    const [totalCount] = await db.select({ count: sql<number>`count(*)` })
+      .from(schema.leadNurturingLogs)
+      .where(eq(schema.leadNurturingLogs.consultantId, consultantId));
+    
+    res.json({
+      success: true,
+      logs,
+      pagination: {
+        page,
+        limit,
+        total: Number(totalCount?.count) || 0,
+        totalPages: Math.ceil((Number(totalCount?.count) || 0) / limit),
+      },
+    });
+  } catch (error: any) {
+    console.error("[NURTURING] Error fetching logs:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

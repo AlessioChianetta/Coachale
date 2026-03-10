@@ -55,20 +55,33 @@ function calculateCurrentDay(startDate: Date | string): number {
 }
 
 async function processNurturingEmails(): Promise<void> {
-  console.log(`📧 [NURTURING SCHEDULER] Starting nurturing email processing...`);
-  
   try {
     const configs = await db.select()
       .from(schema.leadNurturingConfig)
-      .where(eq(schema.leadNurturingConfig.isEnabled, true));
+      .where(eq(schema.leadNurturingConfig.isActive, true));
     
-    console.log(`📧 [NURTURING SCHEDULER] Found ${configs.length} active nurturing configs`);
+    if (configs.length === 0) return;
     
+    const now = new Date();
+    const romeTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Rome" }));
+    const currentHour = romeTime.getHours();
+    const currentMinute = romeTime.getMinutes();
+    
+    let processed = 0;
     for (const config of configs) {
-      await processConsultantNurturing(config);
+      const configHour = config.sendHour ?? 9;
+      const configMinute = config.sendMinute ?? 0;
+      
+      if (currentHour === configHour && currentMinute >= configMinute && currentMinute < configMinute + 15) {
+        console.log(`📧 [NURTURING SCHEDULER] Processing consultant ${config.consultantId} (send time ${configHour}:${String(configMinute).padStart(2, '0')})`);
+        await processConsultantNurturing(config);
+        processed++;
+      }
     }
     
-    console.log(`📧 [NURTURING SCHEDULER] Nurturing processing completed`);
+    if (processed > 0) {
+      console.log(`📧 [NURTURING SCHEDULER] Processed ${processed} consultants`);
+    }
   } catch (error) {
     console.error(`❌ [NURTURING SCHEDULER] Error:`, error);
   }
@@ -182,12 +195,18 @@ async function sendNurturingEmail(
   }
   
   try {
-    // Try to find a configured Email Hub account
-    const [emailAccount] = await db
+    // Try to find a configured Email Hub account (prefer senderAccountId from config)
+    let emailAccountQuery = db
       .select()
-      .from(schema.emailAccounts)
-      .where(eq(schema.emailAccounts.consultantId, config.consultantId))
-      .limit(1);
+      .from(schema.emailAccounts);
+    
+    if (config.senderAccountId) {
+      emailAccountQuery = emailAccountQuery.where(and(eq(schema.emailAccounts.id, config.senderAccountId), eq(schema.emailAccounts.consultantId, config.consultantId))) as any;
+    } else {
+      emailAccountQuery = emailAccountQuery.where(eq(schema.emailAccounts.consultantId, config.consultantId)) as any;
+    }
+    
+    const [emailAccount] = await emailAccountQuery.limit(1);
     
     let messageId: string | undefined;
     
@@ -334,7 +353,7 @@ export function startNurturingScheduler(): void {
     cleanupJob.stop();
   }
   
-  nurturingJob = cron.schedule("0 9 * * *", processNurturingEmails, {
+  nurturingJob = cron.schedule("*/15 * * * *", processNurturingEmails, {
     timezone: "Europe/Rome",
   });
   
@@ -343,7 +362,7 @@ export function startNurturingScheduler(): void {
   });
   
   console.log(`✅ [NURTURING SCHEDULER] Started`);
-  console.log(`   📧 Email sending: Daily at 09:00 (Europe/Rome)`);
+  console.log(`   📧 Email sending: Checks every 15 minutes, sends at configured hour (Europe/Rome)`);
   console.log(`   🧹 Log cleanup: Weekly on Sunday at 03:00 (Europe/Rome)`);
 }
 
