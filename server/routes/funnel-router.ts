@@ -43,7 +43,8 @@ MAPPATURE ENTITÀ — ogni tipo di nodo si collega a risorse reali della piattaf
 - form_modulo → Pagina Optin (form di contatto diretto)
 - lead_magnet → Lead Magnet AI (onboarding gratuito con agente AI)
 - crm_hunter → Ricerche Hunter (lead scraper automatico)
-- setter_ai/onboarding → Dipendenti AI (Alessia, Stella, Marco, etc.)
+- setter_ai → Dipendenti AI (Alessia, Stella, Marco, etc.)
+- onboarding → Lead Magnet AI (Dipendente Delivery "Luca", /onboarding-gratuito/:id)
 - whatsapp → Agenti WhatsApp (chatbot configurati)
 - email → Account Email (SMTP/IMAP configurati)
 - voice_call → Numeri Voice (numeri telefonici AI)
@@ -78,7 +79,7 @@ SOTTOTITOLI CONSIGLIATI per ogni tipo di nodo (usa questi o simili in italiano):
 - seconda_call → "Follow-up telefonico"
 - chiusura → "Chiusura contratto"
 - pagamento → "Pagamento e fatturazione"
-- onboarding → "Onboarding nuovo cliente"
+- onboarding → "Onboarding con Luca (Lead Magnet AI)"
 - servizio → "Erogazione servizio"
 - followup → "Follow-up post-vendita"
 - custom_step → "Step personalizzato"

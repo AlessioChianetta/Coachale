@@ -155,7 +155,7 @@ const ENTITY_MAP: Record<string, EntityType> = {
   lead_magnet: "lead_magnet",
   crm_hunter: "hunter_searches",
   setter_ai: "ai_employees",
-  onboarding: "ai_employees",
+  onboarding: "lead_magnet",
   whatsapp: "agents",
   email: "email_accounts",
   voice_call: "voice_numbers",
