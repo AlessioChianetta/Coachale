@@ -31,7 +31,7 @@ import {
   Users,
   Building2,
 } from "lucide-react";
-import { type MarketResearchData } from "@shared/schema";
+import { type MarketResearchData, EMPTY_MARKET_RESEARCH } from "@shared/schema";
 
 export const EMOTIONAL_DRIVERS = [
   { key: "sopravvivenza", label: "Sopravvivenza e Longevità", desc: "Prolungare la carriera, garantire la salute a lungo termine" },
@@ -75,6 +75,21 @@ export function MarketResearchSection({
 }: MarketResearchSectionProps) {
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
 
+  const safeData = useMemo<MarketResearchData>(() => ({
+    ...EMPTY_MARKET_RESEARCH,
+    ...data,
+    avatar: { ...EMPTY_MARKET_RESEARCH.avatar, ...(data?.avatar || {}) },
+    uniqueMechanism: { ...EMPTY_MARKET_RESEARCH.uniqueMechanism, ...(data?.uniqueMechanism || {}) },
+    currentState: data?.currentState || EMPTY_MARKET_RESEARCH.currentState,
+    idealState: data?.idealState || EMPTY_MARKET_RESEARCH.idealState,
+    emotionalDrivers: data?.emotionalDrivers || EMPTY_MARKET_RESEARCH.emotionalDrivers,
+    existingSolutionProblems: data?.existingSolutionProblems || EMPTY_MARKET_RESEARCH.existingSolutionProblems,
+    internalObjections: data?.internalObjections || EMPTY_MARKET_RESEARCH.internalObjections,
+    externalObjections: data?.externalObjections || EMPTY_MARKET_RESEARCH.externalObjections,
+    coreLies: data?.coreLies || EMPTY_MARKET_RESEARCH.coreLies,
+    uvp: data?.uvp || EMPTY_MARKET_RESEARCH.uvp,
+  }), [data]);
+
   const togglePhase = useCallback((phase: string) => {
     setExpandedPhases(prev => {
       const newSet = new Set(prev);
@@ -85,26 +100,26 @@ export function MarketResearchSection({
   }, []);
 
   const updateField = useCallback(<K extends keyof MarketResearchData>(field: K, value: MarketResearchData[K]) => {
-    onDataChange({ ...data, [field]: value });
-  }, [data, onDataChange]);
+    onDataChange({ ...safeData, [field]: value });
+  }, [safeData, onDataChange]);
 
   const updateAvatarField = useCallback((field: keyof MarketResearchData["avatar"], value: string) => {
     onDataChange({
-      ...data,
-      avatar: { ...data.avatar, [field]: value },
+      ...safeData,
+      avatar: { ...safeData.avatar, [field]: value },
     });
-  }, [data, onDataChange]);
+  }, [safeData, onDataChange]);
 
   const updateMechanismField = useCallback((field: keyof MarketResearchData["uniqueMechanism"], value: string) => {
     onDataChange({
-      ...data,
-      uniqueMechanism: { ...data.uniqueMechanism, [field]: value },
+      ...safeData,
+      uniqueMechanism: { ...safeData.uniqueMechanism, [field]: value },
     });
-  }, [data, onDataChange]);
+  }, [safeData, onDataChange]);
 
   const completedPhases = useMemo(() => {
     if (externalCompletedPhases !== undefined) return externalCompletedPhases;
-    const d = data;
+    const d = safeData;
     let count = 0;
     if ((d.currentState || []).some(s => s.trim()) || (d.idealState || []).some(s => s.trim())) count++;
     if (d.avatar && Object.values(d.avatar).some(v => typeof v === 'string' && v.trim())) count++;
@@ -114,10 +129,10 @@ export function MarketResearchSection({
     if (d.uniqueMechanism && (d.uniqueMechanism.name?.trim() || d.uniqueMechanism.description?.trim())) count++;
     if ((d.uvp || '').trim()) count++;
     return count;
-  }, [data, externalCompletedPhases]);
+  }, [safeData, externalCompletedPhases]);
 
   const phaseHasData = useCallback((phase: string): boolean => {
-    const d = data;
+    const d = safeData;
     switch (phase) {
       case 'trasformazione': return (d.currentState?.some(s => s.trim()) || d.idealState?.some(s => s.trim())) || false;
       case 'avatar': return !!(d.avatar?.nightThought || d.avatar?.biggestFear || d.avatar?.dailyFrustration);
@@ -128,7 +143,7 @@ export function MarketResearchSection({
       case 'posizionamento': return !!d.uvp;
       default: return false;
     }
-  }, [data]);
+  }, [safeData]);
 
   const handlePhaseClick = useCallback((phase: string) => {
     if (!onGeneratePhase) return;
@@ -182,7 +197,7 @@ export function MarketResearchSection({
           <div className="flex items-center gap-2">
             <ArrowRightLeft className="h-4 w-4 text-blue-500" />
             <span className="text-sm font-medium">1. Trasformazione</span>
-            {(data.currentState.some(s => s.trim()) || data.idealState.some(s => s.trim())) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
+            {(safeData.currentState.some(s => s.trim()) || safeData.idealState.some(s => s.trim())) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
           </div>
           <div className="flex items-center gap-1.5">
             {onGeneratePhase && (
@@ -198,30 +213,30 @@ export function MarketResearchSection({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">Stato Attuale (Problemi)</Label>
-                {data.currentState.map((item, i) => (
+                {safeData.currentState.map((item, i) => (
                   <div key={i} className="flex gap-1.5">
-                    <Textarea placeholder="es. Perde clienti perché il menù è solo cartaceo..." value={item} onChange={(e) => { const updated = [...data.currentState]; updated[i] = e.target.value; updateField("currentState", updated); }} rows={2} className="flex-1 resize-none text-sm" />
-                    {data.currentState.length > 1 && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0 mt-0.5 text-muted-foreground hover:text-destructive" onClick={() => updateField("currentState", data.currentState.filter((_, idx) => idx !== i))}><Trash2 className="h-3 w-3" /></Button>
+                    <Textarea placeholder="es. Perde clienti perché il menù è solo cartaceo..." value={item} onChange={(e) => { const updated = [...safeData.currentState]; updated[i] = e.target.value; updateField("currentState", updated); }} rows={2} className="flex-1 resize-none text-sm" />
+                    {safeData.currentState.length > 1 && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0 mt-0.5 text-muted-foreground hover:text-destructive" onClick={() => updateField("currentState", safeData.currentState.filter((_, idx) => idx !== i))}><Trash2 className="h-3 w-3" /></Button>
                     )}
                   </div>
                 ))}
-                {data.currentState.length < 7 && (
-                  <Button variant="ghost" size="sm" className="text-xs text-blue-500" onClick={() => updateField("currentState", [...data.currentState, ""])}><span className="mr-1">+</span> Aggiungi</Button>
+                {safeData.currentState.length < 7 && (
+                  <Button variant="ghost" size="sm" className="text-xs text-blue-500" onClick={() => updateField("currentState", [...safeData.currentState, ""])}><span className="mr-1">+</span> Aggiungi</Button>
                 )}
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide">Stato Ideale (Risultati)</Label>
-                {data.idealState.map((item, i) => (
+                {safeData.idealState.map((item, i) => (
                   <div key={i} className="flex gap-1.5">
-                    <Textarea placeholder="es. Riceve più ordini grazie al menù digitale..." value={item} onChange={(e) => { const updated = [...data.idealState]; updated[i] = e.target.value; updateField("idealState", updated); }} rows={2} className="flex-1 resize-none text-sm" />
-                    {data.idealState.length > 1 && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0 mt-0.5 text-muted-foreground hover:text-destructive" onClick={() => updateField("idealState", data.idealState.filter((_, idx) => idx !== i))}><Trash2 className="h-3 w-3" /></Button>
+                    <Textarea placeholder="es. Riceve più ordini grazie al menù digitale..." value={item} onChange={(e) => { const updated = [...safeData.idealState]; updated[i] = e.target.value; updateField("idealState", updated); }} rows={2} className="flex-1 resize-none text-sm" />
+                    {safeData.idealState.length > 1 && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0 mt-0.5 text-muted-foreground hover:text-destructive" onClick={() => updateField("idealState", safeData.idealState.filter((_, idx) => idx !== i))}><Trash2 className="h-3 w-3" /></Button>
                     )}
                   </div>
                 ))}
-                {data.idealState.length < 7 && (
-                  <Button variant="ghost" size="sm" className="text-xs text-blue-500" onClick={() => updateField("idealState", [...data.idealState, ""])}><span className="mr-1">+</span> Aggiungi</Button>
+                {safeData.idealState.length < 7 && (
+                  <Button variant="ghost" size="sm" className="text-xs text-blue-500" onClick={() => updateField("idealState", [...safeData.idealState, ""])}><span className="mr-1">+</span> Aggiungi</Button>
                 )}
               </div>
             </div>
@@ -235,7 +250,7 @@ export function MarketResearchSection({
           <div className="flex items-center gap-2">
             <UserCircle className="h-4 w-4 text-purple-500" />
             <span className="text-sm font-medium">2. Avatar del Cliente</span>
-            {Object.values(data.avatar).some(v => v.trim()) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
+            {Object.values(safeData.avatar).some(v => v.trim()) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
           </div>
           <div className="flex items-center gap-1.5">
             {onGeneratePhase && (
@@ -260,7 +275,7 @@ export function MarketResearchSection({
             ].map(({ field, label, placeholder }) => (
               <div key={field} className="space-y-1">
                 <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
-                <Textarea placeholder={placeholder} value={data.avatar[field]} onChange={(e) => updateAvatarField(field, e.target.value)} rows={2} className="resize-none text-sm" />
+                <Textarea placeholder={placeholder} value={safeData.avatar[field]} onChange={(e) => updateAvatarField(field, e.target.value)} rows={2} className="resize-none text-sm" />
               </div>
             ))}
           </div>
@@ -273,8 +288,8 @@ export function MarketResearchSection({
           <div className="flex items-center gap-2">
             <Flame className="h-4 w-4 text-red-500" />
             <span className="text-sm font-medium">3. Leve Motivazionali</span>
-            {data.emotionalDrivers.length > 0 && (
-              <Badge variant="outline" className="text-xs">{data.emotionalDrivers.length} selezionate</Badge>
+            {safeData.emotionalDrivers.length > 0 && (
+              <Badge variant="outline" className="text-xs">{safeData.emotionalDrivers.length} selezionate</Badge>
             )}
           </div>
           <div className="flex items-center gap-1.5">
@@ -290,9 +305,9 @@ export function MarketResearchSection({
           <div className="p-4 space-y-2">
             <p className="text-xs text-muted-foreground mb-3">Seleziona le 2-3 forze emotive più potenti che guidano il tuo pubblico:</p>
             {EMOTIONAL_DRIVERS.map(({ key, label, desc }) => (
-              <label key={key} className={`flex items-start gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${data.emotionalDrivers.includes(key) ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800" : "hover:bg-muted/50 border-transparent"}`}>
-                <Checkbox checked={data.emotionalDrivers.includes(key)} onCheckedChange={(checked) => {
-                  const drivers = checked ? [...data.emotionalDrivers, key] : data.emotionalDrivers.filter(d => d !== key);
+              <label key={key} className={`flex items-start gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${safeData.emotionalDrivers.includes(key) ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800" : "hover:bg-muted/50 border-transparent"}`}>
+                <Checkbox checked={safeData.emotionalDrivers.includes(key)} onCheckedChange={(checked) => {
+                  const drivers = checked ? [...safeData.emotionalDrivers, key] : safeData.emotionalDrivers.filter(d => d !== key);
                   updateField("emotionalDrivers", drivers);
                 }} className="mt-0.5" />
                 <div>
@@ -311,7 +326,7 @@ export function MarketResearchSection({
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-orange-500" />
             <span className="text-sm font-medium">4. Obiezioni e Resistenze</span>
-            {(data.existingSolutionProblems.some(s => s.trim()) || data.internalObjections.some(s => s.trim()) || data.externalObjections.some(s => s.trim())) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
+            {(safeData.existingSolutionProblems.some(s => s.trim()) || safeData.internalObjections.some(s => s.trim()) || safeData.externalObjections.some(s => s.trim())) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
           </div>
           <div className="flex items-center gap-1.5">
             {onGeneratePhase && (
@@ -355,7 +370,7 @@ export function MarketResearchSection({
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4 text-rose-500" />
             <span className="text-sm font-medium">5. Errore Nascosto (Core Lie)</span>
-            {data.coreLies.length > 0 && data.coreLies.some(c => c.name.trim()) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
+            {safeData.coreLies.length > 0 && safeData.coreLies.some(c => c.name.trim()) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
           </div>
           <div className="flex items-center gap-1.5">
             {onGeneratePhase && (
@@ -369,26 +384,26 @@ export function MarketResearchSection({
         {expandedPhases.has("errore") && (
           <div className="p-4 space-y-3">
             <p className="text-xs text-muted-foreground">Falsa credenza che il mercato ha venduto al tuo cliente — il motivo nascosto per cui fallisce.</p>
-            {data.coreLies.map((lie, i) => (
+            {safeData.coreLies.map((lie, i) => (
               <div key={i} className="p-3 rounded-lg border bg-muted/20 space-y-2">
                 <div className="flex items-center justify-between">
-                  <Input placeholder="Nome errore (es. 'Dipendenza dal contenuto gratuito')" value={lie.name} onChange={(e) => { const updated = [...data.coreLies]; updated[i] = { ...updated[i], name: e.target.value }; updateField("coreLies", updated); }} className="text-sm font-medium flex-1 mr-2" />
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => updateField("coreLies", data.coreLies.filter((_, idx) => idx !== i))}><Trash2 className="h-3 w-3" /></Button>
+                  <Input placeholder="Nome errore (es. 'Dipendenza dal contenuto gratuito')" value={lie.name} onChange={(e) => { const updated = [...safeData.coreLies]; updated[i] = { ...updated[i], name: e.target.value }; updateField("coreLies", updated); }} className="text-sm font-medium flex-1 mr-2" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => updateField("coreLies", safeData.coreLies.filter((_, idx) => idx !== i))}><Trash2 className="h-3 w-3" /></Button>
                 </div>
-                <Textarea placeholder="Descrivi le conseguenze di questa credenza errata..." value={lie.problem} onChange={(e) => { const updated = [...data.coreLies]; updated[i] = { ...updated[i], problem: e.target.value }; updateField("coreLies", updated); }} rows={2} className="resize-none text-sm" />
+                <Textarea placeholder="Descrivi le conseguenze di questa credenza errata..." value={lie.problem} onChange={(e) => { const updated = [...safeData.coreLies]; updated[i] = { ...updated[i], problem: e.target.value }; updateField("coreLies", updated); }} rows={2} className="resize-none text-sm" />
                 <div className="flex items-center gap-4 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Tipo:</span>
-                    <Button variant={lie.cureOrPrevent === 'C' ? "default" : "outline"} size="sm" className="h-6 px-2 text-xs" onClick={() => { const updated = [...data.coreLies]; updated[i] = { ...updated[i], cureOrPrevent: 'C' }; updateField("coreLies", updated); }}>Cura</Button>
-                    <Button variant={lie.cureOrPrevent === 'P' ? "default" : "outline"} size="sm" className="h-6 px-2 text-xs" onClick={() => { const updated = [...data.coreLies]; updated[i] = { ...updated[i], cureOrPrevent: 'P' }; updateField("coreLies", updated); }}>Previene</Button>
+                    <Button variant={lie.cureOrPrevent === 'C' ? "default" : "outline"} size="sm" className="h-6 px-2 text-xs" onClick={() => { const updated = [...safeData.coreLies]; updated[i] = { ...updated[i], cureOrPrevent: 'C' }; updateField("coreLies", updated); }}>Cura</Button>
+                    <Button variant={lie.cureOrPrevent === 'P' ? "default" : "outline"} size="sm" className="h-6 px-2 text-xs" onClick={() => { const updated = [...safeData.coreLies]; updated[i] = { ...updated[i], cureOrPrevent: 'P' }; updateField("coreLies", updated); }}>Previene</Button>
                   </div>
                   <label className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox checked={lie.isAware} onCheckedChange={(checked) => { const updated = [...data.coreLies]; updated[i] = { ...updated[i], isAware: !!checked }; updateField("coreLies", updated); }} />
+                    <Checkbox checked={lie.isAware} onCheckedChange={(checked) => { const updated = [...safeData.coreLies]; updated[i] = { ...updated[i], isAware: !!checked }; updateField("coreLies", updated); }} />
                     <span className="text-muted-foreground">Consapevole</span>
                   </label>
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">Importanza:</span>
-                    <Select value={lie.importance.toString()} onValueChange={(v) => { const updated = [...data.coreLies]; updated[i] = { ...updated[i], importance: parseInt(v) }; updateField("coreLies", updated); }}>
+                    <Select value={lie.importance.toString()} onValueChange={(v) => { const updated = [...safeData.coreLies]; updated[i] = { ...updated[i], importance: parseInt(v) }; updateField("coreLies", updated); }}>
                       <SelectTrigger className="h-6 w-14 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>{[1,2,3,4,5,6,7,8,9,10].map(n => <SelectItem key={n} value={n.toString()}>{n}/10</SelectItem>)}</SelectContent>
                     </Select>
@@ -396,8 +411,8 @@ export function MarketResearchSection({
                 </div>
               </div>
             ))}
-            {data.coreLies.length < 5 && (
-              <Button variant="ghost" size="sm" className="text-xs text-rose-500" onClick={() => updateField("coreLies", [...data.coreLies, { name: "", problem: "", cureOrPrevent: 'C' as const, isAware: false, importance: 7 }])}><span className="mr-1">+</span> Aggiungi errore nascosto</Button>
+            {safeData.coreLies.length < 5 && (
+              <Button variant="ghost" size="sm" className="text-xs text-rose-500" onClick={() => updateField("coreLies", [...safeData.coreLies, { name: "", problem: "", cureOrPrevent: 'C' as const, isAware: false, importance: 7 }])}><span className="mr-1">+</span> Aggiungi errore nascosto</Button>
             )}
           </div>
         )}
@@ -409,7 +424,7 @@ export function MarketResearchSection({
           <div className="flex items-center gap-2">
             <Lightbulb className="h-4 w-4 text-green-500" />
             <span className="text-sm font-medium">6. Meccanismo Unico</span>
-            {(data.uniqueMechanism.name.trim() || data.uniqueMechanism.description.trim()) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
+            {(safeData.uniqueMechanism.name.trim() || safeData.uniqueMechanism.description.trim()) && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
           </div>
           <div className="flex items-center gap-1.5">
             {onGeneratePhase && (
@@ -425,11 +440,11 @@ export function MarketResearchSection({
             <p className="text-xs text-muted-foreground">La tua metodologia proprietaria — il "COME" unico che ti differenzia. Non basta dire cosa fai, devi dire come lo fai in modo diverso.</p>
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground">Nome del Meccanismo</Label>
-              <Input placeholder='es. "Metodo 5D", "Protocollo 6X-Performance", "Sistema Crescita Rapida"' value={data.uniqueMechanism.name} onChange={(e) => updateMechanismField("name", e.target.value)} className="text-sm" />
+              <Input placeholder='es. "Metodo 5D", "Protocollo 6X-Performance", "Sistema Crescita Rapida"' value={safeData.uniqueMechanism.name} onChange={(e) => updateMechanismField("name", e.target.value)} className="text-sm" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground">Descrizione</Label>
-              <Textarea placeholder="Spiega brevemente il cuore del processo e perché funziona diversamente..." value={data.uniqueMechanism.description} onChange={(e) => updateMechanismField("description", e.target.value)} rows={3} className="resize-none text-sm" />
+              <Textarea placeholder="Spiega brevemente il cuore del processo e perché funziona diversamente..." value={safeData.uniqueMechanism.description} onChange={(e) => updateMechanismField("description", e.target.value)} rows={3} className="resize-none text-sm" />
             </div>
           </div>
         )}
@@ -441,7 +456,7 @@ export function MarketResearchSection({
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-indigo-500" />
             <span className="text-sm font-medium">7. Posizionamento (UVP)</span>
-            {data.uvp.trim() && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
+            {safeData.uvp.trim() && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
           </div>
           <div className="flex items-center gap-1.5">
             {onGeneratePhase && (
@@ -457,7 +472,7 @@ export function MarketResearchSection({
             <p className="text-xs text-muted-foreground">
               Formula: <span className="font-medium">Aiuto [CHI] a [FARE COSA — trasformazione] attraverso [COME — meccanismo unico]</span>
             </p>
-            <Textarea placeholder='es. "Aiuto ristoratori a raddoppiare gli ordini in 90 giorni attraverso il Sistema Menu Digitale 360°"' value={data.uvp} onChange={(e) => updateField("uvp", e.target.value)} rows={3} className="resize-none text-sm" />
+            <Textarea placeholder='es. "Aiuto ristoratori a raddoppiare gli ordini in 90 giorni attraverso il Sistema Menu Digitale 360°"' value={safeData.uvp} onChange={(e) => updateField("uvp", e.target.value)} rows={3} className="resize-none text-sm" />
           </div>
         )}
       </div>
