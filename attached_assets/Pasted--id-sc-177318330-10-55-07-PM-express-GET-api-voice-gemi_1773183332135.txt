@@ -1,0 +1,65 @@
+":[{"id":"sc_177318330…
+10:55:07 PM [express] GET /api/voice/gemini-connections 304 in 229ms :: {"success":true,"connections"…
+⚠️ [Outbound] VPS health check failed (using local count only): This operation was aborted
+📞 [LIFECYCLE] executeOutboundCall: sc_1773183306298_xldbsnm4r → status=CALLING | phone=1003 | from=9999 | attempt=1 | timestamp=2026-03-10T22:55:10.550Z
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ROUTING-DEBUG] executeOutboundCall() called with:
+🔍 [ROUTING-DEBUG]   callId: sc_1773183306298_xldbsnm4r
+🔍 [ROUTING-DEBUG]   consultantId (param): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   call.consultant_id (from DB): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   token (first 30 chars): eyJhbGciOiJIUzI1NiIsInR5cCI6Ik...
+🔍 [ROUTING-DEBUG]   DECODED global service token:
+🔍 [ROUTING-DEBUG]     consultantId in token: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]     type: phone_service
+🔍 [ROUTING-DEBUG]     scope: MISSING
+🔍 [ROUTING-DEBUG]     iat: 1770067900
+🔍 [ROUTING-DEBUG]     full decoded: {"type":"phone_service","consultantId":"0c73bbe5-51e1-4108-866b-6be7a52fce3b","createdAt":"2026-02-02T21:31:40.240Z","iat":1770067900}
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 [Outbound] Calling VPS: http://72.62.50.40:9090/outbound/call for 1003
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [Outbound] FULL VPS PAYLOAD:
+📋   targetPhone: 1003
+📋   callId: sc_1773183306298_xldbsnm4r
+📋   aiMode: assistenza
+📋   customPrompt: null
+📋   callInstruction: null
+📋   instructionType: null
+📋   useDefaultTemplate: false
+📋   sipCallerId: 9999
+📋   sipGateway: non inviato (usa default VPS)
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10:55:11 PM [express] GET /api/voice/orphan-history 304 in 454ms :: {"success":true,"orphans":[{"id":…
+10:55:11 PM [express] GET /api/ai-autonomy/roles/status 304 in 1835ms :: {"alessia":{"effectiveLevel"…
+10:55:12 PM [express] GET /api/voice/stats 304 in 1285ms :: {"period":"day","stats":{"total_calls":"2…
+10:55:12 PM [express] GET /api/voice/ai-tasks 304 in 458ms :: {"tasks":[],"pagination":{"page":1,"lim…
+10:55:13 PM [express] GET /api/voice/gemini-connections 304 in 230ms :: {"success":true,"connections"…
+[Voice Health] VPS health fetch failed: This operation was aborted
+10:55:14 PM [express] GET /api/voice/health 304 in 3454ms :: {"overall":"healthy","components":{"data…
+10:55:18 PM [express] GET /api/voice/calls 200 in 580ms :: {"calls":[{"id":"vc_1773183032622_uhdbwgga…
+10:55:18 PM [express] GET /api/voice/gemini-connections 304 in 234ms :: {"success":true,"connections"…
+
+📊 [ACTIVE-CALLS-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [ACTIVE-CALLS-DEBUG] Consultant: 0c73bbe5...
+📊 [ACTIVE-CALLS-DEBUG] Total: 145 | {"cancelled":8,"completed":46,"failed":90,"calling":1} | Gemini streams: 0 (vcIds: [], callerIds: [], calledNums: [], scIds: [])
+📊 [ACTIVE-CALLS-DEBUG]   🟡 NO-STREAM | id=sc_1773183306298_xldbsnm4r | status=calling | phone=1003 | age=9s | voice_call_id=vc_1773183032622_uhdbwggad | match: vcId=false, callerId=false, calledNum=false, scId=false
+📊 [ACTIVE-CALLS-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+10:55:19 PM [express] GET /api/voice/outbound/scheduled 200 in 916ms :: {"calls":[{"id":"sc_177119225…
+[PUBLER POLLING] Running scheduled post status sync...
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+10:55:20 PM [express] GET /api/voice/ai-tasks 304 in 714ms :: {"tasks":[{"id":"task_1773011475905_3gl…
+❌ [Outbound] Failed to execute call sc_1773183306298_xldbsnm4r: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async executeOutboundCall (/home/runner/workspace/server/routes/voice-router.ts:3125:22) {
+  [cause]: ConnectTimeoutError: Connect Timeout Error (attempted address: 72.62.50.40:9090, timeout: 10000ms)
+      at onConnectTimeout (node:internal/deps/undici/undici:2718:28)
+      at Immediate._onImmediate (node:internal/deps/undici/undici:2699:11)
+      at process.processImmediate (node:internal/timers:483:21) {
+    code: 'UND_ERR_CONNECT_TIMEOUT',
+    [Symbol(undici.error.UND_ERR)]: true,
+    [Symbol(undici.error.UND_ERR_CONNECT_TIMEOUT)]: true
+  }
+}
+🔄 [Outbound] Exponential backoff: attempt 1, delay=10min (base=5min)
+⏰ [Outbound] Scheduled call sc_1773183306298_xldbsnm4r for 2026-03-10T23:05:21.051Z (in 600s)
