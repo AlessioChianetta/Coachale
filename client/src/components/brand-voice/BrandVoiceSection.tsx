@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Building2,
   Target,
@@ -19,8 +25,15 @@ import {
   Save,
   Loader2,
   Check,
-  MessageSquare
+  MessageSquare,
+  Search,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
+import { MarketResearchSection } from "./MarketResearchSection";
+import { type MarketResearchData, EMPTY_MARKET_RESEARCH } from "@shared/schema";
+import { getAuthHeaders } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 
 export interface BrandVoiceData {
   consultantDisplayName?: string;
@@ -75,13 +88,243 @@ export function BrandVoiceSection({
   compact = false,
   showSaveButton = true
 }: BrandVoiceSectionProps) {
+  const { toast } = useToast();
   const [businessInfoOpen, setBusinessInfoOpen] = useState(!compact);
   const [authorityOpen, setAuthorityOpen] = useState(!compact);
   const [credentialsOpen, setCredentialsOpen] = useState(!compact);
   const [servicesOpen, setServicesOpen] = useState(!compact);
   const [voiceStyleOpen, setVoiceStyleOpen] = useState(!compact);
+  const [marketResearchOpen, setMarketResearchOpen] = useState(false);
   const [valueInput, setValueInput] = useState("");
   const [phraseInput, setPhraseInput] = useState("");
+
+  const [mrData, setMrData] = useState<MarketResearchData>({ ...EMPTY_MARKET_RESEARCH });
+  const [mrLoaded, setMrLoaded] = useState(false);
+  const [mrSaving, setMrSaving] = useState(false);
+  const [isGeneratingResearch, setIsGeneratingResearch] = useState(false);
+  const [generatingPhase, setGeneratingPhase] = useState<string | null>(null);
+  const [showResearchDialog, setShowResearchDialog] = useState(false);
+  const [showPhaseConfirmDialog, setShowPhaseConfirmDialog] = useState(false);
+  const [pendingPhaseGen, setPendingPhaseGen] = useState<{ phase: string; mode: 'add' | 'overwrite' | null }>({ phase: '', mode: null });
+  const [researchProgress, setResearchProgress] = useState<{
+    status: string;
+    currentStep: number;
+    totalSteps: number;
+    stepLabel: string;
+    stepDetails: string;
+    steps: Array<{ label: string; status: string; details: string }>;
+    error?: string;
+    tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
+  } | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (mrLoaded) return;
+    const fetchMR = async () => {
+      try {
+        const res = await fetch("/api/content/market-research", { headers: getAuthHeaders() });
+        const json = await res.json();
+        if (json.success && json.data && Object.keys(json.data).length > 0) {
+          setMrData({ ...EMPTY_MARKET_RESEARCH, ...json.data });
+        }
+      } catch {}
+      setMrLoaded(true);
+    };
+    fetchMR();
+  }, [mrLoaded]);
+
+  const saveMrData = useCallback(async (newData: MarketResearchData) => {
+    setMrSaving(true);
+    try {
+      await fetch("/api/content/market-research", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ data: newData }),
+      });
+    } catch {}
+    setMrSaving(false);
+  }, []);
+
+  const handleMrDataChange = useCallback((newData: MarketResearchData) => {
+    setMrData(newData);
+  }, []);
+
+  useEffect(() => {
+    if (!mrLoaded) return;
+    const timer = setTimeout(() => { saveMrData(mrData); }, 2000);
+    return () => clearTimeout(timer);
+  }, [mrData, mrLoaded, saveMrData]);
+
+  const mrTopic = data.businessDescription || "";
+  const mrTargetAudience = data.whoWeHelp || "";
+
+  const handleGenerateFullResearch = useCallback(async () => {
+    if (!mrTopic.trim()) {
+      toast({ title: "Inserisci la Descrizione Business in Informazioni Business per avviare la ricerca", variant: "destructive" });
+      return;
+    }
+    setIsGeneratingResearch(true);
+    setShowResearchDialog(true);
+    setResearchProgress(null);
+
+    try {
+      const response = await fetch("/api/content/ai/generate-market-research", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ niche: mrTopic, targetAudience: mrTargetAudience }),
+      });
+      const resData = await response.json();
+      if (resData.success && resData.jobId) {
+        pollIntervalRef.current = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`/api/content/ai/market-research-status/${resData.jobId}`, { headers: getAuthHeaders() });
+            const statusData = await statusRes.json();
+            if (!statusData.success) return;
+            setResearchProgress({
+              status: statusData.status,
+              currentStep: statusData.currentStep,
+              totalSteps: statusData.totalSteps,
+              stepLabel: statusData.stepLabel,
+              stepDetails: statusData.stepDetails,
+              steps: statusData.steps,
+              error: statusData.error,
+              tokenUsage: statusData.tokenUsage,
+            });
+            if (statusData.status === 'completed' && statusData.result) {
+              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+              const newData = statusData.result.data;
+              setMrData(newData);
+              saveMrData(newData);
+              setIsGeneratingResearch(false);
+              setGeneratingPhase(null);
+              toast({ title: "Deep Research completata!", description: "Tutte le 7 fasi compilate con dati reali dal mercato." });
+            } else if (statusData.status === 'error') {
+              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+              setIsGeneratingResearch(false);
+              setGeneratingPhase(null);
+            }
+          } catch {}
+        }, 2000);
+      } else {
+        throw new Error(resData.error || "Errore nell'avvio della ricerca");
+      }
+    } catch (error: any) {
+      toast({ title: "Errore nella ricerca", description: error.message, variant: "destructive" });
+      setIsGeneratingResearch(false);
+      setGeneratingPhase(null);
+      setShowResearchDialog(false);
+    }
+  }, [mrTopic, mrTargetAudience, toast, saveMrData]);
+
+  const handleGeneratePhase = useCallback(async (phase: string, mergeMode: 'add' | 'overwrite') => {
+    if (!mrTopic.trim()) {
+      toast({ title: "Inserisci la Descrizione Business per avviare la ricerca", variant: "destructive" });
+      return;
+    }
+    setGeneratingPhase(phase);
+    setIsGeneratingResearch(true);
+    setShowResearchDialog(true);
+    setResearchProgress(null);
+
+    try {
+      const response = await fetch("/api/content/ai/generate-market-research", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ niche: mrTopic, targetAudience: mrTargetAudience, phase }),
+      });
+      const resData = await response.json();
+      if (resData.success && resData.jobId) {
+        pollIntervalRef.current = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`/api/content/ai/market-research-status/${resData.jobId}`, { headers: getAuthHeaders() });
+            const statusData = await statusRes.json();
+            if (!statusData.success) return;
+            setResearchProgress({
+              status: statusData.status,
+              currentStep: statusData.currentStep,
+              totalSteps: statusData.totalSteps,
+              stepLabel: statusData.stepLabel,
+              stepDetails: statusData.stepDetails,
+              steps: statusData.steps,
+              error: statusData.error,
+              tokenUsage: statusData.tokenUsage,
+            });
+            if (statusData.status === 'completed' && statusData.result) {
+              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+              const newPhaseData = statusData.result.data;
+              if (mergeMode === 'add') {
+                setMrData(prev => {
+                  const merged = { ...prev };
+                  if (newPhaseData.currentState) merged.currentState = [...(prev.currentState || []).filter((s: string) => s.trim()), ...newPhaseData.currentState];
+                  if (newPhaseData.idealState) merged.idealState = [...(prev.idealState || []).filter((s: string) => s.trim()), ...newPhaseData.idealState];
+                  if (newPhaseData.avatar) merged.avatar = { ...prev.avatar, ...newPhaseData.avatar };
+                  if (newPhaseData.emotionalDrivers) merged.emotionalDrivers = [...new Set([...(prev.emotionalDrivers || []), ...newPhaseData.emotionalDrivers])];
+                  if (newPhaseData.existingSolutionProblems) merged.existingSolutionProblems = [...(prev.existingSolutionProblems || []).filter((s: string) => s.trim()), ...newPhaseData.existingSolutionProblems];
+                  if (newPhaseData.internalObjections) merged.internalObjections = [...(prev.internalObjections || []).filter((s: string) => s.trim()), ...newPhaseData.internalObjections];
+                  if (newPhaseData.externalObjections) merged.externalObjections = [...(prev.externalObjections || []).filter((s: string) => s.trim()), ...newPhaseData.externalObjections];
+                  if (newPhaseData.coreLies) merged.coreLies = [...(prev.coreLies || []), ...newPhaseData.coreLies];
+                  if (newPhaseData.uniqueMechanism) merged.uniqueMechanism = newPhaseData.uniqueMechanism;
+                  if (newPhaseData.uvp) merged.uvp = newPhaseData.uvp;
+                  saveMrData(merged);
+                  return merged;
+                });
+              } else {
+                setMrData(prev => {
+                  const updated = { ...prev, ...newPhaseData };
+                  saveMrData(updated);
+                  return updated;
+                });
+              }
+              setIsGeneratingResearch(false);
+              setGeneratingPhase(null);
+              toast({ title: "Fase generata!", description: "Dati aggiornati." });
+            } else if (statusData.status === 'error') {
+              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+              setIsGeneratingResearch(false);
+              setGeneratingPhase(null);
+            }
+          } catch {}
+        }, 2000);
+      } else {
+        throw new Error(resData.error || "Errore nell'avvio della ricerca");
+      }
+    } catch (error: any) {
+      toast({ title: "Errore nella ricerca", description: error.message, variant: "destructive" });
+      setIsGeneratingResearch(false);
+      setGeneratingPhase(null);
+      setShowResearchDialog(false);
+    }
+  }, [mrTopic, mrTargetAudience, toast, saveMrData]);
+
+  const handlePhaseButtonClick = useCallback((phase: string) => {
+    if (!mrTopic.trim()) {
+      toast({ title: "Inserisci la Descrizione Business per avviare la ricerca", variant: "destructive" });
+      return;
+    }
+    const d = mrData;
+    let hasData = false;
+    switch (phase) {
+      case 'trasformazione': hasData = (d.currentState?.some(s => s.trim()) || d.idealState?.some(s => s.trim())) || false; break;
+      case 'avatar': hasData = !!(d.avatar?.nightThought || d.avatar?.biggestFear || d.avatar?.dailyFrustration); break;
+      case 'leve': hasData = (d.emotionalDrivers?.length > 0) || false; break;
+      case 'obiezioni': hasData = (d.internalObjections?.some(s => s.trim()) || d.externalObjections?.some(s => s.trim()) || d.existingSolutionProblems?.some(s => s.trim())) || false; break;
+      case 'errore': hasData = (d.coreLies?.length > 0) || false; break;
+      case 'meccanismo': hasData = !!(d.uniqueMechanism?.name || d.uniqueMechanism?.description); break;
+      case 'posizionamento': hasData = !!d.uvp; break;
+    }
+    if (hasData) {
+      setPendingPhaseGen({ phase, mode: null });
+      setShowPhaseConfirmDialog(true);
+    } else {
+      handleGeneratePhase(phase, 'overwrite');
+    }
+  }, [mrTopic, mrData, toast, handleGeneratePhase]);
+
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
 
   const updateField = <K extends keyof BrandVoiceData>(field: K, value: BrandVoiceData[K]) => {
     onDataChange({ ...data, [field]: value });
@@ -911,6 +1154,148 @@ export function BrandVoiceSection({
           </CollapsibleContent>
         </Card>
       </Collapsible>
+
+      <Collapsible open={marketResearchOpen} onOpenChange={setMarketResearchOpen}>
+        <Card className="border-2 border-amber-500/20 shadow-lg">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="bg-gradient-to-r from-amber-500/5 to-orange-500/10 cursor-pointer hover:from-amber-500/10 hover:to-orange-500/15 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Search className="h-5 w-5 text-amber-500" />
+                  <CardTitle>Ricerca di Mercato</CardTitle>
+                  {mrSaving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                </div>
+                {marketResearchOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </div>
+              <CardDescription className="text-left">Analisi profonda del tuo mercato con AI — 7 fasi di ricerca</CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-6">
+              <MarketResearchSection
+                data={mrData}
+                onDataChange={handleMrDataChange}
+                isGenerating={isGeneratingResearch}
+                generatingPhase={generatingPhase}
+                onGenerateFullResearch={handleGenerateFullResearch}
+                onGeneratePhase={handlePhaseButtonClick}
+                topic={mrTopic}
+                targetAudience={mrTargetAudience}
+                compact={compact}
+              />
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      <Dialog open={showPhaseConfirmDialog} onOpenChange={setShowPhaseConfirmDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Dati già presenti</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Questa sezione contiene già dei dati. Come vuoi procedere?</p>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button onClick={() => { setShowPhaseConfirmDialog(false); handleGeneratePhase(pendingPhaseGen.phase, 'add'); }} className="w-full">
+              Aggiungi ai dati esistenti
+            </Button>
+            <Button variant="outline" onClick={() => { setShowPhaseConfirmDialog(false); handleGeneratePhase(pendingPhaseGen.phase, 'overwrite'); }} className="w-full">
+              Sovrascrivi tutto
+            </Button>
+            <Button variant="ghost" onClick={() => setShowPhaseConfirmDialog(false)} className="w-full text-muted-foreground">
+              Annulla
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showResearchDialog} onOpenChange={(open) => { if (!open && researchProgress?.status !== 'running') { setShowResearchDialog(false); setResearchProgress(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-purple-500" />
+              Deep Research con AI
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {researchProgress ? (
+              <>
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Step {researchProgress.currentStep} di {researchProgress.totalSteps}</span>
+                  <div className="flex items-center gap-3">
+                    {researchProgress.tokenUsage && researchProgress.tokenUsage.totalTokens > 0 && researchProgress.status === 'running' && (
+                      <span className="text-xs text-muted-foreground">{researchProgress.tokenUsage.totalTokens.toLocaleString()} token</span>
+                    )}
+                    <span className={researchProgress.status === 'completed' ? 'text-green-600 font-medium' : researchProgress.status === 'error' ? 'text-red-600 font-medium' : 'text-purple-600 font-medium'}>
+                      {researchProgress.status === 'completed' ? 'Completato' : researchProgress.status === 'error' ? 'Errore' : researchProgress.stepLabel}
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-700 ${researchProgress.status === 'completed' ? 'bg-green-500' : researchProgress.status === 'error' ? 'bg-red-500' : 'bg-purple-500'}`}
+                    style={{ width: `${researchProgress.status === 'completed' ? 100 : ((researchProgress.currentStep - 0.5) / researchProgress.totalSteps) * 100}%` }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  {researchProgress.steps.map((step, idx) => (
+                    <div key={idx} className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${step.status === 'running' ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' : step.status === 'completed' ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : step.status === 'error' ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 opacity-60'}`}>
+                      <div className="mt-0.5">
+                        {step.status === 'running' ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                        ) : step.status === 'completed' ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : step.status === 'error' ? (
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                        ) : (
+                          <div className="h-4 w-4 rounded-full border-2 border-gray-300 dark:border-gray-600" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium">{step.label}</div>
+                        {step.details && <div className="text-xs text-muted-foreground mt-0.5">{step.details}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {researchProgress.status === 'error' && researchProgress.error && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <p className="text-sm text-red-700 dark:text-red-300">{researchProgress.error}</p>
+                  </div>
+                )}
+                {researchProgress.status === 'completed' && (
+                  <div className="space-y-3">
+                    {researchProgress.tokenUsage && researchProgress.tokenUsage.totalTokens > 0 && (
+                      <div className="flex items-center gap-4 p-2 bg-gray-50 dark:bg-gray-900 rounded-lg text-xs text-muted-foreground">
+                        <span>Token usati: <strong>{researchProgress.tokenUsage.totalTokens.toLocaleString()}</strong></span>
+                        <span>Input: {researchProgress.tokenUsage.inputTokens.toLocaleString()}</span>
+                        <span>Output: {researchProgress.tokenUsage.outputTokens.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <Button onClick={() => { setShowResearchDialog(false); setResearchProgress(null); }} className="bg-green-600 hover:bg-green-700">
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Vedi Risultati
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {researchProgress.status === 'error' && (
+                  <div className="flex justify-end">
+                    <Button variant="outline" onClick={() => { setShowResearchDialog(false); setResearchProgress(null); }}>
+                      Chiudi
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                <p className="text-sm text-muted-foreground">Avvio Deep Research...</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

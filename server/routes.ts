@@ -16407,7 +16407,14 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         // Booking Notification Configuration
         bookingNotificationEnabled,
         bookingNotificationPhone,
-        bookingNotificationTemplateId
+        bookingNotificationTemplateId,
+        // Voice & Style (Voce & Stile Personale)
+        personalTone,
+        contentPersonality,
+        audienceLanguage,
+        avoidPatterns,
+        writingExamples,
+        signaturePhrases
       } = req.body;
 
       // Verify agent belongs to consultant
@@ -16574,6 +16581,14 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       if (levelPromptOverlay1 !== undefined) updateData.levelPromptOverlay1 = levelPromptOverlay1;
       if (levelPromptOverlay2 !== undefined) updateData.levelPromptOverlay2 = levelPromptOverlay2;
       if (levelPromptOverlay3 !== undefined) updateData.levelPromptOverlay3 = levelPromptOverlay3;
+
+      // Voice & Style (Voce & Stile Personale)
+      if (personalTone !== undefined) updateData.personalTone = personalTone;
+      if (contentPersonality !== undefined) updateData.contentPersonality = contentPersonality;
+      if (audienceLanguage !== undefined) updateData.audienceLanguage = audienceLanguage;
+      if (avoidPatterns !== undefined) updateData.avoidPatterns = avoidPatterns;
+      if (writingExamples !== undefined) updateData.writingExamples = writingExamples;
+      if (signaturePhrases !== undefined) updateData.signaturePhrases = signaturePhrases;
 
       // Booking Notification Configuration
       if (bookingNotificationEnabled !== undefined) updateData.bookingNotificationEnabled = bookingNotificationEnabled;

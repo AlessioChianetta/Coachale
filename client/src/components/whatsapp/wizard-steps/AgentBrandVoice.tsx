@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,13 +32,17 @@ import {
   AlertCircle,
   Download,
   Library,
-  ClipboardPaste
+  ClipboardPaste,
+  MessageSquare,
+  Search
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDropzone } from "react-dropzone";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
-import type { WhatsappAgentKnowledgeItem } from "@shared/schema";
+import type { WhatsappAgentKnowledgeItem, MarketResearchData } from "@shared/schema";
+import { EMPTY_MARKET_RESEARCH } from "@shared/schema";
+import { MarketResearchSection } from "@/components/brand-voice/MarketResearchSection";
 
 interface ImportCandidate {
   id: string;
@@ -84,7 +88,19 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   const [authorityOpen, setAuthorityOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const [voiceStyleOpen, setVoiceStyleOpen] = useState(false);
+  const [marketResearchOpen, setMarketResearchOpen] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+  const [phraseInput, setPhraseInput] = useState("");
+
+  const [marketResearchData, setMarketResearchData] = useState<MarketResearchData>(EMPTY_MARKET_RESEARCH);
+  const [isLoadingMarketResearch, setIsLoadingMarketResearch] = useState(false);
+  const [isGeneratingResearch, setIsGeneratingResearch] = useState(false);
+  const [generatingPhase, setGeneratingPhase] = useState<string | null>(null);
+  const [showResearchDialog, setShowResearchDialog] = useState(false);
+  const [researchProgress, setResearchProgress] = useState<any>(null);
+  const [showPhaseConfirmDialog, setShowPhaseConfirmDialog] = useState(false);
+  const [pendingPhaseGen, setPendingPhaseGen] = useState<{ phase: string; mode: 'add' | 'overwrite' | null }>({ phase: '', mode: null });
   
   const [knowledgeItems, setKnowledgeItems] = useState<WhatsappAgentKnowledgeItem[]>([]);
   const [knowledgeDrafts, setKnowledgeDrafts] = useState<KnowledgeItemDraft[]>([]);
@@ -178,6 +194,238 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
     const currentServices = formData.servicesOffered || [];
     onChange("servicesOffered", currentServices.filter((_: any, i: number) => i !== index));
   };
+
+  const handleAddWritingExample = () => {
+    const current = formData.writingExamples || [];
+    if (current.length < 3) {
+      onChange("writingExamples", [...current, ""]);
+    }
+  };
+
+  const handleUpdateWritingExample = (index: number, value: string) => {
+    const current = [...(formData.writingExamples || [])];
+    current[index] = value;
+    onChange("writingExamples", current);
+  };
+
+  const handleRemoveWritingExample = (index: number) => {
+    const current = formData.writingExamples || [];
+    onChange("writingExamples", current.filter((_: any, i: number) => i !== index));
+  };
+
+  const handleAddPhrase = () => {
+    if (phraseInput.trim()) {
+      const current = formData.signaturePhrases || [];
+      onChange("signaturePhrases", [...current, phraseInput.trim()]);
+      setPhraseInput("");
+    }
+  };
+
+  const handleRemovePhrase = (index: number) => {
+    const current = formData.signaturePhrases || [];
+    onChange("signaturePhrases", current.filter((_: any, i: number) => i !== index));
+  };
+
+  useEffect(() => {
+    const fetchMarketResearch = async () => {
+      setIsLoadingMarketResearch(true);
+      try {
+        const response = await fetch("/api/content/market-research", {
+          headers: getAuthHeaders(),
+        });
+        if (response.ok) {
+          const result = await response.json();
+          if (result.data && Object.keys(result.data).length > 0) {
+            setMarketResearchData({ ...EMPTY_MARKET_RESEARCH, ...result.data });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching market research:", error);
+      } finally {
+        setIsLoadingMarketResearch(false);
+      }
+    };
+    fetchMarketResearch();
+  }, []);
+
+  const saveMarketResearch = useCallback(async (data: MarketResearchData) => {
+    try {
+      await fetch("/api/content/market-research", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ data }),
+      });
+    } catch (error) {
+      console.error("Error saving market research:", error);
+    }
+  }, []);
+
+  const handleMarketResearchDataChange = useCallback((newData: MarketResearchData) => {
+    setMarketResearchData(newData);
+    saveMarketResearch(newData);
+  }, [saveMarketResearch]);
+
+  const handleGenerateFullResearch = useCallback(async () => {
+    const niche = formData.businessDescription || "";
+    const audience = formData.whoWeHelp || "";
+    if (!niche.trim()) {
+      toast({ title: "Inserisci la descrizione business per avviare la ricerca", variant: "destructive" });
+      return;
+    }
+    setIsGeneratingResearch(true);
+    setShowResearchDialog(true);
+    setResearchProgress(null);
+    try {
+      const response = await fetch("/api/content/ai/generate-market-research", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ niche, targetAudience: audience }),
+      });
+      const data = await response.json();
+      if (data.success && data.jobId) {
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`/api/content/ai/market-research-status/${data.jobId}`, {
+              headers: getAuthHeaders(),
+            });
+            const statusData = await statusRes.json();
+            if (!statusData.success) return;
+            setResearchProgress({
+              status: statusData.status,
+              currentStep: statusData.currentStep,
+              totalSteps: statusData.totalSteps,
+              stepLabel: statusData.stepLabel,
+              stepDetails: statusData.stepDetails,
+              steps: statusData.steps,
+              error: statusData.error,
+            });
+            if (statusData.status === 'completed' && statusData.result) {
+              clearInterval(pollInterval);
+              const newData = statusData.result.data;
+              setMarketResearchData(newData);
+              saveMarketResearch(newData);
+              setIsGeneratingResearch(false);
+              setGeneratingPhase(null);
+              toast({ title: "Deep Research completata!", description: "Tutte le 7 fasi compilate con dati reali dal mercato." });
+            } else if (statusData.status === 'error') {
+              clearInterval(pollInterval);
+              setIsGeneratingResearch(false);
+              setGeneratingPhase(null);
+            }
+          } catch {}
+        }, 2000);
+      } else {
+        throw new Error(data.error || "Errore nell'avvio della ricerca");
+      }
+    } catch (error: any) {
+      toast({ title: "Errore nella ricerca", description: error.message, variant: "destructive" });
+      setIsGeneratingResearch(false);
+      setGeneratingPhase(null);
+      setShowResearchDialog(false);
+    }
+  }, [formData.businessDescription, formData.whoWeHelp, saveMarketResearch, toast]);
+
+  const handleGeneratePhase = useCallback(async (phase: string, mode: 'add' | 'overwrite') => {
+    const niche = formData.businessDescription || "";
+    const audience = formData.whoWeHelp || "";
+    if (!niche.trim()) {
+      toast({ title: "Inserisci la descrizione business per generare questa fase", variant: "destructive" });
+      return;
+    }
+    setGeneratingPhase(phase);
+    setIsGeneratingResearch(true);
+    setShowResearchDialog(true);
+    setResearchProgress(null);
+    try {
+      const response = await fetch("/api/content/ai/generate-market-research", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ niche, targetAudience: audience, phase }),
+      });
+      const data = await response.json();
+      if (data.success && data.jobId) {
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`/api/content/ai/market-research-status/${data.jobId}`, {
+              headers: getAuthHeaders(),
+            });
+            const statusData = await statusRes.json();
+            if (!statusData.success) return;
+            setResearchProgress({
+              status: statusData.status,
+              currentStep: statusData.currentStep,
+              totalSteps: statusData.totalSteps,
+              stepLabel: statusData.stepLabel,
+              stepDetails: statusData.stepDetails,
+              steps: statusData.steps,
+              error: statusData.error,
+            });
+            if (statusData.status === 'completed' && statusData.result) {
+              clearInterval(pollInterval);
+              const newData = statusData.result.data;
+              if (mode === 'add') {
+                setMarketResearchData(prev => {
+                  const merged = { ...prev };
+                  if (newData.currentState) merged.currentState = [...(prev.currentState || []).filter((s: string) => s.trim()), ...newData.currentState];
+                  if (newData.idealState) merged.idealState = [...(prev.idealState || []).filter((s: string) => s.trim()), ...newData.idealState];
+                  if (newData.avatar) merged.avatar = { ...prev.avatar, ...newData.avatar };
+                  if (newData.emotionalDrivers) merged.emotionalDrivers = [...new Set([...(prev.emotionalDrivers || []), ...newData.emotionalDrivers])];
+                  if (newData.existingSolutionProblems) merged.existingSolutionProblems = [...(prev.existingSolutionProblems || []).filter((s: string) => s.trim()), ...newData.existingSolutionProblems];
+                  if (newData.internalObjections) merged.internalObjections = [...(prev.internalObjections || []).filter((s: string) => s.trim()), ...newData.internalObjections];
+                  if (newData.externalObjections) merged.externalObjections = [...(prev.externalObjections || []).filter((s: string) => s.trim()), ...newData.externalObjections];
+                  if (newData.coreLies) merged.coreLies = [...(prev.coreLies || []), ...newData.coreLies];
+                  if (newData.uniqueMechanism) merged.uniqueMechanism = newData.uniqueMechanism;
+                  if (newData.uvp) merged.uvp = newData.uvp;
+                  saveMarketResearch(merged);
+                  return merged;
+                });
+              } else {
+                setMarketResearchData(prev => {
+                  const updated = { ...prev, ...newData };
+                  saveMarketResearch(updated);
+                  return updated;
+                });
+              }
+              setIsGeneratingResearch(false);
+              setGeneratingPhase(null);
+              toast({ title: "Fase generata!", description: "Dati aggiornati." });
+            } else if (statusData.status === 'error') {
+              clearInterval(pollInterval);
+              setIsGeneratingResearch(false);
+              setGeneratingPhase(null);
+            }
+          } catch {}
+        }, 2000);
+      } else {
+        throw new Error(data.error || "Errore nell'avvio della ricerca");
+      }
+    } catch (error: any) {
+      toast({ title: "Errore nella ricerca", description: error.message, variant: "destructive" });
+      setIsGeneratingResearch(false);
+      setGeneratingPhase(null);
+      setShowResearchDialog(false);
+    }
+  }, [formData.businessDescription, formData.whoWeHelp, saveMarketResearch, toast]);
+
+  const handlePhaseGenWithConfirm = useCallback((phase: string, mode: 'add' | 'overwrite') => {
+    const d = marketResearchData;
+    let hasData = false;
+    switch (phase) {
+      case 'trasformazione': hasData = d.currentState.some(s => s.trim()) || d.idealState.some(s => s.trim()); break;
+      case 'avatar': hasData = Object.values(d.avatar).some(v => v.trim()); break;
+      case 'leve': hasData = d.emotionalDrivers.length > 0; break;
+      case 'obiezioni': hasData = d.existingSolutionProblems.some(s => s.trim()) || d.internalObjections.some(s => s.trim()) || d.externalObjections.some(s => s.trim()); break;
+      case 'errore': hasData = d.coreLies.length > 0 && d.coreLies.some(c => c.name.trim()); break;
+      case 'meccanismo': hasData = d.uniqueMechanism.name.trim() !== "" || d.uniqueMechanism.description.trim() !== ""; break;
+      case 'posizionamento': hasData = d.uvp.trim() !== ""; break;
+    }
+    if (hasData) {
+      setPendingPhaseGen({ phase, mode: null });
+      setShowPhaseConfirmDialog(true);
+    } else {
+      handleGeneratePhase(phase, 'overwrite');
+    }
+  }, [marketResearchData, handleGeneratePhase]);
 
   // Knowledge Base handlers
   useEffect(() => {
@@ -1240,6 +1488,179 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
         </Card>
       </Collapsible>
 
+      <Collapsible open={voiceStyleOpen} onOpenChange={setVoiceStyleOpen}>
+        <Card className="border-2 border-indigo-500/20 shadow-lg">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="bg-gradient-to-r from-indigo-500/5 to-indigo-500/10 cursor-pointer hover:from-indigo-500/10 hover:to-indigo-500/15 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-indigo-500" />
+                  <CardTitle>Voce & Stile Personale</CardTitle>
+                </div>
+                {voiceStyleOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </div>
+              <CardDescription className="text-left">Come comunichi e come vuoi che l'AI scriva per te</CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-6 space-y-6">
+              <div>
+                <Label htmlFor="wa-personalTone">Tono Personale</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Descrivi come comunichi — il tuo stile naturale di scrittura</p>
+                <Textarea
+                  id="wa-personalTone"
+                  value={formData.personalTone || ""}
+                  onChange={(e) => onChange("personalTone", e.target.value)}
+                  placeholder="Es: Diretto e provocatorio, uso spesso l'ironia. Parlo come un coach da spogliatoio, non come un professore. Le mie frasi sono corte e vanno dritte al punto."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="wa-contentPersonality">Personalità del Contenuto</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Che emozione vuoi trasmettere a chi legge?</p>
+                <Textarea
+                  id="wa-contentPersonality"
+                  value={formData.contentPersonality || ""}
+                  onChange={(e) => onChange("contentPersonality", e.target.value)}
+                  placeholder="Es: Voglio che chi legge si senta capito e un po' provocato, mai giudicato. Come parlare con un amico sincero che ti dice le cose in faccia."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="wa-audienceLanguage">Linguaggio del Target</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Come parla il tuo pubblico? Che livello di formalità, slang o termini tecnici usano?</p>
+                <Textarea
+                  id="wa-audienceLanguage"
+                  value={formData.audienceLanguage || ""}
+                  onChange={(e) => onChange("audienceLanguage", e.target.value)}
+                  placeholder="Es: Il mio target sono personal trainer, parlano informale, usano termini tecnici come 'periodizzazione', 'volume', 'deload'. Sono pratici, vogliono soluzioni concrete."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="wa-avoidPatterns">Cosa NON Fare Mai</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Anti-pattern espliciti — cose che l'AI non deve MAI fare nei tuoi contenuti</p>
+                <Textarea
+                  id="wa-avoidPatterns"
+                  value={formData.avoidPatterns || ""}
+                  onChange={(e) => onChange("avoidPatterns", e.target.value)}
+                  placeholder="Es: Mai iniziare con 'In un mondo dove...', mai usare elenchi puntati generici, evitare il tono motivazionale americano, non usare 'game changer' o 'mindset shift'"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <Label>Esempi di Scrittura Reale</Label>
+                    <p className="text-xs text-muted-foreground mt-1">Incolla 1-3 post o testi che hai scritto tu. L'AI analizzerà il tuo stile per replicarlo.</p>
+                  </div>
+                  {(formData.writingExamples || []).length < 3 && (
+                    <Button type="button" onClick={handleAddWritingExample} size="sm" variant="outline">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Aggiungi
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {(formData.writingExamples || []).map((example: string, index: number) => (
+                    <div key={index} className="relative">
+                      <Textarea
+                        value={example}
+                        onChange={(e) => handleUpdateWritingExample(index, e.target.value)}
+                        placeholder={`Esempio ${index + 1}: incolla qui un tuo post, caption o testo reale...`}
+                        rows={4}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 h-6 w-6"
+                        onClick={() => handleRemoveWritingExample(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label>Frasi Firma</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Espressioni, modi di dire o catchphrase che usi sempre</p>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={phraseInput}
+                      onChange={(e) => setPhraseInput(e.target.value)}
+                      placeholder="Es: Il punto è questo:, Sveglia!, Non è magia, è metodo"
+                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddPhrase())}
+                    />
+                    <Button type="button" onClick={handleAddPhrase} size="icon">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(formData.signaturePhrases || []).map((phrase: string, index: number) => (
+                      <Badge key={index} variant="secondary" className="gap-1">
+                        {phrase}
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhrase(index)}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      <Collapsible open={marketResearchOpen} onOpenChange={setMarketResearchOpen}>
+        <Card className="border-2 border-amber-500/20 shadow-lg">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="bg-gradient-to-r from-amber-500/5 to-amber-500/10 cursor-pointer hover:from-amber-500/10 hover:to-amber-500/15 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Search className="h-5 w-5 text-amber-500" />
+                  <CardTitle>Ricerca di Mercato</CardTitle>
+                </div>
+                {marketResearchOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </div>
+              <CardDescription className="text-left">Analisi approfondita del mercato in 7 fasi con AI</CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-6">
+              {isLoadingMarketResearch ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <MarketResearchSection
+                  data={marketResearchData}
+                  onDataChange={handleMarketResearchDataChange}
+                  isGenerating={isGeneratingResearch}
+                  generatingPhase={generatingPhase}
+                  onGenerateFullResearch={handleGenerateFullResearch}
+                  onGeneratePhase={handlePhaseGenWithConfirm}
+                  topic={formData.businessDescription || ""}
+                  targetAudience={formData.whoWeHelp || ""}
+                />
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
       <Collapsible open={knowledgeOpen} onOpenChange={setKnowledgeOpen}>
         <Card className="border-2 border-orange-500/20 shadow-lg">
           <CollapsibleTrigger className="w-full">
@@ -1708,6 +2129,71 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPhaseConfirmDialog} onOpenChange={setShowPhaseConfirmDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Dati già presenti</DialogTitle>
+            <DialogDescription>Questa fase ha già dei dati. Come vuoi procedere?</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Button onClick={() => { setShowPhaseConfirmDialog(false); handleGeneratePhase(pendingPhaseGen.phase, 'add'); }} className="w-full">
+              Aggiungi ai dati esistenti
+            </Button>
+            <Button variant="outline" onClick={() => { setShowPhaseConfirmDialog(false); handleGeneratePhase(pendingPhaseGen.phase, 'overwrite'); }} className="w-full">
+              Sovrascrivi tutto
+            </Button>
+            <Button variant="ghost" onClick={() => setShowPhaseConfirmDialog(false)} className="w-full text-muted-foreground">
+              Annulla
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showResearchDialog} onOpenChange={(open) => { if (!isGeneratingResearch) setShowResearchDialog(open); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-amber-500" />
+              {isGeneratingResearch ? "Ricerca in corso..." : "Ricerca completata"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {isGeneratingResearch && (
+              <div className="flex flex-col items-center gap-4 py-4">
+                <Loader2 className="h-10 w-10 animate-spin text-amber-500" />
+                {researchProgress && (
+                  <div className="w-full space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{researchProgress.stepLabel || "Elaborazione..."}</span>
+                      <span className="font-medium">{researchProgress.currentStep}/{researchProgress.totalSteps}</span>
+                    </div>
+                    <Progress value={(researchProgress.currentStep / researchProgress.totalSteps) * 100} className="h-2" />
+                    {researchProgress.stepDetails && (
+                      <p className="text-xs text-muted-foreground">{researchProgress.stepDetails}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {!isGeneratingResearch && researchProgress?.status === 'completed' && (
+              <div className="text-center py-4">
+                <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-2" />
+                <p className="font-medium">Ricerca completata con successo!</p>
+                <Button className="mt-4" onClick={() => setShowResearchDialog(false)}>Chiudi</Button>
+              </div>
+            )}
+            {researchProgress?.status === 'error' && (
+              <div className="text-center py-4">
+                <AlertCircle className="h-10 w-10 text-destructive mx-auto mb-2" />
+                <p className="font-medium text-destructive">Errore durante la ricerca</p>
+                <p className="text-sm text-muted-foreground mt-1">{researchProgress.error}</p>
+                <Button className="mt-4" variant="outline" onClick={() => setShowResearchDialog(false)}>Chiudi</Button>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
