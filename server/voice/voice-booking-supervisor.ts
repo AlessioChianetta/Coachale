@@ -396,12 +396,13 @@ ATTIVATI SOLO per queste richieste:
 Se l'utente chiede un promemoria o un richiamo, mantieni newStage="nessun_intento".
 
 1. "confirmed" = true SOLO SE:
-   a) L'ASSISTENTE ha proposto esplicitamente uno slot specifico (data+ora)
-   b) L'UTENTE ha risposto affermativamente SUBITO DOPO
+   a) L'ASSISTENTE ha fatto un RIEPILOGO COMPLETO con data, ora, telefono e email
+   b) L'UTENTE ha risposto affermativamente SUBITO DOPO il riepilogo (es: "sì", "confermo", "esatto")
    c) NON ci sono parole come "anzi", "aspetta", "no", "cambiamo" dopo il sì
    d) Lo slot confermato corrisponde all'ultimo proposto
+   e) Se l'assistente ha confermato SOLO data e ora MA NON ha ripetuto telefono e email nel riepilogo, confirmed = false
 
-2. "newStage" = "confermato" SOLO SE confirmed=true E tutti i dati richiesti sono presenti
+2. "newStage" = "confermato" SOLO SE confirmed=true E tutti i dati richiesti sono presenti (data, ora, telefono, email)
 
 3. "correction" = true SE l'utente corregge un dato precedente ("anzi no", "cambiamo", "non quel giorno")
 
@@ -609,8 +610,19 @@ ${slotsFormatted}
 PROCEDURA:
 1. Proponi gli slot disponibili in modo naturale
 2. Raccogli data e ora preferite${collectDataStep}
-${confirmStep}. Ripeti i dati per conferma: "Allora [giorno] [data] alle [ora], confermi?"
-${waitStep}. Attendi conferma esplicita ("sì", "confermo", "va bene")${prePopulatedNote}
+${confirmStep}. RIEPILOGO OBBLIGATORIO: Ripeti TUTTI i dati raccolti al chiamante:
+   - Data e ora dell'appuntamento
+   - Numero di telefono
+   - Email per l'invito calendario
+   Esempio: "Perfetto, ricapitolando: appuntamento [giorno] [data] alle [ora], al numero [telefono], con invito calendario a [email]. È tutto corretto?"
+${waitStep}. ATTENDI CONFERMA ESPLICITA: il chiamante DEVE dire "sì", "confermo", "va bene", "esatto" o simili.
+   - Se dice "no" o corregge un dato → aggiorna il dato e ripeti il riepilogo dal punto ${confirmStep}
+   - Se non è chiaro → chiedi di nuovo "Confermi tutti i dati?"
+   - SOLO dopo conferma esplicita l'automazione di prenotazione può partire${prePopulatedNote}
+
+🚨 REGOLA FONDAMENTALE — CONFERMA OBBLIGATORIA PRIMA DELLA PRENOTAZIONE:
+La prenotazione NON può partire finché il chiamante non ha confermato esplicitamente il riepilogo completo (data, ora, telefono, email).
+Se manca anche solo un "sì" di conferma, NON procedere. Chiedi di nuovo.
 
 ⚠️ REGOLA FONDAMENTALE:
 NON affermare MAI che l'appuntamento è "confermato", "creato", "prenotato" o "fissato".
