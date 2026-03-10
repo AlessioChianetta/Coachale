@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { eq, and, asc, desc, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
+import type { MarketResearchData } from "@shared/schema";
 import { getAIProvider, GEMINI_3_MODEL, GEMINI_3_THINKING_LEVEL } from "../ai/provider-factory";
 import { Response } from "express";
 
@@ -35,6 +36,12 @@ export interface BrandVoiceData {
   caseStudies?: { client: string; result: string }[];
   servicesOffered?: { name: string; price: string; description: string }[];
   guarantees?: string;
+  personalTone?: string;
+  contentPersonality?: string;
+  audienceLanguage?: string;
+  avoidPatterns?: string;
+  writingExamples?: string[];
+  signaturePhrases?: string[];
 }
 
 export interface GenerationConfig {
@@ -45,6 +52,7 @@ export interface GenerationConfig {
   companyName?: string;
   senderName?: string;
   brandVoiceData?: BrandVoiceData;
+  marketResearchData?: MarketResearchData;
 }
 
 export interface TopicsGenerationConfig {
@@ -54,6 +62,7 @@ export interface TopicsGenerationConfig {
   referenceEmail?: string;
   preferredTone?: string;
   brandVoiceData?: BrandVoiceData;
+  marketResearchData?: MarketResearchData;
 }
 
 const TEMPLATE_CATEGORIES = [
@@ -294,8 +303,110 @@ function buildBrandVoiceContext(brandVoice?: BrandVoiceData): string {
   if (brandVoice.guarantees) {
     context += `- Garanzie: ${brandVoice.guarantees}\n`;
   }
+  if (brandVoice.personalTone) {
+    context += `- Tono Personale: ${brandVoice.personalTone}\n`;
+  }
+  if (brandVoice.contentPersonality) {
+    context += `- Personalità dei Contenuti: ${brandVoice.contentPersonality}\n`;
+  }
+  if (brandVoice.audienceLanguage) {
+    context += `- Linguaggio del Pubblico: ${brandVoice.audienceLanguage}\n`;
+  }
+  if (brandVoice.avoidPatterns) {
+    context += `- Pattern da Evitare: ${brandVoice.avoidPatterns}\n`;
+  }
+  if (brandVoice.writingExamples && brandVoice.writingExamples.length > 0) {
+    const examples = brandVoice.writingExamples.filter(e => e.trim());
+    if (examples.length > 0) {
+      context += `- Esempi di Scrittura:\n${examples.map(e => `    "${e}"`).join("\n")}\n`;
+    }
+  }
+  if (brandVoice.signaturePhrases && brandVoice.signaturePhrases.length > 0) {
+    const phrases = brandVoice.signaturePhrases.filter(p => p.trim());
+    if (phrases.length > 0) {
+      context += `- Frasi Firma: ${phrases.map(p => `"${p}"`).join(", ")}\n`;
+    }
+  }
   
   return context;
+}
+
+function buildMarketResearchContext(data?: MarketResearchData): string {
+  if (!data) return "";
+  
+  let context = "\n\nRICERCA DI MERCATO (usa queste informazioni per rendere le email più mirate e persuasive):\n";
+  let hasContent = false;
+
+  const currentState = (data.currentState || []).filter(s => s.trim());
+  if (currentState.length > 0) {
+    context += `\n📍 STATO ATTUALE DEL CLIENTE (problemi che vive oggi):\n${currentState.map(s => `- ${s}`).join("\n")}\n`;
+    hasContent = true;
+  }
+
+  const idealState = (data.idealState || []).filter(s => s.trim());
+  if (idealState.length > 0) {
+    context += `\n🎯 STATO IDEALE (dove vuole arrivare):\n${idealState.map(s => `- ${s}`).join("\n")}\n`;
+    hasContent = true;
+  }
+
+  if (data.avatar) {
+    const a = data.avatar;
+    const avatarParts: string[] = [];
+    if (a.nightThought) avatarParts.push(`Pensiero notturno: "${a.nightThought}"`);
+    if (a.biggestFear) avatarParts.push(`Paura più grande: "${a.biggestFear}"`);
+    if (a.dailyFrustration) avatarParts.push(`Frustrazione quotidiana: "${a.dailyFrustration}"`);
+    if (a.deepestDesire) avatarParts.push(`Desiderio più profondo: "${a.deepestDesire}"`);
+    if (a.currentSituation) avatarParts.push(`Situazione attuale: ${a.currentSituation}`);
+    if (a.decisionStyle) avatarParts.push(`Stile decisionale: ${a.decisionStyle}`);
+    if (a.languageUsed) avatarParts.push(`Linguaggio che usa: ${a.languageUsed}`);
+    if (a.influencers) avatarParts.push(`Influencer/riferimenti: ${a.influencers}`);
+    if (avatarParts.length > 0) {
+      context += `\n👤 AVATAR CLIENTE IDEALE:\n${avatarParts.map(p => `- ${p}`).join("\n")}\n`;
+      hasContent = true;
+    }
+  }
+
+  const emotionalDrivers = (data.emotionalDrivers || []).filter(d => d.trim());
+  if (emotionalDrivers.length > 0) {
+    context += `\n💡 DRIVER EMOTIVI (leve psicologiche):\n${emotionalDrivers.map(d => `- ${d}`).join("\n")}\n`;
+    hasContent = true;
+  }
+
+  const existingProblems = (data.existingSolutionProblems || []).filter(s => s.trim());
+  if (existingProblems.length > 0) {
+    context += `\n⚠️ PROBLEMI CON SOLUZIONI ESISTENTI:\n${existingProblems.map(s => `- ${s}`).join("\n")}\n`;
+    hasContent = true;
+  }
+
+  const internalObj = (data.internalObjections || []).filter(s => s.trim());
+  const externalObj = (data.externalObjections || []).filter(s => s.trim());
+  if (internalObj.length > 0 || externalObj.length > 0) {
+    context += `\n🚧 OBIEZIONI:\n`;
+    if (internalObj.length > 0) context += `  Interne: ${internalObj.map(s => `"${s}"`).join(", ")}\n`;
+    if (externalObj.length > 0) context += `  Esterne: ${externalObj.map(s => `"${s}"`).join(", ")}\n`;
+    hasContent = true;
+  }
+
+  const coreLies = (data.coreLies || []).filter(c => c.name.trim());
+  if (coreLies.length > 0) {
+    context += `\n🎭 BUGIE DI MERCATO (credenze errate da smontare):\n`;
+    for (const lie of coreLies) {
+      context += `- "${lie.name}" → Problema: ${lie.problem || "N/A"} (${lie.cureOrPrevent === 'C' ? 'Cura' : 'Prevenzione'}, ${lie.isAware ? 'consapevole' : 'inconsapevole'})\n`;
+    }
+    hasContent = true;
+  }
+
+  if (data.uniqueMechanism && (data.uniqueMechanism.name?.trim() || data.uniqueMechanism.description?.trim())) {
+    context += `\n⚙️ MECCANISMO UNICO:\n- Nome: ${data.uniqueMechanism.name}\n- Descrizione: ${data.uniqueMechanism.description}\n`;
+    hasContent = true;
+  }
+
+  if (data.uvp && data.uvp.trim()) {
+    context += `\n🏆 UVP (Unique Value Proposition): ${data.uvp}\n`;
+    hasContent = true;
+  }
+
+  return hasContent ? context : "";
 }
 
 interface PreviousEmail {
@@ -466,6 +577,7 @@ async function generateTemplateForDay(
   provider.setFeature?.('email-automated');
   
   const brandVoiceContext = buildBrandVoiceContext(config.brandVoiceData);
+  const marketResearchContext = buildMarketResearchContext(config.marketResearchData);
   
   // Try to get topic from database first (new topic-first approach)
   const [topicFromDb] = await db.select()
@@ -564,6 +676,7 @@ Obiettivo: ${emailType.description}
 - Azienda: ${config.companyName || "{{nomeAzienda}}"}
 - Mittente: ${config.senderName || "{{firmaEmail}}"}
 ${brandVoiceContext}
+${marketResearchContext}
 ${knowledgeBaseContext}
 
 === ${structureType.instruction} ===
@@ -1211,7 +1324,8 @@ export async function generateWeekBlock(
 
 export async function generateTopicsOutline(
   consultantId: string,
-  brandVoiceData: BrandVoiceData
+  brandVoiceData: BrandVoiceData,
+  marketResearchData?: MarketResearchData
 ): Promise<{ success: boolean; generated: number; errors: string[] }> {
   console.log(`[TOPICS GENERATION] Starting outline generation for consultant ${consultantId}`);
   
@@ -1265,17 +1379,19 @@ export async function generateTopicsOutline(
     const provider = await getAIProvider(consultantId, consultantId);
     provider.setFeature?.('email-automated');
     
-    // Build brand context
     let brandContext = "";
     if (brandVoiceData) {
       if (brandVoiceData.businessName) brandContext += `\nBusiness: ${brandVoiceData.businessName}`;
       if (brandVoiceData.businessDescription) brandContext += `\nDescrizione: ${brandVoiceData.businessDescription}`;
       if (brandVoiceData.whoWeHelp) brandContext += `\nTarget: ${brandVoiceData.whoWeHelp}`;
       if (brandVoiceData.whatWeDo) brandContext += `\nServizi: ${brandVoiceData.whatWeDo}`;
+      if (brandVoiceData.usp) brandContext += `\nUSP: ${brandVoiceData.usp}`;
       if (brandVoiceData.caseStudies?.length) {
         brandContext += `\nCase Studies disponibili: ${brandVoiceData.caseStudies.map(c => c.client).join(", ")}`;
       }
     }
+    
+    const mrContext = buildMarketResearchContext(marketResearchData);
     
     // Generate topics in batches (50 at a time for better quality)
     const BATCH_SIZE = 50;
@@ -1315,6 +1431,7 @@ NON cambiare questo argomento per il giorno 1!
       const prompt = `Sei un esperto di email marketing. Genera gli ARGOMENTI (solo titoli e brevi descrizioni) per le email dal giorno ${batchStart} al giorno ${batchEnd} di un percorso di 365 giorni.
 
 CONTESTO BUSINESS:${brandContext || "\nConsulente professionale italiano"}
+${mrContext}
 ${previousContext}
 ${day1Instruction}
 REGOLE:

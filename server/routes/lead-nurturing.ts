@@ -13,6 +13,33 @@ import crypto from "crypto";
 
 const router = Router();
 
+async function loadContentStudioExtras(consultantId: string) {
+  try {
+    const [csConfig] = await db.select()
+      .from(schema.contentStudioConfig)
+      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+      .limit(1);
+    
+    const marketResearchData = csConfig?.marketResearchData || undefined;
+    
+    const voiceStyleFields: Record<string, any> = {};
+    const bv = csConfig?.brandVoiceData as any;
+    if (bv) {
+      if (bv.personalTone) voiceStyleFields.personalTone = bv.personalTone;
+      if (bv.contentPersonality) voiceStyleFields.contentPersonality = bv.contentPersonality;
+      if (bv.audienceLanguage) voiceStyleFields.audienceLanguage = bv.audienceLanguage;
+      if (bv.avoidPatterns) voiceStyleFields.avoidPatterns = bv.avoidPatterns;
+      if (bv.writingExamples) voiceStyleFields.writingExamples = bv.writingExamples;
+      if (bv.signaturePhrases) voiceStyleFields.signaturePhrases = bv.signaturePhrases;
+    }
+
+    return { marketResearchData, voiceStyleFields };
+  } catch (error) {
+    console.error("[NURTURING] Error loading content studio extras:", error);
+    return { marketResearchData: undefined, voiceStyleFields: {} };
+  }
+}
+
 router.get("/lead-nurturing/config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
@@ -231,9 +258,9 @@ router.post("/lead-nurturing/templates/:dayNumber/regenerate", authenticateToken
       return res.status(400).json({ success: false, error: "businessDescription è richiesto" });
     }
     
-    // Carica Brand Voice data dal database
     const config = await storage.getNurturingConfig(consultantId);
     const brandVoiceData = config?.brandVoiceData || undefined;
+    const { marketResearchData, voiceStyleFields } = await loadContentStudioExtras(consultantId);
     
     const result = await regenerateTemplate(consultantId, dayNumber, {
       consultantId,
@@ -242,7 +269,8 @@ router.post("/lead-nurturing/templates/:dayNumber/regenerate", authenticateToken
       tone: tone || "professionale ma amichevole",
       companyName,
       senderName,
-      brandVoiceData,
+      brandVoiceData: brandVoiceData ? { ...brandVoiceData, ...voiceStyleFields } : voiceStyleFields,
+      marketResearchData,
     });
     
     if (!result.success) {
@@ -337,9 +365,9 @@ router.post("/lead-nurturing/generate", authenticateToken, requireRole("consulta
       return res.status(400).json({ success: false, error: "businessDescription è richiesto" });
     }
     
-    // Carica Brand Voice data dal database
     const config = await storage.getNurturingConfig(consultantId);
     const brandVoiceData = config?.brandVoiceData || undefined;
+    const { marketResearchData, voiceStyleFields } = await loadContentStudioExtras(consultantId);
     
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -353,7 +381,8 @@ router.post("/lead-nurturing/generate", authenticateToken, requireRole("consulta
       tone: tone || "professionale ma amichevole",
       companyName,
       senderName,
-      brandVoiceData,
+      brandVoiceData: brandVoiceData ? { ...brandVoiceData, ...voiceStyleFields } : voiceStyleFields,
+      marketResearchData,
     }, res);
     
     res.write(`data: ${JSON.stringify({ 
@@ -385,6 +414,7 @@ router.post("/lead-nurturing/generate-preview", authenticateToken, requireRole("
     
     const config = await storage.getNurturingConfig(consultantId);
     const brandVoiceData = config?.brandVoiceData || undefined;
+    const csExtras = await loadContentStudioExtras(consultantId);
     
     const result = await generatePreviewTemplate({
       consultantId,
@@ -393,7 +423,8 @@ router.post("/lead-nurturing/generate-preview", authenticateToken, requireRole("
       tone: tone || "professionale ma amichevole",
       companyName,
       senderName,
-      brandVoiceData,
+      brandVoiceData: brandVoiceData ? { ...brandVoiceData, ...csExtras.voiceStyleFields } : csExtras.voiceStyleFields,
+      marketResearchData: csExtras.marketResearchData,
     });
     
     if (!result.success) {
@@ -418,6 +449,8 @@ router.post("/lead-nurturing/generate-remaining", authenticateToken, requireRole
     
     const config = await storage.getNurturingConfig(consultantId);
     const brandVoiceData = config?.brandVoiceData || undefined;
+    const csExtras2 = await loadContentStudioExtras(consultantId);
+    const mergedBrandVoice2 = brandVoiceData ? { ...brandVoiceData, ...csExtras2.voiceStyleFields } : csExtras2.voiceStyleFields;
     
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -447,7 +480,8 @@ router.post("/lead-nurturing/generate-remaining", authenticateToken, requireRole
       tone: tone || "professionale ma amichevole",
       companyName,
       senderName,
-      brandVoiceData,
+      brandVoiceData: mergedBrandVoice2,
+      marketResearchData: csExtras2.marketResearchData,
     }, 2, res);
     
     res.write(`data: ${JSON.stringify({ 
@@ -494,6 +528,8 @@ router.post("/lead-nurturing/generate-week", authenticateToken, requireRole("con
     
     const config = await storage.getNurturingConfig(consultantId);
     const brandVoiceData = config?.brandVoiceData || undefined;
+    const csExtras3 = await loadContentStudioExtras(consultantId);
+    const mergedBrandVoice3 = brandVoiceData ? { ...brandVoiceData, ...csExtras3.voiceStyleFields } : csExtras3.voiceStyleFields;
     
     let actualStartDay = startDay || 1;
     let previewSaved = false;
@@ -561,7 +597,8 @@ router.post("/lead-nurturing/generate-week", authenticateToken, requireRole("con
       tone: tone || "professionale ma amichevole",
       companyName,
       senderName,
-      brandVoiceData,
+      brandVoiceData: mergedBrandVoice3,
+      marketResearchData: csExtras3.marketResearchData,
     }, actualStartDay);
     
     // Combine saved preview template with generated templates
@@ -698,13 +735,15 @@ router.post("/lead-nurturing/templates/regenerate", authenticateToken, requireRo
         )
       );
     
-    // Regenerate each requested day (not just a 7-day block)
+    const csExtras4 = await loadContentStudioExtras(consultantId);
+    const baseBV = config.brandVoiceData || {};
     const generationConfig = {
       consultantId,
       businessDescription: config.businessDescription || "",
       targetAudience: "Clienti interessati ai nostri servizi",
       tone: config.preferredTone || "professionale ma amichevole",
-      brandVoiceData: config.brandVoiceData || undefined,
+      brandVoiceData: { ...baseBV, ...csExtras4.voiceStyleFields },
+      marketResearchData: csExtras4.marketResearchData,
     };
     
     // Generate templates for all requested days in 7-day chunks
@@ -1262,15 +1301,14 @@ router.post("/lead-nurturing/generate-outline", authenticateToken, requireRole("
   try {
     const consultantId = req.user!.id;
     
-    // Ottieni config per brand voice
     const config = await storage.getNurturingConfig(consultantId);
     const brandVoiceData = config?.brandVoiceData || {};
+    const csExtras5 = await loadContentStudioExtras(consultantId);
+    const mergedBV5 = { ...brandVoiceData, ...csExtras5.voiceStyleFields };
     
-    // Importa il servizio di generazione argomenti
     const { generateTopicsOutline } = await import("../services/lead-nurturing-generation-service");
     
-    // Avvia la generazione in background (non aspettiamo il completamento)
-    generateTopicsOutline(consultantId, brandVoiceData)
+    generateTopicsOutline(consultantId, mergedBV5, csExtras5.marketResearchData)
       .then(result => {
         console.log(`[TOPICS GENERATION] Background generation completed: ${result.generated} topics`);
       })
