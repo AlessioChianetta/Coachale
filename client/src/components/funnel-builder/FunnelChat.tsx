@@ -11,10 +11,11 @@ import archieAvatarSrc from "@assets/generated_images/archie_ai_builder_avatar.p
 
 interface ChatMessage {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
   isThinking?: boolean;
   funnel?: { name: string; nodes: Node[]; edges: Edge[] } | null;
+  applied?: boolean;
   created_at?: string;
 }
 
@@ -92,27 +93,48 @@ function extractFunnelFromContent(content: string): { name: string; nodes: Node[
   }
 }
 
-function FunnelPreviewCard({ funnel, onApply, onRegenerate }: {
+function FunnelPreviewCard({ funnel, onApply, onRegenerate, applied }: {
   funnel: { name: string; nodes: Node[]; edges: Edge[] };
   onApply: () => void;
   onRegenerate: () => void;
+  applied?: boolean;
 }) {
   return (
-    <div className="mt-3 p-4 rounded-xl border border-cyan-200 dark:border-cyan-800/50 bg-gradient-to-br from-cyan-50/80 to-teal-50/60 dark:from-cyan-950/30 dark:to-teal-950/20 shadow-sm">
+    <div className={cn(
+      "mt-3 p-4 rounded-xl border shadow-sm",
+      applied
+        ? "border-green-200 dark:border-green-800/50 bg-gradient-to-br from-green-50/80 to-emerald-50/60 dark:from-green-950/30 dark:to-emerald-950/20"
+        : "border-cyan-200 dark:border-cyan-800/50 bg-gradient-to-br from-cyan-50/80 to-teal-50/60 dark:from-cyan-950/30 dark:to-teal-950/20"
+    )}>
       <div className="flex items-center gap-2 mb-2">
-        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
-          <GitBranch className="h-4 w-4 text-white" />
+        <div className={cn(
+          "h-8 w-8 rounded-lg flex items-center justify-center",
+          applied ? "bg-gradient-to-br from-green-500 to-emerald-600" : "bg-gradient-to-br from-cyan-500 to-teal-600"
+        )}>
+          {applied ? <Check className="h-4 w-4 text-white" /> : <GitBranch className="h-4 w-4 text-white" />}
         </div>
         <div>
           <p className="font-semibold text-sm text-gray-900 dark:text-white">{funnel.name}</p>
           <p className="text-xs text-muted-foreground">{funnel.nodes.length} nodi · {funnel.edges.length} connessioni</p>
         </div>
+        {applied && (
+          <span className="ml-auto text-xs font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+            Attivo sul canvas
+          </span>
+        )}
       </div>
       <div className="flex gap-2 mt-3">
-        <Button size="sm" onClick={onApply} className="flex-1 h-8 text-xs bg-gradient-to-r from-cyan-500 to-teal-600 text-white hover:from-cyan-600 hover:to-teal-700 gap-1.5">
-          <Check className="h-3.5 w-3.5" />
-          Applica al Canvas
-        </Button>
+        {applied ? (
+          <div className="flex-1 h-8 flex items-center justify-center gap-1.5 text-xs font-medium text-green-600 dark:text-green-400">
+            <Check className="h-3.5 w-3.5" />
+            Funnel applicato al canvas
+          </div>
+        ) : (
+          <Button size="sm" onClick={onApply} className="flex-1 h-8 text-xs bg-gradient-to-r from-cyan-500 to-teal-600 text-white hover:from-cyan-600 hover:to-teal-700 gap-1.5">
+            <Check className="h-3.5 w-3.5" />
+            Applica al Canvas
+          </Button>
+        )}
         <Button size="sm" variant="outline" onClick={onRegenerate} className="h-8 text-xs gap-1.5">
           <RefreshCw className="h-3.5 w-3.5" />
           Rigenera
@@ -212,6 +234,43 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
     } catch {}
     setSavingTemplate(false);
   };
+
+  const sendSystemNotification = useCallback(async (text: string, funnelName: string) => {
+    const systemMsg: ChatMessage = {
+      id: `system_${Date.now()}`,
+      role: "system",
+      content: funnelName,
+    };
+    const assistantId = `assistant_${Date.now() + 1}`;
+    setMessages(prev => [
+      ...prev,
+      systemMsg,
+      { id: assistantId, role: "assistant", content: "", isThinking: true, funnel: null },
+    ]);
+    setSending(true);
+    try {
+      const res = await fetch("/api/ai-autonomy/agent-chat/architetto/send", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const aiMessage = data.response?.message || "";
+      const extractedFunnel = extractFunnelFromContent(aiMessage);
+      setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: aiMessage, isThinking: false, funnel: extractedFunnel } : m));
+    } catch {
+      setMessages(prev => prev.filter(m => m.id !== assistantId));
+    }
+    setSending(false);
+  }, []);
+
+  const handleApplyFunnel = useCallback((msgId: string, funnel: { name: string; nodes: Node[]; edges: Edge[] }) => {
+    onApplyFunnel(funnel.name, funnel.nodes, funnel.edges);
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, applied: true } : m));
+    const notifica = `[SISTEMA] Ho appena applicato il funnel "${funnel.name}" al canvas (${funnel.nodes.length} nodi, ${funnel.edges.length} connessioni). Da questo momento è attivo. Posso chiederti modifiche quando voglio.`;
+    sendSystemNotification(notifica, funnel.name);
+  }, [onApplyFunnel, sendSystemNotification]);
 
   const sendMessage = async (text: string) => {
     if (!text || sending) return;
@@ -394,13 +453,25 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
 
         <div className="space-y-4">
           {messages.map((msg) => {
+            if (msg.role === "system") {
+              return (
+                <div key={msg.id} className="flex items-center gap-2 py-1">
+                  <div className="flex-1 h-px bg-green-200 dark:bg-green-800/40" />
+                  <span className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 font-medium whitespace-nowrap">
+                    <Check className="h-3 w-3" />
+                    Funnel &ldquo;{msg.content}&rdquo; applicato al canvas
+                  </span>
+                  <div className="flex-1 h-px bg-green-200 dark:bg-green-800/40" />
+                </div>
+              );
+            }
             const displayContent = msg.role === "assistant" ? stripFunnelBlock(msg.content) : msg.content;
             return (
               <div key={msg.id}>
                 <Message
                   message={{
                     id: msg.id,
-                    role: msg.role,
+                    role: msg.role as "user" | "assistant",
                     content: displayContent,
                     isThinking: msg.isThinking,
                   }}
@@ -412,7 +483,8 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
                 {msg.role === "assistant" && msg.funnel && (
                   <FunnelPreviewCard
                     funnel={msg.funnel}
-                    onApply={() => onApplyFunnel(msg.funnel!.name, msg.funnel!.nodes, msg.funnel!.edges)}
+                    applied={msg.applied}
+                    onApply={() => handleApplyFunnel(msg.id, msg.funnel!)}
                     onRegenerate={() => sendMessage("Rigeneralo con delle modifiche")}
                   />
                 )}
