@@ -106,13 +106,13 @@ export function MarketResearchSection({
     if (externalCompletedPhases !== undefined) return externalCompletedPhases;
     const d = data;
     let count = 0;
-    if (d.currentState.some(s => s.trim()) || d.idealState.some(s => s.trim())) count++;
-    if (Object.values(d.avatar).some(v => v.trim())) count++;
-    if (d.emotionalDrivers.length > 0) count++;
-    if (d.existingSolutionProblems.some(s => s.trim()) || d.internalObjections.some(s => s.trim()) || d.externalObjections.some(s => s.trim())) count++;
-    if (d.coreLies.length > 0 && d.coreLies.some(c => c.name.trim())) count++;
-    if (d.uniqueMechanism.name.trim() || d.uniqueMechanism.description.trim()) count++;
-    if (d.uvp.trim()) count++;
+    if ((d.currentState || []).some(s => s.trim()) || (d.idealState || []).some(s => s.trim())) count++;
+    if (d.avatar && Object.values(d.avatar).some(v => typeof v === 'string' && v.trim())) count++;
+    if ((d.emotionalDrivers || []).length > 0) count++;
+    if ((d.existingSolutionProblems || []).some(s => s.trim()) || (d.internalObjections || []).some(s => s.trim()) || (d.externalObjections || []).some(s => s.trim())) count++;
+    if ((d.coreLies || []).length > 0 && (d.coreLies || []).some(c => c.name?.trim())) count++;
+    if (d.uniqueMechanism && (d.uniqueMechanism.name?.trim() || d.uniqueMechanism.description?.trim())) count++;
+    if ((d.uvp || '').trim()) count++;
     return count;
   }, [data, externalCompletedPhases]);
 
