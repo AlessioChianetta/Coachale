@@ -342,7 +342,7 @@ export function getEmailTrackingBaseUrl(): string {
   if (rawDomain) {
     return rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`;
   }
-  return 'http://localhost:5000';
+  return 'https://conorbitale.it';
 }
 
 /**
