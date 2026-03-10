@@ -2871,7 +2871,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 
       try {
         const postsRes = await db.execute(sql`
-          SELECT id, COALESCE(caption, 'Post') as name, platform, media_type as "mediaType"
+          SELECT id, COALESCE(title, 'Post') as name, platform, media_type as "mediaType"
           FROM content_posts
           WHERE consultant_id = ${consultantId} AND status = 'published'
           ORDER BY created_at DESC LIMIT 20

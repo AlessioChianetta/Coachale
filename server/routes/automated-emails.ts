@@ -79,9 +79,10 @@ router.get("/email-tracking/:trackingId/:emailLogId", async (req, res) => {
     res.writeHead(200, {
       'Content-Type': 'image/gif',
       'Content-Length': pixel.length,
-      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, private',
       'Pragma': 'no-cache',
-      'Expires': '0'
+      'Expires': '0',
+      'Surrogate-Control': 'no-store',
     });
     res.end(pixel);
   } catch (error: any) {
@@ -604,11 +605,11 @@ router.post("/consultant/ai-email/test-generate", authenticateToken, requireRole
     });
 
     // Generate tracking pixel URL
-    const { generateTrackingPixelUrl, enhanceEmailTypography } = await import("../services/email-html-wrapper");
-    const baseUrl = process.env.EMAIL_BASE_URL || (() => { const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || ''; return rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000'; })();
-    const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
+    const { generateTrackingPixelUrl, enhanceEmailTypography, getEmailTrackingBaseUrl } = await import("../services/email-html-wrapper");
+    const trackingBaseUrl = getEmailTrackingBaseUrl();
+    const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, trackingBaseUrl);
     console.log(`🔍 [TRACKING PIXEL] Test email - Email Log ID: ${emailLog.id}`);
-    console.log(`🔍 [TRACKING PIXEL] Base URL used: ${baseUrl}`);
+    console.log(`🔍 [TRACKING PIXEL] Base URL used: ${trackingBaseUrl}`);
     console.log(`🔍 [TRACKING PIXEL] Full pixel URL: ${trackingPixelUrl}`);
 
     // Add test banner with tracking pixel
@@ -1152,11 +1153,11 @@ router.post("/consultant/email-drafts/:id/approve", authenticateToken, requireRo
     });
 
     // Generate tracking pixel URL and enhance HTML
-    const { generateTrackingPixelUrl, enhanceEmailTypography } = await import("../services/email-html-wrapper");
-    const baseUrl = process.env.EMAIL_BASE_URL || (() => { const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || ''; return rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000'; })();
-    const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
+    const { generateTrackingPixelUrl, enhanceEmailTypography, getEmailTrackingBaseUrl } = await import("../services/email-html-wrapper");
+    const trackingBaseUrl = getEmailTrackingBaseUrl();
+    const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, trackingBaseUrl);
     console.log(`🔍 [TRACKING PIXEL] Draft approval send - Email Log ID: ${emailLog.id}`);
-    console.log(`🔍 [TRACKING PIXEL] Base URL used: ${baseUrl}`);
+    console.log(`🔍 [TRACKING PIXEL] Base URL used: ${trackingBaseUrl}`);
     console.log(`🔍 [TRACKING PIXEL] Full pixel URL: ${trackingPixelUrl}`);
     const htmlWithTracking = enhanceEmailTypography(draft.body, trackingPixelUrl);
 

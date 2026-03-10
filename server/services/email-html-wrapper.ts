@@ -330,6 +330,24 @@ function processContentForPerfectTypography(html: string): string {
 }
 
 /**
+ * Returns the base URL for email tracking pixel URLs.
+ * Priority: EMAIL_BASE_URL (explicit) → REPLIT_DEPLOYMENT_URL → REPLIT_DOMAINS → localhost fallback
+ */
+export function getEmailTrackingBaseUrl(): string {
+  if (process.env.EMAIL_BASE_URL) {
+    return process.env.EMAIL_BASE_URL.replace(/\/$/, '');
+  }
+  if (process.env.REPLIT_DEPLOYMENT_URL) {
+    return process.env.REPLIT_DEPLOYMENT_URL.replace(/\/$/, '');
+  }
+  const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
+  if (rawDomain) {
+    return rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`;
+  }
+  return 'http://localhost:5000';
+}
+
+/**
  * Generates a secure tracking ID using HMAC
  * This prevents tampering and validates that tracking requests are legitimate
  */

@@ -288,6 +288,8 @@ export const consultations = pgTable("consultations", {
   summaryEmailApprovedAt: timestamp("summary_email_approved_at"),
   summaryEmailSentAt: timestamp("summary_email_sent_at"),
   
+  isDismissed: boolean("is_dismissed").default(false),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -1318,7 +1320,7 @@ export const updateConsultationSchema = z.object({
   duration: z.coerce.number().int().positive().optional(),
   notes: z.string().nullable().optional(),
   status: z.enum(["scheduled", "completed", "cancelled"]).optional(),
-  clientId: z.string().uuid().optional(),
+  clientId: z.string().uuid().nullable().optional(),
   googleMeetLink: z.string().nullable().optional(),
   fathomShareLink: z.string().nullable().optional(),
   transcript: z.string().nullable().optional(),

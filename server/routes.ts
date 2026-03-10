@@ -237,6 +237,15 @@ async function getUserTier(email: string): Promise<{ tier: "bronze" | "silver" |
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  (async () => {
+    try {
+      await db.execute(sql`ALTER TABLE consultations ADD COLUMN IF NOT EXISTS is_dismissed BOOLEAN DEFAULT false`);
+      console.log("✅ [MIGRATIONS] is_dismissed column ensured on consultations");
+    } catch (e: any) {
+      console.warn("⚠️ [MIGRATIONS] is_dismissed column:", e.message);
+    }
+  })();
+
   // Ensure uploads directory exists
   const uploadsDir = path.join(process.cwd(), 'uploads');
   if (!fs.existsSync(uploadsDir)) {
@@ -4225,6 +4234,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedData = updateConsultationSchema.parse(req.body);
+      
+      if (validatedData.clientId) {
+        const clientUser = await storage.getUser(validatedData.clientId);
+        if (!clientUser) {
+          return res.status(400).json({ message: "Client not found" });
+        }
+        const clientProfiles = await storage.getUserRoleProfiles(validatedData.clientId);
+        const ownsClient = clientUser.consultantId === consultantId || 
+                          clientProfiles.some(p => p.role === 'client' && p.consultantId === consultantId);
+        if (!ownsClient) {
+          return res.status(403).json({ message: "Cannot assign consultation to a client you don't manage" });
+        }
+      }
+      
       const updatedConsultation = await storage.updateConsultation(consultationId, validatedData);
 
       if (!updatedConsultation) {
@@ -4873,6 +4896,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("[BACKFILL] Error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/consultations/:id/dismiss", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const consultationId = req.params.id;
+      
+      const existing = await storage.getConsultation(consultationId);
+      if (!existing) {
+        return res.status(404).json({ message: "Consultation not found" });
+      }
+      if (existing.consultantId !== consultantId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const currentDismissed = (existing as any).isDismissed || false;
+      await db.execute(sql`UPDATE consultations SET is_dismissed = ${!currentDismissed} WHERE id = ${consultationId}`);
+      
+      res.json({ success: true, isDismissed: !currentDismissed });
+    } catch (error: any) {
+      console.error("[CONSULTATIONS] Dismiss error:", error);
       res.status(500).json({ message: error.message });
     }
   });

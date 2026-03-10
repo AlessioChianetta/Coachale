@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, AlertTriangle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, ChevronDown, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play, Wand2, Info, Settings, Link2, Unlink, RefreshCw, CalendarPlus } from "lucide-react";
+import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, AlertTriangle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, ChevronDown, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play, Wand2, Info, Settings, Link2, Unlink, RefreshCw, CalendarPlus, Ban, EyeOff } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ConsultationTasksManager from "@/components/consultation-tasks-manager";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths, formatDistanceToNow } from "date-fns";
@@ -45,6 +45,7 @@ const updateAppointmentSchema = z.object({
   googleMeetLink: z.string().url("Inserisci un URL valido").optional().or(z.literal("")),
   fathomShareLink: z.string().url("Inserisci un URL valido").optional().or(z.literal("")),
   transcript: z.string().optional(),
+  clientId: z.string().optional().nullable(),
 });
 
 const completionFormSchema = z.object({
@@ -2810,6 +2811,26 @@ export default function ConsultantAppointments() {
     },
   });
 
+  const dismissMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("PATCH", `/api/consultations/${id}/dismiss`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant/merged"] });
+      toast({
+        title: "Aggiornato",
+        description: "Stato consulenza aggiornato",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nell'aggiornamento",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Mutation per completare appuntamento
   const completeMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: CompletionForm }) => {
@@ -2946,7 +2967,11 @@ export default function ConsultantAppointments() {
 
   const onUpdateSubmit = (data: UpdateAppointmentForm) => {
     if (editingAppointment) {
-      updateMutation.mutate({ id: editingAppointment, data });
+      const payload = { ...data };
+      if (payload.clientId === "__none__") {
+        payload.clientId = null;
+      }
+      updateMutation.mutate({ id: editingAppointment, data: payload });
     }
   };
 
@@ -2964,6 +2989,7 @@ export default function ConsultantAppointments() {
       googleMeetLink: appointment.googleMeetLink || "",
       fathomShareLink: appointment.fathomShareLink || "",
       transcript: appointment.transcript || "",
+      clientId: appointment.clientId || null,
     });
   };
 
@@ -3041,13 +3067,15 @@ export default function ConsultantAppointments() {
   );
 
   // Ordina gli appuntamenti per data
-  const sortedAppointments = [...(appointments as any[])].sort(
+  const allSortedAppointments = [...(appointments as any[])].sort(
     (a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
   );
+  const sortedAppointments = allSortedAppointments.filter(apt => !apt.isDismissed);
 
   // Stato per filtro lista
-  const [listFilter, setListFilter] = useState<'scheduled' | 'need_data' | 'completed_done' | 'cancelled'>('scheduled');
+  const [listFilter, setListFilter] = useState<'scheduled' | 'need_data' | 'completed_done' | 'cancelled' | 'dismissed'>('scheduled');
   const [listPage, setListPage] = useState(1);
+  const [hasAutoScrolled, setHasAutoScrolled] = useState(false);
   const ITEMS_PER_PAGE = 10;
 
   const filterStats = {
@@ -3065,9 +3093,10 @@ export default function ConsultantAppointments() {
       (apt.summaryEmailStatus === 'sent' || apt.summaryEmailStatus === 'approved' || apt.summaryEmailStatus === 'saved_for_ai')
     ).length,
     cancelled: sortedAppointments.filter(apt => apt.status === 'cancelled').length,
+    dismissed: allSortedAppointments.filter(apt => apt.isDismissed).length,
   };
 
-  const filteredListAppointments = sortedAppointments.filter(apt => {
+  const filteredListAppointments = (listFilter === 'dismissed' ? allSortedAppointments.filter(apt => apt.isDismissed) : sortedAppointments).filter(apt => {
     switch (listFilter) {
       case 'scheduled':
         return apt.status === 'scheduled';
@@ -3083,6 +3112,8 @@ export default function ConsultantAppointments() {
           (apt.summaryEmailStatus === 'sent' || apt.summaryEmailStatus === 'approved' || apt.summaryEmailStatus === 'saved_for_ai');
       case 'cancelled':
         return apt.status === 'cancelled';
+      case 'dismissed':
+        return true;
       default:
         return true;
     }
@@ -3094,6 +3125,19 @@ export default function ConsultantAppointments() {
     (safePage - 1) * ITEMS_PER_PAGE,
     safePage * ITEMS_PER_PAGE
   );
+
+  React.useEffect(() => {
+    if (listFilter === 'scheduled' && !hasAutoScrolled && filteredListAppointments.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const idx = filteredListAppointments.findIndex(apt => new Date(apt.scheduledAt) >= today);
+      if (idx >= 0) {
+        const targetPage = Math.floor(idx / ITEMS_PER_PAGE) + 1;
+        setListPage(targetPage);
+      }
+      setHasAutoScrolled(true);
+    }
+  }, [listFilter, filteredListAppointments.length, hasAutoScrolled]);
 
   const getAppointmentProgress = (apt: any) => ({
     hasGoogleMeet: !!apt.googleMeetLink,
@@ -3658,26 +3702,42 @@ export default function ConsultantAppointments() {
                                 />
                               </div>
 
-                              {/* Client Email */}
-                              {editingAppointment && (() => {
-                                const apt = (appointments as any[])?.find((a: any) => a.id === editingAppointment);
-                                const email = apt?.clientEmail || apt?.client?.email;
-                                const attendeeEmails = apt?.attendeeEmails || [];
-                                if (email || attendeeEmails.length > 0) {
-                                  return (
-                                    <div className="mt-4 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <Mail className="w-4 h-4 text-emerald-600" />
-                                        <span className="text-sm font-medium text-emerald-700">Email Cliente Collegato</span>
-                                      </div>
-                                      <p className="text-sm text-emerald-800 font-mono">
-                                        {email || attendeeEmails.join(', ')}
-                                      </p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
+                              {/* Client Selector */}
+                              <div className="mt-4">
+                                <FormField
+                                  control={updateForm.control}
+                                  name="clientId"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                                        <User className="w-4 h-4 text-blue-600" />
+                                        Cliente Collegato
+                                      </FormLabel>
+                                      <Select onValueChange={(val) => field.onChange(val === "__none__" ? null : val)} value={field.value || "__none__"}>
+                                        <FormControl>
+                                          <SelectTrigger className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                            <SelectValue placeholder="Seleziona cliente..." />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent className="rounded-xl border-0 shadow-2xl max-h-[300px]">
+                                          <SelectItem value="__none__" className="rounded-lg p-3 m-1">
+                                            <span className="text-slate-400">Nessun cliente</span>
+                                          </SelectItem>
+                                          {(clients as any[])?.map((client: any) => (
+                                            <SelectItem key={client.id} value={client.id} className="rounded-lg p-3 m-1">
+                                              <div className="flex flex-col">
+                                                <span className="font-medium">{client.firstName} {client.lastName}</span>
+                                                {client.email && <span className="text-xs text-slate-500">{client.email}</span>}
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
                             </div>
                             
                             {/* SEZIONE 2: Prima della Call */}
@@ -4516,6 +4576,7 @@ export default function ConsultantAppointments() {
                     { key: 'need_data' as const, label: 'Da Completare', icon: AlertCircle, color: 'amber', count: filterStats.need_data },
                     { key: 'completed_done' as const, label: 'Completate', icon: CheckCircle, color: 'emerald', count: filterStats.completed_done },
                     { key: 'cancelled' as const, label: 'Cancellate', icon: XCircle, color: 'slate', count: filterStats.cancelled },
+                    ...(filterStats.dismissed > 0 ? [{ key: 'dismissed' as const, label: 'Scartate', icon: EyeOff, color: 'rose', count: filterStats.dismissed }] : []),
                   ].map(({ key, label, icon: Icon, color, count }) => (
                     <button
                       key={key}
@@ -4539,18 +4600,21 @@ export default function ConsultantAppointments() {
                       {listFilter === 'scheduled' ? <CalendarDays className="w-8 h-8 text-blue-500" /> :
                        listFilter === 'need_data' ? <AlertCircle className="w-8 h-8 text-amber-500" /> :
                        listFilter === 'completed_done' ? <CheckCircle className="w-8 h-8 text-emerald-500" /> :
+                       listFilter === 'dismissed' ? <EyeOff className="w-8 h-8 text-rose-400" /> :
                        <XCircle className="w-8 h-8 text-slate-400" />}
                     </div>
                     <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">
                       {listFilter === 'scheduled' ? 'Nessuna consulenza programmata' :
                        listFilter === 'need_data' ? 'Tutto completato!' :
                        listFilter === 'completed_done' ? 'Nessuna consulenza completata con email' :
+                       listFilter === 'dismissed' ? 'Nessuna consulenza scartata' :
                        'Nessuna consulenza cancellata'}
                     </h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
                       {listFilter === 'scheduled' ? 'Crea il tuo primo appuntamento per iniziare.' :
                        listFilter === 'need_data' ? 'Tutte le consulenze completate hanno già il riassunto e l\'email.' :
                        listFilter === 'completed_done' ? 'Completa il flusso delle tue consulenze per vederle qui.' :
+                       listFilter === 'dismissed' ? 'Non ci sono consulenze scartate.' :
                        'Non ci sono consulenze cancellate.'}
                     </p>
                     {listFilter === 'scheduled' && (
@@ -4701,6 +4765,30 @@ export default function ConsultantAppointments() {
                             <Edit className="w-3.5 h-3.5" />
                           </Button>
                           
+                          {!appointment.id.startsWith('google-') && (
+                            listFilter === 'dismissed' ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => dismissMutation.mutate(appointment.id)}
+                                className="h-7 px-2 text-xs rounded-lg hover:text-emerald-600"
+                                title="Ripristina"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => dismissMutation.mutate(appointment.id)}
+                                className="h-7 w-7 p-0 rounded-lg hover:text-orange-600"
+                                title="Scarta"
+                              >
+                                <Ban className="w-3.5 h-3.5" />
+                              </Button>
+                            )
+                          )}
+
                           <Button
                             size="sm"
                             variant="ghost"
