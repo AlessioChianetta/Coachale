@@ -5667,7 +5667,16 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           });
 
           const bookingPromptSection = bookingSupervisor.getBookingPromptSection();
-          systemInstruction = systemInstruction + '\n\n' + bookingPromptSection;
+          const bookingConfirmationRule = `
+
+🚨🚨 REGOLA SUPREMA PRENOTAZIONE — DA RISPETTARE SEMPRE 🚨🚨
+Prima di procedere con qualsiasi prenotazione appuntamento, DEVI OBBLIGATORIAMENTE:
+1. Ripetere al chiamante TUTTI i dati raccolti: data, ora, numero di telefono, email
+2. Chiedere conferma esplicita: "È tutto corretto?"
+3. Attendere che il chiamante dica "sì" / "confermo" / "esatto"
+Se il chiamante NON conferma esplicitamente, NON procedere. Chiedi di nuovo.
+Questa regola vale SEMPRE, senza eccezioni, per OGNI prenotazione.`;
+          systemInstruction = systemInstruction + '\n\n' + bookingPromptSection + bookingConfirmationRule;
           console.log(`📋 [${connectionId}] Booking prompt section appended WITH ${preloadedSlots.length} slots (${bookingPromptSection.length} chars)`);
           setImmediate(() => {
             console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
