@@ -16149,6 +16149,15 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           levelPromptOverlay1: config.levelPromptOverlay1,
           levelPromptOverlay2: config.levelPromptOverlay2,
           levelPromptOverlay3: config.levelPromptOverlay3,
+          // Voice & Style (Voce & Stile Personale)
+          personalTone: config.personalTone,
+          contentPersonality: config.contentPersonality,
+          audienceLanguage: config.audienceLanguage,
+          avoidPatterns: config.avoidPatterns,
+          writingExamples: config.writingExamples,
+          signaturePhrases: config.signaturePhrases,
+          // Market Research (per-agent)
+          marketResearchData: config.marketResearchData,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
         })),
@@ -16318,6 +16327,15 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           bookingNotificationEnabled: config.bookingNotificationEnabled,
           bookingNotificationPhone: config.bookingNotificationPhone,
           bookingNotificationTemplateId: config.bookingNotificationTemplateId,
+          // Voice & Style (Voce & Stile Personale)
+          personalTone: config.personalTone,
+          contentPersonality: config.contentPersonality,
+          audienceLanguage: config.audienceLanguage,
+          avoidPatterns: config.avoidPatterns,
+          writingExamples: config.writingExamples,
+          signaturePhrases: config.signaturePhrases,
+          // Market Research (per-agent)
+          marketResearchData: config.marketResearchData,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
         },
@@ -16408,6 +16426,14 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         bookingNotificationEnabled,
         bookingNotificationPhone,
         bookingNotificationTemplateId,
+        // Credentials & Results
+        resultsGenerated,
+        softwareCreated,
+        booksPublished,
+        caseStudies,
+        // Services & Guarantees
+        servicesOffered,
+        guarantees,
         // Voice & Style (Voce & Stile Personale)
         personalTone,
         contentPersonality,
@@ -16519,6 +16545,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       if (howWeDoIt !== undefined) updateData.howWeDoIt = howWeDoIt;
       if (yearsExperience !== undefined) updateData.yearsExperience = yearsExperience;
       if (clientsHelped !== undefined) updateData.clientsHelped = clientsHelped;
+      if (resultsGenerated !== undefined) updateData.resultsGenerated = resultsGenerated;
+      if (softwareCreated !== undefined) updateData.softwareCreated = softwareCreated;
+      if (booksPublished !== undefined) updateData.booksPublished = booksPublished;
+      if (caseStudies !== undefined) updateData.caseStudies = caseStudies;
+      if (servicesOffered !== undefined) updateData.servicesOffered = servicesOffered;
+      if (guarantees !== undefined) updateData.guarantees = guarantees;
       if (aiPersonality !== undefined) updateData.aiPersonality = aiPersonality;
       if (whatsappConciseMode !== undefined) updateData.whatsappConciseMode = whatsappConciseMode;
       if (defaultObiettivi !== undefined) updateData.defaultObiettivi = defaultObiettivi;
