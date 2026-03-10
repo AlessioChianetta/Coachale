@@ -235,8 +235,8 @@ export function EmailLogsContent() {
                     <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Totali</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{stats.total}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Totali</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</p>
                   </div>
                 </div>
               </CardContent>
@@ -249,8 +249,8 @@ export function EmailLogsContent() {
                     <Send className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Oggi</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{stats.sentToday}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Oggi</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{stats.sentToday}</p>
                   </div>
                 </div>
               </CardContent>
@@ -263,8 +263,8 @@ export function EmailLogsContent() {
                     <MailOpen className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">% Apertura</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{stats.openRate.toFixed(0)}%</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">% Apertura</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{stats.openRate.toFixed(0)}%</p>
                   </div>
                 </div>
               </CardContent>
@@ -277,8 +277,8 @@ export function EmailLogsContent() {
                     <Eye className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Visualizzazioni</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{stats.totalOpens}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Visualizzazioni</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{stats.totalOpens}</p>
                   </div>
                 </div>
               </CardContent>
@@ -291,8 +291,8 @@ export function EmailLogsContent() {
                     <TrendingUp className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
                   </div>
                   <div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Media aperture</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{stats.avgOpensPerEmail.toFixed(1)}x</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Media aperture</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{stats.avgOpensPerEmail.toFixed(1)}x</p>
                   </div>
                 </div>
               </CardContent>
@@ -305,8 +305,8 @@ export function EmailLogsContent() {
                     <Monitor className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                   </div>
                   <div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Multi-device</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{stats.multiDevice}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Multi-device</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{stats.multiDevice}</p>
                   </div>
                 </div>
               </CardContent>
@@ -327,11 +327,11 @@ export function EmailLogsContent() {
                     const rate = client.sent > 0 ? (client.opened / client.sent) * 100 : 0;
                     return (
                       <div key={i} className="flex items-center gap-3">
-                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300 w-32 truncate">{client.name}</span>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 w-36 truncate">{client.name}</span>
                         <div className="flex-1">
                           <Progress value={rate} className="h-1.5" />
                         </div>
-                        <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
+                        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 shrink-0">
                           <span>{client.sent} inv.</span>
                           <span>{rate.toFixed(0)}% aperte</span>
                           <span className="font-medium text-amber-600 dark:text-amber-400">{client.totalOpens} views</span>
@@ -427,15 +427,15 @@ export function EmailLogsContent() {
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b border-slate-200 dark:border-slate-700">
-                          <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2 px-3">Data</TableHead>
-                          <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2 px-3">Cliente</TableHead>
-                          <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2 px-3">Oggetto</TableHead>
-                          <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2 px-3">Tipo</TableHead>
-                          <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2 px-3">Stato</TableHead>
-                          <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2 px-3 text-center">Aperture</TableHead>
-                          <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2 px-3 text-center">Dispositivi</TableHead>
-                          <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2 px-3">Tempo risposta</TableHead>
-                          <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2 px-3 text-right"></TableHead>
+                          <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2.5 px-3">Data</TableHead>
+                          <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2.5 px-3">Cliente</TableHead>
+                          <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2.5 px-3">Oggetto</TableHead>
+                          <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2.5 px-3">Tipo</TableHead>
+                          <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2.5 px-3">Stato</TableHead>
+                          <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2.5 px-3 text-center">Aperture</TableHead>
+                          <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2.5 px-3 text-center">Dispositivi</TableHead>
+                          <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2.5 px-3">Tempo risposta</TableHead>
+                          <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2.5 px-3 text-right"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -451,28 +451,28 @@ export function EmailLogsContent() {
                               className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
                               onClick={() => setPreviewEmail(email)}
                             >
-                              <TableCell className="py-2 px-3">
-                                <div className="text-xs text-slate-700 dark:text-slate-300">
+                              <TableCell className="py-2.5 px-3">
+                                <div className="text-sm text-slate-700 dark:text-slate-300">
                                   {format(new Date(email.sentAt), "dd/MM", { locale: it })}
                                 </div>
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                                <div className="text-[11px] text-slate-400 dark:text-slate-500">
                                   {format(new Date(email.sentAt), "HH:mm")}
                                 </div>
                               </TableCell>
-                              <TableCell className="py-2 px-3">
-                                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">{email.clientName}</span>
+                              <TableCell className="py-2.5 px-3">
+                                <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{email.clientName}</span>
                               </TableCell>
-                              <TableCell className="py-2 px-3 max-w-[200px]">
-                                <span className="text-xs text-slate-600 dark:text-slate-300 truncate block">{email.subject}</span>
+                              <TableCell className="py-2.5 px-3 max-w-[220px]">
+                                <span className="text-sm text-slate-600 dark:text-slate-300 truncate block">{email.subject}</span>
                               </TableCell>
                               <TableCell className="py-2 px-3">
                                 <div className="flex gap-1">
-                                  <Badge className={`${typeInfo.color} text-[10px] px-1.5 py-0 border-0`}>
+                                  <Badge className={`${typeInfo.color} text-[11px] px-1.5 py-0.5 border-0`}>
                                     {typeInfo.label}
                                   </Badge>
                                   {email.isTest && (
-                                    <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 text-[10px] px-1 py-0 border-0">
-                                      <TestTube className="h-2.5 w-2.5" />
+                                    <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 text-[11px] px-1 py-0.5 border-0">
+                                      <TestTube className="h-3 w-3" />
                                     </Badge>
                                   )}
                                 </div>
@@ -481,8 +481,8 @@ export function EmailLogsContent() {
                                 {email.openedAt ? (
                                   <Tooltip>
                                     <TooltipTrigger>
-                                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] px-1.5 py-0 border-0">
-                                        <MailOpen className="h-2.5 w-2.5 mr-0.5" />
+                                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-[11px] px-1.5 py-0.5 border-0">
+                                        <MailOpen className="h-3 w-3 mr-0.5" />
                                         Letta
                                       </Badge>
                                     </TooltipTrigger>
@@ -494,8 +494,8 @@ export function EmailLogsContent() {
                                     </TooltipContent>
                                   </Tooltip>
                                 ) : (
-                                  <Badge variant="outline" className="text-slate-400 dark:text-slate-500 text-[10px] px-1.5 py-0">
-                                    <MailX className="h-2.5 w-2.5 mr-0.5" />
+                                  <Badge variant="outline" className="text-slate-400 dark:text-slate-500 text-[11px] px-1.5 py-0.5">
+                                    <MailX className="h-3 w-3 mr-0.5" />
                                     No
                                   </Badge>
                                 )}
@@ -504,7 +504,7 @@ export function EmailLogsContent() {
                                 {openCount > 0 ? (
                                   <Tooltip>
                                     <TooltipTrigger>
-                                      <span className={`text-xs font-semibold ${openCount > 3 ? 'text-amber-600 dark:text-amber-400' : openCount > 1 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                                      <span className={`text-sm font-semibold ${openCount > 3 ? 'text-amber-600 dark:text-amber-400' : openCount > 1 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'}`}>
                                         {openCount}x
                                       </span>
                                     </TooltipTrigger>
@@ -526,7 +526,7 @@ export function EmailLogsContent() {
                                         ) : (
                                           <Monitor className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                                         )}
-                                        <span className="text-[10px] text-slate-500 dark:text-slate-400">{deviceCount}</span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">{deviceCount}</span>
                                       </div>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -542,8 +542,8 @@ export function EmailLogsContent() {
                                   <Tooltip>
                                     <TooltipTrigger>
                                       <div className="flex items-center gap-1">
-                                        <Timer className="h-3 w-3 text-emerald-500" />
-                                        <span className="text-[11px] text-slate-600 dark:text-slate-400">{timeToOpen}</span>
+                                        <Timer className="h-3.5 w-3.5 text-emerald-500" />
+                                        <span className="text-xs text-slate-600 dark:text-slate-400">{timeToOpen}</span>
                                       </div>
                                     </TooltipTrigger>
                                     <TooltipContent>
