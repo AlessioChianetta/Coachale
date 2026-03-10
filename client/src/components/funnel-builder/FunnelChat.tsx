@@ -466,7 +466,10 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
                 </div>
               );
             }
-            const displayContent = msg.role === "assistant" ? stripFunnelBlock(msg.content) : msg.content;
+            let displayContent = msg.role === "assistant" ? stripFunnelBlock(msg.content) : msg.content;
+            if (msg.role === "user") {
+              displayContent = displayContent.replace(/\[CONTESTO FUNNEL ATTUALE\][\s\S]*?\[FINE CONTESTO\]\s*/g, "").trim();
+            }
             return (
               <div key={msg.id}>
                 <Message
