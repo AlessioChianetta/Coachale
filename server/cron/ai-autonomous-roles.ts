@@ -2827,6 +2827,58 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         if (campRes.rows.length > 0) platformEntities.campaigns = campRes.rows as any[];
       } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch campaigns: ${e.message}`); }
 
+      try {
+        const optinRes = await db.execute(sql`
+          SELECT id, COALESCE(headline, 'Pagina Optin') as name, is_active as "isActive"
+          FROM optin_landing_config WHERE consultant_id = ${consultantId} LIMIT 5
+        `);
+        if (optinRes.rows.length > 0) platformEntities.optin_config = optinRes.rows as any[];
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch optin_config: ${e.message}`); }
+
+      try {
+        const bookingRes = await db.execute(sql`
+          SELECT id, COALESCE('Prenotazione – ' || booking_slug, 'Prenotazione') as name,
+                 booking_page_enabled as "isActive"
+          FROM consultant_availability_settings WHERE consultant_id = ${consultantId} LIMIT 1
+        `);
+        if (bookingRes.rows.length > 0) platformEntities.booking = bookingRes.rows as any[];
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch booking: ${e.message}`); }
+
+      try {
+        const refRes = await db.execute(sql`
+          SELECT id, COALESCE(headline, 'Pagina Referral') as name, is_active as "isActive"
+          FROM referral_landing_config WHERE consultant_id = ${consultantId} LIMIT 5
+        `);
+        if (refRes.rows.length > 0) platformEntities.referral_config = refRes.rows as any[];
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch referral_config: ${e.message}`); }
+
+      try {
+        const hunterRes = await db.execute(sql`
+          SELECT id, query as name FROM lead_scraper_searches
+          WHERE consultant_id = ${consultantId} ORDER BY created_at DESC LIMIT 10
+        `);
+        if (hunterRes.rows.length > 0) platformEntities.hunter_searches = hunterRes.rows as any[];
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch hunter_searches: ${e.message}`); }
+
+      try {
+        const lmRes = await db.execute(sql`
+          SELECT cas.id, 'Lead Magnet AI' as name
+          FROM consultant_availability_settings cas
+          WHERE cas.consultant_id = ${consultantId} AND cas.booking_page_enabled = true LIMIT 1
+        `);
+        if (lmRes.rows.length > 0) platformEntities.lead_magnet = lmRes.rows as any[];
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch lead_magnet: ${e.message}`); }
+
+      try {
+        const postsRes = await db.execute(sql`
+          SELECT id, COALESCE(caption, 'Post') as name, platform, media_type as "mediaType"
+          FROM content_posts
+          WHERE consultant_id = ${consultantId} AND status = 'published'
+          ORDER BY created_at DESC LIMIT 20
+        `);
+        if (postsRes.rows.length > 0) platformEntities.posts = postsRes.rows as any[];
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch posts: ${e.message}`); }
+
       return {
         funnels,
         linkedTemplateId,
@@ -2980,6 +3032,12 @@ SOTTOTITOLI CONSIGLIATI per ogni tipo di nodo:
       if (pe.services?.length > 0) peLines.push(`Servizi/Prodotti (tipo nodo: pagamento, servizio):\n${pe.services.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
       if (pe.email_accounts?.length > 0) peLines.push(`Account Email (tipo nodo: email):\n${pe.email_accounts.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
       if (pe.campaigns?.length > 0) peLines.push(`Campagne Marketing (tipo nodo: followup):\n${pe.campaigns.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (pe.optin_config?.length > 0) peLines.push(`Pagine Optin (tipo nodo: form_modulo):\n${pe.optin_config.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (pe.booking?.length > 0) peLines.push(`Sistema Prenotazioni (tipo nodo: appuntamento):\n${pe.booking.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (pe.referral_config?.length > 0) peLines.push(`Pagine Referral (tipo nodo: offline_referral):\n${pe.referral_config.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (pe.hunter_searches?.length > 0) peLines.push(`Ricerche Hunter (tipo nodo: crm_hunter):\n${pe.hunter_searches.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (pe.lead_magnet?.length > 0) peLines.push(`Lead Magnet (tipo nodo: lead_magnet):\n${pe.lead_magnet.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (pe.posts?.length > 0) peLines.push(`Post/Creativi pubblicati (tipo nodo: facebook_ads, instagram_ads, google_ads, tiktok_ads, organic):\n${pe.posts.map((e: any) => `  - "${e.name}" [${e.platform || 'multi'}] [id:${e.id}]`).join('\n')}`);
       if (peLines.length > 0) {
         platformEntitiesSection = `\n═══ ENTITÀ PIATTAFORMA ═══\nQueste sono le risorse reali già configurate sulla piattaforma. Usale per collegare automaticamente i nodi:\n${peLines.join('\n')}\n\nREGOLA AUTO-LINK: Quando generi un nodo che corrisponde a una di queste entità, aggiungi nel data del nodo JSON:\n  "linkedEntityName": "nome esatto dell'entità"\nEsempio: se usi un nodo whatsapp e l'agente si chiama "Agente Vendite", scrivi: "linkedEntityName": "Agente Vendite"\n`;
       }

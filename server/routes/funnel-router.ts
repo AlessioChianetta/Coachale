@@ -645,7 +645,7 @@ router.post("/:id/restore/:versionId", authenticateToken, requireAnyRole(["consu
         (funnel_id, consultant_id, version_number, label, source, nodes_data, edges_data, funnel_name)
       VALUES
         (${req.params.id}, ${consultantId}, ${nextVersion},
-         ${'Snapshot pre-ripristino v' + version.version_number}, 'restore_backup',
+         ${'Snapshot pre-ripristino v' + version.version_number}, 'restore',
          ${JSON.stringify(current.nodes_data || [])}::jsonb,
          ${JSON.stringify(current.edges_data || [])}::jsonb,
          ${current.name})
@@ -716,8 +716,8 @@ router.put("/:id", authenticateToken, requireAnyRole(["consultant", "super_admin
       SET
         name = COALESCE(${name || null}, name),
         description = COALESCE(${description !== undefined ? description : null}, description),
-        nodes_data = COALESCE(${nodes_data ? JSON.stringify(nodes_data) : null}::jsonb, nodes_data),
-        edges_data = COALESCE(${edges_data ? JSON.stringify(edges_data) : null}::jsonb, edges_data),
+        nodes_data = COALESCE(${nodes_data !== undefined ? JSON.stringify(nodes_data) : null}::jsonb, nodes_data),
+        edges_data = COALESCE(${edges_data !== undefined ? JSON.stringify(edges_data) : null}::jsonb, edges_data),
         updated_at = NOW()
       WHERE id = ${req.params.id} AND consultant_id = ${consultantId}
       RETURNING *

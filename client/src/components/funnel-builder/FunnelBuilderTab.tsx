@@ -274,6 +274,9 @@ function FunnelBuilderInner() {
         setEdges(funnel.edges_data || []);
         setShowHistory(false);
         toast({ title: `Funnel ripristinato alla versione ${versionNumber}` });
+      } else {
+        const errData = await res.json().catch(() => null);
+        toast({ title: errData?.error || "Errore nel ripristino", variant: "destructive" });
       }
     } catch (err) {
       console.error("Error restoring version:", err);

@@ -1,0 +1,39 @@
+Ricevuto. Ho mappato ogni singolo nodo alle risorse tecniche della piattaforma, incluse le sorgenti traffico (Ads), i moduli di cattura e i sistemi di prenotazione.
+
+In questo modo, il funnel non è solo un disegno, ma un'istruzione operativa per il sistema: sa dove pescare i creativi per le Ads, quale pagina opt-in usare e quale calendario sincronizzare.
+
+Ecco il JSON completo e configurato:
+
+Nuovi collegamenti attivati:
+Ads (Facebook/Instagram): Puntano al Content Studio, dove risiedono i tuoi creativi e copy.
+Lead Form: Mappato sulla Pagina Optin per la raccolta dati centralizzata.
+Calendario: Collegato al Sistema Prenotazioni per gestire le disponibilità in tempo reale.
+Upgrade L5: Ho usato la campagna Orbitale finanza come placeholder per il nurturing di upgrade.
+Referral: Collegato alla Pagina Referral per generare i link unici per i tuoi clienti.
+Ho anche mantenuto il collegamento diretto tra Alessia AI (n5) e il Calendario (n9) che avevi inserito, così se Alessia qualifica il lead al telefono può mandarlo subito in prenotazione.
+
+Ti sembra tutto allineato o c'è qualche altra risorsa che vuoi specificare meglio?
+
+Acquisizione Sistema Orbitale L4 -> L5
+
+16 nodi · 20 connessioni
+
+Applica al Canvas
+Rigenera
+[SISTEMA] Ho appena applicato il funnel "Acquisizione Sistema Orbitale L4 -> L5" al canvas (16 nodi, 20 connessioni). Da questo momento è attivo. Posso chiederti modifiche quando voglio.
+
+Tu
+Leonardo
+Leonardo
+
+Architetto dei Funnel
+
+Ottimo, ora il sistema è a pieno regime e ogni ingranaggio è collegato alla risorsa tecnica corretta. Questo significa che i dati non si perderanno tra un passaggio e l'altro.
+
+Abbiamo una struttura solida, ma voglio farti riflettere su un punto: il passaggio dal Livello 4 (Stella) al Livello 5 (Team Completo). Al momento è collegato alla campagna "Orbitale finanza", ma per massimizzare l'upgrade dovremmo assicurarci che il cliente veda i risultati di Stella prima della proposta.
+
+Vuoi che iniziamo a pensare a come Marco (Executive Coach) possa intervenire in questa fase di "Upgrade" per mostrare al cliente i dati dei lead gestiti da Stella e giustificare il passaggio al team completo?
+
+Inoltre, ricordati che il nodo n16 (Stella Reminder) è segnato come "da sviluppare". Quando sei pronto a definire il contenuto di quei promemoria, fammelo sapere così lo rendiamo operativo al 100%.
+
+C'è qualcos'altro che vuoi rifinire subito o iniziamo a monitorare i primi lead che entrano?
