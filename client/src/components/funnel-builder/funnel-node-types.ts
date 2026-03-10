@@ -38,6 +38,20 @@ export type NodeCategory =
   | "delivery"
   | "custom";
 
+export type EntityType =
+  | "posts"
+  | "referral_config"
+  | "optin_config"
+  | "lead_magnet"
+  | "hunter_searches"
+  | "ai_employees"
+  | "agents"
+  | "email_accounts"
+  | "voice_numbers"
+  | "booking"
+  | "services"
+  | "campaigns";
+
 export interface FunnelNodeType {
   type: string;
   label: string;
@@ -57,13 +71,13 @@ export interface FunnelNodeData {
 }
 
 export interface LinkedEntity {
-  entityType: "ad" | "post" | "campaign" | "agent" | "voice" | "service";
+  entityType: EntityType;
   entityId: string;
   name: string;
   imageUrl?: string | null;
   platform?: string;
   status?: string;
-  metrics?: Record<string, string | number>;
+  extra?: Record<string, any>;
 }
 
 export const CATEGORY_COLORS: Record<NodeCategory, { bg: string; border: string; text: string; accent: string }> = {
@@ -130,24 +144,74 @@ export function getNodesByCategory(category: NodeCategory): FunnelNodeType[] {
   return NODE_TYPES.filter((n) => n.category === category);
 }
 
-export function getEntityTypeForNode(nodeType: string): string | null {
-  const adTypes = ["facebook_ads", "google_ads", "instagram_ads", "tiktok_ads"];
-  if (adTypes.includes(nodeType)) return "ads";
+const ENTITY_MAP: Record<string, EntityType> = {
+  facebook_ads: "posts",
+  google_ads: "posts",
+  instagram_ads: "posts",
+  tiktok_ads: "posts",
+  organic: "posts",
+  offline_referral: "referral_config",
+  form_modulo: "optin_config",
+  lead_magnet: "lead_magnet",
+  crm_hunter: "hunter_searches",
+  setter_ai: "ai_employees",
+  onboarding: "ai_employees",
+  whatsapp: "agents",
+  email: "email_accounts",
+  voice_call: "voice_numbers",
+  appuntamento: "booking",
+  pagamento: "services",
+  servizio: "services",
+  followup: "campaigns",
+};
 
-  const postTypes = ["landing_page", "organic"];
-  if (postTypes.includes(nodeType)) return "posts";
+export function getEntityTypeForNode(nodeType: string): EntityType | null {
+  return ENTITY_MAP[nodeType] || null;
+}
 
-  const agentTypes = ["whatsapp", "instagram_dm"];
-  if (agentTypes.includes(nodeType)) return "agents";
+export function getPlatformFilterForNode(nodeType: string): string | null {
+  const platformMap: Record<string, string> = {
+    facebook_ads: "facebook",
+    instagram_ads: "instagram",
+    tiktok_ads: "tiktok",
+  };
+  return platformMap[nodeType] || null;
+}
 
-  const voiceTypes = ["voice_call"];
-  if (voiceTypes.includes(nodeType)) return "voice-numbers";
+const EDIT_LINKS: Record<EntityType, string> = {
+  posts: "/consultant/content-studio/ideas",
+  referral_config: "/consultant/referrals/settings",
+  optin_config: "/consultant/referrals/settings",
+  lead_magnet: "/consultant/referrals",
+  hunter_searches: "/consultant/ai-autonomy",
+  ai_employees: "/consultant/ai-autonomy",
+  agents: "/consultant/ai-autonomy",
+  email_accounts: "/consultant/email-hub",
+  voice_numbers: "/consultant/voice-calls",
+  booking: "/consultant/referrals/settings",
+  services: "/consultant/catalog-settings",
+  campaigns: "/consultant/ai-autonomy",
+};
 
-  const serviceTypes = ["servizio", "pagamento"];
-  if (serviceTypes.includes(nodeType)) return "services";
+export function getEditLinkForEntity(entityType: EntityType): string {
+  return EDIT_LINKS[entityType] || "/consultant";
+}
 
-  const campaignTypes = ["crm_hunter", "lead_magnet"];
-  if (campaignTypes.includes(nodeType)) return "campaigns";
+const ENTITY_LABELS: Record<EntityType, string> = {
+  posts: "Post Content Studio",
+  referral_config: "Pagina Referral",
+  optin_config: "Pagina Optin",
+  lead_magnet: "Lead Magnet AI",
+  hunter_searches: "Ricerche Hunter",
+  ai_employees: "Dipendente AI",
+  agents: "Agente WhatsApp",
+  email_accounts: "Account Email",
+  voice_numbers: "Numero Voice",
+  booking: "Prenotazione",
+  services: "Servizio / Prodotto",
+  campaigns: "Campagna Marketing",
+};
 
-  return null;
+export function getEntityLabel(entityType: EntityType): string {
+  return ENTITY_LABELS[entityType] || "Entità";
 }
