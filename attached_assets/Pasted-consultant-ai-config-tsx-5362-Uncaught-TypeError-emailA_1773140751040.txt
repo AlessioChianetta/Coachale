@@ -1,0 +1,28 @@
+consultant-ai-config.tsx:5362 Uncaught TypeError: (emailAccountsData || []).map is not a function
+    at ConsultantAIConfigPage (consultant-ai-config.tsx:5362:56)
+
+consultant-ai-config.tsx:5362 Uncaught TypeError: (emailAccountsData || []).map is not a function
+    at ConsultantAIConfigPage (consultant-ai-config.tsx:5362:56)
+injected.js:37 The above error occurred in the <ConsultantAIConfigPage> component:
+
+    at ConsultantAIConfigPage (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/pages/consultant-ai-config.tsx:2563:20)
+    at AuthGuard (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2547ce87:226:16)
+    at Switch (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2547ce87:283:17)
+    at Suspense
+    at Router (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/App.tsx?v=3ikeoxPn9DH3HMUjdG7VF:353:35)
+    at Provider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…unner/workspace/node_modules/.vite/deps/chunk-E5NDDLFL.js?v=2547ce87:38:15)
+    at TooltipProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=2547ce87:160:5)
+    at TourProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=2547ce87:3096:3)
+    at V (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=2547ce87:44:25)
+    at J (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.de…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=2547ce87:42:18)
+    at App (https://92c6284a-8b52-4f46-84df-37a1eda26982-00-5ar7r3rr0o11.kirk.replit.dev/src/App.tsx?v=3ikeoxPn9DH3HMUjdG7VF:2307:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-XQLYTHWV.js?v=2547ce87:9129 Uncaught TypeError: (emailAccountsData || []).map is not a function
+    at ConsultantAIConfigPage (consultant-ai-config.tsx:5362:56)

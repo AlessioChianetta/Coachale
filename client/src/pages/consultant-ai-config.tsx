@@ -1694,7 +1694,9 @@ export default function ConsultantAIConfigPage() {
       const res = await fetch("/api/email-hub/accounts", { headers: getAuthHeaders() });
       if (!res.ok) return [];
       const data = await res.json();
-      return data.accounts || data || [];
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.accounts)) return data.accounts;
+      return [];
     },
   });
 
@@ -5359,7 +5361,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="auto">Automatico (primo account)</SelectItem>
-                            {(emailAccountsData || []).map((acc: any) => (
+                            {(Array.isArray(emailAccountsData) ? emailAccountsData : []).map((acc: any) => (
                               <SelectItem key={acc.id} value={acc.id}>
                                 {acc.emailAddress} {acc.displayName ? `(${acc.displayName})` : ''}
                               </SelectItem>
