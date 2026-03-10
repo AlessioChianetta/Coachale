@@ -5497,7 +5497,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           console.log(`📋 [${connectionId}] Booking prompt section appended WITH ${preloadedSlots.length} slots (${bookingPromptSection.length} chars)`);
           setImmediate(() => {
             console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-            console.log(`📞 [${connectionId}] FULL NON-CLIENT SYSTEM PROMPT (${isOutbound ? 'OUTBOUND' : 'INBOUND'}):`);
+            console.log(`📞 [${connectionId}] FULL NON-CLIENT SYSTEM PROMPT (WITH SLOTS):`);
             console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
             console.log(systemInstruction);
             console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
