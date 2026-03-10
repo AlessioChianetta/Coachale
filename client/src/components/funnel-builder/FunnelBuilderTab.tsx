@@ -666,6 +666,11 @@ function FunnelBuilderInner() {
             nodeId={selectedNode.id}
             data={selectedNode.data as unknown as FunnelNodeData}
             onUpdate={updateNodeData}
+            onDelete={(id) => {
+              setNodes((nds) => nds.filter((n) => n.id !== id));
+              setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
+              setSelectedNodeId(null);
+            }}
             onClose={() => setSelectedNodeId(null)}
           />
         )}

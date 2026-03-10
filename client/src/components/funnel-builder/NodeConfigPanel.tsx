@@ -11,7 +11,7 @@ import {
   Image as ImageIcon, Mail, Phone, Calendar, CreditCard,
   Users, Bot, Target, Megaphone, Globe, Magnet,
   ChevronDown, ChevronRight, Clock, Zap,
-  Palette, AlertTriangle, Flag, Plus,
+  Palette, AlertTriangle, Flag, Plus, Trash2,
 } from "lucide-react";
 import {
   type FunnelNodeData,
@@ -32,6 +32,7 @@ interface NodeConfigPanelProps {
   nodeId: string;
   data: FunnelNodeData;
   onUpdate: (nodeId: string, updates: Partial<FunnelNodeData>) => void;
+  onDelete: (nodeId: string) => void;
   onClose: () => void;
   className?: string;
 }
@@ -114,6 +115,7 @@ export function NodeConfigPanel({
   nodeId,
   data,
   onUpdate,
+  onDelete,
   onClose,
   className,
 }: NodeConfigPanelProps) {
@@ -621,14 +623,23 @@ export function NodeConfigPanel({
         </div>
       </ScrollArea>
 
-      <div className="shrink-0 p-2 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20">
+      <div className="shrink-0 p-2 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20 flex gap-1">
         <Button
           variant="ghost"
           size="sm"
-          className="w-full h-7 text-[10px] text-gray-400 hover:text-red-500"
+          className="flex-1 h-7 text-[10px] text-gray-400 hover:text-gray-600"
           onClick={onClose}
         >
-          Chiudi Pannello
+          Chiudi
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-[10px] text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 gap-1 px-2"
+          onClick={() => onDelete(nodeId)}
+        >
+          <Trash2 className="w-3 h-3" />
+          Elimina
         </Button>
       </div>
     </div>
