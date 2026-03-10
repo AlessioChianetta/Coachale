@@ -7802,9 +7802,10 @@ router.put("/agent-context/architetto/template", authenticateToken, requireAnyRo
 
     if (templateId !== null) {
       const templateIdStr = String(templateId);
-      const [existing] = await db.execute(sql`
+      const existingResult = await db.execute(sql`
         SELECT id FROM content_idea_templates WHERE id = ${templateIdStr} AND consultant_id = ${consultantId}
-      `) as any[];
+      `);
+      const existing = (existingResult.rows as any[])[0];
       if (!existing) {
         return res.status(400).json({ error: "Template not found or not owned by you" });
       }
