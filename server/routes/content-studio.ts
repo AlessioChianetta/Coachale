@@ -178,66 +178,6 @@ router.post("/brand-voice", authenticateToken, requireRole("consultant"), async 
 });
 
 // ============================================================
-// MARKET RESEARCH (Global per-consultant copy)
-// ============================================================
-
-router.get("/market-research", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
-  try {
-    const consultantId = req.user!.id;
-    
-    const [config] = await db.select()
-      .from(schema.contentStudioConfig)
-      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
-      .limit(1);
-    
-    res.json({
-      success: true,
-      data: config?.marketResearchData || {},
-    });
-  } catch (error: any) {
-    console.error("❌ [CONTENT-STUDIO] Error fetching market research:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message || "Failed to fetch market research"
-    });
-  }
-});
-
-router.post("/market-research", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
-  try {
-    const consultantId = req.user!.id;
-    const { data } = req.body;
-    
-    const [existing] = await db.select()
-      .from(schema.contentStudioConfig)
-      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
-      .limit(1);
-    
-    if (existing) {
-      await db.update(schema.contentStudioConfig)
-        .set({
-          marketResearchData: data,
-          updatedAt: new Date(),
-        })
-        .where(eq(schema.contentStudioConfig.consultantId, consultantId));
-    } else {
-      await db.insert(schema.contentStudioConfig).values({
-        consultantId,
-        marketResearchData: data,
-      });
-    }
-    
-    res.json({ success: true });
-  } catch (error: any) {
-    console.error("❌ [CONTENT-STUDIO] Error saving market research:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message || "Failed to save market research"
-    });
-  }
-});
-
-// ============================================================
 // CONTENT IDEAS
 // ============================================================
 
