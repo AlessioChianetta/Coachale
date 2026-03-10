@@ -3171,138 +3171,170 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-[1600px] mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPageView("config")}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    pageView === "config"
-                      ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-md shadow-cyan-500/25"
-                      : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
-                  }`}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Configurazione
-                </button>
-                <button
-                  onClick={() => setPageView("logs")}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    pageView === "logs"
-                      ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/25"
-                      : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
-                  }`}
-                >
-                  <History className="h-4 w-4" />
-                  Log Email
-                </button>
-              </div>
-              <button
-                onClick={() => setSettingsOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
-              >
-                <Settings className="h-4 w-4" />
-                Impostazioni
-              </button>
-            </div>
-
             {pageView === "logs" ? (
+              <>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPageView("config")}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Configurazione
+                  </button>
+                  <button
+                    onClick={() => setPageView("logs")}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/25"
+                  >
+                    <History className="h-4 w-4" />
+                    Log Email
+                  </button>
+                </div>
+              </div>
               <EmailLogsContent />
+              </>
             ) : (
             <>
-            <div className="mb-6">
-            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden border border-slate-700/50">
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-5 pb-4 text-white shadow-xl relative overflow-hidden border border-slate-700/50 mb-6">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
               <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl"></div>
               <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl"></div>
-              <div className="relative z-10 flex items-center gap-4">
-                <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl shadow-lg shadow-cyan-500/25">
-                  <Sparkles className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Centro Controllo Email Automation</h1>
-                  <p className="text-slate-400 text-sm mt-0.5">Gestisci l'intelligenza artificiale e l'automazione delle email</p>
-                </div>
-              </div>
-            </div>
-          </div>
+              <div className="absolute bottom-0 right-0 w-56 h-56 bg-violet-500/5 rounded-full blur-3xl"></div>
 
-            <div className="space-y-6">
-              <div className="flex gap-2 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 rounded-xl shadow-sm backdrop-blur-sm">
-                <button
-                  onClick={() => setMainTab("dashboard")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    mainTab === "dashboard"
-                      ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-md"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-                  }`}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Dashboard
-                </button>
-                <button
-                  onClick={() => setMainTab("echo")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    mainTab === "echo"
-                      ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-md"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-                  }`}
-                >
-                  <Brain className="h-4 w-4" />
-                  Echo
-                </button>
-              </div>
+              <div className="relative z-10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl shadow-lg shadow-cyan-500/25">
+                      <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-xl md:text-2xl font-bold tracking-tight">Centro Controllo Email Automation</h1>
+                      <p className="text-slate-400 text-xs mt-0.5">Gestisci l'intelligenza artificiale e l'automazione delle email</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPageView("logs")}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/10 text-slate-300 hover:bg-white/20 hover:text-white border border-white/10"
+                    >
+                      <History className="h-3.5 w-3.5" />
+                      Log Email
+                    </button>
+                    <button
+                      onClick={() => setSettingsOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/10 text-slate-300 hover:bg-white/20 hover:text-white border border-white/10"
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                      Impostazioni
+                    </button>
+                  </div>
+                </div>
 
-              {mainTab === "dashboard" && (
-              <div className="space-y-6">
-                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardContent className="p-5">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="flex items-start gap-3 p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
-                        <Route className="h-5 w-5 text-cyan-600 mt-0.5 shrink-0" />
+                <div className="flex gap-1.5 bg-white/5 border border-white/10 p-1 rounded-lg">
+                  <button
+                    onClick={() => setMainTab("dashboard")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-medium rounded-md transition-all duration-200 ${
+                      mainTab === "dashboard"
+                        ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-md shadow-cyan-500/25"
+                        : "text-slate-400 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Dashboard
+                  </button>
+                  <button
+                    onClick={() => setMainTab("echo")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-medium rounded-md transition-all duration-200 ${
+                      mainTab === "echo"
+                        ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-md shadow-violet-500/25"
+                        : "text-slate-400 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <Brain className="h-4 w-4" />
+                    Echo
+                  </button>
+                </div>
+
+                {mainTab === "dashboard" && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="flex items-start gap-2.5 p-3 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm">
+                        <Route className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
                         <div>
-                          <p className="text-sm font-semibold text-cyan-900 dark:text-cyan-100">Email Journey</p>
-                          <p className="text-xs text-cyan-700 dark:text-cyan-300 mt-0.5">Percorso automatico di 31 email personalizzate per ogni cliente. Configura template, toni e frequenza.</p>
+                          <p className="text-xs font-semibold text-white">Email Journey</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">Percorso automatico di 31 email personalizzate per ogni cliente.</p>
                         </div>
                       </div>
-                      <div className="flex items-start gap-3 p-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-800">
-                        <Megaphone className="h-5 w-5 text-teal-600 mt-0.5 shrink-0" />
+                      <div className="flex items-start gap-2.5 p-3 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm">
+                        <Megaphone className="h-4 w-4 text-teal-400 mt-0.5 shrink-0" />
                         <div>
-                          <p className="text-sm font-semibold text-teal-900 dark:text-teal-100">Annunci</p>
-                          <p className="text-xs text-teal-700 dark:text-teal-300 mt-0.5">Invia comunicazioni personalizzate dall'AI a gruppi di clienti selezionati.</p>
+                          <p className="text-xs font-semibold text-white">Annunci</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">Comunicazioni personalizzate dall'AI a gruppi di clienti.</p>
                         </div>
                       </div>
-                      <div className="flex items-start gap-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                        <CalendarDays className="h-5 w-5 text-emerald-600 mt-0.5 shrink-0" />
+                      <div className="flex items-start gap-2.5 p-3 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm">
+                        <CalendarDays className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
                         <div>
-                          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Lead 365</p>
-                          <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">Nurturing continuo su 365 giorni con argomenti, template e brand voice personalizzati.</p>
+                          <p className="text-xs font-semibold text-white">Lead 365</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">Nurturing continuo su 365 giorni con argomenti e template.</p>
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
 
-                <div className="flex gap-1.5 flex-wrap">
-                  {[
-                    { id: "bozze", label: "Bozze Email", icon: FileText },
-                    { id: "metriche", label: "Metriche", icon: BarChart3 },
-                    { id: "annunci", label: "Annunci", icon: Megaphone },
-                    { id: "lead365", label: "Lead 365", icon: CalendarDays },
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setDashboardSubTab(tab.id)}
-                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        dashboardSubTab === tab.id
-                          ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-sm"
-                          : "bg-white/60 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      <tab.icon className="h-3.5 w-3.5" />
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[
+                        { id: "bozze", label: "Bozze Email", icon: FileText },
+                        { id: "metriche", label: "Metriche", icon: BarChart3 },
+                        { id: "annunci", label: "Annunci", icon: Megaphone },
+                        { id: "lead365", label: "Lead 365", icon: CalendarDays },
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setDashboardSubTab(tab.id)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                            dashboardSubTab === tab.id
+                              ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-sm shadow-cyan-500/25"
+                              : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/10"
+                          }`}
+                        >
+                          <tab.icon className="h-3 w-3" />
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {mainTab === "echo" && (
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[
+                      { id: "riepilogo", label: "Riepilogo Consulenze", icon: Mail },
+                      { id: "memoria", label: "Inserisci Memoria", icon: Brain },
+                      { id: "clienti", label: "Email Clienti", icon: Users },
+                      { id: "percorso", label: "Percorso", icon: Route },
+                      { id: "simulatore", label: "Simulatore", icon: Zap },
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setEchoSubTab(tab.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                          echoSubTab === tab.id
+                            ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-sm shadow-violet-500/25"
+                            : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/10"
+                        }`}
+                      >
+                        <tab.icon className="h-3 w-3" />
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {mainTab === "dashboard" && (
+              <div className="space-y-6">
 
                 {dashboardSubTab === "bozze" && (
                 <div className="space-y-6">
@@ -5537,29 +5569,6 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
               {mainTab === "echo" && (
               <div className="space-y-6">
-                <div className="flex gap-1.5 flex-wrap">
-                  {[
-                    { id: "riepilogo", label: "Riepilogo Consulenze", icon: Mail },
-                    { id: "memoria", label: "Inserisci Memoria", icon: Brain },
-                    { id: "clienti", label: "Email Clienti", icon: Users },
-                    { id: "percorso", label: "Percorso", icon: Route },
-                    { id: "simulatore", label: "Simulatore", icon: Zap },
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setEchoSubTab(tab.id)}
-                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        echoSubTab === tab.id
-                          ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-sm"
-                          : "bg-white/60 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      <tab.icon className="h-3.5 w-3.5" />
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
                 {echoSubTab === "riepilogo" && (
                 <div className="space-y-6">
                 <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
