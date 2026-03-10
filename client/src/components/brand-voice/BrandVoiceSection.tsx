@@ -70,6 +70,7 @@ export interface BrandVoiceSectionProps {
   onImportClick?: () => void;
   compact?: boolean;
   showSaveButton?: boolean;
+  externalMarketResearchData?: MarketResearchData | null;
 }
 
 export function BrandVoiceSection({
@@ -81,7 +82,8 @@ export function BrandVoiceSection({
   showImportButton = true,
   onImportClick,
   compact = false,
-  showSaveButton = true
+  showSaveButton = true,
+  externalMarketResearchData = null
 }: BrandVoiceSectionProps) {
   const { toast } = useToast();
   const [businessInfoOpen, setBusinessInfoOpen] = useState(!compact);
@@ -135,6 +137,13 @@ export function BrandVoiceSection({
       });
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (externalMarketResearchData) {
+      setMarketResearchData(externalMarketResearchData);
+      saveMarketResearchGlobal(externalMarketResearchData);
+    }
+  }, [externalMarketResearchData, saveMarketResearchGlobal]);
 
   const handleGenerateMarketResearch = useCallback(async (phase?: string, mergeMode?: 'add' | 'overwrite') => {
     const niche = data.businessDescription || data.whoWeHelp || '';

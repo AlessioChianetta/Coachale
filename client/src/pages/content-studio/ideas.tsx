@@ -1229,6 +1229,11 @@ export default function ContentStudioIdeas() {
         });
         if (agent.marketResearchData) {
           setMarketResearchData(agent.marketResearchData);
+          fetch("/api/content/market-research", {
+            method: "POST",
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ data: agent.marketResearchData }),
+          }).catch(() => {});
         }
         toast({ title: "Dati importati", description: "Brand Voice, Voce & Stile e Ricerca di Mercato importati dall'agente" });
         setShowImportAgentDialog(false);

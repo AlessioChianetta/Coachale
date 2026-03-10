@@ -80,6 +80,7 @@ import { format } from "date-fns";
 import it from "date-fns/locale/it";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { BrandVoiceSection, BrandVoiceData } from "@/components/brand-voice";
+import { type MarketResearchData } from "@shared/schema";
 
 interface AIEmailStats {
   totalGenerated: number;
@@ -1555,7 +1556,14 @@ export default function ConsultantAIConfigPage() {
     caseStudies?: { client: string; result: string }[];
     servicesOffered?: { name: string; price: string; description: string }[];
     guarantees?: string;
+    personalTone?: string;
+    contentPersonality?: string;
+    audienceLanguage?: string;
+    avoidPatterns?: string;
+    writingExamples?: string[];
+    signaturePhrases?: string[];
   }>({});
+  const [importedMarketResearchData, setImportedMarketResearchData] = useState<MarketResearchData | null>(null);
   // Collapsible states for Knowledge Base
   const [nurturingKBOpen, setNurturingKBOpen] = useState(false);
   
@@ -2362,7 +2370,10 @@ export default function ConsultantAIConfigPage() {
           writingExamples: agent.writingExamples,
           signaturePhrases: agent.signaturePhrases,
         });
-        toast({ title: "Dati importati", description: "Brand Voice e Voce & Stile importati dall'agente" });
+        if (agent.marketResearchData) {
+          setImportedMarketResearchData(agent.marketResearchData);
+        }
+        toast({ title: "Dati importati", description: "Brand Voice, Voce & Stile e Ricerca di Mercato importati dall'agente" });
         setShowImportAgentDialog(false);
       }
     } catch (error: any) {
@@ -4250,6 +4261,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   setShowImportAgentDialog(true);
                 }}
                 compact={false}
+                externalMarketResearchData={importedMarketResearchData}
               />
 
               {/* Knowledge Base per Nurturing */}
