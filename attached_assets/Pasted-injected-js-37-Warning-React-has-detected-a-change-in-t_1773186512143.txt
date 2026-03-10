@@ -1,0 +1,118 @@
+injected.js:37 Warning: React has detected a change in the order of Hooks called by FunnelBuilderInner. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://reactjs.org/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+1. useState                   useState
+2. useState                   useState
+3. useState                   useState
+4. useState                   useState
+5. useState                   useState
+6. useState                   useState
+7. useState                   useState
+8. useState                   useState
+9. useState                   useState
+10. useState                  useState
+11. useState                  useState
+12. useState                  useState
+13. useState                  useState
+14. useState                  useState
+15. useEffect                 useEffect
+16. useRef                    useRef
+17. useContext                useContext
+18. useMemo                   useMemo
+19. useMemo                   useMemo
+20. useContext                useContext
+21. useMemo                   useMemo
+22. useContext                useContext
+23. useContext                useContext
+24. useRef                    useRef
+25. useMemo                   useMemo
+26. useSyncExternalStore      useSyncExternalStore
+27. useEffect                 useEffect
+28. useDebugValue             useDebugValue
+29. useDebugValue             useDebugValue
+30. useMemo                   useMemo
+31. useMemo                   useMemo
+32. useRef                    useRef
+33. useRef                    useRef
+34. useRef                    useRef
+35. useRef                    useRef
+36. useRef                    useRef
+37. useCallback               useCallback
+38. useCallback               useCallback
+39. useCallback               useCallback
+40. useEffect                 useEffect
+41. useEffect                 useEffect
+42. useCallback               useCallback
+43. useCallback               useCallback
+44. useCallback               useCallback
+45. useCallback               useCallback
+46. useCallback               useCallback
+47. useCallback               useCallback
+48. useCallback               useCallback
+49. useCallback               useCallback
+50. useCallback               useCallback
+51. useCallback               useCallback
+52. useMemo                   useMemo
+53. undefined                 useMemo
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    at FunnelBuilderInner (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/components/funnel-builder/FunnelBuilderTab.tsx:97:29)
+    at BatchProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…nner/workspace/node_modules/.vite/deps/@xyflow_react.js?v=2547ce87:6014:36)
+    at ReactFlowProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…nner/workspace/node_modules/.vite/deps/@xyflow_react.js?v=2547ce87:8130:44)
+    at FunnelBuilderTab
+    at div
+    at main
+    at div
+    at div
+    at ContentStudioIdeas (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/pages/content-studio/ideas.tsx:459:20)
+    at AuthGuard (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2547ce87:226:16)
+    at Switch (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2547ce87:283:17)
+    at Suspense
+    at Router (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/App.tsx?v=ocmwj64PmHKzUYd90dVLp:353:35)
+    at Provider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…unner/workspace/node_modules/.vite/deps/chunk-E5NDDLFL.js?v=2547ce87:38:15)
+    at TooltipProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=2547ce87:160:5)
+    at TourProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=2547ce87:3096:3)
+    at V (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=2547ce87:44:25)
+    at J (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=2547ce87:42:18)
+    at App (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/App.tsx?v=ocmwj64PmHKzUYd90dVLp:2307:22)
+
+2
+chunk-XQLYTHWV.js?v=2547ce87:11678 Uncaught Error: Rendered more hooks than during the previous render.
+    at FunnelBuilderInner (FunnelBuilderTab.tsx:572:28)
+injected.js:37 The above error occurred in the <FunnelBuilderInner> component:
+
+    at FunnelBuilderInner (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/components/funnel-builder/FunnelBuilderTab.tsx:97:29)
+    at BatchProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…nner/workspace/node_modules/.vite/deps/@xyflow_react.js?v=2547ce87:6014:36)
+    at ReactFlowProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…nner/workspace/node_modules/.vite/deps/@xyflow_react.js?v=2547ce87:8130:44)
+    at FunnelBuilderTab
+    at div
+    at main
+    at div
+    at div
+    at ContentStudioIdeas (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/pages/content-studio/ideas.tsx:459:20)
+    at AuthGuard (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2547ce87:226:16)
+    at Switch (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2547ce87:283:17)
+    at Suspense
+    at Router (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/App.tsx?v=ocmwj64PmHKzUYd90dVLp:353:35)
+    at Provider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…unner/workspace/node_modules/.vite/deps/chunk-E5NDDLFL.js?v=2547ce87:38:15)
+    at TooltipProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=2547ce87:160:5)
+    at TourProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=2547ce87:3096:3)
+    at V (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=2547ce87:44:25)
+    at J (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=2547ce87:42:18)
+    at App (https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/src/App.tsx?v=ocmwj64PmHKzUYd90dVLp:2307:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-XQLYTHWV.js?v=2547ce87:19413 Uncaught Error: Rendered more hooks than during the previous render.
+    at FunnelBuilderInner (FunnelBuilderTab.tsx:572:28)

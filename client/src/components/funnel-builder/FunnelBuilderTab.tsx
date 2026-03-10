@@ -309,6 +309,7 @@ function FunnelBuilderInner() {
         headers: getAuthHeaders(),
       });
       if (res.ok) {
+        pushHistory();
         setFunnels((prev) => prev.filter((f) => f.id !== activeFunnelId));
         createNewFunnel();
         toast({ title: "Funnel eliminato" });
@@ -561,15 +562,17 @@ function FunnelBuilderInner() {
     [nodes, selectedNodeId]
   );
 
+  const undoContextValue = useMemo(() => ({ pushHistory }), [pushHistory]);
+
   if (loading && funnels.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
+      <UndoContext.Provider value={undoContextValue}>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      </UndoContext.Provider>
     );
   }
-
-  const undoContextValue = useMemo(() => ({ pushHistory }), [pushHistory]);
 
   return (
     <UndoContext.Provider value={undoContextValue}>
