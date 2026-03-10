@@ -1,0 +1,89 @@
+Objective
+Transform the Funnel Architect ("Architetto dei Funnel") from a standalone SSE chat into a proper AI employee (dipendente AI) that follows the exact same architecture as Marco, Alessia, Hunter, etc. Give it a name, register it in the AI roles system, use the agent_chat_messages table + processAgentChatInternal for 32K char context management, and integrate the employee-style chat into the Funnel Builder.
+
+The Architetto should have access to Content Studio context — but the consultant chooses WHICH saved template (salvataggio) to inject. Each consultant can have multiple content_idea_templates with different niches, targets, and market research data. The FunnelChat UI will include a template selector so the consultant picks which one to use as context.
+
+DB changes use raw SQL (no Drizzle migrations). A new column linked_template_id on ai_autonomy_settings.agent_contexts JSONB (under the architetto key) stores the selected template ID per consultant.
+
+Tasks
+T001: Register the new "Architetto" role in the backend AI_ROLES system
+Blocked By: []
+Details:
+Choose role ID: architetto with a proper Italian name (e.g., "Leonardo")
+Add entry to AI_ROLES in server/cron/ai-autonomous-roles.ts:
+id, name, displayName, avatar, accentColor (cyan), description, shortDescription
+categories: ["funnel_design", "strategy"]
+preferredChannels: ["none"] (internal only)
+maxTasksPerRun: 0 (chat-only, no autonomous tasks)
+fetchRoleData(consultantId):
+Fetch consultant's existing funnels from consultant_funnels (name, node count summary)
+Read the agent_contexts->'architetto'->>'linkedTemplateId' from ai_autonomy_settings to find the selected template ID
+If a template ID is set, load that content_idea_templates row: name, topic (niche), targetAudience, objective, marketResearchData (full 7-phase research), marketResearchProblems
+Also load content_studio_config.brandVoiceData and brand_assets (brandVoice, chiSono) for brand identity
+Return all data as structured roleData
+buildPrompt: uses the existing FUNNEL_ARCHITECT_PROMPT logic (discovery questions, node types, [FUNNEL_START/END] tags) enriched with Content Studio context sections:
+BRAND VOICE & IDENTITÀ: (business name, bio, vision, mission, USP, services)
+RICERCA DI MERCATO: (transformation, avatar, emotional drivers, objections, core lies, unique mechanism, UVP) — only if a template is linked
+TARGET & NICCHIA: (niche, target audience, objective) — from the linked template
+FUNNEL ESISTENTI: (list of existing funnels with node summaries)
+Add ROLE_CHAT_PERSONALITIES['architetto'] for the chat personality
+Files: server/cron/ai-autonomous-roles.ts, server/routes/ai-autonomy-router.ts
+Acceptance: processAgentChatInternal('...', 'architetto', '...') works and returns AI responses with brand/market context when a template is linked
+T002: Register the "Architetto" role in frontend constants and SettingsTab
+Blocked By: []
+Details:
+Add to AI_ROLE_PROFILES in client/src/components/autonomy/constants.ts: avatar, quote, role title
+Add to AI_ROLE_CAPABILITIES: canDo (genera funnel basati su ricerca di mercato, analizza brand voice, progetta percorsi di conversione, ottimizza nodi, etc.), cantDo (non esegue campagne, non gestisce clienti, non invia messaggi, etc.), workflow description
+Add to AI_ROLE_EXECUTION_PIPELINES: steps (Legge Brand & Ricerca → Discovery → Generazione Funnel → Iterazione), direction "Lavora CON te — strategia funnel"
+Add ROLE_SUGGESTIONS['architetto'] in AgentChat.tsx
+Add to AI_ROLE_NAMES_MAP and AGENT_AUTO_CONTEXT in SettingsTab.tsx
+Add cyan gradient to ROLE_GRADIENT_MAP if not already there
+Files: client/src/components/autonomy/constants.ts, client/src/components/autonomy/AgentChat.tsx, client/src/components/autonomy/SettingsTab.tsx
+Acceptance: The new role appears in the Dipendenti AI list with proper styling, can be toggled on/off, and the "Chatta" button opens AgentChat
+T003: Rebuild FunnelChat to use the AgentChat backend + template selector
+Blocked By: [T001]
+Details:
+Rewrite FunnelChat.tsx to call /api/ai-autonomy/agent-chat/architetto/send instead of /api/funnels/chat
+Switch from SSE parsing to standard fetch (response is JSON { reply: "..." })
+Keep funnel-specific features:
+Parse [FUNNEL_START]...[FUNNEL_END] tags from the reply text on the client side
+Show inline funnel preview cards with "Applica al Canvas" and "Rigenera" buttons
+Send currentFunnelContext as a context prefix in the user message
+Load message history from /api/ai-autonomy/agent-chat/architetto/messages
+Template selector UI: Add a dropdown at the top of the chat panel to select which Content Studio template to use as context:
+Fetch available templates via GET /api/content/idea-templates
+Show template name + niche/target as label
+When the user selects a template, save the choice via PATCH /api/ai-autonomy/agent-contexts/architetto (or a new simple endpoint) to persist linkedTemplateId in ai_autonomy_settings.agent_contexts
+Show a small indicator of which template is active (name + market research status)
+Reuse markdown rendering (ReactMarkdown + remarkGfm + rehypeSanitize + MARKDOWN_COMPONENTS)
+Keep the same panel layout in FunnelBuilderTab (right panel, mutual exclusion with NodeConfigPanel)
+Files: client/src/components/funnel-builder/FunnelChat.tsx, client/src/components/funnel-builder/FunnelBuilderTab.tsx
+Acceptance: Chat works from the Funnel Builder with template selection, messages stored in agent_chat_messages, funnel JSON extraction and "Applica al Canvas" work, selected template persists
+T004: Backend endpoint to save/load selected template for Architetto
+Blocked By: []
+Details:
+Add a small endpoint (in ai-autonomy-router or funnel-router) to persist the selected template ID:
+PUT /api/ai-autonomy/agent-context/architetto/template — saves linkedTemplateId into ai_autonomy_settings.agent_contexts JSONB under the architetto key
+GET /api/ai-autonomy/agent-context/architetto/template — returns the currently linked template ID
+Use raw SQL: UPDATE ai_autonomy_settings SET agent_contexts = jsonb_set(COALESCE(agent_contexts, '{}'::jsonb), '{architetto,linkedTemplateId}', to_jsonb($templateId::text)) WHERE consultant_id = $consultantId
+Files: server/routes/ai-autonomy-router.ts
+Acceptance: Template selection persists across sessions, fetchRoleData can read it
+T005: Clean up old funnel chat system
+Blocked By: [T003]
+Details:
+Remove old endpoints from server/routes/funnel-router.ts:
+POST /api/funnels/chat (SSE endpoint)
+GET /api/funnels/chats (chat history list)
+GET /api/funnels/chats/:chatId (single chat)
+Remove FUNNEL_ARCHITECT_PROMPT constant (moved to AI_ROLES buildPrompt)
+Remove parseFunnelFromResponse() (moved to client-side)
+Keep consultant_funnel_chats table CREATE (existing data, harmless)
+Files: server/routes/funnel-router.ts
+Acceptance: No references to /api/funnels/chat in client code, old endpoints removed, app compiles
+T006: Update replit.md with the new architecture
+Blocked By: [T003, T005]
+Details:
+Update the Funnel Chat section to reflect it's now an AI employee (architetto)
+Document: role ID, Content Studio template linking, how brand voice + market research context flows, the template selector in FunnelChat
+Files: replit.md
+Acceptance: replit.md accurately describes the new system
