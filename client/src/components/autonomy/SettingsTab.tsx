@@ -40,7 +40,7 @@ import type { AgentContext, AgentFocusItem } from "@shared/schema";
 
 const AI_ROLE_NAMES_MAP: Record<string, string> = {
   alessia: 'Alessia', millie: 'Millie', echo: 'Echo', nova: 'Nova',
-  stella: 'Stella', marco: 'Marco', robert: 'Robert', hunter: 'Hunter', personalizza: 'Personalizza',
+  stella: 'Stella', marco: 'Marco', robert: 'Robert', hunter: 'Hunter', architetto: 'Leonardo', personalizza: 'Personalizza',
 };
 
 const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: string[] }[]> = {
@@ -83,6 +83,12 @@ const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: s
     { label: "Piattaforma", icon: "📊", items: ["Stato moduli e configurazione piattaforma", "Pacchetti servizio attivi e disponibili"] },
     { label: "Clienti", icon: "👥", items: ["Clienti attivi e loro pacchetti", "Opportunità di upsell e cross-sell"] },
     { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Robert", "Strategie di vendita personalizzate"] },
+  ],
+  architetto: [
+    { label: "Brand Voice & Identità", icon: "🎨", items: ["Business name, bio, vision, mission, USP", "Servizi e proposta di valore"] },
+    { label: "Ricerca di Mercato", icon: "🔬", items: ["Trasformazione, avatar, driver emotivi", "Obiezioni, core lies, meccanismo unico, UVP"] },
+    { label: "Template Content Studio", icon: "📋", items: ["Nicchia, target audience, obiettivo", "Dati dal template selezionato"] },
+    { label: "Funnel Esistenti", icon: "🏗️", items: ["Lista funnel con riepilogo nodi", "Struttura e tipologie di nodi utilizzati"] },
   ],
   personalizza: [
     { label: "Consultazioni", icon: "📋", items: ["Consultazioni recenti per contesto"] },
@@ -740,6 +746,7 @@ const ROLE_GRADIENT_MAP: Record<string, string> = {
   teal: "from-teal-400 to-cyan-500",
   indigo: "from-indigo-400 to-blue-500",
   amber: "from-amber-400 to-yellow-500",
+  cyan: "from-cyan-400 to-teal-500",
   gray: "from-gray-400 to-gray-500",
 };
 

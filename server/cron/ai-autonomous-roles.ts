@@ -2671,6 +2671,291 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     },
   },
 
+  architetto: {
+    id: "architetto",
+    name: "Leonardo",
+    displayName: "Leonardo – Architetto dei Funnel",
+    avatar: "architetto",
+    accentColor: "cyan",
+    description: "Esperto di marketing strategico e automazione di vendita. Progetta funnel di conversione completi basati su ricerca di mercato, brand voice e obiettivi del consulente.",
+    shortDescription: "Progettazione funnel strategici con contesto di mercato",
+    categories: ["funnel_design", "strategy"],
+    preferredChannels: ["none"],
+    typicalPlan: [],
+    maxTasksPerRun: 0,
+    fetchRoleData: async (consultantId: string, _clientIds: string[]) => {
+      let funnels: any[] = [];
+      try {
+        const funnelsResult = await db.execute(sql`
+          SELECT id, name,
+            jsonb_array_length(COALESCE(nodes_data, '[]'::jsonb)) as node_count,
+            jsonb_array_length(COALESCE(edges_data, '[]'::jsonb)) as edge_count
+          FROM consultant_funnels
+          WHERE consultant_id = ${consultantId}
+          ORDER BY updated_at DESC
+          LIMIT 20
+        `);
+        funnels = funnelsResult.rows as any[];
+      } catch (e: any) {
+        console.warn(`[ARCHITETTO] Failed to fetch funnels: ${e.message}`);
+      }
+
+      let linkedTemplateId: string | null = null;
+      try {
+        const settingsResult = await db.execute(sql`
+          SELECT agent_contexts->'architetto'->>'linkedTemplateId' as linked_template_id
+          FROM ai_autonomy_settings
+          WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+        `);
+        linkedTemplateId = (settingsResult.rows[0] as any)?.linked_template_id || null;
+      } catch (e: any) {
+        console.warn(`[ARCHITETTO] Failed to fetch linked template ID: ${e.message}`);
+      }
+
+      let linkedTemplate: any = null;
+      if (linkedTemplateId) {
+        try {
+          const templateResult = await db.execute(sql`
+            SELECT name, topic, target_audience, objective,
+                   market_research_data, market_research_problems
+            FROM content_idea_templates
+            WHERE id = ${linkedTemplateId} AND consultant_id = ${consultantId}
+            LIMIT 1
+          `);
+          if (templateResult.rows.length > 0) {
+            linkedTemplate = templateResult.rows[0];
+          }
+        } catch (e: any) {
+          console.warn(`[ARCHITETTO] Failed to fetch linked template: ${e.message}`);
+        }
+      }
+
+      let brandVoice: any = null;
+      try {
+        const bvResult = await db.execute(sql`
+          SELECT brand_voice_data, brand_voice_enabled
+          FROM content_studio_config
+          WHERE consultant_id = ${consultantId}
+          LIMIT 1
+        `);
+        if (bvResult.rows.length > 0) {
+          const row = bvResult.rows[0] as any;
+          if (row.brand_voice_enabled) {
+            brandVoice = row.brand_voice_data;
+          }
+        }
+      } catch (e: any) {
+        console.warn(`[ARCHITETTO] Failed to fetch brand voice: ${e.message}`);
+      }
+
+      return {
+        funnels,
+        linkedTemplateId,
+        linkedTemplate,
+        brandVoice,
+      };
+    },
+    buildPrompt: ({ roleData, romeTimeStr }) => {
+      const nodeTypesSchema = `
+Available node types (use ONLY these exact type values):
+SORGENTI TRAFFICO: facebook_ads, google_ads, instagram_ads, tiktok_ads, offline_referral, organic
+CATTURA: landing_page, form_modulo, lead_magnet, webhook
+GESTIONE LEAD: import_excel, crm_hunter, setter_ai
+COMUNICAZIONE: whatsapp, email, voice_call, sms, instagram_dm
+CONVERSIONE: appuntamento, prima_call, seconda_call, chiusura, pagamento
+DELIVERY: onboarding, servizio, followup
+CUSTOM: custom_step
+
+MAPPATURE ENTITÀ — ogni tipo di nodo si collega a risorse reali della piattaforma:
+- facebook_ads/instagram_ads/tiktok_ads/google_ads/organic → Post del Content Studio
+- offline_referral → Pagina Referral
+- form_modulo → Pagina Optin
+- lead_magnet → Lead Magnet AI
+- crm_hunter → Ricerche Hunter
+- setter_ai → Dipendenti AI
+- onboarding → Lead Magnet AI (Dipendente Delivery "Luca")
+- whatsapp → Agenti WhatsApp
+- email → Account Email
+- voice_call → Numeri Voice
+- appuntamento → Sistema Prenotazioni
+- pagamento/servizio → Catalogo Servizi
+- followup → Campagne Marketing
+- landing_page/webhook/sms/instagram_dm/import_excel/prima_call/seconda_call/chiusura/custom_step → Configurazione manuale
+`;
+
+      const subtitleSuggestions = `
+SOTTOTITOLI CONSIGLIATI per ogni tipo di nodo:
+- facebook_ads → "Campagna Meta Ads"
+- google_ads → "Campagna Google Search/Display"
+- instagram_ads → "Campagna Instagram Ads"
+- tiktok_ads → "Campagna TikTok Ads"
+- offline_referral → "Passaparola e segnalazioni"
+- organic → "Contenuto organico"
+- landing_page → "Pagina di atterraggio"
+- form_modulo → "Cattura contatti optin"
+- lead_magnet → "Risorsa gratuita di valore"
+- webhook → "Integrazione esterna"
+- import_excel → "Import contatti da file"
+- crm_hunter → "Ricerca lead automatica"
+- setter_ai → "Qualifica lead via AI"
+- whatsapp → "Messaggio WhatsApp AI"
+- email → "Email automatica personalizzata"
+- voice_call → "Chiamata vocale AI"
+- sms → "Messaggio SMS"
+- instagram_dm → "DM Instagram automatico"
+- appuntamento → "Prenotazione consulenza"
+- prima_call → "Prima chiamata conoscitiva"
+- seconda_call → "Follow-up telefonico"
+- chiusura → "Chiusura contratto"
+- pagamento → "Pagamento e fatturazione"
+- onboarding → "Onboarding con Luca (Lead Magnet AI)"
+- servizio → "Erogazione servizio"
+- followup → "Follow-up post-vendita"
+- custom_step → "Step personalizzato"
+`;
+
+      let brandVoiceSection = '';
+      const bv = roleData.brandVoice;
+      if (bv && Object.keys(bv).length > 0) {
+        const parts: string[] = [];
+        if (bv.businessName) parts.push(`Business: ${bv.businessName}`);
+        if (bv.consultantBio) parts.push(`Bio: ${bv.consultantBio}`);
+        if (bv.vision) parts.push(`Vision: ${bv.vision}`);
+        if (bv.mission) parts.push(`Mission: ${bv.mission}`);
+        if (bv.usp) parts.push(`USP: ${bv.usp}`);
+        if (bv.whatWeDo) parts.push(`Cosa facciamo: ${bv.whatWeDo}`);
+        if (bv.howWeDoIt) parts.push(`Come lo facciamo: ${bv.howWeDoIt}`);
+        if (bv.whoWeHelp) parts.push(`Chi aiutiamo: ${bv.whoWeHelp}`);
+        if (bv.servicesOffered && bv.servicesOffered.length > 0) {
+          parts.push(`Servizi: ${bv.servicesOffered.map((s: any) => `${s.name} (${s.price})`).join(', ')}`);
+        }
+        if (bv.values && bv.values.length > 0) parts.push(`Valori: ${bv.values.join(', ')}`);
+        if (parts.length > 0) {
+          brandVoiceSection = `\n═══ BRAND VOICE & IDENTITÀ ═══\n${parts.join('\n')}\n`;
+        }
+      }
+
+      let marketResearchSection = '';
+      let targetNicheSection = '';
+      const tmpl = roleData.linkedTemplate;
+      if (tmpl) {
+        targetNicheSection = `\n═══ TARGET & NICCHIA ═══\n`;
+        if (tmpl.topic) targetNicheSection += `Nicchia: ${tmpl.topic}\n`;
+        if (tmpl.target_audience) targetNicheSection += `Target audience: ${tmpl.target_audience}\n`;
+        if (tmpl.objective) targetNicheSection += `Obiettivo: ${tmpl.objective}\n`;
+        targetNicheSection += `Template: "${tmpl.name}"\n`;
+
+        const mr = typeof tmpl.market_research_data === 'string'
+          ? JSON.parse(tmpl.market_research_data)
+          : tmpl.market_research_data;
+        if (mr && Object.keys(mr).length > 0) {
+          const mrParts: string[] = [];
+          if (mr.currentState?.length > 0) mrParts.push(`Stato attuale: ${mr.currentState.filter((s: string) => s).join('; ')}`);
+          if (mr.idealState?.length > 0) mrParts.push(`Stato ideale: ${mr.idealState.filter((s: string) => s).join('; ')}`);
+          if (mr.avatar) {
+            const av = mr.avatar;
+            const avParts: string[] = [];
+            if (av.nightThought) avParts.push(`Pensiero notturno: ${av.nightThought}`);
+            if (av.biggestFear) avParts.push(`Paura più grande: ${av.biggestFear}`);
+            if (av.dailyFrustration) avParts.push(`Frustrazione quotidiana: ${av.dailyFrustration}`);
+            if (av.deepestDesire) avParts.push(`Desiderio più profondo: ${av.deepestDesire}`);
+            if (av.decisionStyle) avParts.push(`Stile decisionale: ${av.decisionStyle}`);
+            if (avParts.length > 0) mrParts.push(`Avatar:\n  ${avParts.join('\n  ')}`);
+          }
+          if (mr.emotionalDrivers?.length > 0) mrParts.push(`Driver emotivi: ${mr.emotionalDrivers.join('; ')}`);
+          if (mr.internalObjections?.length > 0) mrParts.push(`Obiezioni interne: ${mr.internalObjections.filter((s: string) => s).join('; ')}`);
+          if (mr.externalObjections?.length > 0) mrParts.push(`Obiezioni esterne: ${mr.externalObjections.filter((s: string) => s).join('; ')}`);
+          if (mr.coreLies?.length > 0) {
+            mrParts.push(`Bugie fondamentali: ${mr.coreLies.map((cl: any) => cl.name || cl.problem).filter(Boolean).join('; ')}`);
+          }
+          if (mr.uniqueMechanism?.name) mrParts.push(`Meccanismo unico: ${mr.uniqueMechanism.name} — ${mr.uniqueMechanism.description || ''}`);
+          if (mr.uvp) mrParts.push(`UVP: ${mr.uvp}`);
+          if (mrParts.length > 0) {
+            marketResearchSection = `\n═══ RICERCA DI MERCATO ═══\n${mrParts.join('\n')}\n`;
+          }
+        }
+
+        const mrProblems = tmpl.market_research_problems;
+        const problems = typeof mrProblems === 'string' ? JSON.parse(mrProblems) : mrProblems;
+        if (problems && Array.isArray(problems) && problems.length > 0) {
+          marketResearchSection += `Problemi identificati: ${problems.filter((p: string) => p).join('; ')}\n`;
+        }
+      }
+
+      let funnelsSection = '';
+      const funnels = roleData.funnels || [];
+      if (funnels.length > 0) {
+        funnelsSection = `\n═══ FUNNEL ESISTENTI ═══\n`;
+        funnels.forEach((f: any) => {
+          funnelsSection += `- "${f.name}" (${f.node_count} nodi, ${f.edge_count} connessioni, ID: ${f.id})\n`;
+        });
+      }
+
+      return `Sei LEONARDO, l'Architetto dei Funnel — un esperto di marketing strategico e automazione di vendita. Parli SEMPRE in italiano, sei diretto, pragmatico e orientato ai risultati.
+
+DATA/ORA ATTUALE: ${romeTimeStr}
+
+IL TUO RUOLO:
+Aiuti i consulenti a progettare funnel di vendita efficaci attraverso una conversazione strategica. Non generi mai un funnel al primo messaggio — prima capisci il business, il target e gli obiettivi.
+
+FASI DELLA CONVERSAZIONE:
+
+FASE 1 — DISCOVERY (prime 2-4 domande):
+Fai domande mirate per capire:
+1. Che servizio/prodotto vendi? Chi è il tuo cliente ideale?
+2. Da dove arriva il traffico oggi? (Ads, passaparola, organico, cold outreach?)
+3. Qual è il tuo obiettivo di conversione? (Appuntamento, vendita diretta, lead nurturing, iscrizione corso?)
+4. Hai già risorse configurate sulla piattaforma? (Agenti WhatsApp, email, voice AI, booking page, lead magnet?)
+
+NON fare tutte le domande insieme — fanne 1-2 alla volta, in modo conversazionale.
+
+FASE 2 — GENERAZIONE:
+Quando hai abbastanza informazioni, annuncia "Perfetto, ecco il funnel che ti consiglio..." e spiega PERCHÉ ogni step è importante. Poi genera il JSON del funnel dentro i tag [FUNNEL_START] e [FUNNEL_END].
+
+FASE 3 — ITERAZIONE:
+Dopo la generazione chiedi sempre "Vuoi modificare qualcosa? Aggiungere uno step? Cambiare un percorso?"
+
+FORMATO GENERAZIONE FUNNEL:
+Quando generi o modifichi un funnel, includi il JSON completo dentro questi tag:
+[FUNNEL_START]
+{
+  "name": "Nome del Funnel",
+  "nodes": [
+    { "id": "node_1", "type": "facebook_ads", "position": { "x": 0, "y": 0 }, "data": { "label": "Facebook Ads", "subtitle": "Campagna Meta Ads", "category": "sorgenti" } }
+  ],
+  "edges": [
+    { "id": "edge_1_2", "source": "node_1", "target": "node_2" }
+  ]
+}
+[FUNNEL_END]
+
+${nodeTypesSchema}
+
+${subtitleSuggestions}
+
+REGOLE POSIZIONAMENTO:
+1. Flusso dall'alto verso il basso. Primo nodo a y=0, ogni livello successivo ~180px più in basso
+2. Nodi paralleli sulla stessa riga Y con X diversi (2 nodi: x=-150 e x=150; 3 nodi: x=-300, x=0, x=300)
+3. Se più nodi convergono verso uno, crea edge da tutti verso quel nodo
+4. data.category deve essere: sorgenti, cattura, gestione, comunicazione, conversione, delivery, custom
+${brandVoiceSection}${marketResearchSection}${targetNicheSection}${funnelsSection}
+REGOLE IMPORTANTI:
+- NON generare MAI un funnel al primo messaggio, a meno che l'utente fornisca specifiche estremamente dettagliate
+- Se hai accesso alla ricerca di mercato e al brand voice, USALI per progettare funnel più mirati e personalizzati
+- Spiega sempre PERCHÉ consigli certi step, collegandoli al target audience e agli obiettivi
+- Usa label in italiano, brevi e descrittive
+- Dopo la generazione, invita sempre a modificare
+- Se l'utente chiede di MODIFICARE un funnel esistente, riceverai la struttura attuale nel contesto. Analizzala e applica le modifiche richieste, generando il funnel completo modificato nei tag
+- Quando modifichi, spiega cosa hai cambiato e perché
+
+Rispondi SOLO con JSON valido quando generi task autonomi (ma non dovresti — sei chat-only):
+{
+  "overall_reasoning": "Analisi della situazione funnel del consulente",
+  "tasks": []
+}`;
+    },
+  },
+
   personalizza: {
     id: "personalizza",
     name: "Personalizza",

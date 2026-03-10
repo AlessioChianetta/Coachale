@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send, X, Plus, Compass, GitBranch, Loader2, Check, RefreshCw, MessageSquare, ChevronDown } from "lucide-react";
+import { Send, X, Compass, GitBranch, Loader2, Check, RefreshCw, ChevronDown, FileText } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { getAuthHeaders } from "@/lib/auth";
@@ -11,17 +11,21 @@ import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 import type { Node, Edge } from "@xyflow/react";
 
-interface FunnelChatMessage {
+interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   funnel?: { name: string; nodes: Node[]; edges: Edge[] } | null;
+  created_at?: string;
 }
 
-interface ChatSession {
+interface ContentTemplate {
   id: string;
-  preview?: string;
-  updated_at: string;
+  name: string;
+  topic: string;
+  targetAudience: string;
+  objective: string;
+  marketResearchData?: any;
 }
 
 interface FunnelChatProps {
@@ -178,14 +182,71 @@ function FunnelPreviewCard({ funnel, onApply, onRegenerate }: {
   );
 }
 
+function extractFunnelFromContent(content: string): { name: string; nodes: Node[]; edges: Edge[] } | null {
+  const match = content.match(/\[FUNNEL_START\]([\s\S]*?)\[FUNNEL_END\]/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[1].trim());
+    const validCategories = ["sorgenti", "cattura", "gestione", "comunicazione", "conversione", "delivery", "custom"];
+
+    const getCategoryForType = (type: string): string => {
+      const map: Record<string, string> = {
+        facebook_ads: "sorgenti", google_ads: "sorgenti", instagram_ads: "sorgenti", tiktok_ads: "sorgenti", offline_referral: "sorgenti", organic: "sorgenti",
+        landing_page: "cattura", form_modulo: "cattura", lead_magnet: "cattura", webhook: "cattura",
+        import_excel: "gestione", crm_hunter: "gestione", setter_ai: "gestione",
+        whatsapp: "comunicazione", email: "comunicazione", voice_call: "comunicazione", sms: "comunicazione", instagram_dm: "comunicazione",
+        appuntamento: "conversione", prima_call: "conversione", seconda_call: "conversione", chiusura: "conversione", pagamento: "conversione",
+        onboarding: "delivery", servizio: "delivery", followup: "delivery",
+      };
+      return map[type] || "custom";
+    };
+
+    const nodes = (parsed.nodes || []).map((n: any) => {
+      const nodeType = n.type || "custom_step";
+      const rawCategory = n.data?.category;
+      const category = validCategories.includes(rawCategory) ? rawCategory : getCategoryForType(nodeType);
+      return {
+        id: n.id || `node_${Math.random().toString(36).substr(2, 9)}`,
+        type: "funnelNode",
+        position: n.position || { x: 0, y: 0 },
+        data: {
+          nodeType,
+          type: nodeType,
+          category,
+          label: n.data?.label || "Step",
+          subtitle: n.data?.subtitle || "",
+          notes: "",
+          conversionRate: null,
+          linkedEntity: null,
+        },
+      };
+    });
+
+    const edges = (parsed.edges || []).map((e: any) => ({
+      id: e.id || `edge_${Math.random().toString(36).substr(2, 9)}`,
+      source: e.source,
+      target: e.target,
+      type: "funnelEdge",
+      data: { label: e.label || e.data?.label || "" },
+    }));
+
+    return { name: parsed.name || "Funnel Generato", nodes, edges };
+  } catch {
+    return null;
+  }
+}
+
 export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext }: FunnelChatProps) {
-  const [messages, setMessages] = useState<FunnelChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [chatId, setChatId] = useState<string | null>(null);
-  const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
+
+  const [templates, setTemplates] = useState<ContentTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -193,7 +254,9 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
 
   useEffect(() => {
     if (open) {
-      loadChatHistory();
+      loadMessages();
+      loadTemplates();
+      loadLinkedTemplate();
     }
   }, [open]);
 
@@ -201,167 +264,131 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const loadChatHistory = async () => {
+  const loadMessages = async () => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/funnels/chats", { headers: getAuthHeaders() });
+      const res = await fetch("/api/ai-autonomy/agent-chat/architetto/messages", { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
-        setChatHistory(data);
-      }
-    } catch {}
-  };
-
-  const loadChat = async (id: string) => {
-    try {
-      const res = await fetch(`/api/funnels/chats/${id}`, { headers: getAuthHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setChatId(data.id);
-        const loaded: FunnelChatMessage[] = (data.messages || []).map((m: any, i: number) => ({
-          id: `loaded_${i}`,
-          role: m.role,
-          content: m.content,
-          funnel: m.role === "assistant" ? extractFunnelFromContent(m.content) : null,
+        const loaded: ChatMessage[] = (data.messages || []).map((m: any) => ({
+          id: m.id,
+          role: m.sender === "consultant" ? "user" : "assistant",
+          content: m.message || "",
+          funnel: m.sender === "agent" ? extractFunnelFromContent(m.message || "") : null,
+          created_at: m.created_at,
         }));
         setMessages(loaded);
       }
     } catch {}
+    setLoading(false);
   };
 
-  const extractFunnelFromContent = (content: string): { name: string; nodes: Node[]; edges: Edge[] } | null => {
-    const match = content.match(/\[FUNNEL_START\]([\s\S]*?)\[FUNNEL_END\]/);
-    if (!match) return null;
+  const loadTemplates = async () => {
+    setLoadingTemplates(true);
     try {
-      const parsed = JSON.parse(match[1].trim());
-      return { name: parsed.name || "Funnel", nodes: parsed.nodes || [], edges: parsed.edges || [] };
-    } catch {
-      return null;
-    }
+      const res = await fetch("/api/content/idea-templates", { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setTemplates(data.data || []);
+      }
+    } catch {}
+    setLoadingTemplates(false);
   };
 
-  const startNewChat = () => {
-    setChatId(null);
-    setMessages([]);
-    setInput("");
+  const loadLinkedTemplate = async () => {
+    try {
+      const res = await fetch("/api/ai-autonomy/agent-context/architetto/template", { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedTemplateId(data.linkedTemplateId || null);
+      }
+    } catch {}
+  };
+
+  const saveLinkedTemplate = async (templateId: string | null) => {
+    setSavingTemplate(true);
+    try {
+      const res = await fetch("/api/ai-autonomy/agent-context/architetto/template", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId }),
+      });
+      if (res.ok) {
+        setSelectedTemplateId(templateId);
+      }
+    } catch {}
+    setSavingTemplate(false);
   };
 
   const sendMessage = async () => {
     const text = input.trim();
-    if (!text || isStreaming) return;
+    if (!text || sending) return;
 
-    const userMsg: FunnelChatMessage = {
+    let fullMessage = text;
+    if (currentFunnelContext) {
+      const funnelCtx = JSON.stringify({
+        name: currentFunnelContext.name,
+        nodes: currentFunnelContext.nodes.map((n: any) => ({
+          id: n.id,
+          type: n.data?.nodeType || n.data?.type,
+          label: n.data?.label,
+          subtitle: n.data?.subtitle,
+          category: n.data?.category,
+        })),
+        edges: currentFunnelContext.edges.map((e: any) => ({
+          source: e.source,
+          target: e.target,
+        })),
+      });
+      fullMessage = `[CONTESTO FUNNEL ATTUALE]\n${funnelCtx}\n[FINE CONTESTO]\n\n${text}`;
+    }
+
+    const userMsg: ChatMessage = {
       id: `user_${Date.now()}`,
       role: "user",
       content: text,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages(prev => [...prev, userMsg]);
     setInput("");
-    setIsStreaming(true);
+    setSending(true);
 
     const assistantId = `assistant_${Date.now()}`;
-    setMessages((prev) => [
+    setMessages(prev => [
       ...prev,
       { id: assistantId, role: "assistant", content: "", funnel: null },
     ]);
 
-    const controller = new AbortController();
-    abortRef.current = controller;
-
     try {
-      const body: any = { message: text };
-      if (chatId) body.chatId = chatId;
-      if (currentFunnelContext) {
-        body.currentFunnel = {
-          name: currentFunnelContext.name,
-          nodes: currentFunnelContext.nodes,
-          edges: currentFunnelContext.edges,
-        };
-      }
-
-      const res = await fetch("/api/funnels/chat", {
+      const res = await fetch("/api/ai-autonomy/agent-chat/architetto/send", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: controller.signal,
+        body: JSON.stringify({ message: fullMessage }),
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error("Errore nella connessione");
+      if (!res.ok) {
+        throw new Error("Errore nella risposta");
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let accumulatedText = "";
-      let currentEvent = "delta";
+      const data = await res.json();
+      const aiMessage = data.response?.message || "Mi dispiace, non sono riuscito a generare una risposta.";
+      const funnel = extractFunnelFromContent(aiMessage);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("event: ")) {
-            currentEvent = line.slice(7).trim();
-            continue;
-          }
-          if (line.startsWith("data: ")) {
-            const rawData = line.slice(6);
-            try {
-              const data = JSON.parse(rawData);
-              const eventType = currentEvent;
-              currentEvent = "delta";
-
-              if (eventType === "chatId") {
-                setChatId(data.chatId);
-              } else if (eventType === "delta") {
-                accumulatedText += data.text || "";
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantId ? { ...m, content: accumulatedText } : m
-                  )
-                );
-              } else if (eventType === "funnel") {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantId ? { ...m, funnel: data } : m
-                  )
-                );
-              } else if (eventType === "error") {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantId
-                      ? { ...m, content: accumulatedText || `Errore: ${data.error}` }
-                      : m
-                  )
-                );
-              }
-            } catch {}
-          }
-          if (line.trim() === "") {
-            currentEvent = "delta";
-          }
-        }
-      }
-
-      loadChatHistory();
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantId ? { ...m, content: aiMessage, funnel } : m
+        )
+      );
     } catch (err: any) {
-      if (err.name !== "AbortError") {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? { ...m, content: "Errore nella comunicazione con l'AI. Riprova." }
-              : m
-          )
-        );
-      }
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantId
+            ? { ...m, content: "Errore nella comunicazione con l'AI. Riprova." }
+            : m
+        )
+      );
     } finally {
-      setIsStreaming(false);
-      abortRef.current = null;
+      setSending(false);
     }
   };
 
@@ -371,6 +398,8 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
       sendMessage();
     }
   };
+
+  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
 
   if (!open) return null;
 
@@ -382,49 +411,100 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
             <Compass className="h-4 w-4 text-white" />
           </div>
           <div>
-            <p className="font-semibold text-sm text-foreground leading-tight">Architetto</p>
-            <p className="text-xs text-cyan-600 dark:text-cyan-400 leading-tight">Funnel Strategist</p>
+            <p className="font-semibold text-sm text-foreground leading-tight">Leonardo</p>
+            <p className="text-xs text-cyan-600 dark:text-cyan-400 leading-tight">Architetto dei Funnel</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                <MessageSquare className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuItem onClick={startNewChat} className="text-xs gap-2">
-                <Plus className="h-3.5 w-3.5" />
-                Nuova Chat
-              </DropdownMenuItem>
-              {chatHistory.length > 0 && <DropdownMenuSeparator />}
-              {chatHistory.map((ch) => (
-                <DropdownMenuItem key={ch.id} onClick={() => loadChat(ch.id)} className={cn("text-xs", ch.id === chatId && "bg-accent")}>
-                  <MessageSquare className="h-3 w-3 mr-2 flex-shrink-0" />
-                  <span className="truncate">{ch.preview || "Chat..."}</span>
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="px-3 py-2 border-b border-border/40 flex-shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "w-full h-auto py-1.5 px-2.5 justify-between text-left",
+                selectedTemplate && "border-cyan-300 dark:border-cyan-700"
+              )}
+              disabled={savingTemplate}
+            >
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <FileText className="h-3.5 w-3.5 flex-shrink-0 text-cyan-500" />
+                <div className="min-w-0 flex-1">
+                  {selectedTemplate ? (
+                    <>
+                      <p className="text-xs font-medium truncate">{selectedTemplate.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {selectedTemplate.topic} · {selectedTemplate.targetAudience?.substring(0, 30)}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Seleziona template Content Studio...</p>
+                  )}
+                </div>
+              </div>
+              <ChevronDown className="h-3 w-3 flex-shrink-0 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[340px]">
+            {selectedTemplateId && (
+              <>
+                <DropdownMenuItem
+                  onClick={() => saveLinkedTemplate(null)}
+                  className="text-xs text-muted-foreground"
+                >
+                  Nessun template (contesto generico)
                 </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {templates.length === 0 && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                {loadingTemplates ? "Caricamento..." : "Nessun template salvato nel Content Studio"}
+              </div>
+            )}
+            {templates.map(t => (
+              <DropdownMenuItem
+                key={t.id}
+                onClick={() => saveLinkedTemplate(t.id)}
+                className={cn("text-xs flex flex-col items-start gap-0.5", t.id === selectedTemplateId && "bg-cyan-50 dark:bg-cyan-950/30")}
+              >
+                <span className="font-medium">{t.name}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {t.topic} · {t.targetAudience?.substring(0, 40)}
+                  {t.marketResearchData ? " · Ricerca di mercato" : ""}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-        {messages.length === 0 && (
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-cyan-500" />
+          </div>
+        ) : messages.length === 0 ? (
           <div className="text-center py-8">
             <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-br from-cyan-500/10 to-teal-500/10 flex items-center justify-center border border-cyan-500/20 mb-3">
               <Compass className="w-6 h-6 text-cyan-500" />
             </div>
-            <p className="text-sm font-medium text-foreground">Architetto dei Funnel</p>
+            <p className="text-sm font-medium text-foreground">Leonardo — Architetto dei Funnel</p>
             <p className="text-xs text-muted-foreground mt-1 max-w-[260px] mx-auto">
               Descrivi il tuo business e ti aiuterò a progettare il funnel perfetto
             </p>
+            {selectedTemplate && (
+              <p className="text-[10px] text-cyan-600 dark:text-cyan-400 mt-2">
+                Contesto attivo: {selectedTemplate.name}
+              </p>
+            )}
           </div>
-        )}
+        ) : null}
 
         {messages.map((msg) => {
           if (msg.role === "user") {
@@ -443,7 +523,7 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
           }
 
           const content = msg.content || "";
-          const isCurrentlyStreaming = isStreaming && msg.id === messages[messages.length - 1]?.id && msg.role === "assistant";
+          const isCurrentlySending = sending && msg.id === messages[messages.length - 1]?.id && msg.role === "assistant";
 
           return (
             <div key={msg.id} className="flex flex-col">
@@ -452,8 +532,8 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
                   <Compass className="h-3.5 w-3.5 text-white" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-white text-xs leading-tight">Architetto</p>
-                  <p className="text-[10px] text-cyan-600 dark:text-cyan-400 leading-tight">Funnel Strategist</p>
+                  <p className="font-semibold text-gray-900 dark:text-white text-xs leading-tight">Leonardo</p>
+                  <p className="text-[10px] text-cyan-600 dark:text-cyan-400 leading-tight">Architetto dei Funnel</p>
                 </div>
               </div>
 
@@ -471,18 +551,15 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
                         {preprocessContent(content)}
                       </ReactMarkdown>
                     )}
-                    {isCurrentlyStreaming && (
-                      <span className="inline-block w-2 h-4 bg-cyan-500 animate-pulse ml-0.5 rounded-sm" />
-                    )}
                   </div>
-                ) : isCurrentlyStreaming ? (
+                ) : isCurrentlySending ? (
                   <div className="flex items-center gap-2 py-2">
                     <div className="flex gap-1">
                       <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                       <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                       <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <span className="text-xs text-muted-foreground">Sto pensando...</span>
+                    <span className="text-xs text-muted-foreground">Leonardo sta progettando...</span>
                   </div>
                 ) : null}
 
@@ -509,8 +586,8 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isStreaming ? "Sto elaborando..." : "Descrivi il tuo funnel ideale..."}
-              disabled={isStreaming}
+              placeholder={sending ? "Leonardo sta elaborando..." : "Descrivi il tuo funnel ideale..."}
+              disabled={sending}
               className="resize-none min-h-[44px] max-h-[100px] bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 disabled:opacity-60 disabled:cursor-not-allowed text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 p-0 shadow-none"
               rows={1}
             />
@@ -518,16 +595,12 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
           <div className="flex items-center justify-end px-2.5 pb-2.5 pt-0.5">
             <Button
               onClick={sendMessage}
-              disabled={!input.trim() || isStreaming}
+              disabled={!input.trim() || sending}
               size="sm"
               className="h-8 w-8 p-0 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-600 hover:to-teal-700 disabled:from-slate-200 disabled:to-slate-300 dark:disabled:from-slate-700 dark:disabled:to-slate-600 transition-all"
             >
-              {isStreaming ? (
-                <div className="flex gap-0.5">
-                  <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
+              {sending ? (
+                <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
               ) : (
                 <Send className="h-3.5 w-3.5 text-white" />
               )}

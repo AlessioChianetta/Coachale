@@ -5402,6 +5402,13 @@ Ma sei anche un COACH intelligente: DIALOGA, ascolta le risposte, fai follow-up,
 
 Il tuo obiettivo: portare questa attività ai massimi livelli, a numeri mai visti. Se il consulente sta nella comfort zone, scuotilo.`,
   personalizza: `Sei un assistente AI personalizzato. Segui le istruzioni specifiche del consulente per il tuo ruolo e comportamento. In chat sei collaborativo e disponibile al dialogo.`,
+  architetto: `Sei Leonardo, l'Architetto dei Funnel — un esperto di marketing strategico e automazione di vendita. Parli SEMPRE in italiano, sei diretto, pragmatico e orientato ai risultati. Aiuti i consulenti a progettare funnel di vendita efficaci attraverso una conversazione strategica.
+
+Non generi mai un funnel al primo messaggio — prima capisci il business, il target e gli obiettivi con domande mirate. Quando hai abbastanza informazioni, generi il funnel completo con spiegazioni dettagliate su ogni step. Dopo la generazione, inviti sempre a iterare e migliorare.
+
+Quando hai accesso alla ricerca di mercato e al brand voice del consulente, li usi per progettare funnel più mirati e personalizzati, collegando ogni scelta strategica ai dati disponibili.
+
+In chat sei propositivo e strategico: fai domande intelligenti, proponi alternative, spieghi il perché di ogni scelta e adatti i funnel in base al feedback del consulente.`,
 };
 
 router.get("/agent-chat/:roleId/daily-summaries", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
@@ -7760,6 +7767,80 @@ router.patch("/lead-notes/:leadType/:leadId", authenticateToken, requireAnyRole(
   } catch (error: any) {
     console.error("[LEAD-NOTES] PATCH error:", error);
     return res.status(500).json({ error: "Errore nel salvataggio delle note" });
+  }
+});
+
+router.get("/agent-context/architetto/template", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const result = await db.execute(sql`
+      SELECT agent_contexts->'architetto'->>'linkedTemplateId' as linked_template_id
+      FROM ai_autonomy_settings
+      WHERE consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+
+    const linkedTemplateId = (result.rows[0] as any)?.linked_template_id || null;
+    return res.json({ linkedTemplateId });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching architetto template:", error);
+    return res.status(500).json({ error: "Failed to fetch linked template" });
+  }
+});
+
+router.put("/agent-context/architetto/template", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { templateId } = req.body;
+    if (templateId === undefined) {
+      return res.status(400).json({ error: "templateId is required" });
+    }
+
+    if (templateId !== null) {
+      const templateIdStr = String(templateId);
+      const [existing] = await db.execute(sql`
+        SELECT id FROM content_idea_templates WHERE id = ${templateIdStr} AND consultant_id = ${consultantId}
+      `) as any[];
+      if (!existing) {
+        return res.status(400).json({ error: "Template not found or not owned by you" });
+      }
+    }
+
+    if (templateId === null) {
+      await db.execute(sql`
+        INSERT INTO ai_autonomy_settings (consultant_id, agent_contexts)
+        VALUES (${consultantId}, jsonb_build_object('architetto', jsonb_build_object('linkedTemplateId', null)))
+        ON CONFLICT (consultant_id) DO UPDATE SET
+          agent_contexts = jsonb_set(
+            COALESCE(ai_autonomy_settings.agent_contexts, '{}'::jsonb),
+            '{architetto}',
+            jsonb_build_object('linkedTemplateId', null)
+          ),
+          updated_at = now()
+      `);
+    } else {
+      const templateIdStr = String(templateId);
+      await db.execute(sql`
+        INSERT INTO ai_autonomy_settings (consultant_id, agent_contexts)
+        VALUES (${consultantId}, jsonb_build_object('architetto', jsonb_build_object('linkedTemplateId', to_jsonb(${templateIdStr}::text))))
+        ON CONFLICT (consultant_id) DO UPDATE SET
+          agent_contexts = jsonb_set(
+            COALESCE(ai_autonomy_settings.agent_contexts, '{}'::jsonb),
+            '{architetto,linkedTemplateId}',
+            to_jsonb(${templateIdStr}::text)
+          ),
+          updated_at = now()
+      `);
+    }
+
+    return res.json({ success: true, linkedTemplateId: templateId });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error saving architetto template:", error);
+    return res.status(500).json({ error: "Failed to save linked template" });
   }
 });
 

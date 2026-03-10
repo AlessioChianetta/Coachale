@@ -6,6 +6,7 @@ import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png
 import marcoAvatar from "@assets/generated_images/marco_ai_executive_coach_avatar.png";
 import hunterAvatar from "@assets/generated_images/spec_ai_researcher_avatar.png";
 import robertAvatar from "@assets/generated_images/robert_ai_sales_coach_avatar.png";
+import archieAvatar from "@assets/generated_images/archie_ai_builder_avatar.png";
 import type { AutonomySettings, TaskLibraryItem, NewTaskData } from "./types";
 
 export const DAYS_OF_WEEK = [
@@ -210,6 +211,7 @@ export const AI_ROLE_PROFILES: Record<string, { avatar: string; quote: string; r
   marco: { avatar: marcoAvatar, quote: "Ti spingo oltre i tuoi limiti. Niente scuse, solo risultati.", role: "Executive Coach" },
   robert: { avatar: robertAvatar, quote: "Ti insegno a vendere i pacchetti come un professionista. Niente teoria — solo chiusure.", role: "Sales Coach" },
   hunter: { avatar: hunterAvatar, quote: "Trovo i lead migliori e li passo al team per il primo contatto.", role: "Lead Prospector" },
+  architetto: { avatar: archieAvatar, quote: "Progetto funnel di conversione basati sulla tua ricerca di mercato e brand voice.", role: "Funnel Architect" },
   personalizza: { avatar: "", quote: "Configurami come vuoi: definisci tu le mie regole.", role: "Assistente Custom" },
 };
 
@@ -221,6 +223,7 @@ export const AI_ROLE_ACCENT_COLORS: Record<string, { ring: string; badge: string
   teal: { ring: "ring-teal-400", badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300", border: "border-teal-300 dark:border-teal-700", text: "text-teal-600 dark:text-teal-400" },
   indigo: { ring: "ring-indigo-400", badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300", border: "border-indigo-300 dark:border-indigo-700", text: "text-indigo-600 dark:text-indigo-400" },
   amber: { ring: "ring-amber-400", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300", border: "border-amber-300 dark:border-amber-700", text: "text-amber-600 dark:text-amber-400" },
+  cyan: { ring: "ring-cyan-400", badge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300", border: "border-cyan-300 dark:border-cyan-700", text: "text-cyan-600 dark:text-cyan-400" },
   gray: { ring: "ring-gray-400", badge: "bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300", border: "border-gray-300 dark:border-gray-700", text: "text-gray-600 dark:text-gray-400" },
 };
 
@@ -330,6 +333,17 @@ export const AI_ROLE_EXECUTION_PIPELINES: Record<string, ExecutionPipelineInfo> 
     direction: "Autonomia completa — Hunter gestisce tutto il ciclo da solo",
     directionIcon: "⚡",
     directionColor: "text-violet-600 dark:text-violet-400",
+  },
+  architetto: {
+    steps: [
+      { id: "read_brand_research", icon: "📚", label: "Legge Brand & Ricerca", description: "Carica brand voice, identità e ricerca di mercato dal template selezionato" },
+      { id: "discovery", icon: "🔍", label: "Discovery", description: "Fa domande strategiche per capire obiettivi e struttura del funnel" },
+      { id: "generate_funnel", icon: "🏗️", label: "Generazione Funnel", description: "Genera la struttura del funnel con nodi, copy e logica di conversione" },
+      { id: "iterate", icon: "🔄", label: "Iterazione", description: "Raffina il funnel in base al tuo feedback e ai dati di mercato" },
+    ],
+    direction: "Lavora CON te — strategia funnel",
+    directionIcon: "🤝",
+    directionColor: "text-cyan-600 dark:text-cyan-400",
   },
   personalizza: {
     steps: [
@@ -485,6 +499,23 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "👥", text: "Non gestisce i clienti esistenti — si occupa solo di nuovi prospect" },
     ],
     workflow: "Ogni ciclo → Analizza Sales Context → Cerca lead su Maps/Search → Scraping siti → Qualifica con AI + panoramica azienda → Schedula chiamate/messaggi/email a calendario → Esegue l'outreach in autonomia",
+  },
+  architetto: {
+    canDo: [
+      { icon: "🏗️", text: "Genera funnel completi basati su ricerca di mercato e brand voice" },
+      { icon: "🔍", text: "Analizza la brand voice e l'identità del tuo business" },
+      { icon: "🎯", text: "Progetta percorsi di conversione ottimizzati per il tuo target" },
+      { icon: "📊", text: "Ottimizza nodi del funnel in base ai dati di mercato" },
+      { icon: "💡", text: "Suggerisce copy persuasivo basato su avatar e obiezioni" },
+      { icon: "🔄", text: "Itera e raffina il funnel in base al tuo feedback" },
+    ],
+    cantDo: [
+      { icon: "📞", text: "Non esegue campagne di marketing" },
+      { icon: "👥", text: "Non gestisce clienti direttamente" },
+      { icon: "💬", text: "Non invia messaggi ai clienti" },
+      { icon: "📧", text: "Non invia email autonomamente" },
+    ],
+    workflow: "Legge Brand Voice & Ricerca di Mercato → Discovery strategica → Generazione struttura funnel → Iterazione con feedback",
   },
   personalizza: {
     canDo: [

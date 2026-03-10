@@ -76,6 +76,11 @@ const ROLE_SUGGESTIONS: Record<string, string[]> = {
     "Quali obiezioni devo aspettarmi e come gestirle?",
     "Dammi una strategia di vendita per questa settimana",
   ],
+  architetto: [
+    "Progetta un funnel per il mio target",
+    "Analizza il mio funnel attuale e suggerisci miglioramenti",
+    "Crea una landing page basata sulla mia ricerca di mercato",
+  ],
   personalizza: [
     "Qual è il tuo stato attuale?",
     "Cosa hai fatto di recente?",
