@@ -11,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -432,30 +431,6 @@ function EmailJourneyTab() {
         )}
       </div>
 
-      {/* Email Hub Quick Access */}
-      <Card className="border border-indigo-200 dark:border-indigo-700 shadow-sm bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30">
-        <CardContent className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
-              <Inbox className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-indigo-900 dark:text-indigo-100">Email Hub</h3>
-              <p className="text-sm text-indigo-600 dark:text-indigo-400">
-                Gestisci tutti i tuoi account email e risposte AI in un unico posto
-              </p>
-            </div>
-          </div>
-          <Button 
-            variant="outline" 
-            className="border-indigo-300 hover:bg-indigo-100 dark:border-indigo-600 dark:hover:bg-indigo-900"
-            onClick={() => window.location.href = '/consultant/email-hub'}
-          >
-            Apri Email Hub
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </CardContent>
-      </Card>
 
       {/* Improved Table */}
       <Card className="border-0 shadow-lg">
@@ -1328,8 +1303,15 @@ export default function ConsultantAIConfigPage() {
   const isMobile = useIsMobile();
   const [, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [pageView, setPageView] = useState<"config" | "logs">("config");
-  const [selectedClient, setSelectedClient] = useState<string>("");
+    const [pageView, setPageView] = useState<"config" | "logs">("config");
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [mainTab, setMainTab] = useState<"dashboard" | "echo">("dashboard");
+    const [dashboardSubTab, setDashboardSubTab] = useState<string>("bozze");
+    const [echoSubTab, setEchoSubTab] = useState<string>("riepilogo");
+    const [memoryClientId, setMemoryClientId] = useState<string>("");
+    const [memoryText, setMemoryText] = useState("");
+    const [memoryDate, setMemoryDate] = useState("");
+    const [selectedClient, setSelectedClient] = useState<string>("");
   const [selectedTestDay, setSelectedTestDay] = useState<number>(1);
   const [manualEmail, setManualEmail] = useState("");
   const [generatedEmail, setGeneratedEmail] = useState<string>("");
@@ -1538,7 +1520,7 @@ export default function ConsultantAIConfigPage() {
   const [generatedWeekTemplates, setGeneratedWeekTemplates] = useState<{ dayNumber: number; subject: string; body: string; category: string }[]>([]);
   const [isGeneratingWeek, setIsGeneratingWeek] = useState(false);
   const [weekGenerationErrors, setWeekGenerationErrors] = useState<string[]>([]);
-  const [nurturingSubTab, setNurturingSubTab] = useState<string>("dashboard");
+    const [nurturingSubTab, setNurturingSubTab] = useState<string>("dashboard");
   
   // Template selection and bulk action states
   const [selectedTemplateDays, setSelectedTemplateDays] = useState<number[]>([]);
@@ -2951,6 +2933,30 @@ export default function ConsultantAIConfigPage() {
     },
   });
 
+  const saveClientMemoryMutation = useMutation({
+    mutationFn: async ({ clientId, memory, consultationDate }: { clientId: string; memory: string; consultationDate?: string }) => {
+      const response = await fetch("/api/consultant/client-memory", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId, memory, consultationDate }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "Errore nel salvataggio");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Memoria salvata", description: "La nota è stata salvata nel contesto AI del cliente" });
+      setMemoryText("");
+      setMemoryDate("");
+      setMemoryClientId("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleGenerateSystemUpdates = () => {
     if (!updatesSystemPrompt || !updatesDescription || selectedUpdatesClients.length === 0) {
       toast({
@@ -3165,44 +3171,45 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-[1600px] mx-auto">
-          {/* Page View Tabs */}
-          <div className="flex gap-2 mb-6">
-            <button
-              onClick={() => setPageView("config")}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                pageView === "config"
-                  ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-md shadow-cyan-500/25"
-                  : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
-              }`}
-            >
-              <Sparkles className="h-4 w-4" />
-              Configurazione
-            </button>
-            <button
-              onClick={() => setPageView("logs")}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                pageView === "logs"
-                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/25"
-                  : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
-              }`}
-            >
-              <History className="h-4 w-4" />
-              Log Email
-            </button>
-            <button
-              onClick={() => setLocation("/consultant/email-hub")}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
-            >
-              <Inbox className="h-4 w-4" />
-              Email Hub
-            </button>
-          </div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPageView("config")}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    pageView === "config"
+                      ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-md shadow-cyan-500/25"
+                      : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
+                  }`}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Configurazione
+                </button>
+                <button
+                  onClick={() => setPageView("logs")}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    pageView === "logs"
+                      ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/25"
+                      : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
+                  }`}
+                >
+                  <History className="h-4 w-4" />
+                  Log Email
+                </button>
+              </div>
+              <button
+                onClick={() => setSettingsOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
+              >
+                <Settings className="h-4 w-4" />
+                Impostazioni
+              </button>
+            </div>
 
-          {pageView === "logs" ? (
-            <EmailLogsContent />
-          ) : (
-          <>
-          <div className="mb-6">
+            {pageView === "logs" ? (
+              <EmailLogsContent />
+            ) : (
+            <>
+            <div className="mb-6">
             <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden border border-slate-700/50">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
               <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl"></div>
@@ -3219,438 +3226,87 @@ Non limitarti a stato attuale/ideale. Attingi da:
             </div>
           </div>
 
-          <Tabs defaultValue="controllo" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-9 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 h-auto rounded-xl shadow-sm backdrop-blur-sm">
-              <TabsTrigger 
-                value="controllo" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-700 data-[state=active]:to-slate-800 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Settings className="h-4 w-4" />
-                <span className="hidden lg:inline">Impostazioni</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="drafts" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <FileText className="h-4 w-4" />
-                <span className="hidden lg:inline">Bozze Email</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="echo" 
-                className="hidden"
-              >
-                <Sparkles className="h-4 w-4" />
-                <span className="hidden lg:inline">AI Echo</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="consultation-summary" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Mail className="h-4 w-4" />
-                <span className="hidden lg:inline">Consulenze</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="statistics" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <BarChart3 className="h-4 w-4" />
-                <span className="hidden lg:inline">Metriche</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="clients" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Users className="h-4 w-4" />
-                <span className="hidden lg:inline">Email Clienti</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="journey" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Route className="h-4 w-4" />
-                <span className="hidden lg:inline">Percorso</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="updates" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Megaphone className="h-4 w-4" />
-                <span className="hidden lg:inline">Annunci</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="test" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <Zap className="h-4 w-4" />
-                <span className="hidden lg:inline">Simulatore</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="nurturing" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-              >
-                <CalendarDays className="h-4 w-4" />
-                <span className="hidden lg:inline">Lead 365</span>
-              </TabsTrigger>
-            </TabsList>
+            <div className="space-y-6">
+              <div className="flex gap-2 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 rounded-xl shadow-sm backdrop-blur-sm">
+                <button
+                  onClick={() => setMainTab("dashboard")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    mainTab === "dashboard"
+                      ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-md"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                  }`}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => setMainTab("echo")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    mainTab === "echo"
+                      ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-md"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                  }`}
+                >
+                  <Brain className="h-4 w-4" />
+                  Echo
+                </button>
+              </div>
 
-            <TabsContent value="controllo" className="space-y-6">
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                    <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
-                      <Settings className="h-4 w-4 text-white" />
-                    </div>
-                    Impostazioni Automation
-                  </CardTitle>
-                  <CardDescription className="text-slate-500 dark:text-slate-400">
-                    Configura l'automazione generale delle email AI
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {!isSmtpConfigured && (
-                    <Alert variant="destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        Configurazione SMTP mancante! Le email non possono essere inviate. Configura SMTP prima di attivare l'automation.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div className="space-y-1">
-                      <Label htmlFor="automation-toggle" className="text-base font-semibold">
-                        Automation Generale
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        {automationEnabled 
-                          ? "Solo i clienti selezionati ricevono email automatiche" 
-                          : "Tutte le email vanno in bozza per approvazione manuale"}
-                      </p>
-                    </div>
-                    <Switch
-                      id="automation-toggle"
-                      checked={automationEnabled}
-                      onCheckedChange={(checked) => {
-                        setAutomationEnabled(checked);
-                        handleSaveAutomationSettings(checked);
-                      }}
-                      disabled={!isSmtpConfigured || updateSmtpMutation.isPending}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email-frequency">Frequenza Email (giorni)</Label>
-                    <div className="flex items-center gap-4">
-                      <Input
-                        id="email-frequency"
-                        type="number"
-                        min={1}
-                        max={30}
-                        value={emailFrequency || ''}
-                        onChange={(e) => {
-                          const inputValue = e.target.value;
-                          if (inputValue === '') {
-                            setEmailFrequency(2);
-                            return;
-                          }
-                          const val = parseInt(inputValue, 10);
-                          if (!isNaN(val) && val >= 1 && val <= 30) {
-                            setEmailFrequency(val);
-                          }
-                        }}
-                        className="max-w-[200px]"
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        Invia email ogni {emailFrequency || 2} giorni
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Finestra Oraria Invio (ora italiana)</Label>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Le email verranno inviate SOLO in questa fascia oraria. Fuori da questa finestra, il sistema aspetterà.
-                    </p>
-                    <div className="flex items-center gap-4 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="send-window-start" className="text-sm whitespace-nowrap">Dalle:</Label>
-                        <Input
-                          id="send-window-start"
-                          type="time"
-                          value={sendWindowStart}
-                          onChange={(e) => setSendWindowStart(e.target.value)}
-                          className="w-[120px]"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="send-window-end" className="text-sm whitespace-nowrap">Alle:</Label>
-                        <Input
-                          id="send-window-end"
-                          type="time"
-                          value={sendWindowEnd}
-                          onChange={(e) => setSendWindowEnd(e.target.value)}
-                          className="w-[120px]"
-                        />
-                      </div>
-                      <Button
-                        onClick={() => handleSaveAutomationSettings()}
-                        disabled={updateSmtpMutation.isPending}
-                        size="sm"
-                      >
-                        {updateSmtpMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Salvataggio...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Salva Impostazioni
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Esempio: 13:00 - 14:00 significa che le email saranno inviate solo tra le 13:00 e le 14:00 ora italiana
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                    <div className="p-2 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-lg">
-                      <Clock className="h-4 w-4 text-white" />
-                    </div>
-                    Centro Controllo Scheduler
-                  </CardTitle>
-                  <CardDescription className="text-slate-500 dark:text-slate-400">
-                    Gestisci lo scheduler per l'invio automatico delle email
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {schedulerStatusLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
-                    </div>
-                  ) : schedulerStatus ? (
-                    <>
-                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <div className="space-y-1">
-                          <Label className="text-base font-semibold text-slate-700 dark:text-slate-300">Stato Scheduler</Label>
-                          <div className="flex items-center gap-2 mt-2">
-                            {schedulerStatus.schedulerEnabled && !schedulerStatus.schedulerPaused ? (
-                              <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white">Attivo</Badge>
-                            ) : schedulerStatus.schedulerEnabled && schedulerStatus.schedulerPaused ? (
-                              <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white">In Pausa</Badge>
-                            ) : (
-                              <Badge variant="secondary" className="bg-slate-200 text-slate-600">Disattivato</Badge>
-                            )}
-                          </div>
+              {mainTab === "dashboard" && (
+              <div className="space-y-6">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardContent className="p-5">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex items-start gap-3 p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
+                        <Route className="h-5 w-5 text-cyan-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-cyan-900 dark:text-cyan-100">Email Journey</p>
+                          <p className="text-xs text-cyan-700 dark:text-cyan-300 mt-0.5">Percorso automatico di 31 email personalizzate per ogni cliente. Configura template, toni e frequenza.</p>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Calendar className="h-4 w-4 text-cyan-600" />
-                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Ultima esecuzione</Label>
-                          </div>
-                          <p className="text-base font-medium text-slate-900 dark:text-slate-100">
-                            {schedulerStatus.lastSchedulerRun 
-                              ? format(new Date(schedulerStatus.lastSchedulerRun), "dd/MM/yyyy HH:mm", { locale: it })
-                              : "Mai eseguito"}
-                          </p>
-                        </div>
-
-                        <div className="p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-800">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Calendar className="h-4 w-4 text-teal-600" />
-                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Prossima esecuzione</Label>
-                          </div>
-                          <p className="text-base font-medium text-slate-900 dark:text-slate-100">
-                            {schedulerStatus.nextSchedulerRun 
-                              ? format(new Date(schedulerStatus.nextSchedulerRun), "dd/MM/yyyy HH:mm", { locale: it })
-                              : "Non programmata"}
-                          </p>
+                      <div className="flex items-start gap-3 p-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-800">
+                        <Megaphone className="h-5 w-5 text-teal-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-teal-900 dark:text-teal-100">Annunci</p>
+                          <p className="text-xs text-teal-700 dark:text-teal-300 mt-0.5">Invia comunicazioni personalizzate dall'AI a gruppi di clienti selezionati.</p>
                         </div>
                       </div>
-
-                      <div className="flex flex-wrap gap-3">
-                        {!schedulerStatus.schedulerEnabled && (
-                          <Button
-                            onClick={() => startSchedulerMutation.mutate()}
-                            disabled={startSchedulerMutation.isPending}
-                            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md"
-                          >
-                            {startSchedulerMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Avvio...
-                              </>
-                            ) : (
-                              <>
-                                <Play className="mr-2 h-4 w-4" />
-                                Avvia Scheduler
-                              </>
-                            )}
-                          </Button>
-                        )}
-
-                        {schedulerStatus.schedulerEnabled && !schedulerStatus.schedulerPaused && (
-                          <Button
-                            onClick={() => pauseSchedulerMutation.mutate()}
-                            disabled={pauseSchedulerMutation.isPending}
-                            variant="outline"
-                            className="border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                          >
-                            {pauseSchedulerMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Pausa...
-                              </>
-                            ) : (
-                              <>
-                                <Pause className="mr-2 h-4 w-4" />
-                                Pausa
-                              </>
-                            )}
-                          </Button>
-                        )}
-
-                        {schedulerStatus.schedulerEnabled && schedulerStatus.schedulerPaused && (
-                          <Button
-                            onClick={() => resumeSchedulerMutation.mutate()}
-                            disabled={resumeSchedulerMutation.isPending}
-                            className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-md"
-                          >
-                            {resumeSchedulerMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Ripristino...
-                              </>
-                            ) : (
-                              <>
-                                <Play className="mr-2 h-4 w-4" />
-                                Riprendi
-                              </>
-                            )}
-                          </Button>
-                        )}
-
-                        {schedulerStatus.schedulerEnabled && (
-                          <Button
-                            onClick={() => stopSchedulerMutation.mutate()}
-                            disabled={stopSchedulerMutation.isPending}
-                            variant="destructive"
-                          >
-                            {stopSchedulerMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Arresto...
-                              </>
-                            ) : (
-                              <>
-                                <Square className="mr-2 h-4 w-4" />
-                                Ferma
-                              </>
-                            )}
-                          </Button>
-                        )}
-
-                        <Button
-                          onClick={() => {
-                            if (executeNowMutation.isPending) return;
-                            if (confirm("Vuoi eseguire lo scheduler immediatamente?")) {
-                              executeNowMutation.mutate();
-                            }
-                          }}
-                          disabled={executeNowMutation.isPending}
-                          variant="outline"
-                          className="border-cyan-500 text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
-                        >
-                          {executeNowMutation.isPending ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Esecuzione...
-                            </>
-                          ) : (
-                            <>
-                              <RotateCw className="mr-2 h-4 w-4" />
-                              Esegui Ora
-                            </>
-                          )}
-                        </Button>
+                      <div className="flex items-start gap-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                        <CalendarDays className="h-5 w-5 text-emerald-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Lead 365</p>
+                          <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">Nurturing continuo su 365 giorni con argomenti, template e brand voice personalizzati.</p>
+                        </div>
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                      <div className="pt-4">
-                        <Label className="text-base font-semibold mb-4 block text-slate-700 dark:text-slate-300">Ultimi 10 Log</Label>
-                        {schedulerLogsLoading ? (
-                          <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
-                          </div>
-                        ) : schedulerLogs.length === 0 ? (
-                          <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                            <Clock className="h-10 w-10 text-slate-400 mx-auto mb-3" />
-                            <p className="text-sm text-slate-500">Nessuna esecuzione registrata</p>
-                          </div>
-                        ) : (
-                          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                            <Table>
-                              <TableHeader>
-                                <TableRow className="bg-slate-50 dark:bg-slate-800/50">
-                                  <TableHead className="text-slate-700 dark:text-slate-300">Data/Ora</TableHead>
-                                  <TableHead className="text-slate-700 dark:text-slate-300">Clienti Processati</TableHead>
-                                  <TableHead className="text-slate-700 dark:text-slate-300">Email Inviate</TableHead>
-                                  <TableHead className="text-slate-700 dark:text-slate-300">Draft Creati</TableHead>
-                                  <TableHead className="text-slate-700 dark:text-slate-300">Errori</TableHead>
-                                  <TableHead className="text-slate-700 dark:text-slate-300">Status</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {schedulerLogs.map((log) => (
-                                  <TableRow key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                                    <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                                      {format(new Date(log.executedAt), "dd/MM/yyyy HH:mm", { locale: it })}
-                                    </TableCell>
-                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.clientsProcessed}</TableCell>
-                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.emailsSent}</TableCell>
-                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.draftsCreated}</TableCell>
-                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.errors}</TableCell>
-                                    <TableCell>
-                                      {log.status === 'success' && (
-                                        <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white">Success</Badge>
-                                      )}
-                                      {log.status === 'partial' && (
-                                        <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white">Partial</Badge>
-                                      )}
-                                      {log.status === 'failed' && (
-                                        <Badge variant="destructive">Failed</Badge>
-                                      )}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <Alert>
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        Impossibile caricare lo stato dello scheduler
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+                <div className="flex gap-1.5 flex-wrap">
+                  {[
+                    { id: "bozze", label: "Bozze Email", icon: FileText },
+                    { id: "metriche", label: "Metriche", icon: BarChart3 },
+                    { id: "annunci", label: "Annunci", icon: Megaphone },
+                    { id: "lead365", label: "Lead 365", icon: CalendarDays },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setDashboardSubTab(tab.id)}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        dashboardSubTab === tab.id
+                          ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-sm"
+                          : "bg-white/60 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
+                      }`}
+                    >
+                      <tab.icon className="h-3.5 w-3.5" />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
 
-            <TabsContent value="drafts" className="space-y-6">
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                {dashboardSubTab === "bozze" && (
+                <div className="space-y-6">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
                     <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
@@ -3763,148 +3419,12 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   )}
                 </CardContent>
               </Card>
-            </TabsContent>
+                </div>
+                )}
 
-            <TabsContent value="echo" className="space-y-6">
-              <EchoTab />
-            </TabsContent>
-
-            <TabsContent value="consultation-summary" className="space-y-6">
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                    <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg">
-                      <FileText className="h-4 w-4 text-white" />
-                    </div>
-                    Bozze Email Riepilogo Consulenza
-                  </CardTitle>
-                  <CardDescription className="text-slate-500 dark:text-slate-400">
-                    Email di riepilogo generate dall'AI dopo le consulenze
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {consultationDraftsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
-                    </div>
-                  ) : consultationDrafts.length === 0 ? (
-                    <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <Mail className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                      <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Nessuna bozza di riepilogo consulenza</p>
-                      <p className="text-sm text-slate-500 mt-2">
-                        Le email di riepilogo consulenza generate dall'AI appariranno qui
-                      </p>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Subject</TableHead>
-                          <TableHead>Data Consulenza</TableHead>
-                          <TableHead>Link Fathom</TableHead>
-                          <TableHead>Generata il</TableHead>
-                          <TableHead className="text-right">Azioni</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {consultationDrafts.map((draft) => (
-                          <TableRow key={draft.id}>
-                            <TableCell className="font-medium">{draft.clientName}</TableCell>
-                            <TableCell className="max-w-md truncate">{draft.subject}</TableCell>
-                            <TableCell>
-                              {draft.metadata?.consultationDate ? (
-                                <Badge variant="outline" className="bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300">
-                                  {format(new Date(draft.metadata.consultationDate), "dd/MM/yyyy", { locale: it })}
-                                </Badge>
-                              ) : (
-                                <span className="text-xs text-slate-500">N/A</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {draft.metadata?.fathomShareLink ? (
-                                <a
-                                  href={draft.metadata.fathomShareLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-cyan-600 hover:text-cyan-700 hover:underline text-sm flex items-center gap-1"
-                                >
-                                  <Eye className="h-3 w-3" />
-                                  Vedi Registrazione
-                                </a>
-                              ) : (
-                                <span className="text-xs text-slate-500">Nessun link</span>
-                              )}
-                            </TableCell>
-                            <TableCell>{format(new Date(draft.generatedAt), "dd/MM/yyyy HH:mm", { locale: it })}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
-                                  onClick={() => handlePreviewDraft(draft)}
-                                  title="Anteprima"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
-                                  onClick={() => {
-                                    console.log('💾 [SAVE FOR AI] Salvataggio riepilogo per AI');
-                                    console.log('💾 [SAVE FOR AI] Draft ID:', draft.id);
-                                    console.log('💾 [SAVE FOR AI] Cliente:', draft.clientName);
-                                    console.log('💾 [SAVE FOR AI] Consultation ID:', draft.metadata?.consultationId);
-                                    saveForAiMutation.mutate(draft.id);
-                                  }}
-                                  disabled={saveForAiMutation.isPending}
-                                  title="Salva per AI"
-                                >
-                                  <Brain className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                                  onClick={() => {
-                                    console.log('📧 [CONSULTATION EMAIL] Invio email di riepilogo consulenza');
-                                    console.log('📧 [CONSULTATION EMAIL] Draft ID:', draft.id);
-                                    console.log('📧 [CONSULTATION EMAIL] Cliente:', draft.clientName);
-                                    console.log('📧 [CONSULTATION EMAIL] Subject:', draft.subject);
-                                    console.log('📧 [CONSULTATION EMAIL] Data consulenza:', draft.metadata?.consultationDate);
-                                    console.log('📧 [CONSULTATION EMAIL] Link Fathom:', draft.metadata?.fathomShareLink);
-                                    sendConsultationDraftMutation.mutate(draft.id);
-                                  }}
-                                  disabled={sendConsultationDraftMutation.isPending}
-                                  title="Invia email"
-                                >
-                                  <Send className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                  onClick={() => deleteConsultationDraftMutation.mutate(draft.id)}
-                                  disabled={deleteConsultationDraftMutation.isPending}
-                                  title="Elimina"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="statistics" className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {dashboardSubTab === "metriche" && (
+                <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80">
                   <CardContent className="p-3">
                     <div className="flex items-center gap-3">
@@ -4286,471 +3806,12 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   })()}
                 </CardContent>
               </Card>
-            </TabsContent>
+                </div>
+                )}
 
-            <TabsContent value="clients" className="space-y-4">
-              {/* Iscritti Attivi al Journey Section */}
-              <Card className="border border-emerald-200 dark:border-emerald-700 shadow-sm">
-                <CardHeader className="py-3 px-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-emerald-500 rounded-lg">
-                        <Users className="h-4 w-4 text-white" />
-                      </div>
-                      <CardTitle className="text-base flex items-center gap-2 text-emerald-900 dark:text-emerald-100">
-                        Iscritti Attivi al Journey
-                        {clientAutomationStatus?.clients && (
-                          <Badge className="bg-emerald-500 text-white border-0 text-xs px-1.5 py-0">
-                            {clientAutomationStatus.clients.filter(c => c.automationEnabled).length}
-                          </Badge>
-                        )}
-                      </CardTitle>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="px-4 pb-3 pt-0">
-                  {clientStatusLoading ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
-                    </div>
-                  ) : (() => {
-                    const activeClients = clientAutomationStatus?.clients?.filter(c => c.automationEnabled) || [];
-                    
-                    if (activeClients.length === 0) {
-                      return (
-                        <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                          <Users className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
-                          <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">Nessun cliente iscritto</p>
-                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-                            Attiva l'automation dalla sezione sottostante
-                          </p>
-                        </div>
-                      );
-                    }
-                    
-                    return (
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="hover:bg-transparent">
-                            <TableHead className="h-8 text-xs">Cliente</TableHead>
-                            <TableHead className="h-8 text-xs">Email</TableHead>
-                            <TableHead className="h-8 text-xs text-center">Inviate</TableHead>
-                            <TableHead className="h-8 text-xs w-[80px]"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {activeClients.map((client) => (
-                            <TableRow key={client.id} className="group">
-                              <TableCell className="py-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="h-7 w-7 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                                    {client.name?.charAt(0)?.toUpperCase() || '?'}
-                                  </div>
-                                  <span className="font-medium text-sm truncate">{client.name}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="py-2 text-sm text-muted-foreground truncate max-w-[200px]">{client.email}</TableCell>
-                              <TableCell className="py-2 text-center">
-                                <Badge variant="secondary" className="text-xs px-1.5 py-0">{client.emailsSentCount}</Badge>
-                              </TableCell>
-                              <TableCell className="py-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    toggleClientAutomationMutation.mutate({
-                                      clientId: client.id,
-                                      enabled: false,
-                                    });
-                                  }}
-                                  disabled={toggleClientAutomationMutation.isPending}
-                                  className="h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
-
-              {/* Gestione Automation Clienti Section */}
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm">
-                <CardHeader className="py-3 px-4">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-slate-600 rounded-lg">
-                      <Settings className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-base text-slate-900 dark:text-slate-100">Gestione Automation</CardTitle>
-                      {clientAutomationStatus?.clients && (
-                        <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                          {clientAutomationStatus.clients.length}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="px-4 pb-3 pt-0">
-                  {clientStatusLoading ? (
-                    <div className="flex items-center justify-center py-6">
-                      <Loader2 className="h-5 w-5 animate-spin text-cyan-600" />
-                    </div>
-                  ) : !clientAutomationStatus?.clients || clientAutomationStatus.clients.length === 0 ? (
-                    <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <Users className="h-6 w-6 text-slate-400 mx-auto mb-2" />
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Nessun cliente trovato</p>
-                      <p className="text-xs text-slate-500 mt-1">Aggiungi clienti per usare l'automation</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {!automationEnabled && (
-                        <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700 py-2 mb-2">
-                          <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
-                          <AlertDescription className="text-xs text-amber-800 dark:text-amber-200">
-                            Automation generale disattivata - tutte le email vanno in bozza
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                      {clientAutomationStatus.clients.map((client) => {
-                        const isActive = automationEnabled && client.automationEnabled;
-
-                        return (
-                          <div
-                            key={client.id}
-                            className={`p-3 rounded-lg border transition-colors ${
-                              isActive 
-                                ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' 
-                                : 'bg-white dark:bg-slate-800/40 border-slate-200 dark:border-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <p className="font-medium text-sm truncate">{client.name}</p>
-                                <span className="text-xs text-muted-foreground truncate hidden sm:inline">{client.email}</span>
-                              </div>
-                              <div className="flex items-center gap-3 flex-shrink-0">
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                  <span className="flex items-center gap-1">
-                                    <Mail className="h-3 w-3 text-cyan-600" />
-                                    <span className="font-medium text-slate-700 dark:text-slate-300">{client.emailsSentCount}</span>
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <CheckCircle className="h-3 w-3 text-teal-600" />
-                                    <span className="font-medium text-slate-700 dark:text-slate-300">
-                                      {client.lastEmailSentAt 
-                                        ? format(new Date(client.lastEmailSentAt), "dd/MM", { locale: it })
-                                        : "—"}
-                                    </span>
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    {client.nextEmailDate ? (
-                                      client.daysUntilNext !== null && client.daysUntilNext <= 0 ? (
-                                        <Badge className="bg-emerald-500 text-white border-0 text-[10px] px-1.5 py-0 h-4">Pronto</Badge>
-                                      ) : client.daysUntilNext !== null && client.daysUntilNext > 0 ? (
-                                        <Badge className="bg-amber-500 text-white border-0 text-[10px] px-1.5 py-0 h-4">
-                                          {client.daysUntilNext}g
-                                        </Badge>
-                                      ) : (
-                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">Attesa</Badge>
-                                      )
-                                    ) : (
-                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">—</Badge>
-                                    )}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 border-l pl-3 border-slate-200 dark:border-slate-600">
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Switch
-                                          checked={client.automationEnabled}
-                                          onCheckedChange={(checked) => {
-                                            toggleClientAutomationMutation.mutate({
-                                              clientId: client.id,
-                                              enabled: checked,
-                                              saveAsDraft: checked ? client.saveAsDraft : false,
-                                            });
-                                          }}
-                                          disabled={toggleClientAutomationMutation.isPending}
-                                          className="scale-90"
-                                        />
-                                      </TooltipTrigger>
-                                      <TooltipContent><p>Riceve email</p></TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Switch
-                                          checked={client.automationEnabled ? (client.saveAsDraft || false) : false}
-                                          onCheckedChange={(checked) => {
-                                            toggleClientAutomationMutation.mutate({
-                                              clientId: client.id,
-                                              enabled: client.automationEnabled,
-                                              saveAsDraft: checked,
-                                            });
-                                          }}
-                                          disabled={!client.automationEnabled || toggleClientAutomationMutation.isPending}
-                                          className="data-[state=checked]:bg-amber-500 scale-90"
-                                        />
-                                      </TooltipTrigger>
-                                      <TooltipContent><p>{client.automationEnabled ? "Solo bozza" : "Attiva prima 'Riceve email'"}</p></TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="journey" className="space-y-6">
-              <EmailJourneyTab />
-            </TabsContent>
-
-            <TabsContent value="test" className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                {dashboardSubTab === "annunci" && (
+                <div className="space-y-6">
                 <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-md shadow-amber-500/20">
-                        <Zap className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">
-                          Test Generazione Email Journey
-                        </CardTitle>
-                        <CardDescription className="text-slate-500 dark:text-slate-400 mt-0.5">
-                          Simula l'invio di email per uno specifico giorno del journey (1-31)
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-0">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="test-client" className="text-sm">Seleziona Cliente</Label>
-                      <Select value={selectedClient} onValueChange={setSelectedClient}>
-                        <SelectTrigger id="test-client">
-                          <SelectValue placeholder="Scegli un cliente..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {clients.map((client: any) => (
-                            <SelectItem key={client.id} value={client.id}>
-                              {client.firstName} {client.lastName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label htmlFor="test-day" className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-3.5 w-3.5 text-slate-500" />
-                        Giorno del Journey da Testare
-                      </Label>
-                      <Select 
-                        value={selectedTestDay.toString()} 
-                        onValueChange={(value) => setSelectedTestDay(parseInt(value))}
-                      >
-                        <SelectTrigger id="test-day">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
-                            const template = journeyTemplates.find(t => t.dayOfMonth === day);
-                            const isExtra = day > 28;
-                            return (
-                              <SelectItem key={day} value={day.toString()}>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-semibold">Giorno {day}</span>
-                                  {isExtra && <Badge className="bg-amber-500 text-xs">Extra</Badge>}
-                                  {template && (
-                                    <span className="text-xs text-muted-foreground">
-                                      - {template.title}
-                                    </span>
-                                  )}
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                      {(() => {
-                        const template = journeyTemplates.find(t => t.dayOfMonth === selectedTestDay);
-                        if (template) {
-                          return (
-                            <div className="p-2.5 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg">
-                              <div className="flex items-start gap-2">
-                                <Sparkles className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400 mt-0.5 shrink-0" />
-                                <div className="text-xs text-cyan-700 dark:text-cyan-300">
-                                  <p className="font-semibold">{template.title}</p>
-                                  <p className="text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{template.description}</p>
-                                  <div className="flex gap-1.5 mt-1.5">
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-cyan-300 dark:border-cyan-700 text-cyan-700 dark:text-cyan-300">{template.emailType}</Badge>
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300">{template.tone}</Badge>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label htmlFor="manual-email" className="text-sm">Email destinatario test (opzionale)</Label>
-                      <Input
-                        id="manual-email"
-                        type="email"
-                        placeholder="test@esempio.com"
-                        value={manualEmail}
-                        onChange={(e) => setManualEmail(e.target.value)}
-                        className="w-full"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Inserisci un'email diversa da quella del cliente per il test
-                      </p>
-                    </div>
-
-                    <Button
-                      onClick={handleGenerateTest}
-                      disabled={!selectedClient || generateTestEmailMutation.isPending}
-                      className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 shadow-md shadow-cyan-500/20"
-                    >
-                      {generateTestEmailMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generazione in corso...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          Genera Email di Test
-                        </>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className={`border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm ${!selectedClient ? 'opacity-60' : ''}`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl shadow-md shadow-teal-500/20">
-                        <Eye className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">
-                          Preview Contesto AI
-                        </CardTitle>
-                        <CardDescription className="text-slate-500 dark:text-slate-400 mt-0.5">
-                          Dati utilizzati dall'AI per generare l'email
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    {!selectedClient ? (
-                      <div className="text-center py-8 bg-slate-50/80 dark:bg-slate-900/30 rounded-xl border border-dashed border-slate-300 dark:border-slate-600">
-                        <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-full w-fit mx-auto mb-3">
-                          <Users className="h-6 w-6 text-slate-400" />
-                        </div>
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Seleziona un cliente</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">per visualizzare il contesto AI</p>
-                      </div>
-                    ) : contextLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-cyan-600" />
-                      </div>
-                    ) : contextPreview ? (
-                      <div className="space-y-3">
-                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700">
-                          <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                            <Users className="h-3.5 w-3.5" />
-                            Stato Cliente
-                          </h4>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Nome</span>
-                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.name}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Livello</span>
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">{contextPreview.clientState.level}</Badge>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Obiettivi</span>
-                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.activeGoals}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Esercizi</span>
-                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.completedExercises}</span>
-                            </div>
-                            <div className="flex items-center justify-between col-span-2">
-                              <span className="text-xs text-muted-foreground">Streak</span>
-                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.streakDays} giorni</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {contextPreview.recentTasks.length > 0 && (
-                          <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-100 dark:border-cyan-800">
-                            <h4 className="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">Task Recenti</h4>
-                            <div className="space-y-1.5">
-                              {contextPreview.recentTasks.map((task, idx) => (
-                                <div key={idx} className="flex items-center justify-between text-xs">
-                                  <span className="text-slate-700 dark:text-slate-300 truncate mr-2">{task.title}</span>
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-cyan-300 dark:border-cyan-700 text-cyan-700 dark:text-cyan-300 shrink-0">{task.status}</Badge>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {contextPreview.goals.length > 0 && (
-                          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800">
-                            <h4 className="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">Obiettivi</h4>
-                            <div className="space-y-2">
-                              {contextPreview.goals.map((goal, idx) => (
-                                <div key={idx} className="space-y-1">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="text-slate-700 dark:text-slate-300 truncate mr-2">{goal.title}</span>
-                                    <span className="text-muted-foreground shrink-0">{goal.progress}%</span>
-                                  </div>
-                                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
-                                    <div 
-                                      className="bg-gradient-to-r from-emerald-500 to-teal-500 h-1.5 rounded-full transition-all" 
-                                      style={{ width: `${goal.progress}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nessun dato disponibile per questo cliente
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="updates" className="space-y-6">
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
                     <div className="p-2 bg-gradient-to-br from-rose-500 to-pink-500 rounded-lg">
@@ -4951,11 +4012,12 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
+                </div>
+                )}
 
-            {/* Nurturing 365 Tab */}
-            <TabsContent value="nurturing" className="space-y-6">
-              {/* Sub-tab Navigation */}
+                {dashboardSubTab === "lead365" && (
+                <div className="space-y-6">
+                {/* Sub-tab Navigation */}
               <div className="flex flex-wrap gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                 {[
                   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -6468,13 +5530,1102 @@ Non limitarti a stato attuale/ideale. Attingi da:
               </div>
               )}
 
-            </TabsContent>
-          </Tabs>
-          </>
-          )}
+                </div>
+                )}
+              </div>
+              )}
+
+              {mainTab === "echo" && (
+              <div className="space-y-6">
+                <div className="flex gap-1.5 flex-wrap">
+                  {[
+                    { id: "riepilogo", label: "Riepilogo Consulenze", icon: Mail },
+                    { id: "memoria", label: "Inserisci Memoria", icon: Brain },
+                    { id: "clienti", label: "Email Clienti", icon: Users },
+                    { id: "percorso", label: "Percorso", icon: Route },
+                    { id: "simulatore", label: "Simulatore", icon: Zap },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setEchoSubTab(tab.id)}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        echoSubTab === tab.id
+                          ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-sm"
+                          : "bg-white/60 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
+                      }`}
+                    >
+                      <tab.icon className="h-3.5 w-3.5" />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {echoSubTab === "riepilogo" && (
+                <div className="space-y-6">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg">
+                      <FileText className="h-4 w-4 text-white" />
+                    </div>
+                    Bozze Email Riepilogo Consulenza
+                  </CardTitle>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
+                    Email di riepilogo generate dall'AI dopo le consulenze
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {consultationDraftsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
+                    </div>
+                  ) : consultationDrafts.length === 0 ? (
+                    <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <Mail className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                      <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Nessuna bozza di riepilogo consulenza</p>
+                      <p className="text-sm text-slate-500 mt-2">
+                        Le email di riepilogo consulenza generate dall'AI appariranno qui
+                      </p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Subject</TableHead>
+                          <TableHead>Data Consulenza</TableHead>
+                          <TableHead>Link Fathom</TableHead>
+                          <TableHead>Generata il</TableHead>
+                          <TableHead className="text-right">Azioni</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {consultationDrafts.map((draft) => (
+                          <TableRow key={draft.id}>
+                            <TableCell className="font-medium">{draft.clientName}</TableCell>
+                            <TableCell className="max-w-md truncate">{draft.subject}</TableCell>
+                            <TableCell>
+                              {draft.metadata?.consultationDate ? (
+                                <Badge variant="outline" className="bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300">
+                                  {format(new Date(draft.metadata.consultationDate), "dd/MM/yyyy", { locale: it })}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-slate-500">N/A</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {draft.metadata?.fathomShareLink ? (
+                                <a
+                                  href={draft.metadata.fathomShareLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-cyan-600 hover:text-cyan-700 hover:underline text-sm flex items-center gap-1"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  Vedi Registrazione
+                                </a>
+                              ) : (
+                                <span className="text-xs text-slate-500">Nessun link</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{format(new Date(draft.generatedAt), "dd/MM/yyyy HH:mm", { locale: it })}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
+                                  onClick={() => handlePreviewDraft(draft)}
+                                  title="Anteprima"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
+                                  onClick={() => {
+                                    console.log('💾 [SAVE FOR AI] Salvataggio riepilogo per AI');
+                                    console.log('💾 [SAVE FOR AI] Draft ID:', draft.id);
+                                    console.log('💾 [SAVE FOR AI] Cliente:', draft.clientName);
+                                    console.log('💾 [SAVE FOR AI] Consultation ID:', draft.metadata?.consultationId);
+                                    saveForAiMutation.mutate(draft.id);
+                                  }}
+                                  disabled={saveForAiMutation.isPending}
+                                  title="Salva per AI"
+                                >
+                                  <Brain className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                                  onClick={() => {
+                                    console.log('📧 [CONSULTATION EMAIL] Invio email di riepilogo consulenza');
+                                    console.log('📧 [CONSULTATION EMAIL] Draft ID:', draft.id);
+                                    console.log('📧 [CONSULTATION EMAIL] Cliente:', draft.clientName);
+                                    console.log('📧 [CONSULTATION EMAIL] Subject:', draft.subject);
+                                    console.log('📧 [CONSULTATION EMAIL] Data consulenza:', draft.metadata?.consultationDate);
+                                    console.log('📧 [CONSULTATION EMAIL] Link Fathom:', draft.metadata?.fathomShareLink);
+                                    sendConsultationDraftMutation.mutate(draft.id);
+                                  }}
+                                  disabled={sendConsultationDraftMutation.isPending}
+                                  title="Invia email"
+                                >
+                                  <Send className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                  onClick={() => deleteConsultationDraftMutation.mutate(draft.id)}
+                                  disabled={deleteConsultationDraftMutation.isPending}
+                                  title="Elimina"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+                </div>
+                )}
+
+                {echoSubTab === "memoria" && (
+                <div className="space-y-6">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                      <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg">
+                        <Brain className="h-4 w-4 text-white" />
+                      </div>
+                      Inserisci Memoria Cliente
+                    </CardTitle>
+                    <CardDescription className="text-slate-500 dark:text-slate-400">
+                      Aggiungi note e memorie come se avessi fatto una consulenza. Verranno salvate nel contesto AI del cliente.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Cliente</Label>
+                      <Select value={memoryClientId} onValueChange={setMemoryClientId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona un cliente..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients?.map((client: any) => (
+                            <SelectItem key={client.id} value={client.id}>
+                              {client.firstName} {client.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Note / Memoria della consulenza</Label>
+                      <Textarea
+                        placeholder="Scrivi qui le note della consulenza, argomenti discussi, decisioni prese, prossimi passi..."
+                        value={memoryText}
+                        onChange={(e) => setMemoryText(e.target.value)}
+                        rows={6}
+                        className="bg-white dark:bg-slate-800"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Data e ora della consulenza</Label>
+                      <Input
+                        type="datetime-local"
+                        value={memoryDate}
+                        onChange={(e) => setMemoryDate(e.target.value)}
+                        className="max-w-[280px]"
+                      />
+                      <p className="text-xs text-muted-foreground">Lascia vuoto per usare la data/ora corrente</p>
+                    </div>
+
+                    <Button
+                      onClick={() => {
+                        if (!memoryClientId || !memoryText.trim()) {
+                          toast({ title: "Attenzione", description: "Seleziona un cliente e scrivi almeno una nota", variant: "destructive" });
+                          return;
+                        }
+                        saveClientMemoryMutation.mutate({
+                          clientId: memoryClientId,
+                          memory: memoryText,
+                          consultationDate: memoryDate || undefined,
+                        });
+                      }}
+                      disabled={saveClientMemoryMutation.isPending || !memoryClientId || !memoryText.trim()}
+                      className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white"
+                    >
+                      {saveClientMemoryMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Salvataggio...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Salva Memoria
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+                </div>
+                )}
+
+                {echoSubTab === "clienti" && (
+                <div className="space-y-4">
+                {/* Iscritti Attivi al Journey Section */}
+              <Card className="border border-emerald-200 dark:border-emerald-700 shadow-sm">
+                <CardHeader className="py-3 px-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-emerald-500 rounded-lg">
+                        <Users className="h-4 w-4 text-white" />
+                      </div>
+                      <CardTitle className="text-base flex items-center gap-2 text-emerald-900 dark:text-emerald-100">
+                        Iscritti Attivi al Journey
+                        {clientAutomationStatus?.clients && (
+                          <Badge className="bg-emerald-500 text-white border-0 text-xs px-1.5 py-0">
+                            {clientAutomationStatus.clients.filter(c => c.automationEnabled).length}
+                          </Badge>
+                        )}
+                      </CardTitle>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-4 pb-3 pt-0">
+                  {clientStatusLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                    </div>
+                  ) : (() => {
+                    const activeClients = clientAutomationStatus?.clients?.filter(c => c.automationEnabled) || [];
+                    
+                    if (activeClients.length === 0) {
+                      return (
+                        <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                          <Users className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
+                          <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">Nessun cliente iscritto</p>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                            Attiva l'automation dalla sezione sottostante
+                          </p>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead className="h-8 text-xs">Cliente</TableHead>
+                            <TableHead className="h-8 text-xs">Email</TableHead>
+                            <TableHead className="h-8 text-xs text-center">Inviate</TableHead>
+                            <TableHead className="h-8 text-xs w-[80px]"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {activeClients.map((client) => (
+                            <TableRow key={client.id} className="group">
+                              <TableCell className="py-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-7 w-7 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                                    {client.name?.charAt(0)?.toUpperCase() || '?'}
+                                  </div>
+                                  <span className="font-medium text-sm truncate">{client.name}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-2 text-sm text-muted-foreground truncate max-w-[200px]">{client.email}</TableCell>
+                              <TableCell className="py-2 text-center">
+                                <Badge variant="secondary" className="text-xs px-1.5 py-0">{client.emailsSentCount}</Badge>
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    toggleClientAutomationMutation.mutate({
+                                      clientId: client.id,
+                                      enabled: false,
+                                    });
+                                  }}
+                                  disabled={toggleClientAutomationMutation.isPending}
+                                  className="h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+
+              {/* Gestione Automation Clienti Section */}
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm">
+                <CardHeader className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-slate-600 rounded-lg">
+                      <Settings className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base text-slate-900 dark:text-slate-100">Gestione Automation</CardTitle>
+                      {clientAutomationStatus?.clients && (
+                        <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                          {clientAutomationStatus.clients.length}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-4 pb-3 pt-0">
+                  {clientStatusLoading ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-cyan-600" />
+                    </div>
+                  ) : !clientAutomationStatus?.clients || clientAutomationStatus.clients.length === 0 ? (
+                    <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <Users className="h-6 w-6 text-slate-400 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Nessun cliente trovato</p>
+                      <p className="text-xs text-slate-500 mt-1">Aggiungi clienti per usare l'automation</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {!automationEnabled && (
+                        <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700 py-2 mb-2">
+                          <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                          <AlertDescription className="text-xs text-amber-800 dark:text-amber-200">
+                            Automation generale disattivata - tutte le email vanno in bozza
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      {clientAutomationStatus.clients.map((client) => {
+                        const isActive = automationEnabled && client.automationEnabled;
+
+                        return (
+                          <div
+                            key={client.id}
+                            className={`p-3 rounded-lg border transition-colors ${
+                              isActive 
+                                ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' 
+                                : 'bg-white dark:bg-slate-800/40 border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <p className="font-medium text-sm truncate">{client.name}</p>
+                                <span className="text-xs text-muted-foreground truncate hidden sm:inline">{client.email}</span>
+                              </div>
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <Mail className="h-3 w-3 text-cyan-600" />
+                                    <span className="font-medium text-slate-700 dark:text-slate-300">{client.emailsSentCount}</span>
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <CheckCircle className="h-3 w-3 text-teal-600" />
+                                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                                      {client.lastEmailSentAt 
+                                        ? format(new Date(client.lastEmailSentAt), "dd/MM", { locale: it })
+                                        : "—"}
+                                    </span>
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    {client.nextEmailDate ? (
+                                      client.daysUntilNext !== null && client.daysUntilNext <= 0 ? (
+                                        <Badge className="bg-emerald-500 text-white border-0 text-[10px] px-1.5 py-0 h-4">Pronto</Badge>
+                                      ) : client.daysUntilNext !== null && client.daysUntilNext > 0 ? (
+                                        <Badge className="bg-amber-500 text-white border-0 text-[10px] px-1.5 py-0 h-4">
+                                          {client.daysUntilNext}g
+                                        </Badge>
+                                      ) : (
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">Attesa</Badge>
+                                      )
+                                    ) : (
+                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">—</Badge>
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 border-l pl-3 border-slate-200 dark:border-slate-600">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Switch
+                                          checked={client.automationEnabled}
+                                          onCheckedChange={(checked) => {
+                                            toggleClientAutomationMutation.mutate({
+                                              clientId: client.id,
+                                              enabled: checked,
+                                              saveAsDraft: checked ? client.saveAsDraft : false,
+                                            });
+                                          }}
+                                          disabled={toggleClientAutomationMutation.isPending}
+                                          className="scale-90"
+                                        />
+                                      </TooltipTrigger>
+                                      <TooltipContent><p>Riceve email</p></TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Switch
+                                          checked={client.automationEnabled ? (client.saveAsDraft || false) : false}
+                                          onCheckedChange={(checked) => {
+                                            toggleClientAutomationMutation.mutate({
+                                              clientId: client.id,
+                                              enabled: client.automationEnabled,
+                                              saveAsDraft: checked,
+                                            });
+                                          }}
+                                          disabled={!client.automationEnabled || toggleClientAutomationMutation.isPending}
+                                          className="data-[state=checked]:bg-amber-500 scale-90"
+                                        />
+                                      </TooltipTrigger>
+                                      <TooltipContent><p>{client.automationEnabled ? "Solo bozza" : "Attiva prima 'Riceve email'"}</p></TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+                </div>
+                )}
+
+                {echoSubTab === "percorso" && (
+                <div className="space-y-6">
+                <EmailJourneyTab />
+                </div>
+                )}
+
+                {echoSubTab === "simulatore" && (
+                <div className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-md shadow-amber-500/20">
+                        <Zap className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">
+                          Test Generazione Email Journey
+                        </CardTitle>
+                        <CardDescription className="text-slate-500 dark:text-slate-400 mt-0.5">
+                          Simula l'invio di email per uno specifico giorno del journey (1-31)
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="test-client" className="text-sm">Seleziona Cliente</Label>
+                      <Select value={selectedClient} onValueChange={setSelectedClient}>
+                        <SelectTrigger id="test-client">
+                          <SelectValue placeholder="Scegli un cliente..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients.map((client: any) => (
+                            <SelectItem key={client.id} value={client.id}>
+                              {client.firstName} {client.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="test-day" className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                        Giorno del Journey da Testare
+                      </Label>
+                      <Select 
+                        value={selectedTestDay.toString()} 
+                        onValueChange={(value) => setSelectedTestDay(parseInt(value))}
+                      >
+                        <SelectTrigger id="test-day">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
+                            const template = journeyTemplates.find(t => t.dayOfMonth === day);
+                            const isExtra = day > 28;
+                            return (
+                              <SelectItem key={day} value={day.toString()}>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold">Giorno {day}</span>
+                                  {isExtra && <Badge className="bg-amber-500 text-xs">Extra</Badge>}
+                                  {template && (
+                                    <span className="text-xs text-muted-foreground">
+                                      - {template.title}
+                                    </span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      {(() => {
+                        const template = journeyTemplates.find(t => t.dayOfMonth === selectedTestDay);
+                        if (template) {
+                          return (
+                            <div className="p-2.5 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <Sparkles className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400 mt-0.5 shrink-0" />
+                                <div className="text-xs text-cyan-700 dark:text-cyan-300">
+                                  <p className="font-semibold">{template.title}</p>
+                                  <p className="text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{template.description}</p>
+                                  <div className="flex gap-1.5 mt-1.5">
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-cyan-300 dark:border-cyan-700 text-cyan-700 dark:text-cyan-300">{template.emailType}</Badge>
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300">{template.tone}</Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="manual-email" className="text-sm">Email destinatario test (opzionale)</Label>
+                      <Input
+                        id="manual-email"
+                        type="email"
+                        placeholder="test@esempio.com"
+                        value={manualEmail}
+                        onChange={(e) => setManualEmail(e.target.value)}
+                        className="w-full"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Inserisci un'email diversa da quella del cliente per il test
+                      </p>
+                    </div>
+
+                    <Button
+                      onClick={handleGenerateTest}
+                      disabled={!selectedClient || generateTestEmailMutation.isPending}
+                      className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 shadow-md shadow-cyan-500/20"
+                    >
+                      {generateTestEmailMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generazione in corso...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Genera Email di Test
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className={`border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm ${!selectedClient ? 'opacity-60' : ''}`}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl shadow-md shadow-teal-500/20">
+                        <Eye className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">
+                          Preview Contesto AI
+                        </CardTitle>
+                        <CardDescription className="text-slate-500 dark:text-slate-400 mt-0.5">
+                          Dati utilizzati dall'AI per generare l'email
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {!selectedClient ? (
+                      <div className="text-center py-8 bg-slate-50/80 dark:bg-slate-900/30 rounded-xl border border-dashed border-slate-300 dark:border-slate-600">
+                        <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-full w-fit mx-auto mb-3">
+                          <Users className="h-6 w-6 text-slate-400" />
+                        </div>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Seleziona un cliente</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">per visualizzare il contesto AI</p>
+                      </div>
+                    ) : contextLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-cyan-600" />
+                      </div>
+                    ) : contextPreview ? (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                            <Users className="h-3.5 w-3.5" />
+                            Stato Cliente
+                          </h4>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Nome</span>
+                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.name}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Livello</span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">{contextPreview.clientState.level}</Badge>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Obiettivi</span>
+                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.activeGoals}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Esercizi</span>
+                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.completedExercises}</span>
+                            </div>
+                            <div className="flex items-center justify-between col-span-2">
+                              <span className="text-xs text-muted-foreground">Streak</span>
+                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.streakDays} giorni</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {contextPreview.recentTasks.length > 0 && (
+                          <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-100 dark:border-cyan-800">
+                            <h4 className="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">Task Recenti</h4>
+                            <div className="space-y-1.5">
+                              {contextPreview.recentTasks.map((task, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-xs">
+                                  <span className="text-slate-700 dark:text-slate-300 truncate mr-2">{task.title}</span>
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-cyan-300 dark:border-cyan-700 text-cyan-700 dark:text-cyan-300 shrink-0">{task.status}</Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {contextPreview.goals.length > 0 && (
+                          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                            <h4 className="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">Obiettivi</h4>
+                            <div className="space-y-2">
+                              {contextPreview.goals.map((goal, idx) => (
+                                <div key={idx} className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-slate-700 dark:text-slate-300 truncate mr-2">{goal.title}</span>
+                                    <span className="text-muted-foreground shrink-0">{goal.progress}%</span>
+                                  </div>
+                                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
+                                    <div 
+                                      className="bg-gradient-to-r from-emerald-500 to-teal-500 h-1.5 rounded-full transition-all" 
+                                      style={{ width: `${goal.progress}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nessun dato disponibile per questo cliente
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+                </div>
+                )}
+              </div>
+              )}
+            </div>
+            </>
+            )}
+            </div>
           </div>
         </div>
-      </div>
+
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
+                  <Settings className="h-4 w-4 text-white" />
+                </div>
+                Impostazioni Email Automation
+              </DialogTitle>
+              <DialogDescription>
+                Configura SMTP, automazione, frequenza e scheduler
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 pt-2">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
+                      <Settings className="h-4 w-4 text-white" />
+                    </div>
+                    Impostazioni Automation
+                  </CardTitle>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
+                    Configura l'automazione generale delle email AI
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {!isSmtpConfigured && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        Configurazione SMTP mancante! Le email non possono essere inviate. Configura SMTP prima di attivare l'automation.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="space-y-1">
+                      <Label htmlFor="automation-toggle" className="text-base font-semibold">
+                        Automation Generale
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {automationEnabled 
+                          ? "Solo i clienti selezionati ricevono email automatiche" 
+                          : "Tutte le email vanno in bozza per approvazione manuale"}
+                      </p>
+                    </div>
+                    <Switch
+                      id="automation-toggle"
+                      checked={automationEnabled}
+                      onCheckedChange={(checked) => {
+                        setAutomationEnabled(checked);
+                        handleSaveAutomationSettings(checked);
+                      }}
+                      disabled={!isSmtpConfigured || updateSmtpMutation.isPending}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email-frequency">Frequenza Email (giorni)</Label>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        id="email-frequency"
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={emailFrequency || ''}
+                        onChange={(e) => {
+                          const inputValue = e.target.value;
+                          if (inputValue === '') {
+                            setEmailFrequency(2);
+                            return;
+                          }
+                          const val = parseInt(inputValue, 10);
+                          if (!isNaN(val) && val >= 1 && val <= 30) {
+                            setEmailFrequency(val);
+                          }
+                        }}
+                        className="max-w-[200px]"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        Invia email ogni {emailFrequency || 2} giorni
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Finestra Oraria Invio (ora italiana)</Label>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Le email verranno inviate SOLO in questa fascia oraria. Fuori da questa finestra, il sistema aspetterà.
+                    </p>
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="send-window-start" className="text-sm whitespace-nowrap">Dalle:</Label>
+                        <Input
+                          id="send-window-start"
+                          type="time"
+                          value={sendWindowStart}
+                          onChange={(e) => setSendWindowStart(e.target.value)}
+                          className="w-[120px]"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="send-window-end" className="text-sm whitespace-nowrap">Alle:</Label>
+                        <Input
+                          id="send-window-end"
+                          type="time"
+                          value={sendWindowEnd}
+                          onChange={(e) => setSendWindowEnd(e.target.value)}
+                          className="w-[120px]"
+                        />
+                      </div>
+                      <Button
+                        onClick={() => handleSaveAutomationSettings()}
+                        disabled={updateSmtpMutation.isPending}
+                        size="sm"
+                      >
+                        {updateSmtpMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Salvataggio...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Salva Impostazioni
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Esempio: 13:00 - 14:00 significa che le email saranno inviate solo tra le 13:00 e le 14:00 ora italiana
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-lg">
+                      <Clock className="h-4 w-4 text-white" />
+                    </div>
+                    Centro Controllo Scheduler
+                  </CardTitle>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
+                    Gestisci lo scheduler per l'invio automatico delle email
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {schedulerStatusLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
+                    </div>
+                  ) : schedulerStatus ? (
+                    <>
+                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div className="space-y-1">
+                          <Label className="text-base font-semibold text-slate-700 dark:text-slate-300">Stato Scheduler</Label>
+                          <div className="flex items-center gap-2 mt-2">
+                            {schedulerStatus.schedulerEnabled && !schedulerStatus.schedulerPaused ? (
+                              <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white">Attivo</Badge>
+                            ) : schedulerStatus.schedulerEnabled && schedulerStatus.schedulerPaused ? (
+                              <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white">In Pausa</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="bg-slate-200 text-slate-600">Disattivato</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar className="h-4 w-4 text-cyan-600" />
+                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Ultima esecuzione</Label>
+                          </div>
+                          <p className="text-base font-medium text-slate-900 dark:text-slate-100">
+                            {schedulerStatus.lastSchedulerRun 
+                              ? format(new Date(schedulerStatus.lastSchedulerRun), "dd/MM/yyyy HH:mm", { locale: it })
+                              : "Mai eseguito"}
+                          </p>
+                        </div>
+
+                        <div className="p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar className="h-4 w-4 text-teal-600" />
+                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Prossima esecuzione</Label>
+                          </div>
+                          <p className="text-base font-medium text-slate-900 dark:text-slate-100">
+                            {schedulerStatus.nextSchedulerRun 
+                              ? format(new Date(schedulerStatus.nextSchedulerRun), "dd/MM/yyyy HH:mm", { locale: it })
+                              : "Non programmata"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3">
+                        {!schedulerStatus.schedulerEnabled && (
+                          <Button
+                            onClick={() => startSchedulerMutation.mutate()}
+                            disabled={startSchedulerMutation.isPending}
+                            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md"
+                          >
+                            {startSchedulerMutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Avvio...
+                              </>
+                            ) : (
+                              <>
+                                <Play className="mr-2 h-4 w-4" />
+                                Avvia Scheduler
+                              </>
+                            )}
+                          </Button>
+                        )}
+
+                        {schedulerStatus.schedulerEnabled && !schedulerStatus.schedulerPaused && (
+                          <Button
+                            onClick={() => pauseSchedulerMutation.mutate()}
+                            disabled={pauseSchedulerMutation.isPending}
+                            variant="outline"
+                            className="border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                          >
+                            {pauseSchedulerMutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Pausa...
+                              </>
+                            ) : (
+                              <>
+                                <Pause className="mr-2 h-4 w-4" />
+                                Pausa
+                              </>
+                            )}
+                          </Button>
+                        )}
+
+                        {schedulerStatus.schedulerEnabled && schedulerStatus.schedulerPaused && (
+                          <Button
+                            onClick={() => resumeSchedulerMutation.mutate()}
+                            disabled={resumeSchedulerMutation.isPending}
+                            className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-md"
+                          >
+                            {resumeSchedulerMutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Ripristino...
+                              </>
+                            ) : (
+                              <>
+                                <Play className="mr-2 h-4 w-4" />
+                                Riprendi
+                              </>
+                            )}
+                          </Button>
+                        )}
+
+                        {schedulerStatus.schedulerEnabled && (
+                          <Button
+                            onClick={() => stopSchedulerMutation.mutate()}
+                            disabled={stopSchedulerMutation.isPending}
+                            variant="destructive"
+                          >
+                            {stopSchedulerMutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Arresto...
+                              </>
+                            ) : (
+                              <>
+                                <Square className="mr-2 h-4 w-4" />
+                                Ferma
+                              </>
+                            )}
+                          </Button>
+                        )}
+
+                        <Button
+                          onClick={() => {
+                            if (executeNowMutation.isPending) return;
+                            if (confirm("Vuoi eseguire lo scheduler immediatamente?")) {
+                              executeNowMutation.mutate();
+                            }
+                          }}
+                          disabled={executeNowMutation.isPending}
+                          variant="outline"
+                          className="border-cyan-500 text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
+                        >
+                          {executeNowMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Esecuzione...
+                            </>
+                          ) : (
+                            <>
+                              <RotateCw className="mr-2 h-4 w-4" />
+                              Esegui Ora
+                            </>
+                          )}
+                        </Button>
+                      </div>
+
+                      <div className="pt-4">
+                        <Label className="text-base font-semibold mb-4 block text-slate-700 dark:text-slate-300">Ultimi 10 Log</Label>
+                        {schedulerLogsLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
+                          </div>
+                        ) : schedulerLogs.length === 0 ? (
+                          <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <Clock className="h-10 w-10 text-slate-400 mx-auto mb-3" />
+                            <p className="text-sm text-slate-500">Nessuna esecuzione registrata</p>
+                          </div>
+                        ) : (
+                          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Data/Ora</TableHead>
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Clienti Processati</TableHead>
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Email Inviate</TableHead>
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Draft Creati</TableHead>
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Errori</TableHead>
+                                  <TableHead className="text-slate-700 dark:text-slate-300">Status</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {schedulerLogs.map((log) => (
+                                  <TableRow key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                                    <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                                      {format(new Date(log.executedAt), "dd/MM/yyyy HH:mm", { locale: it })}
+                                    </TableCell>
+                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.clientsProcessed}</TableCell>
+                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.emailsSent}</TableCell>
+                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.draftsCreated}</TableCell>
+                                    <TableCell className="text-slate-600 dark:text-slate-400">{log.errors}</TableCell>
+                                    <TableCell>
+                                      {log.status === 'success' && (
+                                        <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white">Success</Badge>
+                                      )}
+                                      {log.status === 'partial' && (
+                                        <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white">Partial</Badge>
+                                      )}
+                                      {log.status === 'failed' && (
+                                        <Badge variant="destructive">Failed</Badge>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Impossibile caricare lo stato dello scheduler
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </DialogContent>
+        </Dialog>
 
       <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">

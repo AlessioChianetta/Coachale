@@ -12917,6 +12917,48 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  app.post("/api/consultant/client-memory", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { clientId, memory, consultationDate } = req.body;
+      if (!clientId || !memory?.trim()) {
+        return res.status(400).json({ message: "clientId e memory sono obbligatori" });
+      }
+
+      const client = await storage.getUser(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Cliente non trovato" });
+      }
+
+      if (client.consultantId !== req.user!.id) {
+        return res.status(403).json({ message: "Non hai accesso a questo cliente" });
+      }
+
+      if (memory.trim().length > 10000) {
+        return res.status(400).json({ message: "La nota è troppo lunga (max 10000 caratteri)" });
+      }
+
+      if (consultationDate && isNaN(new Date(consultationDate).getTime())) {
+        return res.status(400).json({ message: "Data consulenza non valida" });
+      }
+
+      const { alessiaClientMemory } = await import("../shared/schema");
+      await db.insert(alessiaClientMemory).values({
+        consultantId: req.user!.id,
+        clientId,
+        interactionType: "manual_note",
+        interactionDate: consultationDate ? new Date(consultationDate) : new Date(),
+        summary: memory.trim(),
+        sentiment: "neutral",
+      });
+
+      console.log(`📝 [CLIENT MEMORY] Manual memory saved for client ${clientId} by consultant ${req.user!.id}`);
+      res.json({ success: true, message: "Memoria salvata con successo" });
+    } catch (error: any) {
+      console.error("❌ [CLIENT MEMORY] Error:", error);
+      res.status(500).json({ message: error.message || "Errore nel salvataggio della memoria" });
+    }
+  });
+
   // Get daily summaries
   app.get("/api/consultant/ai/daily-summaries", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
