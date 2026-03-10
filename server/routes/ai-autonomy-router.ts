@@ -7113,13 +7113,22 @@ Rispondi in modo utile e professionale basandoti sulla conversazione con questa 
         const clientIds = (clientIdsResult.rows as any[]).map(r => r.id);
         const roleData = await autonomousRole.fetchRoleData(consultantId, clientIds);
         if (roleData && Object.keys(roleData).length > 0) {
-          let roleDataSection = '\nDATI OPERATIVI IN TEMPO REALE:\n';
-          for (const [key, value] of Object.entries(roleData)) {
-            if (key === 'fileSearchStoreNames' || key === 'kbDocumentTitles') continue;
-            const jsonStr = JSON.stringify(value, null, 0);
-            roleDataSection += `${key}: ${jsonStr.length > 2000 ? jsonStr.substring(0, 2000) + '...' : jsonStr}\n`;
+          if (autonomousRole?.buildPrompt) {
+            const romeTimeStr = new Date().toLocaleString('it-IT', {
+              timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit',
+              day: '2-digit', hour: '2-digit', minute: '2-digit',
+            });
+            const richPrompt = autonomousRole.buildPrompt({ roleData, romeTimeStr });
+            systemPrompt = richPrompt + '\n\n' + systemPrompt.substring(personality.length);
+          } else {
+            let roleDataSection = '\nDATI OPERATIVI IN TEMPO REALE:\n';
+            for (const [key, value] of Object.entries(roleData)) {
+              if (key === 'fileSearchStoreNames' || key === 'kbDocumentTitles') continue;
+              const jsonStr = JSON.stringify(value, null, 0);
+              roleDataSection += `${key}: ${jsonStr}\n`;
+            }
+            systemPrompt += roleDataSection;
           }
-          systemPrompt += roleDataSection;
         }
       }
     } catch (roleDataErr: any) {

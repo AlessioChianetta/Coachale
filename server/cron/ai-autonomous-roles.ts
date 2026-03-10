@@ -2730,6 +2730,25 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         }
       }
 
+      if (!linkedTemplate) {
+        try {
+          const fallbackResult = await db.execute(sql`
+            SELECT name, topic, target_audience, objective,
+                   market_research_data, market_research_problems
+            FROM content_idea_templates
+            WHERE consultant_id = ${consultantId}
+            ORDER BY is_default DESC, updated_at DESC
+            LIMIT 1
+          `);
+          if (fallbackResult.rows.length > 0) {
+            linkedTemplate = fallbackResult.rows[0];
+            console.log(`[ARCHITETTO] Auto-fallback to most recent template: "${(linkedTemplate as any).name}"`);
+          }
+        } catch (e: any) {
+          console.warn(`[ARCHITETTO] Failed to fetch fallback template: ${e.message}`);
+        }
+      }
+
       let brandVoice: any = null;
       try {
         const bvResult = await db.execute(sql`

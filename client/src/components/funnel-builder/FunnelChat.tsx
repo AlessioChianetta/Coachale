@@ -132,6 +132,7 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [linkedTemplateLoaded, setLinkedTemplateLoaded] = useState(false);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -188,7 +189,14 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
         setSelectedTemplateId(data.linkedTemplateId || null);
       }
     } catch {}
+    setLinkedTemplateLoaded(true);
   };
+
+  useEffect(() => {
+    if (linkedTemplateLoaded && templates.length > 0 && selectedTemplateId === null) {
+      setSelectedTemplateId(templates[0].id);
+    }
+  }, [templates, linkedTemplateLoaded]);
 
   const saveLinkedTemplate = async (templateId: string | null) => {
     setSavingTemplate(true);
