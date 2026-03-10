@@ -60,6 +60,15 @@ export interface FunnelNodeType {
   description: string;
 }
 
+export type NodeStatus = "active" | "draft" | "paused" | "disabled";
+
+export const NODE_STATUS_CONFIG: Record<NodeStatus, { label: string; color: string; dotColor: string }> = {
+  active: { label: "Attivo", color: "text-green-600 dark:text-green-400", dotColor: "bg-green-500" },
+  draft: { label: "Bozza", color: "text-yellow-600 dark:text-yellow-400", dotColor: "bg-yellow-500" },
+  paused: { label: "In Pausa", color: "text-orange-600 dark:text-orange-400", dotColor: "bg-orange-500" },
+  disabled: { label: "Disabilitato", color: "text-gray-500 dark:text-gray-400", dotColor: "bg-gray-400" },
+};
+
 export interface FunnelNodeData {
   type: string;
   label: string;
@@ -68,6 +77,12 @@ export interface FunnelNodeData {
   conversionRate?: number;
   category: NodeCategory;
   linkedEntity?: LinkedEntity | null;
+  status?: NodeStatus;
+  color?: string;
+  tags?: string[];
+  delayMinutes?: number;
+  conditionLabel?: string;
+  priority?: "low" | "medium" | "high";
 }
 
 export interface LinkedEntity {

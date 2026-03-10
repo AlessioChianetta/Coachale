@@ -2,10 +2,12 @@ import React, { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Clock, Zap } from "lucide-react";
 import {
   type FunnelNodeData,
   type EntityType,
   CATEGORY_COLORS,
+  NODE_STATUS_CONFIG,
   getNodeTypeDefinition,
 } from "./funnel-node-types";
 
@@ -25,16 +27,22 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
   const typeDef = getNodeTypeDefinition(nodeData.type);
   const colors = CATEGORY_COLORS[nodeData.category] || CATEGORY_COLORS.custom;
   const Icon = typeDef?.icon;
+  const status = (nodeData.status && nodeData.status in NODE_STATUS_CONFIG) ? nodeData.status : "draft";
+  const statusCfg = NODE_STATUS_CONFIG[status];
+  const accentColor = nodeData.color || colors.accent;
 
   return (
     <div
       className={cn(
         "relative min-w-[180px] max-w-[220px] rounded-lg border-2 shadow-md transition-all duration-200",
         colors.bg,
-        colors.border,
         selected && "ring-2 ring-offset-2 ring-blue-500 shadow-lg scale-105"
       )}
-      style={{ borderLeftWidth: "4px", borderLeftColor: colors.accent }}
+      style={{
+        borderColor: `${accentColor}40`,
+        borderLeftWidth: "4px",
+        borderLeftColor: accentColor,
+      }}
     >
       <Handle
         type="target"
@@ -42,15 +50,19 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
         className="!w-3 !h-3 !bg-gray-400 dark:!bg-gray-500 !border-2 !border-white dark:!border-gray-800"
       />
 
+      <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+        <span
+          className={cn("w-2 h-2 rounded-full", statusCfg.dotColor)}
+          title={statusCfg.label}
+        />
+      </div>
+
       <div className="p-3">
         <div className="flex items-center gap-2 mb-1">
           {Icon && (
             <div
-              className={cn(
-                "w-7 h-7 rounded-md flex items-center justify-center shrink-0",
-                colors.text
-              )}
-              style={{ backgroundColor: `${colors.accent}20` }}
+              className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+              style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
             >
               <Icon className="w-4 h-4" />
             </div>
@@ -67,11 +79,41 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
           </div>
         </div>
 
-        {nodeData.conversionRate !== undefined && nodeData.conversionRate > 0 && (
-          <div className="mt-1">
+        <div className="flex flex-wrap items-center gap-1 mt-1">
+          {nodeData.conversionRate !== undefined && nodeData.conversionRate > 0 && (
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
               {nodeData.conversionRate}% conv.
             </Badge>
+          )}
+          {nodeData.delayMinutes != null && nodeData.delayMinutes > 0 && (
+            <Badge variant="outline" className="text-[10px] px-1 py-0 gap-0.5">
+              <Clock className="w-2.5 h-2.5" />
+              {nodeData.delayMinutes >= 60
+                ? `${Math.floor(nodeData.delayMinutes / 60)}h${nodeData.delayMinutes % 60 ? ` ${nodeData.delayMinutes % 60}m` : ""}`
+                : `${nodeData.delayMinutes}m`}
+            </Badge>
+          )}
+          {nodeData.conditionLabel && (
+            <Badge variant="outline" className="text-[10px] px-1 py-0 gap-0.5 border-amber-300 text-amber-600 dark:text-amber-400">
+              <Zap className="w-2.5 h-2.5" />
+              Cond.
+            </Badge>
+          )}
+        </div>
+
+        {(nodeData.tags || []).length > 0 && (
+          <div className="flex flex-wrap gap-0.5 mt-1">
+            {nodeData.tags!.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="text-[8px] px-1 py-0 rounded bg-gray-200/80 dark:bg-gray-700/80 text-gray-500 dark:text-gray-400"
+              >
+                {tag}
+              </span>
+            ))}
+            {nodeData.tags!.length > 3 && (
+              <span className="text-[8px] text-gray-400">+{nodeData.tags!.length - 3}</span>
+            )}
           </div>
         )}
 
