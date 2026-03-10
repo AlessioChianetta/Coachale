@@ -2216,6 +2216,7 @@ export default function ConsultantAIConfigPage() {
         title: "Nurturing aggiornato!", 
         description: data.message 
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/leads"] });
     },
     onError: (error: any) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
@@ -5385,28 +5386,40 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-700">
-                      <div>
-                        <Label className="font-semibold text-emerald-800 dark:text-emerald-200">Gestione Lead</Label>
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">Attiva/disattiva nurturing per tutti i lead con email</p>
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-700 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-semibold text-emerald-800 dark:text-emerald-200">Gestione Lead</Label>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">Attiva/disattiva nurturing per tutti i lead con email</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                            onClick={() => bulkNurturingMutation.mutate({ enable: true, excludeStatuses: ["inactive"] })}
+                            disabled={bulkNurturingMutation.isPending}
+                          >
+                            {bulkNurturingMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5 mr-1" />}
+                            Attiva Tutti
+                          </Button>
+                          <Button variant="outline" size="sm"
+                            onClick={() => bulkNurturingMutation.mutate({ enable: false, excludeStatuses: [] })}
+                            disabled={bulkNurturingMutation.isPending}
+                          >
+                            Disattiva Tutti
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-700"
-                          onClick={() => bulkNurturingMutation.mutate({ enable: true, excludeStatuses: ["inactive"] })}
-                          disabled={bulkNurturingMutation.isPending}
-                        >
-                          {bulkNurturingMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5 mr-1" />}
-                          Attiva Tutti
-                        </Button>
-                        <Button variant="outline" size="sm"
-                          onClick={() => bulkNurturingMutation.mutate({ enable: false, excludeStatuses: [] })}
-                          disabled={bulkNurturingMutation.isPending}
-                        >
-                          Disattiva Tutti
-                        </Button>
-                      </div>
+                      {nurturingLeadsData?.summary && (
+                        <div className="flex items-center gap-2 pt-1 border-t border-emerald-200 dark:border-emerald-700">
+                          <div className={`h-2 w-2 rounded-full ${(nurturingLeadsData.summary.total || 0) > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                            {(nurturingLeadsData.summary.total || 0) > 0 
+                              ? `${nurturingLeadsData.summary.total} lead attivi nel nurturing` 
+                              : 'Nessun lead attivo nel nurturing'}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
