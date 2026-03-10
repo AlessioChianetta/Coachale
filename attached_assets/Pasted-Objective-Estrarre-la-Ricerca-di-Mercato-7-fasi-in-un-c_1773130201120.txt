@@ -1,0 +1,118 @@
+Objective
+Estrarre la Ricerca di Mercato (7 fasi) in un componente riutilizzabile e inserirla nelle sezioni Brand Voice — sia in BrandVoiceSection.tsx che in AgentBrandVoice.tsx.
+Aggiungere la sezione Voce & Stile Personale (personalTone, contentPersonality, audienceLanguage, avoidPatterns, writingExamples, signaturePhrases) in AgentBrandVoice.tsx — attualmente manca.
+I dati Market Research vengono salvati globalmente per-consulente in content_studio_config.market_research_data.
+Analisi pre-build
+Struttura attuale
+MarketResearchData interface: shared/schema.ts:8857-8886
+EMPTY_MARKET_RESEARCH constant: shared/schema.ts:8888-8908
+EMOTIONAL_DRIVERS constant: ideas.tsx:606-615 (locale, non esportato)
+Market Research JSX inline: ideas.tsx:3188-3528 (~340 righe di JSX)
+Logica generazione AI: ideas.tsx:1813-1907 (handleGenerateMarketResearch)
+Logica per-phase: ideas.tsx:1787-1811 (phaseHasData, handlePhaseButtonClick)
+Helper functions: ideas.tsx:617-633 (updateResearchField, updateAvatarField, updateMechanismField)
+State variables: ideas.tsx:513-531
+Dialogs: ideas.tsx:4959-5077 (PhaseConfirmDialog + ResearchProgressDialog)
+Endpoint generazione: POST /api/content/ai/generate-market-research in content-studio.ts:1882
+Endpoint polling: GET /api/content/ai/market-research-status/:jobId in content-studio.ts:2434
+Voce & Stile Personale — Gap analysis
+Presente in BrandVoiceSection.tsx: righe 762-913 — campi personalTone, contentPersonality, audienceLanguage, avoidPatterns, writingExamples, signaturePhrases
+Assente in AgentBrandVoice.tsx: il wizard WhatsApp ha solo Business Info, Authority, Credenziali, Servizi e Knowledge Base
+Storage BrandVoice: i campi sono dentro il blob jsonb brand_voice_data in content_studio_config
+Storage WhatsApp: usa colonne individuali in consultant_whatsapp_config — i 6 campi Voce & Stile non esistono come colonne
+Endpoint WhatsApp: PUT /api/whatsapp/config/:agentId (server/routes.ts:16335) — deve estrarre e salvare i nuovi campi
+Dove il componente verrà usato
+BrandVoiceSection.tsx — usato da ideas.tsx (Content Studio) e consultant-ai-config.tsx (Lead 365)
+AgentBrandVoice.tsx — usato nel wizard agente WhatsApp
+Storage Market Research
+Attualmente: content_idea_templates.market_research_data (per-template)
+Nuovo: content_studio_config.market_research_data (per-consultant, copia master)
+Tasks
+T001: Aggiungere colonne Voce & Stile + Market Research al DB
+Blocked By: []
+Details:
+content_studio_config: Aggiungere marketResearchData: jsonb("market_research_data").$type<MarketResearchData>() nella definizione Drizzle (shared/schema.ts:~9647)
+consultant_whatsapp_config: Aggiungere 6 nuove colonne per Voce & Stile:
+personalTone: text("personal_tone")
+contentPersonality: text("content_personality")
+audienceLanguage: text("audience_language")
+avoidPatterns: text("avoid_patterns")
+writingExamples: jsonb("writing_examples").$type<string[]>()
+signaturePhrases: jsonb("signature_phrases").$type<string[]>()
+Eseguire SQL diretto per entrambe:
+ALTER TABLE content_studio_config ADD COLUMN IF NOT EXISTS market_research_data jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE consultant_whatsapp_config ADD COLUMN IF NOT EXISTS personal_tone text;
+ALTER TABLE consultant_whatsapp_config ADD COLUMN IF NOT EXISTS content_personality text;
+ALTER TABLE consultant_whatsapp_config ADD COLUMN IF NOT EXISTS audience_language text;
+ALTER TABLE consultant_whatsapp_config ADD COLUMN IF NOT EXISTS avoid_patterns text;
+ALTER TABLE consultant_whatsapp_config ADD COLUMN IF NOT EXISTS writing_examples jsonb;
+ALTER TABLE consultant_whatsapp_config ADD COLUMN IF NOT EXISTS signature_phrases jsonb;
+Files: shared/schema.ts
+Acceptance: Colonne presenti in DB e nello schema Drizzle
+T002: Aggiornare endpoint WhatsApp + creare endpoint Market Research globale
+Blocked By: [T001]
+Details:
+WhatsApp PUT (server/routes.ts:16335): aggiungere i 6 nuovi campi nell'estrazione da req.body (riga ~16339-16411) e nella sezione "Build update data" (riga ~16481-16563)
+Market Research GET/POST (server/routes/content-studio.ts):
+GET /api/content/market-research — legge content_studio_config.market_research_data
+POST /api/content/market-research — salva/aggiorna (upsert)
+Files: server/routes.ts, server/routes/content-studio.ts
+Acceptance: Tutti gli endpoint funzionanti
+T003: Creare il componente MarketResearchSection.tsx
+Blocked By: []
+Details:
+Creare client/src/components/brand-voice/MarketResearchSection.tsx
+Estrarre da ideas.tsx:
+EMOTIONAL_DRIVERS constant
+Le 7 fasi collapsibili (righe 3188-3528 adattate)
+Helper functions: updateResearchField, updateAvatarField, updateMechanismField
+State: expandedResearchPhases
+Props:
+interface MarketResearchSectionProps {
+  data: MarketResearchData;
+  onDataChange: (data: MarketResearchData) => void;
+  isGenerating?: boolean;
+  generatingPhase?: string | null;
+  onGenerateFullResearch?: () => void;
+  onGeneratePhase?: (phase: string, mode: 'add' | 'overwrite') => void;
+  topic?: string;
+  targetAudience?: string;
+  compact?: boolean;
+  researchCompletedPhases?: number;
+}
+Include: header + badge fasi + pulsante Deep Research + 7 fasi collapsibili
+NON include logica AI (fetch + polling) — quella resta nel parent
+Files: client/src/components/brand-voice/MarketResearchSection.tsx
+Acceptance: Componente standalone con tutte le 7 fasi editabili
+T004: Integrare MarketResearchSection in BrandVoiceSection.tsx
+Blocked By: [T002, T003]
+Details:
+Aggiungere collapsible "Ricerca di Mercato" (colore amber/orange, icona Search) dopo Voce & Stile
+Gestisce internamente fetch/save da GET/POST /api/content/market-research
+Gestisce internamente la generazione AI + polling
+topic e targetAudience: legge da brandVoiceData (businessDescription, whoWeHelp) o mostra input dedicati
+Include PhaseConfirmDialog + ResearchProgressDialog internamente
+Files: client/src/components/brand-voice/BrandVoiceSection.tsx
+Acceptance: Sezione visibile e funzionale in AI Config e Content Studio
+T005: Aggiungere Voce & Stile Personale + Ricerca di Mercato in AgentBrandVoice.tsx
+Blocked By: [T002, T003]
+Details:
+Voce & Stile Personale: Aggiungere collapsible indigo (icona MessageSquare) dopo Servizi & Garanzie, prima della Knowledge Base
+Campi: personalTone, contentPersonality, audienceLanguage, avoidPatterns, writingExamples (array con add/remove), signaturePhrases (tag input)
+Stessa UI di BrandVoiceSection.tsx:762-913 ma adattata al pattern formData/onChange dell'agente
+Aggiungere state locali: voiceStyleOpen, phraseInput, handlers per writingExamples e signaturePhrases
+Ricerca di Mercato: Aggiungere collapsible amber (icona Search) dopo Voce & Stile, prima della Knowledge Base
+Stessa fonte dati: GET/POST /api/content/market-research
+Stessa logica di generazione AI + polling
+Files: client/src/components/whatsapp/wizard-steps/AgentBrandVoice.tsx
+Acceptance: Entrambe le sezioni visibili e funzionali nel wizard agente WhatsApp
+T006: Aggiornare ideas.tsx per usare il componente estratto
+Blocked By: [T003]
+Details:
+Sostituire blocco JSX inline (righe 3188-3528) con <MarketResearchSection />
+Rimuovere EMOTIONAL_DRIVERS, updateResearchField, updateAvatarField, updateMechanismField locali
+Mantenere state marketResearchData + handleGenerateMarketResearch nel parent
+PhaseConfirmDialog e ResearchProgressDialog restano in ideas.tsx
+Quando ricerca completata, salvarla anche in copia globale (POST /api/content/market-research)
+Files: client/src/pages/content-studio/ideas.tsx
+Acceptance: Stessa funzionalità, codice più pulito, dati sincronizzati
