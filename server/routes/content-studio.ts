@@ -434,6 +434,62 @@ router.post("/ideas/sync-developed", authenticateToken, requireRole("consultant"
 });
 
 // ============================================================
+// GLOBAL MARKET RESEARCH (per-consultant)
+// ============================================================
+
+router.get("/market-research", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const [config] = await db.select({
+      marketResearchData: schema.contentStudioConfig.marketResearchData,
+    })
+      .from(schema.contentStudioConfig)
+      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+      .limit(1);
+
+    res.json({
+      success: true,
+      data: config?.marketResearchData || null
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error fetching global market research:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to fetch market research" });
+  }
+});
+
+router.post("/market-research", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { data: marketResearchData } = req.body;
+
+    if (!marketResearchData) {
+      return res.status(400).json({ success: false, error: "Missing market research data" });
+    }
+
+    const [existing] = await db.select({ id: schema.contentStudioConfig.id })
+      .from(schema.contentStudioConfig)
+      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+      .limit(1);
+
+    if (existing) {
+      await db.update(schema.contentStudioConfig)
+        .set({ marketResearchData, updatedAt: new Date() })
+        .where(eq(schema.contentStudioConfig.consultantId, consultantId));
+    } else {
+      await db.insert(schema.contentStudioConfig).values({
+        consultantId,
+        marketResearchData,
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error saving global market research:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to save market research" });
+  }
+});
+
+// ============================================================
 // CONTENT IDEA TEMPLATES
 // ============================================================
 

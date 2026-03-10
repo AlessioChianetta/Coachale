@@ -29,16 +29,21 @@ import {
   Save,
   Trash2,
   CheckCircle2,
+  CheckCircle,
   AlertCircle,
   Download,
   Library,
-  ClipboardPaste
+  ClipboardPaste,
+  MessageSquare,
+  Search,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDropzone } from "react-dropzone";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
 import type { WhatsappAgentKnowledgeItem } from "@shared/schema";
+import { type MarketResearchData, EMPTY_MARKET_RESEARCH } from "@shared/schema";
+import { MarketResearchSection } from "@/components/brand-voice/MarketResearchSection";
 
 interface ImportCandidate {
   id: string;
@@ -84,7 +89,10 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   const [authorityOpen, setAuthorityOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const [voiceStyleOpen, setVoiceStyleOpen] = useState(false);
+  const [marketResearchOpen, setMarketResearchOpen] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+  const [phraseInput, setPhraseInput] = useState("");
   
   const [knowledgeItems, setKnowledgeItems] = useState<WhatsappAgentKnowledgeItem[]>([]);
   const [knowledgeDrafts, setKnowledgeDrafts] = useState<KnowledgeItemDraft[]>([]);
@@ -101,6 +109,165 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   const [pasteTitle, setPasteTitle] = useState('');
   const [pasteContent, setPasteContent] = useState('');
   const [isPasting, setIsPasting] = useState(false);
+
+  const [marketResearchData, setMarketResearchData] = useState<MarketResearchData>({ ...EMPTY_MARKET_RESEARCH });
+  const [isLoadingMR, setIsLoadingMR] = useState(false);
+  const [isGeneratingMR, setIsGeneratingMR] = useState(false);
+  const [generatingPhaseMR, setGeneratingPhaseMR] = useState<string | null>(null);
+  const [showResearchDialog, setShowResearchDialog] = useState(false);
+  const [researchProgress, setResearchProgress] = useState<{
+    status: string;
+    currentStep: number;
+    totalSteps: number;
+    stepLabel: string;
+    stepDetails: string;
+    steps: Array<{ label: string; status: string; details: string }>;
+    error?: string;
+    tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
+  } | null>(null);
+  const [showPhaseConfirmDialog, setShowPhaseConfirmDialog] = useState(false);
+  const [pendingPhaseGen, setPendingPhaseGen] = useState<{ phase: string; mode: 'add' | 'overwrite' | null }>({ phase: '', mode: null });
+
+  useEffect(() => {
+    if (!marketResearchOpen || isLoadingMR) return;
+    setIsLoadingMR(true);
+    fetch("/api/content/market-research", { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success && result.data) {
+          setMarketResearchData(result.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingMR(false));
+  }, [marketResearchOpen]);
+
+  const saveMarketResearchGlobal = async (mrData: MarketResearchData) => {
+    try {
+      await fetch("/api/content/market-research", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ data: mrData }),
+      });
+    } catch {}
+  };
+
+  const handleGenerateMarketResearch = async (phase?: string, mergeMode?: 'add' | 'overwrite') => {
+    const niche = formData.businessDescription || formData.targetAudience || '';
+    const target = formData.targetAudience || '';
+    if (!niche.trim() && !target.trim()) {
+      toast({ title: "Compila almeno la Descrizione Business o il Target Audience", variant: "destructive" });
+      return;
+    }
+    if (phase) setGeneratingPhaseMR(phase);
+    setIsGeneratingMR(true);
+    setShowResearchDialog(true);
+    setResearchProgress(null);
+
+    try {
+      const response = await fetch("/api/content/ai/generate-market-research", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ niche, targetAudience: target, phase: phase || undefined }),
+      });
+      const respData = await response.json();
+      if (respData.success && respData.jobId) {
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`/api/content/ai/market-research-status/${respData.jobId}`, { headers: getAuthHeaders() });
+            const statusData = await statusRes.json();
+            if (!statusData.success) return;
+            setResearchProgress({
+              status: statusData.status,
+              currentStep: statusData.currentStep,
+              totalSteps: statusData.totalSteps,
+              stepLabel: statusData.stepLabel,
+              stepDetails: statusData.stepDetails,
+              steps: statusData.steps,
+              error: statusData.error,
+              tokenUsage: statusData.tokenUsage,
+            });
+            if (statusData.status === 'completed' && statusData.result) {
+              clearInterval(pollInterval);
+              let finalData: MarketResearchData;
+              if (phase && mergeMode === 'add') {
+                setMarketResearchData(prev => {
+                  const newData = statusData.result.data;
+                  const merged = { ...prev };
+                  if (newData.currentState) merged.currentState = [...(prev.currentState || []).filter((s: string) => s.trim()), ...newData.currentState];
+                  if (newData.idealState) merged.idealState = [...(prev.idealState || []).filter((s: string) => s.trim()), ...newData.idealState];
+                  if (newData.avatar) merged.avatar = { ...prev.avatar, ...newData.avatar };
+                  if (newData.emotionalDrivers) merged.emotionalDrivers = [...new Set([...(prev.emotionalDrivers || []), ...newData.emotionalDrivers])];
+                  if (newData.existingSolutionProblems) merged.existingSolutionProblems = [...(prev.existingSolutionProblems || []).filter((s: string) => s.trim()), ...newData.existingSolutionProblems];
+                  if (newData.internalObjections) merged.internalObjections = [...(prev.internalObjections || []).filter((s: string) => s.trim()), ...newData.internalObjections];
+                  if (newData.externalObjections) merged.externalObjections = [...(prev.externalObjections || []).filter((s: string) => s.trim()), ...newData.externalObjections];
+                  if (newData.coreLies) merged.coreLies = [...(prev.coreLies || []), ...newData.coreLies];
+                  if (newData.uniqueMechanism) merged.uniqueMechanism = newData.uniqueMechanism;
+                  if (newData.uvp) merged.uvp = newData.uvp;
+                  finalData = merged;
+                  return merged;
+                });
+              } else if (phase) {
+                setMarketResearchData(prev => {
+                  finalData = { ...prev, ...statusData.result.data };
+                  return finalData;
+                });
+              } else {
+                finalData = statusData.result.data;
+                setMarketResearchData(finalData);
+              }
+              setIsGeneratingMR(false);
+              setGeneratingPhaseMR(null);
+              toast({ title: phase ? "Fase generata!" : "Deep Research completata!", description: phase ? "Dati aggiornati." : "Tutte le 7 fasi compilate con dati reali dal mercato." });
+              saveMarketResearchGlobal(finalData!);
+            } else if (statusData.status === 'error') {
+              clearInterval(pollInterval);
+              setIsGeneratingMR(false);
+              setGeneratingPhaseMR(null);
+            }
+          } catch {}
+        }, 2000);
+      } else {
+        throw new Error(respData.error || "Errore nell'avvio della ricerca");
+      }
+    } catch (error: any) {
+      toast({ title: "Errore nella ricerca", description: error.message, variant: "destructive" });
+      setIsGeneratingMR(false);
+      setGeneratingPhaseMR(null);
+      setShowResearchDialog(false);
+    }
+  };
+
+  const handleAddWritingExample = () => {
+    const current = formData.writingExamples || [];
+    if (current.length < 3) {
+      onChange("writingExamples", [...current, ""]);
+    }
+  };
+
+  const handleUpdateWritingExample = (index: number, value: string) => {
+    const current = [...(formData.writingExamples || [])];
+    current[index] = value;
+    onChange("writingExamples", current);
+  };
+
+  const handleRemoveWritingExample = (index: number) => {
+    const current = formData.writingExamples || [];
+    onChange("writingExamples", current.filter((_: any, i: number) => i !== index));
+  };
+
+  const handleAddPhrase = () => {
+    if (phraseInput.trim()) {
+      const current = formData.signaturePhrases || [];
+      onChange("signaturePhrases", [...current, phraseInput.trim()]);
+      setPhraseInput("");
+    }
+  };
+
+  const handleRemovePhrase = (index: number) => {
+    const current = formData.signaturePhrases || [];
+    onChange("signaturePhrases", current.filter((_: any, i: number) => i !== index));
+  };
 
   const handleAddValue = () => {
     if (valueInput.trim()) {
@@ -1240,6 +1407,206 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
         </Card>
       </Collapsible>
 
+      <Collapsible open={voiceStyleOpen} onOpenChange={setVoiceStyleOpen}>
+        <Card className="border-2 border-indigo-500/20 shadow-lg">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="bg-gradient-to-r from-indigo-500/5 to-indigo-500/10 cursor-pointer hover:from-indigo-500/10 hover:to-indigo-500/15 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-indigo-500" />
+                  <CardTitle>Voce & Stile Personale</CardTitle>
+                </div>
+                {voiceStyleOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </div>
+              <CardDescription className="text-left">Come comunichi e come vuoi che l'AI scriva per te</CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-6 space-y-6">
+              <div>
+                <Label htmlFor="agent-personalTone">Tono Personale</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Descrivi come comunichi — il tuo stile naturale di scrittura</p>
+                <Textarea
+                  id="agent-personalTone"
+                  value={formData.personalTone || ""}
+                  onChange={(e) => onChange("personalTone", e.target.value)}
+                  placeholder="Es: Diretto e provocatorio, uso spesso l'ironia. Parlo come un coach da spogliatoio, non come un professore."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="agent-contentPersonality">Personalità del Contenuto</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Che emozione vuoi trasmettere a chi legge?</p>
+                <Textarea
+                  id="agent-contentPersonality"
+                  value={formData.contentPersonality || ""}
+                  onChange={(e) => onChange("contentPersonality", e.target.value)}
+                  placeholder="Es: Voglio che chi legge si senta capito e un po' provocato, mai giudicato."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="agent-audienceLanguage">Linguaggio del Target</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Come parla il tuo pubblico? Che livello di formalità, slang o termini tecnici usano?</p>
+                <Textarea
+                  id="agent-audienceLanguage"
+                  value={formData.audienceLanguage || ""}
+                  onChange={(e) => onChange("audienceLanguage", e.target.value)}
+                  placeholder="Es: Il mio target sono personal trainer, parlano informale, usano termini tecnici come 'periodizzazione'."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="agent-avoidPatterns">Cosa NON Fare Mai</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Anti-pattern espliciti — cose che l'AI non deve MAI fare nei tuoi contenuti</p>
+                <Textarea
+                  id="agent-avoidPatterns"
+                  value={formData.avoidPatterns || ""}
+                  onChange={(e) => onChange("avoidPatterns", e.target.value)}
+                  placeholder="Es: Mai iniziare con 'In un mondo dove...', mai usare elenchi puntati generici, evitare il tono motivazionale americano"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <Label>Esempi di Scrittura Reale</Label>
+                    <p className="text-xs text-muted-foreground mt-1">Incolla 1-3 post o testi che hai scritto tu. L'AI analizzerà il tuo stile per replicarlo.</p>
+                  </div>
+                  {(formData.writingExamples || []).length < 3 && (
+                    <Button type="button" onClick={handleAddWritingExample} size="sm" variant="outline">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Aggiungi
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {(formData.writingExamples || []).map((example: string, index: number) => (
+                    <div key={index} className="relative">
+                      <Textarea
+                        value={example}
+                        onChange={(e) => handleUpdateWritingExample(index, e.target.value)}
+                        placeholder={`Esempio ${index + 1}: incolla qui un tuo post, caption o testo reale...`}
+                        rows={4}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 h-6 w-6"
+                        onClick={() => handleRemoveWritingExample(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label>Frasi Firma</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">Espressioni, modi di dire o catchphrase che usi sempre</p>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={phraseInput}
+                      onChange={(e) => setPhraseInput(e.target.value)}
+                      placeholder="Es: Il punto è questo:, Sveglia!, Non è magia, è metodo"
+                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddPhrase())}
+                    />
+                    <Button type="button" onClick={handleAddPhrase} size="icon">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(formData.signaturePhrases || []).map((phrase: string, index: number) => (
+                      <Badge key={index} variant="secondary" className="gap-1">
+                        {phrase}
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhrase(index)}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      <Collapsible open={marketResearchOpen} onOpenChange={setMarketResearchOpen}>
+        <Card className="border-2 border-amber-500/20 shadow-lg">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="bg-gradient-to-r from-amber-500/5 to-amber-500/10 cursor-pointer hover:from-amber-500/10 hover:to-amber-500/15 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Search className="h-5 w-5 text-amber-500" />
+                  <CardTitle>Ricerca di Mercato</CardTitle>
+                  {!marketResearchOpen && (() => {
+                    const d = marketResearchData;
+                    let c = 0;
+                    if (d.currentState.some(s => s.trim()) || d.idealState.some(s => s.trim())) c++;
+                    if (Object.values(d.avatar).some(v => v.trim())) c++;
+                    if (d.emotionalDrivers.length > 0) c++;
+                    if (d.existingSolutionProblems.some(s => s.trim()) || d.internalObjections.some(s => s.trim()) || d.externalObjections.some(s => s.trim())) c++;
+                    if (d.coreLies.length > 0 && d.coreLies.some(cl => cl.name.trim())) c++;
+                    if (d.uniqueMechanism.name.trim() || d.uniqueMechanism.description.trim()) c++;
+                    if (d.uvp.trim()) c++;
+                    return c > 0 ? (
+                      <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+                        {c}/7 fasi
+                      </Badge>
+                    ) : null;
+                  })()}
+                </div>
+                {marketResearchOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </div>
+              <CardDescription className="text-left">Analisi approfondita del tuo mercato in 7 fasi con AI</CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-6">
+              {isLoadingMR ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+                  <span className="ml-2 text-sm text-muted-foreground">Caricamento dati...</span>
+                </div>
+              ) : (
+                <MarketResearchSection
+                  data={marketResearchData}
+                  onDataChange={(newData) => {
+                    setMarketResearchData(newData);
+                    saveMarketResearchGlobal(newData);
+                  }}
+                  isGenerating={isGeneratingMR}
+                  generatingPhase={generatingPhaseMR}
+                  onGenerateFullResearch={() => handleGenerateMarketResearch()}
+                  onGeneratePhase={(phase, mode) => {
+                    if (mode === 'add') {
+                      setPendingPhaseGen({ phase, mode: null });
+                      setShowPhaseConfirmDialog(true);
+                    } else {
+                      handleGenerateMarketResearch(phase, mode);
+                    }
+                  }}
+                  topic={formData.businessDescription || ''}
+                  targetAudience={formData.targetAudience || ''}
+                />
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
       <Collapsible open={knowledgeOpen} onOpenChange={setKnowledgeOpen}>
         <Card className="border-2 border-orange-500/20 shadow-lg">
           <CollapsibleTrigger className="w-full">
@@ -1708,6 +2075,69 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPhaseConfirmDialog} onOpenChange={setShowPhaseConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Questa fase ha già dei dati</DialogTitle>
+            <DialogDescription>
+              Vuoi aggiungere i nuovi dati a quelli esistenti o sovrascriverli completamente?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setShowPhaseConfirmDialog(false); handleGenerateMarketResearch(pendingPhaseGen.phase, 'add'); }}>
+              Aggiungi ai dati esistenti
+            </Button>
+            <Button onClick={() => { setShowPhaseConfirmDialog(false); handleGenerateMarketResearch(pendingPhaseGen.phase, 'overwrite'); }}>
+              Sovrascrivi tutto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showResearchDialog} onOpenChange={(open) => { if (!isGeneratingMR) setShowResearchDialog(open); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-amber-500" />
+              Deep Research in corso...
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {researchProgress ? (
+              <>
+                <Progress value={(researchProgress.currentStep / researchProgress.totalSteps) * 100} className="h-2" />
+                <p className="text-sm font-medium">{researchProgress.stepLabel}</p>
+                <p className="text-xs text-muted-foreground">{researchProgress.stepDetails}</p>
+                {researchProgress.steps && (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {researchProgress.steps.map((step, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        {step.status === 'completed' ? (
+                          <CheckCircle className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                        ) : step.status === 'running' ? (
+                          <Loader2 className="h-3.5 w-3.5 text-amber-500 animate-spin flex-shrink-0" />
+                        ) : (
+                          <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 flex-shrink-0" />
+                        )}
+                        <span className={step.status === 'completed' ? 'text-muted-foreground' : step.status === 'running' ? 'font-medium' : ''}>{step.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {researchProgress.error && (
+                  <p className="text-xs text-destructive">{researchProgress.error}</p>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+                <span className="ml-2 text-sm">Avvio ricerca...</span>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

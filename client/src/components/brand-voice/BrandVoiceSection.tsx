@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import {
   Building2,
   Target,
@@ -19,8 +21,14 @@ import {
   Save,
   Loader2,
   Check,
-  MessageSquare
+  MessageSquare,
+  Search,
+  CheckCircle,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { getAuthHeaders } from "@/lib/auth";
+import { type MarketResearchData, EMPTY_MARKET_RESEARCH } from "@shared/schema";
+import { MarketResearchSection } from "./MarketResearchSection";
 
 export interface BrandVoiceData {
   consultantDisplayName?: string;
@@ -75,13 +83,143 @@ export function BrandVoiceSection({
   compact = false,
   showSaveButton = true
 }: BrandVoiceSectionProps) {
+  const { toast } = useToast();
   const [businessInfoOpen, setBusinessInfoOpen] = useState(!compact);
   const [authorityOpen, setAuthorityOpen] = useState(!compact);
   const [credentialsOpen, setCredentialsOpen] = useState(!compact);
   const [servicesOpen, setServicesOpen] = useState(!compact);
   const [voiceStyleOpen, setVoiceStyleOpen] = useState(!compact);
+  const [marketResearchOpen, setMarketResearchOpen] = useState(false);
   const [valueInput, setValueInput] = useState("");
   const [phraseInput, setPhraseInput] = useState("");
+
+  const [marketResearchData, setMarketResearchData] = useState<MarketResearchData>({ ...EMPTY_MARKET_RESEARCH });
+  const [isLoadingMR, setIsLoadingMR] = useState(false);
+  const [isGeneratingMR, setIsGeneratingMR] = useState(false);
+  const [generatingPhaseMR, setGeneratingPhaseMR] = useState<string | null>(null);
+  const [showResearchDialog, setShowResearchDialog] = useState(false);
+  const [researchProgress, setResearchProgress] = useState<{
+    status: string;
+    currentStep: number;
+    totalSteps: number;
+    stepLabel: string;
+    stepDetails: string;
+    steps: Array<{ label: string; status: string; details: string }>;
+    error?: string;
+    tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
+  } | null>(null);
+  const [showPhaseConfirmDialog, setShowPhaseConfirmDialog] = useState(false);
+  const [pendingPhaseGen, setPendingPhaseGen] = useState<{ phase: string; mode: 'add' | 'overwrite' | null }>({ phase: '', mode: null });
+
+  useEffect(() => {
+    if (!marketResearchOpen || isLoadingMR) return;
+    setIsLoadingMR(true);
+    fetch("/api/content/market-research", { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success && result.data) {
+          setMarketResearchData(result.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingMR(false));
+  }, [marketResearchOpen]);
+
+  const saveMarketResearchGlobal = useCallback(async (mrData: MarketResearchData) => {
+    try {
+      await fetch("/api/content/market-research", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ data: mrData }),
+      });
+    } catch {}
+  }, []);
+
+  const handleGenerateMarketResearch = useCallback(async (phase?: string, mergeMode?: 'add' | 'overwrite') => {
+    const niche = data.businessDescription || data.whoWeHelp || '';
+    const target = data.whoWeHelp || '';
+    if (!niche.trim() && !target.trim()) {
+      toast({ title: "Compila almeno la Descrizione Business o Chi Aiutiamo nella sezione Brand Voice", variant: "destructive" });
+      return;
+    }
+    if (phase) setGeneratingPhaseMR(phase);
+    setIsGeneratingMR(true);
+    setShowResearchDialog(true);
+    setResearchProgress(null);
+
+    try {
+      const response = await fetch("/api/content/ai/generate-market-research", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ niche, targetAudience: target, phase: phase || undefined, brandVoiceData: data }),
+      });
+      const respData = await response.json();
+      if (respData.success && respData.jobId) {
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`/api/content/ai/market-research-status/${respData.jobId}`, { headers: getAuthHeaders() });
+            const statusData = await statusRes.json();
+            if (!statusData.success) return;
+            setResearchProgress({
+              status: statusData.status,
+              currentStep: statusData.currentStep,
+              totalSteps: statusData.totalSteps,
+              stepLabel: statusData.stepLabel,
+              stepDetails: statusData.stepDetails,
+              steps: statusData.steps,
+              error: statusData.error,
+              tokenUsage: statusData.tokenUsage,
+            });
+            if (statusData.status === 'completed' && statusData.result) {
+              clearInterval(pollInterval);
+              let finalData: MarketResearchData;
+              if (phase && mergeMode === 'add') {
+                setMarketResearchData(prev => {
+                  const newData = statusData.result.data;
+                  const merged = { ...prev };
+                  if (newData.currentState) merged.currentState = [...(prev.currentState || []).filter((s: string) => s.trim()), ...newData.currentState];
+                  if (newData.idealState) merged.idealState = [...(prev.idealState || []).filter((s: string) => s.trim()), ...newData.idealState];
+                  if (newData.avatar) merged.avatar = { ...prev.avatar, ...newData.avatar };
+                  if (newData.emotionalDrivers) merged.emotionalDrivers = [...new Set([...(prev.emotionalDrivers || []), ...newData.emotionalDrivers])];
+                  if (newData.existingSolutionProblems) merged.existingSolutionProblems = [...(prev.existingSolutionProblems || []).filter((s: string) => s.trim()), ...newData.existingSolutionProblems];
+                  if (newData.internalObjections) merged.internalObjections = [...(prev.internalObjections || []).filter((s: string) => s.trim()), ...newData.internalObjections];
+                  if (newData.externalObjections) merged.externalObjections = [...(prev.externalObjections || []).filter((s: string) => s.trim()), ...newData.externalObjections];
+                  if (newData.coreLies) merged.coreLies = [...(prev.coreLies || []), ...newData.coreLies];
+                  if (newData.uniqueMechanism) merged.uniqueMechanism = newData.uniqueMechanism;
+                  if (newData.uvp) merged.uvp = newData.uvp;
+                  finalData = merged;
+                  return merged;
+                });
+              } else if (phase) {
+                setMarketResearchData(prev => {
+                  finalData = { ...prev, ...statusData.result.data };
+                  return finalData;
+                });
+              } else {
+                finalData = statusData.result.data;
+                setMarketResearchData(finalData);
+              }
+              setIsGeneratingMR(false);
+              setGeneratingPhaseMR(null);
+              toast({ title: phase ? "Fase generata!" : "Deep Research completata!", description: phase ? "Dati aggiornati." : "Tutte le 7 fasi compilate con dati reali dal mercato." });
+              saveMarketResearchGlobal(finalData!);
+            } else if (statusData.status === 'error') {
+              clearInterval(pollInterval);
+              setIsGeneratingMR(false);
+              setGeneratingPhaseMR(null);
+            }
+          } catch {}
+        }, 2000);
+      } else {
+        throw new Error(respData.error || "Errore nell'avvio della ricerca");
+      }
+    } catch (error: any) {
+      toast({ title: "Errore nella ricerca", description: error.message, variant: "destructive" });
+      setIsGeneratingMR(false);
+      setGeneratingPhaseMR(null);
+      setShowResearchDialog(false);
+    }
+  }, [data, marketResearchData, toast, saveMarketResearchGlobal]);
 
   const updateField = <K extends keyof BrandVoiceData>(field: K, value: BrandVoiceData[K]) => {
     onDataChange({ ...data, [field]: value });
@@ -911,6 +1049,151 @@ export function BrandVoiceSection({
           </CollapsibleContent>
         </Card>
       </Collapsible>
+      <Collapsible open={marketResearchOpen} onOpenChange={setMarketResearchOpen}>
+        <Card className="border-2 border-amber-500/20 shadow-lg">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="bg-gradient-to-r from-amber-500/5 to-orange-500/10 cursor-pointer hover:from-amber-500/10 hover:to-orange-500/15 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Search className="h-5 w-5 text-amber-500" />
+                  <CardTitle>Ricerca di Mercato</CardTitle>
+                  {!marketResearchOpen && (() => {
+                    const d = marketResearchData;
+                    let c = 0;
+                    if (d.currentState.some(s => s.trim()) || d.idealState.some(s => s.trim())) c++;
+                    if (Object.values(d.avatar).some(v => v.trim())) c++;
+                    if (d.emotionalDrivers.length > 0) c++;
+                    if (d.existingSolutionProblems.some(s => s.trim()) || d.internalObjections.some(s => s.trim()) || d.externalObjections.some(s => s.trim())) c++;
+                    if (d.coreLies.length > 0 && d.coreLies.some(cl => cl.name.trim())) c++;
+                    if (d.uniqueMechanism.name.trim() || d.uniqueMechanism.description.trim()) c++;
+                    if (d.uvp.trim()) c++;
+                    return c > 0 ? (
+                      <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+                        {c}/7 fasi
+                      </Badge>
+                    ) : null;
+                  })()}
+                </div>
+                {marketResearchOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </div>
+              <CardDescription className="text-left">Analisi approfondita del tuo mercato in 7 fasi con AI</CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-6">
+              {isLoadingMR ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+                  <span className="ml-2 text-sm text-muted-foreground">Caricamento dati...</span>
+                </div>
+              ) : (
+                <MarketResearchSection
+                  data={marketResearchData}
+                  onDataChange={(newData) => {
+                    setMarketResearchData(newData);
+                    saveMarketResearchGlobal(newData);
+                  }}
+                  isGenerating={isGeneratingMR}
+                  generatingPhase={generatingPhaseMR}
+                  onGenerateFullResearch={() => handleGenerateMarketResearch()}
+                  onGeneratePhase={(phase, mode) => {
+                    if (mode === 'add') {
+                      setPendingPhaseGen({ phase, mode: null });
+                      setShowPhaseConfirmDialog(true);
+                    } else {
+                      handleGenerateMarketResearch(phase, mode);
+                    }
+                  }}
+                  topic={data.businessDescription || ''}
+                  targetAudience={data.whoWeHelp || ''}
+                  useBrandVoice={true}
+                  brandVoiceActive={true}
+                />
+              )}
+
+              {showSaveButton && (
+                <Button
+                  onClick={onSave}
+                  disabled={isSaving}
+                  className={`w-full mt-4 transition-all duration-300 ${saveSuccess ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : saveSuccess ? (
+                    <Check className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {saveSuccess ? 'Salvato!' : 'Salva Brand Voice'}
+                </Button>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      <Dialog open={showPhaseConfirmDialog} onOpenChange={setShowPhaseConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Questa fase ha già dei dati</DialogTitle>
+            <DialogDescription>
+              Vuoi aggiungere i nuovi dati a quelli esistenti o sovrascriverli completamente?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setShowPhaseConfirmDialog(false); handleGenerateMarketResearch(pendingPhaseGen.phase, 'add'); }}>
+              Aggiungi ai dati esistenti
+            </Button>
+            <Button onClick={() => { setShowPhaseConfirmDialog(false); handleGenerateMarketResearch(pendingPhaseGen.phase, 'overwrite'); }}>
+              Sovrascrivi tutto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showResearchDialog} onOpenChange={(open) => { if (!isGeneratingMR) setShowResearchDialog(open); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-amber-500" />
+              Deep Research in corso...
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {researchProgress ? (
+              <>
+                <Progress value={(researchProgress.currentStep / researchProgress.totalSteps) * 100} className="h-2" />
+                <p className="text-sm font-medium">{researchProgress.stepLabel}</p>
+                <p className="text-xs text-muted-foreground">{researchProgress.stepDetails}</p>
+                {researchProgress.steps && (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {researchProgress.steps.map((step, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        {step.status === 'completed' ? (
+                          <CheckCircle className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                        ) : step.status === 'running' ? (
+                          <Loader2 className="h-3.5 w-3.5 text-amber-500 animate-spin flex-shrink-0" />
+                        ) : (
+                          <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 flex-shrink-0" />
+                        )}
+                        <span className={step.status === 'completed' ? 'text-muted-foreground' : step.status === 'running' ? 'font-medium' : ''}>{step.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {researchProgress.error && (
+                  <p className="text-xs text-destructive">{researchProgress.error}</p>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+                <span className="ml-2 text-sm">Avvio ricerca...</span>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

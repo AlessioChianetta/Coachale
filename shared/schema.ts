@@ -2822,6 +2822,14 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   }>>(),
   guarantees: text("guarantees"),
 
+  // Voice & Style (Voce & Stile Personale)
+  personalTone: text("personal_tone"),
+  contentPersonality: text("content_personality"),
+  audienceLanguage: text("audience_language"),
+  avoidPatterns: text("avoid_patterns"),
+  writingExamples: jsonb("writing_examples").$type<string[]>(),
+  signaturePhrases: jsonb("signature_phrases").$type<string[]>(),
+
   // AI Personality Configuration
   aiPersonality: text("ai_personality").$type<"amico_fidato" | "coach_motivazionale" | "consulente_professionale" | "mentore_paziente" | "venditore_energico" | "consigliere_empatico" | "stratega_diretto" | "educatore_socratico" | "esperto_tecnico" | "compagno_entusiasta">().default("amico_fidato"),
 
@@ -9673,6 +9681,8 @@ export const contentStudioConfig = pgTable("content_studio_config", {
     guarantees?: string;
   }>().default(sql`'{}'::jsonb`),
   
+  marketResearchData: jsonb("market_research_data").$type<MarketResearchData>(),
+
   // Whether Brand Voice is enabled for AI generation
   brandVoiceEnabled: boolean("brand_voice_enabled").default(false),
   
