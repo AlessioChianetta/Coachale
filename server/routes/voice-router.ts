@@ -3954,6 +3954,24 @@ router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_ad
     const dbCheck = await db.execute(sql`SELECT 1 as ok`);
     const dbOk = dbCheck.rows.length > 0;
 
+    const dbActiveResult = await db.execute(sql`
+      SELECT id, caller_id, called_number, call_direction, status, started_at, freeswitch_uuid,
+             EXTRACT(EPOCH FROM (NOW() - started_at))::int as duration_secs
+      FROM voice_calls
+      WHERE status IN ('talking', 'ringing')
+      ORDER BY started_at DESC
+    `);
+    const dbActiveCalls = (dbActiveResult.rows as any[]).map(r => ({
+      id: r.id,
+      callerId: r.caller_id,
+      calledNumber: r.called_number,
+      direction: r.call_direction || 'outbound',
+      status: r.status,
+      startedAt: r.started_at,
+      durationSecs: r.duration_secs || 0,
+      freeswitchUuid: r.freeswitch_uuid,
+    }));
+
     let vpsHealth: any = null;
     try {
       const globalVoiceResult = await db.execute(sql`
@@ -3995,6 +4013,7 @@ router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_ad
         freeswitchCalls: vpsHealth.freeswitchCalls || [],
         freeswitchCallCount: vpsHealth.freeswitchCallCount || 0,
       } : null,
+      dbActiveCalls: dbActiveCalls,
     });
   } catch (error) {
     console.error("[Voice] Health check error:", error);
