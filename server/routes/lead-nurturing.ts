@@ -1500,11 +1500,12 @@ router.put("/lead-nurturing/save-config", authenticateToken, requireRole("consul
 router.post("/lead-nurturing/send-now", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
+    const { leadId } = req.body || {};
     const { triggerNurturingNow } = await import("../cron/nurturing-scheduler");
     
-    console.log(`📧 [NURTURING MANUAL] Test trigger requested by consultant ${consultantId}`);
+    console.log(`📧 [NURTURING MANUAL] Test trigger requested by consultant ${consultantId}${leadId ? ` for lead ${leadId}` : ''}`);
     
-    const result = await triggerNurturingNow(consultantId);
+    const result = await triggerNurturingNow(consultantId, leadId);
     
     res.json({
       success: result.success,
@@ -1513,11 +1514,93 @@ router.post("/lead-nurturing/send-now", authenticateToken, requireRole("consulta
         : "Errore durante l'invio",
       processed: result.processed,
       sent: result.sent,
-      errors: result.errors.slice(0, 10), // Limit errors returned
+      errors: result.errors.slice(0, 10),
     });
   } catch (error: any) {
     console.error("[NURTURING MANUAL] Error:", error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/nurturing-tracking/open/:logId - Open tracking pixel for nurturing emails
+router.get("/nurturing-tracking/open/:logId", async (req, res) => {
+  try {
+    const { logId } = req.params;
+    
+    await db.update(schema.leadNurturingLogs)
+      .set({
+        openedAt: sql`COALESCE(${schema.leadNurturingLogs.openedAt}, now())`,
+      })
+      .where(eq(schema.leadNurturingLogs.id, logId));
+    
+    console.log(`📧 [NURTURING TRACKING] Open tracked for log ${logId}`);
+    
+    const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+    res.writeHead(200, {
+      'Content-Type': 'image/gif',
+      'Content-Length': pixel.length,
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    });
+    res.end(pixel);
+  } catch (error) {
+    const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+    res.writeHead(200, { 'Content-Type': 'image/gif', 'Content-Length': pixel.length });
+    res.end(pixel);
+  }
+});
+
+// GET /lead-nurturing/email-logs - Get nurturing email logs for the Email Logs page (Lead 365 tab)
+router.get("/lead-nurturing/email-logs", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const logs = await db.select({
+      id: schema.leadNurturingLogs.id,
+      leadId: schema.leadNurturingLogs.leadId,
+      dayNumber: schema.leadNurturingLogs.dayNumber,
+      status: schema.leadNurturingLogs.status,
+      errorMessage: schema.leadNurturingLogs.errorMessage,
+      subjectSent: schema.leadNurturingLogs.subjectSent,
+      sentAt: schema.leadNurturingLogs.sentAt,
+      openedAt: schema.leadNurturingLogs.openedAt,
+      clickedAt: schema.leadNurturingLogs.clickedAt,
+      leadFirstName: schema.proactiveLeads.firstName,
+      leadLastName: schema.proactiveLeads.lastName,
+      leadEmail: schema.proactiveLeads.email,
+    })
+      .from(schema.leadNurturingLogs)
+      .leftJoin(schema.proactiveLeads, eq(schema.leadNurturingLogs.leadId, schema.proactiveLeads.id))
+      .where(
+        and(
+          eq(schema.leadNurturingLogs.consultantId, consultantId),
+          eq(schema.leadNurturingLogs.status, "sent")
+        )
+      )
+      .orderBy(desc(schema.leadNurturingLogs.sentAt))
+      .limit(500);
+    
+    const formattedLogs = logs.map(log => ({
+      id: log.id,
+      clientId: log.leadId,
+      clientName: `${log.leadFirstName || ''} ${log.leadLastName || ''}`.trim() || 'Lead',
+      subject: log.subjectSent || `Email Nurturing Giorno ${log.dayNumber}`,
+      body: "",
+      status: "sent" as const,
+      emailType: "nurturing",
+      sentAt: log.sentAt ? log.sentAt.toISOString() : new Date().toISOString(),
+      openedAt: log.openedAt ? log.openedAt.toISOString() : null,
+      openCount: log.openedAt ? 1 : 0,
+      lastOpenedAt: log.openedAt ? log.openedAt.toISOString() : null,
+      deviceCount: log.openedAt ? 1 : 0,
+      isTest: false,
+    }));
+    
+    res.json(formattedLogs);
+  } catch (error: any) {
+    console.error("[NURTURING EMAIL-LOGS] Error:", error);
+    res.status(500).json([]);
   }
 });
 

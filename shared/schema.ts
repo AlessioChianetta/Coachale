@@ -4241,7 +4241,7 @@ export const leadNurturingLogs = pgTable("lead_nurturing_logs", {
   cycleNumber: integer("cycle_number").default(1).notNull(),
   
   // Stato invio
-  status: text("status").$type<"sent" | "failed" | "skipped">().notNull(),
+  status: text("status").$type<"sent" | "failed" | "skipped" | "pending">().notNull(),
   errorMessage: text("error_message"),
   
   // Tracking email

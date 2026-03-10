@@ -5559,6 +5559,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                               <TableHead className="text-center">Click</TableHead>
                               <TableHead>Ultima Apertura</TableHead>
                               <TableHead className="text-center">Temperatura</TableHead>
+                              <TableHead className="text-center">Azione</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -5600,6 +5601,38 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={() => {
+                                      const sendSingle = async () => {
+                                        try {
+                                          const res = await fetch("/api/lead-nurturing/send-now", {
+                                            method: "POST",
+                                            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                                            body: JSON.stringify({ leadId: lead.id }),
+                                          });
+                                          const data = await res.json();
+                                          if (data.sent > 0) {
+                                            toast({ title: `Email inviata a ${lead.firstName}!`, description: data.message });
+                                          } else {
+                                            toast({ title: "Non inviata", description: data.errors?.[0] || data.message, variant: "destructive" });
+                                          }
+                                          queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/leads"] });
+                                          queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/logs"] });
+                                        } catch (err: any) {
+                                          toast({ title: "Errore", description: err.message, variant: "destructive" });
+                                        }
+                                      };
+                                      sendSingle();
+                                    }}
+                                  >
+                                    <Send className="h-3 w-3 mr-1" />
+                                    Invia
+                                  </Button>
                                 </TableCell>
                               </TableRow>
                             ))}

@@ -694,6 +694,17 @@ export function EmailLogsContent() {
     },
   });
 
+  const { data: nurturingLogs = [], isLoading: nurturingLogsLoading } = useQuery<EmailLog[]>({
+    queryKey: ["/api/lead-nurturing/email-logs"],
+    queryFn: async () => {
+      const response = await fetch(`/api/lead-nurturing/email-logs`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
+
   const { data: clients = [] } = useQuery({
     queryKey: ["/api/clients"],
     queryFn: async () => {
@@ -707,13 +718,14 @@ export function EmailLogsContent() {
 
   const categorizedEmails = useMemo(() => {
     const result: Record<TabCategory, EmailLog[]> = {
-      lead365: [],
+      lead365: Array.isArray(nurturingLogs) ? nurturingLogs : [],
       journey: [],
       riepilogo: [],
       system: [],
     };
     emailLogs.forEach(log => {
       for (const [cat, types] of Object.entries(TAB_TYPE_MAP)) {
+        if (cat === "lead365") continue;
         if (types.includes(log.emailType)) {
           result[cat as TabCategory].push(log);
           return;
@@ -722,7 +734,7 @@ export function EmailLogsContent() {
       result.journey.push(log);
     });
     return result;
-  }, [emailLogs]);
+  }, [emailLogs, nurturingLogs]);
 
   const tabStats = useMemo(() => ({
     lead365: computeStats(categorizedEmails.lead365),

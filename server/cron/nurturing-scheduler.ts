@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { db } from "../db";
-import { eq, and, isNull, lte, gte, asc, count } from "drizzle-orm";
+import { eq, and, isNull, lte, gte, asc, count, desc } from "drizzle-orm";
+import { generateTrackingPixelUrl } from "../services/email-html-wrapper";
 import * as schema from "@shared/schema";
 import { sendEmail } from "../services/email-scheduler";
 import { compileTemplate, buildTemplateVariables } from "../services/template-compiler";
@@ -211,6 +212,28 @@ async function sendNurturingEmail(
   }
   
   try {
+    const [preLog] = await db.insert(schema.leadNurturingLogs).values({
+      leadId: lead.id,
+      consultantId: config.consultantId,
+      templateId: template.id,
+      dayNumber: currentDay,
+      status: "pending",
+      subjectSent: compiled.subject,
+      sentAt: new Date(),
+    }).returning();
+
+    // Inject tracking pixel into email HTML
+    const baseUrl = process.env.REPLIT_DOMAINS?.split(",")[0]
+      ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+      : process.env.APP_URL || "";
+    
+    let emailHtml = compiled.body;
+    if (baseUrl && preLog?.id) {
+      const trackingPixelUrl = `${baseUrl}/api/nurturing-tracking/open/${preLog.id}`;
+      const pixelTag = `<img src="${trackingPixelUrl}" alt="" width="1" height="1" style="display:block;border:0;width:1px;height:1px;opacity:0;" />`;
+      emailHtml = emailHtml.replace('</body>', `${pixelTag}</body>`);
+    }
+
     // Try to find a configured Email Hub account (prefer senderAccountId from config)
     let emailAccountQuery = db
       .select()
@@ -227,7 +250,6 @@ async function sendNurturingEmail(
     let messageId: string | undefined;
     
     if (emailAccount && emailAccount.smtpHost && emailAccount.smtpUser && emailAccount.smtpPassword) {
-      // Use Email Hub account SMTP - email will appear in "Sent" folder
       console.log(`📧 [NURTURING] Using Email Hub account: ${emailAccount.emailAddress}`);
       
       const smtpService = createSmtpService({
@@ -243,14 +265,26 @@ async function sendNurturingEmail(
         fromName: emailAccount.displayName || emailVars?.consultantName || "Consulente",
         to: leadEmail,
         subject: compiled.subject,
-        html: compiled.body,
+        html: emailHtml,
       });
       
       if (!sendResult.success) {
+        // Update pre-created log to failed
+        if (preLog?.id) {
+          await db.update(schema.leadNurturingLogs)
+            .set({ status: "failed", errorMessage: `SMTP: ${sendResult.error}` })
+            .where(eq(schema.leadNurturingLogs.id, preLog.id));
+        }
         throw new Error(`SMTP invio fallito: ${sendResult.error}`);
       }
       
       messageId = sendResult.messageId;
+      
+      if (preLog?.id) {
+        await db.update(schema.leadNurturingLogs)
+          .set({ status: "sent", emailMessageId: messageId || undefined })
+          .where(eq(schema.leadNurturingLogs.id, preLog.id));
+      }
       
       // Save email to Email Hub for visibility in "Sent" folder
       const generatedMessageId = messageId || `nurturing-day${currentDay}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -263,9 +297,9 @@ async function sendNurturingEmail(
         fromName: emailAccount.displayName || emailVars?.consultantName || "Consulente",
         fromEmail: emailAccount.emailAddress,
         toRecipients: [leadEmail],
-        bodyHtml: compiled.body,
-        bodyText: compiled.body.replace(/<[^>]*>/g, '').substring(0, 500),
-        snippet: compiled.body.replace(/<[^>]*>/g, '').substring(0, 200),
+        bodyHtml: emailHtml,
+        bodyText: emailHtml.replace(/<[^>]*>/g, '').substring(0, 500),
+        snippet: emailHtml.replace(/<[^>]*>/g, '').substring(0, 200),
         direction: "outbound",
         folder: "sent",
         isRead: true,
@@ -277,26 +311,29 @@ async function sendNurturingEmail(
       console.log(`📧 [NURTURING] Saved to Email Hub with messageId: ${generatedMessageId}`);
       
     } else {
-      // Fallback to global SMTP settings (won't appear in Email Hub)
       console.log(`📧 [NURTURING] No Email Hub account with SMTP, using global SMTP settings`);
       
-      await sendEmail({
-        to: leadEmail,
-        subject: compiled.subject,
-        html: compiled.body,
-        consultantId: config.consultantId,
-      });
+      try {
+        await sendEmail({
+          to: leadEmail,
+          subject: compiled.subject,
+          html: emailHtml,
+          consultantId: config.consultantId,
+        });
+        if (preLog?.id) {
+          await db.update(schema.leadNurturingLogs)
+            .set({ status: "sent" })
+            .where(eq(schema.leadNurturingLogs.id, preLog.id));
+        }
+      } catch (fallbackErr: any) {
+        if (preLog?.id) {
+          await db.update(schema.leadNurturingLogs)
+            .set({ status: "failed", errorMessage: `Global SMTP: ${fallbackErr.message}` })
+            .where(eq(schema.leadNurturingLogs.id, preLog.id));
+        }
+        throw fallbackErr;
+      }
     }
-    
-    await db.insert(schema.leadNurturingLogs).values({
-      leadId: lead.id,
-      consultantId: config.consultantId,
-      templateId: template.id,
-      dayNumber: currentDay,
-      status: "sent",
-      emailTo: leadEmail,
-      sentAt: new Date(),
-    });
     
     await db.update(schema.proactiveLeads)
       .set({
@@ -395,13 +432,13 @@ export function stopNurturingScheduler(): void {
 }
 
 // Export for manual test trigger
-export async function triggerNurturingNow(consultantId: string): Promise<{
+export async function triggerNurturingNow(consultantId: string, targetLeadId?: string): Promise<{
   success: boolean;
   processed: number;
   sent: number;
   errors: string[];
 }> {
-  console.log(`📧 [NURTURING MANUAL] Manual trigger for consultant ${consultantId}`);
+  console.log(`📧 [NURTURING MANUAL] Manual trigger for consultant ${consultantId}${targetLeadId ? ` (single lead: ${targetLeadId})` : ''}`);
   
   const errors: string[] = [];
   let processed = 0;
@@ -417,15 +454,32 @@ export async function triggerNurturingNow(consultantId: string): Promise<{
       return { success: false, processed: 0, sent: 0, errors: ["Configurazione nurturing non trovata"] };
     }
     
-    const allLeads = await db.select()
-      .from(schema.proactiveLeads)
-      .where(
-        and(
-          eq(schema.proactiveLeads.consultantId, consultantId),
-          eq(schema.proactiveLeads.nurturingEnabled, true),
-          isNull(schema.proactiveLeads.nurturingOptOutAt)
-        )
-      );
+    let allLeads;
+    if (targetLeadId) {
+      allLeads = await db.select()
+        .from(schema.proactiveLeads)
+        .where(
+          and(
+            eq(schema.proactiveLeads.id, targetLeadId),
+            eq(schema.proactiveLeads.consultantId, consultantId),
+            eq(schema.proactiveLeads.nurturingEnabled, true),
+            isNull(schema.proactiveLeads.nurturingOptOutAt)
+          )
+        );
+      if (allLeads.length === 0) {
+        return { success: false, processed: 0, sent: 0, errors: ["Lead non trovato o nurturing disabilitato/opt-out"] };
+      }
+    } else {
+      allLeads = await db.select()
+        .from(schema.proactiveLeads)
+        .where(
+          and(
+            eq(schema.proactiveLeads.consultantId, consultantId),
+            eq(schema.proactiveLeads.nurturingEnabled, true),
+            isNull(schema.proactiveLeads.nurturingOptOutAt)
+          )
+        );
+    }
     
     // Filter only leads with valid email
     const leads = allLeads.filter(lead => {
