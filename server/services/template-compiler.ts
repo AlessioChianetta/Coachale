@@ -69,55 +69,30 @@ function replaceVariables(
 }
 
 function wrapInEmailTemplate(content: string, unsubscribeLink: string): string {
-  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="it">
+  return `<!DOCTYPE html>
+<html lang="it">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>Email</title>
-  <!--[if mso]>
-  <style type="text/css">
-    body, table, td, p, span, a {font-family: Arial, Helvetica, sans-serif !important;}
-  </style>
-  <noscript>
-    <xml>
-      <o:OfficeDocumentSettings>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-      </o:OfficeDocumentSettings>
-    </xml>
-  </noscript>
-  <![endif]-->
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f7; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
-  <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f4f4f7;">
+<body style="margin: 0; padding: 0; background-color: #ffffff; -webkit-text-size-adjust: 100%;">
+  <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #ffffff;">
     <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <!--[if mso]>
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" align="center">
-        <tr>
-        <td>
-        <![endif]-->
-        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff;">
+      <td align="center" style="padding: 32px 16px;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="max-width: 560px; width: 100%;">
           <tr>
-            <td style="padding: 48px 40px; font-family: Arial, Helvetica, sans-serif; font-size: 18px; line-height: 28px; color: #333333;">
+            <td style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.7; color: #1a1a1a;">
               ${content}
             </td>
           </tr>
           <tr>
-            <td style="padding: 24px 40px 40px; border-top: 1px solid #e8e8e8; font-family: Arial, Helvetica, sans-serif;">
-              <p style="margin: 0; font-size: 13px; line-height: 20px; color: #888888; text-align: center;">
-                Non vuoi pi&ugrave; ricevere queste email?
-                <a href="${unsubscribeLink}" style="color: #666666; text-decoration: underline;">Cancella iscrizione</a>
+            <td style="padding-top: 48px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+              <p style="margin: 0; font-size: 11px; color: #b0b0b0; line-height: 1.4;">
+                <a href="${unsubscribeLink}" style="color: #b0b0b0; text-decoration: none;">Cancella iscrizione</a>
               </p>
             </td>
           </tr>
         </table>
-        <!--[if mso]>
-        </td>
-        </tr>
-        </table>
-        <![endif]-->
       </td>
     </tr>
   </table>
