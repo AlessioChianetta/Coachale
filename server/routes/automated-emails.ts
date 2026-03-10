@@ -42,7 +42,7 @@ router.get("/email-tracking/:trackingId/:emailLogId", async (req, res) => {
     }
 
     const [existingLog] = await db
-      .select({ id: automatedEmailsLog.id, openedAt: automatedEmailsLog.openedAt, subject: automatedEmailsLog.subject, clientId: automatedEmailsLog.clientId })
+      .select({ id: automatedEmailsLog.id, openedAt: automatedEmailsLog.openedAt, openCount: automatedEmailsLog.openCount, subject: automatedEmailsLog.subject, clientId: automatedEmailsLog.clientId })
       .from(automatedEmailsLog)
       .where(eq(automatedEmailsLog.id, emailLogId))
       .limit(1);
@@ -51,23 +51,27 @@ router.get("/email-tracking/:trackingId/:emailLogId", async (req, res) => {
     if (existingLog) {
       console.log(`🔍 [EMAIL TRACKING] Subject: ${existingLog.subject}`);
       console.log(`🔍 [EMAIL TRACKING] Client ID: ${existingLog.clientId}`);
+      console.log(`🔍 [EMAIL TRACKING] Open count: ${existingLog.openCount || 0}`);
       console.log(`🔍 [EMAIL TRACKING] Already opened: ${!!existingLog.openedAt}`);
-      if (existingLog.openedAt) {
-        console.log(`🔍 [EMAIL TRACKING] Previously opened at: ${existingLog.openedAt}`);
-      }
     } else {
       console.warn(`⚠️  [EMAIL TRACKING] No email log found with ID: ${emailLogId}`);
     }
 
     console.log(`📧 [EMAIL TRACKING] Email opened - Log ID: ${emailLogId}`);
 
-    // Update openedAt timestamp if not already set
-    const updateResult = await db
+    const currentUA = req.headers['user-agent'] || 'unknown';
+
+    await db
       .update(automatedEmailsLog)
-      .set({ openedAt: sql`COALESCE(opened_at, now())` }) // Only set if null
+      .set({ 
+        openedAt: sql`COALESCE(opened_at, now())`,
+        lastOpenedAt: sql`now()`,
+        openCount: sql`COALESCE(open_count, 0) + 1`,
+        userAgents: sql`CASE WHEN ${currentUA} = ANY(COALESCE(user_agents, '{}')) THEN COALESCE(user_agents, '{}') ELSE array_append(COALESCE(user_agents, '{}'), ${currentUA}) END`,
+      })
       .where(eq(automatedEmailsLog.id, emailLogId));
 
-    console.log(`✅ [EMAIL TRACKING] Updated openedAt for email log: ${emailLogId}`);
+    console.log(`✅ [EMAIL TRACKING] Updated tracking for email log: ${emailLogId} (opens: ${(existingLog?.openCount || 0) + 1})`);
     console.log(`🔍 [EMAIL TRACKING] ══════════════════════════════════════`);
 
     // Return 1x1 transparent GIF pixel
@@ -130,10 +134,13 @@ router.get("/consultant/email-logs", authenticateToken, requireRole("consultant"
           clientName: client ? `${client.firstName} ${client.lastName}` : "Unknown",
           subject: log.subject,
           body: log.body,
-          status: "sent" as const, // All logs are sent emails
+          status: "sent" as const,
           emailType: log.emailType,
           sentAt: log.sentAt ? log.sentAt.toISOString() : new Date().toISOString(),
           openedAt: log.openedAt ? log.openedAt.toISOString() : null,
+          openCount: (log as any).openCount || 0,
+          lastOpenedAt: (log as any).lastOpenedAt ? (log as any).lastOpenedAt.toISOString() : null,
+          deviceCount: ((log as any).userAgents || []).length,
           isTest: log.isTest || false,
         };
       })

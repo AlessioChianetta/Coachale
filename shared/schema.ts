@@ -643,8 +643,11 @@ export const automatedEmailsLog = pgTable("automated_emails_log", {
   subject: text("subject").notNull(),
   body: text("body").notNull(),
   sentAt: timestamp("sent_at").default(sql`now()`),
-  openedAt: timestamp("opened_at"), // Email tracking - quando il cliente ha aperto l'email
-  isTest: boolean("is_test").notNull().default(false), // Flag per email di test
+  openedAt: timestamp("opened_at"),
+  openCount: integer("open_count").notNull().default(0),
+  lastOpenedAt: timestamp("last_opened_at"),
+  userAgents: text("user_agents").array().default(sql`'{}'`),
+  isTest: boolean("is_test").notNull().default(false),
   includesTasks: boolean("includes_tasks").notNull().default(false),
   includesGoals: boolean("includes_goals").notNull().default(false),
   includesState: boolean("includes_state").notNull().default(false),
