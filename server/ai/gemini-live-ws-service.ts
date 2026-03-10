@@ -4733,16 +4733,7 @@ ${contentPrompt}`;
         userDataContext = ''; // No user data for unknown callers
         console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} non-client prompt built (${systemInstruction.length} chars) - Source: ${promptSource}, Template: ${templateId}${previousCallContext ? ' [CALL HISTORY DEFERRED]' : ''}${nonClientBrandVoiceSection ? ' [WITH BRAND VOICE]' : ''}`);
         
-        // 🔍 DEBUG: Full system prompt for non-client calls - DEFERRED to avoid blocking critical path
-        const _deferredNonClientPromptLog = systemInstruction;
-        const _deferredNonClientDirection = isOutbound ? 'OUTBOUND' : 'INBOUND';
-        setImmediate(() => {
-          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`📞 [${connectionId}] FULL NON-CLIENT SYSTEM PROMPT (${_deferredNonClientDirection}):`);
-          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(_deferredNonClientPromptLog);
-          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        });
+        // 🔍 DEBUG: Full system prompt log placeholder - actual log moved to after booking section append
         } // Close the else block for non-instruction flow
       }
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -5504,6 +5495,13 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           const bookingPromptSection = bookingSupervisor.getBookingPromptSection();
           systemInstruction = systemInstruction + '\n\n' + bookingPromptSection;
           console.log(`📋 [${connectionId}] Booking prompt section appended WITH ${preloadedSlots.length} slots (${bookingPromptSection.length} chars)`);
+          setImmediate(() => {
+            console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`📞 [${connectionId}] FULL NON-CLIENT SYSTEM PROMPT (${isOutbound ? 'OUTBOUND' : 'INBOUND'}):`);
+            console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(systemInstruction);
+            console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          });
 
           taskSupervisor = new VoiceTaskSupervisor({
             consultantId,
@@ -5536,11 +5534,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           console.log(`┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
           console.log(`┃ 🤖 ${_deferredUseFullPrompt ? 'FULL' : 'MINIMAL'} SYSTEM PROMPT (LIVE MODE) - ${_deferredSysInstr.length} chars`);
           console.log(`┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          if (_deferredMode === 'sales_agent' || _deferredMode === 'consultation_invite') {
-            console.log(_deferredSysInstr);
-          } else {
-            console.log(_deferredSysInstr.substring(0, 1000) + (_deferredSysInstr.length > 1000 ? '...' : ''));
-          }
+          console.log(_deferredSysInstr);
           console.log(`┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         }
       });
