@@ -7275,7 +7275,7 @@ REGOLE ANTI-ALLUCINAZIONE:
     ];
 
     const chatTemp = isTelegram ? 1 : 0.7;
-    const chatMaxTokens = 2048;
+    const chatMaxTokens = roleId === 'architetto' ? 8192 : 2048;
 
     let fileSearchTool: any = null;
     if (roleId === 'marco' && !isOpenMode) {

@@ -2737,7 +2737,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
                    market_research_data, market_research_problems
             FROM content_idea_templates
             WHERE consultant_id = ${consultantId}
-            ORDER BY is_default DESC, updated_at DESC
+            ORDER BY is_default DESC, created_at DESC
             LIMIT 1
           `);
           if (fallbackResult.rows.length > 0) {
