@@ -138,9 +138,9 @@ router.get("/consultant/email-logs", authenticateToken, requireRole("consultant"
           emailType: log.emailType,
           sentAt: log.sentAt ? log.sentAt.toISOString() : new Date().toISOString(),
           openedAt: log.openedAt ? log.openedAt.toISOString() : null,
-          openCount: (log as any).openCount || 0,
-          lastOpenedAt: (log as any).lastOpenedAt ? (log as any).lastOpenedAt.toISOString() : null,
-          deviceCount: ((log as any).userAgents || []).length,
+          openCount: Math.max((log as any).openCount || 0, log.openedAt ? 1 : 0),
+          lastOpenedAt: (log as any).lastOpenedAt ? (log as any).lastOpenedAt.toISOString() : (log.openedAt ? log.openedAt.toISOString() : null),
+          deviceCount: Math.max(((log as any).userAgents || []).length, log.openedAt ? 1 : 0),
           isTest: log.isTest || false,
         };
       })
