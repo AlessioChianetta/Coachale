@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import { db } from "../db";
-import { eq, and, isNull, lte, gte } from "drizzle-orm";
+import { eq, and, isNull, lte, gte, asc, count } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { sendEmail } from "../services/email-scheduler";
 import { compileTemplate, buildTemplateVariables } from "../services/template-compiler";
@@ -166,7 +166,7 @@ async function sendNurturingEmail(
     }
   }
   
-  const [template] = await db.select()
+  let [template] = await db.select()
     .from(schema.leadNurturingTemplates)
     .where(
       and(
@@ -178,7 +178,23 @@ async function sendNurturingEmail(
     .limit(1);
   
   if (!template) {
-    return { success: false, error: `No template for day ${currentDay}` };
+    const allTemplates = await db.select()
+      .from(schema.leadNurturingTemplates)
+      .where(
+        and(
+          eq(schema.leadNurturingTemplates.consultantId, config.consultantId),
+          eq(schema.leadNurturingTemplates.isActive, true)
+        )
+      )
+      .orderBy(asc(schema.leadNurturingTemplates.dayNumber));
+    
+    if (allTemplates.length === 0) {
+      return { success: false, error: "Nessun template disponibile" };
+    }
+    
+    const cycledIndex = (currentDay - 1) % allTemplates.length;
+    template = allTemplates[cycledIndex];
+    console.log(`📧 [NURTURING] Day ${currentDay} has no template, cycling to template day ${template.dayNumber} (index ${cycledIndex}/${allTemplates.length})`);
   }
   
   const unsubscribeToken = generateUnsubscribeToken(lead.id, lead.consultantId);
@@ -427,18 +443,40 @@ export async function triggerNurturingNow(consultantId: string): Promise<{
       const leadEmail = storage.getLeadEmail(lead);
       console.log(`📧 [NURTURING MANUAL] Processing ${lead.firstName || lead.id} (${leadEmail})`);
       try {
-        // Skip cooldown for manual test triggers
         const result = await sendNurturingEmail(lead, config, emailVars, { skipCooldown: true });
         if (result.success) {
           sent++;
           console.log(`✅ [NURTURING MANUAL] Email sent to ${lead.firstName || lead.id}`);
         } else if (result.error) {
-          console.log(`⚠️ [NURTURING MANUAL] Skipped ${lead.firstName || lead.id}: ${result.error}`);
-          errors.push(`Lead ${lead.firstName || lead.id}: ${result.error}`);
+          const leadName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim() || lead.id;
+          const leadDay = lead.nurturingStartDate ? calculateCurrentDay(lead.nurturingStartDate) : '?';
+          console.log(`⚠️ [NURTURING MANUAL] Skipped ${leadName} (day ${leadDay}): ${result.error}`);
+          errors.push(`${leadName} (giorno ${leadDay}): ${result.error}`);
+
+          await db.insert(schema.leadNurturingLogs).values({
+            leadId: lead.id,
+            consultantId: config.consultantId,
+            dayNumber: typeof leadDay === 'number' ? leadDay : 0,
+            status: "skipped",
+            sentAt: new Date(),
+            errorMessage: result.error,
+          });
         }
       } catch (error: any) {
-        console.error(`❌ [NURTURING MANUAL] Error for ${lead.firstName || lead.id}:`, error.message);
-        errors.push(`Lead ${lead.firstName || lead.id}: ${error.message}`);
+        const leadName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim() || lead.id;
+        const leadDay = lead.nurturingStartDate ? calculateCurrentDay(lead.nurturingStartDate) : 0;
+        console.error(`❌ [NURTURING MANUAL] Error for ${leadName}:`, error.message);
+        errors.push(`${leadName}: ${error.message}`);
+        try {
+          await db.insert(schema.leadNurturingLogs).values({
+            leadId: lead.id,
+            consultantId: config.consultantId,
+            dayNumber: leadDay,
+            status: "failed",
+            sentAt: new Date(),
+            errorMessage: error.message,
+          });
+        } catch (_) {}
       }
     }
     

@@ -1695,6 +1695,7 @@ export default function ConsultantAIConfigPage() {
       if (!res.ok) return [];
       const data = await res.json();
       if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.data)) return data.data;
       if (data && Array.isArray(data.accounts)) return data.accounts;
       return [];
     },
@@ -2237,11 +2238,35 @@ export default function ConsultantAIConfigPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      toast({ 
-        title: data.success ? "Invio completato!" : "Attenzione",
-        description: data.message,
-        variant: data.sent > 0 ? "default" : "destructive"
-      });
+      const errorSummary = data.errors?.length > 0 
+        ? `\n\nMotivi: ${data.errors.slice(0, 5).join(", ")}` 
+        : "";
+      if (data.sent > 0 && data.errors?.length > 0) {
+        toast({ 
+          title: `${data.sent} email inviate, ${data.errors.length} fallite`,
+          description: `${data.sent}/${data.processed} lead processati. ${errorSummary}`.trim(),
+          variant: "default",
+        });
+      } else if (data.sent > 0) {
+        toast({ 
+          title: `${data.sent} email inviate!`,
+          description: `${data.sent}/${data.processed} lead processati con successo`,
+        });
+      } else if (data.processed > 0) {
+        toast({ 
+          title: "Nessuna email inviata",
+          description: `${data.processed} lead processati ma nessuna email inviata. ${errorSummary}`.trim(),
+          variant: "destructive",
+        });
+      } else {
+        toast({ 
+          title: "Nessun lead trovato",
+          description: "Non ci sono lead con nurturing attivo e email valida",
+          variant: "destructive",
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/leads"] });
     },
     onError: (error: any) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
