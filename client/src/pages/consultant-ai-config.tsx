@@ -71,7 +71,7 @@ import {
   Download
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { NavigationTabs } from "@/components/ui/navigation-tabs";
+import { EmailLogsContent } from "@/pages/consultant-email-logs";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -305,142 +305,131 @@ function EmailJourneyTab() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Explainer Cards Section */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <ExplainerCard
-          title="Sistema dei Template"
-          description="Il journey email utilizza 31 template diversi, uno per ogni giorno del mese. Abbiamo 28 template standard per tutti i mesi, più 3 template extra per i mesi più lunghi (con 29, 30 o 31 giorni)."
-          icon={BookOpen}
-          variant="info"
-        />
-        <ExplainerCard
-          title="Journey Mensile"
-          description="Ogni cliente segue un percorso di email automatiche che dura un mese intero. Il sistema invia email in base ai giorni reali del mese corrente, adattandosi automaticamente ai mesi di diverse lunghezze."
-          icon={Route}
-          variant="info"
-        />
-        <ExplainerCard
-          title="Giorno Corrente"
-          description="Il Giorno Corrente indica quanti giorni sono passati dall'inizio del mese. Ad esempio, se siamo al 15 del mese, il cliente è al giorno 15 del suo journey mensile e riceverà il template corrispondente."
-          icon={Target}
-          variant="success"
-        />
-        <ExplainerCard
-          title="Azioni Suggerite"
-          description="Ogni email contiene azioni specifiche suggerite dall'intelligenza artificiale. Queste azioni sono personalizzate per ogni cliente e vengono tracciate per monitorare i progressi. Il sistema mostra quante azioni sono state completate e quante sono ancora in sospeso."
-          icon={ListTodo}
-          variant="success"
-        />
+    <div className="space-y-4">
+      {/* Intro: Come funziona il Percorso Email */}
+      <Card className="border border-indigo-200 dark:border-indigo-700 shadow-sm bg-gradient-to-r from-indigo-50/80 to-purple-50/80 dark:from-indigo-900/20 dark:to-purple-900/20">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg shrink-0 mt-0.5">
+              <Route className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-semibold text-indigo-900 dark:text-indigo-100 text-sm">Come funziona il Percorso Email Mensile</h3>
+              <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                Ogni cliente riceve un ciclo mensile di <strong>31 email personalizzate</strong>, una per ogni giorno del mese. L'AI genera il contenuto 
+                in base al template del giorno, al progresso del cliente e al contesto della sua attività. Ogni email include <strong>azioni suggerite</strong> 
+                che vengono tracciate automaticamente. Il percorso si ripete ogni mese con contenuti sempre nuovi.
+              </p>
+              <div className="flex flex-wrap gap-3 text-xs text-indigo-600 dark:text-indigo-400">
+                <span className="flex items-center gap-1"><Target className="h-3 w-3" /> 31 template unici per mese</span>
+                <span className="flex items-center gap-1"><Brain className="h-3 w-3" /> Contenuti generati dall'AI</span>
+                <span className="flex items-center gap-1"><ListTodo className="h-3 w-3" /> Azioni tracciate automaticamente</span>
+              </div>
+              <div className="flex flex-wrap gap-3 pt-1 text-xs text-indigo-600/80 dark:text-indigo-400/80 border-t border-indigo-200/50 dark:border-indigo-700/50 mt-1">
+                <span className="flex items-center gap-1"><Megaphone className="h-3 w-3" /> Si integra con il sistema Annunci per campagne coordinate</span>
+                <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> Connesso a Lead 365 per il nurturing a lungo termine</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Compact Explainer Pills */}
+      <div className="grid gap-2 md:grid-cols-4">
+        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
+          <BookOpen className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+          <div>
+            <div className="text-xs font-medium text-blue-900 dark:text-blue-100">Template</div>
+            <div className="text-[10px] text-blue-600 dark:text-blue-400">31 template, uno per giorno</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
+          <Route className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+          <div>
+            <div className="text-xs font-medium text-blue-900 dark:text-blue-100">Ciclo Mensile</div>
+            <div className="text-[10px] text-blue-600 dark:text-blue-400">Si adatta alla durata del mese</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20">
+          <Target className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <div>
+            <div className="text-xs font-medium text-emerald-900 dark:text-emerald-100">Giorno Corrente</div>
+            <div className="text-[10px] text-emerald-600 dark:text-emerald-400">Posizione nel mese attuale</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20">
+          <ListTodo className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <div>
+            <div className="text-xs font-medium text-emerald-900 dark:text-emerald-100">Azioni AI</div>
+            <div className="text-[10px] text-emerald-600 dark:text-emerald-400">Tracciate per ogni cliente</div>
+          </div>
+        </div>
       </div>
 
-      {/* Journey Overview - Visual Map */}
-      {allProgress && allProgress.length > 0 && (
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Route className="h-6 w-6" />
-              Panoramica Journey Mensile
-            </CardTitle>
-            <CardDescription>
-              Visualizzazione della distribuzione dei clienti nelle diverse fasi del mese
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-lg p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-green-200 opacity-20 rounded-full -mr-8 -mt-8"></div>
-                <div className="relative">
-                  <div className="text-sm font-medium text-green-700 mb-2">Inizio Mese</div>
-                  <div className="text-3xl font-bold text-green-900 mb-1">{journeyPhases.early}</div>
-                  <div className="text-xs text-green-600">Giorni 1-10</div>
-                  <div className="mt-4 text-xs text-green-700">
-                    Email introduttive e motivazionali
-                  </div>
+      {/* Inline Statistics + Journey Overview */}
+      <div className="grid gap-3 md:grid-cols-2">
+        {/* Statistics - compact inline */}
+        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm">
+          <CardContent className="p-3">
+            <div className="text-xs font-medium text-muted-foreground mb-2">Statistiche</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center justify-between p-2 rounded-md bg-cyan-50/50 dark:bg-cyan-900/20 border border-cyan-100 dark:border-cyan-800">
+                <div className="flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5 text-cyan-600" />
+                  <span className="text-xs text-cyan-700 dark:text-cyan-300">Totali</span>
                 </div>
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{stats.total}</span>
               </div>
-
-              <div className="bg-gradient-to-br from-cyan-50 to-teal-100 dark:from-cyan-900/30 dark:to-teal-900/30 border-2 border-cyan-300 dark:border-cyan-700 rounded-lg p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-200 dark:bg-cyan-700 opacity-20 rounded-full -mr-8 -mt-8"></div>
-                <div className="relative">
-                  <div className="text-sm font-medium text-cyan-700 dark:text-cyan-300 mb-2">Metà Mese</div>
-                  <div className="text-3xl font-bold text-cyan-900 dark:text-cyan-100 mb-1">{journeyPhases.mid}</div>
-                  <div className="text-xs text-cyan-600 dark:text-cyan-400">Giorni 11-20</div>
-                  <div className="mt-4 text-xs text-cyan-700 dark:text-cyan-300">
-                    Email di riflessione e consolidamento
-                  </div>
+              <div className="flex items-center justify-between p-2 rounded-md bg-emerald-50/50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="text-xs text-emerald-700 dark:text-emerald-300">Attivi</span>
                 </div>
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{stats.active}</span>
               </div>
-
-              <div className="bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-300 rounded-lg p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200 opacity-20 rounded-full -mr-8 -mt-8"></div>
-                <div className="relative">
-                  <div className="text-sm font-medium text-orange-700 mb-2">Fine Mese</div>
-                  <div className="text-3xl font-bold text-orange-900 mb-1">{journeyPhases.late}</div>
-                  <div className="text-xs text-orange-600">Giorni 21-31</div>
-                  <div className="mt-4 text-xs text-orange-700">
-                    Email di azione e preparazione
-                  </div>
+              <div className="flex items-center justify-between p-2 rounded-md bg-teal-50/50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle className="h-3.5 w-3.5 text-teal-600" />
+                  <span className="text-xs text-teal-700 dark:text-teal-300">Completate</span>
                 </div>
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{stats.allActionsCompleted}</span>
               </div>
-            </div>
-
-            <div className="mt-6 p-4 bg-muted rounded-lg">
-              <div className="flex items-start gap-3">
-                <HelpCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div className="space-y-1 text-sm">
-                  <div className="font-medium">Come leggere questa panoramica</div>
-                  <p className="text-muted-foreground">
-                    Ogni cliente progredisce attraverso queste tre fasi durante il mese. La distribuzione ti mostra quanti clienti si trovano in ogni fase del loro journey personale. Il sistema invia automaticamente il template appropriato in base al giorno del mese.
-                  </p>
+              <div className="flex items-center justify-between p-2 rounded-md bg-amber-50/50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-amber-600" />
+                  <span className="text-xs text-amber-700 dark:text-amber-300">Attenzione</span>
                 </div>
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{stats.needsAttention}</span>
               </div>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-cyan-700 dark:text-cyan-300">Clienti Totali</CardTitle>
-            <Mail className="h-4 w-4 text-cyan-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Journey Attivi</CardTitle>
-            <Calendar className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.active}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-teal-700 dark:text-teal-300">Azioni Completate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-teal-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.allActionsCompleted}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-amber-700 dark:text-amber-300">Richiedono Attenzione</CardTitle>
-            <Clock className="h-4 w-4 text-amber-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-900">{stats.needsAttention}</div>
-          </CardContent>
-        </Card>
+        {/* Journey Overview - compact phases */}
+        {allProgress && allProgress.length > 0 && (
+          <Card className="border border-slate-200 dark:border-slate-700 shadow-sm">
+            <CardContent className="p-3">
+              <div className="text-xs font-medium text-muted-foreground mb-2">Distribuzione Fasi</div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-md p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-center">
+                  <div className="text-lg font-bold text-green-900 dark:text-green-100">{journeyPhases.early}</div>
+                  <div className="text-[10px] font-medium text-green-700 dark:text-green-300">Inizio (1-10)</div>
+                  <div className="text-[10px] text-green-600 dark:text-green-400">Introduttive</div>
+                </div>
+                <div className="rounded-md p-2 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 text-center">
+                  <div className="text-lg font-bold text-cyan-900 dark:text-cyan-100">{journeyPhases.mid}</div>
+                  <div className="text-[10px] font-medium text-cyan-700 dark:text-cyan-300">Metà (11-20)</div>
+                  <div className="text-[10px] text-cyan-600 dark:text-cyan-400">Riflessione</div>
+                </div>
+                <div className="rounded-md p-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-center">
+                  <div className="text-lg font-bold text-orange-900 dark:text-orange-100">{journeyPhases.late}</div>
+                  <div className="text-[10px] font-medium text-orange-700 dark:text-orange-300">Fine (21-31)</div>
+                  <div className="text-[10px] text-orange-600 dark:text-orange-400">Azione</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Email Hub Quick Access */}
@@ -1337,7 +1326,9 @@ function EchoTab() {
 
 export default function ConsultantAIConfigPage() {
   const isMobile = useIsMobile();
+  const [, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pageView, setPageView] = useState<"config" | "logs">("config");
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [selectedTestDay, setSelectedTestDay] = useState<number>(1);
   const [manualEmail, setManualEmail] = useState("");
@@ -1356,6 +1347,7 @@ export default function ConsultantAIConfigPage() {
   const [selectedUpdatesClients, setSelectedUpdatesClients] = useState<string[]>([]);
   const [updatesSystemPrompt, setUpdatesSystemPrompt] = useState("");
   const [updatesDescription, setUpdatesDescription] = useState("");
+  const [journeyTemplatePage, setJourneyTemplatePage] = useState(1);
   const [selectedPromptPreset, setSelectedPromptPreset] = useState("custom");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1546,6 +1538,7 @@ export default function ConsultantAIConfigPage() {
   const [generatedWeekTemplates, setGeneratedWeekTemplates] = useState<{ dayNumber: number; subject: string; body: string; category: string }[]>([]);
   const [isGeneratingWeek, setIsGeneratingWeek] = useState(false);
   const [weekGenerationErrors, setWeekGenerationErrors] = useState<string[]>([]);
+  const [nurturingSubTab, setNurturingSubTab] = useState<string>("dashboard");
   
   // Template selection and bulk action states
   const [selectedTemplateDays, setSelectedTemplateDays] = useState<number[]>([]);
@@ -3172,15 +3165,43 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-[1600px] mx-auto">
-          {/* Navigation Tabs */}
-          <NavigationTabs
-            tabs={[
-              { label: "Configurazione", href: "/consultant/ai-config", icon: Sparkles },
-              { label: "Log Email", href: "/consultant/email-logs", icon: History },
-              { label: "Email Hub", href: "/consultant/email-hub", icon: Inbox },
-            ]}
-          />
+          {/* Page View Tabs */}
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setPageView("config")}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                pageView === "config"
+                  ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-md shadow-cyan-500/25"
+                  : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
+              }`}
+            >
+              <Sparkles className="h-4 w-4" />
+              Configurazione
+            </button>
+            <button
+              onClick={() => setPageView("logs")}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                pageView === "logs"
+                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/25"
+                  : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
+              }`}
+            >
+              <History className="h-4 w-4" />
+              Log Email
+            </button>
+            <button
+              onClick={() => setLocation("/consultant/email-hub")}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700"
+            >
+              <Inbox className="h-4 w-4" />
+              Email Hub
+            </button>
+          </div>
 
+          {pageView === "logs" ? (
+            <EmailLogsContent />
+          ) : (
+          <>
           <div className="mb-6">
             <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden border border-slate-700/50">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
@@ -3199,7 +3220,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
           </div>
 
           <Tabs defaultValue="controllo" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-10 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 h-auto rounded-xl shadow-sm backdrop-blur-sm">
+            <TabsList className="grid w-full grid-cols-9 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 h-auto rounded-xl shadow-sm backdrop-blur-sm">
               <TabsTrigger 
                 value="controllo" 
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-700 data-[state=active]:to-slate-800 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
@@ -3216,7 +3237,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
               </TabsTrigger>
               <TabsTrigger 
                 value="echo" 
-                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                className="hidden"
               >
                 <Sparkles className="h-4 w-4" />
                 <span className="hidden lg:inline">AI Echo</span>
@@ -3882,62 +3903,61 @@ Non limitarti a stato attuale/ideale. Attingi da:
               </Card>
             </TabsContent>
 
-            <TabsContent value="statistics" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl shadow-md shadow-cyan-500/20">
-                        <Mail className="text-white h-5 w-5" />
+            <TabsContent value="statistics" className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
+                        <Mail className="text-white h-4 w-4" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Email Generate</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats?.totalGenerated || 0}</p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Email Generate</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{stats?.totalGenerated || 0}</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl shadow-md shadow-emerald-500/20">
-                        <TrendingUp className="text-white h-5 w-5" />
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg">
+                        <TrendingUp className="text-white h-4 w-4" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Success Rate</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats?.successRate || 0}%</p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Success Rate</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{stats?.successRate || 0}%</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl shadow-md shadow-teal-500/20">
-                        <FileText className="text-white h-5 w-5" />
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg">
+                        <FileText className="text-white h-4 w-4" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Lunghezza Media</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats?.averageLength || 0}</p>
-                        <p className="text-xs text-slate-400">parole</p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Lunghezza Media</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{stats?.averageLength || 0} <span className="text-xs font-normal text-slate-400">parole</span></p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-md shadow-amber-500/20">
-                        <Brain className="text-white h-5 w-5" />
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg">
+                        <Brain className="text-white h-4 w-4" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">AI Attivo</p>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="text-emerald-500 h-5 w-5" />
-                          <p className="text-lg font-bold text-slate-900 dark:text-slate-100">Online</p>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">AI Attivo</p>
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle className="text-emerald-500 h-4 w-4" />
+                          <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Online</p>
                         </div>
                       </div>
                     </div>
@@ -3945,59 +3965,48 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 </Card>
               </div>
 
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                    <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg">
-                      <BarChart3 className="h-4 w-4 text-white" />
-                    </div>
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80">
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100">
+                    <BarChart3 className="h-4 w-4 text-emerald-600" />
                     Distribuzione Toni Email
                   </CardTitle>
-                  <CardDescription className="text-slate-500 dark:text-slate-400">
-                    Analisi dei toni utilizzati nelle email generate dall'AI
-                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="px-4 pb-4 pt-0">
+                  <div className="space-y-2">
                     {stats && (
                       <>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Professionale</span>
-                            <span className="text-sm text-slate-500">{stats.toneDistribution?.professionale || 0}</span>
-                          </div>
-                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300 w-24 shrink-0">Professionale</span>
+                          <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                             <div 
-                              className="bg-gradient-to-r from-cyan-500 to-teal-500 h-3 rounded-full transition-all" 
+                              className="bg-gradient-to-r from-cyan-500 to-teal-500 h-2 rounded-full transition-all" 
                               style={{ width: `${stats.totalGenerated > 0 ? ((stats.toneDistribution?.professionale || 0) / stats.totalGenerated) * 100 : 0}%` }}
                             />
                           </div>
+                          <span className="text-xs text-slate-500 w-8 text-right">{stats.toneDistribution?.professionale || 0}</span>
                         </div>
 
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Amichevole</span>
-                            <span className="text-sm text-slate-500">{stats.toneDistribution?.amichevole || 0}</span>
-                          </div>
-                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300 w-24 shrink-0">Amichevole</span>
+                          <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                             <div 
-                              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-3 rounded-full transition-all" 
+                              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full transition-all" 
                               style={{ width: `${stats.totalGenerated > 0 ? ((stats.toneDistribution?.amichevole || 0) / stats.totalGenerated) * 100 : 0}%` }}
                             />
                           </div>
+                          <span className="text-xs text-slate-500 w-8 text-right">{stats.toneDistribution?.amichevole || 0}</span>
                         </div>
 
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Motivazionale</span>
-                            <span className="text-sm text-slate-500">{stats.toneDistribution?.motivazionale || 0}</span>
-                          </div>
-                          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300 w-24 shrink-0">Motivazionale</span>
+                          <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                             <div 
-                              className="bg-gradient-to-r from-teal-500 to-emerald-500 h-3 rounded-full transition-all" 
+                              className="bg-gradient-to-r from-teal-500 to-emerald-500 h-2 rounded-full transition-all" 
                               style={{ width: `${stats.totalGenerated > 0 ? ((stats.toneDistribution?.motivazionale || 0) / stats.totalGenerated) * 100 : 0}%` }}
                             />
                           </div>
+                          <span className="text-xs text-slate-500 w-8 text-right">{stats.toneDistribution?.motivazionale || 0}</span>
                         </div>
                       </>
                     )}
@@ -4005,72 +4014,78 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 </CardContent>
               </Card>
 
-              {/* Personalizza Journey Email Section */}
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden">
-                <CardHeader className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white relative">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500"></div>
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-800 text-white py-3 px-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
-                        <Sparkles className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-white">Personalizza Journey Email</CardTitle>
-                        <CardDescription className="text-slate-400">
-                          Adatta i template email al tuo business con l'AI
-                        </CardDescription>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-cyan-400" />
+                      <CardTitle className="text-white text-sm">Personalizza Journey Email</CardTitle>
                     </div>
                     {customJourneyData?.useCustomTemplates && (
-                      <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0">
-                        Template Personalizzati Attivi
+                      <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs">
+                        Personalizzati Attivi
                       </Badge>
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="customBusinessContext" className="text-slate-700 dark:text-slate-300 font-medium">
+                <CardContent className="p-4 space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="customBusinessContext" className="text-xs text-slate-700 dark:text-slate-300 font-medium">
                       Descrivi la tua attività
                     </Label>
                     <Textarea
                       id="customBusinessContext"
-                      placeholder="Es: Sono un consulente finanziario specializzato in pianificazione patrimoniale per famiglie. I miei clienti sono principalmente professionisti con redditi medio-alti che vogliono ottimizzare risparmi e investimenti..."
+                      placeholder="Es: Sono un consulente finanziario specializzato in pianificazione patrimoniale..."
                       value={customBusinessContext || customJourneyData?.businessContext || ""}
                       onChange={(e) => setCustomBusinessContext(e.target.value)}
-                      rows={4}
-                      className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-cyan-400"
+                      rows={3}
+                      className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-cyan-400 text-sm"
                     />
-                    <p className="text-xs text-slate-500">
-                      L'AI userà questa descrizione per personalizzare tutti i 31 template email
-                    </p>
                   </div>
 
-                  <Button
-                    onClick={() => generateCustomTemplatesMutation.mutate(customBusinessContext || customJourneyData?.businessContext || "")}
-                    disabled={generateCustomTemplatesMutation.isPending || !(customBusinessContext || customJourneyData?.businessContext)?.trim()}
-                    className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
-                  >
-                    {generateCustomTemplatesMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generazione in corso (~30 secondi)...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        Genera Template Personalizzati
-                      </>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => generateCustomTemplatesMutation.mutate(customBusinessContext || customJourneyData?.businessContext || "")}
+                      disabled={generateCustomTemplatesMutation.isPending || !(customBusinessContext || customJourneyData?.businessContext)?.trim()}
+                      className="flex-1 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 h-9 text-sm"
+                      size="sm"
+                    >
+                      {generateCustomTemplatesMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          Generazione...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                          Genera Template
+                        </>
+                      )}
+                    </Button>
+                    {customJourneyData?.hasCustomTemplates && (
+                      <Button
+                        variant="outline"
+                        onClick={() => resetCustomTemplatesMutation.mutate()}
+                        disabled={resetCustomTemplatesMutation.isPending}
+                        size="sm"
+                        className="h-9 text-sm"
+                      >
+                        {resetCustomTemplatesMutation.isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
                     )}
-                  </Button>
+                  </div>
 
                   {(customGenerationSuccess || customJourneyData?.hasCustomTemplates) && (
-                    <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                    <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md">
                       <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
-                        <CheckCircle className="h-4 w-4" />
-                        <span className="text-sm font-medium">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        <span className="text-xs font-medium">
                           {customGenerationSuccess 
-                            ? `${customGenerationSuccess.count} template generati con successo!`
+                            ? `${customGenerationSuccess.count} template generati!`
                             : customJourneyData?.lastGeneratedAt 
                               ? `Generati il: ${new Date(customJourneyData.lastGeneratedAt).toLocaleString("it-IT")}`
                               : "Template personalizzati disponibili"
@@ -4080,14 +4095,11 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="useCustomTemplates" className="text-slate-700 dark:text-slate-300 font-medium">
+                  <div className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-md border border-slate-200 dark:border-slate-700">
+                    <div>
+                      <Label htmlFor="useCustomTemplates" className="text-xs text-slate-700 dark:text-slate-300 font-medium">
                         Usa Template Personalizzati
                       </Label>
-                      <p className="text-xs text-slate-500">
-                        Attiva per usare i template personalizzati invece dei default
-                      </p>
                     </div>
                     <Switch
                       id="useCustomTemplates"
@@ -4099,53 +4111,33 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   </div>
 
                   {customJourneyData?.hasCustomTemplates && !customJourneyData?.hasSmtpSettings && (
-                    <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700">
-                      <AlertCircle className="h-4 w-4 text-amber-600" />
-                      <AlertDescription className="text-amber-800 dark:text-amber-200">
-                        <strong>Attenzione:</strong> Le impostazioni SMTP non sono configurate. 
-                        I template personalizzati sono pronti ma le email non potranno essere inviate 
-                        finché non configuri il server SMTP nella sezione "Email Automation".
+                    <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 py-2">
+                      <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                      <AlertDescription className="text-xs text-amber-800 dark:text-amber-200">
+                        SMTP non configurato. Configura nella sezione "Email Automation" per inviare.
                       </AlertDescription>
                     </Alert>
-                  )}
-
-                  {customJourneyData?.hasCustomTemplates && (
-                    <Button
-                      variant="outline"
-                      onClick={() => resetCustomTemplatesMutation.mutate()}
-                      disabled={resetCustomTemplatesMutation.isPending}
-                      className="w-full border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                      {resetCustomTemplatesMutation.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                      )}
-                      Ripristina Template Default
-                    </Button>
                   )}
                 </CardContent>
               </Card>
 
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                    <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg">
-                      <Sparkles className="h-4 w-4 text-white" />
-                    </div>
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80">
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100">
+                    <Sparkles className="h-4 w-4 text-teal-600" />
                     Template Journey Email (31 Giorni)
                     {customJourneyData?.isCustom && (
-                      <Badge className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white ml-2">Personalizzati</Badge>
+                      <Badge className="bg-cyan-500 text-white text-xs ml-1">Personalizzati</Badge>
                     )}
                   </CardTitle>
-                  <CardDescription className="text-slate-500 dark:text-slate-400">
+                  <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
                     {customJourneyData?.isCustom 
-                      ? "Template personalizzati per il tuo business - clicca su ogni giorno per vedere il prompt"
-                      : "Prompt AI reali utilizzati per generare le email giorno per giorno nel journey mensile"
+                      ? "Template personalizzati - clicca per vedere il prompt"
+                      : "Prompt AI per generare le email giorno per giorno"
                     }
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-4 pb-4 pt-0">
                   {(() => {
                     const displayTemplates = customJourneyData?.isCustom && customJourneyData.templates?.length > 0 
                       ? customJourneyData.templates 
@@ -4154,40 +4146,44 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     
                     if (isLoading) {
                       return (
-                        <div className="flex items-center justify-center py-12">
-                          <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-cyan-600" />
                         </div>
                       );
                     }
                     
                     if (displayTemplates.length === 0) {
                       return (
-                        <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                          <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                          <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Nessun template trovato</p>
-                          <p className="text-sm text-slate-500 mt-2">
+                        <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <FileText className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                          <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">Nessun template trovato</p>
+                          <p className="text-xs text-slate-500 mt-1">
                             Esegui lo script di seeding per creare i template journey
                           </p>
                         </div>
                       );
                     }
+
+                    const TEMPLATES_PER_PAGE = 10;
+                    const sortedTemplates = [...displayTemplates].sort((a, b) => a.dayOfMonth - b.dayOfMonth);
+                    const totalPages = Math.ceil(sortedTemplates.length / TEMPLATES_PER_PAGE);
+                    const safePage = Math.min(journeyTemplatePage, totalPages || 1);
+                    const currentPageTemplates = sortedTemplates.slice(
+                      (safePage - 1) * TEMPLATES_PER_PAGE,
+                      safePage * TEMPLATES_PER_PAGE
+                    );
                     
                     return (
                       <>
-                        <div className={`mb-4 p-4 border rounded-lg ${customJourneyData?.isCustom ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800'}`}>
-                          <div className="flex items-start gap-3">
-                            <Sparkles className={`h-5 w-5 mt-0.5 ${customJourneyData?.isCustom ? 'text-emerald-600' : 'text-cyan-600'}`} />
-                            <div className={`text-sm ${customJourneyData?.isCustom ? 'text-emerald-700 dark:text-emerald-300' : 'text-cyan-700 dark:text-cyan-300'}`}>
-                              <p className="font-semibold mb-1">
-                                {customJourneyData?.isCustom ? 'Template Personalizzati Attivi' : 'Sistema Email Journey Attivo'}
-                              </p>
-                              <p>Il sistema utilizza <strong>{displayTemplates.length} template specifici</strong> {customJourneyData?.isCustom ? 'personalizzati per il tuo business' : '(28 standard + 3 extra per mesi lunghi)'}. Clicca su ogni giorno per vedere il prompt completo.</p>
-                            </div>
+                        <div className={`mb-3 p-2.5 border rounded-md text-xs ${customJourneyData?.isCustom ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300'}`}>
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                            <span><strong>{displayTemplates.length} template</strong> {customJourneyData?.isCustom ? 'personalizzati' : '(28 standard + 3 extra)'}. Clicca per vedere il prompt.</span>
                           </div>
                         </div>
 
                         <Accordion type="single" collapsible className="w-full">
-                          {displayTemplates.sort((a, b) => a.dayOfMonth - b.dayOfMonth).map((template) => {
+                          {currentPageTemplates.map((template) => {
                           const isExtraDay = template.dayOfMonth > 28;
                           let badgeClass = '';
 
@@ -4201,63 +4197,60 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
                           return (
                             <AccordionItem key={template.id} value={template.id}>
-                              <AccordionTrigger className="hover:bg-slate-50 px-4 rounded-lg">
-                                <div className="flex items-center gap-3 w-full">
-                                  <Badge variant="outline" className={`font-bold ${badgeClass}`}>
-                                    Giorno {template.dayOfMonth}
+                              <AccordionTrigger className="hover:bg-slate-50 px-3 py-2 rounded-lg text-sm">
+                                <div className="flex items-center gap-2 w-full">
+                                  <Badge variant="outline" className={`font-bold text-xs ${badgeClass}`}>
+                                    G{template.dayOfMonth}
                                   </Badge>
                                   {isExtraDay && (
-                                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs border-0">Extra</Badge>
+                                    <Badge className="bg-amber-500 text-white text-[10px] border-0 px-1 py-0">Extra</Badge>
                                   )}
-                                  <span className="font-semibold text-left flex-1">{template.title}</span>
-                                  <Badge variant="outline" className="text-xs">
+                                  <span className="font-medium text-left flex-1 text-sm truncate">{template.title}</span>
+                                  <Badge variant="outline" className="text-[10px] px-1.5">
                                     {template.emailType}
                                   </Badge>
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="text-[10px] px-1.5">
                                     {template.tone}
                                   </Badge>
                                 </div>
                               </AccordionTrigger>
-                              <AccordionContent className="px-4 pt-4">
-                                <div className="space-y-4">
-                                  <div className="flex flex-wrap gap-2">
-                                    <Badge variant="outline">Priorità: {template.priority}/10</Badge>
-                                    <Badge variant={template.isActive ? "default" : "secondary"}>
-                                      {template.isActive ? "✓ Attivo" : "Disattivo"}
+                              <AccordionContent className="px-3 pt-3">
+                                <div className="space-y-3">
+                                  <div className="flex flex-wrap gap-1.5">
+                                    <Badge variant="outline" className="text-xs">Priorità: {template.priority}/10</Badge>
+                                    <Badge variant={template.isActive ? "default" : "secondary"} className="text-xs">
+                                      {template.isActive ? "Attivo" : "Disattivo"}
                                     </Badge>
                                   </div>
 
                                   <div>
-                                    <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Descrizione:</h4>
-                                    <p className="text-sm">{template.description}</p>
+                                    <h4 className="font-medium text-xs mb-1 text-muted-foreground">Descrizione:</h4>
+                                    <p className="text-xs">{template.description}</p>
                                   </div>
 
                                   <div>
-                                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                                      <Sparkles className="h-4 w-4 text-cyan-600" />
-                                      Prompt AI Completo:
+                                    <h4 className="font-medium text-xs mb-1 flex items-center gap-1.5">
+                                      <Sparkles className="h-3 w-3 text-cyan-600" />
+                                      Prompt AI:
                                     </h4>
                                     <Textarea
                                       value={template.promptTemplate}
                                       readOnly
-                                      rows={15}
+                                      rows={10}
                                       className="font-mono text-xs bg-slate-50 border-slate-300"
                                     />
                                   </div>
 
                                   {isExtraDay && (
-                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                      <div className="flex items-start gap-2">
-                                        <Calendar className="h-4 w-4 text-amber-600 mt-0.5" />
-                                        <div className="text-xs text-amber-800">
-                                          <p className="font-semibold">Template Extra</p>
-                                          <p>
-                                            Questo template viene utilizzato solo per mesi con{' '}
-                                            {template.dayOfMonth === 29 && '29+'}
-                                            {template.dayOfMonth === 30 && '30+'}
-                                            {template.dayOfMonth === 31 && '31'} giorni
-                                          </p>
-                                        </div>
+                                    <div className="p-2 bg-amber-50 border border-amber-200 rounded-md">
+                                      <div className="flex items-center gap-1.5 text-xs text-amber-800">
+                                        <Calendar className="h-3 w-3 text-amber-600" />
+                                        <span>
+                                          Solo per mesi con{' '}
+                                          {template.dayOfMonth === 29 && '29+'}
+                                          {template.dayOfMonth === 30 && '30+'}
+                                          {template.dayOfMonth === 31 && '31'} giorni
+                                        </span>
                                       </div>
                                     </div>
                                   )}
@@ -4267,6 +4260,27 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           );
                         })}
                         </Accordion>
+
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+                            <span className="text-xs text-slate-500">
+                              Pagina {safePage} di {totalPages} ({sortedTemplates.length} template)
+                            </span>
+                            <div className="flex gap-1">
+                              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <Button
+                                  key={page}
+                                  variant={safePage === page ? "default" : "outline"}
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-xs"
+                                  onClick={() => setJourneyTemplatePage(page)}
+                                >
+                                  {page}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </>
                     );
                   })()}
@@ -4274,269 +4288,221 @@ Non limitarti a stato attuale/ideale. Attingi da:
               </Card>
             </TabsContent>
 
-            <TabsContent value="clients" className="space-y-8">
+            <TabsContent value="clients" className="space-y-4">
               {/* Iscritti Attivi al Journey Section */}
-              <Card className="border-2 border-emerald-200 dark:border-emerald-700 shadow-lg bg-gradient-to-br from-emerald-50/80 via-green-50/60 to-teal-50/40 dark:from-emerald-900/20 dark:via-green-900/15 dark:to-teal-900/10 backdrop-blur-sm">
-                <CardHeader className="pb-4">
+              <Card className="border border-emerald-200 dark:border-emerald-700 shadow-sm">
+                <CardHeader className="py-3 px-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-md">
-                        <Users className="h-5 w-5 text-white" />
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-emerald-500 rounded-lg">
+                        <Users className="h-4 w-4 text-white" />
                       </div>
-                      <div>
-                        <CardTitle className="flex items-center gap-3 text-emerald-900 dark:text-emerald-100">
-                          Iscritti Attivi al Journey
-                          {clientAutomationStatus?.clients && (
-                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-sm">
-                              {clientAutomationStatus.clients.filter(c => c.automationEnabled).length} attivi
-                            </Badge>
-                          )}
-                        </CardTitle>
-                        <CardDescription className="text-emerald-700 dark:text-emerald-300 mt-1">
-                          Clienti che ricevono le email automatiche
-                        </CardDescription>
-                      </div>
+                      <CardTitle className="text-base flex items-center gap-2 text-emerald-900 dark:text-emerald-100">
+                        Iscritti Attivi al Journey
+                        {clientAutomationStatus?.clients && (
+                          <Badge className="bg-emerald-500 text-white border-0 text-xs px-1.5 py-0">
+                            {clientAutomationStatus.clients.filter(c => c.automationEnabled).length}
+                          </Badge>
+                        )}
+                      </CardTitle>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-4 pb-3 pt-0">
                   {clientStatusLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
                     </div>
                   ) : (() => {
                     const activeClients = clientAutomationStatus?.clients?.filter(c => c.automationEnabled) || [];
                     
                     if (activeClients.length === 0) {
                       return (
-                        <div className="text-center py-10 bg-white/60 dark:bg-slate-800/40 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                          <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-full w-fit mx-auto mb-4">
-                            <Users className="h-8 w-8 text-emerald-500" />
-                          </div>
-                          <p className="text-lg font-semibold text-emerald-800 dark:text-emerald-200">Nessun cliente iscritto al journey</p>
-                          <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-2 max-w-md mx-auto">
-                            Attiva l'automation per i tuoi clienti dalla sezione sottostante per iniziare a inviare email automatiche
+                        <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                          <Users className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
+                          <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">Nessun cliente iscritto</p>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                            Attiva l'automation dalla sezione sottostante
                           </p>
                         </div>
                       );
                     }
                     
                     return (
-                      <div className="grid gap-3">
-                        {activeClients.map((client) => (
-                          <div
-                            key={client.id}
-                            className="group p-4 bg-white/80 dark:bg-slate-800/60 rounded-xl border border-emerald-200 dark:border-emerald-700 hover:border-emerald-400 dark:hover:border-emerald-500 hover:shadow-md transition-all duration-200"
-                          >
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center text-white font-semibold shadow-sm">
-                                  {client.name?.charAt(0)?.toUpperCase() || '?'}
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead className="h-8 text-xs">Cliente</TableHead>
+                            <TableHead className="h-8 text-xs">Email</TableHead>
+                            <TableHead className="h-8 text-xs text-center">Inviate</TableHead>
+                            <TableHead className="h-8 text-xs w-[80px]"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {activeClients.map((client) => (
+                            <TableRow key={client.id} className="group">
+                              <TableCell className="py-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-7 w-7 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                                    {client.name?.charAt(0)?.toUpperCase() || '?'}
+                                  </div>
+                                  <span className="font-medium text-sm truncate">{client.name}</span>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">{client.name}</p>
-                                  <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{client.email}</p>
-                                </div>
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg">
-                                  <Mail className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">{client.emailsSentCount} inviate</span>
-                                </div>
-                              </div>
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        toggleClientAutomationMutation.mutate({
-                                          clientId: client.id,
-                                          enabled: false,
-                                        });
-                                      }}
-                                      disabled={toggleClientAutomationMutation.isPending}
-                                      className="opacity-0 group-hover:opacity-100 transition-opacity border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30"
-                                    >
-                                      <X className="h-4 w-4 mr-1" />
-                                      Rimuovi
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left">
-                                    <p>Rimuovi dal journey automatico</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                              </TableCell>
+                              <TableCell className="py-2 text-sm text-muted-foreground truncate max-w-[200px]">{client.email}</TableCell>
+                              <TableCell className="py-2 text-center">
+                                <Badge variant="secondary" className="text-xs px-1.5 py-0">{client.emailsSentCount}</Badge>
+                              </TableCell>
+                              <TableCell className="py-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    toggleClientAutomationMutation.mutate({
+                                      clientId: client.id,
+                                      enabled: false,
+                                    });
+                                  }}
+                                  disabled={toggleClientAutomationMutation.isPending}
+                                  className="h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     );
                   })()}
                 </CardContent>
               </Card>
 
               {/* Gestione Automation Clienti Section */}
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-md bg-gradient-to-br from-white/90 to-slate-50/80 dark:from-slate-800/90 dark:to-slate-850/80 backdrop-blur-sm">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-3 text-slate-900 dark:text-slate-100">
-                    <div className="p-2.5 bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl shadow-md">
-                      <Settings className="h-5 w-5 text-white" />
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm">
+                <CardHeader className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-slate-600 rounded-lg">
+                      <Settings className="h-4 w-4 text-white" />
                     </div>
-                    <div>
-                      <span>Gestione Automation Clienti</span>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base text-slate-900 dark:text-slate-100">Gestione Automation</CardTitle>
                       {clientAutomationStatus?.clients && (
-                        <Badge variant="secondary" className="ml-3">
-                          {clientAutomationStatus.clients.length} clienti
+                        <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                          {clientAutomationStatus.clients.length}
                         </Badge>
                       )}
                     </div>
-                  </CardTitle>
-                  <CardDescription className="text-slate-500 dark:text-slate-400 mt-1">
-                    Attiva o disattiva le email automatiche per ogni cliente
-                  </CardDescription>
+                  </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-4 pb-3 pt-0">
                   {clientStatusLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-cyan-600" />
                     </div>
                   ) : !clientAutomationStatus?.clients || clientAutomationStatus.clients.length === 0 ? (
-                    <div className="text-center py-12 bg-slate-50/80 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                      <div className="p-3 bg-slate-100 dark:bg-slate-700 rounded-full w-fit mx-auto mb-4">
-                        <Users className="h-10 w-10 text-slate-400" />
-                      </div>
-                      <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Nessun cliente trovato</p>
-                      <p className="text-sm text-slate-500 mt-2">
-                        Aggiungi clienti per iniziare a usare l'automation
-                      </p>
+                    <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <Users className="h-6 w-6 text-slate-400 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Nessun cliente trovato</p>
+                      <p className="text-xs text-slate-500 mt-1">Aggiungi clienti per usare l'automation</p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      {!automationEnabled && (
+                        <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700 py-2 mb-2">
+                          <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                          <AlertDescription className="text-xs text-amber-800 dark:text-amber-200">
+                            Automation generale disattivata - tutte le email vanno in bozza
+                          </AlertDescription>
+                        </Alert>
+                      )}
                       {clientAutomationStatus.clients.map((client) => {
                         const isActive = automationEnabled && client.automationEnabled;
 
                         return (
                           <div
                             key={client.id}
-                            className={`group p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${
+                            className={`p-3 rounded-lg border transition-colors ${
                               isActive 
-                                ? 'bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/15 border-emerald-300 dark:border-emerald-700 hover:border-emerald-400' 
-                                : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                                ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' 
+                                : 'bg-white dark:bg-slate-800/40 border-slate-200 dark:border-slate-700'
                             }`}
                           >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1 space-y-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex-1">
-                                    <p className="font-semibold text-lg">{client.name}</p>
-                                    <p className="text-sm text-muted-foreground">{client.email}</p>
-                                  </div>
-                                  <div className="flex items-center gap-4">
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div className="flex flex-col items-end gap-1">
-                                            <span className="text-xs text-muted-foreground">Riceve email</span>
-                                            <Switch
-                                              checked={client.automationEnabled}
-                                              onCheckedChange={(checked) => {
-                                                toggleClientAutomationMutation.mutate({
-                                                  clientId: client.id,
-                                                  enabled: checked,
-                                                  saveAsDraft: checked ? client.saveAsDraft : false,
-                                                });
-                                              }}
-                                              disabled={toggleClientAutomationMutation.isPending}
-                                            />
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Questo cliente riceve email dal journey?</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div className="flex flex-col items-end gap-1">
-                                            <span className={`text-xs ${client.automationEnabled ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>Solo bozza</span>
-                                            <Switch
-                                              checked={client.automationEnabled ? (client.saveAsDraft || false) : false}
-                                              onCheckedChange={(checked) => {
-                                                toggleClientAutomationMutation.mutate({
-                                                  clientId: client.id,
-                                                  enabled: client.automationEnabled,
-                                                  saveAsDraft: checked,
-                                                });
-                                              }}
-                                              disabled={!client.automationEnabled || toggleClientAutomationMutation.isPending}
-                                              className="data-[state=checked]:bg-amber-500"
-                                            />
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>{client.automationEnabled ? "Le email vanno in bozza o partono subito?" : "Attiva prima 'Riceve email'"}</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                  </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Mail className="h-4 w-4 text-cyan-600" />
-                                    <div>
-                                      <p className="text-slate-500 dark:text-slate-400">Email inviate</p>
-                                      <p className="font-semibold text-slate-700 dark:text-slate-300">{client.emailsSentCount}</p>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <CheckCircle className="h-4 w-4 text-teal-600" />
-                                    <div>
-                                      <p className="text-slate-500 dark:text-slate-400">Ultima email</p>
-                                      <p className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {client.lastEmailSentAt 
-                                          ? format(new Date(client.lastEmailSentAt), "dd/MM/yyyy", { locale: it })
-                                          : "Mai"}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Calendar className="h-4 w-4 text-emerald-600" />
-                                    <div className="space-y-1">
-                                      <p className="text-slate-500 dark:text-slate-400">Prossimo invio</p>
-                                      {client.nextEmailDate ? (
-                                        <>
-                                          {client.daysUntilNext !== null && client.daysUntilNext <= 0 ? (
-                                            <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0">Pronto per invio</Badge>
-                                          ) : client.daysUntilNext !== null && client.daysUntilNext > 0 ? (
-                                            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">
-                                              Tra {client.daysUntilNext} {client.daysUntilNext === 1 ? 'giorno' : 'giorni'}
-                                            </Badge>
-                                          ) : (
-                                            <Badge variant="secondary">In attesa</Badge>
-                                          )}
-                                          <p className="text-xs text-slate-500">
-                                            {format(new Date(client.nextEmailDate), "dd/MM/yyyy", { locale: it })}
-                                          </p>
-                                        </>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <p className="font-medium text-sm truncate">{client.name}</p>
+                                <span className="text-xs text-muted-foreground truncate hidden sm:inline">{client.email}</span>
+                              </div>
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <Mail className="h-3 w-3 text-cyan-600" />
+                                    <span className="font-medium text-slate-700 dark:text-slate-300">{client.emailsSentCount}</span>
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <CheckCircle className="h-3 w-3 text-teal-600" />
+                                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                                      {client.lastEmailSentAt 
+                                        ? format(new Date(client.lastEmailSentAt), "dd/MM", { locale: it })
+                                        : "—"}
+                                    </span>
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    {client.nextEmailDate ? (
+                                      client.daysUntilNext !== null && client.daysUntilNext <= 0 ? (
+                                        <Badge className="bg-emerald-500 text-white border-0 text-[10px] px-1.5 py-0 h-4">Pronto</Badge>
+                                      ) : client.daysUntilNext !== null && client.daysUntilNext > 0 ? (
+                                        <Badge className="bg-amber-500 text-white border-0 text-[10px] px-1.5 py-0 h-4">
+                                          {client.daysUntilNext}g
+                                        </Badge>
                                       ) : (
-                                        <Badge variant="secondary">Mai inviato</Badge>
-                                      )}
-                                    </div>
-                                  </div>
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">Attesa</Badge>
+                                      )
+                                    ) : (
+                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">—</Badge>
+                                    )}
+                                  </span>
                                 </div>
-
-                                {!automationEnabled && (
-                                  <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700">
-                                    <AlertCircle className="h-4 w-4 text-amber-600" />
-                                    <AlertDescription className="text-amber-800 dark:text-amber-200">
-                                      Automation generale disattivata - tutte le email vanno in bozza
-                                    </AlertDescription>
-                                  </Alert>
-                                )}
+                                <div className="flex items-center gap-2 border-l pl-3 border-slate-200 dark:border-slate-600">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Switch
+                                          checked={client.automationEnabled}
+                                          onCheckedChange={(checked) => {
+                                            toggleClientAutomationMutation.mutate({
+                                              clientId: client.id,
+                                              enabled: checked,
+                                              saveAsDraft: checked ? client.saveAsDraft : false,
+                                            });
+                                          }}
+                                          disabled={toggleClientAutomationMutation.isPending}
+                                          className="scale-90"
+                                        />
+                                      </TooltipTrigger>
+                                      <TooltipContent><p>Riceve email</p></TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Switch
+                                          checked={client.automationEnabled ? (client.saveAsDraft || false) : false}
+                                          onCheckedChange={(checked) => {
+                                            toggleClientAutomationMutation.mutate({
+                                              clientId: client.id,
+                                              enabled: client.automationEnabled,
+                                              saveAsDraft: checked,
+                                            });
+                                          }}
+                                          disabled={!client.automationEnabled || toggleClientAutomationMutation.isPending}
+                                          className="data-[state=checked]:bg-amber-500 scale-90"
+                                        />
+                                      </TooltipTrigger>
+                                      <TooltipContent><p>{client.automationEnabled ? "Solo bozza" : "Attiva prima 'Riceve email'"}</p></TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -4552,23 +4518,27 @@ Non limitarti a stato attuale/ideale. Attingi da:
               <EmailJourneyTab />
             </TabsContent>
 
-            <TabsContent value="test" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <TabsContent value="test" className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                 <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                      <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg">
-                        <Zap className="h-4 w-4 text-white" />
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-md shadow-amber-500/20">
+                        <Zap className="h-5 w-5 text-white" />
                       </div>
-                      Test Generazione Email Journey
-                    </CardTitle>
-                    <CardDescription className="text-slate-500 dark:text-slate-400">
-                      Simula l'invio di email per uno specifico giorno del journey (1-31)
-                    </CardDescription>
+                      <div>
+                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">
+                          Test Generazione Email Journey
+                        </CardTitle>
+                        <CardDescription className="text-slate-500 dark:text-slate-400 mt-0.5">
+                          Simula l'invio di email per uno specifico giorno del journey (1-31)
+                        </CardDescription>
+                      </div>
+                    </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="test-client">Seleziona Cliente</Label>
+                  <CardContent className="space-y-3 pt-0">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="test-client" className="text-sm">Seleziona Cliente</Label>
                       <Select value={selectedClient} onValueChange={setSelectedClient}>
                         <SelectTrigger id="test-client">
                           <SelectValue placeholder="Scegli un cliente..." />
@@ -4583,9 +4553,9 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="test-day" className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="test-day" className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-3.5 w-3.5 text-slate-500" />
                         Giorno del Journey da Testare
                       </Label>
                       <Select 
@@ -4619,15 +4589,15 @@ Non limitarti a stato attuale/ideale. Attingi da:
                         const template = journeyTemplates.find(t => t.dayOfMonth === selectedTestDay);
                         if (template) {
                           return (
-                            <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg">
+                            <div className="p-2.5 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg">
                               <div className="flex items-start gap-2">
-                                <Sparkles className="h-4 w-4 text-cyan-600 mt-0.5" />
+                                <Sparkles className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400 mt-0.5 shrink-0" />
                                 <div className="text-xs text-cyan-700 dark:text-cyan-300">
-                                  <p className="font-semibold">Template: {template.title}</p>
-                                  <p className="text-slate-500">{template.description}</p>
-                                  <div className="flex gap-2 mt-1">
-                                    <Badge variant="outline" className="text-xs border-cyan-300 text-cyan-700">{template.emailType}</Badge>
-                                    <Badge variant="outline" className="text-xs border-teal-300 text-teal-700">{template.tone}</Badge>
+                                  <p className="font-semibold">{template.title}</p>
+                                  <p className="text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{template.description}</p>
+                                  <div className="flex gap-1.5 mt-1.5">
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-cyan-300 dark:border-cyan-700 text-cyan-700 dark:text-cyan-300">{template.emailType}</Badge>
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300">{template.tone}</Badge>
                                   </div>
                                 </div>
                               </div>
@@ -4638,8 +4608,8 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       })()}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="manual-email">Email destinatario test (opzionale)</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="manual-email" className="text-sm">Email destinatario test (opzionale)</Label>
                       <Input
                         id="manual-email"
                         type="email"
@@ -4649,14 +4619,14 @@ Non limitarti a stato attuale/ideale. Attingi da:
                         className="w-full"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Se vuoi testare con un'email diversa da quella del cliente, inseriscila qui
+                        Inserisci un'email diversa da quella del cliente per il test
                       </p>
                     </div>
 
                     <Button
                       onClick={handleGenerateTest}
                       disabled={!selectedClient || generateTestEmailMutation.isPending}
-                      className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
+                      className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 shadow-md shadow-cyan-500/20"
                     >
                       {generateTestEmailMutation.isPending ? (
                         <>
@@ -4673,99 +4643,109 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   </CardContent>
                 </Card>
 
-                {selectedClient && (
-                  <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                        <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg">
-                          <Eye className="h-4 w-4 text-white" />
+                <Card className={`border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm ${!selectedClient ? 'opacity-60' : ''}`}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl shadow-md shadow-teal-500/20">
+                        <Eye className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">
+                          Preview Contesto AI
+                        </CardTitle>
+                        <CardDescription className="text-slate-500 dark:text-slate-400 mt-0.5">
+                          Dati utilizzati dall'AI per generare l'email
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {!selectedClient ? (
+                      <div className="text-center py-8 bg-slate-50/80 dark:bg-slate-900/30 rounded-xl border border-dashed border-slate-300 dark:border-slate-600">
+                        <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-full w-fit mx-auto mb-3">
+                          <Users className="h-6 w-6 text-slate-400" />
                         </div>
-                        Preview Contesto AI
-                      </CardTitle>
-                      <CardDescription className="text-slate-500 dark:text-slate-400">
-                        Dati che verranno utilizzati dall'AI per generare l'email
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {contextLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
-                        </div>
-                      ) : contextPreview ? (
-                        <div className="space-y-4">
-                          <div className="p-4 bg-slate-50 rounded-lg">
-                            <h4 className="font-semibold mb-3 flex items-center gap-2">
-                              <Users className="h-4 w-4" />
-                              Stato Cliente
-                            </h4>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                              <div>
-                                <p className="text-muted-foreground">Nome</p>
-                                <p className="font-medium">{contextPreview.clientState.name}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Livello</p>
-                                <Badge>{contextPreview.clientState.level}</Badge>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Obiettivi Attivi</p>
-                                <p className="font-medium">{contextPreview.clientState.activeGoals}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Esercizi Completati</p>
-                                <p className="font-medium">{contextPreview.clientState.completedExercises}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Streak</p>
-                                <p className="font-medium">{contextPreview.clientState.streakDays} giorni</p>
-                              </div>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Seleziona un cliente</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">per visualizzare il contesto AI</p>
+                      </div>
+                    ) : contextLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-cyan-600" />
+                      </div>
+                    ) : contextPreview ? (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                            <Users className="h-3.5 w-3.5" />
+                            Stato Cliente
+                          </h4>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Nome</span>
+                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.name}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Livello</span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">{contextPreview.clientState.level}</Badge>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Obiettivi</span>
+                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.activeGoals}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Esercizi</span>
+                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.completedExercises}</span>
+                            </div>
+                            <div className="flex items-center justify-between col-span-2">
+                              <span className="text-xs text-muted-foreground">Streak</span>
+                              <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{contextPreview.clientState.streakDays} giorni</span>
                             </div>
                           </div>
-
-                          {contextPreview.recentTasks.length > 0 && (
-                            <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-100 dark:border-cyan-800">
-                              <h4 className="font-semibold mb-3 text-slate-700 dark:text-slate-300">Task Recenti</h4>
-                              <div className="space-y-2">
-                                {contextPreview.recentTasks.map((task, idx) => (
-                                  <div key={idx} className="flex items-center justify-between text-sm">
-                                    <span className="text-slate-700 dark:text-slate-300">{task.title}</span>
-                                    <Badge variant="outline" className="border-cyan-300 text-cyan-700">{task.status}</Badge>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {contextPreview.goals.length > 0 && (
-                            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800">
-                              <h4 className="font-semibold mb-3">Obiettivi</h4>
-                              <div className="space-y-3">
-                                {contextPreview.goals.map((goal, idx) => (
-                                  <div key={idx} className="space-y-1">
-                                    <div className="flex items-center justify-between text-sm">
-                                      <span>{goal.title}</span>
-                                      <span className="text-muted-foreground">{goal.progress}%</span>
-                                    </div>
-                                    <div className="w-full bg-slate-200 rounded-full h-2">
-                                      <div 
-                                        className="bg-emerald-600 h-2 rounded-full transition-all" 
-                                        style={{ width: `${goal.progress}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">
-                          Nessun dato disponibile per questo cliente
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+
+                        {contextPreview.recentTasks.length > 0 && (
+                          <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-100 dark:border-cyan-800">
+                            <h4 className="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">Task Recenti</h4>
+                            <div className="space-y-1.5">
+                              {contextPreview.recentTasks.map((task, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-xs">
+                                  <span className="text-slate-700 dark:text-slate-300 truncate mr-2">{task.title}</span>
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-cyan-300 dark:border-cyan-700 text-cyan-700 dark:text-cyan-300 shrink-0">{task.status}</Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {contextPreview.goals.length > 0 && (
+                          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                            <h4 className="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">Obiettivi</h4>
+                            <div className="space-y-2">
+                              {contextPreview.goals.map((goal, idx) => (
+                                <div key={idx} className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-slate-700 dark:text-slate-300 truncate mr-2">{goal.title}</span>
+                                    <span className="text-muted-foreground shrink-0">{goal.progress}%</span>
+                                  </div>
+                                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
+                                    <div 
+                                      className="bg-gradient-to-r from-emerald-500 to-teal-500 h-1.5 rounded-full transition-all" 
+                                      style={{ width: `${goal.progress}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nessun dato disponibile per questo cliente
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
 
@@ -4975,7 +4955,35 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
             {/* Nurturing 365 Tab */}
             <TabsContent value="nurturing" className="space-y-6">
-              {/* Dashboard KPI */}
+              {/* Sub-tab Navigation */}
+              <div className="flex flex-wrap gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                {[
+                  { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+                  { id: "configurazione", label: "Configurazione", icon: Settings },
+                  { id: "argomenti", label: "Argomenti", icon: BookOpen },
+                  { id: "templates", label: "Templates", icon: FileText },
+                  { id: "variabili", label: "Variabili", icon: Settings },
+                  { id: "invio", label: "Invio", icon: Send },
+                  { id: "guida", label: "Guida", icon: HelpCircle },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setNurturingSubTab(tab.id)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                      nurturingSubTab === tab.id
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50"
+                    }`}
+                  >
+                    <tab.icon className="h-3.5 w-3.5" />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Dashboard Sub-tab */}
+              {nurturingSubTab === "dashboard" && (
+              <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                   <CardContent className="p-4">
@@ -5038,8 +5046,12 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   </CardContent>
                 </Card>
               </div>
+              </div>
+              )}
 
-              {/* Configurazione Nurturing Section */}
+              {/* Configurazione Sub-tab */}
+              {nurturingSubTab === "configurazione" && (
+              <div className="space-y-6">
               <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
@@ -5126,6 +5138,181 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 </CardContent>
               </Card>
 
+              {/* Brand Voice & Credibilità Section */}
+              <BrandVoiceSection
+                data={brandVoiceData}
+                onDataChange={setBrandVoiceData}
+                onSave={() => updateBrandVoiceMutation.mutate(brandVoiceData)}
+                isSaving={updateBrandVoiceMutation.isPending}
+                showImportButton={true}
+                onImportClick={() => {
+                  loadAvailableAgents();
+                  setShowImportAgentDialog(true);
+                }}
+                compact={false}
+              />
+
+              {/* Knowledge Base per Nurturing */}
+                <Collapsible open={nurturingKBOpen} onOpenChange={setNurturingKBOpen}>
+                  <Card className="border-2 border-amber-500/20 shadow-lg">
+                    <CollapsibleTrigger className="w-full">
+                      <CardHeader className="bg-gradient-to-r from-amber-500/5 to-amber-500/10 cursor-pointer hover:from-amber-500/10 hover:to-amber-500/15 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <BookOpen className="h-5 w-5 text-amber-500" />
+                            <CardTitle>Knowledge Base per Nurturing</CardTitle>
+                            {nurturingKBItems?.count && nurturingKBItems.count > 0 && (
+                              <Badge variant="secondary" className="ml-2">{nurturingKBItems.count}</Badge>
+                            )}
+                          </div>
+                          {nurturingKBOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        </div>
+                        <CardDescription className="text-left">Documenti che l'AI utilizzerà per generare email personalizzate</CardDescription>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-6 space-y-6">
+                        <NurturingKBDropzone 
+                          onFilesDropped={async (files) => {
+                            for (const file of files) {
+                              setUploadingNurturingKB(true);
+                              const formData = new FormData();
+                              formData.append('file', file);
+                              formData.append('title', file.name.replace(/\.[^/.]+$/, ''));
+                              
+                              const ext = file.name.split('.').pop()?.toLowerCase();
+                              const typeMap: Record<string, string> = { pdf: 'pdf', docx: 'docx', txt: 'txt' };
+                              formData.append('type', typeMap[ext || ''] || 'txt');
+                              
+                              try {
+                                await addNurturingKBMutation.mutateAsync(formData);
+                              } catch (e) {
+                                console.error("Upload failed:", e);
+                              }
+                            }
+                            setUploadingNurturingKB(false);
+                          }}
+                          isUploading={uploadingNurturingKB}
+                        />
+
+                        <div className="flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setNurturingKBImportOpen(true)}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Importa da Knowledge Base
+                          </Button>
+                        </div>
+
+                        {nurturingKBLoading ? (
+                          <div className="flex justify-center py-4">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : nurturingKBItems?.data && nurturingKBItems.data.length > 0 ? (
+                          <div className="space-y-2">
+                            {nurturingKBItems.data.map((item: any) => (
+                              <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded">
+                                    <FileText className="h-4 w-4 text-amber-600" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-sm">{item.title}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {item.type.toUpperCase()} • {item.content?.length > 0 ? `${(item.content.length / 1000).toFixed(1)}k caratteri` : 'Vuoto'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => deleteNurturingKBMutation.mutate(item.id)}
+                                  disabled={deleteNurturingKBMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-center text-muted-foreground text-sm py-4">
+                            Nessun documento caricato. L'AI userà solo le informazioni del Brand Voice.
+                          </p>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+
+              {/* Import KB Dialog */}
+              <Dialog open={nurturingKBImportOpen} onOpenChange={setNurturingKBImportOpen}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Importa dalla Knowledge Base</DialogTitle>
+                    <DialogDescription>
+                      Seleziona i documenti da importare dalla tua Knowledge Base principale
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    {nurturingKBCandidates?.data && nurturingKBCandidates.data.length > 0 ? (
+                      <div className="max-h-60 overflow-y-auto space-y-2">
+                        {nurturingKBCandidates.data.map((doc: any) => (
+                          <div
+                            key={doc.id}
+                            className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent cursor-pointer"
+                            onClick={() => {
+                              setSelectedKBDocsForNurturing(prev =>
+                                prev.includes(doc.id)
+                                  ? prev.filter(id => id !== doc.id)
+                                  : [...prev, doc.id]
+                              );
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedKBDocsForNurturing.includes(doc.id)}
+                              onChange={() => {}}
+                              className="h-4 w-4 rounded accent-amber-600"
+                            />
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{doc.fileName}</p>
+                              <p className="text-xs text-muted-foreground">{doc.fileType}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-4">
+                        Nessun documento disponibile per l'importazione
+                      </p>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setNurturingKBImportOpen(false)}>
+                        Annulla
+                      </Button>
+                      <Button
+                        onClick={() => importNurturingKBMutation.mutate(selectedKBDocsForNurturing)}
+                        disabled={selectedKBDocsForNurturing.length === 0 || importNurturingKBMutation.isPending}
+                      >
+                        {importNurturingKBMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
+                        Importa ({selectedKBDocsForNurturing.length})
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              </div>
+              )}
+
+              {/* Argomenti Sub-tab */}
+              {nurturingSubTab === "argomenti" && (
+              <div className="space-y-6">
               {/* Indice 365 Argomenti Section */}
               <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
@@ -5311,177 +5498,12 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              </div>
+              )}
 
-              {/* Brand Voice & Credibilità Section */}
-              <BrandVoiceSection
-                data={brandVoiceData}
-                onDataChange={setBrandVoiceData}
-                onSave={() => updateBrandVoiceMutation.mutate(brandVoiceData)}
-                isSaving={updateBrandVoiceMutation.isPending}
-                showImportButton={true}
-                onImportClick={() => {
-                  loadAvailableAgents();
-                  setShowImportAgentDialog(true);
-                }}
-                compact={false}
-              />
-
-              {/* Knowledge Base per Nurturing */}
-                <Collapsible open={nurturingKBOpen} onOpenChange={setNurturingKBOpen}>
-                  <Card className="border-2 border-amber-500/20 shadow-lg">
-                    <CollapsibleTrigger className="w-full">
-                      <CardHeader className="bg-gradient-to-r from-amber-500/5 to-amber-500/10 cursor-pointer hover:from-amber-500/10 hover:to-amber-500/15 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <BookOpen className="h-5 w-5 text-amber-500" />
-                            <CardTitle>Knowledge Base per Nurturing</CardTitle>
-                            {nurturingKBItems?.count && nurturingKBItems.count > 0 && (
-                              <Badge variant="secondary" className="ml-2">{nurturingKBItems.count}</Badge>
-                            )}
-                          </div>
-                          {nurturingKBOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                        </div>
-                        <CardDescription className="text-left">Documenti che l'AI utilizzerà per generare email personalizzate</CardDescription>
-                      </CardHeader>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <CardContent className="pt-6 space-y-6">
-                        <NurturingKBDropzone 
-                          onFilesDropped={async (files) => {
-                            for (const file of files) {
-                              setUploadingNurturingKB(true);
-                              const formData = new FormData();
-                              formData.append('file', file);
-                              formData.append('title', file.name.replace(/\.[^/.]+$/, ''));
-                              
-                              const ext = file.name.split('.').pop()?.toLowerCase();
-                              const typeMap: Record<string, string> = { pdf: 'pdf', docx: 'docx', txt: 'txt' };
-                              formData.append('type', typeMap[ext || ''] || 'txt');
-                              
-                              try {
-                                await addNurturingKBMutation.mutateAsync(formData);
-                              } catch (e) {
-                                console.error("Upload failed:", e);
-                              }
-                            }
-                            setUploadingNurturingKB(false);
-                          }}
-                          isUploading={uploadingNurturingKB}
-                        />
-
-                        <div className="flex justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setNurturingKBImportOpen(true)}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Importa da Knowledge Base
-                          </Button>
-                        </div>
-
-                        {nurturingKBLoading ? (
-                          <div className="flex justify-center py-4">
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                          </div>
-                        ) : nurturingKBItems?.data && nurturingKBItems.data.length > 0 ? (
-                          <div className="space-y-2">
-                            {nurturingKBItems.data.map((item: any) => (
-                              <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg bg-card">
-                                <div className="flex items-center gap-3">
-                                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded">
-                                    <FileText className="h-4 w-4 text-amber-600" />
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-sm">{item.title}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {item.type.toUpperCase()} • {item.content?.length > 0 ? `${(item.content.length / 1000).toFixed(1)}k caratteri` : 'Vuoto'}
-                                    </p>
-                                  </div>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => deleteNurturingKBMutation.mutate(item.id)}
-                                  disabled={deleteNurturingKBMutation.isPending}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-center text-muted-foreground text-sm py-4">
-                            Nessun documento caricato. L'AI userà solo le informazioni del Brand Voice.
-                          </p>
-                        )}
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-
-              {/* Import KB Dialog */}
-              <Dialog open={nurturingKBImportOpen} onOpenChange={setNurturingKBImportOpen}>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Importa dalla Knowledge Base</DialogTitle>
-                    <DialogDescription>
-                      Seleziona i documenti da importare dalla tua Knowledge Base principale
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    {nurturingKBCandidates?.data && nurturingKBCandidates.data.length > 0 ? (
-                      <div className="max-h-60 overflow-y-auto space-y-2">
-                        {nurturingKBCandidates.data.map((doc: any) => (
-                          <div
-                            key={doc.id}
-                            className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent cursor-pointer"
-                            onClick={() => {
-                              setSelectedKBDocsForNurturing(prev =>
-                                prev.includes(doc.id)
-                                  ? prev.filter(id => id !== doc.id)
-                                  : [...prev, doc.id]
-                              );
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedKBDocsForNurturing.includes(doc.id)}
-                              onChange={() => {}}
-                              className="h-4 w-4 rounded accent-amber-600"
-                            />
-                            <div className="flex-1">
-                              <p className="font-medium text-sm">{doc.fileName}</p>
-                              <p className="text-xs text-muted-foreground">{doc.fileType}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-center text-muted-foreground py-4">
-                        Nessun documento disponibile per l'importazione
-                      </p>
-                    )}
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setNurturingKBImportOpen(false)}>
-                        Annulla
-                      </Button>
-                      <Button
-                        onClick={() => importNurturingKBMutation.mutate(selectedKBDocsForNurturing)}
-                        disabled={selectedKBDocsForNurturing.length === 0 || importNurturingKBMutation.isPending}
-                      >
-                        {importNurturingKBMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4 mr-2" />
-                        )}
-                        Importa ({selectedKBDocsForNurturing.length})
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
+              {/* Templates Sub-tab */}
+              {nurturingSubTab === "templates" && (
+              <div className="space-y-6">
               {/* Genera Templates Card */}
               <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
@@ -5628,75 +5650,6 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       )}
                     </>
                   )}
-                </CardContent>
-              </Card>
-
-              {/* Variabili Email Card */}
-              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                    <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
-                      <Settings className="h-4 w-4 text-white" />
-                    </div>
-                    Variabili Email
-                  </CardTitle>
-                  <CardDescription className="text-slate-500 dark:text-slate-400">
-                    Configura le variabili che verranno inserite automaticamente nelle email
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="var-business-name">Nome Business</Label>
-                      <Input
-                        id="var-business-name"
-                        placeholder="Es: Coaching Academy"
-                        defaultValue={nurturingVariables?.variables?.businessName || ""}
-                        onChange={(e) => {
-                          const newVars = { ...nurturingVariables?.variables, businessName: e.target.value };
-                          updateNurturingVariablesMutation.mutate(newVars);
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="var-calendar-link">Link Calendario</Label>
-                      <Input
-                        id="var-calendar-link"
-                        placeholder="https://calendly.com/tuo-link"
-                        defaultValue={nurturingVariables?.variables?.calendarLink || ""}
-                        onChange={(e) => {
-                          const newVars = { ...nurturingVariables?.variables, calendarLink: e.target.value };
-                          updateNurturingVariablesMutation.mutate(newVars);
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="var-whatsapp">Numero WhatsApp</Label>
-                      <Input
-                        id="var-whatsapp"
-                        placeholder="+39 123 456 7890"
-                        defaultValue={nurturingVariables?.variables?.whatsappNumber || ""}
-                        onChange={(e) => {
-                          const newVars = { ...nurturingVariables?.variables, whatsappNumber: e.target.value };
-                          updateNurturingVariablesMutation.mutate(newVars);
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="var-signature">Firma Email</Label>
-                      <Textarea
-                        id="var-signature"
-                        placeholder="La tua firma email..."
-                        rows={2}
-                        className="resize-none"
-                        defaultValue={nurturingVariables?.variables?.emailSignature || ""}
-                        onChange={(e) => {
-                          const newVars = { ...nurturingVariables?.variables, emailSignature: e.target.value };
-                          updateNurturingVariablesMutation.mutate(newVars);
-                        }}
-                      />
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
 
@@ -6102,7 +6055,85 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 </DialogContent>
               </Dialog>
 
-              {/* Impostazioni Invio Card */}
+              </div>
+              )}
+
+              {/* Variabili Sub-tab */}
+              {nurturingSubTab === "variabili" && (
+              <div className="space-y-6">
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
+                      <Settings className="h-4 w-4 text-white" />
+                    </div>
+                    Variabili Email
+                  </CardTitle>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
+                    Configura le variabili che verranno inserite automaticamente nelle email
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="var-business-name">Nome Business</Label>
+                      <Input
+                        id="var-business-name"
+                        placeholder="Es: Coaching Academy"
+                        defaultValue={nurturingVariables?.variables?.businessName || ""}
+                        onChange={(e) => {
+                          const newVars = { ...nurturingVariables?.variables, businessName: e.target.value };
+                          updateNurturingVariablesMutation.mutate(newVars);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="var-calendar-link">Link Calendario</Label>
+                      <Input
+                        id="var-calendar-link"
+                        placeholder="https://calendly.com/tuo-link"
+                        defaultValue={nurturingVariables?.variables?.calendarLink || ""}
+                        onChange={(e) => {
+                          const newVars = { ...nurturingVariables?.variables, calendarLink: e.target.value };
+                          updateNurturingVariablesMutation.mutate(newVars);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="var-whatsapp">Numero WhatsApp</Label>
+                      <Input
+                        id="var-whatsapp"
+                        placeholder="+39 123 456 7890"
+                        defaultValue={nurturingVariables?.variables?.whatsappNumber || ""}
+                        onChange={(e) => {
+                          const newVars = { ...nurturingVariables?.variables, whatsappNumber: e.target.value };
+                          updateNurturingVariablesMutation.mutate(newVars);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="var-signature">Firma Email</Label>
+                      <Textarea
+                        id="var-signature"
+                        placeholder="La tua firma email..."
+                        rows={2}
+                        className="resize-none"
+                        defaultValue={nurturingVariables?.variables?.emailSignature || ""}
+                        onChange={(e) => {
+                          const newVars = { ...nurturingVariables?.variables, emailSignature: e.target.value };
+                          updateNurturingVariablesMutation.mutate(newVars);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              </div>
+              )}
+
+              {/* Invio Sub-tab */}
+              {nurturingSubTab === "invio" && (
+              <div className="space-y-6">
               <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
@@ -6157,7 +6188,6 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     </div>
                   </div>
 
-                  {/* Bulk nurturing activation */}
                   <div className="p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-lg border border-emerald-200 dark:border-emerald-700">
                     <div className="space-y-3">
                       <div>
@@ -6206,7 +6236,6 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     </div>
                   </div>
 
-                  {/* Test and validation section */}
                   <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
                     <div className="space-y-3">
                       <div>
@@ -6264,8 +6293,185 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   </div>
                 </CardContent>
               </Card>
+              </div>
+              )}
+
+              {/* Guida Sub-tab */}
+              {nurturingSubTab === "guida" && (
+              <div className="space-y-6">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                      <div className="p-2 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-lg">
+                        <BookOpen className="h-4 w-4 text-white" />
+                      </div>
+                      Guida Lead Nurturing 365
+                    </CardTitle>
+                    <CardDescription className="text-slate-500 dark:text-slate-400">
+                      Come configurare e utilizzare il sistema di nurturing automatico per i tuoi lead
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-lg border border-indigo-200 dark:border-indigo-700">
+                      <h3 className="font-semibold text-indigo-900 dark:text-indigo-100 mb-2">Cos'è Lead 365?</h3>
+                      <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                        Lead 365 è un sistema di email nurturing automatico che invia un'email personalizzata al giorno ai tuoi lead per 365 giorni. 
+                        Ogni email è generata dall'AI in base al tuo business, brand voice e argomenti configurati, mantenendo il lead coinvolto e guidandolo verso la conversione.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-lg text-slate-900 dark:text-slate-100">Come iniziare - Step by Step</h3>
+                      
+                      <div className="space-y-3">
+                        <div className="flex gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-300">1</span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-slate-900 dark:text-slate-100">Configura il tuo Business</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                              Vai nella tab <strong>Configurazione</strong> e compila la descrizione del business, il target audience, il tono preferito e il Brand Voice. Queste informazioni guidano l'AI nella generazione delle email.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-300">2</span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-slate-900 dark:text-slate-100">Genera l'Indice degli Argomenti</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                              Nella tab <strong>Argomenti</strong>, clicca "Genera Indice" per creare 365 argomenti unici. L'AI creerà un piano editoriale completo per un anno intero di email. Puoi modificare singoli argomenti se necessario.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-300">3</span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-slate-900 dark:text-slate-100">Genera i Template Email</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                              Nella tab <strong>Templates</strong>, genera i 365 template email. Il sistema genera prima un'anteprima del giorno 1, poi procedi con la generazione settimanale (7 template alla volta). Puoi interrompere e riprendere in qualsiasi momento.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-300">4</span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-slate-900 dark:text-slate-100">Configura le Variabili</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                              Nella tab <strong>Variabili</strong>, imposta il nome del business, il link al calendario, il numero WhatsApp e la firma email. Queste variabili vengono inserite automaticamente nelle email generate.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-300">5</span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-slate-900 dark:text-slate-100">Attiva l'Invio Automatico</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                              Nella tab <strong>Invio</strong>, attiva il nurturing automatico, configura le opzioni (salta weekend, ecc.) e attiva il nurturing per i tuoi lead. Puoi anche fare un invio di test prima di attivare il sistema.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-lg text-slate-900 dark:text-slate-100">Come funziona il ciclo di 365 email</h3>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CalendarDays className="h-4 w-4 text-green-600" />
+                            <span className="font-medium text-sm text-green-800 dark:text-green-200">Giorno 1-120</span>
+                          </div>
+                          <p className="text-xs text-green-700 dark:text-green-300">
+                            Fase di introduzione e costruzione della fiducia. Email educative, motivazionali e di valore per stabilire la relazione con il lead.
+                          </p>
+                        </div>
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CalendarDays className="h-4 w-4 text-blue-600" />
+                            <span className="font-medium text-sm text-blue-800 dark:text-blue-200">Giorno 121-240</span>
+                          </div>
+                          <p className="text-xs text-blue-700 dark:text-blue-300">
+                            Fase di approfondimento e engagement. Email con contenuti avanzati, case study e inviti all'azione per aumentare il coinvolgimento.
+                          </p>
+                        </div>
+                        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CalendarDays className="h-4 w-4 text-purple-600" />
+                            <span className="font-medium text-sm text-purple-800 dark:text-purple-200">Giorno 241-365</span>
+                          </div>
+                          <p className="text-xs text-purple-700 dark:text-purple-300">
+                            Fase di conversione e fidelizzazione. Email mirate alla conversione, offerte esclusive e consolidamento della relazione a lungo termine.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-lg text-slate-900 dark:text-slate-100">Integrazione con il Journey Mensile e gli Annunci</h3>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg border border-cyan-200 dark:border-cyan-700">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Route className="h-4 w-4 text-cyan-600" />
+                            <span className="font-medium text-sm text-cyan-800 dark:text-cyan-200">Journey Mensile (Clienti)</span>
+                          </div>
+                          <p className="text-xs text-cyan-700 dark:text-cyan-300">
+                            Il Journey Mensile (tab Percorso) gestisce le email per i <strong>clienti attivi</strong> con un ciclo di 31 template al mese. 
+                            Lead 365 invece si concentra sui <strong>lead</strong> (potenziali clienti) con un ciclo annuale di 365 email. 
+                            I due sistemi lavorano in parallelo su audience diverse.
+                          </p>
+                        </div>
+                        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Megaphone className="h-4 w-4 text-amber-600" />
+                            <span className="font-medium text-sm text-amber-800 dark:text-amber-200">Sistema Annunci</span>
+                          </div>
+                          <p className="text-xs text-amber-700 dark:text-amber-300">
+                            Il tab Annunci (nella pagina principale) permette di inviare comunicazioni spot a tutti i clienti. 
+                            Lead 365 si integra con gli annunci: puoi usare gli annunci per comunicazioni urgenti o promozioni, 
+                            mentre Lead 365 mantiene il flusso costante di nurturing quotidiano per i lead.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <Info className="h-5 w-5 text-slate-500 mt-0.5" />
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">Suggerimento</p>
+                          <p>
+                            Per ottenere i migliori risultati, assicurati di configurare il Brand Voice nella tab Configurazione prima di generare i template. 
+                            Un Brand Voice ben definito permette all'AI di generare email coerenti con la tua identità di marca e il tuo stile comunicativo.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              )}
+
             </TabsContent>
           </Tabs>
+          </>
+          )}
           </div>
         </div>
       </div>

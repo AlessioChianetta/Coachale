@@ -67,14 +67,9 @@ interface EmailStats {
 }
 
 /**
- * Consultant Email Logs Page
- * 
- * Displays a comprehensive log of all emails sent to clients.
- * Features include filtering, search, preview, and pagination.
+ * Email Logs Content - can be used standalone or embedded
  */
-export default function ConsultantEmailLogsPage() {
-  const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export function EmailLogsContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedClient, setSelectedClient] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
@@ -194,46 +189,27 @@ export default function ConsultantEmailLogsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
-      <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-        <div className="flex-1 p-6 overflow-y-auto">
-          {/* Navigation Tabs */}
-          <NavigationTabs
-            tabs={[
-              { label: "Configurazione", href: "/consultant/ai-config", icon: Sparkles },
-              { label: "Log Email", href: "/consultant/email-logs", icon: History },
-              { label: "Email Hub", href: "/consultant/email-hub", icon: Inbox },
-            ]}
-          />
-
-          {logsLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Card className="p-8 shadow-2xl bg-white/80 backdrop-blur-sm border-0">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
-                  <p className="mt-6 text-slate-700 font-semibold text-lg">Caricamento email logs...</p>
-                </div>
-              </Card>
+    <div className="space-y-6">
+      {logsLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <Card className="p-8 shadow-2xl bg-white/80 backdrop-blur-sm border-0">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
+              <p className="mt-6 text-slate-700 font-semibold text-lg">Caricamento email logs...</p>
             </div>
-          ) : (
-            <>
-          {/* Header */}
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-8 text-white shadow-2xl">
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl">
-                      <Mail className="w-8 h-8 text-white" />
-                    </div>
-                    <div>
-                      <h1 className="text-4xl font-bold">Log Email</h1>
-                      <p className="text-blue-100 text-lg">Monitora tutte le email inviate ai tuoi clienti</p>
-                    </div>
-                  </div>
+          </Card>
+        </div>
+      ) : (
+        <>
+          <div className="mb-6">
+            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-xl">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                  <Mail className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Log Email</h2>
+                  <p className="text-blue-100 text-sm">Monitora tutte le email inviate ai tuoi clienti</p>
                 </div>
               </div>
             </div>
@@ -478,10 +454,7 @@ export default function ConsultantEmailLogsPage() {
           </Card>
             </>
           )}
-        </div>
-      </div>
 
-      {/* Email Preview Dialog */}
       <Dialog open={!!previewEmail} onOpenChange={() => setPreviewEmail(null)}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -539,6 +512,33 @@ export default function ConsultantEmailLogsPage() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/**
+ * Consultant Email Logs Page (standalone with sidebar/navbar)
+ */
+export default function ConsultantEmailLogsPage() {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
+      <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex-1 p-6 overflow-y-auto">
+          <NavigationTabs
+            tabs={[
+              { label: "Configurazione", href: "/consultant/ai-config", icon: Sparkles },
+              { label: "Log Email", href: "/consultant/email-logs", icon: History },
+              { label: "Email Hub", href: "/consultant/email-hub", icon: Inbox },
+            ]}
+          />
+          <EmailLogsContent />
+        </div>
+      </div>
       <ConsultantAIAssistant />
     </div>
   );
