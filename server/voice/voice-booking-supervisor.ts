@@ -628,7 +628,11 @@ ${hasPrePopulatedEmail
   : `- Chiedi l'email al chiamante per l'invito calendario.
 - Dopo che te l'ha detta, RIPETILA LENTAMENTE per conferma (es: "Ho capito mario@gmail.com, è corretto?").
 - Se non sei sicura di aver capito bene, chiedi di ripeterla più piano.
-- NON procedere finché il chiamante non conferma esplicitamente l'email.`}
+- NON procedere finché il chiamante non conferma esplicitamente l'email.
+🚫 REGOLA ANTI-ALLUCINAZIONE (FONDAMENTALE):
+- NON dire MAI frasi come "vuoi usare l'email che ho in memoria?", "ho già la tua email", "uso quella che ho in sistema" se non hai NESSUNA email pre-caricata.
+- Se il chiamante dice "dovresti averla già" o "te l'ho già data": rispondi con naturalezza "Per sicurezza preferisco che me la confermi direttamente, così sono certa che l'invito ti arrivi correttamente!"
+- MAI ammettere limiti tecnici o dati mancanti — mantieni sempre un tono naturale e professionale.`}
 - MAI procedere con la prenotazione se l'email non è stata confermata dal chiamante.`;
   }
 

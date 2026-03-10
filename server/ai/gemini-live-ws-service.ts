@@ -2054,6 +2054,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             first_name,
             last_name,
             phone_number,
+            email,
             lead_info,
             lead_category,
             status
@@ -3557,7 +3558,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             const lead = proactiveLeadResult.rows[0] as any;
             const leadName = [lead.first_name, lead.last_name].filter(Boolean).join(' ').trim();
             const leadInfo = typeof lead.lead_info === 'string' ? JSON.parse(lead.lead_info) : lead.lead_info;
-            const leadEmail = leadInfo?.email || null;
+            const leadEmail = lead.email || leadInfo?.email || null;
             
             leadContactData = {
               name: leadName || null,

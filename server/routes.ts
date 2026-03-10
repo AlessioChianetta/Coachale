@@ -17995,6 +17995,54 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // GET /api/consultant/calendar/list - List all Google Calendars available to the consultant
+  app.get("/api/consultant/calendar/list", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { getCalendarClient } = await import("./google-calendar-service");
+      const calendar = await getCalendarClient(consultantId);
+      if (!calendar) {
+        return res.json({ connected: false, calendars: [] });
+      }
+      const { data } = await calendar.calendarList.list({ minAccessRole: 'writer' });
+      const calendars = (data.items || []).map((c: any) => ({
+        id: c.id,
+        summary: c.summary || c.id,
+        primary: !!c.primary,
+        accessRole: c.accessRole,
+      }));
+      return res.json({ connected: true, calendars });
+    } catch (error: any) {
+      console.error("❌ Error listing consultant calendars:", error);
+      if (error.message?.includes('token') || error.code === 401) {
+        return res.json({ connected: false, calendars: [] });
+      }
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/consultant/calendar/voice-select - Save the selected calendar for voice bookings
+  app.post("/api/consultant/calendar/voice-select", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { calendarId } = req.body;
+      if (!calendarId || typeof calendarId !== 'string') {
+        return res.status(400).json({ message: "calendarId è obbligatorio" });
+      }
+      await db.execute(sql`
+        INSERT INTO consultant_availability_settings (consultant_id, google_calendar_id, updated_at)
+        VALUES (${consultantId}, ${calendarId}, now())
+        ON CONFLICT (consultant_id)
+        DO UPDATE SET google_calendar_id = ${calendarId}, updated_at = now()
+      `);
+      console.log(`✅ [VOICE CALENDAR] Consultant ${consultantId} selected calendar: ${calendarId}`);
+      return res.json({ success: true, calendarId });
+    } catch (error: any) {
+      console.error("❌ Error saving voice calendar selection:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // POST /api/consultant/calendar/oauth/start - Start OAuth flow for consultant
   app.post("/api/consultant/calendar/oauth/start", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {

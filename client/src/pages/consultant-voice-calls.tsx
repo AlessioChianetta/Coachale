@@ -1943,6 +1943,50 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
     },
   });
 
+  const { data: voiceCalendarStatus } = useQuery<{ connected: boolean; email?: string; calendarId?: string }>({
+    queryKey: ["/api/consultant/calendar/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/calendar/status", { headers: getAuthHeaders() });
+      if (!res.ok) return { connected: false };
+      return res.json();
+    },
+  });
+
+  const { data: voiceCalendarList } = useQuery<{ connected: boolean; calendars: { id: string; summary: string; primary: boolean; accessRole: string }[] }>({
+    queryKey: ["/api/consultant/calendar/list"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/calendar/list", { headers: getAuthHeaders() });
+      if (!res.ok) return { connected: false, calendars: [] };
+      return res.json();
+    },
+    enabled: !!voiceCalendarStatus?.connected,
+  });
+
+  const [selectedVoiceCalendarId, setSelectedVoiceCalendarId] = React.useState<string>('');
+
+  React.useEffect(() => {
+    if (voiceCalendarStatus?.calendarId && !selectedVoiceCalendarId) {
+      setSelectedVoiceCalendarId(voiceCalendarStatus.calendarId);
+    }
+  }, [voiceCalendarStatus?.calendarId]);
+
+  const saveVoiceCalendarMutation = useMutation({
+    mutationFn: async (calendarId: string) => {
+      const res = await fetch("/api/consultant/calendar/voice-select", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ calendarId }),
+      });
+      if (!res.ok) throw new Error("Errore nel salvataggio calendario");
+      return res.json();
+    },
+    onSuccess: (_, calendarId) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/calendar/status"] });
+      toast({ title: "Calendario aggiornato", description: "Il calendario per Voice AI è stato salvato." });
+    },
+    onError: (err: Error) => { toast({ title: "Errore", description: err.message, variant: "destructive" }); },
+  });
+
   const { data: nonClientSettingsData, isLoading: loadingNonClientSettings } = useQuery<NonClientSettings>({
     queryKey: ["/api/voice/non-client-settings"],
     queryFn: async () => {
@@ -5395,6 +5439,74 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                     </CardContent>
                   </Card>
                 )}
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5" />
+                        Calendario Prenotazioni Voice
+                      </CardTitle>
+                      <CardDescription>
+                        Il calendario Google usato dall'AI per verificare disponibilità e creare appuntamenti durante le chiamate
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {!voiceCalendarStatus?.connected ? (
+                        <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Google Calendar non collegato</p>
+                            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                              Collega il tuo account Google per permettere all'AI di gestire gli appuntamenti durante le chiamate.{' '}
+                              <a href="/consultant/voice-settings" className="underline font-medium">Vai alle impostazioni</a>
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <span>Account Google connesso{voiceCalendarStatus.email ? `: ${voiceCalendarStatus.email}` : ''}</span>
+                          </div>
+
+                          {voiceCalendarList?.calendars && voiceCalendarList.calendars.length > 0 ? (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">Seleziona il calendario da usare:</p>
+                              <div className="space-y-2">
+                                {voiceCalendarList.calendars.map((cal) => {
+                                  const isSelected = (selectedVoiceCalendarId || voiceCalendarStatus?.calendarId || 'primary') === cal.id || (!selectedVoiceCalendarId && !voiceCalendarStatus?.calendarId && cal.primary);
+                                  return (
+                                    <button
+                                      key={cal.id}
+                                      className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition-colors ${isSelected ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30' : 'border-border bg-muted/20 hover:bg-muted/40'}`}
+                                      onClick={() => {
+                                        setSelectedVoiceCalendarId(cal.id);
+                                        saveVoiceCalendarMutation.mutate(cal.id);
+                                      }}
+                                      disabled={saveVoiceCalendarMutation.isPending}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <Calendar className={`h-4 w-4 ${isSelected ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground'}`} />
+                                        <div>
+                                          <p className={`text-sm font-medium ${isSelected ? 'text-violet-700 dark:text-violet-300' : ''}`}>{cal.summary}</p>
+                                          {cal.primary && <p className="text-xs text-muted-foreground">Calendario principale</p>}
+                                        </div>
+                                      </div>
+                                      {isSelected && (
+                                        <Badge className="bg-violet-600 text-white text-xs">In uso per Voice AI</Badge>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">Caricamento calendari in corso...</p>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
                   </TabsContent>
 
                   <TabsContent value="coda-attesa" className="space-y-6">
