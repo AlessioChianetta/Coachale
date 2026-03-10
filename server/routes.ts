@@ -16414,7 +16414,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         audienceLanguage,
         avoidPatterns,
         writingExamples,
-        signaturePhrases
+        signaturePhrases,
+        // Market Research (per-agent)
+        marketResearchData
       } = req.body;
 
       // Verify agent belongs to consultant
@@ -16589,6 +16591,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       if (avoidPatterns !== undefined) updateData.avoidPatterns = avoidPatterns;
       if (writingExamples !== undefined) updateData.writingExamples = writingExamples;
       if (signaturePhrases !== undefined) updateData.signaturePhrases = signaturePhrases;
+      // Market Research (per-agent)
+      if (marketResearchData !== undefined) updateData.marketResearchData = marketResearchData;
 
       // Booking Notification Configuration
       if (bookingNotificationEnabled !== undefined) updateData.bookingNotificationEnabled = bookingNotificationEnabled;

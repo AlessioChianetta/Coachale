@@ -110,8 +110,13 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   const [pasteContent, setPasteContent] = useState('');
   const [isPasting, setIsPasting] = useState(false);
 
-  const [marketResearchData, setMarketResearchData] = useState<MarketResearchData>({ ...EMPTY_MARKET_RESEARCH });
-  const [isLoadingMR, setIsLoadingMR] = useState(false);
+  const marketResearchData: MarketResearchData = formData.marketResearchData && Object.keys(formData.marketResearchData).length > 0
+    ? formData.marketResearchData
+    : { ...EMPTY_MARKET_RESEARCH };
+  const setMarketResearchData = (dataOrFn: MarketResearchData | ((prev: MarketResearchData) => MarketResearchData)) => {
+    const newData = typeof dataOrFn === 'function' ? dataOrFn(marketResearchData) : dataOrFn;
+    onChange('marketResearchData', newData);
+  };
   const [isGeneratingMR, setIsGeneratingMR] = useState(false);
   const [generatingPhaseMR, setGeneratingPhaseMR] = useState<string | null>(null);
   const [showResearchDialog, setShowResearchDialog] = useState(false);
@@ -127,31 +132,6 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   } | null>(null);
   const [showPhaseConfirmDialog, setShowPhaseConfirmDialog] = useState(false);
   const [pendingPhaseGen, setPendingPhaseGen] = useState<{ phase: string; mode: 'add' | 'overwrite' | null }>({ phase: '', mode: null });
-  const mrSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!marketResearchOpen || isLoadingMR) return;
-    setIsLoadingMR(true);
-    fetch("/api/content/market-research", { headers: getAuthHeaders() })
-      .then(res => res.json())
-      .then(result => {
-        if (result.success && result.data) {
-          setMarketResearchData(result.data);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setIsLoadingMR(false));
-  }, [marketResearchOpen]);
-
-  const saveMarketResearchGlobal = async (mrData: MarketResearchData) => {
-    try {
-      await fetch("/api/content/market-research", {
-        method: "POST",
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ data: mrData }),
-      });
-    } catch {}
-  };
 
   const handleGenerateMarketResearch = async (phase?: string, mergeMode?: 'add' | 'overwrite') => {
     const niche = formData.businessDescription || formData.targetAudience || '';
@@ -220,7 +200,6 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
               setIsGeneratingMR(false);
               setGeneratingPhaseMR(null);
               toast({ title: phase ? "Fase generata!" : "Deep Research completata!", description: phase ? "Dati aggiornati." : "Tutte le 7 fasi compilate con dati reali dal mercato." });
-              saveMarketResearchGlobal(finalData!);
             } else if (statusData.status === 'error') {
               clearInterval(pollInterval);
               setIsGeneratingMR(false);
@@ -1576,18 +1555,10 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="pt-6">
-              {isLoadingMR ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
-                  <span className="ml-2 text-sm text-muted-foreground">Caricamento dati...</span>
-                </div>
-              ) : (
-                <MarketResearchSection
+              <MarketResearchSection
                   data={marketResearchData}
                   onDataChange={(newData) => {
                     setMarketResearchData(newData);
-                    if (mrSaveTimeoutRef.current) clearTimeout(mrSaveTimeoutRef.current);
-                    mrSaveTimeoutRef.current = setTimeout(() => saveMarketResearchGlobal(newData), 1500);
                   }}
                   isGenerating={isGeneratingMR}
                   generatingPhase={generatingPhaseMR}
@@ -1603,7 +1574,6 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
                   topic={formData.businessDescription || ''}
                   targetAudience={formData.targetAudience || ''}
                 />
-              )}
             </CardContent>
           </CollapsibleContent>
         </Card>

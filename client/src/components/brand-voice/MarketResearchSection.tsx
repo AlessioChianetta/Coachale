@@ -347,16 +347,16 @@ export function MarketResearchSection({
               <div key={field} className="space-y-2">
                 <Label className={`text-xs font-semibold ${color} uppercase tracking-wide`}>{label}</Label>
                 <p className="text-xs text-muted-foreground">{desc}</p>
-                {data[field].map((item: string, i: number) => (
+                {(safeData[field] as string[]).map((item: string, i: number) => (
                   <div key={i} className="flex gap-1.5">
-                    <Input placeholder={`Obiezione ${i + 1}...`} value={item} onChange={(e) => { const updated = [...data[field]]; updated[i] = e.target.value; updateField(field, updated); }} className="text-sm" />
-                    {data[field].length > 1 && (
-                      <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:text-destructive" onClick={() => updateField(field, data[field].filter((_: string, idx: number) => idx !== i))}><Trash2 className="h-3 w-3" /></Button>
+                    <Input placeholder={`Obiezione ${i + 1}...`} value={item} onChange={(e) => { const updated = [...(safeData[field] as string[])]; updated[i] = e.target.value; updateField(field, updated); }} className="text-sm" />
+                    {(safeData[field] as string[]).length > 1 && (
+                      <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:text-destructive" onClick={() => updateField(field, (safeData[field] as string[]).filter((_: string, idx: number) => idx !== i))}><Trash2 className="h-3 w-3" /></Button>
                     )}
                   </div>
                 ))}
-                {data[field].length < 5 && (
-                  <Button variant="ghost" size="sm" className="text-xs text-orange-500" onClick={() => updateField(field, [...data[field], ""])}><span className="mr-1">+</span> Aggiungi</Button>
+                {(safeData[field] as string[]).length < 5 && (
+                  <Button variant="ghost" size="sm" className="text-xs text-orange-500" onClick={() => updateField(field, [...(safeData[field] as string[]), ""])}><span className="mr-1">+</span> Aggiungi</Button>
                 )}
               </div>
             ))}
