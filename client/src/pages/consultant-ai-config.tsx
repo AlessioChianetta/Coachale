@@ -6307,6 +6307,12 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           </AlertDescription>
                         </Alert>
                       )}
+                      <div className="flex items-center justify-end gap-3 pr-1 pb-1">
+                        <div className="flex items-center gap-3 border-l pl-3 border-transparent">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 min-w-[56px] text-center">Email</span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 min-w-[68px] text-center">Modalità</span>
+                        </div>
+                      </div>
                       {clientAutomationStatus.clients.map((client) => {
                         const isActive = automationEnabled && client.automationEnabled;
 
@@ -6354,45 +6360,41 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                     )}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2 border-l pl-3 border-slate-200 dark:border-slate-600">
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Switch
-                                          checked={client.automationEnabled}
-                                          onCheckedChange={(checked) => {
-                                            toggleClientAutomationMutation.mutate({
-                                              clientId: client.id,
-                                              enabled: checked,
-                                              saveAsDraft: checked ? client.saveAsDraft : false,
-                                            });
-                                          }}
-                                          disabled={toggleClientAutomationMutation.isPending}
-                                          className="scale-90"
-                                        />
-                                      </TooltipTrigger>
-                                      <TooltipContent><p>Riceve email</p></TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Switch
-                                          checked={client.automationEnabled ? (client.saveAsDraft || false) : false}
-                                          onCheckedChange={(checked) => {
-                                            toggleClientAutomationMutation.mutate({
-                                              clientId: client.id,
-                                              enabled: client.automationEnabled,
-                                              saveAsDraft: checked,
-                                            });
-                                          }}
-                                          disabled={!client.automationEnabled || toggleClientAutomationMutation.isPending}
-                                          className="data-[state=checked]:bg-amber-500 scale-90"
-                                        />
-                                      </TooltipTrigger>
-                                      <TooltipContent><p>{client.automationEnabled ? "Solo bozza" : "Attiva prima 'Riceve email'"}</p></TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
+                                <div className="flex items-center gap-3 border-l pl-3 border-slate-200 dark:border-slate-600">
+                                  <div className="flex items-center gap-1.5">
+                                    <Switch
+                                      checked={client.automationEnabled}
+                                      onCheckedChange={(checked) => {
+                                        toggleClientAutomationMutation.mutate({
+                                          clientId: client.id,
+                                          enabled: checked,
+                                          saveAsDraft: checked ? client.saveAsDraft : false,
+                                        });
+                                      }}
+                                      disabled={toggleClientAutomationMutation.isPending}
+                                      className="scale-90"
+                                    />
+                                    <span className={`text-[11px] font-medium min-w-[28px] ${client.automationEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                      {client.automationEnabled ? 'ON' : 'OFF'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Switch
+                                      checked={client.automationEnabled ? (client.saveAsDraft || false) : false}
+                                      onCheckedChange={(checked) => {
+                                        toggleClientAutomationMutation.mutate({
+                                          clientId: client.id,
+                                          enabled: client.automationEnabled,
+                                          saveAsDraft: checked,
+                                        });
+                                      }}
+                                      disabled={!client.automationEnabled || toggleClientAutomationMutation.isPending}
+                                      className="data-[state=checked]:bg-amber-500 scale-90"
+                                    />
+                                    <span className={`text-[11px] font-medium min-w-[40px] ${!client.automationEnabled ? 'text-slate-300 dark:text-slate-600' : client.saveAsDraft ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                      {!client.automationEnabled ? '—' : client.saveAsDraft ? 'Bozza' : 'Invio'}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
                             </div>
