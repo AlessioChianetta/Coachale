@@ -24,12 +24,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -46,7 +40,6 @@ import {
   ChevronDown,
   Trash2,
   FolderOpen,
-  Wand2,
   GitBranch,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -54,6 +47,7 @@ import { FunnelNode } from "./FunnelNode";
 import { FunnelEdge } from "./FunnelEdge";
 import { FunnelPalette } from "./FunnelPalette";
 import { NodeConfigPanel } from "./NodeConfigPanel";
+import { FunnelChat } from "./FunnelChat";
 import {
   type FunnelNodeData,
   getNodeTypeDefinition,
@@ -74,12 +68,6 @@ interface FunnelRecord {
 const nodeTypes: NodeTypes = { funnelNode: FunnelNode } as any;
 const edgeTypes: EdgeTypes = { funnelEdge: FunnelEdge } as any;
 
-const AI_PROMPT_EXAMPLES = [
-  "Funnel per vendita di consulenza: Facebook Ads → Landing Page → Form → WhatsApp Setter AI → Prima Call → Chiusura → Onboarding",
-  "Campagna lead generation con Google Ads e Instagram Ads che convergono su un form, poi nurturing via email e WhatsApp",
-  "Funnel per corso online: Ads → Lead Magnet → Email Sequence → Webinar → Pagamento → Onboarding",
-  "Referral offline → CRM Hunter → Setter AI WhatsApp → Appuntamento → Seconda Call → Chiusura → Servizio",
-];
 
 function autoLayout(nodes: Node[], edges: Edge[]): Node[] {
   if (nodes.length === 0) return nodes;
@@ -115,9 +103,7 @@ function FunnelBuilderInner() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [aiDialogOpen, setAiDialogOpen] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [aiGenerating, setAiGenerating] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
@@ -261,6 +247,7 @@ function FunnelBuilderInner() {
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     setSelectedNodeId(node.id);
+    setChatOpen(false);
   }, []);
 
   const onPaneClick = useCallback(() => {
@@ -323,36 +310,49 @@ function FunnelBuilderInner() {
     []
   );
 
-  const handleAiGenerate = async () => {
-    if (!aiPrompt.trim()) return;
-    setAiGenerating(true);
+  const handleApplyFunnel = useCallback(async (name: string, generatedNodes: Node[], generatedEdges: Edge[]) => {
+    const layoutNodes = autoLayout(generatedNodes, generatedEdges);
+    const appliedName = name || "Funnel Generato";
+    setNodes(layoutNodes);
+    setEdges(generatedEdges);
+    setFunnelName(appliedName);
+    toast({ title: "Funnel applicato", description: `${layoutNodes.length} nodi creati` });
+
+    setSaving(true);
     try {
-      const res = await fetch("/api/funnels/generate", {
-        method: "POST",
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: aiPrompt }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Errore nella generazione");
+      const body = {
+        name: appliedName,
+        nodes_data: layoutNodes,
+        edges_data: generatedEdges,
+      };
+      if (activeFunnelId) {
+        const res = await fetch(`/api/funnels/${activeFunnelId}`, {
+          method: "PUT",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          setFunnels((prev) => prev.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)));
+        }
+      } else {
+        const res = await fetch("/api/funnels", {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          const created = await res.json();
+          setActiveFunnelId(created.id);
+          setFunnels((prev) => [created, ...prev]);
+        }
       }
-
-      const result = await res.json();
-      const layoutNodes = autoLayout(result.nodes || [], result.edges || []);
-
-      setNodes(layoutNodes);
-      setEdges(result.edges || []);
-      setFunnelName(result.name || "Funnel Generato");
-      setAiDialogOpen(false);
-      setAiPrompt("");
-      toast({ title: "Funnel generato con AI", description: `${layoutNodes.length} nodi creati` });
-    } catch (err: any) {
-      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } catch (err) {
+      console.error("Error saving applied funnel:", err);
     } finally {
-      setAiGenerating(false);
+      setSaving(false);
     }
-  };
+  }, [activeFunnelId, toast]);
 
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selectedNodeId),
@@ -416,11 +416,14 @@ function FunnelBuilderInner() {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 gap-1.5 text-xs"
-          onClick={() => setAiDialogOpen(true)}
+          className={cn("h-8 gap-1.5 text-xs", chatOpen && "bg-cyan-50 border-cyan-300 text-cyan-700 dark:bg-cyan-950/30 dark:border-cyan-700 dark:text-cyan-300")}
+          onClick={() => {
+            setChatOpen(!chatOpen);
+            if (!chatOpen) setSelectedNodeId(null);
+          }}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          Genera con AI
+          {chatOpen ? "Chiudi Chat AI" : "Genera con AI"}
         </Button>
 
         <Button
@@ -477,7 +480,7 @@ function FunnelBuilderInner() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setAiDialogOpen(true)}
+                    onClick={() => { setChatOpen(true); setSelectedNodeId(null); }}
                     className="gap-1.5"
                   >
                     <Sparkles className="w-4 h-4" />
@@ -527,7 +530,7 @@ function FunnelBuilderInner() {
           </ReactFlow>
         </div>
 
-        {selectedNode && (
+        {selectedNode && !chatOpen && (
           <NodeConfigPanel
             nodeId={selectedNode.id}
             data={selectedNode.data as unknown as FunnelNodeData}
@@ -535,76 +538,14 @@ function FunnelBuilderInner() {
             onClose={() => setSelectedNodeId(null)}
           />
         )}
+
+        <FunnelChat
+          open={chatOpen}
+          onClose={() => setChatOpen(false)}
+          onApplyFunnel={handleApplyFunnel}
+          currentFunnelContext={activeFunnelId ? { id: activeFunnelId, name: funnelName, nodes, edges } : null}
+        />
       </div>
-
-      <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Wand2 className="w-5 h-5 text-cyan-500" />
-              Genera Funnel con AI
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                Descrivi il tuo funnel
-              </label>
-              <textarea
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Descrivi il flusso del tuo funnel in linguaggio naturale..."
-                className="w-full h-28 px-3 py-2 text-sm rounded-md border border-input bg-background resize-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
-              />
-            </div>
-
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">
-                Esempi:
-              </p>
-              <div className="space-y-1.5">
-                {AI_PROMPT_EXAMPLES.map((example, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setAiPrompt(example)}
-                    className="w-full text-left px-3 py-2 text-xs rounded-md border border-border hover:bg-accent hover:border-accent transition-colors text-muted-foreground hover:text-foreground"
-                  >
-                    {example}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setAiDialogOpen(false)}
-                disabled={aiGenerating}
-              >
-                Annulla
-              </Button>
-              <Button
-                onClick={handleAiGenerate}
-                disabled={aiGenerating || !aiPrompt.trim()}
-                className="bg-gradient-to-r from-cyan-500 to-teal-600 text-white hover:from-cyan-600 hover:to-teal-700"
-              >
-                {aiGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generazione...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Genera Funnel
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

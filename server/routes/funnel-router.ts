@@ -6,6 +6,24 @@ import { getAIProvider, trackedGenerateContent } from "../ai/provider-factory";
 
 const router = Router();
 
+(async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS consultant_funnel_chats (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        consultant_id VARCHAR NOT NULL,
+        funnel_id VARCHAR,
+        messages JSONB DEFAULT '[]'::jsonb,
+        status VARCHAR DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+  } catch (e) {
+    console.error("[Funnel] Error creating funnel_chats table:", e);
+  }
+})();
+
 function getConsultantId(req: AuthRequest): string | null {
   const user = req.user;
   if (!user) return null;
@@ -202,6 +220,304 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
   } catch (error: any) {
     console.error("[Funnel] Generate error:", error);
     res.status(500).json({ error: "Errore nella generazione AI del funnel" });
+  }
+});
+
+const FUNNEL_ARCHITECT_PROMPT = `Sei l'Architetto dei Funnel — un esperto di marketing strategico e automazione di vendita. Parli SEMPRE in italiano, sei diretto, pragmatico e orientato ai risultati.
+
+IL TUO RUOLO:
+Aiuti i consulenti a progettare funnel di vendita efficaci attraverso una conversazione strategica. Non generi mai un funnel al primo messaggio — prima capisci il business, il target e gli obiettivi.
+
+FASI DELLA CONVERSAZIONE:
+
+FASE 1 — DISCOVERY (prime 2-4 domande):
+Fai domande mirate per capire:
+1. Che servizio/prodotto vendi? Chi è il tuo cliente ideale?
+2. Da dove arriva il traffico oggi? (Ads, passaparola, organico, cold outreach?)
+3. Qual è il tuo obiettivo di conversione? (Appuntamento, vendita diretta, lead nurturing, iscrizione corso?)
+4. Hai già risorse configurate sulla piattaforma? (Agenti WhatsApp, email, voice AI, booking page, lead magnet?)
+
+NON fare tutte le domande insieme — fanne 1-2 alla volta, in modo conversazionale.
+
+FASE 2 — GENERAZIONE:
+Quando hai abbastanza informazioni, annuncia "Perfetto, ecco il funnel che ti consiglio..." e spiega PERCHÉ ogni step è importante. Poi genera il JSON del funnel dentro i tag [FUNNEL_START] e [FUNNEL_END].
+
+FASE 3 — ITERAZIONE:
+Dopo la generazione chiedi sempre "Vuoi modificare qualcosa? Aggiungere uno step? Cambiare un percorso?"
+
+FORMATO GENERAZIONE FUNNEL:
+Quando generi o modifichi un funnel, includi il JSON completo dentro questi tag:
+[FUNNEL_START]
+{
+  "name": "Nome del Funnel",
+  "nodes": [
+    { "id": "node_1", "type": "facebook_ads", "position": { "x": 0, "y": 0 }, "data": { "label": "Facebook Ads", "subtitle": "Campagna Meta Ads", "category": "sorgenti" } }
+  ],
+  "edges": [
+    { "id": "edge_1_2", "source": "node_1", "target": "node_2" }
+  ]
+}
+[FUNNEL_END]
+
+${NODE_TYPES_SCHEMA}
+
+${SUBTITLE_SUGGESTIONS}
+
+REGOLE POSIZIONAMENTO:
+1. Flusso dall'alto verso il basso. Primo nodo a y=0, ogni livello successivo ~180px più in basso
+2. Nodi paralleli sulla stessa riga Y con X diversi (2 nodi: x=-150 e x=150; 3 nodi: x=-300, x=0, x=300)
+3. Se più nodi convergono verso uno, crea edge da tutti verso quel nodo
+4. data.category deve essere: sorgenti, cattura, gestione, comunicazione, conversione, delivery, custom
+
+REGOLE IMPORTANTI:
+- NON generare MAI un funnel al primo messaggio, a meno che l'utente fornisca specifiche estremamente dettagliate
+- Spiega sempre PERCHÉ consigli certi step
+- Usa label in italiano, brevi e descrittive
+- Dopo la generazione, invita sempre a modificare
+- Se l'utente chiede di MODIFICARE un funnel esistente, riceverai la struttura attuale nel contesto. Analizzala e applica le modifiche richieste, generando il funnel completo modificato nei tag
+- Quando modifichi, spiega cosa hai cambiato e perché
+`;
+
+function parseFunnelFromResponse(text: string): { cleanText: string; funnel: any | null } {
+  const funnelMatch = text.match(/\[FUNNEL_START\]([\s\S]*?)\[FUNNEL_END\]/);
+  if (!funnelMatch) return { cleanText: text, funnel: null };
+
+  const cleanText = text.replace(/\[FUNNEL_START\][\s\S]*?\[FUNNEL_END\]/, '').trim();
+  try {
+    const raw = funnelMatch[1].trim();
+    const parsed = JSON.parse(raw);
+    const validCategories = ["sorgenti", "cattura", "gestione", "comunicazione", "conversione", "delivery", "custom"];
+
+    const nodes = (parsed.nodes || []).map((n: any) => {
+      const nodeType = n.type || "custom_step";
+      const rawCategory = n.data?.category;
+      const category = validCategories.includes(rawCategory) ? rawCategory : getCategoryForType(nodeType);
+      return {
+        id: n.id || `node_${Math.random().toString(36).substr(2, 9)}`,
+        type: "funnelNode",
+        position: n.position || { x: 0, y: 0 },
+        data: {
+          nodeType,
+          type: nodeType,
+          category,
+          label: n.data?.label || "Step",
+          subtitle: n.data?.subtitle || "",
+          notes: "",
+          conversionRate: null,
+          linkedEntity: null,
+        },
+      };
+    });
+
+    const edges = (parsed.edges || []).map((e: any) => ({
+      id: e.id || `edge_${Math.random().toString(36).substr(2, 9)}`,
+      source: e.source,
+      target: e.target,
+      type: "funnelEdge",
+      data: { label: e.label || e.data?.label || "" },
+    }));
+
+    return {
+      cleanText,
+      funnel: { name: parsed.name || "Funnel Generato", nodes, edges },
+    };
+  } catch {
+    return { cleanText: text, funnel: null };
+  }
+}
+
+router.post("/chat", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = getConsultantId(req);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    const { message, chatId, currentFunnel } = req.body;
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ error: "Messaggio richiesto" });
+    }
+
+    const provider = await getAIProvider(consultantId);
+    if (!provider?.client) {
+      return res.status(500).json({ error: "Provider AI non disponibile" });
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const sendSSE = (event: string, data: any) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    let activeChatId = chatId;
+    let messages: Array<{ role: string; content: string; timestamp: string }> = [];
+
+    if (activeChatId) {
+      const chatResult = await db.execute(sql`
+        SELECT messages FROM consultant_funnel_chats
+        WHERE id = ${activeChatId} AND consultant_id = ${consultantId}
+        LIMIT 1
+      `);
+      if (chatResult.rows.length > 0) {
+        messages = (chatResult.rows[0] as any).messages || [];
+      }
+    } else {
+      const newChat = await db.execute(sql`
+        INSERT INTO consultant_funnel_chats (consultant_id, messages)
+        VALUES (${consultantId}, '[]'::jsonb)
+        RETURNING id
+      `);
+      activeChatId = (newChat.rows[0] as any).id;
+      sendSSE("chatId", { chatId: activeChatId });
+    }
+
+    messages.push({ role: "user", content: message, timestamp: new Date().toISOString() });
+
+    const funnelsList = await db.execute(sql`
+      SELECT id, name, 
+        jsonb_array_length(COALESCE(nodes_data, '[]'::jsonb)) as node_count
+      FROM consultant_funnels
+      WHERE consultant_id = ${consultantId}
+      ORDER BY updated_at DESC
+      LIMIT 20
+    `);
+
+    let contextSection = "";
+    if (funnelsList.rows.length > 0) {
+      contextSection += "\n\nFUNNEL ESISTENTI DEL CONSULENTE:\n";
+      funnelsList.rows.forEach((f: any) => {
+        contextSection += `- "${f.name}" (${f.node_count} nodi, ID: ${f.id})\n`;
+      });
+    }
+
+    if (currentFunnel) {
+      contextSection += `\n\n[CURRENT_FUNNEL]\nFunnel attualmente sul canvas: "${currentFunnel.name}"\nNodi: ${JSON.stringify(currentFunnel.nodes)}\nEdge: ${JSON.stringify(currentFunnel.edges)}\n[/CURRENT_FUNNEL]`;
+    }
+
+    const systemPrompt = FUNNEL_ARCHITECT_PROMPT + contextSection;
+
+    const contents = messages.map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+
+    let fullResponse = "";
+
+    try {
+      const stream = await provider.client.generateContentStream({
+        model: "gemini-2.5-flash",
+        contents,
+        generationConfig: {
+          temperature: 0.8,
+          maxOutputTokens: 8192,
+          systemInstruction: { role: "system", parts: [{ text: systemPrompt }] },
+        },
+      });
+
+      for await (const chunk of stream) {
+        const text = typeof chunk.text === "function" ? chunk.text() : typeof chunk.text === "string" ? chunk.text : (chunk as any).candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          fullResponse += text;
+          sendSSE("delta", { text });
+        }
+      }
+    } catch (streamErr: any) {
+      console.error("[Funnel Chat] Stream error, falling back to non-stream:", streamErr.message);
+      try {
+        const result = await trackedGenerateContent(provider.client, {
+          model: "gemini-2.5-flash",
+          contents,
+          config: {
+            temperature: 0.8,
+            maxOutputTokens: 8192,
+            systemInstruction: systemPrompt,
+          },
+        }, {
+          consultantId,
+          feature: "funnel_chat",
+          keySource: provider.keySource,
+        });
+        fullResponse = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const chunks = fullResponse.match(/.{1,80}/g) || [fullResponse];
+        for (const chunk of chunks) {
+          sendSSE("delta", { text: chunk });
+        }
+      } catch (fallbackErr: any) {
+        console.error("[Funnel Chat] Fallback also failed:", fallbackErr.message);
+        sendSSE("error", { error: "Errore nella generazione AI" });
+        res.end();
+        return;
+      }
+    }
+
+    const { cleanText, funnel } = parseFunnelFromResponse(fullResponse);
+
+    if (funnel) {
+      sendSSE("funnel", funnel);
+    }
+
+    messages.push({ role: "assistant", content: fullResponse, timestamp: new Date().toISOString() });
+
+    await db.execute(sql`
+      UPDATE consultant_funnel_chats
+      SET messages = ${JSON.stringify(messages)}::jsonb,
+          updated_at = NOW()
+      WHERE id = ${activeChatId} AND consultant_id = ${consultantId}
+    `);
+
+    sendSSE("complete", {});
+    res.end();
+  } catch (error: any) {
+    console.error("[Funnel Chat] Error:", error);
+    try {
+      res.write(`event: error\ndata: ${JSON.stringify({ error: "Errore interno" })}\n\n`);
+      res.end();
+    } catch {
+      res.status(500).json({ error: "Errore interno" });
+    }
+  }
+});
+
+router.get("/chats", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = getConsultantId(req);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    const result = await db.execute(sql`
+      SELECT id, funnel_id, status, created_at, updated_at,
+        messages->0->>'content' as preview
+      FROM consultant_funnel_chats
+      WHERE consultant_id = ${consultantId}
+      ORDER BY updated_at DESC
+      LIMIT 20
+    `);
+
+    res.json(result.rows);
+  } catch (error: any) {
+    console.error("[Funnel Chat] List error:", error);
+    res.status(500).json({ error: "Errore" });
+  }
+});
+
+router.get("/chats/:chatId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = getConsultantId(req);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    const result = await db.execute(sql`
+      SELECT * FROM consultant_funnel_chats
+      WHERE id = ${req.params.chatId} AND consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+
+    if (result.rows.length === 0) return res.status(404).json({ error: "Chat non trovata" });
+    res.json(result.rows[0]);
+  } catch (error: any) {
+    console.error("[Funnel Chat] Get error:", error);
+    res.status(500).json({ error: "Errore" });
   }
 });
 
