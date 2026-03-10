@@ -1220,8 +1220,17 @@ export default function ContentStudioIdeas() {
           caseStudies: agent.caseStudies,
           servicesOffered: agent.servicesOffered,
           guarantees: agent.guarantees,
+          personalTone: agent.personalTone,
+          contentPersonality: agent.contentPersonality,
+          audienceLanguage: agent.audienceLanguage,
+          avoidPatterns: agent.avoidPatterns,
+          writingExamples: agent.writingExamples,
+          signaturePhrases: agent.signaturePhrases,
         });
-        toast({ title: "Dati importati", description: "Brand Voice importato dall'agente" });
+        if (agent.marketResearchData) {
+          setMarketResearchData(agent.marketResearchData);
+        }
+        toast({ title: "Dati importati", description: "Brand Voice, Voce & Stile e Ricerca di Mercato importati dall'agente" });
         setShowImportAgentDialog(false);
         setUseBrandVoice(true);
       }

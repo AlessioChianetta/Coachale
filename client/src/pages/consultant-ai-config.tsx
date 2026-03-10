@@ -2355,8 +2355,14 @@ export default function ConsultantAIConfigPage() {
           caseStudies: agent.caseStudies,
           servicesOffered: agent.servicesOffered,
           guarantees: agent.guarantees,
+          personalTone: agent.personalTone,
+          contentPersonality: agent.contentPersonality,
+          audienceLanguage: agent.audienceLanguage,
+          avoidPatterns: agent.avoidPatterns,
+          writingExamples: agent.writingExamples,
+          signaturePhrases: agent.signaturePhrases,
         });
-        toast({ title: "Dati importati", description: "Brand Voice importato dall'agente" });
+        toast({ title: "Dati importati", description: "Brand Voice e Voce & Stile importati dall'agente" });
         setShowImportAgentDialog(false);
       }
     } catch (error: any) {
