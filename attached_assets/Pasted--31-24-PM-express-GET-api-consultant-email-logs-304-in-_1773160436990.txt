@@ -1,0 +1,165 @@
+:31:24 PM [express] GET /api/consultant/email-logs 304 in 4672ms :: [{"id":"d89488b7-d58f-4eea-900d…
+✅ [TokenTracker] Flushed 1 entries to DB
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping... (rowCount=0, rows=0, keys=command,rowCount,oid,rows,fields,_parsers,_types,RowCtor,rowAsArray,_prebuiltEmptyResultObject)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping... (rowCount=0, rows=0, keys=command,rowCount,oid,rows,fields,_parsers,_types,RowCtor,rowAsArray,_prebuiltEmptyResultObject)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔍 [SCHEDULER EXECUTE] Manual execution requested for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [SCHEDULER EXECUTE] Starting manual execution for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+4:33:38 PM [express] POST /api/consultant/scheduler/execute-now 200 in 437ms :: {"success":true,"mes…
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📬 AUTOMATED EMAIL SCHEDULER - Starting
+🆔 Execution ID: exec_1773160418485_veio19
+🏭 Process ID (PID): 18465
+📅 10/03/2026, 16:33:38
+🕐 Timestamp: 2026-03-10T16:33:38.485Z
+🔍 Stack trace (first 3 calls):
+    at sendAutomatedEmails (/home/runner/workspace/server/services/email-scheduler.ts:840:17)
+    at Immediate._onImmediate (/home/runner/workspace/server/routes/automated-emails.ts:2127:15)
+    at process.processImmediate (node:internal/timers:483:21)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 Checking consultants with scheduler enabled...
+
+📋 Checking consultant: Stefano Rossi (70d1528e-5803-4097-aef3-626b68890c84)
+⏭️  Skipping - SMTP not configured or inactive
+
+📋 Checking consultant: Giulia Turatto (bc1dec4d-8a20-4d23-a109-b4de82a4b4e7)
+⏭️  Skipping - SMTP not configured or inactive
+
+📋 Checking consultant: Luca Mattei (ad0f878c-55b5-48ea-af8d-58b4696e4cd3)
+⏭️  Skipping - SMTP not configured or inactive
+
+📋 Checking consultant: Giusy Dattilo (7e40b56c-2cc8-4515-b843-dc105e478f38)
+🔒 [exec_1773160418485_veio19] Attempting to acquire scheduler lock for Giusy (7e40b56c-2cc8-4515-b843-dc105e478f38)...
+🔒 [LOCK] Attempting to acquire scheduler lock for consultant: 7e40b56c-2cc8-4515-b843-dc105e478f38
+🔒 [LOCK] Max retries: 3, Timeout threshold: 5 minutes
+✅ [LOCK] Lock acquired successfully for consultant: 7e40b56c-2cc8-4515-b843-dc105e478f38 at 2026-03-10T16:33:39.373Z (attempt 1)
+✅ [exec_1773160418485_veio19] Lock acquired successfully! Processing emails for Giusy
+🔍 Finding clients who need an email...
+⏰ [EMAIL SCHEDULER] Current time 17:33 is OUTSIDE send window (13:00-14:00). Waiting for window...
+📊 Found 0 clients eligible for email
+✓ No clients need emails at this time
+🔓 Releasing scheduler lock for Giusy...
+🔓 [LOCK] Releasing scheduler lock for consultant: 7e40b56c-2cc8-4515-b843-dc105e478f38 at 2026-03-10T16:33:39.963Z
+✅ [LOCK] Lock released successfully for consultant: 7e40b56c-2cc8-4515-b843-dc105e478f38
+✅ Lock released for Giusy
+
+📋 Checking consultant: Alessio Chianetta (e9c37790-47ea-40cb-a93c-4242f3f07cdc)
+⏭️  Skipping - SMTP not configured or inactive
+
+📋 Checking consultant: Fernando Villon (7cdfb7ae-d06b-40f6-9840-91f72772a390)
+🔒 [exec_1773160418485_veio19] Attempting to acquire scheduler lock for Fernando (7cdfb7ae-d06b-40f6-9840-91f72772a390)...
+🔒 [LOCK] Attempting to acquire scheduler lock for consultant: 7cdfb7ae-d06b-40f6-9840-91f72772a390
+🔒 [LOCK] Max retries: 3, Timeout threshold: 5 minutes
+✅ [LOCK] Lock acquired successfully for consultant: 7cdfb7ae-d06b-40f6-9840-91f72772a390 at 2026-03-10T16:33:40.399Z (attempt 1)
+✅ [exec_1773160418485_veio19] Lock acquired successfully! Processing emails for Fernando
+🔍 Finding clients who need an email...
+⏰ [EMAIL SCHEDULER] Current time 17:33 is OUTSIDE send window (13:00-14:00). Waiting for window...
+📊 Found 0 clients eligible for email
+✓ No clients need emails at this time
+🔓 Releasing scheduler lock for Fernando...
+🔓 [LOCK] Releasing scheduler lock for consultant: 7cdfb7ae-d06b-40f6-9840-91f72772a390 at 2026-03-10T16:33:40.986Z
+✅ [LOCK] Lock released successfully for consultant: 7cdfb7ae-d06b-40f6-9840-91f72772a390
+✅ Lock released for Fernando
+
+📋 Checking consultant: Massimo Mec (ae24038c-435d-4cb9-af6b-9477b1d61705)
+⏭️  Skipping - SMTP not configured or inactive
+
+📋 Checking consultant: Massimo Onofri (c2146759-f08a-430a-afdf-701bbc674300)
+🔒 [exec_1773160418485_veio19] Attempting to acquire scheduler lock for Massimo (c2146759-f08a-430a-afdf-701bbc674300)...
+🔒 [LOCK] Attempting to acquire scheduler lock for consultant: c2146759-f08a-430a-afdf-701bbc674300
+🔒 [LOCK] Max retries: 3, Timeout threshold: 5 minutes
+✅ [LOCK] Lock acquired successfully for consultant: c2146759-f08a-430a-afdf-701bbc674300 at 2026-03-10T16:33:41.421Z (attempt 1)
+✅ [exec_1773160418485_veio19] Lock acquired successfully! Processing emails for Massimo
+🔍 Finding clients who need an email...
+⏰ [EMAIL SCHEDULER] Current time 17:33 is OUTSIDE send window (13:00-14:00). Waiting for window...
+📊 Found 0 clients eligible for email
+✓ No clients need emails at this time
+🔓 Releasing scheduler lock for Massimo...
+🔓 [LOCK] Releasing scheduler lock for consultant: c2146759-f08a-430a-afdf-701bbc674300 at 2026-03-10T16:33:42.007Z
+✅ [LOCK] Lock released successfully for consultant: c2146759-f08a-430a-afdf-701bbc674300
+✅ Lock released for Massimo
+
+📋 Checking consultant: Fernando Villon (611b2437-3b3f-4063-ad89-2164943abf1d)
+🔒 [exec_1773160418485_veio19] Attempting to acquire scheduler lock for Fernando (611b2437-3b3f-4063-ad89-2164943abf1d)...
+🔒 [LOCK] Attempting to acquire scheduler lock for consultant: 611b2437-3b3f-4063-ad89-2164943abf1d
+🔒 [LOCK] Max retries: 3, Timeout threshold: 5 minutes
+✅ [LOCK] Lock acquired successfully for consultant: 611b2437-3b3f-4063-ad89-2164943abf1d at 2026-03-10T16:33:42.297Z (attempt 1)
+✅ [exec_1773160418485_veio19] Lock acquired successfully! Processing emails for Fernando
+🔍 Finding clients who need an email...
+⏰ [EMAIL SCHEDULER] Current time 17:33 is OUTSIDE send window (13:00-14:00). Waiting for window...
+📊 Found 0 clients eligible for email
+✓ No clients need emails at this time
+🔓 Releasing scheduler lock for Fernando...
+🔓 [LOCK] Releasing scheduler lock for consultant: 611b2437-3b3f-4063-ad89-2164943abf1d at 2026-03-10T16:33:42.882Z
+✅ [LOCK] Lock released successfully for consultant: 611b2437-3b3f-4063-ad89-2164943abf1d
+✅ Lock released for Fernando
+
+📋 Checking consultant: zio greggio (e7b9343e-b80f-42a3-9dfe-43d030ca54e3)
+⏭️  Skipping - SMTP not configured or inactive
+
+📋 Checking consultant: dsfsdf  (bae8e31c-1351-4b60-b4cd-a738aeac86a2)
+⏭️  Skipping - SMTP not configured or inactive
+
+📋 Checking consultant: alessio chianetta (0c73bbe5-51e1-4108-866b-6be7a52fce3b)
+🔒 [exec_1773160418485_veio19] Attempting to acquire scheduler lock for alessio (0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔒 [LOCK] Attempting to acquire scheduler lock for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔒 [LOCK] Max retries: 3, Timeout threshold: 5 minutes
+✅ [LOCK] Lock acquired successfully for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b at 2026-03-10T16:33:43.464Z (attempt 1)
+✅ [exec_1773160418485_veio19] Lock acquired successfully! Processing emails for alessio
+🔍 Finding clients who need an email...
+✅ [EMAIL SCHEDULER] Current time 17:33 is WITHIN send window (16:00-19:07). Processing emails...
+🚫 Cristina - automation disabled, skipping entirely
+🚫 Luca - automation disabled, skipping entirely
+🚫 Sonia - automation disabled, skipping entirely
+🚫 Riccardo - automation disabled, skipping entirely
+🚫 roberto - automation disabled, skipping entirely
+📊 8/13 clients have automation enabled
+📅 Italy: 10/03/2026 17:33 → Calendar day 10, Template 10/31
+⏰ Prossimo invio: DOMANI 11/03/2026 alle 13:00 (tra 19h 26m)
+4:33:45 PM [express] POST /api/activity/session/heartbeat 200 in 1358ms :: {"success":true,"lastActi…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⏭️  Giulia - already sent template 10 on 10/03/2026 (skipping)
+⏭️  marco - already sent template 10 on 10/03/2026 (skipping)
+⏭️  Giusy - already sent template 10 on 10/03/2026 (skipping)
+⏭️  Alessio - already sent template 10 on 10/03/2026 (skipping)
+⏭️  Fernando - already sent template 10 on 10/03/2026 (skipping)
+⏭️  Massimo - already sent template 10 on 10/03/2026 (skipping)
+⏭️  Gloria - already sent template 10 on 10/03/2026 (skipping)
+⏭️  Silvia - already sent template 10 on 10/03/2026 (skipping)
+📊 Found 0 clients eligible for email
+✓ No clients need emails at this time
+🔓 Releasing scheduler lock for alessio...
+🔓 [LOCK] Releasing scheduler lock for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b at 2026-03-10T16:33:48.698Z
+✅ [LOCK] Lock released successfully for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ Lock released for alessio
+
+📋 Checking consultant: simone salina (881c63ff-8373-449b-950a-44ce4d1a62a1)
+⏭️  Skipping - SMTP not configured or inactive
+
+📋 Checking consultant: trottola rossa (2d26dde7-2dea-4a53-a386-f8187aedd21f)
+⏭️  Skipping - SMTP not configured or inactive
+
+📋 Checking consultant: Silvia Caldironi (42105c6d-d065-4f4e-b5b2-290742b4dd1d)
+⏭️  Skipping - SMTP not configured or inactive
+
+📋 Checking consultant: Riccardo Goghero (19ed2469-e094-4033-9198-156fc5dbfd3f)
+⏭️  Skipping - SMTP not configured or inactive
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 AUTOMATED EMAIL SCHEDULER - Global Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Total clients processed: 0
+✅ Total emails sent: 0
+📝 Total drafts created: 0
+❌ Total failed: 0
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
