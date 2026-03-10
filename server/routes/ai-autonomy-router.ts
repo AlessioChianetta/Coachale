@@ -7251,6 +7251,14 @@ REGOLE ANTI-ALLUCINAZIONE:
 
     if (!aiClient) throw new Error("No AI provider available");
 
+    if (roleId === 'architetto') {
+      console.log('\n' + '═'.repeat(80));
+      console.log('🧠 [LEONARDO SYSTEM PROMPT] — Lunghezza:', systemPrompt.length, 'caratteri');
+      console.log('═'.repeat(80));
+      console.log(systemPrompt);
+      console.log('═'.repeat(80) + '\n');
+    }
+
     const chatContents = [
       { role: 'user' as const, parts: [{ text: systemPrompt }] },
       { role: 'model' as const, parts: [{ text: `Capito, sono ${roleName}. Sono pronto a chattare con il mio consulente.` }] },
