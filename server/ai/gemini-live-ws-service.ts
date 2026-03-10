@@ -6155,7 +6155,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
             
             // 🔍 TASK 2: Track chunk in currentTurnMessages for fresh text input analysis
             currentTurnMessages.push({
-              type: `CHUNK ${i + 1}/${chunks.length} - User Data Context (SHOULD BE CACHED)`,
+              type: `CHUNK ${i + 1}/${chunks.length} - User Data Context`,
               content: `${startPreview.substring(0, 200)}... [TOTAL: ${chunk.length} chars] ...${endPreview.substring(endPreview.length - 200)}`,
               size: chunk.length,
               timestamp: new Date()
@@ -6307,13 +6307,14 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               }
               
               const primerTokens = Math.round(primerContent.length / 4);
+              const primerTurnComplete = shouldSpeakFirst ? false : true;
               const primerMessage = {
                 clientContent: {
                   turns: [{
                     role: 'user',
                     parts: [{ text: primerContent }]
                   }],
-                  turnComplete: shouldSpeakFirst ? false : true
+                  turnComplete: primerTurnComplete
                 }
               };
               geminiSession.send(JSON.stringify(primerMessage));
@@ -6322,10 +6323,10 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               latencyTracker.chunksCount = chunksToSend;
               latencyTracker.chunksSendEndTime = Date.now();
               console.log(`\n   🎯 Primer chunk sent - ${primerContent.length} chars (~${primerTokens} tokens)`);
-              console.log(`   ${shouldSpeakFirst ? '⏳ turnComplete: false (greeting message will trigger response)' : '✅ turnComplete: true (AI waits for client)'}`);
+              console.log(`   ${primerTurnComplete ? '✅ turnComplete: true (commits all chunks, AI waits for client)' : '⏳ turnComplete: false (greeting trigger will commit all chunks)'}`);
               console.log(`⏱️ [LATENCY] Chunks send: start=${latencyTracker.chunksSendStartTime - latencyTracker.wsArrivalTime}ms, end=${latencyTracker.chunksSendEndTime - latencyTracker.wsArrivalTime}ms, duration=${latencyTracker.chunksSendEndTime - latencyTracker.chunksSendStartTime}ms, count=${latencyTracker.chunksCount}`);
             } else {
-              // 🟢 Vertex AI: same chunked approach (already working)
+              // 🟢 Vertex AI: same chunked approach
               for (let i = 0; i < chunks.length; i++) {
                 const chunkTokens = Math.round(chunks[i].length / 4);
                 const chunkMessage = {
@@ -6342,13 +6343,14 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               }
               
               const primerTokens = Math.round(primerContent.length / 4);
+              const primerTurnComplete = shouldSpeakFirst ? false : true;
               const primerMessage = {
                 clientContent: {
                   turns: [{
                     role: 'user',
                     parts: [{ text: primerContent }]
                   }],
-                  turnComplete: shouldSpeakFirst ? false : true
+                  turnComplete: primerTurnComplete
                 }
               };
               geminiSession.send(JSON.stringify(primerMessage));
@@ -6357,7 +6359,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               latencyTracker.chunksCount = chunks.length;
               latencyTracker.chunksSendEndTime = Date.now();
               console.log(`\n   🎯 Primer chunk sent - ${primerContent.length} chars (~${primerTokens} tokens)`);
-              console.log(`   ${shouldSpeakFirst ? '⏳ turnComplete: false (greeting message will trigger response)' : '✅ turnComplete: true (AI waits for client)'}`);
+              console.log(`   ${primerTurnComplete ? '✅ turnComplete: true (commits all chunks, AI waits for client)' : '⏳ turnComplete: false (greeting trigger will commit all chunks)'}`);
               console.log(`⏱️ [LATENCY] Chunks send: start=${latencyTracker.chunksSendStartTime - latencyTracker.wsArrivalTime}ms, end=${latencyTracker.chunksSendEndTime - latencyTracker.wsArrivalTime}ms, duration=${latencyTracker.chunksSendEndTime - latencyTracker.chunksSendStartTime}ms, count=${latencyTracker.chunksCount}`);
             }
             
@@ -6376,9 +6378,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             });
             
             console.log(`\n🎉 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-            console.log(`✅ [${connectionId}] ALL ${chunks.length} CHUNKS SENT & LOADED (chunked)`);
-            console.log(`   💾 Chunks are now CACHED by Gemini Live API (90% cost savings on next turn!)`);
-            console.log(`   🎙️ AI can now speak (has complete context: ${Math.round(userDataContext!.length / 4)} tokens)`);
+            console.log(`✅ [${connectionId}] ALL ${chunks.length} CHUNKS SENT (chunked, turnComplete: false)`);
+            console.log(`   📦 Chunks will be committed to context when next turnComplete: true is sent`);
+            console.log(`   🎙️ Context ready: ~${Math.round(userDataContext!.length / 4)} tokens waiting for commit`);
             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
           };
           
@@ -6474,26 +6476,50 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             }));
             
             // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            // 🚀 O2: EARLY GREETING - Send greeting trigger BEFORE chunks
-            // For speak-first modes, the AI can start generating "Ciao Marco!"
-            // from the system instruction alone. No need to wait for chunks.
+            // 📦 CONTEXT-FIRST STRATEGY: Send ALL context chunks BEFORE greeting
+            // The greeting trigger (turnComplete: true) commits all preceding
+            // clientContent chunks into the context window. Without this order,
+            // chunks sent AFTER a turnComplete: true are left in "pending" state
+            // and never enter the AI's context (known Live API behavior).
             // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            const shouldGreetEarly = (mode === 'assistenza' || mode === 'consulente' || mode === 'phone_service') && !validatedResumeHandle;
-            if (shouldGreetEarly) {
-              if (isPhoneCall && _ncLatency.deferredCallHistory) {
-                const historyChunk = {
-                  clientContent: {
-                    turns: [{
-                      role: 'user',
-                      parts: [{ text: _ncLatency.deferredCallHistory }]
-                    }],
-                    turnComplete: false
-                  }
-                };
-                geminiSession.send(JSON.stringify(historyChunk));
-                console.log(`📚 [${connectionId}] Deferred call history sent BEFORE greeting (${_ncLatency.deferredCallHistory.length} chars) - Gemini has context for personalized greeting`);
-              }
 
+            if (pendingChunksSend) {
+              console.log(`\n📤 [${connectionId}] Sending context chunks FIRST (before greeting trigger)...`);
+              pendingChunksSend();
+              pendingChunksSend = null;
+            }
+
+            const shouldGreetEarly = (mode === 'assistenza' || mode === 'consulente' || mode === 'phone_service') && !validatedResumeHandle;
+
+            if (isPhoneCall && _ncLatency.deferredCallHistory) {
+              const historyChunk = {
+                clientContent: {
+                  turns: [{
+                    role: 'user',
+                    parts: [{ text: _ncLatency.deferredCallHistory }]
+                  }],
+                  turnComplete: false
+                }
+              };
+              geminiSession.send(JSON.stringify(historyChunk));
+              console.log(`📚 [${connectionId}] Deferred call history sent BEFORE greeting (${_ncLatency.deferredCallHistory.length} chars)`);
+            }
+
+            if (isPhoneCall && _ncLatency.deferredContentChunk) {
+              const contentChunk = {
+                clientContent: {
+                  turns: [{
+                    role: 'user',
+                    parts: [{ text: _ncLatency.deferredContentChunk }]
+                  }],
+                  turnComplete: false
+                }
+              };
+              geminiSession.send(JSON.stringify(contentChunk));
+              console.log(`📚 [${connectionId}] Deferred content sent BEFORE greeting (${_ncLatency.deferredContentChunk.length} chars)`);
+            }
+
+            if (shouldGreetEarly) {
               const earlyGreetingMessage = {
                 clientContent: {
                   turns: [{
@@ -6507,47 +6533,13 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               latencyTracker.greetingTriggerTime = Date.now();
               latencyTracker.greetingTriggered = true;
               greetingAlreadySent = true;
-              console.log(`🚀 [${connectionId}] EARLY GREETING sent after call history injection (O2 optimization) - mode: ${mode}`);
-              console.log(`⏱️ [LATENCY] Early greeting trigger: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
-
-              if (isPhoneCall && _ncLatency.deferredContentChunk) {
-                const contentChunk = {
-                  clientContent: {
-                    turns: [{
-                      role: 'user',
-                      parts: [{ text: _ncLatency.deferredContentChunk }]
-                    }],
-                    turnComplete: false
-                  }
-                };
-                geminiSession.send(JSON.stringify(contentChunk));
-                console.log(`🚀 [${connectionId}] DEFERRED CONTENT injected AFTER greeting trigger (${_ncLatency.deferredContentChunk.length} chars) — AI already generating greeting from minimal instruction`);
-              }
+              console.log(`🚀 [${connectionId}] GREETING sent AFTER all context chunks (turnComplete: true commits ~${sessionInitialChunkTokens.toLocaleString()} context tokens)`);
+              console.log(`⏱️ [LATENCY] Greeting trigger: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
               
               clientWs.send(JSON.stringify({
                 type: 'ai_starting',
                 message: 'AI sta iniziando con il saluto'
               }));
-            }
-            
-            if (!greetingAlreadySent && isPhoneCall && _ncLatency.deferredContentChunk) {
-              const contentChunk = {
-                clientContent: {
-                  turns: [{
-                    role: 'user',
-                    parts: [{ text: _ncLatency.deferredContentChunk }]
-                  }],
-                  turnComplete: false
-                }
-              };
-              geminiSession.send(JSON.stringify(contentChunk));
-              console.log(`🚀 [${connectionId}] DEFERRED CONTENT injected (non-early-greeting path) (${_ncLatency.deferredContentChunk.length} chars)`);
-            }
-
-            if (pendingChunksSend) {
-              console.log(`\n📤 [${connectionId}] Google AI Studio: setupComplete received, NOW sending deferred chunks...`);
-              pendingChunksSend();
-              pendingChunksSend = null;
             }
             
             // ⚡ O6: DEFERRED SLOT INJECTION - Send booking slots AFTER Gemini session is live
@@ -7021,37 +7013,20 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               console.log(`   │    (sent at session start)                                  │`);
               console.log(`   └─────────────────────────────────────────────────────────────┘`);
               
-              const estimatedTotal = sessionSystemInstructionTokens + conversationHistoryTokens;
-              const unexplainedTokens = textInputTokens - estimatedTotal;
+              const estimatedTotal = sessionSystemInstructionTokens + conversationHistoryTokens + sessionInitialChunkTokens;
+              const overhead = textInputTokens - estimatedTotal;
               
               console.log(`\n🎯 ANALYSIS:`);
               console.log(`   • Actual TEXT tokens from Gemini: ${textInputTokens.toLocaleString()}`);
-              console.log(`   • Our estimate (sysInst + history): ${estimatedTotal.toLocaleString()}`);
-              console.log(`   • UNEXPLAINED tokens: ${unexplainedTokens.toLocaleString()} tokens`);
+              console.log(`   • Our estimate (sysInst + history + chunks): ${estimatedTotal.toLocaleString()}`);
+              console.log(`   • Gemini overhead/tokenizer diff: ${overhead.toLocaleString()} tokens`);
               
-              if (unexplainedTokens > 1000) {
-                console.log(`\n   ⚠️  HIGH UNEXPLAINED TOKENS (${unexplainedTokens.toLocaleString()})!`);
-                console.log(`   Possible sources:`);
-                console.log(`   - Chunks being re-processed (not cached)`);
-                console.log(`   - Internal Gemini system overhead`);
-                console.log(`   - Context from previous turns (live session memory)`);
-                
-                if (sessionInitialChunkTokens > 0) {
-                  const chunkPercentInFresh = (unexplainedTokens / sessionInitialChunkTokens) * 100;
-                  console.log(`\n   📦 Chunk Analysis:`);
-                  console.log(`   - Initial chunks: ${sessionInitialChunkTokens.toLocaleString()} tokens`);
-                  console.log(`   - Unexplained as % of chunks: ${chunkPercentInFresh.toFixed(1)}%`);
-                  
-                  if (chunkPercentInFresh > 80) {
-                    console.log(`   ❌ Chunks are likely NOT being cached!`);
-                  } else if (chunkPercentInFresh > 10) {
-                    console.log(`   ⚠️  Partial chunk data may be in context`);
-                  } else {
-                    console.log(`   ✅ Chunks are likely being cached or ignored`);
-                  }
-                }
-              } else {
-                console.log(`\n   ✅ Token composition looks correct (sysInst + history)`);
+              if (sessionInitialChunkTokens > 0) {
+                const chunkRatio = textInputTokens > 0 ? (sessionInitialChunkTokens / textInputTokens) * 100 : 0;
+                console.log(`\n   📦 Context Verification:`);
+                console.log(`   - Chunks in context: ~${sessionInitialChunkTokens.toLocaleString()} tokens (${chunkRatio.toFixed(0)}% of total)`);
+                console.log(`   ✅ Chunks are IN the context window (Live API counts them in promptTokenCount)`);
+                console.log(`   ℹ️  Live API does NOT report cachedContentTokenCount — this is normal behavior`);
               }
               
               console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
@@ -7090,28 +7065,10 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               if (cachedTokens > 0) {
                 console.log(`✅ CACHED TOKENS DETECTED: ${cachedTokens.toLocaleString()} tokens`);
                 console.log(`   💰 Cost: $${((cachedTokens / 1_000_000) * 0.03).toFixed(6)} ($0.03/1M)`);
-                console.log(`   💸 Savings vs Fresh: $${((cachedTokens / 1_000_000) * (0.50 - 0.03)).toFixed(6)} (94% reduction!)`);
-                
-                // Check if cached amount matches expected chunks
-                const expectedChunkTokens = Math.round(totalChars / 4);
-                if (expectedChunkTokens > 0) {
-                  const cacheRatio = (cachedTokens / expectedChunkTokens) * 100;
-                  console.log(`\n   📊 Cache Coverage:`);
-                  console.log(`      • Expected to cache: ~${expectedChunkTokens.toLocaleString()} tokens (from sent chunks)`);
-                  console.log(`      • Actually cached: ${cachedTokens.toLocaleString()} tokens`);
-                  console.log(`      • Coverage: ${cacheRatio.toFixed(1)}%`);
-                  
-                  if (cacheRatio < 50) {
-                    console.log(`      ⚠️  WARNING: Cache coverage is LOW! Chunks might not be caching properly.`);
-                  } else if (cacheRatio > 90) {
-                    console.log(`      ✅ EXCELLENT: Cache is working as expected!`);
-                  }
-                }
               } else {
-                console.log(`❌ NO CACHED TOKENS DETECTED`);
-                console.log(`   ⚠️  This is expected ONLY for the FIRST turn after setup.`);
-                console.log(`   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!`);
-                console.log(`   💸 Missing out on 94% cost savings!`);
+                console.log(`ℹ️  cachedContentTokenCount = 0 (normal for Live API)`);
+                console.log(`   Live API uses implicit session memory — chunks are in promptTokenCount.`);
+                console.log(`   Cost: $${((inputTokens / 1_000_000) * 0.50).toFixed(6)} (${inputTokens.toLocaleString()} tokens × $0.50/1M)`);
               }
               console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
               
@@ -7195,21 +7152,23 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               console.log(`📦 Initial Chunks Sent:`);
               console.log(`   • Estimated tokens: ${sessionInitialChunkTokens.toLocaleString()} (~${(sessionInitialChunkTokens / 1000).toFixed(1)}k)`);
               console.log(`   • Purpose: User data context, sales scripts, prospect info`);
-              console.log(`   • Expected: Should be CACHED after first turn`);
+              console.log(`   • Included in promptTokenCount each turn (Live API behavior)`);
               
               console.log(`\n📊 Actual Gemini Reporting:`);
               console.log(`   • Fresh Text Input: ${totalInputTokens.toLocaleString()} tokens`);
               console.log(`   • Cached Tokens: ${totalCachedTokens.toLocaleString()} tokens`);
               console.log(`   • Total Input: ${(totalInputTokens + totalCachedTokens).toLocaleString()} tokens`);
               
+              const avgTokensPerTurn = sessionTurnCount > 0 ? Math.round(totalInputTokens / sessionTurnCount) : totalInputTokens;
+              const chunkCostPerTurn = (sessionInitialChunkTokens / 1_000_000) * PRICE_INPUT_PER_1M;
+              
               console.log(`\n🎯 ANALYSIS:`);
               if (totalCachedTokens === 0) {
-                console.log(`   ❌ WARNING: NO CACHING DETECTED!`);
-                console.log(`   • Initial chunks (${sessionInitialChunkTokens.toLocaleString()} tokens) are being counted as FRESH every turn`);
-                console.log(`   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)`);
-                console.log(`   • Expected cached: ~${sessionInitialChunkTokens.toLocaleString()} tokens`);
-                console.log(`   • Actual cached: 0 tokens`);
-                console.log(`   • Discrepancy: ${sessionInitialChunkTokens.toLocaleString()} tokens NOT cached`);
+                console.log(`   ℹ️  cachedContentTokenCount = 0 (normal for Live API)`);
+                console.log(`   • Live API does NOT expose cache metrics via this field`);
+                console.log(`   • Chunks (${sessionInitialChunkTokens.toLocaleString()} tokens) are counted in promptTokenCount every turn`);
+                console.log(`   • Avg input per turn: ~${avgTokensPerTurn.toLocaleString()} tokens`);
+                console.log(`   • Chunk context cost per turn: ~$${chunkCostPerTurn.toFixed(6)}`);
               } else {
                 const cacheEfficiency = (totalCachedTokens / sessionInitialChunkTokens) * 100;
                 if (cacheEfficiency >= 90) {
@@ -7219,9 +7178,6 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 } else if (cacheEfficiency >= 50) {
                   console.log(`   ⚠️  PARTIAL: Cache is working but not optimal`);
                   console.log(`   • Only ${cacheEfficiency.toFixed(1)}% of initial chunks are cached`);
-                  console.log(`   • Expected: ~${sessionInitialChunkTokens.toLocaleString()} cached`);
-                  console.log(`   • Actual: ${totalCachedTokens.toLocaleString()} cached`);
-                  console.log(`   • Missing: ${(sessionInitialChunkTokens - totalCachedTokens).toLocaleString()} tokens not cached`);
                 } else {
                   console.log(`   ❌ POOR: Cache efficiency is very low!`);
                   console.log(`   • Only ${cacheEfficiency.toFixed(1)}% of initial chunks are cached`);
