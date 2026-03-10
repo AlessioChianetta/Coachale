@@ -645,7 +645,7 @@ ${hasPrePopulatedEmail
   }
 
   getAvailableSlotsForPrompt(): string {
-    const slotsToShow = this.availableSlots.slice(0, 12);
+    const slotsToShow = this.availableSlots;
 
     if (slotsToShow.length === 0) {
       return "Nessuno slot disponibile al momento.";
