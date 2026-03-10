@@ -1858,6 +1858,16 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
     refetchInterval: 10000,
   });
 
+  const { data: orphanHistoryData } = useQuery({
+    queryKey: ["/api/voice/orphan-history"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/orphan-history?limit=10", { headers: getAuthHeaders() });
+      if (!res.ok) return { orphans: [], total: 0 };
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
+
   // Gemini connections tracker
   const { data: geminiConnectionsData, refetch: refetchGeminiConnections } = useQuery<{
     success: boolean;
@@ -4144,6 +4154,52 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                       </div>
                     );
                   })()}
+
+                  {/* STORICO CHIAMATE ORFANE PULITE */}
+                  {orphanHistoryData?.orphans?.length > 0 && (
+                    <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Trash2 className="h-4 w-4 text-amber-500" />
+                        <span className="text-sm font-medium">Chiamate orfane pulite automaticamente</span>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          Totale: {orphanHistoryData.total}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {orphanHistoryData.orphans.map((o: any) => {
+                          let meta: any = {};
+                          try { meta = typeof o.metadata === 'string' ? JSON.parse(o.metadata) : (o.metadata || {}); } catch { meta = {}; }
+                          const cleanedAt = meta.cleanedAt ? new Date(meta.cleanedAt) : (o.updated_at ? new Date(o.updated_at) : null);
+                          const startedAt = o.started_at ? new Date(o.started_at) : null;
+                          const dur = o.duration_seconds ? `${Math.floor(o.duration_seconds / 60)}m ${o.duration_seconds % 60}s` : '-';
+                          const formatTime = (d: Date | null) => d ? d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+
+                          return (
+                            <div key={o.id} className="flex items-center justify-between text-xs py-1.5 px-2 rounded bg-white/60 dark:bg-black/20">
+                              <div className="flex items-center gap-3 min-w-0 flex-wrap">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${o.call_direction === 'inbound' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'}`}>
+                                  {o.call_direction === 'inbound' ? 'IN' : 'OUT'}
+                                </span>
+                                <span className="font-mono">{o.caller_id || '?'}</span>
+                                <span className="text-muted-foreground">→</span>
+                                <span className="font-mono">{o.called_number || '?'}</span>
+                                <span className="text-muted-foreground">Durata: {dur}</span>
+                                <span className="text-amber-600 dark:text-amber-400">
+                                  <Clock className="h-3 w-3 inline mr-0.5" />
+                                  {formatTime(cleanedAt)}
+                                </span>
+                                {meta.ageSeconds && (
+                                  <span className="text-muted-foreground">
+                                    (stallo: {meta.ageSeconds}s)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* CODA CHIAMATE LIVE */}
                   <CallQueuePanel

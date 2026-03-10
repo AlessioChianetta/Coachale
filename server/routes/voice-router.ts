@@ -4006,6 +4006,46 @@ router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_ad
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// ORPHAN CALLS HISTORY - Storico chiamate orfane pulite automaticamente
+// ═══════════════════════════════════════════════════════════════════
+
+router.get("/orphan-history", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "super_admin" ? (req.query.consultantId as string || null) : req.user?.id;
+    const parsedLimit = parseInt(req.query.limit as string || '20', 10);
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 20;
+
+    const whereConsultant = consultantId ? sql`AND consultant_id = ${consultantId}` : sql``;
+
+    const result = await db.execute(sql`
+      SELECT id, caller_id, called_number, call_direction, started_at, ended_at, 
+             duration_seconds, outcome, metadata, updated_at
+      FROM voice_calls
+      WHERE outcome = 'orphan_cleanup'
+        ${whereConsultant}
+      ORDER BY updated_at DESC
+      LIMIT ${limit}
+    `);
+
+    const countResult = await db.execute(sql`
+      SELECT COUNT(*) as total
+      FROM voice_calls
+      WHERE outcome = 'orphan_cleanup'
+        ${whereConsultant}
+    `);
+
+    res.json({
+      success: true,
+      orphans: result.rows,
+      total: parseInt((countResult.rows[0] as any)?.total || '0', 10),
+    });
+  } catch (error: any) {
+    console.error("[Voice] Error fetching orphan history:", error);
+    res.status(500).json({ success: false, error: "Errore nel recupero storico orfani" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // FREESWITCH CALL KILL - Terminate ghost calls on FreeSWITCH via VPS
 // ═══════════════════════════════════════════════════════════════════
 

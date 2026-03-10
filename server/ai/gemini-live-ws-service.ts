@@ -287,6 +287,124 @@ interface ActiveGeminiConnection {
 // 🆕 P0.1 - Costanti per timeout anti-zombie
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;        // 30 minuti senza attività → kill
 const MAX_SESSION_DURATION_MS = 2 * 60 * 60 * 1000;  // 2 ore max sessione → kill
+
+async function fetchVpsFreeswitchCalls(): Promise<{ callerIds: Set<string>, calledNumbers: Set<string>, rawCalls: any[] } | null> {
+  try {
+    const globalVoiceResult = await db.execute(sql`
+      SELECT vps_bridge_url, service_token FROM superadmin_voice_config WHERE id = 'default' AND enabled = true LIMIT 1
+    `);
+    const globalVoice = globalVoiceResult.rows[0] as any;
+    const vpsUrl = globalVoice?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
+    const vpsToken = globalVoice?.service_token;
+    if (!vpsUrl) return null;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(`${vpsUrl}/health`, {
+      signal: controller.signal,
+      headers: vpsToken ? { 'Authorization': `Bearer ${vpsToken}` } : {},
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+
+    const health = await res.json();
+    const fsCalls: any[] = health.freeswitchCalls || [];
+    const callerIds = new Set<string>();
+    const calledNumbers = new Set<string>();
+    for (const c of fsCalls) {
+      if (c.cid_num) callerIds.add(c.cid_num);
+      if (c.dest) calledNumbers.add(c.dest);
+      if (c.callee_num) calledNumbers.add(c.callee_num);
+    }
+    return { callerIds, calledNumbers, rawCalls: fsCalls };
+  } catch (err: any) {
+    console.warn(`⚠️ [VPS-HEALTH] Could not fetch FreeSWITCH calls: ${err.message}`);
+    return null;
+  }
+}
+
+async function cleanOrphanVoiceCalls(consultantId?: string): Promise<number> {
+  try {
+    const whereConsultant = consultantId 
+      ? sql`AND vc.consultant_id = ${consultantId}`
+      : sql``;
+    const talkingCalls = await db.execute(sql`
+      SELECT vc.id, vc.caller_id, vc.called_number, vc.call_direction, vc.started_at, vc.updated_at
+      FROM voice_calls vc
+      WHERE vc.status IN ('talking', 'ringing')
+        AND vc.updated_at < NOW() - INTERVAL '2 minutes'
+        ${whereConsultant}
+    `);
+    
+    if (talkingCalls.rows.length === 0) return 0;
+
+    const hasGeminiStream = (callId: string, callerId: string, calledNumber: string): boolean => {
+      for (const [, conn] of activeGeminiConnections.entries()) {
+        if (conn.callId === callId) return true;
+      }
+      for (const [vcId, vc] of activeVoiceCalls.entries()) {
+        if (vcId === callId) return true;
+        if (callerId && vc.callerId === callerId) return true;
+        if (calledNumber && vc.calledNumber === calledNumber) return true;
+      }
+      return false;
+    };
+
+    const candidatesWithoutStream = (talkingCalls.rows as any[]).filter(c => 
+      !hasGeminiStream(c.id, c.caller_id || '', c.called_number || '')
+    );
+
+    if (candidatesWithoutStream.length === 0) return 0;
+
+    const vpsData = await fetchVpsFreeswitchCalls();
+
+    let cleaned = 0;
+    for (const call of candidatesWithoutStream) {
+      let isOnFreeSWITCH = false;
+
+      if (vpsData) {
+        const cid = call.caller_id || '';
+        const dest = call.called_number || '';
+        isOnFreeSWITCH = vpsData.callerIds.has(cid) || vpsData.calledNumbers.has(dest) ||
+                         vpsData.callerIds.has(dest) || vpsData.calledNumbers.has(cid);
+      } else {
+        continue;
+      }
+
+      if (!isOnFreeSWITCH) {
+        const ageSeconds = Math.round((Date.now() - new Date(call.updated_at).getTime()) / 1000);
+        const startedAt = call.started_at ? new Date(call.started_at) : new Date();
+        const durationSeconds = Math.round((Date.now() - startedAt.getTime()) / 1000);
+        console.log(`🧹 [ORPHAN-CLEANUP] voice_call ${call.id} status=talking for ${ageSeconds}s, NO Gemini stream, NOT on FreeSWITCH → marking completed`);
+        
+        const orphanMeta = JSON.stringify({
+          orphanCleanup: true,
+          cleanedAt: new Date().toISOString(),
+          reason: 'no_gemini_stream_no_freeswitch',
+          ageSeconds,
+          originalStatus: 'talking',
+        });
+        
+        await db.execute(sql`
+          UPDATE voice_calls
+          SET status = 'completed', 
+              ended_at = NOW(),
+              duration_seconds = ${durationSeconds},
+              outcome = 'orphan_cleanup',
+              metadata = COALESCE(metadata, '{}'::jsonb) || ${orphanMeta}::jsonb,
+              updated_at = NOW()
+          WHERE id = ${call.id} AND status IN ('talking', 'ringing')
+        `);
+        cleaned++;
+      }
+    }
+    
+    return cleaned;
+  } catch (err: any) {
+    console.warn(`⚠️ [ORPHAN-CLEANUP] Error: ${err.message}`);
+    return 0;
+  }
+}
 const HEARTBEAT_TIMEOUT_MS = 60 * 1000;        // 60s senza heartbeat → kill
 
 /**
@@ -406,6 +524,12 @@ setInterval(() => {
   if (killedByIdle > 0 || killedByMaxDuration > 0) {
     console.log(`🧹 [ZOMBIE KILLER] Cleanup complete: ${killedByIdle} idle, ${killedByMaxDuration} max duration`);
   }
+
+  cleanOrphanVoiceCalls().then(cleaned => {
+    if (cleaned > 0) {
+      console.log(`🧹 [ORPHAN-GC] Cleaned ${cleaned} orphan voice_calls (no Gemini stream, not on FreeSWITCH)`);
+    }
+  }).catch(() => {});
 }, 60 * 1000);
 
 /**
@@ -1271,32 +1395,82 @@ async function getUserIdFromRequest(req: any): Promise<{
           console.log(`⏱️ [AUTH-DETAIL] Channel check: ${Date.now() - channelCheckStart}ms (active: ${activeCount}/${maxChannels}, number: ${resolvedCalledNumber})`);
 
           if (activeCount >= maxChannels) {
-            const allCallsDebug = await db.execute(sql`
-              SELECT vc.id, vc.status, vc.caller_id, vc.called_number, vc.call_direction, vc.created_at,
-                     svc.id as svc_id, svc.from_number as svc_from, svc.target_phone as svc_target
-              FROM voice_calls vc
-              LEFT JOIN scheduled_voice_calls svc ON svc.voice_call_id = vc.id
-              WHERE vc.consultant_id = ${resolvedConsultantId} 
-                AND vc.status IN ('talking', 'calling')
-                AND (
-                  vc.called_number = ${resolvedCalledNumber}
-                  OR vc.caller_id = ${resolvedCalledNumber}
-                  OR svc.from_number = ${resolvedCalledNumber}
-                )
-              ORDER BY vc.created_at DESC
-              LIMIT 10
-            `);
-            console.error(`❌ [CHANNEL-CHECK] CHANNELS FULL! Consultant ${resolvedConsultantId} has ${activeCount}/${maxChannels} active calls on ${resolvedCalledNumber}`);
-            console.error(`❌ [CHANNEL-CHECK] Incoming callerId=${callerId} calledNumber=${resolvedCalledNumber} → REJECTING with 4429`);
-            console.error(`❌ [CHANNEL-CHECK] Calls occupying channels (talking+calling):`);
-            for (const row of (allCallsDebug.rows as any[])) {
-              console.error(`❌ [CHANNEL-CHECK]   → ${row.id} | status=${row.status} | caller=${row.caller_id} | called=${row.called_number} | dir=${row.call_direction} | svc_from=${row.svc_from || '-'} | svc_target=${row.svc_target || '-'} | created=${row.created_at}`);
+            console.log(`📊 [CHANNEL-CHECK] Channels appear full (${activeCount}/${maxChannels}) — checking for orphan calls...`);
+            
+            const cleanedOrphans = await cleanOrphanVoiceCalls(resolvedConsultantId!);
+            
+            if (cleanedOrphans > 0) {
+              console.log(`🧹 [CHANNEL-CHECK] Cleaned ${cleanedOrphans} orphan calls — rechecking channels...`);
+              const recheckResult = await db.execute(sql`
+                SELECT COUNT(DISTINCT vc.id) as active_count 
+                FROM voice_calls vc
+                LEFT JOIN scheduled_voice_calls svc ON svc.voice_call_id = vc.id
+                WHERE vc.consultant_id = ${resolvedConsultantId} AND vc.status = 'talking'
+                  AND (
+                    vc.called_number = ${resolvedCalledNumber}
+                    OR vc.caller_id = ${resolvedCalledNumber}
+                    OR svc.from_number = ${resolvedCalledNumber}
+                  )
+              `);
+              const newActiveCount = parseInt((recheckResult.rows[0] as any)?.active_count || '0', 10);
+              console.log(`📊 [CHANNEL-CHECK] After orphan cleanup: ${newActiveCount}/${maxChannels} channels in use`);
+              
+              if (newActiveCount < maxChannels) {
+                console.log(`✅ [CHANNEL-CHECK] Channels freed after orphan cleanup — ALLOWING call`);
+                console.log(`📊 [CHANNEL-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              } else {
+                const allCallsDebug = await db.execute(sql`
+                  SELECT vc.id, vc.status, vc.caller_id, vc.called_number, vc.call_direction, vc.created_at,
+                         svc.id as svc_id, svc.from_number as svc_from, svc.target_phone as svc_target
+                  FROM voice_calls vc
+                  LEFT JOIN scheduled_voice_calls svc ON svc.voice_call_id = vc.id
+                  WHERE vc.consultant_id = ${resolvedConsultantId} 
+                    AND vc.status IN ('talking', 'calling')
+                    AND (
+                      vc.called_number = ${resolvedCalledNumber}
+                      OR vc.caller_id = ${resolvedCalledNumber}
+                      OR svc.from_number = ${resolvedCalledNumber}
+                    )
+                  ORDER BY vc.created_at DESC
+                  LIMIT 10
+                `);
+                console.error(`❌ [CHANNEL-CHECK] CHANNELS STILL FULL after cleanup! ${newActiveCount}/${maxChannels} on ${resolvedCalledNumber}`);
+                console.error(`❌ [CHANNEL-CHECK] Incoming callerId=${callerId} calledNumber=${resolvedCalledNumber} → REJECTING with 4429`);
+                console.error(`❌ [CHANNEL-CHECK] Calls occupying channels:`);
+                for (const row of (allCallsDebug.rows as any[])) {
+                  console.error(`❌ [CHANNEL-CHECK]   → ${row.id} | status=${row.status} | caller=${row.caller_id} | called=${row.called_number} | dir=${row.call_direction} | svc_from=${row.svc_from || '-'} | svc_target=${row.svc_target || '-'} | created=${row.created_at}`);
+                }
+                console.log(`📊 [CHANNEL-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                return { channelsFull: true } as any;
+              }
+            } else {
+              const allCallsDebug = await db.execute(sql`
+                SELECT vc.id, vc.status, vc.caller_id, vc.called_number, vc.call_direction, vc.created_at,
+                       svc.id as svc_id, svc.from_number as svc_from, svc.target_phone as svc_target
+                FROM voice_calls vc
+                LEFT JOIN scheduled_voice_calls svc ON svc.voice_call_id = vc.id
+                WHERE vc.consultant_id = ${resolvedConsultantId} 
+                  AND vc.status IN ('talking', 'calling')
+                  AND (
+                    vc.called_number = ${resolvedCalledNumber}
+                    OR vc.caller_id = ${resolvedCalledNumber}
+                    OR svc.from_number = ${resolvedCalledNumber}
+                  )
+                ORDER BY vc.created_at DESC
+                LIMIT 10
+              `);
+              console.error(`❌ [CHANNEL-CHECK] CHANNELS FULL! Consultant ${resolvedConsultantId} has ${activeCount}/${maxChannels} active calls on ${resolvedCalledNumber}`);
+              console.error(`❌ [CHANNEL-CHECK] Incoming callerId=${callerId} calledNumber=${resolvedCalledNumber} → REJECTING with 4429`);
+              console.error(`❌ [CHANNEL-CHECK] Calls occupying channels (talking+calling) — verified on FreeSWITCH:`);
+              for (const row of (allCallsDebug.rows as any[])) {
+                console.error(`❌ [CHANNEL-CHECK]   → ${row.id} | status=${row.status} | caller=${row.caller_id} | called=${row.called_number} | dir=${row.call_direction} | svc_from=${row.svc_from || '-'} | svc_target=${row.svc_target || '-'} | created=${row.created_at}`);
+              }
+              if (allCallsDebug.rows.length === 0) {
+                console.error(`❌ [CHANNEL-CHECK]   (nessuna chiamata attiva trovata — possibile race condition)`);
+              }
+              console.log(`📊 [CHANNEL-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              return { channelsFull: true } as any;
             }
-            if (allCallsDebug.rows.length === 0) {
-              console.error(`❌ [CHANNEL-CHECK]   (nessuna chiamata attiva trovata — possibile race condition)`);
-            }
-          console.log(`📊 [CHANNEL-CHECK] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-            return { channelsFull: true } as any;
           }
         } else {
           console.log(`🔍 [ROUTING-DEBUG] No calledNumber provided → FALLING BACK to JWT consultantId: ${decoded.consultantId}`);
