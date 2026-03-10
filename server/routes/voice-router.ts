@@ -1340,7 +1340,8 @@ router.get("/numbers", authenticateToken, requireAnyRole(["consultant", "super_a
         true AS overflow_auto_return,
         NULL::text AS overflow_message,
         60 AS inactivity_timeout_secs,
-        15 AS overflow_message_delay_secs
+        15 AS overflow_message_delay_secs,
+        false AS is_default
       FROM consultant_numbers cn
       WHERE cn.status = 'active'
         ${consultantId ? sql`AND cn.consultant_id = ${consultantId}` : sql``}
@@ -1595,6 +1596,38 @@ router.put("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "sup
   } catch (error) {
     console.error("[Voice] Error updating number:", error);
     res.status(500).json({ error: "Errore nell'aggiornamento del numero" });
+  }
+});
+
+// PATCH /api/voice/numbers/:id/set-default - Imposta numero predefinito
+router.patch("/numbers/:id/set-default", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
+    const ownerCheck = consultantId ? sql`AND consultant_id = ${consultantId}` : sql``;
+
+    const numberCheck = await db.execute(sql`
+      SELECT id, consultant_id FROM voice_numbers WHERE id = ${id} ${ownerCheck}
+    `);
+    if (numberCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Numero non trovato" });
+    }
+    const targetConsultantId = (numberCheck.rows[0] as any).consultant_id;
+
+    await db.execute(sql`
+      UPDATE voice_numbers SET is_default = false, updated_at = NOW()
+      WHERE consultant_id = ${targetConsultantId}
+    `);
+
+    await db.execute(sql`
+      UPDATE voice_numbers SET is_default = true, updated_at = NOW()
+      WHERE id = ${id}
+    `);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[Voice] Error setting default number:", error);
+    res.status(500).json({ error: "Errore nell'impostazione del numero predefinito" });
   }
 });
 

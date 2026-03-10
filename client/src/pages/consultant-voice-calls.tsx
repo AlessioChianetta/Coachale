@@ -2026,6 +2026,33 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
   });
   const myVoiceNumbers = (voiceNumbersData?.numbers || []).filter(n => n.is_active);
 
+  useEffect(() => {
+    if (myVoiceNumbers.length > 0 && !outboundFromNumber) {
+      const defaultNum = myVoiceNumbers.find((n: any) => n.is_default);
+      if (defaultNum) {
+        setOutboundFromNumber(defaultNum.phone_number);
+      }
+    }
+  }, [myVoiceNumbers]);
+
+  const setDefaultNumberMutation = useMutation({
+    mutationFn: async (numberId: string) => {
+      const res = await fetch(`/api/voice/numbers/${numberId}/set-default`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Errore");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/numbers"] });
+      toast({ title: "Numero predefinito aggiornato" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile impostare il numero predefinito", variant: "destructive" });
+    },
+  });
+
   const updateNumberVoiceMutation = useMutation({
     mutationFn: async ({ numberId, voiceId }: { numberId: string; voiceId: string }) => {
       const res = await fetch(`/api/voice/numbers/${numberId}`, {
@@ -4372,10 +4399,9 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                               onChange={(e) => setOutboundFromNumber(e.target.value)}
                               className="w-full rounded-md border border-gray-200 dark:border-[#1f2937] bg-gray-50 dark:bg-[#111827] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-colors"
                             >
-                              <option value="">Numero di default</option>
                               {myVoiceNumbers.map((n) => (
                                 <option key={n.id} value={n.phone_number}>
-                                  {n.phone_number}{n.display_name && n.display_name !== n.phone_number ? ` — ${n.display_name}` : ""}
+                                  {n.phone_number}{n.display_name && n.display_name !== n.phone_number ? ` — ${n.display_name}` : ""}{(n as any).is_default ? ' ⭐' : ''}
                                 </option>
                               ))}
                             </select>
@@ -5469,27 +5495,46 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
                     </CardHeader>
                     <CardContent className="space-y-3">
                       {myVoiceNumbers.map((n) => (
-                        <div key={n.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                        <div key={n.id} className={`flex items-center justify-between p-3 rounded-lg border ${(n as any).is_default ? 'border-green-300 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20' : 'bg-muted/30'}`}>
                           <div className="flex items-center gap-3">
                             <Phone className="h-4 w-4 text-muted-foreground" />
                             <div>
-                              <p className="text-sm font-medium font-mono">{n.phone_number}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium font-mono">{n.phone_number}</p>
+                                {(n as any).is_default && (
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">PREDEFINITO</span>
+                                )}
+                              </div>
                               {n.display_name && n.display_name !== n.phone_number && (
                                 <p className="text-xs text-muted-foreground">{n.display_name}</p>
                               )}
                             </div>
                           </div>
-                          <select
-                            value={n.voice_id || 'Kore'}
-                            onChange={(e) => updateNumberVoiceMutation.mutate({ numberId: n.id, voiceId: e.target.value })}
-                            className="w-48 rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                          >
-                            {VOICES.map((v) => (
-                              <option key={v.value} value={v.value}>
-                                {v.label} — {v.description}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex items-center gap-2">
+                            {!(n as any).is_default && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-xs text-muted-foreground hover:text-green-700"
+                                onClick={() => setDefaultNumberMutation.mutate(n.id)}
+                                disabled={setDefaultNumberMutation.isPending}
+                              >
+                                <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                Predefinito
+                              </Button>
+                            )}
+                            <select
+                              value={n.voice_id || 'Kore'}
+                              onChange={(e) => updateNumberVoiceMutation.mutate({ numberId: n.id, voiceId: e.target.value })}
+                              className="w-48 rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                            >
+                              {VOICES.map((v) => (
+                                <option key={v.value} value={v.value}>
+                                  {v.label} — {v.description}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       ))}
                     </CardContent>
