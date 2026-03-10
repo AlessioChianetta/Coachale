@@ -76,7 +76,7 @@ Available node types (use ONLY these exact type values):
 SORGENTI TRAFFICO: facebook_ads, google_ads, instagram_ads, tiktok_ads, offline_referral, organic
 CATTURA: landing_page, form_modulo, lead_magnet, webhook
 GESTIONE LEAD: import_excel, crm_hunter, setter_ai
-COMUNICAZIONE: whatsapp, email, voice_call, sms, instagram_dm
+COMUNICAZIONE: whatsapp, email, voice_call, sms, instagram_dm, nurturing_lead365, email_journey
 CONVERSIONE: appuntamento, prima_call, seconda_call, chiusura, pagamento
 DELIVERY: onboarding, servizio, followup
 CUSTOM: custom_step
@@ -95,6 +95,8 @@ MAPPATURE ENTITÀ — ogni tipo di nodo si collega a risorse reali della piattaf
 - appuntamento → Sistema Prenotazioni (booking page)
 - pagamento/servizio → Catalogo Servizi (prodotti e servizi con prezzi)
 - followup → Campagne Marketing (follow-up automatici)
+- nurturing_lead365 → Config Nurturing Lead 365 (sequenza email automatica 365 giorni per lead proattivi, riscaldamento graduale)
+- email_journey → Config Email Journey (percorso email mensile 31 giorni per clienti attivi, contenuti AI personalizzati)
 - landing_page/webhook/sms/instagram_dm/import_excel/prima_call/seconda_call/chiusura/custom_step → Configurazione manuale
 `;
 
@@ -126,6 +128,8 @@ SOTTOTITOLI CONSIGLIATI per ogni tipo di nodo (usa questi o simili in italiano):
 - onboarding → "Onboarding con Luca (Lead Magnet AI)"
 - servizio → "Erogazione servizio"
 - followup → "Follow-up post-vendita"
+- nurturing_lead365 → "Sequenza nurturing 365 giorni"
+- email_journey → "Percorso email mensile clienti"
 - custom_step → "Step personalizzato"
 `;
 
@@ -484,6 +488,60 @@ router.get("/entities/agents", authenticateToken, requireAnyRole(["consultant", 
   }
 });
 
+router.get("/entities/nurturing-config", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = getConsultantId(req);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    const result = await db.execute(sql`
+      SELECT id, consultant_id, send_hour as "sendHour", 
+             CASE WHEN enabled THEN 'active' ELSE 'disabled' END as status
+      FROM lead_nurturing_config
+      WHERE consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+
+    const entities = result.rows.map((r: any) => ({
+      id: r.id,
+      name: "Nurturing Lead 365",
+      isActive: r.status === "active",
+      extra: { sendHour: r.sendHour },
+    }));
+
+    res.json(entities);
+  } catch (error: any) {
+    res.json([]);
+  }
+});
+
+router.get("/entities/email-journey-config", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = getConsultantId(req);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    const result = await db.execute(sql`
+      SELECT sc.id, sc.automation_enabled as "automationEnabled"
+      FROM smtp_configurations sc
+      WHERE sc.consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+
+    const entities = result.rows.map((r: any) => ({
+      id: r.id || consultantId,
+      name: "Email Journey",
+      isActive: r.automationEnabled === true,
+    }));
+
+    if (entities.length === 0) {
+      entities.push({ id: consultantId, name: "Email Journey", isActive: false });
+    }
+
+    res.json(entities);
+  } catch (error: any) {
+    res.json([]);
+  }
+});
+
 router.get("/entities/voice-numbers", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = getConsultantId(req);
@@ -758,6 +816,7 @@ function getCategoryForType(type: string): string {
     import_excel: "gestione", crm_hunter: "gestione", setter_ai: "gestione",
     whatsapp: "comunicazione", email: "comunicazione", voice_call: "comunicazione",
     sms: "comunicazione", instagram_dm: "comunicazione",
+    nurturing_lead365: "comunicazione", email_journey: "comunicazione",
     appuntamento: "conversione", prima_call: "conversione", seconda_call: "conversione",
     chiusura: "conversione", pagamento: "conversione",
     onboarding: "delivery", servizio: "delivery", followup: "delivery",

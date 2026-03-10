@@ -26,6 +26,8 @@ import {
   Briefcase,
   RefreshCw,
   Puzzle,
+  Flame,
+  Route,
   type LucideIcon,
 } from "lucide-react";
 
@@ -50,7 +52,9 @@ export type EntityType =
   | "voice_numbers"
   | "booking"
   | "services"
-  | "campaigns";
+  | "campaigns"
+  | "nurturing_config"
+  | "email_journey_config";
 
 export interface FunnelNodeType {
   type: string;
@@ -148,6 +152,9 @@ export const NODE_TYPES: FunnelNodeType[] = [
   { type: "servizio", label: "Servizio", category: "delivery", icon: Briefcase, description: "Erogazione servizio" },
   { type: "followup", label: "Follow-up", category: "delivery", icon: RefreshCw, description: "Follow-up post-vendita" },
 
+  { type: "nurturing_lead365", label: "Nurturing Lead 365", category: "comunicazione", icon: Flame, description: "Sequenza nurturing 365 giorni per lead proattivi" },
+  { type: "email_journey", label: "Email Journey", category: "comunicazione", icon: Route, description: "Percorso email mensile per clienti attivi" },
+
   { type: "custom_step", label: "Step Custom", category: "custom", icon: Puzzle, description: "Step personalizzato" },
 ];
 
@@ -178,6 +185,8 @@ const ENTITY_MAP: Record<string, EntityType> = {
   pagamento: "services",
   servizio: "services",
   followup: "campaigns",
+  nurturing_lead365: "nurturing_config",
+  email_journey: "email_journey_config",
 };
 
 export function getEntityTypeForNode(nodeType: string): EntityType | null {
@@ -206,6 +215,8 @@ const EDIT_LINKS: Record<EntityType, string> = {
   booking: "/consultant/referrals/settings",
   services: "/consultant/catalog-settings",
   campaigns: "/consultant/ai-autonomy",
+  nurturing_config: "/consultant/ai-config",
+  email_journey_config: "/consultant/ai-config",
 };
 
 export function getEditLinkForEntity(entityType: EntityType): string {
@@ -225,6 +236,8 @@ const ENTITY_LABELS: Record<EntityType, string> = {
   booking: "Prenotazione",
   services: "Servizio / Prodotto",
   campaigns: "Campagna Marketing",
+  nurturing_config: "Nurturing Lead 365",
+  email_journey_config: "Email Journey",
 };
 
 export function getEntityLabel(entityType: EntityType): string {
