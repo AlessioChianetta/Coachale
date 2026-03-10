@@ -75,6 +75,7 @@ function extractFunnelFromContent(content: string): { name: string; nodes: Node[
           notes: "",
           conversionRate: null,
           linkedEntity: null,
+          linkedEntityName: n.data?.linkedEntityName || null,
         },
       };
     });

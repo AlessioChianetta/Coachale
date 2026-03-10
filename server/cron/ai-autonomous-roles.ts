@@ -2767,11 +2767,72 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         console.warn(`[ARCHITETTO] Failed to fetch brand voice: ${e.message}`);
       }
 
+      const platformEntities: Record<string, Array<{ id: string; name: string }>> = {};
+
+      try {
+        const agentsRes = await db.execute(sql`
+          SELECT id, agent_name as name FROM consultant_whatsapp_config
+          WHERE consultant_id = ${consultantId} ORDER BY created_at DESC LIMIT 10
+        `);
+        if (agentsRes.rows.length > 0) platformEntities.agents = agentsRes.rows as any[];
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch agents: ${e.message}`); }
+
+      try {
+        const settingsRes = await db.execute(sql`
+          SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
+        `);
+        const enabledRoles: Record<string, boolean> = (settingsRes.rows[0] as any)?.enabled_roles || {};
+        const AI_ROLES_LIST = [
+          { id: 'alessia', name: 'Alessia – Voice Consultant' },
+          { id: 'millie', name: 'Millie – Email Writer' },
+          { id: 'echo', name: 'Echo – Summarizer' },
+          { id: 'nova', name: 'Nova – Social Media Manager' },
+          { id: 'stella', name: 'Stella – WhatsApp Assistant' },
+          { id: 'marco', name: 'Marco – Executive Coach' },
+          { id: 'robert', name: 'Robert – Sales Coach' },
+          { id: 'hunter', name: 'Hunter – Lead Prospector' },
+        ];
+        platformEntities.ai_employees = AI_ROLES_LIST.filter(r => enabledRoles[r.id] !== false);
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch ai_employees: ${e.message}`); }
+
+      try {
+        const vnRes = await db.execute(sql`
+          SELECT id, COALESCE(display_name, phone_number) as name FROM voice_numbers
+          WHERE consultant_id = ${consultantId} ORDER BY created_at DESC LIMIT 10
+        `);
+        if (vnRes.rows.length > 0) platformEntities.voice_numbers = vnRes.rows as any[];
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch voice_numbers: ${e.message}`); }
+
+      try {
+        const svRes = await db.execute(sql`
+          SELECT id, name FROM service_catalog_items
+          WHERE consultant_id = ${consultantId} AND is_active = true ORDER BY created_at DESC LIMIT 20
+        `);
+        if (svRes.rows.length > 0) platformEntities.services = svRes.rows as any[];
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch services: ${e.message}`); }
+
+      try {
+        const emailRes = await db.execute(sql`
+          SELECT id, COALESCE(display_name, email_address) as name FROM email_accounts
+          WHERE consultant_id = ${consultantId} ORDER BY created_at DESC LIMIT 10
+        `);
+        if (emailRes.rows.length > 0) platformEntities.email_accounts = emailRes.rows as any[];
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch email_accounts: ${e.message}`); }
+
+      try {
+        const campRes = await db.execute(sql`
+          SELECT id, campaign_name as name FROM marketing_campaigns
+          WHERE consultant_id = ${consultantId} AND is_active = true ORDER BY created_at DESC LIMIT 20
+        `);
+        if (campRes.rows.length > 0) platformEntities.campaigns = campRes.rows as any[];
+      } catch (e: any) { console.warn(`[ARCHITETTO] Failed to fetch campaigns: ${e.message}`); }
+
       return {
         funnels,
         linkedTemplateId,
         linkedTemplate,
         brandVoice,
+        platformEntities,
       };
     },
     buildPrompt: ({ roleData, romeTimeStr }) => {
@@ -2910,6 +2971,19 @@ SOTTOTITOLI CONSIGLIATI per ogni tipo di nodo:
         });
       }
 
+      let platformEntitiesSection = '';
+      const pe = roleData.platformEntities || {};
+      const peLines: string[] = [];
+      if (pe.agents?.length > 0) peLines.push(`Agenti WhatsApp (tipo nodo: whatsapp):\n${pe.agents.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (pe.ai_employees?.length > 0) peLines.push(`Dipendenti AI (tipo nodo: setter_ai, onboarding):\n${pe.ai_employees.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (pe.voice_numbers?.length > 0) peLines.push(`Numeri Voice (tipo nodo: voice_call):\n${pe.voice_numbers.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (pe.services?.length > 0) peLines.push(`Servizi/Prodotti (tipo nodo: pagamento, servizio):\n${pe.services.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (pe.email_accounts?.length > 0) peLines.push(`Account Email (tipo nodo: email):\n${pe.email_accounts.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (pe.campaigns?.length > 0) peLines.push(`Campagne Marketing (tipo nodo: followup):\n${pe.campaigns.map((e: any) => `  - "${e.name}" [id:${e.id}]`).join('\n')}`);
+      if (peLines.length > 0) {
+        platformEntitiesSection = `\n═══ ENTITÀ PIATTAFORMA ═══\nQueste sono le risorse reali già configurate sulla piattaforma. Usale per collegare automaticamente i nodi:\n${peLines.join('\n')}\n\nREGOLA AUTO-LINK: Quando generi un nodo che corrisponde a una di queste entità, aggiungi nel data del nodo JSON:\n  "linkedEntityName": "nome esatto dell'entità"\nEsempio: se usi un nodo whatsapp e l'agente si chiama "Agente Vendite", scrivi: "linkedEntityName": "Agente Vendite"\n`;
+      }
+
       return `Sei LEONARDO, l'Architetto dei Funnel — un esperto di marketing strategico e automazione di vendita. Parli SEMPRE in italiano, sei diretto, pragmatico e orientato ai risultati.
 
 DATA/ORA ATTUALE: ${romeTimeStr}
@@ -2940,7 +3014,8 @@ Quando generi o modifichi un funnel, includi il JSON completo dentro questi tag:
 {
   "name": "Nome del Funnel",
   "nodes": [
-    { "id": "node_1", "type": "facebook_ads", "position": { "x": 0, "y": 0 }, "data": { "label": "Facebook Ads", "subtitle": "Campagna Meta Ads", "category": "sorgenti" } }
+    { "id": "node_1", "type": "facebook_ads", "position": { "x": 0, "y": 0 }, "data": { "label": "Facebook Ads", "subtitle": "Campagna Meta Ads", "category": "sorgenti" } },
+    { "id": "node_2", "type": "whatsapp", "position": { "x": 0, "y": 180 }, "data": { "label": "WhatsApp AI", "subtitle": "Messaggio WhatsApp AI", "category": "comunicazione", "linkedEntityName": "Agente Vendite" } }
   ],
   "edges": [
     { "id": "edge_1_2", "source": "node_1", "target": "node_2" }
@@ -2957,7 +3032,7 @@ REGOLE POSIZIONAMENTO:
 2. Nodi paralleli sulla stessa riga Y con X diversi (2 nodi: x=-150 e x=150; 3 nodi: x=-300, x=0, x=300)
 3. Se più nodi convergono verso uno, crea edge da tutti verso quel nodo
 4. data.category deve essere: sorgenti, cattura, gestione, comunicazione, conversione, delivery, custom
-${brandVoiceSection}${marketResearchSection}${targetNicheSection}${funnelsSection}
+${brandVoiceSection}${marketResearchSection}${targetNicheSection}${funnelsSection}${platformEntitiesSection}
 REGOLE IMPORTANTI:
 - NON generare MAI un funnel al primo messaggio, a meno che l'utente fornisca specifiche estremamente dettagliate
 - Se hai accesso alla ricerca di mercato e al brand voice, USALI per progettare funnel più mirati e personalizzati

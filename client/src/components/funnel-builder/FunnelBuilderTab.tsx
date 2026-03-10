@@ -41,7 +41,12 @@ import {
   Trash2,
   FolderOpen,
   GitBranch,
+  History,
+  RotateCcw,
+  Link2,
 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { FunnelNode } from "./FunnelNode";
 import { FunnelEdge } from "./FunnelEdge";
@@ -51,6 +56,7 @@ import { FunnelChat } from "./FunnelChat";
 import {
   type FunnelNodeData,
   getNodeTypeDefinition,
+  getEntityTypeForNode,
   CATEGORY_COLORS,
 } from "./funnel-node-types";
 
@@ -63,6 +69,17 @@ interface FunnelRecord {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+interface FunnelVersion {
+  id: string;
+  version_number: number;
+  label: string | null;
+  source: string;
+  funnel_name: string | null;
+  created_at: string;
+  node_count: number;
+  edge_count: number;
 }
 
 const nodeTypes: NodeTypes = { funnelNode: FunnelNode } as any;
@@ -104,6 +121,10 @@ function FunnelBuilderInner() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [chatOpen, setChatOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [versions, setVersions] = useState<FunnelVersion[]>([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+  const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
@@ -222,6 +243,46 @@ function FunnelBuilderInner() {
     }
   };
 
+  const loadVersions = async () => {
+    if (!activeFunnelId) return;
+    setLoadingVersions(true);
+    try {
+      const res = await fetch(`/api/funnels/${activeFunnelId}/versions`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setVersions(data);
+      }
+    } catch (err) {
+      console.error("Error loading versions:", err);
+    } finally {
+      setLoadingVersions(false);
+    }
+  };
+
+  const restoreVersion = async (versionId: string, versionNumber: number) => {
+    if (!activeFunnelId) return;
+    setRestoringVersionId(versionId);
+    try {
+      const res = await fetch(`/api/funnels/${activeFunnelId}/restore/${versionId}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const funnel = data.funnel;
+        setNodes(funnel.nodes_data || []);
+        setEdges(funnel.edges_data || []);
+        setShowHistory(false);
+        toast({ title: `Funnel ripristinato alla versione ${versionNumber}` });
+      }
+    } catch (err) {
+      console.error("Error restoring version:", err);
+      toast({ title: "Errore nel ripristino", variant: "destructive" });
+    } finally {
+      setRestoringVersionId(null);
+    }
+  };
+
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
       setNodes((nds) => applyNodeChanges(changes, nds));
@@ -313,18 +374,73 @@ function FunnelBuilderInner() {
   const handleApplyFunnel = useCallback(async (name: string, generatedNodes: Node[], generatedEdges: Edge[]) => {
     const layoutNodes = autoLayout(generatedNodes, generatedEdges);
     const appliedName = name || "Funnel Generato";
-    setNodes(layoutNodes);
+
+    const nodesWithHints = layoutNodes.filter((n: Node) => (n.data as any)?.linkedEntityName);
+    let linkedCount = 0;
+    let finalNodes = layoutNodes;
+
+    if (nodesWithHints.length > 0) {
+      const entityTypeToNodes: Record<string, Node[]> = {};
+      for (const node of nodesWithHints) {
+        const nodeType = (node.data as any)?.nodeType || (node.data as any)?.type;
+        const entityType = getEntityTypeForNode(nodeType);
+        if (!entityType) continue;
+        if (!entityTypeToNodes[entityType]) entityTypeToNodes[entityType] = [];
+        entityTypeToNodes[entityType].push(node);
+      }
+
+      const fetchedEntities: Record<string, Array<{ id: string; name: string; [key: string]: any }>> = {};
+      await Promise.all(
+        Object.keys(entityTypeToNodes).map(async (entityType) => {
+          try {
+            const urlPath = entityType.replace(/_/g, "-");
+            const res = await fetch(`/api/funnels/entities/${urlPath}`, { headers: getAuthHeaders() });
+            if (res.ok) fetchedEntities[entityType] = await res.json();
+          } catch {}
+        })
+      );
+
+      finalNodes = layoutNodes.map((node: Node) => {
+        const hint = (node.data as any)?.linkedEntityName;
+        if (!hint) return node;
+        const nodeType = (node.data as any)?.nodeType || (node.data as any)?.type;
+        const entityType = getEntityTypeForNode(nodeType);
+        if (!entityType || !fetchedEntities[entityType]) return node;
+        const hintLower = hint.toLowerCase();
+        const match = fetchedEntities[entityType].find((e: any) =>
+          (e.name || "").toLowerCase().includes(hintLower) ||
+          hintLower.includes((e.name || "").toLowerCase())
+        );
+        if (!match) return node;
+        linkedCount++;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            linkedEntity: {
+              entityType,
+              entityId: match.id,
+              name: match.name || "—",
+              status: match.isActive ? "active" : undefined,
+              extra: match,
+            },
+          },
+        };
+      });
+    }
+
+    setNodes(finalNodes);
     setEdges(generatedEdges);
     setFunnelName(appliedName);
-    toast({ title: "Funnel applicato", description: `${layoutNodes.length} nodi creati` });
+
+    const description = linkedCount > 0
+      ? `${finalNodes.length} nodi creati · ${linkedCount} entità collegate automaticamente`
+      : `${finalNodes.length} nodi creati`;
+    toast({ title: "Funnel applicato", description });
 
     setSaving(true);
     try {
-      const body = {
-        name: appliedName,
-        nodes_data: layoutNodes,
-        edges_data: generatedEdges,
-      };
+      const body = { name: appliedName, nodes_data: finalNodes, edges_data: generatedEdges };
       if (activeFunnelId) {
         const res = await fetch(`/api/funnels/${activeFunnelId}`, {
           method: "PUT",
@@ -425,6 +541,18 @@ function FunnelBuilderInner() {
           <Sparkles className="w-3.5 h-3.5" />
           {chatOpen ? "Chiudi Chat AI" : "Genera con AI"}
         </Button>
+
+        {activeFunnelId && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => { setShowHistory(true); loadVersions(); }}
+          >
+            <History className="w-3.5 h-3.5" />
+            Cronologia
+          </Button>
+        )}
 
         <Button
           variant="default"
@@ -546,6 +674,83 @@ function FunnelBuilderInner() {
           currentFunnelContext={activeFunnelId ? { id: activeFunnelId, name: funnelName, nodes, edges } : null}
         />
       </div>
+
+      <Sheet open={showHistory} onOpenChange={setShowHistory}>
+        <SheetContent side="right" className="w-[380px] sm:w-[420px] p-0 flex flex-col">
+          <SheetHeader className="px-5 py-4 border-b">
+            <SheetTitle className="flex items-center gap-2 text-sm font-semibold">
+              <History className="w-4 h-4" />
+              Cronologia versioni — {funnelName}
+            </SheetTitle>
+          </SheetHeader>
+
+          <ScrollArea className="flex-1">
+            {loadingVersions ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : versions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center px-6">
+                <History className="w-8 h-8 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">Nessuna versione salvata ancora.</p>
+                <p className="text-xs text-muted-foreground mt-1">Le versioni vengono create ad ogni salvataggio.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {versions.map((v) => {
+                  const date = new Date(v.created_at);
+                  const formatted = date.toLocaleString("it-IT", {
+                    day: "numeric", month: "short", year: "numeric",
+                    hour: "2-digit", minute: "2-digit",
+                  });
+                  const sourceLabel = v.source === "ai" ? "AI" : v.source === "restore" ? "Ripristino" : "Manuale";
+                  const sourceBadgeClass =
+                    v.source === "ai"
+                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
+                      : v.source === "restore"
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                      : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+                  return (
+                    <div key={v.id} className="flex items-start gap-3 px-5 py-4 hover:bg-muted/40 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-mono font-semibold text-foreground">
+                            v{v.version_number}
+                          </span>
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${sourceBadgeClass}`}>
+                            {sourceLabel}
+                          </span>
+                          {v.label && (
+                            <span className="text-xs text-muted-foreground truncate">{v.label}</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{formatted}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {v.node_count} nodi · {v.edge_count} connessioni
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1 shrink-0"
+                        disabled={restoringVersionId === v.id}
+                        onClick={() => restoreVersion(v.id, v.version_number)}
+                      >
+                        {restoringVersionId === v.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <RotateCcw className="w-3 h-3" />
+                        )}
+                        Ripristina
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

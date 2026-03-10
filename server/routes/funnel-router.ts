@@ -24,6 +24,31 @@ const router = Router();
   }
 })();
 
+(async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS consultant_funnel_versions (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        funnel_id VARCHAR NOT NULL,
+        consultant_id VARCHAR NOT NULL,
+        version_number INTEGER NOT NULL DEFAULT 1,
+        label TEXT,
+        source VARCHAR NOT NULL DEFAULT 'manual',
+        nodes_data JSONB NOT NULL DEFAULT '[]',
+        edges_data JSONB NOT NULL DEFAULT '[]',
+        funnel_name TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_funnel_versions_funnel_id
+        ON consultant_funnel_versions(funnel_id, created_at DESC)
+    `);
+  } catch (e) {
+    console.error("[Funnel] Error creating funnel_versions table:", e);
+  }
+})();
+
 function getConsultantId(req: AuthRequest): string | null {
   const user = req.user;
   if (!user) return null;
@@ -563,12 +588,128 @@ router.get("/:id", authenticateToken, requireAnyRole(["consultant", "super_admin
   }
 });
 
+router.get("/:id/versions", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = getConsultantId(req);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    const result = await db.execute(sql`
+      SELECT
+        id, version_number, label, source, funnel_name, created_at,
+        jsonb_array_length(COALESCE(nodes_data, '[]'::jsonb)) as node_count,
+        jsonb_array_length(COALESCE(edges_data, '[]'::jsonb)) as edge_count
+      FROM consultant_funnel_versions
+      WHERE funnel_id = ${req.params.id} AND consultant_id = ${consultantId}
+      ORDER BY created_at DESC
+      LIMIT 30
+    `);
+
+    res.json(result.rows);
+  } catch (error: any) {
+    console.error("[Funnel] Versions error:", error);
+    res.status(500).json({ error: "Errore nel recupero delle versioni" });
+  }
+});
+
+router.post("/:id/restore/:versionId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = getConsultantId(req);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    const versionResult = await db.execute(sql`
+      SELECT * FROM consultant_funnel_versions
+      WHERE id = ${req.params.versionId} AND funnel_id = ${req.params.id} AND consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+
+    if (versionResult.rows.length === 0) return res.status(404).json({ error: "Versione non trovata" });
+    const version = versionResult.rows[0] as any;
+
+    const currentResult = await db.execute(sql`
+      SELECT * FROM consultant_funnels
+      WHERE id = ${req.params.id} AND consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+    if (currentResult.rows.length === 0) return res.status(404).json({ error: "Funnel non trovato" });
+    const current = currentResult.rows[0] as any;
+
+    const maxVer = await db.execute(sql`
+      SELECT COALESCE(MAX(version_number), 0) as max_ver
+      FROM consultant_funnel_versions
+      WHERE funnel_id = ${req.params.id}
+    `);
+    const nextVersion = ((maxVer.rows[0] as any)?.max_ver || 0) + 1;
+
+    await db.execute(sql`
+      INSERT INTO consultant_funnel_versions
+        (funnel_id, consultant_id, version_number, label, source, nodes_data, edges_data, funnel_name)
+      VALUES
+        (${req.params.id}, ${consultantId}, ${nextVersion},
+         ${'Snapshot pre-ripristino v' + version.version_number}, 'restore_backup',
+         ${JSON.stringify(current.nodes_data || [])}::jsonb,
+         ${JSON.stringify(current.edges_data || [])}::jsonb,
+         ${current.name})
+    `);
+
+    const updated = await db.execute(sql`
+      UPDATE consultant_funnels
+      SET nodes_data = ${JSON.stringify(version.nodes_data || [])}::jsonb,
+          edges_data = ${JSON.stringify(version.edges_data || [])}::jsonb,
+          updated_at = NOW()
+      WHERE id = ${req.params.id} AND consultant_id = ${consultantId}
+      RETURNING *
+    `);
+
+    res.json({ success: true, funnel: updated.rows[0], restoredVersion: version.version_number });
+  } catch (error: any) {
+    console.error("[Funnel] Restore error:", error);
+    res.status(500).json({ error: "Errore nel ripristino del funnel" });
+  }
+});
+
 router.put("/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = getConsultantId(req);
     if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
 
     const { name, description, nodes_data, edges_data } = req.body;
+
+    const currentResult = await db.execute(sql`
+      SELECT nodes_data, edges_data, name FROM consultant_funnels
+      WHERE id = ${req.params.id} AND consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+
+    if (currentResult.rows.length > 0) {
+      const current = currentResult.rows[0] as any;
+      const maxVer = await db.execute(sql`
+        SELECT COALESCE(MAX(version_number), 0) as max_ver
+        FROM consultant_funnel_versions
+        WHERE funnel_id = ${req.params.id}
+      `);
+      const nextVersion = ((maxVer.rows[0] as any)?.max_ver || 0) + 1;
+
+      await db.execute(sql`
+        INSERT INTO consultant_funnel_versions
+          (funnel_id, consultant_id, version_number, source, nodes_data, edges_data, funnel_name)
+        VALUES
+          (${req.params.id}, ${consultantId}, ${nextVersion}, 'manual',
+           ${JSON.stringify(current.nodes_data || [])}::jsonb,
+           ${JSON.stringify(current.edges_data || [])}::jsonb,
+           ${current.name})
+      `);
+
+      await db.execute(sql`
+        DELETE FROM consultant_funnel_versions
+        WHERE funnel_id = ${req.params.id}
+          AND id NOT IN (
+            SELECT id FROM consultant_funnel_versions
+            WHERE funnel_id = ${req.params.id}
+            ORDER BY created_at DESC
+            LIMIT 30
+          )
+      `);
+    }
 
     const result = await db.execute(sql`
       UPDATE consultant_funnels
