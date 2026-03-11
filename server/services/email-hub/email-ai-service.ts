@@ -1796,34 +1796,53 @@ export async function classifyAndGenerateDraft(
   let salesContextBlock = "";
   let salesFieldCount = 0;
   try {
-    const [bvConfig] = await db
-      .select({ brandVoiceData: schema.contentStudioConfig.brandVoiceData })
-      .from(schema.contentStudioConfig)
-      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
-      .limit(1);
-
-    const bv = bvConfig?.brandVoiceData as any;
-    if (bv && typeof bv === "object") {
+    const bvResult = await db.execute(sql`
+      SELECT brand_voice_data FROM content_studio_config
+      WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    const bvRow = bvResult.rows?.[0];
+    const bv = bvRow?.brand_voice_data;
+    if (bv && typeof bv === "object" && !Array.isArray(bv)) {
+      const str = (key: string): string | undefined => {
+        const val = (bv as Record<string, unknown>)[key];
+        return typeof val === "string" ? val : undefined;
+      };
+      const arr = (key: string): Array<Record<string, unknown>> | undefined => {
+        const val = (bv as Record<string, unknown>)[key];
+        return Array.isArray(val) ? val : undefined;
+      };
       const bvFields: [string, string][] = [
-        ["Business", bv.businessName],
-        ["Descrizione", bv.businessDescription],
-        ["USP", bv.usp],
-        ["Chi aiutiamo", bv.whoWeHelp],
-        ["Cosa facciamo", bv.whatWeDo],
-        ["Come lo facciamo", bv.howWeDoIt],
-        ["Vision", bv.vision],
-        ["Mission", bv.mission],
-        ["Garanzie", bv.guarantees],
-        ["Tono personale", bv.personalTone],
-        ["Personalità", bv.contentPersonality],
-      ];
-      if (Array.isArray(bv.servicesOffered) && bv.servicesOffered.length > 0) {
-        bvFields.push(["Servizi", bv.servicesOffered.map((s: any) => `${s.name}${s.price ? ` (${s.price})` : ""}${s.description ? ` — ${s.description}` : ""}`).join("; ")]);
+        ["Business", str("businessName")],
+        ["Descrizione", str("businessDescription")],
+        ["USP", str("usp")],
+        ["Chi aiutiamo", str("whoWeHelp")],
+        ["Cosa facciamo", str("whatWeDo")],
+        ["Come lo facciamo", str("howWeDoIt")],
+        ["Vision", str("vision")],
+        ["Mission", str("mission")],
+        ["Garanzie", str("guarantees")],
+        ["Tono personale", str("personalTone")],
+        ["Personalità", str("contentPersonality")],
+      ].filter((pair): pair is [string, string] => typeof pair[1] === "string");
+
+      const services = arr("servicesOffered");
+      if (services && services.length > 0) {
+        bvFields.push(["Servizi", services.map((s) => {
+          const name = typeof s.name === "string" ? s.name : "";
+          const price = typeof s.price === "string" ? s.price : "";
+          const desc = typeof s.description === "string" ? s.description : "";
+          return `${name}${price ? ` (${price})` : ""}${desc ? ` — ${desc}` : ""}`;
+        }).join("; ")]);
       }
-      if (Array.isArray(bv.caseStudies) && bv.caseStudies.length > 0) {
-        bvFields.push(["Casi studio", bv.caseStudies.map((c: any) => `${c.client}: ${c.result}`).join("; ")]);
+      const cases = arr("caseStudies");
+      if (cases && cases.length > 0) {
+        bvFields.push(["Casi studio", cases.map((c) => {
+          const client = typeof c.client === "string" ? c.client : "";
+          const result = typeof c.result === "string" ? c.result : "";
+          return `${client}: ${result}`;
+        }).join("; ")]);
       }
-      const filledBvFields = bvFields.filter(([, v]) => v && typeof v === "string" && v.trim());
+      const filledBvFields = bvFields.filter(([, v]) => v.trim());
       salesFieldCount = filledBvFields.length;
       if (filledBvFields.length > 0) {
         salesContextBlock = `\n\nBRAND VOICE (usa queste info per rispondere in modo informato):\n` +
@@ -1835,24 +1854,29 @@ export async function classifyAndGenerateDraft(
     }
 
     if (salesFieldCount === 0) {
-      const [accountData] = await db
-        .select({ salesContext: schema.emailAccounts.salesContext })
-        .from(schema.emailAccounts)
-        .where(eq(schema.emailAccounts.id, email.accountId));
-      const sc = accountData?.salesContext as any;
-      if (sc && typeof sc === "object") {
+      const scResult = await db.execute(sql`
+        SELECT sales_context FROM email_accounts
+        WHERE id = ${email.accountId} LIMIT 1
+      `);
+      const scRow = scResult.rows?.[0];
+      const sc = scRow?.sales_context;
+      if (sc && typeof sc === "object" && !Array.isArray(sc)) {
+        const scStr = (key: string): string | undefined => {
+          const val = (sc as Record<string, unknown>)[key];
+          return typeof val === "string" ? val : undefined;
+        };
         const fields: [string, string][] = [
-          ["Servizi", sc.servicesOffered],
-          ["Target", sc.targetAudience],
-          ["Proposta di valore", sc.valueProposition],
-          ["Pricing", sc.pricingInfo],
-          ["Vantaggi competitivi", sc.competitiveAdvantages],
-          ["Cliente ideale", sc.idealClientProfile],
-          ["Approccio vendita", sc.salesApproach],
-          ["Casi di successo", sc.caseStudies],
-          ["Contesto aggiuntivo", sc.additionalContext],
-        ];
-        const filledFields = fields.filter(([, v]) => v && v.trim());
+          ["Servizi", scStr("servicesOffered")],
+          ["Target", scStr("targetAudience")],
+          ["Proposta di valore", scStr("valueProposition")],
+          ["Pricing", scStr("pricingInfo")],
+          ["Vantaggi competitivi", scStr("competitiveAdvantages")],
+          ["Cliente ideale", scStr("idealClientProfile")],
+          ["Approccio vendita", scStr("salesApproach")],
+          ["Casi di successo", scStr("caseStudies")],
+          ["Contesto aggiuntivo", scStr("additionalContext")],
+        ].filter((pair): pair is [string, string] => typeof pair[1] === "string");
+        const filledFields = fields.filter(([, v]) => v.trim());
         salesFieldCount = filledFields.length;
         if (filledFields.length > 0) {
           salesContextBlock = `\n\nPROFILO COMMERCIALE (usa queste info per rispondere in modo informato):\n` +
@@ -1865,8 +1889,9 @@ export async function classifyAndGenerateDraft(
         console.log(`[MILLIE-BRAND] Nessun Brand Voice né profilo commerciale configurato`);
       }
     }
-  } catch (err: any) {
-    console.error(`[MILLIE-SALES] Errore caricamento profilo commerciale:`, err.message);
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[MILLIE-BRAND] Errore caricamento brand voice:`, errMsg);
   }
 
   const EXCLUDED_STORE_PATTERNS = ["knowledge-base-consulente", "store-globale-consulenze"];
