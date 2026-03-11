@@ -2237,6 +2237,7 @@ function SettingsTab({
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0 rounded-full hidden sm:flex"
+                                onMouseEnter={() => import("./EmployeeProfilePage")}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate(`/consultant/ai-autonomy/employee/${role.id}`);

@@ -680,3 +680,273 @@ export const EMPTY_NEW_TASK: NewTaskData = {
   language: "it",
   execution_mode: "autonomous",
 };
+
+export interface RoleExample {
+  icon: string;
+  title: string;
+  scenario: string;
+  outcome: string;
+}
+
+export const AI_ROLE_EXAMPLES: Record<string, RoleExample[]> = {
+  alessia: [
+    {
+      icon: "📞",
+      title: "Cliente silenzioso da 6 settimane",
+      scenario: "Alessia ha analizzato lo storico delle consulenze e ha notato che Marco non veniva ricontattato da 45 giorni. Ha creato automaticamente un task di chiamata vocale con contesto completo: ultimo argomento trattato, obiettivi aperti e tono consigliato.",
+      outcome: "Chiamata schedulata e completata — cliente ha prenotato nuova consulenza",
+    },
+    {
+      icon: "🧠",
+      title: "Briefing pre-consulenza automatico",
+      scenario: "Prima di una sessione con Laura, Alessia ha letto tutte le note precedenti, individuato i 3 punti aperti dell'ultima consulenza e preparato un briefing vocale da leggere al consulente. Zero tempo speso a recuperare informazioni.",
+      outcome: "Consulente arrivato preparato, sessione più efficace del solito",
+    },
+    {
+      icon: "⏰",
+      title: "Follow-up autonomo post-sessione",
+      scenario: "Dopo una consulenza su un piano finanziario, Alessia ha rilevato che il cliente non aveva ricevuto un follow-up. Ha creato il task di richiamo 7 giorni dopo, senza intervento manuale.",
+      outcome: "Follow-up avvenuto puntualmente, piano aggiornato",
+    },
+    {
+      icon: "🔍",
+      title: "Ricerca documento cliente al volo",
+      scenario: "Durante la preparazione di una chiamata, Alessia ha cercato nel Private Store del cliente l'ultimo estratto conto e il piano di risparmio aggiornato, inserendoli nel contesto della chiamata.",
+      outcome: "Chiamata partita con dati aggiornati senza aprire manualmente nessun documento",
+    },
+  ],
+  millie: [
+    {
+      icon: "📨",
+      title: "Risposta email in 3 minuti mentre eri in consulenza",
+      scenario: "Un lead ha scritto alle 10:15 chiedendo info sul pacchetto base. Millie ha consultato il CRM, trovato una richiesta di consulenza precedente di 2 settimane fa, e risposto con un messaggio personalizzato che citava il loro settore specifico e una proposta coerente.",
+      outcome: "Lead risposto in tempo reale — ha prenotato consulenza entro l'ora",
+    },
+    {
+      icon: "🔍",
+      title: "Identificato cliente VIP dal tono dell'email",
+      scenario: "Un cliente storico ha scritto un'email fredda e frustrata. Millie ha analizzato il sentiment, controllato lo storico delle interazioni e classificato l'email come 'urgente + retention risk'. Ha preparato una risposta empatica con proposta di contatto diretto.",
+      outcome: "Cliente richiamato entro il giorno — situazione risolta",
+    },
+    {
+      icon: "📊",
+      title: "Differenziato lead da cliente esistente",
+      scenario: "Un'email arrivata da un indirizzo sconosciuto. Millie ha incrociato il nome con CRM, Lead Scraper e anagrafica clienti: era un cliente già attivo che aveva cambiato email. Ha risposto con il contesto corretto invece di trattarlo come nuovo lead.",
+      outcome: "Nessun malinteso, risposta contestualizzata al rapporto già esistente",
+    },
+    {
+      icon: "📈",
+      title: "Monitoraggio silenzio clienti attivi",
+      scenario: "Millie ha rilevato che 3 clienti attivi non interagivano via email da oltre 30 giorni, pur avendo campagne in corso. Ha segnalato il pattern e creato task di verifica engagement.",
+      outcome: "2 clienti riattivati con email mirata, 1 ha chiesto cambio piano",
+    },
+  ],
+  echo: [
+    {
+      icon: "📝",
+      title: "Riepilogo consulenza inviato in autonomia",
+      scenario: "Dopo una sessione con Giulia sugli obiettivi di risparmio, Echo ha letto le note della consulenza, generato un riepilogo strutturato con punti chiave, decisioni prese e prossimi passi, e creato il task di invio email al cliente.",
+      outcome: "Cliente ha ricevuto riepilogo professionale entro 30 minuti dalla fine della sessione",
+    },
+    {
+      icon: "🎙️",
+      title: "Analisi trascrizione con punti d'azione",
+      scenario: "Una consulenza lunga 90 minuti aveva 3 argomenti sovrapposti. Echo ha analizzato la trascrizione, separato i temi e prodotto un riepilogo per ognuno con gli impegni specifici presi dal consulente.",
+      outcome: "Nessun punto dimenticato, follow-up precisi su ogni accordo",
+    },
+    {
+      icon: "🧠",
+      title: "Prioritizzazione automatica arretrato",
+      scenario: "Erano presenti 8 consulenze senza riepilogo. Echo le ha ordinate per urgenza — prima quelle con decisioni finanziarie importanti pendenti — e ha processato in ordine di priorità.",
+      outcome: "Arretrato smaltito con focus sulle situazioni più delicate",
+    },
+    {
+      icon: "📋",
+      title: "Report professionale per cliente corporate",
+      scenario: "Una consulenza con un'azienda richiedeva documentazione formale. Echo ha adattato il formato del riepilogo al profilo corporate del cliente, con intestazione, sezioni strutturate e linguaggio formale.",
+      outcome: "Documento pronto da inviare senza nessuna modifica manuale",
+    },
+  ],
+  nova: [
+    {
+      icon: "📱",
+      title: "Gap nel calendario editoriale rilevato",
+      scenario: "Nova ha analizzato il calendario dei post e notato che c'erano 8 giorni senza contenuti pianificati. Ha identificato 3 trend di settore rilevanti e proposto altrettanti post con hook e call-to-action già scritti.",
+      outcome: "Gap colmato con contenuti pertinenti, nessun buco nella pubblicazione",
+    },
+    {
+      icon: "🌐",
+      title: "Trend di settore trasformato in contenuto",
+      scenario: "Nova ha trovato un articolo virale sui mercati emergenti e ha proposto un post che collegava il trend alla proposta di valore del consulente, con angolazione originale e tono coerente al brand.",
+      outcome: "Post pubblicato, engagement superiore alla media settimanale",
+    },
+    {
+      icon: "💡",
+      title: "Calendario editoriale mensile suggerito",
+      scenario: "Nova ha analizzato i post con più engagement degli ultimi 3 mesi, identificato i formati e gli argomenti che performano meglio, e proposto un piano editoriale per il mese successivo con frequenza e mix ottimizzati.",
+      outcome: "Piano accettato con minime modifiche — 30 giorni di contenuti pianificati in 5 minuti",
+    },
+    {
+      icon: "📊",
+      title: "Alert frequenza pubblicazione",
+      scenario: "Nova ha rilevato che negli ultimi 14 giorni erano stati pubblicati solo 2 post invece dei 5 pianificati. Ha inviato un alert e ricreato i contenuti mancanti come bozze pronte da pubblicare.",
+      outcome: "Consulente rientrato nei ritmi di pubblicazione senza lavoro extra",
+    },
+  ],
+  stella: [
+    {
+      icon: "💬",
+      title: "Lead WhatsApp qualificato in tempo reale",
+      scenario: "Un nuovo contatto ha scritto su WhatsApp chiedendo info generiche. Stella ha analizzato il messaggio, cercato il numero nel CRM, classificato il lead come 'alto potenziale' e preparato una risposta personalizzata con proposta di consulenza gratuita.",
+      outcome: "Lead risposto in 4 minuti, consulenza prenotata il giorno dopo",
+    },
+    {
+      icon: "🔔",
+      title: "Conversazione senza risposta da 48 ore",
+      scenario: "Un cliente aveva scritto un messaggio urgente venerdì sera. Stella ha rilevato che lunedì mattina era ancora senza risposta, ha alzato la priorità e creato task di risposta immediata con contesto completo.",
+      outcome: "Cliente ricontattato entro l'ora, situazione gestita senza escalation",
+    },
+    {
+      icon: "🧠",
+      title: "Risposta con tono adattato alla storia del cliente",
+      scenario: "Un cliente fidelizzato da 2 anni ha scritto per un problema tecnico. Stella ha recuperato lo storico della relazione e adattato il tono della risposta — informale e diretto come usato nelle conversazioni precedenti.",
+      outcome: "Cliente ha apprezzato la continuità del rapporto, problema risolto senza incomprensioni",
+    },
+    {
+      icon: "👤",
+      title: "Segmentazione automatica lead WhatsApp",
+      scenario: "In una settimana sono arrivati 12 messaggi WhatsApp da sconosciuti. Stella li ha classificati: 4 lead qualificati, 5 richieste generali, 3 spam. Ha preparato risposte personalizzate solo per i lead qualificati.",
+      outcome: "Nessun lead perso, nessun tempo sprecato su contatti non pertinenti",
+    },
+  ],
+  marco: [
+    {
+      icon: "🔥",
+      title: "Richiamo obiettivi strategici non rispettati",
+      scenario: "Marco ha letto la roadmap e notato che l'obiettivo di 5 nuovi clienti entro fine mese era a rischio — mancavano 10 giorni e ne erano stati acquisiti solo 2. Ha chiamato il consulente con un messaggio diretto: dati reali, cosa manca, cosa fare oggi.",
+      outcome: "Consulente ha riorganizzato la settimana, 3 trattative riaperte",
+    },
+    {
+      icon: "📅",
+      title: "Alert agenda troppo leggera",
+      scenario: "Guardando l'agenda della settimana, Marco ha rilevato solo 2 consulenze pianificate contro una media di 7. Ha inviato un messaggio WhatsApp urgente: 'Questa settimana sei sotto del 70%. Hai già contattato i clienti inattivi degli ultimi 30 giorni?'",
+      outcome: "Consulente ha riempito 4 slot entro 2 giorni",
+    },
+    {
+      icon: "📞",
+      title: "Briefing mattutino automatico",
+      scenario: "Ogni mattina, Marco analizza agenda, task aperti, obiettivi settimanali e manda un messaggio di briefing al consulente: le 3 priorità del giorno, eventuali alert, e un dato motivazionale dal confronto con la settimana precedente.",
+      outcome: "Consulente inizia la giornata con focus chiaro senza dover aprire 4 strumenti diversi",
+    },
+    {
+      icon: "⚡",
+      title: "Verifica allineamento azioni-obiettivi",
+      scenario: "Marco ha analizzato i task completati dell'ultima settimana e rilevato che il 60% erano attività operative, non strategiche. Ha inviato un report diretto: 'Stai gestendo, non crescendo. Dove è finita la prospecting?'",
+      outcome: "Consulente ha spostato il 40% del tempo su attività ad alto impatto la settimana successiva",
+    },
+  ],
+  robert: [
+    {
+      icon: "🎯",
+      title: "Opportunità upsell identificata in real-time",
+      scenario: "Robert ha analizzato un cliente attivo che usava solo 2 dei 10 moduli disponibili. Ha inviato un messaggio: 'Luca usa solo Academy e Consulenze. Non ha ancora attivato WhatsApp AI né Voice. Con il suo volume di clienti, potrebbe ridurre il tempo di gestione del 30%.' Con script di vendita pronto.",
+      outcome: "Consulente ha presentato l'upgrade nella consulenza successiva — attivati 2 nuovi moduli",
+    },
+    {
+      icon: "💬",
+      title: "Script per gestire l'obiezione 'costa troppo'",
+      scenario: "Un cliente stava per non rinnovare per motivi di costo. Robert ha inviato 3 frasi di risposta testate, un calcolo del ROI specifico per quel cliente e un'alternativa di downgrade consapevole per non perdere il cliente.",
+      outcome: "Cliente ha rinnovato con piano ridotto — relazione mantenuta",
+    },
+    {
+      icon: "📊",
+      title: "Audit piattaforma settimanale",
+      scenario: "Robert ha analizzato quali moduli erano configurati e quali no, e quali clienti erano sottoutilizzati. Ha prodotto una lista di 5 opportunità concrete ordinate per probabilità di chiusura, con approccio consigliato per ognuna.",
+      outcome: "Consulente ha una pipeline di upsell chiara senza dover analizzare i dati da solo",
+    },
+    {
+      icon: "🔥",
+      title: "Coaching pre-consulenza di vendita",
+      scenario: "Prima di un incontro con un cliente interessato al piano Premium, Robert ha inviato un mini-briefing: i 3 punti di forza da evidenziare, le obiezioni probabili con le contro-risposte, e il momento giusto per chiedere la firma.",
+      outcome: "Consulente è arrivato preparato — contratto chiuso al primo incontro",
+    },
+  ],
+  hunter: [
+    {
+      icon: "🔍",
+      title: "12 lead trovati su Google Maps in un ciclo",
+      scenario: "Hunter ha analizzato il Sales Context (target: liberi professionisti nel nord Italia), cercato su Google Maps 'commercialisti Milano', trovato 12 studi non ancora nel CRM, analizzato i loro siti web con scraping AI e assegnato un punteggio di compatibilità a ognuno.",
+      outcome: "12 lead qualificati pronti per outreach, top 5 schedulati per chiamata entro 24 ore",
+    },
+    {
+      icon: "📞",
+      title: "Outreach multicanale orchestrato",
+      scenario: "Per i 5 lead top, Hunter ha schedulato: prima una chiamata vocale AI, poi — in caso di non risposta dopo 48 ore — un messaggio WhatsApp, poi un'email. Tutto coordinato automaticamente senza intervento manuale.",
+      outcome: "3 su 5 lead hanno risposto, 2 hanno accettato una demo",
+    },
+    {
+      icon: "🧠",
+      title: "Adattamento strategia da risultati precedenti",
+      scenario: "Hunter ha analizzato i risultati dei 30 giorni precedenti: le email aveva un tasso di apertura del 12%, le chiamate vocali del 34%. Ha spostato autonomamente il budget di contatto verso le chiamate per il ciclo successivo.",
+      outcome: "Tasso di risposta aumentato del 22% nel ciclo successivo",
+    },
+    {
+      icon: "🌐",
+      title: "Panoramica aziendale da sito web",
+      scenario: "Per ogni lead trovato, Hunter ha analizzato il sito web dell'azienda: servizi offerti, dimensioni, tono comunicativo. Ha usato queste informazioni per personalizzare il primo messaggio di contatto con riferimenti specifici all'attività.",
+      outcome: "Tasso di risposta ai messaggi personalizzati 3x rispetto ai messaggi generici",
+    },
+  ],
+  architetto: [
+    {
+      icon: "🏗️",
+      title: "Funnel completo generato da zero",
+      scenario: "Architetto ha letto il Brand Voice del consulente e la ricerca di mercato caricata. Ha identificato il target ideale, progettato un funnel in 5 fasi (awareness → interesse → considerazione → decisione → onboarding) con copy per ogni step.",
+      outcome: "Funnel pronto da implementare, con copy persuasivo già adattato al brand",
+    },
+    {
+      icon: "🔍",
+      title: "Analisi brand voice e identità",
+      scenario: "Architetto ha analizzato i contenuti social, le email e i documenti del consulente per estrarre il tono di voce dominante, i valori impliciti e i punti di differenziazione rispetto ai competitor. Ha prodotto un profilo brand completo.",
+      outcome: "Consulente ha un documento di Brand Voice da condividere con collaboratori e fornitori",
+    },
+    {
+      icon: "🎯",
+      title: "Ottimizzazione nodo critico del funnel",
+      scenario: "Il tasso di conversione da 'interesse' a 'consulenza prenotata' era del 8%. Architetto ha analizzato il nodo critico, identificato 3 possibili cause (CTA debole, troppo testo, mancanza di social proof) e proposto A/B test con varianti specifiche.",
+      outcome: "Conversione salita al 14% con la variante consigliata",
+    },
+    {
+      icon: "💡",
+      title: "Copy per avatar specifico",
+      scenario: "Il consulente aveva un cliente-tipo ben definito: imprenditore 40-55 anni, preoccupato per la pensione. Architetto ha scritto copy per ogni step del funnel parlando direttamente a quell'avatar, con obiezioni tipiche già gestite nel testo.",
+      outcome: "Contenuti risonano molto di più con il target — richieste di consulenza aumentate",
+    },
+  ],
+  personalizza: [
+    {
+      icon: "⚙️",
+      title: "Agente configurato per monitoraggio specifico",
+      scenario: "Il consulente ha definito istruzioni personalizzate: 'Ogni ciclo, controlla se ci sono clienti con appuntamento domani che non hanno completato il questionario pre-consulenza. Se li trovi, crea un task WhatsApp di reminder.' L'agente ha iniziato a farlo autonomamente.",
+      outcome: "100% dei clienti arriva alla consulenza con questionario compilato",
+    },
+    {
+      icon: "🔄",
+      title: "Workflow personalizzato multi-step",
+      scenario: "Istruzioni: 'Dopo ogni consulenza completata, crea: 1) un task Echo per il riepilogo, 2) un task Alessia per il follow-up vocale a 7 giorni, 3) un promemoria nella KB del cliente con i punti chiave'. L'agente esegue la sequenza completa ad ogni ciclo.",
+      outcome: "Workflow post-consulenza sempre eseguito, zero step dimenticati",
+    },
+    {
+      icon: "📊",
+      title: "Report personalizzato settimanale",
+      scenario: "L'agente è stato configurato per generare ogni lunedì un report personalizzato: clienti senza contatto da 2+ settimane, task aperti oltre scadenza, e obiettivi del mese con percentuale di avanzamento. Format: email al consulente.",
+      outcome: "Consulente inizia ogni settimana con una foto chiara della situazione",
+    },
+    {
+      icon: "🧠",
+      title: "Regole di business personalizzate",
+      scenario: "Istruzioni: 'Mai creare task di chiamata vocale per clienti con tag 'no-disturb'. Per i clienti premium, usa sempre tono formale. Per i nuovi lead, crea sempre un task di qualifica prima di qualsiasi contatto.' L'agente rispetta queste regole ad ogni ciclo.",
+      outcome: "Comportamento dell'agente perfettamente allineato alle preferenze del consulente",
+    },
+  ],
+};
