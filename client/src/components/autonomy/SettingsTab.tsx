@@ -31,7 +31,7 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, KbDocument, RoleStatus } from "./types";
-import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES, AI_ROLE_EXECUTION_PIPELINES, AI_ROLE_IMPACT_MAP } from "./constants";
+import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES, AI_ROLE_EXECUTION_PIPELINES, AI_ROLE_IMPACT_MAP, CAPABILITY_CATEGORY_META, type CapabilityCategory } from "./constants";
 import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./utils";
 import TelegramConfig from "./TelegramConfig";
 import TelegramChats from "./TelegramChats";
@@ -2480,35 +2480,37 @@ function SettingsTab({
                                           </CollapsibleTrigger>
                                           <CollapsibleContent>
                                             <div className="rounded-2xl border border-border/40 border-t-0 rounded-t-none bg-white dark:bg-gray-900/50 px-4 sm:px-5 pb-4 sm:pb-5 space-y-4 -mt-px">
-                                              <div>
-                                                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
-                                                  <CheckCircle className="h-3 w-3" />
-                                                  Cosa sa fare
-                                                </p>
-                                                <div className="space-y-1">
-                                                  {caps.canDo.map((item, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg">
-                                                      <span className="text-sm shrink-0">{item.icon}</span>
-                                                      <span className="text-sm text-foreground">{item.text}</span>
+                                              {(["comunicazione", "analisi", "organizzazione"] as CapabilityCategory[]).map((cat) => {
+                                                const meta = CAPABILITY_CATEGORY_META[cat];
+                                                const canItems = caps.canDo.filter(i => i.category === cat);
+                                                const cantItems = caps.cantDo.filter(i => i.category === cat);
+                                                if (canItems.length === 0 && cantItems.length === 0) return null;
+                                                return (
+                                                  <div key={cat}>
+                                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                                      <span>{meta.icon}</span>
+                                                      {meta.label}
+                                                    </p>
+                                                    <div className="space-y-0.5">
+                                                      {canItems.map((item, idx) => (
+                                                        <div key={`can-${idx}`} className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg">
+                                                          <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
+                                                          <span className="text-sm shrink-0">{item.icon}</span>
+                                                          <span className="text-sm text-foreground">{item.text}</span>
+                                                        </div>
+                                                      ))}
+                                                      {cantItems.map((item, idx) => (
+                                                        <div key={`cant-${idx}`} className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg">
+                                                          <XCircle className="h-3 w-3 text-red-400 shrink-0" />
+                                                          <span className="text-sm shrink-0">{item.icon}</span>
+                                                          <span className="text-sm text-muted-foreground">{item.text}</span>
+                                                        </div>
+                                                      ))}
                                                     </div>
-                                                  ))}
-                                                </div>
-                                              </div>
-                                              <Separator className="bg-border/30" />
-                                              <div>
-                                                <p className="text-xs font-semibold text-red-500 dark:text-red-400 mb-2 flex items-center gap-1.5">
-                                                  <XCircle className="h-3 w-3" />
-                                                  Cosa NON sa fare
-                                                </p>
-                                                <div className="space-y-1">
-                                                  {caps.cantDo.map((item, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg">
-                                                      <span className="text-sm shrink-0">{item.icon}</span>
-                                                      <span className="text-sm text-muted-foreground">{item.text}</span>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              </div>
+                                                    <Separator className="bg-border/30 mt-3" />
+                                                  </div>
+                                                );
+                                              })}
                                             </div>
                                           </CollapsibleContent>
                                         </Collapsible>
