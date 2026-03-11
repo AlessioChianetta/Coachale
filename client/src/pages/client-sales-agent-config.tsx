@@ -98,7 +98,7 @@ export default function ClientSalesAgentConfig() {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const isNew = agentId === 'new';
+  const isNew = !agentId || agentId === 'new';
   const authUser = getAuthUser();
   const isConsultant = authUser?.role === 'consultant';
   const basePath = isConsultant ? '/consultant/sales-agents' : '/client/sales-agents';
