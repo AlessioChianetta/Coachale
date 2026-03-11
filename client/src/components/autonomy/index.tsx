@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Bot, Activity, ListTodo, Database, X, Cpu, Zap, MessageSquare, Phone, Mail, ExternalLink } from "lucide-react";
 import Sidebar from "@/components/sidebar";
+import Navbar from "@/components/navbar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -547,23 +548,24 @@ export default function ConsultantAIAutonomyPage() {
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className={`flex-1 flex flex-col min-h-0 ${isMobile ? "w-full" : "ml-0"}`}>
+        {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
         <div className="flex-1 flex min-h-0">
-          <main className={cn("flex-1 p-6 lg:px-8 overflow-auto transition-all duration-300", chatOpenRoleId ? "mr-0" : "")}>
-            <div className={cn("mx-auto space-y-8 transition-all duration-300", chatOpenRoleId ? "max-w-6xl" : "max-w-[1600px]")}>
+          <main className={cn("flex-1 p-3 sm:p-6 lg:px-8 overflow-auto transition-all duration-300", chatOpenRoleId ? "mr-0" : "")}>
+            <div className={cn("mx-auto space-y-4 sm:space-y-8 transition-all duration-300", chatOpenRoleId ? "max-w-6xl" : "max-w-[1600px]")}>
               {!isEmbeddedTab && <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
                 <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl" />
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl" />
 
-                <div className="relative z-10 space-y-5">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
-                        <Bot className="h-7 w-7 text-white" />
+                <div className="relative z-10 space-y-3 sm:space-y-5">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
+                        <Bot className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
                       </div>
                       <div>
-                        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Dipendente AI</h1>
-                        <p className="text-blue-200/70 text-sm mt-0.5">
+                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Dipendente AI</h1>
+                        <p className="text-blue-200/70 text-xs sm:text-sm mt-0.5">
                           Configura, monitora e controlla il tuo team autonomo
                         </p>
                       </div>
@@ -642,55 +644,55 @@ export default function ConsultantAIAutonomyPage() {
                     </Link>
                   </div>
 
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="p-1.5 rounded-lg bg-blue-500/20">
-                          <Zap className="h-4 w-4 text-blue-400" />
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                        <div className="p-1 sm:p-1.5 rounded-lg bg-blue-500/20">
+                          <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-400" />
                         </div>
-                        <span className="text-xs font-medium text-blue-200/80">Livello Autonomia</span>
+                        <span className="text-[10px] sm:text-xs font-medium text-blue-200/80">Livello Autonomia</span>
                       </div>
-                      <p className="text-2xl font-bold text-white">{settings.autonomy_level}</p>
-                      <p className="text-[11px] text-blue-200/50 mt-0.5">
+                      <p className="text-xl sm:text-2xl font-bold text-white">{settings.autonomy_level}</p>
+                      <p className="text-[10px] sm:text-[11px] text-blue-200/50 mt-0.5">
                         {settings.autonomy_level <= 3 ? "Proposte" : settings.autonomy_level <= 6 ? "Ibrido" : "Autonomo"}
                       </p>
                     </div>
 
-                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="p-1.5 rounded-lg bg-purple-500/20">
-                          <Bot className="h-4 w-4 text-purple-400" />
+                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                        <div className="p-1 sm:p-1.5 rounded-lg bg-purple-500/20">
+                          <Bot className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-400" />
                         </div>
-                        <span className="text-xs font-medium text-purple-200/80">Modalità</span>
+                        <span className="text-[10px] sm:text-xs font-medium text-purple-200/80">Modalità</span>
                       </div>
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-xl sm:text-2xl font-bold text-white">
                         {settings.default_mode === "manual" ? "Manuale" : settings.default_mode === "hybrid" ? "Ibrido" : "Automatico"}
                       </p>
-                      <p className="text-[11px] text-blue-200/50 mt-0.5">{settings.is_active ? "Sistema attivo" : "Sistema spento"}</p>
+                      <p className="text-[10px] sm:text-[11px] text-blue-200/50 mt-0.5">{settings.is_active ? "Sistema attivo" : "Sistema spento"}</p>
                     </div>
 
-                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="p-1.5 rounded-lg bg-green-500/20">
-                          <Activity className="h-4 w-4 text-green-400" />
+                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                        <div className="p-1 sm:p-1.5 rounded-lg bg-green-500/20">
+                          <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-400" />
                         </div>
-                        <span className="text-xs font-medium text-green-200/80">Canali Attivi</span>
+                        <span className="text-[10px] sm:text-xs font-medium text-green-200/80">Canali Attivi</span>
                       </div>
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-xl sm:text-2xl font-bold text-white">
                         {[settings.channels_enabled?.voice, settings.channels_enabled?.email, settings.channels_enabled?.whatsapp, settings.channels_enabled?.lead_scraper !== false].filter(Boolean).length}
                       </p>
-                      <p className="text-[11px] text-blue-200/50 mt-0.5">canali abilitati</p>
+                      <p className="text-[10px] sm:text-[11px] text-blue-200/50 mt-0.5">canali abilitati</p>
                     </div>
 
-                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="p-1.5 rounded-lg bg-amber-500/20">
-                          <Cpu className="h-4 w-4 text-amber-400" />
+                    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                        <div className="p-1 sm:p-1.5 rounded-lg bg-amber-500/20">
+                          <Cpu className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
                         </div>
-                        <span className="text-xs font-medium text-amber-200/80">Dipendenti</span>
+                        <span className="text-[10px] sm:text-xs font-medium text-amber-200/80">Dipendenti</span>
                       </div>
-                      <p className="text-2xl font-bold text-white">{systemStatus?.roles?.filter((r: any) => r.enabled).length || 0}</p>
-                      <p className="text-[11px] text-blue-200/50 mt-0.5">dipendenti attivi</p>
+                      <p className="text-xl sm:text-2xl font-bold text-white">{systemStatus?.roles?.filter((r: any) => r.enabled).length || 0}</p>
+                      <p className="text-[10px] sm:text-[11px] text-blue-200/50 mt-0.5">dipendenti attivi</p>
                     </div>
                   </div>
                 </div>
