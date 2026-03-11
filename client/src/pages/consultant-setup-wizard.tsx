@@ -1885,7 +1885,7 @@ export default function ConsultantSetupWizard({ embedded = false }: { embedded?:
     previousCompletedRef.current = completedSteps;
   }, [completedSteps, totalSteps]);
 
-  const [sortByPriority, setSortByPriority] = useState(false);
+  const [sortByPriority, setSortByPriority] = useState(true);
 
   const stepNameMap: Record<string, string> = {
     vertex_ai: "AI Engine (Gemini)",
