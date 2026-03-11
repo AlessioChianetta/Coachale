@@ -26,6 +26,7 @@ import {
   getEditLinkForEntity,
   getEntityLabel,
   getPlatformFilterForNode,
+  getLinkedEntities,
 } from "./funnel-node-types";
 
 interface NodeConfigPanelProps {
@@ -164,13 +165,18 @@ export function NodeConfigPanel({
     }
   }, [showEntityPicker, entityType, fetchEntities]);
 
+  const currentLinked = getLinkedEntities(data);
+  const linkedIds = new Set(currentLinked.map((le) => le.entityId));
+
   const filteredEntities = entities.filter((e) =>
-    !entitySearch.trim() ||
-    (e.name || "").toLowerCase().includes(entitySearch.toLowerCase())
+    !linkedIds.has(e.id) &&
+    (!entitySearch.trim() ||
+    (e.name || "").toLowerCase().includes(entitySearch.toLowerCase()))
   );
 
   const handleLinkEntity = (entity: EntityItem) => {
     if (!entityType) return;
+    if (currentLinked.some((le) => le.entityId === entity.id)) return;
     const linked: LinkedEntity = {
       entityType,
       entityId: entity.id,
@@ -180,12 +186,18 @@ export function NodeConfigPanel({
       status: entity.status || (entity.isActive ? "active" : entity.isActive === false ? "inactive" : undefined),
       extra: { ...entity },
     };
-    onUpdate(nodeId, { linkedEntity: linked });
+    const updated = [...currentLinked, linked];
+    onUpdate(nodeId, { linkedEntities: updated, linkedEntity: updated[0] });
     setShowEntityPicker(false);
   };
 
+  const handleUnlinkEntity = (entityId: string) => {
+    const updated = currentLinked.filter((le) => le.entityId !== entityId);
+    onUpdate(nodeId, { linkedEntities: updated, linkedEntity: updated[0] || null });
+  };
+
   const handleUnlink = () => {
-    onUpdate(nodeId, { linkedEntity: null });
+    onUpdate(nodeId, { linkedEntities: [], linkedEntity: null });
   };
 
   const handleEditSource = () => {
@@ -505,43 +517,52 @@ export function NodeConfigPanel({
             ) : (
               <>
                 <div className="space-y-1.5">
-                  <FieldLabel>{getEntityLabel(entityType!)}</FieldLabel>
+                  <div className="flex items-center justify-between">
+                    <FieldLabel>{getEntityLabel(entityType!)}</FieldLabel>
+                    {currentLinked.length > 0 && (
+                      <span className="text-[10px] text-gray-400">{currentLinked.length} collegat{currentLinked.length === 1 ? "o" : "i"}</span>
+                    )}
+                  </div>
 
-                  {data.linkedEntity ? (
-                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                      <LinkedEntityCard entity={data.linkedEntity} />
-                      <div className="flex gap-1 p-1.5 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex-1 h-7 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                          onClick={handleEditSource}
-                        >
-                          <ExternalLink className="w-3 h-3 mr-1" />
-                          Modifica
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex-1 h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
-                          onClick={handleUnlink}
-                        >
-                          <Unlink className="w-3 h-3 mr-1" />
-                          Scollega
-                        </Button>
-                      </div>
+                  {currentLinked.length > 0 && (
+                    <div className="space-y-1.5">
+                      {currentLinked.map((le) => (
+                        <div key={le.entityId} className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                          <LinkedEntityCard entity={le} />
+                          <div className="flex gap-1 p-1.5 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="flex-1 h-7 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={handleEditSource}
+                            >
+                              <ExternalLink className="w-3 h-3 mr-1" />
+                              Modifica
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="flex-1 h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                              onClick={() => handleUnlinkEntity(le.entityId)}
+                            >
+                              <Unlink className="w-3 h-3 mr-1" />
+                              Scollega
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full h-9 text-xs gap-1.5 border-dashed hover:border-solid transition-all"
-                      onClick={() => setShowEntityPicker(true)}
-                    >
-                      <Link2 className="w-3.5 h-3.5" />
-                      Collega {getEntityLabel(entityType!)}
-                    </Button>
                   )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full h-9 text-xs gap-1.5 border-dashed hover:border-solid transition-all"
+                    onClick={() => setShowEntityPicker(true)}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {currentLinked.length > 0 ? "Aggiungi altro" : `Collega ${getEntityLabel(entityType!)}`}
+                  </Button>
                 </div>
 
                 {showEntityPicker && (
@@ -647,30 +668,55 @@ export function NodeConfigPanel({
 }
 
 function LinkedEntityCard({ entity }: { entity: LinkedEntity }) {
+  const [expanded, setExpanded] = useState(false);
   const extra = entity.extra || {};
+
+  const postBody = (extra.fullCopy as string) || (extra.body as string) || (extra.hook as string) || "";
 
   switch (entity.entityType) {
     case "posts":
       return (
-        <div className="p-2.5">
-          <div className="flex items-start gap-2">
-            {entity.imageUrl ? (
-              <img src={entity.imageUrl} alt="" className="w-12 h-12 rounded object-cover shrink-0" />
-            ) : (
-              <div className="w-12 h-12 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                <ImageIcon className="w-5 h-5 text-gray-400" />
+        <div className="overflow-hidden" style={{ wordBreak: "break-word" }}>
+          <div className="p-2.5">
+            <div className="flex items-start gap-2" style={{ maxWidth: "100%" }}>
+              {entity.imageUrl ? (
+                <img src={entity.imageUrl} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+              ) : (
+                <div className="w-10 h-10 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                  <ImageIcon className="w-4 h-4 text-gray-400" />
+                </div>
+              )}
+              <div style={{ flex: "1 1 0%", minWidth: 0, overflow: "hidden" }}>
+                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entity.name}</p>
+                <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                  {entity.platform && <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">{entity.platform}</Badge>}
+                  {extra.contentType && <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{extra.contentType as string}</Badge>}
+                  <StatusDot active={entity.status === "published" || entity.status === "active"} />
+                </div>
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{entity.name}</p>
-              <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                {entity.platform && <Badge variant="secondary" className="text-[9px] px-1 py-0">{entity.platform}</Badge>}
-                {extra.contentType && <Badge variant="outline" className="text-[9px] px-1 py-0">{extra.contentType as string}</Badge>}
-                <StatusDot active={entity.status === "published" || entity.status === "active"} />
-              </div>
-              {extra.hook && <p className="text-[10px] text-gray-500 mt-1 line-clamp-2">{extra.hook as string}</p>}
             </div>
           </div>
+          {(postBody || entity.imageUrl) && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="w-full flex items-center justify-center gap-1 text-[10px] text-blue-500 hover:text-blue-600 transition-colors py-1 border-t border-gray-100 dark:border-gray-800"
+            >
+              {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              {expanded ? "Chiudi" : "Espandi dettagli"}
+            </button>
+          )}
+          {expanded && (
+            <div className="border-t border-gray-100 dark:border-gray-800">
+              {entity.imageUrl && (
+                <img src={entity.imageUrl} alt="" className="w-full object-contain bg-gray-50 dark:bg-gray-800/50" style={{ maxHeight: 200 }} />
+              )}
+              {postBody && (
+                <div className="p-2.5 text-[11px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed overflow-y-auto overflow-x-hidden" style={{ wordBreak: "break-word", maxHeight: 200 }}>
+                  {postBody}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       );
 

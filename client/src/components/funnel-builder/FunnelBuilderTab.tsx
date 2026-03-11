@@ -454,6 +454,7 @@ function FunnelBuilderInner() {
           subtitle: typeDef?.description || "",
           category,
           linkedEntity: null,
+          linkedEntities: [],
           notes: "",
           conversionRate: undefined,
         } satisfies FunnelNodeData as any,
@@ -524,17 +525,19 @@ function FunnelBuilderInner() {
         );
         if (!match) return node;
         linkedCount++;
+        const le = {
+          entityType,
+          entityId: match.id,
+          name: match.name || "—",
+          status: match.isActive ? "active" : undefined,
+          extra: match,
+        };
         return {
           ...node,
           data: {
             ...node.data,
-            linkedEntity: {
-              entityType,
-              entityId: match.id,
-              name: match.name || "—",
-              status: match.isActive ? "active" : undefined,
-              extra: match,
-            },
+            linkedEntity: le,
+            linkedEntities: [le],
           },
         };
       });

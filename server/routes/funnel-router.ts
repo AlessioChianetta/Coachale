@@ -230,6 +230,7 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
         notes: n.data?.notes || "",
         conversionRate: n.data?.conversionRate || null,
         linkedEntity: null,
+        linkedEntities: [],
       },
     };
     });
@@ -264,7 +265,7 @@ router.get("/entities/posts", authenticateToken, requireAnyRole(["consultant", "
     let result;
     if (platform) {
       result = await db.execute(sql`
-        SELECT id, title as name, platform, content_type as "contentType", image_url as "imageUrl", hook, status,
+        SELECT id, title as name, platform, content_type as "contentType", image_url as "imageUrl", hook, body, full_copy as "fullCopy", cta, status,
                scheduled_at as "scheduledAt", published_at as "publishedAt"
         FROM content_posts
         WHERE consultant_id = ${consultantId} AND LOWER(platform) = LOWER(${platform})
@@ -273,7 +274,7 @@ router.get("/entities/posts", authenticateToken, requireAnyRole(["consultant", "
       `);
     } else {
       result = await db.execute(sql`
-        SELECT id, title as name, platform, content_type as "contentType", image_url as "imageUrl", hook, status,
+        SELECT id, title as name, platform, content_type as "contentType", image_url as "imageUrl", hook, body, full_copy as "fullCopy", cta, status,
                scheduled_at as "scheduledAt", published_at as "publishedAt"
         FROM content_posts
         WHERE consultant_id = ${consultantId}

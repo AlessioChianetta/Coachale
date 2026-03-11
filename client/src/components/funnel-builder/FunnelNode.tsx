@@ -8,6 +8,7 @@ import {
   type EntityType,
   NODE_STATUS_CONFIG,
   getNodeTypeDefinition,
+  getLinkedEntities,
 } from "./funnel-node-types";
 import { ThemeContext } from "./FunnelBuilderTab";
 
@@ -122,15 +123,16 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
           </div>
         )}
 
-        {nodeData.linkedEntity && (
+        {getLinkedEntities(nodeData).map((le, idx) => (
           <EntityPreview
-            entityType={nodeData.linkedEntity.entityType}
-            name={nodeData.linkedEntity.name}
-            imageUrl={nodeData.linkedEntity.imageUrl}
-            platform={nodeData.linkedEntity.platform}
-            extra={nodeData.linkedEntity.extra || {}}
+            key={le.entityId || idx}
+            entityType={le.entityType}
+            name={le.name}
+            imageUrl={le.imageUrl}
+            platform={le.platform}
+            extra={le.extra || {}}
           />
-        )}
+        ))}
       </div>
 
       <Handle

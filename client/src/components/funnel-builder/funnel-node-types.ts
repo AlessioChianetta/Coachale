@@ -81,12 +81,19 @@ export interface FunnelNodeData {
   conversionRate?: number;
   category: NodeCategory;
   linkedEntity?: LinkedEntity | null;
+  linkedEntities?: LinkedEntity[];
   status?: NodeStatus;
   color?: string;
   tags?: string[];
   delayMinutes?: number;
   conditionLabel?: string;
   priority?: "low" | "medium" | "high";
+}
+
+export function getLinkedEntities(data: FunnelNodeData): LinkedEntity[] {
+  if (data.linkedEntities && data.linkedEntities.length > 0) return data.linkedEntities;
+  if (data.linkedEntity) return [data.linkedEntity];
+  return [];
 }
 
 export interface LinkedEntity {
