@@ -1796,35 +1796,74 @@ export async function classifyAndGenerateDraft(
   let salesContextBlock = "";
   let salesFieldCount = 0;
   try {
-    const [accountData] = await db
-      .select({ salesContext: schema.emailAccounts.salesContext })
-      .from(schema.emailAccounts)
-      .where(eq(schema.emailAccounts.id, email.accountId));
-    
-    const sc = accountData?.salesContext as any;
-    if (sc && typeof sc === "object") {
-      const fields: [string, string][] = [
-        ["Servizi", sc.servicesOffered],
-        ["Target", sc.targetAudience],
-        ["Proposta di valore", sc.valueProposition],
-        ["Pricing", sc.pricingInfo],
-        ["Vantaggi competitivi", sc.competitiveAdvantages],
-        ["Cliente ideale", sc.idealClientProfile],
-        ["Approccio vendita", sc.salesApproach],
-        ["Casi di successo", sc.caseStudies],
-        ["Contesto aggiuntivo", sc.additionalContext],
+    const [bvConfig] = await db
+      .select({ brandVoiceData: schema.contentStudioConfig.brandVoiceData })
+      .from(schema.contentStudioConfig)
+      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+      .limit(1);
+
+    const bv = bvConfig?.brandVoiceData as any;
+    if (bv && typeof bv === "object") {
+      const bvFields: [string, string][] = [
+        ["Business", bv.businessName],
+        ["Descrizione", bv.businessDescription],
+        ["USP", bv.usp],
+        ["Chi aiutiamo", bv.whoWeHelp],
+        ["Cosa facciamo", bv.whatWeDo],
+        ["Come lo facciamo", bv.howWeDoIt],
+        ["Vision", bv.vision],
+        ["Mission", bv.mission],
+        ["Garanzie", bv.guarantees],
+        ["Tono personale", bv.personalTone],
+        ["Personalità", bv.contentPersonality],
       ];
-      const filledFields = fields.filter(([, v]) => v && v.trim());
-      salesFieldCount = filledFields.length;
-      if (filledFields.length > 0) {
-        salesContextBlock = `\n\nPROFILO COMMERCIALE (usa queste info per rispondere in modo informato):\n` +
-          filledFields.map(([label, value]) => `- ${label}: ${value}`).join("\n");
-        console.log(`[MILLIE-SALES] Profilo commerciale caricato da account ${email.accountId} (${filledFields.length}/9 campi compilati)`);
-      } else {
-        console.log(`[MILLIE-SALES] Nessun profilo commerciale configurato per account ${email.accountId}`);
+      if (Array.isArray(bv.servicesOffered) && bv.servicesOffered.length > 0) {
+        bvFields.push(["Servizi", bv.servicesOffered.map((s: any) => `${s.name}${s.price ? ` (${s.price})` : ""}${s.description ? ` — ${s.description}` : ""}`).join("; ")]);
       }
-    } else {
-      console.log(`[MILLIE-SALES] Nessun profilo commerciale configurato per account ${email.accountId}`);
+      if (Array.isArray(bv.caseStudies) && bv.caseStudies.length > 0) {
+        bvFields.push(["Casi studio", bv.caseStudies.map((c: any) => `${c.client}: ${c.result}`).join("; ")]);
+      }
+      const filledBvFields = bvFields.filter(([, v]) => v && typeof v === "string" && v.trim());
+      salesFieldCount = filledBvFields.length;
+      if (filledBvFields.length > 0) {
+        salesContextBlock = `\n\nBRAND VOICE (usa queste info per rispondere in modo informato):\n` +
+          filledBvFields.map(([label, value]) => `- ${label}: ${value}`).join("\n");
+        console.log(`[MILLIE-BRAND] Brand Voice caricato per consulente ${consultantId} (${filledBvFields.length} campi compilati)`);
+      } else {
+        console.log(`[MILLIE-BRAND] Brand Voice vuoto per consulente ${consultantId}, fallback a salesContext account`);
+      }
+    }
+
+    if (salesFieldCount === 0) {
+      const [accountData] = await db
+        .select({ salesContext: schema.emailAccounts.salesContext })
+        .from(schema.emailAccounts)
+        .where(eq(schema.emailAccounts.id, email.accountId));
+      const sc = accountData?.salesContext as any;
+      if (sc && typeof sc === "object") {
+        const fields: [string, string][] = [
+          ["Servizi", sc.servicesOffered],
+          ["Target", sc.targetAudience],
+          ["Proposta di valore", sc.valueProposition],
+          ["Pricing", sc.pricingInfo],
+          ["Vantaggi competitivi", sc.competitiveAdvantages],
+          ["Cliente ideale", sc.idealClientProfile],
+          ["Approccio vendita", sc.salesApproach],
+          ["Casi di successo", sc.caseStudies],
+          ["Contesto aggiuntivo", sc.additionalContext],
+        ];
+        const filledFields = fields.filter(([, v]) => v && v.trim());
+        salesFieldCount = filledFields.length;
+        if (filledFields.length > 0) {
+          salesContextBlock = `\n\nPROFILO COMMERCIALE (usa queste info per rispondere in modo informato):\n` +
+            filledFields.map(([label, value]) => `- ${label}: ${value}`).join("\n");
+          console.log(`[MILLIE-BRAND] Fallback: profilo commerciale da account ${email.accountId} (${filledFields.length}/9 campi)`);
+        } else {
+          console.log(`[MILLIE-BRAND] Nessun Brand Voice né profilo commerciale configurato`);
+        }
+      } else {
+        console.log(`[MILLIE-BRAND] Nessun Brand Voice né profilo commerciale configurato`);
+      }
     }
   } catch (err: any) {
     console.error(`[MILLIE-SALES] Errore caricamento profilo commerciale:`, err.message);
@@ -1935,7 +1974,7 @@ export async function classifyAndGenerateDraft(
   console.log(`📧   Stop on risk:   ${extendedSettings?.stopOnRisk !== false ? "✅" : "❌"}`);
   console.log(`📧   Escalation kw:  ${(extendedSettings?.escalationKeywords as string[])?.length ? `✅ [${(extendedSettings.escalationKeywords as string[]).join(", ")}]` : "❌ nessuna"}`);
   console.log(`📧 ──────────────────────────────────────────────────────────────────`);
-  console.log(`📧   PROFILO COMMERCIALE: ${salesFieldCount > 0 ? `✅ ${salesFieldCount}/9 campi compilati` : "❌ non configurato"}`);
+  console.log(`📧   BRAND VOICE:        ${salesFieldCount > 0 ? `✅ ${salesFieldCount} campi compilati` : "❌ non configurato"}`);
   console.log(`📧 ──────────────────────────────────────────────────────────────────`);
   console.log(`📧   FILESEARCH:`);
   console.log(`📧   KB consulente:  ${kbResult.found ? `✅ ${kbResult.totalDocuments || 0} docs, ${kbResult.storeNames?.length || 0} stores` : "❌ nessun store"}`);

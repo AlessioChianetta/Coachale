@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,11 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
+import { BrandVoiceSection, type BrandVoiceData } from "@/components/brand-voice";
 import { 
   Sparkles, 
   Save, 
@@ -25,9 +27,15 @@ import {
   MessageSquare,
   Shield,
   Languages,
-  Briefcase,
   Download,
   ChevronDown,
+  ChevronUp,
+  Eye,
+  Code,
+  CheckCircle2,
+  XCircle,
+  Info,
+  Palette,
 } from "lucide-react";
 
 interface EmailAISettingsProps {
@@ -35,18 +43,6 @@ interface EmailAISettingsProps {
   onOpenChange: (open: boolean) => void;
   accountId: string;
   accountName: string;
-}
-
-interface SalesContext {
-  servicesOffered?: string;
-  targetAudience?: string;
-  valueProposition?: string;
-  pricingInfo?: string;
-  competitiveAdvantages?: string;
-  idealClientProfile?: string;
-  salesApproach?: string;
-  caseStudies?: string;
-  additionalContext?: string;
 }
 
 interface AISettings {
@@ -60,7 +56,93 @@ interface AISettings {
   escalationKeywords: string[] | null;
   stopOnRisk: boolean | null;
   bookingLink: string | null;
-  salesContext: SalesContext | null;
+  salesContext: Record<string, any> | null;
+}
+
+function buildClientSystemPrompt(opts: {
+  tone: string;
+  signature: string;
+  customInstructions: string;
+  bookingLink: string;
+  brandVoice: BrandVoiceData;
+}): string {
+  const { tone, signature, customInstructions, bookingLink, brandVoice } = opts;
+
+  const toneInstructions: Record<string, string> = {
+    formal: `Usa un tono formale e professionale. Utilizza il "Lei" come forma di cortesia.\nEvita colloquialismi e mantieni un registro alto. Inizia con "Gentile" o "Egregio/a".`,
+    friendly: `Usa un tono cordiale e amichevole ma sempre professionale.\nPuoi usare il "tu" se appropriato. Sii caloroso ma non troppo informale.`,
+    professional: `Usa un tono professionale e diretto.\nMantieni un equilibrio tra formalità e accessibilità. Sii chiaro e conciso.`,
+  };
+
+  const signatureBlock = signature?.trim()
+    ? `\n\nFirma da includere alla fine della risposta:\n${signature}`
+    : "";
+
+  const customBlock = customInstructions?.trim()
+    ? `\n\nISTRUZIONI PERSONALIZZATE DEL CONSULENTE:\n${customInstructions}`
+    : "";
+
+  const bookingBlock = bookingLink?.trim()
+    ? `\n\nLink di prenotazione da includere se il cliente chiede un appuntamento: ${bookingLink}`
+    : "";
+
+  const bvParts: string[] = [];
+  if (brandVoice.businessName) bvParts.push(`Business: ${brandVoice.businessName}`);
+  if (brandVoice.businessDescription) bvParts.push(`Descrizione: ${brandVoice.businessDescription}`);
+  if (brandVoice.usp) bvParts.push(`USP: ${brandVoice.usp}`);
+  if (brandVoice.whoWeHelp) bvParts.push(`Chi aiutiamo: ${brandVoice.whoWeHelp}`);
+  if (brandVoice.whatWeDo) bvParts.push(`Cosa facciamo: ${brandVoice.whatWeDo}`);
+  if (brandVoice.howWeDoIt) bvParts.push(`Come lo facciamo: ${brandVoice.howWeDoIt}`);
+  if (brandVoice.vision) bvParts.push(`Vision: ${brandVoice.vision}`);
+  if (brandVoice.mission) bvParts.push(`Mission: ${brandVoice.mission}`);
+  if (brandVoice.guarantees) bvParts.push(`Garanzie: ${brandVoice.guarantees}`);
+  if (Array.isArray(brandVoice.servicesOffered) && brandVoice.servicesOffered.length > 0) {
+    bvParts.push(`Servizi: ${brandVoice.servicesOffered.map((s) => `${s.name}${s.price ? ` (${s.price})` : ""}`).join(", ")}`);
+  }
+  if (Array.isArray(brandVoice.caseStudies) && brandVoice.caseStudies.length > 0) {
+    bvParts.push(`Casi studio: ${brandVoice.caseStudies.map((c) => `${c.client}: ${c.result}`).join("; ")}`);
+  }
+  if (brandVoice.personalTone) bvParts.push(`Tono personale: ${brandVoice.personalTone}`);
+  if (brandVoice.contentPersonality) bvParts.push(`Personalità: ${brandVoice.contentPersonality}`);
+
+  const brandVoiceBlock = bvParts.length > 0
+    ? `\n\nBRAND VOICE (usa queste info per rispondere in modo informato):\n${bvParts.map(p => `- ${p}`).join("\n")}`
+    : "";
+
+  return `Sei un assistente AI specializzato nell'analisi e risposta alle email per un consulente italiano.
+
+Analizza l'email e genera una risposta strutturata in JSON con questi campi ESATTI:
+
+- response: string (testo della risposta email, professionale e pertinente)
+- confidence: number (da 0 a 1, quanto sei sicuro della risposta)
+- category: "info_request" | "complaint" | "billing" | "technical" | "booking" | "other"
+- sentiment: "positive" | "neutral" | "negative" (tono percepito nell'email ricevuta)
+- urgency: "low" | "medium" | "high" | "critical"
+- createTicket: boolean (true se richiede intervento umano urgente)
+- ticketReason: string | null (motivo per creare il ticket, se createTicket è true)
+- ticketPriority: "low" | "medium" | "high" | "urgent" | null
+- suggestedActions: string[] (lista di azioni consigliate)
+
+CRITERI PER createTicket = true:
+- Reclami gravi o clienti arrabbiati
+- Richieste di rimborso o problemi di fatturazione complessi
+- Situazioni che richiedono decisioni umane
+- Informazioni mancanti critiche per rispondere
+- Richieste di consulenza specifica non coperta dalla knowledge base
+
+CRITERI PER confidence:
+- 0.9-1.0: Risposta certa, informazioni complete dalla knowledge base
+- 0.7-0.9: Risposta buona, alcune informazioni dalla KB
+- 0.5-0.7: Risposta generica, poche informazioni specifiche
+- 0.3-0.5: Risposta incerta, potrebbe richiedere revisione
+- 0.0-0.3: Non sono sicuro, meglio creare un ticket
+
+Rispondi SOLO con il JSON valido, senza markdown, commenti o altro testo.
+
+ISTRUZIONI SUL TONO:
+${toneInstructions[tone] || toneInstructions.professional}${customBlock}${brandVoiceBlock}${bookingBlock}${signatureBlock}
+
+[+ Knowledge Base del consulente, contesto CRM del contatto, storico conversazione — iniettati automaticamente a runtime]`;
 }
 
 export function EmailAISettings({
@@ -73,6 +155,11 @@ export function EmailAISettings({
   const queryClient = useQueryClient();
   const [newKeyword, setNewKeyword] = useState("");
   const [importing, setImporting] = useState(false);
+  const [capabilitiesOpen, setCapabilitiesOpen] = useState(false);
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [brandVoiceData, setBrandVoiceData] = useState<BrandVoiceData>({});
+  const [brandVoiceLoaded, setBrandVoiceLoaded] = useState(false);
+  const [savingBrandVoice, setSavingBrandVoice] = useState(false);
 
   const { data: accountsData } = useQuery({
     queryKey: ["/api/email-hub/accounts"],
@@ -106,7 +193,6 @@ export function EmailAISettings({
         escalationKeywords: src.escalationKeywords ?? [],
         stopOnRisk: src.stopOnRisk ?? true,
         bookingLink: src.bookingLink ?? "",
-        salesContext: src.salesContext ?? {},
       });
       toast({ title: "Impostazioni importate", description: `Configurazione copiata da "${sourceName}". Salva per confermare.` });
     } catch {
@@ -126,7 +212,6 @@ export function EmailAISettings({
     escalationKeywords: string[];
     stopOnRisk: boolean;
     bookingLink: string;
-    salesContext: SalesContext;
   }>({
     aiTone: "professional",
     confidenceThreshold: 0.8,
@@ -137,7 +222,6 @@ export function EmailAISettings({
     escalationKeywords: [],
     stopOnRisk: true,
     bookingLink: "",
-    salesContext: {},
   });
 
   const { data: settingsData, isLoading } = useQuery({
@@ -152,6 +236,27 @@ export function EmailAISettings({
     enabled: open && !!accountId,
   });
 
+  const { data: brandVoiceResult } = useQuery({
+    queryKey: ["/api/content/brand-voice"],
+    queryFn: async () => {
+      const res = await fetch("/api/content/brand-voice", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore brand voice");
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  useEffect(() => {
+    if (brandVoiceResult?.brandVoice && !brandVoiceLoaded) {
+      setBrandVoiceData(brandVoiceResult.brandVoice);
+      setBrandVoiceLoaded(true);
+    }
+  }, [brandVoiceResult, brandVoiceLoaded]);
+
+  useEffect(() => {
+    if (!open) setBrandVoiceLoaded(false);
+  }, [open]);
+
   useEffect(() => {
     if (settingsData?.data) {
       const s = settingsData.data as AISettings;
@@ -165,7 +270,6 @@ export function EmailAISettings({
         escalationKeywords: s.escalationKeywords || [],
         stopOnRisk: s.stopOnRisk ?? true,
         bookingLink: s.bookingLink || "",
-        salesContext: s.salesContext || {},
       });
     }
   }, [settingsData]);
@@ -206,6 +310,24 @@ export function EmailAISettings({
     },
   });
 
+  const handleSaveBrandVoice = async () => {
+    setSavingBrandVoice(true);
+    try {
+      const res = await fetch("/api/content/brand-voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ brandVoice: brandVoiceData, enabled: true }),
+      });
+      if (!res.ok) throw new Error("Errore salvataggio");
+      queryClient.invalidateQueries({ queryKey: ["/api/content/brand-voice"] });
+      toast({ title: "Brand Voice salvato", description: "Millie userà queste informazioni nelle risposte email" });
+    } catch {
+      toast({ title: "Errore", description: "Impossibile salvare il Brand Voice", variant: "destructive" });
+    } finally {
+      setSavingBrandVoice(false);
+    }
+  };
+
   const handleAddKeyword = () => {
     if (newKeyword.trim() && !formData.escalationKeywords.includes(newKeyword.trim())) {
       setFormData(prev => ({
@@ -227,6 +349,14 @@ export function EmailAISettings({
     e.preventDefault();
     saveMutation.mutate(formData);
   };
+
+  const systemPromptPreview = useMemo(() => buildClientSystemPrompt({
+    tone: formData.aiTone,
+    signature: formData.signature,
+    customInstructions: formData.customInstructions,
+    bookingLink: formData.bookingLink,
+    brandVoice: brandVoiceData,
+  }), [formData.aiTone, formData.signature, formData.customInstructions, formData.bookingLink, brandVoiceData]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -288,6 +418,57 @@ export function EmailAISettings({
         ) : (
           <ScrollArea className="max-h-[60vh] pr-4">
             <form onSubmit={handleSubmit} className="space-y-6">
+
+              <Collapsible open={capabilitiesOpen} onOpenChange={setCapabilitiesOpen}>
+                <CollapsibleTrigger asChild>
+                  <button type="button" className="w-full flex items-center justify-between p-3 rounded-lg border bg-gradient-to-r from-violet-500/5 to-blue-500/5 hover:from-violet-500/10 hover:to-blue-500/10 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Info className="h-4 w-4 text-violet-500" />
+                      <span className="font-medium text-sm">Cosa fa e cosa NON fa Millie</span>
+                    </div>
+                    {capabilitiesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-2">
+                      <h4 className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Cosa FA
+                      </h4>
+                      <ul className="text-xs text-muted-foreground space-y-1.5">
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5 shrink-0">✓</span> Risponde in italiano (o lingua configurata)</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5 shrink-0">✓</span> Cerca nella Knowledge Base per risposte accurate</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5 shrink-0">✓</span> Crea ticket per richieste urgenti o complesse</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5 shrink-0">✓</span> Suggerisce link di prenotazione se configurato</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5 shrink-0">✓</span> Analizza sentiment, urgenza e categoria</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5 shrink-0">✓</span> Usa il Brand Voice per risposte personalizzate</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5 shrink-0">✓</span> Consulta il CRM per contesto sul contatto</li>
+                        <li className="flex items-start gap-1.5"><span className="text-emerald-500 mt-0.5 shrink-0">✓</span> Blocca l'invio se rileva parole di escalation</li>
+                      </ul>
+                    </div>
+                    <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 space-y-2">
+                      <h4 className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider flex items-center gap-1">
+                        <XCircle className="h-3.5 w-3.5" />
+                        Cosa NON fa
+                      </h4>
+                      <ul className="text-xs text-muted-foreground space-y-1.5">
+                        <li className="flex items-start gap-1.5"><span className="text-red-500 mt-0.5 shrink-0">✗</span> Non invia senza approvazione (modalità revisione)</li>
+                        <li className="flex items-start gap-1.5"><span className="text-red-500 mt-0.5 shrink-0">✗</span> Non accede a sistemi esterni o siti web</li>
+                        <li className="flex items-start gap-1.5"><span className="text-red-500 mt-0.5 shrink-0">✗</span> Non gestisce pagamenti o fatturazione</li>
+                        <li className="flex items-start gap-1.5"><span className="text-red-500 mt-0.5 shrink-0">✗</span> Non risponde se la confidenza è troppo bassa</li>
+                        <li className="flex items-start gap-1.5"><span className="text-red-500 mt-0.5 shrink-0">✗</span> Non modifica o cancella dati del CRM</li>
+                        <li className="flex items-start gap-1.5"><span className="text-red-500 mt-0.5 shrink-0">✗</span> Non risponde a newsletter o email transazionali</li>
+                        <li className="flex items-start gap-1.5"><span className="text-red-500 mt-0.5 shrink-0">✗</span> Non inventa informazioni non presenti nella KB</li>
+                        <li className="flex items-start gap-1.5"><span className="text-red-500 mt-0.5 shrink-0">✗</span> Non risponde a email proprie (loop prevention)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Separator />
+
               <div className="space-y-4">
                 <h3 className="font-medium flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" />
@@ -495,136 +676,72 @@ export function EmailAISettings({
               <Separator />
 
               <div className="space-y-4">
-                <div>
-                  <h3 className="font-medium flex items-center gap-2">
-                    <Briefcase className="h-4 w-4" />
-                    Profilo Commerciale
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Queste informazioni verranno usate da Millie per generare risposte commercialmente accurate
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium flex items-center gap-2">
+                      <Palette className="h-4 w-4 text-violet-500" />
+                      Brand Voice
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Millie usa queste informazioni per generare risposte coerenti con il tuo brand
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs h-8"
+                    onClick={handleSaveBrandVoice}
+                    disabled={savingBrandVoice}
+                  >
+                    {savingBrandVoice ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Save className="h-3.5 w-3.5" />
+                    )}
+                    Salva Brand Voice
+                  </Button>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Servizi che offri</Label>
-                    <Textarea
-                      placeholder="Es: Consulenza strategica AI, Automazione processi, Formazione team..."
-                      value={formData.salesContext.servicesOffered || ""}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        salesContext: { ...prev.salesContext, servicesOffered: e.target.value }
-                      }))}
-                      rows={3}
-                      className="resize-none text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Vantaggi competitivi</Label>
-                    <Textarea
-                      placeholder="Es: 10 anni di esperienza, certificazioni, risultati misurabili..."
-                      value={formData.salesContext.competitiveAdvantages || ""}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        salesContext: { ...prev.salesContext, competitiveAdvantages: e.target.value }
-                      }))}
-                      rows={3}
-                      className="resize-none text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Target ideale</Label>
-                    <Textarea
-                      placeholder="Es: PMI italiane, settore retail e hospitality..."
-                      value={formData.salesContext.targetAudience || ""}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        salesContext: { ...prev.salesContext, targetAudience: e.target.value }
-                      }))}
-                      rows={3}
-                      className="resize-none text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Profilo cliente ideale</Label>
-                    <Textarea
-                      placeholder="Es: Imprenditori con fatturato 500k-5M, aperti all'innovazione..."
-                      value={formData.salesContext.idealClientProfile || ""}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        salesContext: { ...prev.salesContext, idealClientProfile: e.target.value }
-                      }))}
-                      rows={3}
-                      className="resize-none text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Proposta di valore</Label>
-                    <Textarea
-                      placeholder="Es: Aiutiamo le aziende a risparmiare 30% sui costi operativi con l'AI..."
-                      value={formData.salesContext.valueProposition || ""}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        salesContext: { ...prev.salesContext, valueProposition: e.target.value }
-                      }))}
-                      rows={3}
-                      className="resize-none text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Approccio vendita</Label>
-                    <Textarea
-                      placeholder="Es: Consulenza gratuita iniziale, demo personalizzata, POC 30 giorni..."
-                      value={formData.salesContext.salesApproach || ""}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        salesContext: { ...prev.salesContext, salesApproach: e.target.value }
-                      }))}
-                      rows={3}
-                      className="resize-none text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Pricing / Pacchetti</Label>
-                    <Textarea
-                      placeholder="Es: Pacchetto base da 500/mese, Premium da 1500/mese..."
-                      value={formData.salesContext.pricingInfo || ""}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        salesContext: { ...prev.salesContext, pricingInfo: e.target.value }
-                      }))}
-                      rows={3}
-                      className="resize-none text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Casi di successo</Label>
-                    <Textarea
-                      placeholder="Es: Cliente X ha aumentato il fatturato del 40% in 6 mesi..."
-                      value={formData.salesContext.caseStudies || ""}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        salesContext: { ...prev.salesContext, caseStudies: e.target.value }
-                      }))}
-                      rows={3}
-                      className="resize-none text-sm"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Contesto aggiuntivo</Label>
-                  <Textarea
-                    placeholder="Qualsiasi altra informazione utile per Millie quando risponde alle email..."
-                    value={formData.salesContext.additionalContext || ""}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      salesContext: { ...prev.salesContext, additionalContext: e.target.value }
-                    }))}
-                    rows={3}
-                    className="resize-none text-sm"
-                  />
-                </div>
+                <BrandVoiceSection
+                  data={brandVoiceData}
+                  onDataChange={setBrandVoiceData}
+                  onSave={handleSaveBrandVoice}
+                  isSaving={savingBrandVoice}
+                  compact={true}
+                  showSaveButton={false}
+                  showImportButton={false}
+                />
               </div>
+
+              <Separator />
+
+              <Collapsible open={promptOpen} onOpenChange={setPromptOpen}>
+                <CollapsibleTrigger asChild>
+                  <button type="button" className="w-full flex items-center justify-between p-3 rounded-lg border bg-gradient-to-r from-slate-500/5 to-slate-500/10 hover:from-slate-500/10 hover:to-slate-500/15 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-slate-500" />
+                      <span className="font-medium text-sm">System Prompt attivo</span>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        <Eye className="h-3 w-3 mr-1" />
+                        Preview
+                      </Badge>
+                    </div>
+                    {promptOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-3 rounded-lg border bg-slate-950 p-4">
+                    <ScrollArea className="max-h-[300px]">
+                      <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                        {systemPromptPreview}
+                      </pre>
+                    </ScrollArea>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2">
+                    Questo è il prompt base inviato a Gemini. A runtime vengono aggiunti: Knowledge Base, contesto CRM, storico conversazione e strategia adattiva.
+                  </p>
+                </CollapsibleContent>
+              </Collapsible>
 
               <DialogFooter className="gap-2 pt-4">
                 <Button
