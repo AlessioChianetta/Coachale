@@ -9,7 +9,7 @@ import { extractSalesAgentContext } from '../ai/sales-agent-context-builder';
 
 const router = Router();
 
-const requireClient = requireRole('client');
+const requireClient = requireRole('client', 'consultant');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AGGREGATED ENDPOINTS (for client dashboard)

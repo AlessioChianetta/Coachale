@@ -12,7 +12,7 @@ import { randomBytes } from 'crypto';
 
 const router = Router();
 
-const requireClient = requireRole('client');
+const requireClientOrConsultant = requireRole('client', 'consultant');
 
 // In-memory storage for generation progress (polling-based approach)
 interface GenerationState {
@@ -87,7 +87,7 @@ const AVAILABLE_TEMPLATES: TemplateInfo[] = [
   },
 ];
 
-router.get('/templates', requireClient, async (req: AuthRequest, res: Response) => {
+router.get('/templates', requireClientOrConsultant, async (req: AuthRequest, res: Response) => {
   try {
     res.json(AVAILABLE_TEMPLATES);
   } catch (error) {
@@ -96,7 +96,7 @@ router.get('/templates', requireClient, async (req: AuthRequest, res: Response) 
   }
 });
 
-router.get('/templates/:templateId', requireClient, async (req: AuthRequest, res: Response) => {
+router.get('/templates/:templateId', requireClientOrConsultant, async (req: AuthRequest, res: Response) => {
   try {
     const { templateId } = req.params;
     const targetType = req.query.targetType as string || 'b2b';
@@ -142,7 +142,7 @@ router.get('/templates/:templateId', requireClient, async (req: AuthRequest, res
   }
 });
 
-router.get('/agents', requireClient, async (req: AuthRequest, res: Response) => {
+router.get('/agents', requireClientOrConsultant, async (req: AuthRequest, res: Response) => {
   try {
     const clientId = req.user!.id;
 
@@ -172,7 +172,7 @@ router.get('/agents', requireClient, async (req: AuthRequest, res: Response) => 
 });
 
 // Polling endpoint for generation progress
-router.get('/generation-status/:generationId', requireClient, async (req: AuthRequest, res: Response) => {
+router.get('/generation-status/:generationId', requireClientOrConsultant, async (req: AuthRequest, res: Response) => {
   try {
     const { generationId } = req.params;
     const clientId = req.user!.id;
@@ -203,7 +203,7 @@ router.get('/generation-status/:generationId', requireClient, async (req: AuthRe
   }
 });
 
-router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Response) => {
+router.post('/ai-generate', requireClientOrConsultant, async (req: AuthRequest, res: Response) => {
   try {
     const clientId = req.user!.id;
     const { templateId, agentId, userComment, targetType, usePolling } = req.body;
