@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useContext } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -6,10 +6,10 @@ import { Clock, Zap } from "lucide-react";
 import {
   type FunnelNodeData,
   type EntityType,
-  CATEGORY_COLORS,
   NODE_STATUS_CONFIG,
   getNodeTypeDefinition,
 } from "./funnel-node-types";
+import { ThemeContext } from "./FunnelBuilderTab";
 
 const ACCENT_COLOR_MAP: Record<string, string> = {
   pink: "#ec4899",
@@ -24,8 +24,9 @@ const ACCENT_COLOR_MAP: Record<string, string> = {
 
 function FunnelNodeComponent({ data, selected }: NodeProps) {
   const nodeData = data as unknown as FunnelNodeData;
+  const theme = useContext(ThemeContext);
   const typeDef = getNodeTypeDefinition(nodeData.type);
-  const colors = CATEGORY_COLORS[nodeData.category] || CATEGORY_COLORS.custom;
+  const colors = theme.categoryColors[nodeData.category] || theme.categoryColors.custom;
   const Icon = typeDef?.icon;
   const status = (nodeData.status && nodeData.status in NODE_STATUS_CONFIG) ? nodeData.status : "draft";
   const statusCfg = NODE_STATUS_CONFIG[status];
@@ -34,9 +35,13 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
   return (
     <div
       className={cn(
-        "relative min-w-[180px] max-w-[220px] rounded-lg border-2 shadow-md transition-all duration-200",
+        "relative min-w-[180px] max-w-[220px] transition-all duration-200",
+        theme.node.borderRadius,
+        theme.node.borderWidth,
+        theme.node.shadow,
+        theme.node.fontFamily,
         colors.bg,
-        selected && "ring-2 ring-offset-2 ring-blue-500 shadow-lg scale-105"
+        selected && `ring-2 ring-offset-2 ${theme.node.selectedRing} scale-105`
       )}
       style={{
         borderColor: `${accentColor}40`,
@@ -47,7 +52,7 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
       <Handle
         type="target"
         position={Position.Top}
-        className="!w-3 !h-3 !bg-gray-400 dark:!bg-gray-500 !border-2 !border-white dark:!border-gray-800"
+        className={cn("!w-3 !h-3 !border-2", theme.handle.bg, theme.handle.border)}
       />
 
       <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
@@ -61,18 +66,18 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
         <div className="flex items-center gap-2 mb-1">
           {Icon && (
             <div
-              className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+              className={cn("w-7 h-7 flex items-center justify-center shrink-0", theme.node.borderRadius === "rounded-none" ? "rounded-none" : "rounded-md")}
               style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
             >
               <Icon className="w-4 h-4" />
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate text-gray-900 dark:text-gray-100">
+            <p className={cn("text-sm font-semibold truncate", theme.node.textColor)}>
               {nodeData.label}
             </p>
             {nodeData.subtitle && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              <p className={cn("text-xs truncate", theme.node.subtitleColor)}>
                 {nodeData.subtitle}
               </p>
             )}
@@ -81,12 +86,12 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
 
         <div className="flex flex-wrap items-center gap-1 mt-1">
           {nodeData.conversionRate !== undefined && nodeData.conversionRate > 0 && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+            <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0", theme.badge.bg, theme.badge.text)}>
               {nodeData.conversionRate}% conv.
             </Badge>
           )}
           {nodeData.delayMinutes != null && nodeData.delayMinutes > 0 && (
-            <Badge variant="outline" className="text-[10px] px-1 py-0 gap-0.5">
+            <Badge variant="outline" className={cn("text-[10px] px-1 py-0 gap-0.5", theme.badge.border)}>
               <Clock className="w-2.5 h-2.5" />
               {nodeData.delayMinutes >= 60
                 ? `${Math.floor(nodeData.delayMinutes / 60)}h${nodeData.delayMinutes % 60 ? ` ${nodeData.delayMinutes % 60}m` : ""}`
@@ -131,7 +136,7 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!w-3 !h-3 !bg-gray-400 dark:!bg-gray-500 !border-2 !border-white dark:!border-gray-800"
+        className={cn("!w-3 !h-3 !border-2", theme.handle.bg, theme.handle.border)}
       />
     </div>
   );
@@ -150,10 +155,15 @@ function EntityPreview({
   platform?: string;
   extra: Record<string, any>;
 }) {
+  const theme = useContext(ThemeContext);
+  const epBg = theme.entityPreview.bg;
+  const epBorder = theme.entityPreview.border;
+  const epText = theme.entityPreview.text;
+
   switch (entityType) {
     case "posts":
       return (
-        <div className="mt-2 p-1.5 rounded-md bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+        <div className={cn("mt-2 p-1.5 rounded-md border", epBg, epBorder)}>
           <div className="flex items-center gap-1.5">
             {imageUrl ? (
               <img src={imageUrl} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
@@ -163,7 +173,7 @@ function EntityPreview({
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">{name}</p>
+              <p className={cn("text-[10px] font-medium truncate", epText)}>{name}</p>
               {platform && (
                 <Badge variant="outline" className="text-[8px] px-1 py-0 mt-0.5">{platform}</Badge>
               )}
@@ -174,7 +184,7 @@ function EntityPreview({
 
     case "ai_employees":
       return (
-        <div className="mt-2 p-1.5 rounded-md bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+        <div className={cn("mt-2 p-1.5 rounded-md border", epBg, epBorder)}>
           <div className="flex items-center gap-1.5">
             <div
               className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-white text-[9px] font-bold"
@@ -183,7 +193,7 @@ function EntityPreview({
               {(extra.roleName || "?")[0]}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">{extra.roleName || name}</p>
+              <p className={cn("text-[10px] font-medium truncate", epText)}>{extra.roleName || name}</p>
               <StatusDotInline active={extra.isEnabled} />
             </div>
           </div>
@@ -192,13 +202,13 @@ function EntityPreview({
 
     case "agents":
       return (
-        <div className="mt-2 p-1.5 rounded-md bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+        <div className={cn("mt-2 p-1.5 rounded-md border", epBg, epBorder)}>
           <div className="flex items-center gap-1.5">
             <div className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
               <span className="text-[9px] font-bold text-emerald-600">WA</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">{name}</p>
+              <p className={cn("text-[10px] font-medium truncate", epText)}>{name}</p>
               {extra.phoneNumber && <p className="text-[9px] text-gray-400 truncate">{extra.phoneNumber}</p>}
             </div>
           </div>
@@ -207,13 +217,13 @@ function EntityPreview({
 
     case "booking":
       return (
-        <div className="mt-2 p-1.5 rounded-md bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+        <div className={cn("mt-2 p-1.5 rounded-md border", epBg, epBorder)}>
           <div className="flex items-center gap-1.5">
             <div className="w-6 h-6 rounded-md bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center shrink-0">
               <span className="text-[9px] font-bold text-cyan-600">📅</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">
+              <p className={cn("text-[10px] font-medium truncate", epText)}>
                 {extra.bookingSlug ? `/book/${extra.bookingSlug}` : "Prenotazione"}
               </p>
               <StatusDotInline active={extra.bookingPageEnabled} />
@@ -224,10 +234,10 @@ function EntityPreview({
 
     case "services":
       return (
-        <div className="mt-2 p-1.5 rounded-md bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+        <div className={cn("mt-2 p-1.5 rounded-md border", epBg, epBorder)}>
           <div className="flex items-center gap-1.5">
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">{name}</p>
+              <p className={cn("text-[10px] font-medium truncate", epText)}>{name}</p>
             </div>
             {extra.priceCents != null && (
               <Badge variant="secondary" className="text-[9px] px-1 py-0 font-mono shrink-0">
@@ -240,13 +250,13 @@ function EntityPreview({
 
     case "email_accounts":
       return (
-        <div className="mt-2 p-1.5 rounded-md bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+        <div className={cn("mt-2 p-1.5 rounded-md border", epBg, epBorder)}>
           <div className="flex items-center gap-1.5">
             <div className="w-6 h-6 rounded-md bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
               <span className="text-[9px] font-bold text-indigo-600">@</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">{name}</p>
+              <p className={cn("text-[10px] font-medium truncate", epText)}>{name}</p>
               <StatusDotInline active={extra.isActive} />
             </div>
           </div>
@@ -255,13 +265,13 @@ function EntityPreview({
 
     case "voice_numbers":
       return (
-        <div className="mt-2 p-1.5 rounded-md bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+        <div className={cn("mt-2 p-1.5 rounded-md border", epBg, epBorder)}>
           <div className="flex items-center gap-1.5">
             <div className="w-6 h-6 rounded-md bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
               <span className="text-[9px] font-bold text-orange-600">📞</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">{name || extra.phoneNumber}</p>
+              <p className={cn("text-[10px] font-medium truncate", epText)}>{name || extra.phoneNumber}</p>
               <StatusDotInline active={extra.isActive} />
             </div>
           </div>
@@ -270,10 +280,10 @@ function EntityPreview({
 
     case "hunter_searches":
       return (
-        <div className="mt-2 p-1.5 rounded-md bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+        <div className={cn("mt-2 p-1.5 rounded-md border", epBg, epBorder)}>
           <div className="flex items-center gap-1.5">
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">{name}</p>
+              <p className={cn("text-[10px] font-medium truncate", epText)}>{name}</p>
               {extra.resultCount != null && (
                 <Badge variant="outline" className="text-[8px] px-1 py-0 mt-0.5">{String(extra.resultCount)} risultati</Badge>
               )}
@@ -286,10 +296,10 @@ function EntityPreview({
     case "optin_config":
     case "lead_magnet":
       return (
-        <div className="mt-2 p-1.5 rounded-md bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+        <div className={cn("mt-2 p-1.5 rounded-md border", epBg, epBorder)}>
           <div className="flex items-center gap-1.5">
             <StatusDotInline active={extra.isActive || extra.hasLeadMagnet} />
-            <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">
+            <p className={cn("text-[10px] font-medium truncate", epText)}>
               {extra.headline || name}
             </p>
           </div>
@@ -298,10 +308,10 @@ function EntityPreview({
 
     case "campaigns":
       return (
-        <div className="mt-2 p-1.5 rounded-md bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+        <div className={cn("mt-2 p-1.5 rounded-md border", epBg, epBorder)}>
           <div className="flex items-center gap-1.5">
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">{name}</p>
+              <p className={cn("text-[10px] font-medium truncate", epText)}>{name}</p>
             </div>
             {extra.conversionRate != null && (
               <Badge variant="outline" className="text-[8px] px-1 py-0 shrink-0">
@@ -314,8 +324,8 @@ function EntityPreview({
 
     default:
       return (
-        <div className="mt-2 p-1.5 rounded-md bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
-          <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">{name}</p>
+        <div className={cn("mt-2 p-1.5 rounded-md border", epBg, epBorder)}>
+          <p className={cn("text-[10px] font-medium truncate", epText)}>{name}</p>
         </div>
       );
   }

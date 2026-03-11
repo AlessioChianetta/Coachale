@@ -606,16 +606,17 @@ router.post("/", authenticateToken, requireAnyRole(["consultant", "super_admin"]
     const consultantId = getConsultantId(req);
     if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
 
-    const { name, description, nodes_data, edges_data } = req.body;
+    const { name, description, nodes_data, edges_data, theme } = req.body;
 
     const result = await db.execute(sql`
-      INSERT INTO consultant_funnels (consultant_id, name, description, nodes_data, edges_data)
+      INSERT INTO consultant_funnels (consultant_id, name, description, nodes_data, edges_data, theme)
       VALUES (
         ${consultantId},
         ${name || "Nuovo Funnel"},
         ${description || null},
         ${JSON.stringify(nodes_data || [])}::jsonb,
-        ${JSON.stringify(edges_data || [])}::jsonb
+        ${JSON.stringify(edges_data || [])}::jsonb,
+        ${theme || "classico"}
       )
       RETURNING *
     `);
@@ -730,7 +731,7 @@ router.put("/:id", authenticateToken, requireAnyRole(["consultant", "super_admin
     const consultantId = getConsultantId(req);
     if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
 
-    const { name, description, nodes_data, edges_data } = req.body;
+    const { name, description, nodes_data, edges_data, theme } = req.body;
 
     const currentResult = await db.execute(sql`
       SELECT nodes_data, edges_data, name FROM consultant_funnels
@@ -776,6 +777,7 @@ router.put("/:id", authenticateToken, requireAnyRole(["consultant", "super_admin
         description = COALESCE(${description !== undefined ? description : null}, description),
         nodes_data = COALESCE(${nodes_data !== undefined ? JSON.stringify(nodes_data) : null}::jsonb, nodes_data),
         edges_data = COALESCE(${edges_data !== undefined ? JSON.stringify(edges_data) : null}::jsonb, edges_data),
+        theme = COALESCE(${theme || null}, theme),
         updated_at = NOW()
       WHERE id = ${req.params.id} AND consultant_id = ${consultantId}
       RETURNING *

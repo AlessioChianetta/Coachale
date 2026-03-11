@@ -44,6 +44,8 @@ import {
   History,
   RotateCcw,
   Link2,
+  Palette,
+  Check,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -70,6 +72,7 @@ import {
   getEntityTypeForNode,
   CATEGORY_COLORS,
 } from "./funnel-node-types";
+import { type FunnelThemeId, type FunnelTheme, getTheme, THEME_LIST } from "./funnel-themes";
 
 interface FunnelRecord {
   id: string;
@@ -77,6 +80,7 @@ interface FunnelRecord {
   description?: string;
   nodes_data: Node[];
   edges_data: Edge[];
+  theme?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -108,6 +112,8 @@ interface UndoContextType {
 }
 
 export const UndoContext = createContext<UndoContextType>({ pushHistory: () => {} });
+
+export const ThemeContext = createContext<FunnelTheme>(getTheme("classico"));
 
 function autoLayout(nodes: Node[], edges: Edge[]): Node[] {
   if (nodes.length === 0) return nodes;
@@ -148,6 +154,8 @@ function FunnelBuilderInner() {
   const [versions, setVersions] = useState<FunnelVersion[]>([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
   const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
+  const [themeId, setThemeId] = useState<FunnelThemeId>("classico");
+  const currentTheme = useMemo(() => getTheme(themeId), [themeId]);
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
@@ -247,6 +255,7 @@ function FunnelBuilderInner() {
         setFunnelName(funnel.name);
         setNodes(funnel.nodes_data || []);
         setEdges(funnel.edges_data || []);
+        setThemeId((funnel.theme as FunnelThemeId) || "classico");
         setSelectedNodeId(null);
       }
     } catch (err) {
@@ -254,7 +263,10 @@ function FunnelBuilderInner() {
     }
   };
 
-  const saveFunnel = useCallback(async (immediate = false) => {
+  const themeIdRef = useRef(themeId);
+  themeIdRef.current = themeId;
+
+  const saveFunnel = useCallback(async (immediate = false, overrideTheme?: string) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
     const doSave = async () => {
@@ -264,6 +276,7 @@ function FunnelBuilderInner() {
           name: funnelName,
           nodes_data: nodes,
           edges_data: edges,
+          theme: overrideTheme || themeIdRef.current,
         };
 
         if (activeFunnelId) {
@@ -302,13 +315,14 @@ function FunnelBuilderInner() {
     } else {
       saveTimerRef.current = setTimeout(doSave, 2000);
     }
-  }, [activeFunnelId, funnelName, nodes, edges]);
+  }, [activeFunnelId, funnelName, nodes, edges, themeId]);
 
   const createNewFunnel = () => {
     setActiveFunnelId(null);
     setFunnelName("Nuovo Funnel");
     setNodes([]);
     setEdges([]);
+    setThemeId("classico");
     setSelectedNodeId(null);
   };
 
@@ -538,7 +552,7 @@ function FunnelBuilderInner() {
 
     setSaving(true);
     try {
-      const body = { name: appliedName, nodes_data: finalNodes, edges_data: generatedEdges };
+      const body = { name: appliedName, nodes_data: finalNodes, edges_data: generatedEdges, theme: themeIdRef.current };
       if (activeFunnelId) {
         const res = await fetch(`/api/funnels/${activeFunnelId}`, {
           method: "PUT",
@@ -587,6 +601,7 @@ function FunnelBuilderInner() {
 
   return (
     <UndoContext.Provider value={undoContextValue}>
+    <ThemeContext.Provider value={currentTheme}>
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
         <DropdownMenu>
@@ -631,6 +646,41 @@ function FunnelBuilderInner() {
             </Badge>
           )}
         </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+              <Palette className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{currentTheme.label}</span>
+              <div className="flex gap-0.5">
+                {currentTheme.preview.slice(0, 4).map((c, i) => (
+                  <span key={i} className="w-2 h-2 rounded-full" style={{ backgroundColor: c }} />
+                ))}
+              </div>
+              <ChevronDown className="w-3 h-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            {THEME_LIST.map((t) => (
+              <DropdownMenuItem
+                key={t.id}
+                onClick={() => { setThemeId(t.id); saveFunnel(false, t.id); }}
+                className={cn("text-xs gap-2 cursor-pointer", t.id === themeId && "bg-accent")}
+              >
+                <div className="flex gap-0.5 shrink-0">
+                  {t.preview.map((c, i) => (
+                    <span key={i} className="w-3 h-3 rounded-sm border border-border/40" style={{ backgroundColor: c }} />
+                  ))}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">{t.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{t.description}</p>
+                </div>
+                {t.id === themeId && <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button
           variant="outline"
@@ -756,7 +806,7 @@ function FunnelBuilderInner() {
             fitViewOptions={{ padding: 0.2 }}
             defaultEdgeOptions={{ type: "funnelEdge" }}
             deleteKeyCode={["Backspace", "Delete"]}
-            className="bg-gray-50 dark:bg-gray-950"
+            className={currentTheme.canvas.bg}
             proOptions={{ hideAttribution: true }}
           >
             <Controls
@@ -768,16 +818,16 @@ function FunnelBuilderInner() {
               maskColor="rgba(0,0,0,0.08)"
               nodeColor={(node) => {
                 const data = node.data as any;
-                const colors = CATEGORY_COLORS[data?.category as keyof typeof CATEGORY_COLORS];
-                return colors?.accent || "#6b7280";
+                const cat = data?.category as keyof typeof CATEGORY_COLORS;
+                const themeColors = currentTheme.categoryColors[cat];
+                return themeColors?.accent || "#6b7280";
               }}
             />
             <Background
               variant={BackgroundVariant.Dots}
-              gap={20}
-              size={1}
-              color="#d1d5db"
-              className="dark:!opacity-20"
+              gap={currentTheme.canvas.dotGap}
+              size={currentTheme.canvas.dotSize}
+              color={currentTheme.canvas.dotColor}
             />
           </ReactFlow>
         </div>
@@ -881,6 +931,7 @@ function FunnelBuilderInner() {
         </SheetContent>
       </Sheet>
     </div>
+    </ThemeContext.Provider>
     </UndoContext.Provider>
   );
 }

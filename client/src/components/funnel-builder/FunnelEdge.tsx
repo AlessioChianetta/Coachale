@@ -7,7 +7,7 @@ import {
   type EdgeProps,
 } from "@xyflow/react";
 import { X } from "lucide-react";
-import { UndoContext } from "./FunnelBuilderTab";
+import { UndoContext, ThemeContext } from "./FunnelBuilderTab";
 
 export function FunnelEdge({
   id,
@@ -24,6 +24,7 @@ export function FunnelEdge({
   const [hovered, setHovered] = useState(false);
   const { setEdges } = useReactFlow();
   const { pushHistory } = useContext(UndoContext);
+  const theme = useContext(ThemeContext);
 
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
@@ -49,8 +50,8 @@ export function FunnelEdge({
         markerEnd={markerEnd}
         style={{
           ...style,
-          strokeWidth: selected ? 3 : 2,
-          stroke: selected ? "#6366f1" : "#94a3b8",
+          strokeWidth: selected ? theme.edge.strokeWidth + 1 : theme.edge.strokeWidth,
+          stroke: selected ? theme.edge.selectedColor : theme.edge.color,
         }}
       />
       <path
@@ -62,12 +63,16 @@ export function FunnelEdge({
         onMouseLeave={() => setHovered(false)}
         style={{ cursor: "pointer" }}
       />
-      <circle r="3" fill="#6366f1">
-        <animateMotion dur="2s" repeatCount="indefinite" path={edgePath} />
-      </circle>
-      <circle r="3" fill="#6366f1" opacity="0.5">
-        <animateMotion dur="2s" repeatCount="indefinite" path={edgePath} begin="1s" />
-      </circle>
+      {theme.edge.animated && (
+        <>
+          <circle r="3" fill={theme.edge.animationColor}>
+            <animateMotion dur="2s" repeatCount="indefinite" path={edgePath} />
+          </circle>
+          <circle r="3" fill={theme.edge.animationColor} opacity="0.5">
+            <animateMotion dur="2s" repeatCount="indefinite" path={edgePath} begin="1s" />
+          </circle>
+        </>
+      )}
       {showDelete && (
         <EdgeLabelRenderer>
           <div
