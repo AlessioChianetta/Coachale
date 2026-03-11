@@ -171,7 +171,12 @@ router.post("/", authenticateToken, async (req: AuthRequest, res) => {
     console.log(`[SalesAgentConfig] POST create agent for client ${userId}`);
 
     const user = await storage.getUser(userId);
-    if (!user || !user.consultantId) {
+    if (!user) {
+      return res.status(400).json({ message: "Utente non trovato" });
+    }
+
+    const consultantId = userRole === "consultant" ? userId : user.consultantId;
+    if (!consultantId) {
       return res.status(400).json({ message: "Utente non associato a un consulente" });
     }
 
@@ -188,7 +193,7 @@ router.post("/", authenticateToken, async (req: AuthRequest, res) => {
     const agent = await storage.createClientSalesAgent({
       ...validatedData,
       clientId: userId,
-      consultantId: user.consultantId,
+      consultantId,
       shareToken,
     });
 
