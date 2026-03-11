@@ -1703,7 +1703,10 @@ export async function classifyAndGenerateDraft(
           sql`DELETE FROM ai_scheduled_tasks
               WHERE consultant_id = ${consultantId}
               AND status IN ('pending', 'scheduled')
-              AND metadata->>'targetEmail' = ${normalizedEmail}`
+              AND (
+                result_data->>'target_email' = ${normalizedEmail}
+                OR additional_context::text LIKE ${'%' + normalizedEmail + '%'}
+              )`
         );
       } catch (err: any) {
         console.error(`[MILLIE-ACTION] Error marking lead as lost:`, err.message);
