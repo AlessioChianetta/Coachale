@@ -1,0 +1,146 @@
+[ScriptManager] 🔍 Fetching human sellers...
+injected.js:214  GET https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/api/client/human-sellers/with-script-assignments 403 (Forbidden)
+apply @ injected.js:214
+queryFn @ client-script-manager.tsx:224
+fetchFn @ @tanstack_react-query.js?v=2547ce87:1101
+run @ @tanstack_react-query.js?v=2547ce87:800
+start @ @tanstack_react-query.js?v=2547ce87:843
+fetch @ @tanstack_react-query.js?v=2547ce87:1148
+executeFetch_fn @ @tanstack_react-query.js?v=2547ce87:1651
+onSubscribe @ @tanstack_react-query.js?v=2547ce87:1344
+subscribe @ @tanstack_react-query.js?v=2547ce87:24
+(anonymous) @ @tanstack_react-query.js?v=2547ce87:3313
+subscribeToStore @ chunk-XQLYTHWV.js?v=2547ce87:11984
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=2547ce87:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=2547ce87:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=2547ce87:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=2547ce87:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=2547ce87:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=2547ce87:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=2547ce87:19447
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=2547ce87:18868
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=2547ce87:9119
+commitRootImpl @ chunk-XQLYTHWV.js?v=2547ce87:19432
+commitRoot @ chunk-XQLYTHWV.js?v=2547ce87:19277
+finishConcurrentRender @ chunk-XQLYTHWV.js?v=2547ce87:18805
+performConcurrentWorkOnRoot @ chunk-XQLYTHWV.js?v=2547ce87:18718
+workLoop @ chunk-XQLYTHWV.js?v=2547ce87:197
+flushWork @ chunk-XQLYTHWV.js?v=2547ce87:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=2547ce87:384Understand this error
+injected.js:37 [ScriptManager] 📡 Response status: 403
+injected.js:37 [ScriptManager] ❌ Error response: {"message":"client access required"}
+(anonymous) @ injected.js:37
+queryFn @ client-script-manager.tsx:229
+await in queryFn
+fetchFn @ @tanstack_react-query.js?v=2547ce87:1101
+run @ @tanstack_react-query.js?v=2547ce87:800
+start @ @tanstack_react-query.js?v=2547ce87:843
+fetch @ @tanstack_react-query.js?v=2547ce87:1148
+executeFetch_fn @ @tanstack_react-query.js?v=2547ce87:1651
+onSubscribe @ @tanstack_react-query.js?v=2547ce87:1344
+subscribe @ @tanstack_react-query.js?v=2547ce87:24
+(anonymous) @ @tanstack_react-query.js?v=2547ce87:3313
+subscribeToStore @ chunk-XQLYTHWV.js?v=2547ce87:11984
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=2547ce87:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=2547ce87:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=2547ce87:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=2547ce87:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=2547ce87:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=2547ce87:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=2547ce87:19447
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=2547ce87:18868
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=2547ce87:9119
+commitRootImpl @ chunk-XQLYTHWV.js?v=2547ce87:19432
+commitRoot @ chunk-XQLYTHWV.js?v=2547ce87:19277
+finishConcurrentRender @ chunk-XQLYTHWV.js?v=2547ce87:18805
+performConcurrentWorkOnRoot @ chunk-XQLYTHWV.js?v=2547ce87:18718
+workLoop @ chunk-XQLYTHWV.js?v=2547ce87:197
+flushWork @ chunk-XQLYTHWV.js?v=2547ce87:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=2547ce87:384Understand this error
+injected.js:37 Heartbeat sent successfully
+injected.js:37 WARNING: Panel id and order props recommended when panels are dynamically rendered
+(anonymous) @ injected.js:37
+(anonymous) @ react-resizable-panels.js?v=2547ce87:1567
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=2547ce87:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=2547ce87:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=2547ce87:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=2547ce87:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=2547ce87:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=2547ce87:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=2547ce87:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=2547ce87:19416
+commitRoot @ chunk-XQLYTHWV.js?v=2547ce87:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=2547ce87:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=2547ce87:9119
+(anonymous) @ chunk-XQLYTHWV.js?v=2547ce87:18627Understand this warning
+injected.js:214  GET https://23023ace-a259-44e5-9cf7-50b1c07cb4a2-00-26iclljdneby2.picard.replit.dev/api/script-builder/agents 403 (Forbidden)
+apply @ injected.js:214
+(anonymous) @ ModeSelector.tsx:109
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=2547ce87:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=2547ce87:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=2547ce87:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=2547ce87:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=2547ce87:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=2547ce87:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=2547ce87:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=2547ce87:19416
+commitRoot @ chunk-XQLYTHWV.js?v=2547ce87:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=2547ce87:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=2547ce87:9119
+flushSync @ chunk-XQLYTHWV.js?v=2547ce87:18959
+flushSync$1 @ chunk-XQLYTHWV.js?v=2547ce87:21538
+dispatchDiscreteCustomEvent @ chunk-5M2HEEEW.js?v=2547ce87:151
+handleSelect @ @radix-ui_react-dropdown-menu.js?v=2547ce87:528
+handleEvent @ chunk-E5NDDLFL.js?v=2547ce87:96
+callCallback2 @ chunk-XQLYTHWV.js?v=2547ce87:3674
+invokeGuardedCallbackDev @ chunk-XQLYTHWV.js?v=2547ce87:3699
+invokeGuardedCallback @ chunk-XQLYTHWV.js?v=2547ce87:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-XQLYTHWV.js?v=2547ce87:3736
+executeDispatch @ chunk-XQLYTHWV.js?v=2547ce87:7014
+processDispatchQueueItemsInOrder @ chunk-XQLYTHWV.js?v=2547ce87:7034
+processDispatchQueue @ chunk-XQLYTHWV.js?v=2547ce87:7043
+dispatchEventsForPlugins @ chunk-XQLYTHWV.js?v=2547ce87:7051
+(anonymous) @ chunk-XQLYTHWV.js?v=2547ce87:7174
+batchedUpdates$1 @ chunk-XQLYTHWV.js?v=2547ce87:18913
+batchedUpdates @ chunk-XQLYTHWV.js?v=2547ce87:3579
+dispatchEventForPluginEventSystem @ chunk-XQLYTHWV.js?v=2547ce87:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-XQLYTHWV.js?v=2547ce87:5478
+dispatchEvent @ chunk-XQLYTHWV.js?v=2547ce87:5472
+dispatchDiscreteEvent @ chunk-XQLYTHWV.js?v=2547ce87:5449Understand this error
+injected.js:37 Error loading agents: Error: Failed to load agents
+    at ModeSelector.tsx:113:30
+(anonymous) @ injected.js:37
+(anonymous) @ ModeSelector.tsx:125
+Promise.catch
+(anonymous) @ ModeSelector.tsx:124
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=2547ce87:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=2547ce87:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=2547ce87:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=2547ce87:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=2547ce87:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=2547ce87:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=2547ce87:19447
+commitRootImpl @ chunk-XQLYTHWV.js?v=2547ce87:19416
+commitRoot @ chunk-XQLYTHWV.js?v=2547ce87:19277
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=2547ce87:18895
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=2547ce87:9119
+flushSync @ chunk-XQLYTHWV.js?v=2547ce87:18959
+flushSync$1 @ chunk-XQLYTHWV.js?v=2547ce87:21538
+dispatchDiscreteCustomEvent @ chunk-5M2HEEEW.js?v=2547ce87:151
+handleSelect @ @radix-ui_react-dropdown-menu.js?v=2547ce87:528
+handleEvent @ chunk-E5NDDLFL.js?v=2547ce87:96
+callCallback2 @ chunk-XQLYTHWV.js?v=2547ce87:3674
+invokeGuardedCallbackDev @ chunk-XQLYTHWV.js?v=2547ce87:3699
+invokeGuardedCallback @ chunk-XQLYTHWV.js?v=2547ce87:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-XQLYTHWV.js?v=2547ce87:3736
+executeDispatch @ chunk-XQLYTHWV.js?v=2547ce87:7014
+processDispatchQueueItemsInOrder @ chunk-XQLYTHWV.js?v=2547ce87:7034
+processDispatchQueue @ chunk-XQLYTHWV.js?v=2547ce87:7043
+dispatchEventsForPlugins @ chunk-XQLYTHWV.js?v=2547ce87:7051
+(anonymous) @ chunk-XQLYTHWV.js?v=2547ce87:7174
+batchedUpdates$1 @ chunk-XQLYTHWV.js?v=2547ce87:18913
+batchedUpdates @ chunk-XQLYTHWV.js?v=2547ce87:3579
+dispatchEventForPluginEventSystem @ chunk-XQLYTHWV.js?v=2547ce87:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-XQLYTHWV.js?v=2547ce87:5478
+dispatchEvent @ chunk-XQLYTHWV.js?v=2547ce87:5472
+dispatchDiscreteEvent @ chunk-XQLYTHWV.js?v=2547ce87:5449Understand this error

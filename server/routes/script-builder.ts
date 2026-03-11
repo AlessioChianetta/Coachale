@@ -4,7 +4,7 @@ import { clientSalesAgents, users } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { getDiscoveryScript, getDemoScript, getObjectionsScript } from '../ai/sales-scripts-base';
 import { getDiscoveryScript as getDiscoveryScriptB2C, getDemoScript as getDemoScriptB2C, getObjectionsScript as getObjectionsScriptB2C } from '../ai/sales-scripts-base-B2C';
-import { AuthRequest, requireRole } from '../middleware/auth';
+import { AuthRequest, requireRole, requireAnyRole } from '../middleware/auth';
 import { parseTextToBlocks } from '../../shared/script-parser';
 import type { ScriptBlockStructure } from '../../shared/script-blocks';
 import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
@@ -12,7 +12,7 @@ import { randomBytes } from 'crypto';
 
 const router = Router();
 
-const requireClientOrConsultant = requireRole('client', 'consultant');
+const requireClientOrConsultant = requireAnyRole(['client', 'consultant']);
 
 // In-memory storage for generation progress (polling-based approach)
 interface GenerationState {

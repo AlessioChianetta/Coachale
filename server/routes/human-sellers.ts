@@ -2,14 +2,14 @@ import { Router, Response } from 'express';
 import { db } from '../db';
 import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts, videoMeetingAnalytics, users, humanSellerCoachingEvents, humanSellerSessionMetrics, humanSellerPerformanceSummary, humanSellerScriptAssignments, humanSellerMeetingTraining } from '@shared/schema';
 import { eq, and, desc, asc, gte, lte, sql, count, inArray } from 'drizzle-orm';
-import { AuthRequest, authenticateToken, requireRole } from '../middleware/auth';
+import { AuthRequest, authenticateToken, requireRole, requireAnyRole } from '../middleware/auth';
 import { nanoid } from 'nanoid';
 import { OAuth2Client } from 'google-auth-library';
 import { extractSalesAgentContext } from '../ai/sales-agent-context-builder';
 
 const router = Router();
 
-const requireClient = requireRole('client', 'consultant');
+const requireClient = requireAnyRole(['client', 'consultant']);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AGGREGATED ENDPOINTS (for client dashboard)
