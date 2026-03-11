@@ -170,6 +170,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const [productionConceptTypes, setProductionConceptTypes] = useState<string[]>([]);
   const [showProductionTypePicker, setShowProductionTypePicker] = useState(false);
+  const [queueExpanded, setQueueExpanded] = useState(false);
   const [isAddingProductionConcepts, setIsAddingProductionConcepts] = useState(false);
 
   const { data: sessionsData, refetch: refetchSessions } = useQuery({
@@ -1299,68 +1300,50 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
               ) : (
                 <div className="flex flex-col gap-6">
                   <div className={`sticky top-[72px] z-20 rounded-xl border backdrop-blur-md ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
+                    {/* Header row */}
                     <div className="flex items-center gap-3 px-4 py-3">
-                      <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap shrink-0">Coda Elaborata</span>
-                      <div className="flex-1 overflow-x-auto">
-                        <div className="flex items-center gap-2 py-0.5">
-                          {batchResults.map((p, qIdx) => {
-                            const hasImage = generatedImages.some(img => p.concepts.some(c => c.id === img.conceptId));
-                            const isGenerating = p.concepts.some(c => generatingIds.has(c.id));
-                            const imageCount = generatedImages.filter(img => p.concepts.some(c => c.id === img.conceptId)).length;
-                            const isActive = activePostId === p.id;
-                            // Look up folder from existingPosts
-                            const srcPost = p.sourcePostId ? (existingPosts as ContentPost[]).find(ep => ep.id === p.sourcePostId) : null;
-                            const folderName = srcPost?.folder?.name;
-                            const folderType = srcPost?.folder?.folderType;
-                            const folderColor = srcPost?.folder?.color;
-                            
-                            return (
-                              <button
-                                key={p.id}
-                                onClick={() => setActivePostId(p.id)}
-                                title={`${p.sourcePostTitle || p.context.sector}${folderName ? ` · ${folderName}` : ''}`}
-                                className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all text-left ${
-                                  isActive
-                                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/20'
-                                    : isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-500' : 'bg-white border-slate-200 hover:bg-indigo-50 hover:border-indigo-200'
-                                }`}
-                              >
-                                {/* Index badge */}
-                                <span className={`text-[9px] font-bold w-4 text-center shrink-0 ${isActive ? 'text-indigo-200' : 'text-muted-foreground'}`}>
-                                  {qIdx + 1}
-                                </span>
-                                {/* Platform icon + status dot */}
-                                <div className="relative shrink-0">
-                                  {getPlatformIcon(p.socialNetwork)}
-                                  {isGenerating && <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full border border-white animate-pulse" />}
-                                  {!isGenerating && hasImage && <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-white" />}
-                                </div>
-                                {/* Title + folder */}
-                                <div className="min-w-0 max-w-[110px]">
-                                  {folderName && (
-                                    <div className={`flex items-center gap-0.5 text-[8px] font-semibold truncate leading-none mb-0.5 ${isActive ? 'text-indigo-200' : folderType === 'project' ? 'text-indigo-400' : 'text-slate-400'}`}>
-                                      {folderType === 'project'
-                                        ? <FolderOpen className="w-2 h-2 shrink-0" style={{ color: !isActive && folderColor ? folderColor : undefined }} />
-                                        : <FolderIcon className="w-2 h-2 shrink-0" style={{ color: !isActive && folderColor ? folderColor : undefined }} />
-                                      }
-                                      <span className="truncate">{folderName}</span>
-                                    </div>
-                                  )}
-                                  <p className="text-[11px] font-semibold truncate leading-tight">
-                                    {p.sourcePostTitle || p.context.sector}
-                                  </p>
-                                </div>
-                                {/* Image count chip */}
-                                {imageCount > 0 && (
-                                  <span className={`shrink-0 text-[9px] font-semibold px-1 py-0.5 rounded ${isActive ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'}`}>
-                                    {imageCount}🖼
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
+                      {/* Expand toggle + summary */}
+                      <button
+                        onClick={() => setQueueExpanded(q => !q)}
+                        className={`flex items-center gap-2 shrink-0 rounded-lg px-2.5 py-1.5 border transition-all ${
+                          queueExpanded
+                            ? isDark ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-600'
+                            : isDark ? 'border-slate-700 hover:bg-slate-800 text-muted-foreground' : 'border-slate-200 hover:bg-slate-50 text-muted-foreground'
+                        }`}
+                      >
+                        {queueExpanded ? <ChevronUp className="w-3.5 h-3.5 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0" />}
+                        <span className="text-xs font-semibold whitespace-nowrap">Coda</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+                          {batchResults.length}
+                        </span>
+                      </button>
+
+                      {/* Active post summary (compact, always visible) */}
+                      {activePost && (() => {
+                        const activeIdx = batchResults.findIndex(p => p.id === activePostId);
+                        const srcPost = activePost.sourcePostId ? (existingPosts as ContentPost[]).find(ep => ep.id === activePost.sourcePostId) : null;
+                        const folderName = srcPost?.folder?.name;
+                        const folderType = srcPost?.folder?.folderType;
+                        return (
+                          <div className="flex-1 min-w-0 flex items-center gap-2">
+                            <span className={`text-[10px] font-bold shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                              #{activeIdx + 1}
+                            </span>
+                            {getPlatformIcon(activePost.socialNetwork)}
+                            {folderName && (
+                              <span className={`flex items-center gap-1 text-[10px] font-semibold shrink-0 ${folderType === 'project' ? 'text-indigo-500' : 'text-slate-400'}`}>
+                                {folderType === 'project' ? <FolderOpen className="w-3 h-3" /> : <FolderIcon className="w-3 h-3" />}
+                                <span className="max-w-[80px] truncate">{folderName}</span>
+                                <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>/</span>
+                              </span>
+                            )}
+                            <span className="text-xs font-semibold truncate">
+                              {activePost.sourcePostTitle || activePost.context.sector}
+                            </span>
+                          </div>
+                        );
+                      })()}
+
                       <div className="flex items-center gap-2 shrink-0">
                         {currentSessionId && (
                           <span className="text-[10px] text-emerald-500 flex items-center">
@@ -1408,6 +1391,74 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                         </Button>
                       </div>
                     </div>
+
+                    {/* Expandable vertical queue panel */}
+                    {queueExpanded && (
+                      <div className={`border-t px-4 py-3 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {batchResults.map((p, qIdx) => {
+                            const hasImage = generatedImages.some(img => p.concepts.some(c => c.id === img.conceptId));
+                            const isGenerating = p.concepts.some(c => generatingIds.has(c.id));
+                            const imageCount = generatedImages.filter(img => p.concepts.some(c => c.id === img.conceptId)).length;
+                            const isActive = activePostId === p.id;
+                            const srcPost = p.sourcePostId ? (existingPosts as ContentPost[]).find(ep => ep.id === p.sourcePostId) : null;
+                            const folderName = srcPost?.folder?.name;
+                            const folderType = srcPost?.folder?.folderType;
+                            const folderColor = srcPost?.folder?.color;
+
+                            return (
+                              <button
+                                key={p.id}
+                                onClick={() => { setActivePostId(p.id); setQueueExpanded(false); }}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all text-left w-full ${
+                                  isActive
+                                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/20'
+                                    : isDark ? 'bg-slate-800/60 border-slate-700 hover:bg-slate-700 hover:border-slate-500' : 'bg-slate-50 border-slate-200 hover:bg-indigo-50 hover:border-indigo-200'
+                                }`}
+                              >
+                                {/* Number */}
+                                <span className={`text-[10px] font-bold w-5 text-center shrink-0 ${isActive ? 'text-indigo-200' : 'text-muted-foreground'}`}>
+                                  {qIdx + 1}
+                                </span>
+                                {/* Platform + status */}
+                                <div className="relative shrink-0">
+                                  {getPlatformIcon(p.socialNetwork)}
+                                  {isGenerating && <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full border border-white animate-pulse" />}
+                                  {!isGenerating && hasImage && <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-white" />}
+                                </div>
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                  {folderName && (
+                                    <div className={`flex items-center gap-0.5 text-[9px] font-semibold truncate leading-none mb-0.5 ${isActive ? 'text-indigo-200' : folderType === 'project' ? 'text-indigo-400' : 'text-slate-400'}`}>
+                                      {folderType === 'project'
+                                        ? <FolderOpen className="w-2.5 h-2.5 shrink-0" style={{ color: !isActive && folderColor ? folderColor : undefined }} />
+                                        : <FolderIcon className="w-2.5 h-2.5 shrink-0" style={{ color: !isActive && folderColor ? folderColor : undefined }} />
+                                      }
+                                      <span className="truncate">{folderName}</span>
+                                    </div>
+                                  )}
+                                  <p className="text-xs font-semibold truncate leading-tight">
+                                    {p.sourcePostTitle || p.context.sector}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className={`text-[9px] ${isActive ? 'text-indigo-200' : 'text-muted-foreground'}`}>
+                                      {p.concepts.length} concept
+                                    </span>
+                                    {imageCount > 0 && (
+                                      <span className={`text-[9px] flex items-center gap-0.5 font-semibold ${isActive ? 'text-emerald-300' : 'text-emerald-500'}`}>
+                                        <ImageIcon className="w-2.5 h-2.5" />
+                                        {imageCount} immagini
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {isActive && <Check className="w-4 h-4 shrink-0 text-white" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Production concept type picker */}
