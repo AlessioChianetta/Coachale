@@ -769,6 +769,44 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
               {!batchResults.length ? (
                 <div className="flex flex-col lg:flex-row gap-8">
                   <aside className="lg:w-80 shrink-0 space-y-6">
+                    <Card className={`border-2 ${isDark ? 'border-indigo-500/50 bg-gradient-to-b from-indigo-950/40 to-slate-900/50' : 'border-indigo-400/60 bg-gradient-to-b from-indigo-50 to-white'}`}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                          <div className={`p-1.5 rounded-lg ${isDark ? 'bg-indigo-500/20' : 'bg-indigo-100'}`}>
+                            <FileText className="w-4 h-4 text-indigo-500" />
+                          </div>
+                          Importa Contenuti
+                        </CardTitle>
+                        <p className={`text-[11px] leading-snug ${isDark ? 'text-indigo-300/70' : 'text-indigo-600/70'}`}>
+                          Importa i tuoi post per generare inserzioni visive
+                        </p>
+                      </CardHeader>
+                      <CardContent className="space-y-2.5">
+                        <Button
+                          className="w-full justify-start bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white h-10 text-xs font-semibold"
+                          onClick={() => setShowImportDialog(true)}
+                        >
+                          <FileText className="w-4 h-4 mr-2 shrink-0" />
+                          Importa da Post Esistenti
+                          <Badge className="ml-auto bg-white/20 text-white border-0 text-[10px]">{existingPosts.length}</Badge>
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          className={`w-full justify-start h-10 text-xs font-medium ${isDark ? 'border-indigo-500/30 hover:bg-indigo-500/10' : 'border-indigo-300 hover:bg-indigo-50'}`}
+                          onClick={fetchFromExternalSource}
+                          disabled={isFetchingFromSource}
+                        >
+                          {isFetchingFromSource ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4 mr-2 text-indigo-500" />
+                          )}
+                          Importa da Generatore
+                        </Button>
+                      </CardContent>
+                    </Card>
+
                     <Card className={isDark ? 'bg-slate-900/50 border-slate-800' : ''}>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -1009,43 +1047,6 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                       </CardContent>
                     </Card>
 
-                    <Card className={`border-2 ${isDark ? 'border-indigo-500/50 bg-gradient-to-b from-indigo-950/40 to-slate-900/50' : 'border-indigo-400/60 bg-gradient-to-b from-indigo-50 to-white'}`}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-bold flex items-center gap-2">
-                          <div className={`p-1.5 rounded-lg ${isDark ? 'bg-indigo-500/20' : 'bg-indigo-100'}`}>
-                            <FileText className="w-4 h-4 text-indigo-500" />
-                          </div>
-                          Importa Contenuti
-                        </CardTitle>
-                        <p className={`text-[11px] leading-snug ${isDark ? 'text-indigo-300/70' : 'text-indigo-600/70'}`}>
-                          Importa i tuoi post per generare inserzioni visive
-                        </p>
-                      </CardHeader>
-                      <CardContent className="space-y-2.5">
-                        <Button
-                          className="w-full justify-start bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white h-10 text-xs font-semibold"
-                          onClick={() => setShowImportDialog(true)}
-                        >
-                          <FileText className="w-4 h-4 mr-2 shrink-0" />
-                          Importa da Post Esistenti
-                          <Badge className="ml-auto bg-white/20 text-white border-0 text-[10px]">{existingPosts.length}</Badge>
-                        </Button>
-                        
-                        <Button
-                          variant="outline"
-                          className={`w-full justify-start h-10 text-xs font-medium ${isDark ? 'border-indigo-500/30 hover:bg-indigo-500/10' : 'border-indigo-300 hover:bg-indigo-50'}`}
-                          onClick={fetchFromExternalSource}
-                          disabled={isFetchingFromSource}
-                        >
-                          {isFetchingFromSource ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-4 h-4 mr-2 text-indigo-500" />
-                          )}
-                          Importa da Generatore
-                        </Button>
-                      </CardContent>
-                    </Card>
                   </aside>
 
                   <div className="flex-1 space-y-4">
