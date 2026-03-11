@@ -160,6 +160,7 @@ export function EmailAISettings({
   const [brandVoiceData, setBrandVoiceData] = useState<BrandVoiceData>({});
   const [brandVoiceLoaded, setBrandVoiceLoaded] = useState(false);
   const [savingBrandVoice, setSavingBrandVoice] = useState(false);
+  const [importingFromAgent, setImportingFromAgent] = useState(false);
 
   const { data: accountsData } = useQuery({
     queryKey: ["/api/email-hub/accounts"],
@@ -245,6 +246,82 @@ export function EmailAISettings({
     },
     enabled: open,
   });
+
+  const { data: agentsList } = useQuery({
+    queryKey: ["/api/whatsapp/agents-by-account"],
+    queryFn: async () => {
+      const res = await fetch("/api/whatsapp/agents-by-account", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore caricamento agenti");
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const allAgents: Array<{ id: string; agentName: string }> = useMemo(() => {
+    if (!agentsList) return [];
+    if (Array.isArray(agentsList)) {
+      return agentsList.flatMap((group: { agents?: Array<{ id: string; agentName: string }> }) =>
+        (group.agents ?? []).map((a) => ({ id: a.id, agentName: a.agentName }))
+      );
+    }
+    if (agentsList.data && Array.isArray(agentsList.data)) {
+      return agentsList.data.flatMap((group: { agents?: Array<{ id: string; agentName: string }> }) =>
+        (group.agents ?? []).map((a) => ({ id: a.id, agentName: a.agentName }))
+      );
+    }
+    return [];
+  }, [agentsList]);
+
+  const handleImportFromAgent = async (agentId: string, agentName: string) => {
+    setImportingFromAgent(true);
+    try {
+      const res = await fetch(`/api/whatsapp/agents/${agentId}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore caricamento agente");
+      const json = await res.json();
+      const agent = json?.data ?? json;
+      const imported: BrandVoiceData = {};
+      if (agent.businessName) imported.businessName = agent.businessName;
+      if (agent.businessDescription) imported.businessDescription = agent.businessDescription;
+      if (agent.consultantBio) imported.consultantBio = agent.consultantBio;
+      if (agent.consultantDisplayName) imported.consultantDisplayName = agent.consultantDisplayName;
+      if (agent.vision) imported.vision = agent.vision;
+      if (agent.mission) imported.mission = agent.mission;
+      if (agent.usp) imported.usp = agent.usp;
+      if (agent.whoWeHelp) imported.whoWeHelp = agent.whoWeHelp;
+      if (agent.whatWeDo) imported.whatWeDo = agent.whatWeDo;
+      if (agent.howWeDoIt) imported.howWeDoIt = agent.howWeDoIt;
+      if (agent.guarantees) imported.guarantees = agent.guarantees;
+      if (agent.personalTone) imported.personalTone = agent.personalTone;
+      if (agent.contentPersonality) imported.contentPersonality = agent.contentPersonality;
+      if (Array.isArray(agent.values)) imported.values = agent.values;
+      if (Array.isArray(agent.servicesOffered)) {
+        imported.servicesOffered = agent.servicesOffered.map((s: Record<string, string>) => ({
+          name: s.name || "",
+          price: s.investment || s.price || "",
+          description: s.description || "",
+        }));
+      }
+      if (Array.isArray(agent.caseStudies)) {
+        imported.caseStudies = agent.caseStudies.map((c: Record<string, string>) => ({
+          client: c.clientName || c.client || c.sector || "",
+          result: c.after || c.result || "",
+        }));
+      }
+      if (agent.yearsExperience) imported.yearsExperience = agent.yearsExperience;
+      if (agent.clientsHelped) imported.clientsHelped = agent.clientsHelped;
+      if (agent.resultsGenerated) imported.resultsGenerated = agent.resultsGenerated;
+      if (agent.brandVoiceData && typeof agent.brandVoiceData === "object") {
+        setBrandVoiceData({ ...imported, ...agent.brandVoiceData });
+      } else {
+        setBrandVoiceData(imported);
+      }
+      toast({ title: "Brand Voice importato", description: `Dati caricati dall'agente "${agentName}". Salva Brand Voice per confermare.` });
+    } catch {
+      toast({ title: "Errore", description: "Impossibile importare il Brand Voice dall'agente", variant: "destructive" });
+    } finally {
+      setImportingFromAgent(false);
+    }
+  };
 
   useEffect(() => {
     if (brandVoiceResult?.brandVoice && !brandVoiceLoaded) {
