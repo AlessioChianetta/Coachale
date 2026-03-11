@@ -99,7 +99,7 @@ function Section({ title, icon: Icon, defaultOpen = true, children }: {
           <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
         )}
       </button>
-      {open && <div className="p-3 space-y-3">{children}</div>}
+      {open && <div className="p-3 space-y-3 overflow-hidden">{children}</div>}
     </div>
   );
 }
@@ -275,8 +275,8 @@ export function NodeConfigPanel({
         </Button>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-3 space-y-3">
+      <ScrollArea className="flex-1 overflow-hidden">
+        <div className="p-3 space-y-3 overflow-hidden">
           <Section title="Informazioni Base" icon={Settings2} defaultOpen={true}>
             <div className="space-y-1.5">
               <FieldLabel>Titolo</FieldLabel>
@@ -516,7 +516,7 @@ export function NodeConfigPanel({
               </div>
             ) : (
               <>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 overflow-hidden">
                   <div className="flex items-center justify-between">
                     <FieldLabel>{getEntityLabel(entityType!)}</FieldLabel>
                     {currentLinked.length > 0 && (
@@ -525,9 +525,9 @@ export function NodeConfigPanel({
                   </div>
 
                   {currentLinked.length > 0 && (
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 overflow-hidden">
                       {currentLinked.map((le) => (
-                        <div key={le.entityId} className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div key={le.entityId} className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden max-w-full">
                           <LinkedEntityCard entity={le} />
                           <div className="flex gap-1 p-1.5 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
                             <Button
@@ -566,7 +566,7 @@ export function NodeConfigPanel({
                 </div>
 
                 {showEntityPicker && (
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden max-w-full">
                     <div className="p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 space-y-1.5">
                       <Input
                         placeholder="Cerca..."
@@ -591,7 +591,7 @@ export function NodeConfigPanel({
                       )}
                     </div>
 
-                    <div className="max-h-48 overflow-y-auto">
+                    <div className="max-h-48 overflow-y-auto overflow-x-hidden">
                       {loadingEntities ? (
                         <div className="flex items-center justify-center py-4">
                           <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
@@ -1070,7 +1070,7 @@ function EntityPickerItem({ entity, entityType, onClick }: { entity: EntityItem;
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+      className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left overflow-hidden min-w-0"
     >
       {renderContent()}
     </button>
