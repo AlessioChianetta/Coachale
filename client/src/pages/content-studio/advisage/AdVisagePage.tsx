@@ -1318,58 +1318,44 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                               <button
                                 key={p.id}
                                 onClick={() => setActivePostId(p.id)}
-                                className={`shrink-0 px-3 py-2.5 rounded-xl border transition-all flex items-start gap-2.5 text-left min-w-[180px] max-w-[220px] ${
+                                title={`${p.sourcePostTitle || p.context.sector}${folderName ? ` · ${folderName}` : ''}`}
+                                className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all text-left ${
                                   isActive
-                                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' 
-                                    : isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-indigo-200'
+                                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/20'
+                                    : isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-500' : 'bg-white border-slate-200 hover:bg-indigo-50 hover:border-indigo-200'
                                 }`}
                               >
-                                <div className="relative shrink-0 mt-0.5">
+                                {/* Index badge */}
+                                <span className={`text-[9px] font-bold w-4 text-center shrink-0 ${isActive ? 'text-indigo-200' : 'text-muted-foreground'}`}>
+                                  {qIdx + 1}
+                                </span>
+                                {/* Platform icon + status dot */}
+                                <div className="relative shrink-0">
                                   {getPlatformIcon(p.socialNetwork)}
-                                  {isGenerating && (
-                                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border border-white animate-pulse" />
-                                  )}
-                                  {!isGenerating && hasImage && (
-                                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-white" />
-                                  )}
+                                  {isGenerating && <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full border border-white animate-pulse" />}
+                                  {!isGenerating && hasImage && <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-white" />}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1 mb-0.5">
-                                    <span className={`text-[10px] font-bold ${isActive ? 'text-indigo-200' : 'text-muted-foreground'}`}>
-                                      #{qIdx + 1}
-                                    </span>
-                                    {folderName && (
-                                      <span className={`flex items-center gap-0.5 text-[9px] font-semibold truncate max-w-[80px] ${
-                                        isActive ? 'text-indigo-200' : folderType === 'project' ? 'text-indigo-500' : 'text-slate-400'
-                                      }`}>
-                                        {folderType === 'project'
-                                          ? <FolderOpen className="w-2.5 h-2.5 shrink-0" style={{ color: !isActive && folderColor ? folderColor : undefined }} />
-                                          : <FolderIcon className="w-2.5 h-2.5 shrink-0" style={{ color: !isActive && folderColor ? folderColor : undefined }} />
-                                        }
-                                        <span className="truncate">{folderName}</span>
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-xs font-semibold truncate leading-tight">
+                                {/* Title + folder */}
+                                <div className="min-w-0 max-w-[110px]">
+                                  {folderName && (
+                                    <div className={`flex items-center gap-0.5 text-[8px] font-semibold truncate leading-none mb-0.5 ${isActive ? 'text-indigo-200' : folderType === 'project' ? 'text-indigo-400' : 'text-slate-400'}`}>
+                                      {folderType === 'project'
+                                        ? <FolderOpen className="w-2 h-2 shrink-0" style={{ color: !isActive && folderColor ? folderColor : undefined }} />
+                                        : <FolderIcon className="w-2 h-2 shrink-0" style={{ color: !isActive && folderColor ? folderColor : undefined }} />
+                                      }
+                                      <span className="truncate">{folderName}</span>
+                                    </div>
+                                  )}
+                                  <p className="text-[11px] font-semibold truncate leading-tight">
                                     {p.sourcePostTitle || p.context.sector}
                                   </p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className={`text-[9px] ${isActive ? 'text-indigo-200' : 'text-muted-foreground'}`}>
-                                      {p.concepts.length} concept
-                                    </span>
-                                    {imageCount > 0 && (
-                                      <span className={`text-[9px] flex items-center gap-0.5 ${isActive ? 'text-emerald-300' : 'text-emerald-500'}`}>
-                                        <ImageIcon className="w-2.5 h-2.5" />
-                                        {imageCount}
-                                      </span>
-                                    )}
-                                    {isGenerating && (
-                                      <span className={`text-[9px] ${isActive ? 'text-amber-300' : 'text-amber-500'}`}>
-                                        Genera...
-                                      </span>
-                                    )}
-                                  </div>
                                 </div>
+                                {/* Image count chip */}
+                                {imageCount > 0 && (
+                                  <span className={`shrink-0 text-[9px] font-semibold px-1 py-0.5 rounded ${isActive ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'}`}>
+                                    {imageCount}🖼
+                                  </span>
+                                )}
                               </button>
                             );
                           })}
