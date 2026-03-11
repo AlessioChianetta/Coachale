@@ -2155,15 +2155,15 @@ function SettingsTab({
 
         {/* Tab 5 - Dipendenti AI */}
         <TabsContent value="dipendenti" className="mt-5 space-y-5">
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-              <Bot className="h-5 w-5" />
+          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-3 sm:p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
+            <div className="flex items-center gap-2 text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-1">
+              <Bot className="h-4 w-4 sm:h-5 sm:w-5" />
               Crea il tuo Dipendente AI
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
               Ogni dipendente AI ha competenze specifiche. Attivalo, espandi per vedere cosa sa fare, e personalizzalo con le tue istruzioni.
             </p>
-            <div className="space-y-5">
+            <div className="space-y-3 sm:space-y-5">
               {systemStatus?.roles && systemStatus.roles.length > 0 ? (
                 <div className="space-y-4">
                   {[...systemStatus.roles].sort((a, b) => {
@@ -2198,109 +2198,111 @@ function SettingsTab({
                         )}
                       >
                         <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradientClass}`} />
-                        <div className="flex items-start gap-4 sm:gap-5 p-4 sm:p-5 cursor-pointer" onClick={() => setExpandedRole(isExpanded ? null : role.id)}>
-                          <div className={cn("w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden ring-2 shrink-0 mt-0.5", colors.ring)}>
-                            {profile?.avatar ? (
-                              <img src={profile.avatar} alt={role.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full bg-muted flex items-center justify-center text-xl">
-                                {role.id === 'personalizza' ? '⚙️' : '🤖'}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-base">{role.name}</span>
-                              <Badge className={cn("text-xs rounded-full px-2.5", colors.badge)}>
-                                {profile?.role || role.shortDescription}
-                              </Badge>
-                              {roleStatuses?.[role.id] && (
-                                <Badge variant="outline" className={cn("text-[10px] rounded-full px-2 py-0.5",
-                                  roleStatuses[role.id].status === 'attivo' ? "text-emerald-600 border-emerald-300 bg-emerald-50/50 dark:text-emerald-400 dark:border-emerald-700 dark:bg-emerald-950/20" :
-                                  roleStatuses[role.id].status === 'fuori_orario' ? "text-amber-600 border-amber-300 bg-amber-50/50 dark:text-amber-400 dark:border-amber-700 dark:bg-amber-950/20" :
-                                  roleStatuses[role.id].status === 'disabilitato' || roleStatuses[role.id].status === 'off' ? "text-red-600 border-red-300 bg-red-50/50 dark:text-red-400 dark:border-red-700 dark:bg-red-950/20" :
-                                  "text-muted-foreground border-muted"
-                                )}>
-                                  {roleStatuses[role.id].status === 'attivo' ? '● Attivo' :
-                                   roleStatuses[role.id].status === 'fuori_orario' ? '◐ Fuori orario' :
-                                   roleStatuses[role.id].status === 'off' ? '○ Off' :
-                                   roleStatuses[role.id].status === 'solo_manuale' ? '◑ Solo manuale' :
-                                   roleStatuses[role.id].status === 'sistema_spento' ? '○ Sistema spento' :
-                                   '○ Disabilitato'}
-                                </Badge>
+                        <div className="p-3 sm:p-5 cursor-pointer" onClick={() => setExpandedRole(isExpanded ? null : role.id)}>
+                          <div className="flex items-center gap-3 sm:gap-5">
+                            <div className={cn("w-11 h-11 sm:w-16 sm:h-16 rounded-full overflow-hidden ring-2 shrink-0", colors.ring)}>
+                              {profile?.avatar ? (
+                                <img src={profile.avatar} alt={role.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-muted flex items-center justify-center text-lg sm:text-xl">
+                                  {role.id === 'personalizza' ? '⚙️' : '🤖'}
+                                </div>
                               )}
                             </div>
-
-                            {profile?.quote && (
-                              <p className="text-sm text-muted-foreground mt-1 leading-snug line-clamp-2">{profile.quote}</p>
-                            )}
-
-                            {caps && (
-                              <p className="text-xs text-muted-foreground/80 mt-1.5 leading-relaxed line-clamp-1">
-                                {caps.workflow}
-                              </p>
-                            )}
-
-                            {AI_ROLE_EXECUTION_PIPELINES[role.id] && (
-                              <div className="inline-flex items-center gap-1.5 mt-2 rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-1 border border-gray-200/60 dark:border-gray-700/60">
-                                <span className="text-xs">{AI_ROLE_EXECUTION_PIPELINES[role.id].directionIcon}</span>
-                                <span className={cn("text-[11px] font-semibold", AI_ROLE_EXECUTION_PIPELINES[role.id].directionColor)}>
-                                  {AI_ROLE_EXECUTION_PIPELINES[role.id].direction}
-                                </span>
-                              </div>
-                            )}
-
-                            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                              {role.preferredChannels.map(ch => {
-                                const channelIcons: Record<string, { icon: string; color: string }> = {
-                                  voice: { icon: "📞", color: "text-pink-600 border-pink-200 bg-pink-50 dark:text-pink-400 dark:border-pink-800 dark:bg-pink-950/20" },
-                                  email: { icon: "📧", color: "text-blue-600 border-blue-200 bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/20" },
-                                  whatsapp: { icon: "💬", color: "text-emerald-600 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/20" },
-                                  none: { icon: "🏠", color: "text-gray-600 border-gray-200 bg-gray-50 dark:text-gray-400 dark:border-gray-700 dark:bg-gray-800" },
-                                };
-                                const info = channelIcons[ch] || channelIcons.none;
-                                return (
-                                  <Badge key={ch} variant="outline" className={cn("text-[10px] rounded-full px-2 py-0.5", info.color)}>
-                                    {info.icon} {channelLabel[ch] || ch}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                <span className="font-bold text-sm sm:text-base">{role.name}</span>
+                                <Badge className={cn("text-[10px] sm:text-xs rounded-full px-2 sm:px-2.5", colors.badge)}>
+                                  {profile?.role || role.shortDescription}
+                                </Badge>
+                                {roleStatuses?.[role.id] && (
+                                  <Badge variant="outline" className={cn("text-[10px] rounded-full px-1.5 sm:px-2 py-0.5",
+                                    roleStatuses[role.id].status === 'attivo' ? "text-emerald-600 border-emerald-300 bg-emerald-50/50 dark:text-emerald-400 dark:border-emerald-700 dark:bg-emerald-950/20" :
+                                    roleStatuses[role.id].status === 'fuori_orario' ? "text-amber-600 border-amber-300 bg-amber-50/50 dark:text-amber-400 dark:border-amber-700 dark:bg-amber-950/20" :
+                                    roleStatuses[role.id].status === 'disabilitato' || roleStatuses[role.id].status === 'off' ? "text-red-600 border-red-300 bg-red-50/50 dark:text-red-400 dark:border-red-700 dark:bg-red-950/20" :
+                                    "text-muted-foreground border-muted"
+                                  )}>
+                                    {roleStatuses[role.id].status === 'attivo' ? '● Attivo' :
+                                     roleStatuses[role.id].status === 'fuori_orario' ? '◐ Fuori orario' :
+                                     roleStatuses[role.id].status === 'off' ? '○ Off' :
+                                     roleStatuses[role.id].status === 'solo_manuale' ? '◑ Solo manuale' :
+                                     roleStatuses[role.id].status === 'sistema_spento' ? '○ Sistema spento' :
+                                     '○ Disabilitato'}
                                   </Badge>
-                                );
-                              })}
-                              {roleStatuses?.[role.id] && (
-                                <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0.5">
-                                  Lv. {roleStatuses[role.id].effectiveLevel}{roleStatuses[role.id].hasCustomLevel ? '' : ' (globale)'}
-                                </Badge>
-                              )}
-                              {role.total_tasks_30d > 0 && (
-                                <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0.5">{role.total_tasks_30d} task (30gg)</Badge>
-                              )}
-                              {roleStatuses?.[role.id]?.lastExecution && (
-                                <span className="text-[10px] text-muted-foreground hidden sm:inline">
-                                  Ultimo: {new Date(roleStatuses[role.id].lastExecution!.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              )}
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 rounded-full hidden sm:flex"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/consultant/ai-autonomy/employee/${role.id}`);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                              <Switch
+                                checked={role.enabled}
+                                disabled={togglingRole === role.id}
+                                onCheckedChange={(checked) => {
+                                  onToggleRole(role.id, checked);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 shrink-0 pt-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 rounded-full"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/consultant/ai-autonomy/employee/${role.id}`);
-                              }}
-                            >
-                              <Eye className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                            <Switch
-                              checked={role.enabled}
-                              disabled={togglingRole === role.id}
-                              onCheckedChange={(checked) => {
-                                onToggleRole(role.id, checked);
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+
+                          {profile?.quote && (
+                            <p className="text-xs sm:text-sm text-muted-foreground mt-2 leading-snug line-clamp-2 ml-14 sm:ml-[84px]">{profile.quote}</p>
+                          )}
+
+                          {caps && (
+                            <p className="text-[11px] sm:text-xs text-muted-foreground/80 mt-1.5 leading-relaxed line-clamp-1 ml-14 sm:ml-[84px]">
+                              {caps.workflow}
+                            </p>
+                          )}
+
+                          {AI_ROLE_EXECUTION_PIPELINES[role.id] && (
+                            <div className="inline-flex items-center gap-1.5 mt-2 rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-1 border border-gray-200/60 dark:border-gray-700/60 ml-14 sm:ml-[84px]">
+                              <span className="text-xs">{AI_ROLE_EXECUTION_PIPELINES[role.id].directionIcon}</span>
+                              <span className={cn("text-[11px] font-semibold", AI_ROLE_EXECUTION_PIPELINES[role.id].directionColor)}>
+                                {AI_ROLE_EXECUTION_PIPELINES[role.id].direction}
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-1 sm:gap-1.5 mt-2 flex-wrap ml-14 sm:ml-[84px]">
+                            {role.preferredChannels.map(ch => {
+                              const channelIcons: Record<string, { icon: string; color: string }> = {
+                                voice: { icon: "📞", color: "text-pink-600 border-pink-200 bg-pink-50 dark:text-pink-400 dark:border-pink-800 dark:bg-pink-950/20" },
+                                email: { icon: "📧", color: "text-blue-600 border-blue-200 bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/20" },
+                                whatsapp: { icon: "💬", color: "text-emerald-600 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/20" },
+                                none: { icon: "🏠", color: "text-gray-600 border-gray-200 bg-gray-50 dark:text-gray-400 dark:border-gray-700 dark:bg-gray-800" },
+                              };
+                              const info = channelIcons[ch] || channelIcons.none;
+                              return (
+                                <Badge key={ch} variant="outline" className={cn("text-[10px] rounded-full px-1.5 sm:px-2 py-0.5", info.color)}>
+                                  {info.icon} {channelLabel[ch] || ch}
+                                </Badge>
+                              );
+                            })}
+                            {roleStatuses?.[role.id] && (
+                              <Badge variant="outline" className="text-[10px] rounded-full px-1.5 sm:px-2 py-0.5">
+                                Lv. {roleStatuses[role.id].effectiveLevel}{roleStatuses[role.id].hasCustomLevel ? '' : ' (globale)'}
+                              </Badge>
+                            )}
+                            {role.total_tasks_30d > 0 && (
+                              <Badge variant="outline" className="text-[10px] rounded-full px-1.5 sm:px-2 py-0.5">{role.total_tasks_30d} task (30gg)</Badge>
+                            )}
+                            {roleStatuses?.[role.id]?.lastExecution && (
+                              <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                                Ultimo: {new Date(roleStatuses[role.id].lastExecution!.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -2311,20 +2313,23 @@ function SettingsTab({
                             transition={{ duration: 0.2 }}
                             className="border-t border-gray-100 dark:border-gray-800 bg-muted/20"
                           >
-                            <div className="px-4 sm:px-5 pb-5 pt-4">
+                            <div className="px-3 sm:px-5 pb-4 sm:pb-5 pt-3 sm:pt-4">
                               <Tabs defaultValue="profilo" className="w-full">
-                                <TabsList className="bg-muted/60 dark:bg-muted/30 border border-border/60 rounded-xl p-1 h-auto mb-5 w-full grid grid-cols-3 gap-1">
-                                  <TabsTrigger value="profilo" className="text-sm font-medium h-10 rounded-lg px-4 gap-2 data-[state=active]:!bg-indigo-600 data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/30 transition-all duration-200">
-                                    <User className="h-4 w-4" />
-                                    Profilo
+                                <TabsList className="bg-muted/60 dark:bg-muted/30 border border-border/60 rounded-xl p-1 h-auto mb-4 sm:mb-5 w-full grid grid-cols-3 gap-1">
+                                  <TabsTrigger value="profilo" className="text-xs sm:text-sm font-medium h-8 sm:h-10 rounded-lg px-2 sm:px-4 gap-1 sm:gap-2 data-[state=active]:!bg-indigo-600 data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/30 transition-all duration-200">
+                                    <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                    <span className="hidden sm:inline">Profilo</span>
+                                    <span className="sm:hidden">Info</span>
                                   </TabsTrigger>
-                                  <TabsTrigger value="autonomia" className="text-sm font-medium h-10 rounded-lg px-4 gap-2 data-[state=active]:!bg-indigo-600 data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/30 transition-all duration-200">
-                                    <Shield className="h-4 w-4" />
-                                    Autonomia
+                                  <TabsTrigger value="autonomia" className="text-xs sm:text-sm font-medium h-8 sm:h-10 rounded-lg px-2 sm:px-4 gap-1 sm:gap-2 data-[state=active]:!bg-indigo-600 data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/30 transition-all duration-200">
+                                    <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                    <span className="hidden sm:inline">Autonomia</span>
+                                    <span className="sm:hidden">Auto</span>
                                   </TabsTrigger>
-                                  <TabsTrigger value="integrazioni" className="text-sm font-medium h-10 rounded-lg px-4 gap-2 data-[state=active]:!bg-indigo-600 data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/30 transition-all duration-200">
-                                    <Cog className="h-4 w-4" />
-                                    Integrazioni
+                                  <TabsTrigger value="integrazioni" className="text-xs sm:text-sm font-medium h-8 sm:h-10 rounded-lg px-2 sm:px-4 gap-1 sm:gap-2 data-[state=active]:!bg-indigo-600 data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/30 transition-all duration-200">
+                                    <Cog className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                    <span className="hidden sm:inline">Integrazioni</span>
+                                    <span className="sm:hidden">Integ.</span>
                                   </TabsTrigger>
                                 </TabsList>
 
@@ -2509,10 +2514,10 @@ function SettingsTab({
                                     );
                                   })()}
 
-                                  <div className="flex items-center gap-3 pt-3 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 pt-3 sm:flex-wrap" onClick={(e) => e.stopPropagation()}>
                                     <Button
                                       size="sm"
-                                      className="h-9 text-xs rounded-xl gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                                      className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleTriggerRole(role.id, role.name);
@@ -2524,12 +2529,12 @@ function SettingsTab({
                                       ) : (
                                         <Play className="h-3.5 w-3.5" />
                                       )}
-                                      {triggeringRoleId === role.id ? 'Avvio in corso...' : `Avvia ora`}
+                                      {triggeringRoleId === role.id ? 'Avvio...' : `Avvia`}
                                     </Button>
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className="h-9 text-xs rounded-xl gap-2 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-700 dark:hover:text-emerald-300"
+                                      className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-700 dark:hover:text-emerald-300"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setChatOpenRoleId(role.id);
@@ -2541,7 +2546,7 @@ function SettingsTab({
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className="h-9 text-xs rounded-xl gap-2 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-700 dark:hover:text-blue-300"
+                                      className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-700 dark:hover:text-blue-300"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setTelegramChatsRoleId(role.id);
@@ -2553,7 +2558,7 @@ function SettingsTab({
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className="h-9 text-xs rounded-xl gap-2 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300"
+                                      className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setMemoryOpenRoleId(memoryOpenRoleId === role.id ? null : role.id);
