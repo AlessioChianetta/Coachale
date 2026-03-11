@@ -1302,30 +1302,73 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                     <div className="flex items-center gap-3 px-4 py-3">
                       <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap shrink-0">Coda Elaborata</span>
                       <div className="flex-1 overflow-x-auto">
-                        <div className="flex items-center gap-2">
-                          {batchResults.map(p => {
-                            const firstConceptId = p.concepts[0].id;
-                            const hasImage = generatedImages.some(img => img.conceptId === firstConceptId);
-                            const isGenerating = generatingIds.has(firstConceptId);
+                        <div className="flex items-center gap-2 py-0.5">
+                          {batchResults.map((p, qIdx) => {
+                            const hasImage = generatedImages.some(img => p.concepts.some(c => c.id === img.conceptId));
+                            const isGenerating = p.concepts.some(c => generatingIds.has(c.id));
+                            const imageCount = generatedImages.filter(img => p.concepts.some(c => c.id === img.conceptId)).length;
+                            const isActive = activePostId === p.id;
+                            // Look up folder from existingPosts
+                            const srcPost = p.sourcePostId ? (existingPosts as ContentPost[]).find(ep => ep.id === p.sourcePostId) : null;
+                            const folderName = srcPost?.folder?.name;
+                            const folderType = srcPost?.folder?.folderType;
+                            const folderColor = srcPost?.folder?.color;
                             
                             return (
                               <button
                                 key={p.id}
                                 onClick={() => setActivePostId(p.id)}
-                                className={`shrink-0 px-3 py-2 rounded-lg border transition-all flex items-center gap-2 ${
-                                  activePostId === p.id 
-                                    ? 'bg-indigo-600 text-white border-indigo-500' 
-                                    : isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 hover:bg-slate-200'
+                                className={`shrink-0 px-3 py-2.5 rounded-xl border transition-all flex items-start gap-2.5 text-left min-w-[180px] max-w-[220px] ${
+                                  isActive
+                                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' 
+                                    : isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-indigo-200'
                                 }`}
                               >
-                                <div className="relative">
+                                <div className="relative shrink-0 mt-0.5">
                                   {getPlatformIcon(p.socialNetwork)}
-                                  {hasImage && <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />}
-                                  {isGenerating && <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />}
+                                  {isGenerating && (
+                                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border border-white animate-pulse" />
+                                  )}
+                                  {!isGenerating && hasImage && (
+                                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-white" />
+                                  )}
                                 </div>
-                                <div className="max-w-[140px]">
-                                  <p className="text-xs font-semibold truncate">{p.context.sector}</p>
-                                  <p className="text-[10px] opacity-60 truncate">{p.tone}</p>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1 mb-0.5">
+                                    <span className={`text-[10px] font-bold ${isActive ? 'text-indigo-200' : 'text-muted-foreground'}`}>
+                                      #{qIdx + 1}
+                                    </span>
+                                    {folderName && (
+                                      <span className={`flex items-center gap-0.5 text-[9px] font-semibold truncate max-w-[80px] ${
+                                        isActive ? 'text-indigo-200' : folderType === 'project' ? 'text-indigo-500' : 'text-slate-400'
+                                      }`}>
+                                        {folderType === 'project'
+                                          ? <FolderOpen className="w-2.5 h-2.5 shrink-0" style={{ color: !isActive && folderColor ? folderColor : undefined }} />
+                                          : <FolderIcon className="w-2.5 h-2.5 shrink-0" style={{ color: !isActive && folderColor ? folderColor : undefined }} />
+                                        }
+                                        <span className="truncate">{folderName}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs font-semibold truncate leading-tight">
+                                    {p.sourcePostTitle || p.context.sector}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className={`text-[9px] ${isActive ? 'text-indigo-200' : 'text-muted-foreground'}`}>
+                                      {p.concepts.length} concept
+                                    </span>
+                                    {imageCount > 0 && (
+                                      <span className={`text-[9px] flex items-center gap-0.5 ${isActive ? 'text-emerald-300' : 'text-emerald-500'}`}>
+                                        <ImageIcon className="w-2.5 h-2.5" />
+                                        {imageCount}
+                                      </span>
+                                    )}
+                                    {isGenerating && (
+                                      <span className={`text-[9px] ${isActive ? 'text-amber-300' : 'text-amber-500'}`}>
+                                        Genera...
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </button>
                             );
@@ -1462,35 +1505,6 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                             </div>
                           </CardContent>
                         </Card>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {activePost.socialCaptions.map((cap, i) => (
-                            <Card key={i} className={isDark ? 'bg-slate-900/50 border-slate-800' : ''}>
-                              <CardContent className="p-5">
-                                <div className="flex justify-between items-center mb-4">
-                                  <Badge variant="secondary">{cap.tone}</Badge>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => copyToClipboard(cap.text, `cap-${i}`)}
-                                  >
-                                    {copiedCaption === `cap-${i}` ? (
-                                      <Check className="w-4 h-4 text-green-500" />
-                                    ) : (
-                                      <Copy className="w-4 h-4" />
-                                    )}
-                                  </Button>
-                                </div>
-                                <p className="text-xs leading-relaxed opacity-70 line-clamp-5 mb-4">{cap.text}</p>
-                                <div className="flex flex-wrap gap-1">
-                                  {cap.hashtags.slice(0, 5).map(h => (
-                                    <span key={h} className="text-[10px] text-indigo-500 font-medium">#{h}</span>
-                                  ))}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
 
                         {activePost.concepts.map(concept => {
                           const isGen = generatingIds.has(concept.id);
