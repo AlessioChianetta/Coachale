@@ -318,10 +318,10 @@ export default function EmployeeProfilePage({ roleId: propRoleId }: { roleId?: s
                           </div>
                         </div>
                         <p className="text-sm text-muted-foreground leading-relaxed">{ex.scenario}</p>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{ex.outcome}</span>
-                        </div>
+                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs font-medium px-2.5 py-1 w-fit flex items-center gap-1.5 rounded-lg">
+                          <CheckCircle className="h-3 w-3 shrink-0" />
+                          {ex.outcome}
+                        </Badge>
                       </div>
                     ))}
                   </div>
