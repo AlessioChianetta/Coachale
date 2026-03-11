@@ -959,7 +959,7 @@ function EntityPickerItem({ entity, entityType, onClick }: { entity: EntityItem;
                 <ImageIcon className="w-3.5 h-3.5 text-gray-400" />
               </div>
             )}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{entity.name}</p>
               <div className="flex items-center gap-1 mt-0.5">
                 {entity.platform && <Badge variant="secondary" className="text-[9px] px-1 py-0">{entity.platform}</Badge>}
@@ -978,7 +978,7 @@ function EntityPickerItem({ entity, entityType, onClick }: { entity: EntityItem;
             >
               {(extra.roleName as string || "?")[0]}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{entity.name}</p>
               <div className="flex items-center gap-1 mt-0.5">
                 <StatusDot active={extra.isEnabled as boolean} size="sm" />
@@ -992,7 +992,7 @@ function EntityPickerItem({ entity, entityType, onClick }: { entity: EntityItem;
         return (
           <>
             <Bot className="w-4 h-4 text-emerald-500 shrink-0" />
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{entity.name}</p>
               <div className="flex items-center gap-1 mt-0.5">
                 {extra.agentType && <Badge variant="secondary" className="text-[9px] px-1 py-0">{extra.agentType as string}</Badge>}
@@ -1006,7 +1006,7 @@ function EntityPickerItem({ entity, entityType, onClick }: { entity: EntityItem;
         return (
           <>
             <Mail className="w-4 h-4 text-indigo-500 shrink-0" />
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{entity.name}</p>
               {extra.provider && <span className="text-[10px] text-gray-500">{extra.provider as string}</span>}
             </div>
@@ -1017,7 +1017,7 @@ function EntityPickerItem({ entity, entityType, onClick }: { entity: EntityItem;
         return (
           <>
             <Phone className="w-4 h-4 text-orange-500 shrink-0" />
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{entity.name || extra.phoneNumber as string}</p>
               {extra.aiMode && <span className="text-[10px] text-gray-500">{extra.aiMode as string}</span>}
             </div>
@@ -1028,7 +1028,7 @@ function EntityPickerItem({ entity, entityType, onClick }: { entity: EntityItem;
         return (
           <>
             <CreditCard className="w-4 h-4 text-amber-500 shrink-0" />
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{entity.name}</p>
               {extra.priceCents != null && (
                 <span className="text-[10px] text-gray-500 font-mono">€{(Number(extra.priceCents) / 100).toFixed(2).replace(".", ",")}</span>
@@ -1041,8 +1041,8 @@ function EntityPickerItem({ entity, entityType, onClick }: { entity: EntityItem;
         return (
           <>
             <Calendar className="w-4 h-4 text-cyan-500 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Prenotazione</p>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">Prenotazione</p>
               {extra.bookingSlug && <span className="text-[10px] text-gray-500">/book/{extra.bookingSlug as string}</span>}
             </div>
           </>
@@ -1054,7 +1054,7 @@ function EntityPickerItem({ entity, entityType, onClick }: { entity: EntityItem;
             <div className="w-7 h-7 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
               <Link2 className="w-3 h-3 text-gray-400" />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{entity.name}</p>
               {entity.status && (
                 <div className="flex items-center gap-1 mt-0.5">
