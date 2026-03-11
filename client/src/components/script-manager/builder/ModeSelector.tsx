@@ -711,51 +711,57 @@ export function ModeSelector() {
                   </Select>
 
                   {selectedAgent && (
-                    <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-3">
-                      <h4 className="font-medium text-sm flex items-center gap-2">
+                    <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-3 max-h-[350px] overflow-y-auto">
+                      <h4 className="font-medium text-sm flex items-center gap-2 sticky top-0 bg-muted/90 py-1">
                         <Target className="h-4 w-4 text-purple-600" />
                         Configurazione Agente
                       </h4>
                       <div className="grid gap-2 text-sm">
                         <div className="flex items-start gap-2">
-                          <span className="text-muted-foreground w-28 shrink-0">Business:</span>
+                          <span className="text-muted-foreground w-28 shrink-0 font-medium">Business:</span>
                           <span>{selectedAgent.businessName || 'Non specificato'}</span>
                         </div>
                         {selectedAgent.businessDescription && (
                           <div className="flex items-start gap-2">
-                            <span className="text-muted-foreground w-28 shrink-0">Descrizione:</span>
-                            <span className="line-clamp-2">{selectedAgent.businessDescription}</span>
+                            <span className="text-muted-foreground w-28 shrink-0 font-medium">Descrizione:</span>
+                            <span className="whitespace-pre-line">{selectedAgent.businessDescription}</span>
                           </div>
                         )}
                         <div className="flex items-start gap-2">
-                          <span className="text-muted-foreground w-28 shrink-0">Target:</span>
-                          <span className="line-clamp-3">{selectedAgent.targetClient || 'Non specificato'}</span>
+                          <span className="text-muted-foreground w-28 shrink-0 font-medium">Target:</span>
+                          <span className="whitespace-pre-line">{selectedAgent.targetClient || 'Non specificato'}</span>
                         </div>
                         <div className="flex items-start gap-2">
-                          <span className="text-muted-foreground w-28 shrink-0">USP:</span>
-                          <span className="line-clamp-2">{selectedAgent.usp || 'Non specificato'}</span>
+                          <span className="text-muted-foreground w-28 shrink-0 font-medium">USP:</span>
+                          <span className="whitespace-pre-line">{selectedAgent.usp || 'Non specificato'}</span>
                         </div>
                         {selectedAgent.mission && (
                           <div className="flex items-start gap-2">
-                            <span className="text-muted-foreground w-28 shrink-0">Mission:</span>
-                            <span className="line-clamp-2">{selectedAgent.mission}</span>
+                            <span className="text-muted-foreground w-28 shrink-0 font-medium">Mission:</span>
+                            <span className="whitespace-pre-line">{selectedAgent.mission}</span>
                           </div>
                         )}
                         {selectedAgent.vision && (
                           <div className="flex items-start gap-2">
-                            <span className="text-muted-foreground w-28 shrink-0">Vision:</span>
-                            <span className="line-clamp-2">{selectedAgent.vision}</span>
+                            <span className="text-muted-foreground w-28 shrink-0 font-medium">Vision:</span>
+                            <span className="whitespace-pre-line">{selectedAgent.vision}</span>
                           </div>
                         )}
                         {selectedAgent.whatWeDo && (
                           <div className="flex items-start gap-2">
-                            <span className="text-muted-foreground w-28 shrink-0">Cosa facciamo:</span>
-                            <span className="line-clamp-2">{selectedAgent.whatWeDo}</span>
+                            <span className="text-muted-foreground w-28 shrink-0 font-medium">Cosa facciamo:</span>
+                            <span className="whitespace-pre-line">{selectedAgent.whatWeDo}</span>
+                          </div>
+                        )}
+                        {selectedAgent.howWeDoIt && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-muted-foreground w-28 shrink-0 font-medium">Come:</span>
+                            <span className="whitespace-pre-line">{selectedAgent.howWeDoIt}</span>
                           </div>
                         )}
                         {selectedAgent.values && selectedAgent.values.length > 0 && (
                           <div className="flex items-start gap-2">
-                            <span className="text-muted-foreground w-28 shrink-0">Valori:</span>
+                            <span className="text-muted-foreground w-28 shrink-0 font-medium">Valori:</span>
                             <span>{selectedAgent.values.join(', ')}</span>
                           </div>
                         )}

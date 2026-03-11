@@ -133,6 +133,8 @@ async function buildBrandVoiceFromAgent(agentId: string): Promise<string> {
     }
     
     const agent = agentResult[0];
+    const bvd = (agent as any).brandVoiceData || {};
+    
     let brandVoice = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🏢 CONTESTO BUSINESS (di cosa ti occupi)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -144,6 +146,25 @@ async function buildBrandVoiceFromAgent(agentId: string): Promise<string> {
     if (agent.whoWeHelp) brandVoice += `• Chi aiutiamo: ${agent.whoWeHelp}\n`;
     if (agent.usp) brandVoice += `• USP: ${agent.usp}\n`;
     
+    const mission = (agent as any).mission || bvd.mission;
+    const vision = (agent as any).vision || bvd.vision;
+    const consultantBio = (agent as any).consultantBio || bvd.consultantBio;
+    const guarantees = (agent as any).guarantees || bvd.guarantees;
+    const resultsGenerated = (agent as any).resultsGenerated || bvd.resultsGenerated;
+    const nonTargetClient = (agent as any).nonTargetClient || (agent as any).whoWeDontHelp || bvd.whoWeDontHelp;
+    
+    if (mission) brandVoice += `• Mission: ${mission}\n`;
+    if (vision) brandVoice += `• Vision: ${vision}\n`;
+    if (consultantBio) brandVoice += `• Bio consulente: ${consultantBio}\n`;
+    if (nonTargetClient) brandVoice += `• NON aiutiamo: ${nonTargetClient}\n`;
+    if (guarantees) brandVoice += `• Garanzie: ${guarantees}\n`;
+    if (resultsGenerated) brandVoice += `• Risultati generati: ${resultsGenerated}\n`;
+    
+    const values = (agent as any).values || bvd.values;
+    if (Array.isArray(values) && values.length > 0) {
+      brandVoice += `• Valori: ${values.join(', ')}\n`;
+    }
+    
     if (agent.servicesOffered) {
       try {
         const services = typeof agent.servicesOffered === 'string' ? JSON.parse(agent.servicesOffered) : agent.servicesOffered;
@@ -153,11 +174,64 @@ async function buildBrandVoiceFromAgent(agentId: string): Promise<string> {
             if (typeof s === 'string') {
               brandVoice += `  - ${s}\n`;
             } else {
-              brandVoice += `  - ${s.name || s}${s.price ? ` (${s.price})` : ''}\n`;
+              brandVoice += `  - ${s.name || s}${s.price ? ` (${s.price})` : ''}${s.description ? ` — ${s.description}` : ''}\n`;
             }
           });
         }
       } catch {}
+    }
+    
+    const caseStudies = (agent as any).caseStudies || bvd.caseStudies;
+    if (Array.isArray(caseStudies) && caseStudies.length > 0) {
+      brandVoice += `• Case Studies:\n`;
+      caseStudies.slice(0, 5).forEach((cs: any) => {
+        brandVoice += `  - ${cs.client || cs.clientName}: ${cs.result}\n`;
+      });
+    }
+    
+    const booksPublished = (agent as any).booksPublished || bvd.booksPublished;
+    if (Array.isArray(booksPublished) && booksPublished.length > 0) {
+      brandVoice += `• Libri pubblicati:\n`;
+      booksPublished.forEach((b: any) => {
+        brandVoice += `  - "${b.title}" (${b.year})\n`;
+      });
+    }
+    
+    const softwareCreated = (agent as any).softwareCreated || bvd.softwareCreated;
+    if (Array.isArray(softwareCreated) && softwareCreated.length > 0) {
+      brandVoice += `• Software creati:\n`;
+      softwareCreated.forEach((s: any) => {
+        brandVoice += `  - ${s.emoji || '💻'} ${s.name}: ${s.description}\n`;
+      });
+    }
+    
+    const personalTone = bvd.personalTone;
+    const contentPersonality = bvd.contentPersonality;
+    const audienceLanguage = bvd.audienceLanguage;
+    const avoidPatterns = bvd.avoidPatterns;
+    const signaturePhrases = bvd.signaturePhrases;
+    
+    if (personalTone || contentPersonality || audienceLanguage || avoidPatterns || (Array.isArray(signaturePhrases) && signaturePhrases.length > 0)) {
+      brandVoice += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 VOCE & STILE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      if (personalTone) brandVoice += `• Tono personale: ${personalTone}\n`;
+      if (contentPersonality) brandVoice += `• Personalità: ${contentPersonality}\n`;
+      if (audienceLanguage) brandVoice += `• Linguaggio audience: ${audienceLanguage}\n`;
+      if (avoidPatterns) brandVoice += `• Pattern da evitare: ${avoidPatterns}\n`;
+      if (Array.isArray(signaturePhrases) && signaturePhrases.length > 0) {
+        brandVoice += `• Frasi firma: ${signaturePhrases.join(', ')}\n`;
+      }
+    }
+    
+    const audienceSegments = bvd.audienceSegments;
+    if (Array.isArray(audienceSegments) && audienceSegments.length > 0) {
+      brandVoice += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 SEGMENTI AUDIENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      audienceSegments.forEach((seg: any) => {
+        brandVoice += `• ${seg.name}: ${seg.description}\n`;
+      });
     }
     
     brandVoiceCache.set(agentId, { text: brandVoice, timestamp: Date.now() });
