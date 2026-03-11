@@ -1229,6 +1229,29 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
     },
   });
 
+  const deleteFolderMutation = useMutation({
+    mutationFn: async (folderId: string) => {
+      const response = await fetch(`/api/content/folders/${folderId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete folder");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content/folders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
+      if (selectedFolderId) setSelectedFolderId(null);
+      toast({ title: "Eliminato", description: "Cartella eliminata con successo" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
   const toggleProjectExpanded = (projectId: string) => {
     setExpandedProjects((prev) => {
       const next = new Set(prev);
@@ -2072,7 +2095,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                 return (
                   <div key={folder.id}>
                     <div
-                      className={`group flex items-center gap-1.5 py-1.5 rounded-md text-sm cursor-pointer transition-colors ${
+                      className={`group flex items-center gap-1.5 py-1.5 rounded-md text-sm cursor-pointer transition-colors overflow-hidden ${
                         selectedFolderId === folder.id
                           ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400"
                           : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -2159,6 +2182,23 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                               )}
                             </DropdownMenuSubContent>
                           </DropdownMenuSub>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              const label = isProject ? "progetto" : "cartella";
+                              const hasPostsOrChildren = getPostCountForFolder(folder.id) > 0 || hasChildren;
+                              const msg = hasPostsOrChildren
+                                ? `Eliminare questo ${label} rimuoverà anche tutti i post e le sotto-cartelle al suo interno. Continuare?`
+                                : `Eliminare questo ${label}?`;
+                              if (window.confirm(msg)) {
+                                deleteFolderMutation.mutate(folder.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            Elimina
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
