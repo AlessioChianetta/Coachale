@@ -2118,14 +2118,14 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                       )}
                       <button
                         onClick={() => { setSelectedPublerFilter("all"); setSelectedFolderId(folder.id); if (isMobile) setFolderSidebarOpen(false); }}
-                        className="flex-1 flex items-center gap-2 text-left min-w-0 overflow-hidden"
+                        className="flex-1 flex items-start gap-2 text-left min-w-0"
                       >
                         {isProject ? (
-                          <Briefcase className="h-4 w-4 flex-shrink-0 text-indigo-500" />
+                          <Briefcase className="h-4 w-4 flex-shrink-0 mt-0.5 text-indigo-500" />
                         ) : (
-                          <Folder className="h-4 w-4 flex-shrink-0 text-gray-400" />
+                          <Folder className="h-4 w-4 flex-shrink-0 mt-0.5 text-gray-400" />
                         )}
-                        <span className={`truncate text-sm ${isProject ? "font-medium" : ""}`}>{folder.name}</span>
+                        <span className={`text-sm break-words min-w-0 ${isProject ? "font-medium" : ""}`}>{folder.name}</span>
                       </button>
                       <span className="text-xs text-gray-400 flex-shrink-0">{getPostCountForFolder(folder.id)}</span>
                       
