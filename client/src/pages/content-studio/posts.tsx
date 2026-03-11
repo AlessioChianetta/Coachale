@@ -293,7 +293,7 @@ function ImageOrPlaceholder({ imageUrl, aspectClass = "aspect-square", label = "
 function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, errore, soluzione, riprovaSociale, imageUrl }: SocialPreviewProps) {
   // Build body content based on copy type
   let displayBody = body;
-  if (copyType === "long") {
+  if (copyType === "long" && !body) {
     const longCopyParts = [
       chiCosaCome,
       errore,
