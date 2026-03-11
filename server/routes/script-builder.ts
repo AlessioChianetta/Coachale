@@ -160,6 +160,7 @@ router.get('/agents', requireClientOrConsultant, async (req: AuthRequest, res: R
         vision: clientSalesAgents.vision,
         whatWeDo: clientSalesAgents.whatWeDo,
         howWeDoIt: clientSalesAgents.howWeDoIt,
+        brandVoiceData: clientSalesAgents.brandVoiceData,
       })
       .from(clientSalesAgents)
       .where(eq(clientSalesAgents.clientId, clientId));
@@ -285,27 +286,34 @@ router.post('/ai-generate', requireClientOrConsultant, async (req: AuthRequest, 
     const totalPhases = structure.phases?.length || 0;
     console.log(`📊 Script parsato: ${totalPhases} fasi trovate`);
 
+    const bvd = (agent.brandVoiceData || {}) as Record<string, any>;
     const agentContext = {
-      businessName: agent.businessName,
-      displayName: agent.displayName,
-      targetClient: agent.targetClient,
-      usp: agent.usp,
-      values: agent.values,
-      mission: agent.mission,
-      whatWeDo: agent.whatWeDo,
-      howWeDoIt: agent.howWeDoIt,
-      businessDescription: agent.businessDescription,
-      consultantBio: agent.consultantBio,
-      vision: agent.vision,
-      nonTargetClient: agent.nonTargetClient,
-      yearsExperience: agent.yearsExperience,
-      clientsHelped: agent.clientsHelped,
-      resultsGenerated: agent.resultsGenerated,
-      softwareCreated: agent.softwareCreated,
-      booksPublished: agent.booksPublished,
-      caseStudies: agent.caseStudies,
-      servicesOffered: agent.servicesOffered,
-      guarantees: agent.guarantees,
+      businessName: agent.businessName || bvd.businessName,
+      displayName: agent.displayName || bvd.consultantDisplayName,
+      targetClient: agent.targetClient || bvd.whoWeHelp,
+      usp: agent.usp || bvd.usp,
+      values: agent.values?.length ? agent.values : (bvd.values || []),
+      mission: agent.mission || bvd.mission,
+      vision: agent.vision || bvd.vision,
+      whatWeDo: agent.whatWeDo || bvd.whatWeDo,
+      howWeDoIt: agent.howWeDoIt || bvd.howWeDoIt,
+      businessDescription: agent.businessDescription || bvd.businessDescription,
+      consultantBio: agent.consultantBio || bvd.consultantBio,
+      nonTargetClient: agent.nonTargetClient || bvd.whoWeDontHelp,
+      yearsExperience: agent.yearsExperience || bvd.yearsExperience || 0,
+      clientsHelped: agent.clientsHelped || bvd.clientsHelped || 0,
+      resultsGenerated: agent.resultsGenerated || bvd.resultsGenerated,
+      softwareCreated: agent.softwareCreated?.length ? agent.softwareCreated : (bvd.softwareCreated || []),
+      booksPublished: agent.booksPublished?.length ? agent.booksPublished : (bvd.booksPublished || []),
+      caseStudies: agent.caseStudies?.length ? agent.caseStudies : (bvd.caseStudies || []),
+      servicesOffered: agent.servicesOffered?.length ? agent.servicesOffered : (bvd.servicesOffered || []),
+      guarantees: agent.guarantees || bvd.guarantees,
+      audienceSegments: bvd.audienceSegments || [],
+      personalTone: bvd.personalTone || '',
+      contentPersonality: bvd.contentPersonality || '',
+      audienceLanguage: bvd.audienceLanguage || '',
+      avoidPatterns: bvd.avoidPatterns || '',
+      signaturePhrases: bvd.signaturePhrases || [],
     };
 
     // Initialize generation state for polling
@@ -419,19 +427,57 @@ Stai personalizzando uno script per IMPRENDITORI e AZIENDE, NON per individui pr
 - "Chi prende le decisioni di investimento nella tua azienda?"
 `;
 
-      const baseContextPrompt = `## CONTEXT AGENTE:
+      const caseStudiesStr = agentContext.caseStudies?.length
+        ? agentContext.caseStudies.map((cs: any) => `  - ${cs.client}: ${cs.result}`).join('\n')
+        : 'Nessuno';
+      const booksStr = agentContext.booksPublished?.length
+        ? agentContext.booksPublished.map((b: any) => `  - "${b.title}" (${b.year})`).join('\n')
+        : 'Nessuno';
+      const softwareStr = agentContext.softwareCreated?.length
+        ? agentContext.softwareCreated.map((s: any) => `  - ${s.emoji || '💻'} ${s.name}: ${s.description}`).join('\n')
+        : 'Nessuno';
+      const servicesStr = agentContext.servicesOffered?.length
+        ? agentContext.servicesOffered.map((s: any) => `  - ${s.name} (${s.price || 'N/A'}): ${s.description}`).join('\n')
+        : 'Nessuno';
+      const segmentsStr = agentContext.audienceSegments?.length
+        ? agentContext.audienceSegments.map((s: any) => `  - ${s.name}: ${s.description}`).join('\n')
+        : '';
+
+      const baseContextPrompt = `## CONTEXT AGENTE (BRAND IDENTITY COMPLETA):
 - Nome Business: ${agentContext.businessName || 'Non specificato'}
 - Display Name: ${agentContext.displayName || 'Consulente'}
 - Descrizione Business: ${agentContext.businessDescription || 'Non specificata'}
-- Target Client: ${agentContext.targetClient || 'Non specificato'}
-- NON Target Client: ${agentContext.nonTargetClient || 'Non specificato'}
+- Bio Consulente: ${agentContext.consultantBio || 'Non specificata'}
+- Vision: ${agentContext.vision || 'Non specificata'}
+- Mission: ${agentContext.mission || 'Non specificata'}
 - USP: ${agentContext.usp || 'Non specificato'}
-- Valori: ${JSON.stringify(agentContext.values || [])}
+- Valori: ${(agentContext.values || []).join(', ') || 'Non specificati'}
 - Cosa facciamo: ${agentContext.whatWeDo || 'Non specificato'}
 - Come lo facciamo: ${agentContext.howWeDoIt || 'Non specificato'}
+
+## TARGET & AUDIENCE:
+- Target Client: ${agentContext.targetClient || 'Non specificato'}
+- NON Target Client: ${agentContext.nonTargetClient || 'Non specificato'}
+${segmentsStr ? `- Segmenti Audience:\n${segmentsStr}` : ''}
+
+## CREDENZIALI & AUTORITÀ:
 - Anni esperienza: ${agentContext.yearsExperience || 0}
 - Clienti aiutati: ${agentContext.clientsHelped || 0}
-- Servizi: ${JSON.stringify(agentContext.servicesOffered || [])}
+- Risultati generati: ${agentContext.resultsGenerated || 'Non specificati'}
+- Case Studies:\n${caseStudiesStr}
+- Libri Pubblicati:\n${booksStr}
+- Software Creati:\n${softwareStr}
+
+## SERVIZI & GARANZIE:
+- Servizi Offerti:\n${servicesStr}
+- Garanzie: ${agentContext.guarantees || 'Non specificate'}
+
+## VOCE & STILE:
+${agentContext.personalTone ? `- Tono personale: ${agentContext.personalTone}` : ''}
+${agentContext.contentPersonality ? `- Personalità: ${agentContext.contentPersonality}` : ''}
+${agentContext.audienceLanguage ? `- Linguaggio audience: ${agentContext.audienceLanguage}` : ''}
+${agentContext.avoidPatterns ? `- Pattern da evitare: ${agentContext.avoidPatterns}` : ''}
+${agentContext.signaturePhrases?.length ? `- Frasi firma: ${agentContext.signaturePhrases.join(', ')}` : ''}
 
 ${userComment ? `## ISTRUZIONI AGGIUNTIVE UTENTE:\n${userComment}\n` : ''}`;
 
