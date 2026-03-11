@@ -1169,7 +1169,7 @@ export default function ConsultantWhatsAppConversationsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => window.location.href = '/consultant/whatsapp'}
+                      onClick={() => window.location.href = '/consultant/ai-agents'}
                       className="h-10 w-10"
                     >
                       <ArrowLeft className="h-5 w-5" />
@@ -1256,6 +1256,17 @@ export default function ConsultantWhatsAppConversationsPage() {
         ) : (
           <>
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+              <div className="flex items-center gap-3 mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.location.href = '/consultant/ai-agents'}
+                  className="gap-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Torna a Dipendente AI
+                </Button>
+              </div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                 <div className="bg-green-500 p-2 rounded-xl">
                   <MessageSquare className="h-6 w-6 text-white" />

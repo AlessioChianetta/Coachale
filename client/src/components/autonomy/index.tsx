@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Activity, ListTodo, Database, X, Cpu, Zap, MessageSquare, Phone, Mail } from "lucide-react";
+import { Bot, Activity, ListTodo, Database, X, Cpu, Zap, MessageSquare, Phone, Mail, ExternalLink } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { AllessiaSidePanel } from "@/components/alessia/FloatingEmployeeChat";
+import { Link } from "wouter";
 import AgentChat from "./AgentChat";
 import { AI_ROLE_PROFILES } from "./constants";
 
@@ -629,6 +630,16 @@ export default function ConsultantAIAutonomyPage() {
                         {systemStatus?.roles?.filter((r: any) => r.enabled).length || 0} dipendenti
                       </span>
                     </div>
+                    <Link href="/consultant/whatsapp-conversations">
+                      <Button
+                        variant="ghost"
+                        className="h-10 px-4 gap-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 hover:text-white font-medium text-sm"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Conversazioni
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
                   </div>
 
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
