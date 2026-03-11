@@ -1357,7 +1357,7 @@ export default function ConsultantEmailHub() {
   const totalUnreadCount = accounts.reduce((sum, acc) => sum + (acc.unreadCount || 0), 0);
 
   const renderLeftSidebar = () => (
-    <div className="w-[220px] min-w-[220px] bg-slate-900 text-white flex flex-col h-full overflow-hidden">
+    <div className="w-[300px] min-w-[300px] bg-slate-900 text-white flex flex-col h-full overflow-hidden">
       <div className="p-4 space-y-3 shrink-0">
         {mainSidebarCollapsed && (
           <Button 
