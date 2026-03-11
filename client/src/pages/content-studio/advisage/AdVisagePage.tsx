@@ -160,6 +160,9 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [showSessionHistory, setShowSessionHistory] = useState(false);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
+  const [productionConceptTypes, setProductionConceptTypes] = useState<string[]>([]);
+  const [showProductionTypePicker, setShowProductionTypePicker] = useState(false);
+  const [isAddingProductionConcepts, setIsAddingProductionConcepts] = useState(false);
 
   const { data: sessionsData, refetch: refetchSessions } = useQuery({
     queryKey: ['/api/content/advisage/sessions'],
@@ -534,6 +537,27 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       setError(err.message); 
     } finally { 
       setIsProcessingBatch(false); 
+    }
+  };
+
+  const handleAddProductionConcepts = async () => {
+    if (!activePost || productionConceptTypes.length === 0) return;
+    setIsAddingProductionConcepts(true);
+    try {
+      const result = await analyzeAdText(activePost.originalText, activePost.socialNetwork, settings, productionConceptTypes, stylesMode);
+      setBatchResults(prev => prev.map(p => {
+        if (p.id !== activePost.id) return p;
+        const existingIds = new Set(p.concepts.map(c => c.id));
+        const newConcepts = result.concepts.filter(c => !existingIds.has(c.id));
+        return { ...p, concepts: [...p.concepts, ...newConcepts] };
+      }));
+      setProductionConceptTypes([]);
+      setShowProductionTypePicker(false);
+      toast({ title: "Concetti aggiunti", description: `${result.concepts.length} nuovi concept aggiunti al post` });
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setIsAddingProductionConcepts(false);
     }
   };
 
@@ -1180,7 +1204,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                     
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-muted-foreground block">
-                        Tipologia Inserzione <span className="text-muted-foreground/60">(opzionale — seleziona 1-3 tipologie)</span>
+                        Tipologia Inserzione <span className="text-muted-foreground/60">(opzionale — seleziona le tipologie che vuoi)</span>
                       </label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                         {CONCEPT_TYPES.map((ct) => {
@@ -1190,17 +1214,15 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                               key={ct.id}
                               type="button"
                               onClick={() => {
-                                setSelectedConceptTypes(prev => {
-                                  if (prev.includes(ct.id)) return prev.filter(id => id !== ct.id);
-                                  if (prev.length >= 3) return prev;
-                                  return [...prev, ct.id];
-                                });
+                                setSelectedConceptTypes(prev =>
+                                  prev.includes(ct.id) ? prev.filter(id => id !== ct.id) : [...prev, ct.id]
+                                );
                               }}
-                              className={`relative flex flex-col items-start gap-1.5 p-3 rounded-lg border-2 text-left transition-all ${
+                              className={`relative flex flex-col items-start gap-1.5 p-3 rounded-lg border-2 text-left transition-all cursor-pointer ${
                                 isSelected 
                                   ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500/30' 
                                   : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50'
-                              } ${selectedConceptTypes.length >= 3 && !isSelected ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                              }`}
                             >
                               {ct.referenceImage && (
                                 <img 
@@ -1229,7 +1251,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                       {selectedConceptTypes.length > 0 && (
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground">
-                            {selectedConceptTypes.length}/3 selezionate
+                            {selectedConceptTypes.length} selezionate
                           </span>
                           <button 
                             className="text-[10px] text-indigo-400 hover:text-indigo-300 underline"
@@ -1311,6 +1333,15 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                         )}
                         <Button
                           size="sm"
+                          variant={showProductionTypePicker ? "default" : "outline"}
+                          className={`h-8 text-xs ${showProductionTypePicker ? 'bg-indigo-600 hover:bg-indigo-700' : ''}`}
+                          onClick={() => setShowProductionTypePicker(p => !p)}
+                        >
+                          <Plus className="w-3.5 h-3.5 mr-1" />
+                          Tipologie
+                        </Button>
+                        <Button
+                          size="sm"
                           className="bg-emerald-600 hover:bg-emerald-700 h-8 text-xs"
                           onClick={handleBatchGenerateFirstImages}
                           disabled={isBatchRendering}
@@ -1341,6 +1372,65 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                       </div>
                     </div>
                   </div>
+
+                  {/* Production concept type picker */}
+                  {showProductionTypePicker && (
+                    <div className={`rounded-xl border p-4 space-y-3 ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold">Aggiungi Tipologie al Post Attivo</span>
+                        <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => { setShowProductionTypePicker(false); setProductionConceptTypes([]); }}>✕ Chiudi</button>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {CONCEPT_TYPES.map((ct) => {
+                          const isSelected = productionConceptTypes.includes(ct.id);
+                          const alreadyUsed = activePost?.concepts.some(c => c.title?.toLowerCase().includes(ct.label.toLowerCase()));
+                          return (
+                            <button
+                              key={ct.id}
+                              type="button"
+                              onClick={() => {
+                                setProductionConceptTypes(prev =>
+                                  prev.includes(ct.id) ? prev.filter(id => id !== ct.id) : [...prev, ct.id]
+                                );
+                              }}
+                              className={`relative flex flex-col items-start gap-1 p-2.5 rounded-lg border-2 text-left transition-all cursor-pointer ${
+                                isSelected 
+                                  ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500/30' 
+                                  : alreadyUsed
+                                  ? 'border-emerald-500/40 bg-emerald-500/5 opacity-60'
+                                  : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50'
+                              }`}
+                            >
+                              <span className={`text-xs font-semibold leading-tight ${isSelected ? 'text-indigo-400' : ''}`}>{ct.label}</span>
+                              {alreadyUsed && <span className="text-[9px] text-emerald-500">✓ già presente</span>}
+                              {isSelected && (
+                                <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
+                                  <Check className="w-2.5 h-2.5 text-white" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        {productionConceptTypes.length > 0 && (
+                          <span className="text-[10px] text-muted-foreground">{productionConceptTypes.length} selezionate</span>
+                        )}
+                        <Button
+                          size="sm"
+                          className="ml-auto bg-indigo-600 hover:bg-indigo-700 text-xs h-8"
+                          onClick={handleAddProductionConcepts}
+                          disabled={productionConceptTypes.length === 0 || isAddingProductionConcepts}
+                        >
+                          {isAddingProductionConcepts ? (
+                            <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Analisi...</>
+                          ) : (
+                            <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Aggiungi Concetti</>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-8">
                     {activePost && (
