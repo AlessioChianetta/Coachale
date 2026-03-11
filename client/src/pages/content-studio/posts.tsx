@@ -140,6 +140,7 @@ interface Post {
   videoSoluzione?: string;
   videoCta?: string;
   videoFullScript?: string;
+  imageUrl?: string;
   imageDescription?: string;
   imageOverlayText?: string;
   structuredContent?: {
@@ -253,6 +254,7 @@ interface SocialPreviewProps {
   errore?: string;
   soluzione?: string;
   riprovaSociale?: string;
+  imageUrl?: string;
 }
 
 function formatTextWithHashtags(text: string) {
@@ -270,7 +272,25 @@ function formatTextWithHashtags(text: string) {
   });
 }
 
-function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, errore, soluzione, riprovaSociale }: SocialPreviewProps) {
+function ImageOrPlaceholder({ imageUrl, aspectClass = "aspect-square", label = "Immagine del post" }: { imageUrl?: string; aspectClass?: string; label?: string }) {
+  if (imageUrl) {
+    return (
+      <div className={`${aspectClass} bg-gray-100 dark:bg-zinc-800 overflow-hidden`}>
+        <img src={imageUrl} alt={label} className="w-full h-full object-cover" />
+      </div>
+    );
+  }
+  return (
+    <div className={`${aspectClass} bg-gradient-to-br from-gray-100 to-gray-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center`}>
+      <div className="text-center text-muted-foreground">
+        <Image className="h-12 w-12 mx-auto mb-2 opacity-40" />
+        <p className="text-xs">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, errore, soluzione, riprovaSociale, imageUrl }: SocialPreviewProps) {
   // Build body content based on copy type
   let displayBody = body;
   if (copyType === "long") {
@@ -315,12 +335,7 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
           </div>
           <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
         </div>
-        <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center">
-          <div className="text-center text-muted-foreground">
-            <Image className="h-12 w-12 mx-auto mb-2 opacity-40" />
-            <p className="text-xs">Immagine del post</p>
-          </div>
-        </div>
+        <ImageOrPlaceholder imageUrl={imageUrl} aspectClass="aspect-square" />
         <div className="p-3 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -332,12 +347,12 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
           </div>
           <p className="text-sm font-semibold">1.234 Mi piace</p>
           <div className="text-sm space-y-1">
-            <p>
+            <p className="whitespace-pre-wrap">
               <span className="font-semibold">il_tuo_brand</span>{" "}
               {hook && <span className="font-bold">{hook}</span>}
-              {hook && displayBody && " "}
+              {hook && displayBody && "\n"}
               {formatTextWithHashtags(displayBody)}
-              {(hook || displayBody) && cta && " "}
+              {(hook || displayBody) && cta && "\n"}
               {cta && <span className="font-medium">{cta}</span>}
             </p>
           </div>
@@ -373,12 +388,7 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
             {cta && <p className="font-medium text-blue-600">{cta}</p>}
           </div>
         </div>
-        <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center">
-          <div className="text-center text-muted-foreground">
-            <Image className="h-12 w-12 mx-auto mb-2 opacity-40" />
-            <p className="text-xs">Immagine del post</p>
-          </div>
-        </div>
+        <ImageOrPlaceholder imageUrl={imageUrl} aspectClass="aspect-video" />
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
@@ -444,12 +454,7 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
             {cta && <p className="font-medium text-blue-600">{cta}</p>}
           </div>
         </div>
-        <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center">
-          <div className="text-center text-muted-foreground">
-            <Image className="h-12 w-12 mx-auto mb-2 opacity-40" />
-            <p className="text-xs">Immagine del post</p>
-          </div>
-        </div>
+        <ImageOrPlaceholder imageUrl={imageUrl} aspectClass="aspect-video" />
         <div className="p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <div className="flex -space-x-1">
@@ -511,12 +516,18 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
                 {displayBody && <p className="whitespace-pre-wrap">{formatTextWithHashtags(displayBody)}</p>}
                 {cta && <p className="text-sky-500">{cta}</p>}
               </div>
-              <div className="mt-4 aspect-video rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center">
-                <div className="text-center text-muted-foreground">
-                  <Image className="h-8 w-8 mx-auto mb-1 opacity-40" />
-                  <p className="text-xs">Immagine</p>
+              {imageUrl ? (
+                <div className="mt-4 aspect-video rounded-xl overflow-hidden">
+                  <img src={imageUrl} alt="Immagine" className="w-full h-full object-cover" />
                 </div>
-              </div>
+              ) : (
+                <div className="mt-4 aspect-video rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center">
+                  <div className="text-center text-muted-foreground">
+                    <Image className="h-8 w-8 mx-auto mb-1 opacity-40" />
+                    <p className="text-xs">Immagine</p>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between mt-4 text-muted-foreground">
                 <div className="flex items-center gap-1 hover:text-sky-500 cursor-pointer">
                   <MessageCircle className="h-4 w-4" />
@@ -3234,6 +3245,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                                 errore={formData.errore}
                                 soluzione={formData.soluzione}
                                 riprovaSociale={formData.riprovaSociale}
+                                imageUrl={editingPost?.imageUrl}
                               />
                             </div>
                           </CollapsibleContent>
@@ -4041,6 +4053,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                                 errore={viewStructured.errore || viewingPost.errore}
                                 soluzione={viewStructured.soluzione || viewingPost.soluzione}
                                 riprovaSociale={viewStructured.riprovaSociale || viewingPost.riprovaSociale}
+                                imageUrl={viewingPost.imageUrl}
                               />
                             </div>
                           </div>
