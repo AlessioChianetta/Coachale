@@ -2118,7 +2118,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                       )}
                       <button
                         onClick={() => { setSelectedPublerFilter("all"); setSelectedFolderId(folder.id); if (isMobile) setFolderSidebarOpen(false); }}
-                        className="flex-1 flex items-center gap-2 text-left min-w-0"
+                        className="flex-1 flex items-center gap-2 text-left min-w-0 overflow-hidden"
                       >
                         {isProject ? (
                           <Briefcase className="h-4 w-4 flex-shrink-0 text-indigo-500" />
