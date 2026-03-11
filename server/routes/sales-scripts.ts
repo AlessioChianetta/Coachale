@@ -170,15 +170,19 @@ router.get('/:id', requireClient, async (req: AuthRequest, res: Response) => {
 router.post('/', requireClient, async (req: AuthRequest, res: Response) => {
   try {
     const clientId = req.user!.id;
+    const userRole = req.user!.role;
     const { name, scriptType, content, description, tags, isActive } = req.body;
     
-    // Recupera il consultantId dal profilo utente
-    const [userProfile] = await db
-      .select({ consultantId: users.consultantId })
-      .from(users)
-      .where(eq(users.id, clientId));
-    
-    const consultantId = userProfile?.consultantId || null;
+    let consultantId: string | null = null;
+    if (userRole === 'consultant') {
+      consultantId = clientId;
+    } else {
+      const [userProfile] = await db
+        .select({ consultantId: users.consultantId })
+        .from(users)
+        .where(eq(users.id, clientId));
+      consultantId = userProfile?.consultantId || null;
+    }
     
     if (!name || !scriptType || !content) {
       return res.status(400).json({ error: 'Nome, tipo e contenuto sono obbligatori' });
