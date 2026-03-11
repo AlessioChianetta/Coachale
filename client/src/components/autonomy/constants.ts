@@ -385,7 +385,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "📱", text: "Non può gestire i social media", category: "comunicazione" },
       { icon: "📝", text: "Non può creare riepiloghi consulenze", category: "organizzazione" },
     ],
-    workflow: "Ogni 30 minuti → Legge consulenze e chiamate → Identifica clienti da ricontattare → Crea task chiamata vocale",
+    workflow: "Ogni 30 minuti analizza consulenze e chiamate, individua i clienti che hanno bisogno di un follow-up e crea automaticamente i task di ricontatto vocale con tutto il contesto necessario.",
   },
   millie: {
     canDo: [
@@ -403,7 +403,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "💬", text: "Non può mandare messaggi WhatsApp", category: "comunicazione" },
       { icon: "📱", text: "Non può gestire i social media", category: "comunicazione" },
     ],
-    workflow: "Email in arrivo → Identifica contatto (CRM/Lead/Cliente) → Arricchisce contesto cross-canale → Classifica e analizza intent → Genera risposta adattiva → Azioni automatiche",
+    workflow: "A ogni email in arrivo identifica il mittente tra CRM, lead e clienti, arricchisce il contesto con lo storico cross-canale, analizza intent e urgency, poi genera una risposta adattiva e pianifica le azioni conseguenti.",
   },
   echo: {
     canDo: [
@@ -420,7 +420,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "📱", text: "Non può gestire i social media", category: "comunicazione" },
       { icon: "🔄", text: "Non può creare follow-up autonomi", category: "organizzazione" },
     ],
-    workflow: "Ogni 30 minuti → Trova consulenze senza riepilogo → Analizza note e trascrizioni → Crea task riepilogo + invio email",
+    workflow: "Ogni 30 minuti cerca le consulenze ancora prive di riepilogo, analizza note e trascrizioni delle sessioni, poi crea automaticamente il task di invio riepilogo al cliente.",
   },
   nova: {
     canDo: [
@@ -436,7 +436,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "💬", text: "Non può mandare messaggi WhatsApp", category: "comunicazione" },
       { icon: "📤", text: "Non pubblica direttamente sui social", category: "comunicazione" },
     ],
-    workflow: "Ogni 30 minuti → Analizza post recenti e gap nel calendario → Identifica opportunità → Crea task per nuovo contenuto",
+    workflow: "Ogni 30 minuti analizza i post recenti, individua gap nel calendario editoriale e opportunità di contenuto legate ai trend di settore, poi crea i task per i nuovi post con bozza già pronta.",
   },
   stella: {
     canDo: [
@@ -451,7 +451,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "📧", text: "Non può inviare email", category: "comunicazione" },
       { icon: "📱", text: "Non può gestire i social media", category: "comunicazione" },
     ],
-    workflow: "Ogni 30 minuti → Legge conversazioni WhatsApp → Trova messaggi senza risposta e lead → Crea task messaggio WhatsApp",
+    workflow: "Ogni 30 minuti legge tutte le conversazioni WhatsApp attive, individua i messaggi senza risposta e i nuovi lead da qualificare, poi crea i task di risposta con contesto e tono già calibrati.",
   },
   marco: {
     canDo: [
@@ -470,7 +470,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "📧", text: "Non invia email ai clienti", category: "comunicazione" },
       { icon: "💬", text: "Non manda messaggi WhatsApp ai clienti", category: "comunicazione" },
     ],
-    workflow: "Ogni 30 minuti → Legge roadmap, obiettivi, documenti KB, agenda e dati reali → Valuta se stai facendo abbastanza per scalare → Ti chiama/scrive per spingerti ad agire",
+    workflow: "Ogni 30 minuti legge roadmap, obiettivi, documenti KB, agenda e dati reali, valuta se stai facendo abbastanza per raggiungere i tuoi obiettivi di crescita e — se rileva un ritardo — ti chiama o ti scrive per spingerti ad agire.",
   },
   robert: {
     canDo: [
@@ -488,7 +488,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "🤝", text: "Non gestisce trattative — ti prepara per chiuderle tu", category: "organizzazione" },
       { icon: "📱", text: "Non gestisce i social media", category: "comunicazione" },
     ],
-    workflow: "Ogni ciclo → Analizza stato piattaforma e clienti attivi → Identifica opportunità vendita e upsell → Ti contatta con strategie concrete e frasi killer",
+    workflow: "Ad ogni ciclo analizza lo stato della piattaforma e il profilo dei clienti attivi, individua le opportunità di vendita e upsell più concrete e ti contatta con strategie specifiche e frasi di chiusura pronte all'uso.",
   },
   hunter: {
     canDo: [
@@ -506,7 +506,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "📋", text: "Non crea reportistica avanzata — focus su prospecting e primo contatto", category: "analisi" },
       { icon: "👥", text: "Non gestisce i clienti esistenti — si occupa solo di nuovi prospect", category: "organizzazione" },
     ],
-    workflow: "Ogni ciclo → Analizza Sales Context → Cerca lead su Maps/Search → Scraping siti → Qualifica con AI + panoramica azienda → Schedula chiamate/messaggi/email a calendario → Esegue l'outreach in autonomia",
+    workflow: "Ad ogni ciclo legge il Sales Context configurato, cerca nuovi lead su Maps e Search, analizza i siti delle aziende trovate, qualifica i prospect con AI e panoramica aziendale, poi schedula ed esegue l'outreach multicanale in autonomia.",
   },
   architetto: {
     canDo: [
@@ -523,7 +523,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "💬", text: "Non invia messaggi ai clienti", category: "comunicazione" },
       { icon: "📧", text: "Non invia email autonomamente", category: "comunicazione" },
     ],
-    workflow: "Legge Brand Voice & Ricerca di Mercato → Discovery strategica → Generazione struttura funnel → Iterazione con feedback",
+    workflow: "Legge il Brand Voice e la Ricerca di Mercato caricati, esegue una discovery strategica del business, genera la struttura del funnel completa di copy e poi itera sulla base del tuo feedback fino al risultato definitivo.",
   },
   personalizza: {
     canDo: [
@@ -538,7 +538,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "❓", text: "Senza istruzioni personalizzate non sa cosa fare", category: "organizzazione" },
       { icon: "🎯", text: "Non ha un focus predefinito come gli altri ruoli", category: "organizzazione" },
     ],
-    workflow: "Ogni 30 minuti → Legge i dati configurati → Segue le TUE istruzioni personalizzate → Crea task secondo le tue regole",
+    workflow: "Ogni 30 minuti legge i dati configurati dall'account, esegue esattamente le istruzioni personalizzate che hai scritto e crea i task secondo le regole di business che hai definito tu.",
   },
 };
 
