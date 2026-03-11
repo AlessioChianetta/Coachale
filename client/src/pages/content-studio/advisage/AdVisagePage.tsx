@@ -24,7 +24,10 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -2333,11 +2336,47 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Nessuna associazione</SelectItem>
-                  {existingPosts.map((post: ContentPost) => (
-                    <SelectItem key={post.id} value={post.id}>
-                      {post.title || 'Post senza titolo'} ({post.platform})
-                    </SelectItem>
-                  ))}
+                  {(() => {
+                    // Group existingPosts by folder
+                    const publerGrouped: { folder: ContentPost['folder'] | null; posts: ContentPost[] }[] = [];
+                    const publerSeenIds = new Set<string | null>();
+                    for (const post of existingPosts as ContentPost[]) {
+                      const fid = post.folderId ?? null;
+                      if (!publerSeenIds.has(fid)) {
+                        publerSeenIds.add(fid);
+                        publerGrouped.push({ folder: post.folder ?? null, posts: [] });
+                      }
+                      publerGrouped.find(g => (g.folder?.id ?? null) === fid)!.posts.push(post);
+                    }
+                    publerGrouped.sort((a, b) => {
+                      if (!a.folder && !b.folder) return 0;
+                      if (!a.folder) return 1;
+                      if (!b.folder) return -1;
+                      if (a.folder.folderType === 'project' && b.folder.folderType !== 'project') return -1;
+                      if (b.folder.folderType === 'project' && a.folder.folderType !== 'project') return 1;
+                      return a.folder.name.localeCompare(b.folder.name);
+                    });
+                    return publerGrouped.map(({ folder, posts: gPosts }, idx) => (
+                      <SelectGroup key={folder?.id ?? '__none_folder__'}>
+                        {idx > 0 && <SelectSeparator />}
+                        <SelectLabel className="flex items-center gap-1.5 text-xs font-semibold">
+                          {folder ? (
+                            folder.folderType === 'project'
+                              ? <FolderOpen className="w-3 h-3 text-indigo-500" style={{ color: folder.color || undefined }} />
+                              : <FolderIcon className="w-3 h-3 text-slate-400" style={{ color: folder.color || undefined }} />
+                          ) : (
+                            <FileText className="w-3 h-3 text-slate-400" />
+                          )}
+                          {folder ? folder.name : 'Senza cartella'}
+                        </SelectLabel>
+                        {gPosts.map((post: ContentPost) => (
+                          <SelectItem key={post.id} value={post.id} className="pl-6">
+                            {post.title || 'Post senza titolo'} · {post.platform}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ));
+                  })()}
                 </SelectContent>
               </Select>
             </div>
