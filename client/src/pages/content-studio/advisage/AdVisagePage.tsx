@@ -1684,7 +1684,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                           {originalTextExpanded[concept.id] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                         </Button>
                                       </div>
-                                      <p className={`text-xs leading-relaxed ${isDark ? 'text-blue-300' : 'text-blue-800'} ${originalTextExpanded[concept.id] ? '' : 'line-clamp-3'}`}>
+                                      <p className={`text-xs leading-relaxed whitespace-pre-wrap ${isDark ? 'text-blue-300' : 'text-blue-800'} ${originalTextExpanded[concept.id] ? '' : 'line-clamp-3'}`}>
                                         {activePost.originalText}
                                       </p>
                                     </div>
