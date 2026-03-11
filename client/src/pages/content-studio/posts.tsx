@@ -4036,11 +4036,11 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
             return (
               <div className="flex flex-col lg:flex-row flex-1 min-h-0">
                 {/* Left Panel - Phone Mockup Preview */}
-                <div className="lg:w-[420px] flex-shrink-0 bg-gradient-to-br from-slate-100 via-slate-50 to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-black p-6 border-b lg:border-b-0 lg:border-r max-h-[350px] lg:max-h-full flex items-start justify-center overflow-hidden">
-                  <div className="sticky top-0">
+                <div className="lg:w-[400px] flex-shrink-0 bg-gradient-to-br from-slate-100 via-slate-50 to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-black border-b lg:border-b-0 lg:border-r overflow-y-auto">
+                  <div className="p-4 space-y-3">
                     {/* Platform indicator */}
-                    <div className="flex items-center justify-center gap-2 mb-4">
-                      <div className={`p-2.5 rounded-xl shadow-lg ${
+                    <div className="flex items-center gap-2">
+                      <div className={`p-2 rounded-lg shadow ${
                         viewingPost.platform === "instagram" ? "bg-gradient-to-br from-purple-500 to-pink-500" :
                         viewingPost.platform === "facebook" ? "bg-gradient-to-br from-blue-500 to-blue-600" :
                         viewingPost.platform === "linkedin" ? "bg-gradient-to-br from-blue-600 to-blue-700" :
@@ -4054,61 +4054,23 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                       </div>
                       <div>
                         <h4 className="text-sm font-bold capitalize">{viewingPost.platform}</h4>
-                        <p className="text-xs text-muted-foreground">Anteprima Live</p>
+                        <p className="text-xs text-muted-foreground">Anteprima</p>
                       </div>
                     </div>
-                    
-                    {/* Phone Mockup Frame */}
-                    <div className="relative mx-auto" style={{ width: "280px" }}>
-                      {/* Phone outer frame */}
-                      <div className="absolute inset-0 bg-gradient-to-b from-gray-800 to-gray-900 rounded-[2.5rem] shadow-2xl" style={{ transform: "scale(1.02)" }} />
-                      
-                      {/* Phone inner bezel */}
-                      <div className="relative bg-gray-900 rounded-[2.3rem] p-2 shadow-inner">
-                        {/* Dynamic Island / Notch */}
-                        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-10" />
-                        
-                        {/* Screen */}
-                        <div className="relative bg-white dark:bg-black rounded-[1.8rem] overflow-hidden" style={{ height: "500px" }}>
-                          {/* Status bar */}
-                          <div className="absolute top-0 inset-x-0 h-11 bg-white/80 dark:bg-black/80 backdrop-blur-sm z-10 flex items-end justify-between px-6 pb-1">
-                            <span className="text-xs font-semibold">9:41</span>
-                            <div className="flex items-center gap-1">
-                              <div className="w-4 h-2 border border-current rounded-sm relative">
-                                <div className="absolute inset-0.5 bg-current rounded-sm" style={{ width: "70%" }} />
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* App content - scrollable */}
-                          <div className="h-full overflow-y-auto pt-11 pb-6 scrollbar-thin">
-                            <div className="transform scale-[0.72] origin-top" style={{ width: "138.88%" }}>
-                              <SocialPreview
-                                platform={viewingPost.platform || "instagram"}
-                                hook={hookText}
-                                body={bodyText}
-                                cta={ctaText}
-                                copyType={viewCopyType as "short" | "long"}
-                                chiCosaCome={viewStructured.chiCosaCome || viewingPost.chiCosaCome}
-                                errore={viewStructured.errore || viewingPost.errore}
-                                soluzione={viewStructured.soluzione || viewingPost.soluzione}
-                                riprovaSociale={viewStructured.riprovaSociale || viewingPost.riprovaSociale}
-                                imageUrl={viewingPost.imageUrl}
-                              />
-                            </div>
-                          </div>
-                          
-                          {/* Home indicator */}
-                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-28 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
-                        </div>
-                      </div>
-                      
-                      {/* Side buttons */}
-                      <div className="absolute left-0 top-24 w-1 h-8 bg-gray-700 rounded-l-full" />
-                      <div className="absolute left-0 top-36 w-1 h-12 bg-gray-700 rounded-l-full" />
-                      <div className="absolute left-0 top-52 w-1 h-12 bg-gray-700 rounded-l-full" />
-                      <div className="absolute right-0 top-32 w-1 h-16 bg-gray-700 rounded-r-full" />
-                    </div>
+
+                    {/* Flat preview */}
+                    <SocialPreview
+                      platform={viewingPost.platform || "instagram"}
+                      hook={hookText}
+                      body={bodyText}
+                      cta={ctaText}
+                      copyType={viewCopyType as "short" | "long"}
+                      chiCosaCome={viewStructured.chiCosaCome || viewingPost.chiCosaCome}
+                      errore={viewStructured.errore || viewingPost.errore}
+                      soluzione={viewStructured.soluzione || viewingPost.soluzione}
+                      riprovaSociale={viewStructured.riprovaSociale || viewingPost.riprovaSociale}
+                      imageUrl={viewingPost.imageUrl}
+                    />
                   </div>
                 </div>
 
