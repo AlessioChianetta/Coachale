@@ -718,21 +718,45 @@ export function ModeSelector() {
                       </h4>
                       <div className="grid gap-2 text-sm">
                         <div className="flex items-start gap-2">
-                          <span className="text-muted-foreground w-24 shrink-0">Business:</span>
+                          <span className="text-muted-foreground w-28 shrink-0">Business:</span>
                           <span>{selectedAgent.businessName || 'Non specificato'}</span>
                         </div>
+                        {selectedAgent.businessDescription && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-muted-foreground w-28 shrink-0">Descrizione:</span>
+                            <span className="line-clamp-2">{selectedAgent.businessDescription}</span>
+                          </div>
+                        )}
                         <div className="flex items-start gap-2">
-                          <span className="text-muted-foreground w-24 shrink-0">Target:</span>
-                          <span>{selectedAgent.targetClient || 'Non specificato'}</span>
+                          <span className="text-muted-foreground w-28 shrink-0">Target:</span>
+                          <span className="line-clamp-3">{selectedAgent.targetClient || 'Non specificato'}</span>
                         </div>
                         <div className="flex items-start gap-2">
-                          <span className="text-muted-foreground w-24 shrink-0">USP:</span>
+                          <span className="text-muted-foreground w-28 shrink-0">USP:</span>
                           <span className="line-clamp-2">{selectedAgent.usp || 'Non specificato'}</span>
                         </div>
+                        {selectedAgent.mission && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-muted-foreground w-28 shrink-0">Mission:</span>
+                            <span className="line-clamp-2">{selectedAgent.mission}</span>
+                          </div>
+                        )}
+                        {selectedAgent.vision && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-muted-foreground w-28 shrink-0">Vision:</span>
+                            <span className="line-clamp-2">{selectedAgent.vision}</span>
+                          </div>
+                        )}
+                        {selectedAgent.whatWeDo && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-muted-foreground w-28 shrink-0">Cosa facciamo:</span>
+                            <span className="line-clamp-2">{selectedAgent.whatWeDo}</span>
+                          </div>
+                        )}
                         {selectedAgent.values && selectedAgent.values.length > 0 && (
                           <div className="flex items-start gap-2">
-                            <span className="text-muted-foreground w-24 shrink-0">Valori:</span>
-                            <span>{selectedAgent.values.slice(0, 3).join(', ')}</span>
+                            <span className="text-muted-foreground w-28 shrink-0">Valori:</span>
+                            <span>{selectedAgent.values.join(', ')}</span>
                           </div>
                         )}
                       </div>
@@ -768,6 +792,8 @@ export function ModeSelector() {
                   <li>• Target: <span className="font-medium">{targetType === 'b2b' ? 'B2B (Business)' : 'B2C (Individui)'}</span></li>
                   <li>• Agente: {selectedAgent?.displayName || selectedAgent?.agentName}</li>
                   <li>• Business: {selectedAgent?.businessName}</li>
+                  {selectedAgent?.mission && <li>• Mission: <span className="line-clamp-1">{selectedAgent.mission}</span></li>}
+                  {selectedAgent?.usp && <li>• USP: <span className="line-clamp-1">{selectedAgent.usp}</span></li>}
                   <li>• Modello AI: Gemini 3.0 Pro (Vertex AI)</li>
                 </ul>
               </div>
