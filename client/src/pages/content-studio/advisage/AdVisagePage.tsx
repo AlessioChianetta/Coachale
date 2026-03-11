@@ -71,6 +71,8 @@ import {
   ZoomIn,
   ZoomOut,
   Link2,
+  Folder as FolderIcon,
+  FolderOpen,
 } from "lucide-react";
 
 interface ContentPost {
@@ -86,6 +88,9 @@ interface ContentPost {
   mediaType?: string;
   createdAt?: string;
   scheduledDate?: string;
+  scheduledAt?: string;
+  folderId?: string | null;
+  folder?: { id: string; name: string; folderType?: string; color?: string } | null;
   publerMediaIds?: (string | { id: string; path?: string; thumbnail?: string })[];
   structuredContent?: {
     hook?: string;
@@ -2010,105 +2015,152 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                 );
               }
               
+              // Group posts by folder
+              const grouped: { folder: ContentPost['folder'] | null; posts: ContentPost[] }[] = [];
+              const seenFolderIds = new Set<string | null>();
+              for (const post of filteredPosts) {
+                const fid = post.folderId ?? null;
+                if (!seenFolderIds.has(fid)) {
+                  seenFolderIds.add(fid);
+                  grouped.push({ folder: post.folder ?? null, posts: [] });
+                }
+                grouped.find(g => (g.folder?.id ?? null) === fid)!.posts.push(post);
+              }
+              // Sort: projects first, then folders, then no-folder last
+              grouped.sort((a, b) => {
+                if (!a.folder && !b.folder) return 0;
+                if (!a.folder) return 1;
+                if (!b.folder) return -1;
+                if (a.folder.folderType === 'project' && b.folder.folderType !== 'project') return -1;
+                if (b.folder.folderType === 'project' && a.folder.folderType !== 'project') return 1;
+                return a.folder.name.localeCompare(b.folder.name);
+              });
+
+              const renderPost = (post: ContentPost) => {
+                const fullCopy = getPostFullCopy(post);
+                const createdDateStr = post.createdAt 
+                  ? new Date(post.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })
+                  : null;
+                const scheduledDateStr = (post.scheduledDate || post.scheduledAt)
+                  ? new Date(post.scheduledDate || post.scheduledAt || '').toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+                  : null;
+                const isAlreadyInQueue = postInputs.some(p => p.sourcePostId === post.id);
+                const isScheduled = post.status === 'scheduled';
+                const hasExistingMedia = post.publerMediaIds && Array.isArray(post.publerMediaIds) && post.publerMediaIds.length > 0;
+                const charCount = fullCopy.length;
+                return (
+                  <button
+                    key={post.id}
+                    onClick={() => !isAlreadyInQueue && importFromPost(post)}
+                    disabled={isAlreadyInQueue}
+                    className={`w-full text-left p-3 rounded-lg border transition-all flex items-start gap-3 ${
+                      isAlreadyInQueue 
+                        ? 'opacity-50 cursor-not-allowed bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800' 
+                        : isScheduled
+                          ? 'hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:border-amber-300 border-amber-200 dark:border-amber-800'
+                          : 'hover:bg-accent hover:border-indigo-300'
+                    }`}
+                  >
+                    <div className="relative shrink-0">
+                      <div className={`p-2 rounded-lg ${platformColors[post.platform || 'instagram'] || 'bg-slate-100'}`}>
+                        {getPlatformIcon(post.platform || 'instagram')}
+                      </div>
+                      {hasExistingMedia && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900" />
+                      )}
+                      {isScheduled && !hasExistingMedia && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white dark:border-slate-900" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-semibold text-sm truncate flex-1">{post.title || 'Post senza titolo'}</p>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {createdDateStr && (
+                            <span className="text-[10px] text-muted-foreground">{createdDateStr}</span>
+                          )}
+                          {scheduledDateStr && (
+                            <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-amber-700 dark:text-amber-400 px-1.5">
+                              <Calendar className="w-2.5 h-2.5 mr-1" />
+                              {scheduledDateStr}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-1 mb-1.5">{fullCopy}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge className={`text-[10px] px-1.5 ${platformColors[post.platform || 'instagram']}`}>
+                          {post.platform?.toUpperCase() || 'INSTAGRAM'}
+                        </Badge>
+                        <Badge variant={isScheduled ? 'default' : 'secondary'} className={`text-[10px] px-1.5 ${isScheduled ? 'bg-amber-500 hover:bg-amber-500' : ''}`}>
+                          {isScheduled ? '📅 Prog.' : '📝 Bozza'}
+                        </Badge>
+                        {hasExistingMedia && (
+                          <Badge className="text-[10px] px-1.5 bg-emerald-100 text-emerald-700 border-emerald-200">
+                            <ImageIcon className="w-2.5 h-2.5 mr-1" />
+                            Ha immagine
+                          </Badge>
+                        )}
+                        {isAlreadyInQueue && (
+                          <Badge className="text-[10px] px-1.5 bg-indigo-100 text-indigo-700 border-indigo-200">
+                            <Check className="w-2.5 h-2.5 mr-1" />
+                            In coda
+                          </Badge>
+                        )}
+                        <span className="text-[10px] text-muted-foreground ml-auto">{charCount} car.</span>
+                      </div>
+                    </div>
+                    {isAlreadyInQueue ? (
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-1" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
+                    )}
+                  </button>
+                );
+              };
+
               return (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground px-1 mb-3">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
                     <span>{filteredPosts.length} post disponibili</span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Con immagine
-                      <span className="w-2 h-2 rounded-full bg-amber-500 ml-2"></span> Programmato
-                      <span className="w-2 h-2 rounded-full bg-gray-400 ml-2"></span> Bozza
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Con immagine
+                      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block ml-2"></span> Programmato
                     </span>
                   </div>
-                  
-                  {filteredPosts.map((post: ContentPost) => {
-                    const fullCopy = getPostFullCopy(post);
-                    const createdDateStr = post.createdAt 
-                      ? new Date(post.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })
-                      : null;
-                    const scheduledDateStr = (post.scheduledDate || post.scheduledAt)
-                      ? new Date(post.scheduledDate || post.scheduledAt || '').toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
-                      : null;
-                    
-                    const isAlreadyInQueue = postInputs.some(p => p.sourcePostId === post.id);
-                    const isScheduled = post.status === 'scheduled';
-                    const hasExistingMedia = post.publerMediaIds && Array.isArray(post.publerMediaIds) && post.publerMediaIds.length > 0;
-                    const charCount = fullCopy.length;
-                    
-                    return (
-                      <button
-                        key={post.id}
-                        onClick={() => !isAlreadyInQueue && importFromPost(post)}
-                        disabled={isAlreadyInQueue}
-                        className={`w-full text-left p-4 rounded-lg border transition-all flex items-start gap-3 ${
-                          isAlreadyInQueue 
-                            ? 'opacity-50 cursor-not-allowed bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800' 
-                            : isScheduled
-                              ? 'hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:border-amber-300 border-amber-200 dark:border-amber-800'
-                              : 'hover:bg-accent hover:border-indigo-300'
-                        }`}
-                      >
-                        <div className="relative">
-                          <div className={`p-2.5 rounded-lg ${platformColors[post.platform || 'instagram'] || 'bg-slate-100'}`}>
-                            {getPlatformIcon(post.platform || 'instagram')}
-                          </div>
-                          {hasExistingMedia && (
-                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900" />
-                          )}
-                          {isScheduled && !hasExistingMedia && (
-                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white dark:border-slate-900" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                            <p className="font-semibold text-sm truncate flex-1">{post.title || 'Post senza titolo'}</p>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {createdDateStr && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  Creato: {createdDateStr}
-                                </span>
-                              )}
-                              {scheduledDateStr && (
-                                <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-amber-700 dark:text-amber-400">
-                                  <Calendar className="w-3 h-3 mr-1" />
-                                  Pubblica: {scheduledDateStr}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{fullCopy}</p>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge className={`text-[10px] ${platformColors[post.platform || 'instagram']}`}>
-                              {post.platform?.toUpperCase() || 'INSTAGRAM'}
-                            </Badge>
-                            <Badge variant={isScheduled ? 'default' : 'secondary'} className={`text-[10px] ${isScheduled ? 'bg-amber-500 hover:bg-amber-500' : ''}`}>
-                              {isScheduled ? '📅 Programmato' : '📝 Bozza'}
-                            </Badge>
-                            {hasExistingMedia && (
-                              <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">
-                                <ImageIcon className="w-3 h-3 mr-1" />
-                                Ha immagine (sostituisce)
-                              </Badge>
-                            )}
-                            <span className="text-[10px] text-muted-foreground ml-auto">
-                              {charCount} caratteri
-                            </span>
-                            {isAlreadyInQueue && (
-                              <Badge className="text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200">
-                                <Check className="w-3 h-3 mr-1" />
-                                In coda
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        {isAlreadyInQueue ? (
-                          <Check className="w-5 h-5 text-emerald-600 shrink-0 mt-1" />
+
+                  {grouped.map(({ folder, posts: groupPosts }) => (
+                    <div key={folder?.id ?? '__no_folder__'} className="space-y-1.5">
+                      {/* Folder/Project header */}
+                      <div className={`flex items-center gap-2 px-1 py-1.5 rounded-lg ${
+                        folder
+                          ? folder.folderType === 'project'
+                            ? isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-50 border border-indigo-100'
+                            : isDark ? 'bg-slate-800/60 border border-slate-700/40' : 'bg-slate-100 border border-slate-200'
+                          : isDark ? 'bg-slate-800/30 border border-slate-700/20' : 'bg-gray-50 border border-gray-100'
+                      }`}>
+                        {folder ? (
+                          folder.folderType === 'project' ? (
+                            <FolderOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" style={{ color: folder.color || undefined }} />
+                          ) : (
+                            <FolderIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" style={{ color: folder.color || undefined }} />
+                          )
                         ) : (
-                          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 mt-1" />
+                          <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         )}
-                      </button>
-                    );
-                  })}
+                        <span className={`text-xs font-semibold truncate ${
+                          folder?.folderType === 'project' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'
+                        }`}>
+                          {folder ? folder.name : 'Senza cartella'}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{groupPosts.length} post</span>
+                      </div>
+                      {/* Posts in this group */}
+                      <div className="pl-3 space-y-1.5 border-l-2 border-dashed border-slate-200 dark:border-slate-700 ml-1.5">
+                        {groupPosts.map(renderPost)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               );
             })()}
