@@ -31,7 +31,7 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, KbDocument, RoleStatus } from "./types";
-import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES, AI_ROLE_EXECUTION_PIPELINES } from "./constants";
+import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES, AI_ROLE_EXECUTION_PIPELINES, AI_ROLE_IMPACT_MAP } from "./constants";
 import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./utils";
 import TelegramConfig from "./TelegramConfig";
 import TelegramChats from "./TelegramChats";
@@ -2333,248 +2333,356 @@ function SettingsTab({
                                   </TabsTrigger>
                                 </TabsList>
 
-                                <TabsContent value="profilo" className="mt-0 space-y-6">
-                                  <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5">
-                                    <p className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-                                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                                      Flusso di lavoro
-                                    </p>
-                                    <p className="text-sm text-muted-foreground leading-relaxed">{caps.workflow}</p>
-                                  </div>
-
-                                  {AI_ROLE_EXECUTION_PIPELINES[role.id] && (() => {
+                                <TabsContent value="profilo" className="mt-0 space-y-5">
+                                  {(() => {
+                                    const effectiveLevel = settings.role_autonomy_modes[role.id] !== undefined && settings.role_autonomy_modes[role.id] !== null
+                                      ? settings.role_autonomy_modes[role.id]
+                                      : settings.autonomy_level;
+                                    const isCustomLevel = settings.role_autonomy_modes[role.id] !== undefined && settings.role_autonomy_modes[role.id] !== null;
                                     const pipeline = AI_ROLE_EXECUTION_PIPELINES[role.id];
+                                    const impactItems = AI_ROLE_IMPACT_MAP[role.id] || [];
+
+                                    const getAutonomyExplanation = (level: number, name: string) => {
+                                      if (level === 0) return `${name} è disattivato e non farà nulla.`;
+                                      if (level === 1) return `${name} eseguirà solo i task che crei tu manualmente.`;
+                                      if (level <= 3) return `${name} può proporre azioni, ma ti chiederà sempre conferma prima di procedere.`;
+                                      if (level <= 6) return `${name} esegue task di routine in autonomia. Ti chiede conferma per azioni importanti.`;
+                                      if (level <= 9) return `${name} opera in modo quasi autonomo. Ti avvisa solo per situazioni critiche.`;
+                                      return `${name} ha autonomia completa — agisce senza approvazione su tutto.`;
+                                    };
+
+                                    const getAvviaDescription = (level: number) => {
+                                      if (level === 0) return "Disattivato — non può essere avviato";
+                                      if (level <= 1) return "Analizzerà i dati e creerà task da approvare manualmente";
+                                      if (level <= 3) return "Analizzerà i dati e proporrà azioni — dovrai approvarle tu";
+                                      if (level <= 6) return "Analizzerà e agirà sulle azioni di routine, ti chiederà per il resto";
+                                      if (level <= 9) return "Analizzerà e agirà in autonomia su quasi tutto";
+                                      return "Analizzerà e agirà con autonomia completa su tutto";
+                                    };
+
                                     return (
-                                      <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-4">
-                                        <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                          <ListTodo className="h-3.5 w-3.5 text-muted-foreground" />
-                                          Piano di esecuzione
-                                        </p>
-                                        <div className="flex flex-wrap items-start gap-1">
-                                          {pipeline.steps.map((step, idx) => (
-                                            <React.Fragment key={step.id}>
-                                              <div className="flex flex-col items-center text-center" style={{ minWidth: '80px', maxWidth: '100px' }}>
-                                                <div className="w-10 h-10 rounded-xl bg-muted/60 dark:bg-muted/30 border border-border/50 flex items-center justify-center text-lg mb-1.5">
-                                                  {step.icon}
-                                                </div>
-                                                <p className="text-[11px] font-medium text-foreground leading-tight">{step.label}</p>
-                                                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{step.description.length > 50 ? step.description.substring(0, 50) + '...' : step.description}</p>
+                                      <>
+                                        <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-4 sm:p-5">
+                                          <div className="flex items-start gap-3 mb-3">
+                                            <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                                              <ArrowRight className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-sm font-semibold text-foreground mb-1">Come funziona</p>
+                                              <p className="text-sm text-muted-foreground leading-relaxed">{caps.workflow}</p>
+                                            </div>
+                                          </div>
+
+                                          {pipeline && (
+                                            <div className={cn(
+                                              "rounded-xl border border-border/30 p-3 sm:p-4 mt-3",
+                                              "bg-gray-50/50 dark:bg-gray-800/30"
+                                            )}>
+                                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                                <ListTodo className="h-3 w-3" />
+                                                Cosa fa passo per passo
+                                              </p>
+                                              <div className="space-y-0">
+                                                {pipeline.steps.map((step, idx) => (
+                                                  <div key={step.id} className="flex items-start gap-3 relative">
+                                                    <div className="flex flex-col items-center shrink-0">
+                                                      <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-800 border border-border/50 flex items-center justify-center text-base shadow-sm">
+                                                        {step.icon}
+                                                      </div>
+                                                      {idx < pipeline.steps.length - 1 && (
+                                                        <div className="w-px h-full min-h-[16px] bg-border/40 my-0.5" />
+                                                      )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 pb-3">
+                                                      <p className="text-sm font-medium text-foreground leading-tight">{step.label}</p>
+                                                      <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{step.description}</p>
+                                                    </div>
+                                                  </div>
+                                                ))}
                                               </div>
-                                              {idx < pipeline.steps.length - 1 && (
-                                                <div className="flex items-center pt-3">
-                                                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60" />
-                                                </div>
+                                              <div className={cn("flex items-center gap-2 pt-2 mt-1 border-t border-border/30")}>
+                                                <span className="text-base">{pipeline.directionIcon}</span>
+                                                <span className={cn("text-xs font-semibold", pipeline.directionColor)}>{pipeline.direction}</span>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {impactItems.length > 0 && (
+                                          <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-4 sm:p-5">
+                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                              <Target className="h-3 w-3" />
+                                              Cosa tocca
+                                            </p>
+                                            <div className="flex flex-wrap gap-1.5">
+                                              {impactItems.map((item, idx) => (
+                                                <span
+                                                  key={idx}
+                                                  className={cn(
+                                                    "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border",
+                                                    item.mode === "write"
+                                                      ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-300 dark:border-amber-800"
+                                                      : "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700"
+                                                  )}
+                                                >
+                                                  <span>{item.icon}</span>
+                                                  {item.label}
+                                                  {item.mode === "write" && (
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">scrive</span>
+                                                  )}
+                                                </span>
+                                              ))}
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground mt-2.5 flex items-center gap-1.5">
+                                              <span className="inline-block w-2 h-2 rounded-sm bg-gray-200 dark:bg-gray-700" /> Legge
+                                              <span className="inline-block w-2 h-2 rounded-sm bg-amber-200 dark:bg-amber-800 ml-2" /> Scrive / Invia
+                                            </p>
+                                          </div>
+                                        )}
+
+                                        <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-4 sm:p-5">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Livello di controllo</p>
+                                          </div>
+                                          <div className={cn(
+                                            "flex items-center gap-3 rounded-xl px-3.5 py-2.5 border",
+                                            effectiveLevel === 0 ? "bg-gray-50 border-gray-200 dark:bg-gray-800/30 dark:border-gray-700" :
+                                            effectiveLevel <= 3 ? "bg-emerald-50/50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800" :
+                                            effectiveLevel <= 6 ? "bg-amber-50/50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800" :
+                                            effectiveLevel <= 9 ? "bg-orange-50/50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-800" :
+                                            "bg-red-50/50 border-red-200 dark:bg-red-950/20 dark:border-red-800"
+                                          )}>
+                                            <Badge className={cn("rounded-full text-xs px-2.5 shrink-0", getAutonomyBadgeColor(effectiveLevel))}>
+                                              {effectiveLevel}/10
+                                            </Badge>
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-sm text-foreground leading-snug">{getAutonomyExplanation(effectiveLevel, role.name)}</p>
+                                              {!isCustomLevel && (
+                                                <p className="text-[11px] text-muted-foreground mt-0.5">Segue il livello globale</p>
                                               )}
-                                            </React.Fragment>
-                                          ))}
-                                        </div>
-                                        <div className={cn("flex items-center gap-2 pt-2 border-t border-border/30")}>
-                                          <span className="text-base">{pipeline.directionIcon}</span>
-                                          <span className={cn("text-xs font-semibold", pipeline.directionColor)}>{pipeline.direction}</span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })()}
-
-                                  <div className="space-y-5">
-                                    <div>
-                                      <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-3 flex items-center gap-2">
-                                        <CheckCircle className="h-4 w-4" />
-                                        Cosa sa fare
-                                        <Badge variant="outline" className="text-xs rounded-full px-2 py-0 text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700">{caps.canDo.length} capacità</Badge>
-                                      </div>
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        {caps.canDo.map((item, idx) => (
-                                          <div key={idx} className="flex items-center gap-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-3.5 py-2.5">
-                                            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 text-sm">
-                                              {item.icon}
                                             </div>
-                                            <span className="text-sm">{item.text}</span>
                                           </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <div className="text-sm font-semibold text-red-500 dark:text-red-400 mb-3 flex items-center gap-2">
-                                        <XCircle className="h-4 w-4" />
-                                        Cosa NON sa fare
-                                        <Badge variant="outline" className="text-xs rounded-full px-2 py-0 text-red-500 border-red-300 dark:text-red-400 dark:border-red-700">{caps.cantDo.length} limitazioni</Badge>
-                                      </div>
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        {caps.cantDo.map((item, idx) => (
-                                          <div key={idx} className="flex items-center gap-3 rounded-xl bg-red-50/50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 px-3.5 py-2.5">
-                                            <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0 text-sm">
-                                              {item.icon}
-                                            </div>
-                                            <span className="text-sm text-muted-foreground">{item.text}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
+                                        </div>
 
-                                  {systemPrompts?.[role.id] && (
-                                    <div className="pt-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-xs rounded-xl gap-1.5"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setShowPromptForRole(showPromptForRole === role.id ? null : role.id);
-                                        }}
-                                      >
-                                        <Eye className="h-3.5 w-3.5" />
-                                        {showPromptForRole === role.id ? "Nascondi System Prompt" : "Vedi System Prompt"}
-                                        {showPromptForRole === role.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                      </Button>
-                                      {showPromptForRole === role.id && (
-                                        <motion.div
-                                          initial={{ opacity: 0, height: 0 }}
-                                          animate={{ opacity: 1, height: "auto" }}
-                                          transition={{ duration: 0.2 }}
-                                          className="mt-3"
-                                        >
-                                          <div className="rounded-2xl border border-border/40 bg-muted/30 dark:bg-gray-900/50 p-4">
-                                            <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-                                              <Brain className="h-3.5 w-3.5" />
-                                              System Prompt completo di {systemPrompts[role.id].name}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground mb-3 italic">
-                                              Questo è il prompt che guida il comportamento di {systemPrompts[role.id].name}. Le sezioni con "--" vengono riempite dinamicamente ad ogni ciclo con dati reali.
-                                            </p>
-                                            <pre className="text-xs whitespace-pre-wrap font-mono bg-background dark:bg-gray-950 rounded-xl p-3 border border-border/40 max-h-[400px] overflow-y-auto leading-relaxed">
-                                              {systemPrompts[role.id].systemPromptTemplate}
-                                            </pre>
-                                          </div>
-                                        </motion.div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {role.id === "hunter" && (() => {
-                                    const hasSalesContext = !!(savedSalesContext?.servicesOffered);
-                                    const hasOutreachEnabled = !!outreachConfig.enabled;
-                                    const hasAnyChannel = !!(
-                                      outreachConfig.voice_enabled ||
-                                      outreachConfig.whatsapp_enabled ||
-                                      outreachConfig.email_enabled ||
-                                      (outreachConfig.channel_priority && outreachConfig.channel_priority.length > 0)
-                                    );
-                                    const checks = [
-                                      { ok: hasSalesContext, label: "Sales Context compilato", fix: "Vai su Lead Scraper → Sales Agent", action: () => navigate("/consultant/lead-scraper") },
-                                      { ok: hasOutreachEnabled, label: "Outreach attivato", fix: "Attivalo nella tab Canali", action: () => onTabChange("canali") },
-                                      { ok: hasAnyChannel, label: "Almeno un canale outreach configurato (voice / WhatsApp / email)", fix: "Configura in tab Canali → Outreach", action: () => onTabChange("canali") },
-                                    ];
-                                    const allOk = checks.every(c => c.ok);
-                                    return (
-                                      <div className="rounded-xl border p-4 space-y-3 mt-2" onClick={(e) => e.stopPropagation()}>
-                                        <p className="text-sm font-semibold flex items-center gap-2">
-                                          {allOk ? <CheckCircle className="h-4 w-4 text-emerald-500" /> : <AlertCircle className="h-4 w-4 text-amber-500" />}
-                                          {allOk ? "Hunter è pronto per lavorare" : "Configurazione richiesta"}
-                                        </p>
-                                        <div className="space-y-1.5">
-                                          {checks.map((c, i) => (
-                                            <div key={i} className="flex items-center justify-between gap-2">
-                                              <div className="flex items-center gap-2 text-xs">
-                                                {c.ok
-                                                  ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                                  : <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />}
-                                                <span className={c.ok ? "text-muted-foreground" : "text-foreground font-medium"}>{c.label}</span>
+                                        <Collapsible>
+                                          <CollapsibleTrigger asChild>
+                                            <button className="w-full rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-4 sm:p-5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                              <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                                  <span className="text-sm font-semibold text-foreground">Capacità</span>
+                                                  <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0">{caps.canDo.length} sì · {caps.cantDo.length} no</Badge>
+                                                </div>
+                                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                               </div>
-                                              {!c.ok && (
-                                                <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={c.action}>
-                                                  {c.fix} <ArrowRight className="h-3 w-3 ml-1" />
+                                            </button>
+                                          </CollapsibleTrigger>
+                                          <CollapsibleContent>
+                                            <div className="rounded-2xl border border-border/40 border-t-0 rounded-t-none bg-white dark:bg-gray-900/50 px-4 sm:px-5 pb-4 sm:pb-5 space-y-4 -mt-px">
+                                              <div>
+                                                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
+                                                  <CheckCircle className="h-3 w-3" />
+                                                  Cosa sa fare
+                                                </p>
+                                                <div className="space-y-1">
+                                                  {caps.canDo.map((item, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg">
+                                                      <span className="text-sm shrink-0">{item.icon}</span>
+                                                      <span className="text-sm text-foreground">{item.text}</span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                              <Separator className="bg-border/30" />
+                                              <div>
+                                                <p className="text-xs font-semibold text-red-500 dark:text-red-400 mb-2 flex items-center gap-1.5">
+                                                  <XCircle className="h-3 w-3" />
+                                                  Cosa NON sa fare
+                                                </p>
+                                                <div className="space-y-1">
+                                                  {caps.cantDo.map((item, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg">
+                                                      <span className="text-sm shrink-0">{item.icon}</span>
+                                                      <span className="text-sm text-muted-foreground">{item.text}</span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </CollapsibleContent>
+                                        </Collapsible>
+
+                                        {systemPrompts?.[role.id] && (
+                                          <div className="pt-1">
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="text-xs rounded-xl gap-1.5"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShowPromptForRole(showPromptForRole === role.id ? null : role.id);
+                                              }}
+                                            >
+                                              <Eye className="h-3.5 w-3.5" />
+                                              {showPromptForRole === role.id ? "Nascondi System Prompt" : "Vedi System Prompt"}
+                                              {showPromptForRole === role.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                            </Button>
+                                            {showPromptForRole === role.id && (
+                                              <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: "auto" }}
+                                                transition={{ duration: 0.2 }}
+                                                className="mt-3"
+                                              >
+                                                <div className="rounded-2xl border border-border/40 bg-muted/30 dark:bg-gray-900/50 p-4">
+                                                  <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                                                    <Brain className="h-3.5 w-3.5" />
+                                                    System Prompt completo di {systemPrompts[role.id].name}
+                                                  </p>
+                                                  <p className="text-xs text-muted-foreground mb-3 italic">
+                                                    Questo è il prompt che guida il comportamento di {systemPrompts[role.id].name}. Le sezioni con "--" vengono riempite dinamicamente ad ogni ciclo con dati reali.
+                                                  </p>
+                                                  <pre className="text-xs whitespace-pre-wrap font-mono bg-background dark:bg-gray-950 rounded-xl p-3 border border-border/40 max-h-[400px] overflow-y-auto leading-relaxed">
+                                                    {systemPrompts[role.id].systemPromptTemplate}
+                                                  </pre>
+                                                </div>
+                                              </motion.div>
+                                            )}
+                                          </div>
+                                        )}
+
+                                        {role.id === "hunter" && (() => {
+                                          const hasSalesContext = !!(savedSalesContext?.servicesOffered);
+                                          const hasOutreachEnabled = !!outreachConfig.enabled;
+                                          const hasAnyChannel = !!(
+                                            outreachConfig.voice_enabled ||
+                                            outreachConfig.whatsapp_enabled ||
+                                            outreachConfig.email_enabled ||
+                                            (outreachConfig.channel_priority && outreachConfig.channel_priority.length > 0)
+                                          );
+                                          const checks = [
+                                            { ok: hasSalesContext, label: "Sales Context compilato", fix: "Vai su Lead Scraper → Sales Agent", action: () => navigate("/consultant/lead-scraper") },
+                                            { ok: hasOutreachEnabled, label: "Outreach attivato", fix: "Attivalo nella tab Canali", action: () => onTabChange("canali") },
+                                            { ok: hasAnyChannel, label: "Almeno un canale outreach configurato (voice / WhatsApp / email)", fix: "Configura in tab Canali → Outreach", action: () => onTabChange("canali") },
+                                          ];
+                                          const allOk = checks.every(c => c.ok);
+                                          return (
+                                            <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+                                              <p className="text-sm font-semibold flex items-center gap-2">
+                                                {allOk ? <CheckCircle className="h-4 w-4 text-emerald-500" /> : <AlertCircle className="h-4 w-4 text-amber-500" />}
+                                                {allOk ? "Hunter è pronto per lavorare" : "Configurazione richiesta"}
+                                              </p>
+                                              <div className="space-y-1.5">
+                                                {checks.map((c, i) => (
+                                                  <div key={i} className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2 text-xs">
+                                                      {c.ok
+                                                        ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                                        : <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />}
+                                                      <span className={c.ok ? "text-muted-foreground" : "text-foreground font-medium"}>{c.label}</span>
+                                                    </div>
+                                                    {!c.ok && (
+                                                      <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={c.action}>
+                                                        {c.fix} <ArrowRight className="h-3 w-3 ml-1" />
+                                                      </Button>
+                                                    )}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                              <div className="flex gap-2 pt-1">
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="h-8 text-xs rounded-xl gap-1.5 border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-950/30 text-teal-700 dark:text-teal-400"
+                                                  onClick={() => onTabChange("canali")}
+                                                >
+                                                  <Cog className="h-3.5 w-3.5" />
+                                                  Configura Outreach
                                                 </Button>
-                                              )}
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="h-8 text-xs rounded-xl gap-1.5 border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950/30 text-violet-700 dark:text-violet-400"
+                                                  onClick={() => navigate("/consultant/lead-scraper")}
+                                                >
+                                                  <Search className="h-3.5 w-3.5" />
+                                                  Vai a Lead Scraper
+                                                </Button>
+                                              </div>
                                             </div>
-                                          ))}
+                                          );
+                                        })()}
+
+                                        <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-4 sm:p-5" onClick={(e) => e.stopPropagation()}>
+                                          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 sm:flex-wrap">
+                                            <Button
+                                              size="sm"
+                                              className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleTriggerRole(role.id, role.name);
+                                              }}
+                                              disabled={triggeringRoleId === role.id || effectiveLevel === 0}
+                                            >
+                                              {triggeringRoleId === role.id ? (
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                              ) : (
+                                                <Play className="h-3.5 w-3.5" />
+                                              )}
+                                              {triggeringRoleId === role.id ? 'Avvio...' : 'Avvia ora'}
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-700 dark:hover:text-emerald-300"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setChatOpenRoleId(role.id);
+                                              }}
+                                            >
+                                              <MessageSquare className="h-3.5 w-3.5" />
+                                              Chatta
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-700 dark:hover:text-blue-300"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setTelegramChatsRoleId(role.id);
+                                              }}
+                                            >
+                                              <Send className="h-3.5 w-3.5" />
+                                              Telegram
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setMemoryOpenRoleId(memoryOpenRoleId === role.id ? null : role.id);
+                                              }}
+                                            >
+                                              <Brain className="h-3.5 w-3.5" />
+                                              Memoria
+                                            </Button>
+                                          </div>
+                                          <p className="text-[11px] text-muted-foreground mt-2.5 leading-relaxed">
+                                            {getAvviaDescription(effectiveLevel)}
+                                          </p>
+                                          {triggerRoleResult[role.id] && (
+                                            <p className={cn("text-xs mt-2", triggerRoleResult[role.id].success ? "text-emerald-600" : "text-red-500")}>
+                                              {triggerRoleResult[role.id].success
+                                                ? `${triggerRoleResult[role.id].tasks} task generati`
+                                                : (triggerRoleResult[role.id].error || 'Errore')}
+                                            </p>
+                                          )}
                                         </div>
-                                        <div className="flex gap-2 pt-1">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 text-xs rounded-xl gap-1.5 border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-950/30 text-teal-700 dark:text-teal-400"
-                                            onClick={() => onTabChange("canali")}
-                                          >
-                                            <Cog className="h-3.5 w-3.5" />
-                                            Configura Outreach
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 text-xs rounded-xl gap-1.5 border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950/30 text-violet-700 dark:text-violet-400"
-                                            onClick={() => navigate("/consultant/lead-scraper")}
-                                          >
-                                            <Search className="h-3.5 w-3.5" />
-                                            Vai a Lead Scraper
-                                          </Button>
-                                        </div>
-                                      </div>
+                                      </>
                                     );
                                   })()}
-
-                                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 pt-3 sm:flex-wrap" onClick={(e) => e.stopPropagation()}>
-                                    <Button
-                                      size="sm"
-                                      className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleTriggerRole(role.id, role.name);
-                                      }}
-                                      disabled={triggeringRoleId === role.id}
-                                    >
-                                      {triggeringRoleId === role.id ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                      ) : (
-                                        <Play className="h-3.5 w-3.5" />
-                                      )}
-                                      {triggeringRoleId === role.id ? 'Avvio...' : `Avvia`}
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-700 dark:hover:text-emerald-300"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setChatOpenRoleId(role.id);
-                                      }}
-                                    >
-                                      <MessageSquare className="h-3.5 w-3.5" />
-                                      Chatta
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-700 dark:hover:text-blue-300"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setTelegramChatsRoleId(role.id);
-                                      }}
-                                    >
-                                      <Send className="h-3.5 w-3.5" />
-                                      Telegram
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-9 text-xs rounded-xl gap-1.5 sm:gap-2 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setMemoryOpenRoleId(memoryOpenRoleId === role.id ? null : role.id);
-                                      }}
-                                    >
-                                      <Brain className="h-3.5 w-3.5" />
-                                      Memoria
-                                    </Button>
-                                    {triggerRoleResult[role.id] && (
-                                      <span className={cn("text-xs", triggerRoleResult[role.id].success ? "text-emerald-600" : "text-red-500")}>
-                                        {triggerRoleResult[role.id].success
-                                          ? `${triggerRoleResult[role.id].tasks} task generati`
-                                          : (triggerRoleResult[role.id].error || 'Errore')}
-                                      </span>
-                                    )}
-                                  </div>
                                 </TabsContent>
 
                                 <TabsContent value="autonomia" className="mt-0 space-y-6" onClick={(e) => e.stopPropagation()}>

@@ -534,6 +534,78 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
   },
 };
 
+export interface ImpactItem {
+  icon: string;
+  label: string;
+  mode: "read" | "write";
+}
+
+export const AI_ROLE_IMPACT_MAP: Record<string, ImpactItem[]> = {
+  alessia: [
+    { icon: "📋", label: "Consulenze", mode: "read" },
+    { icon: "📞", label: "Chiamate vocali", mode: "write" },
+    { icon: "📚", label: "Knowledge Base", mode: "read" },
+    { icon: "📂", label: "Documenti clienti", mode: "read" },
+  ],
+  millie: [
+    { icon: "📨", label: "Email", mode: "write" },
+    { icon: "📊", label: "CRM / Lead", mode: "read" },
+    { icon: "💬", label: "WhatsApp (storico)", mode: "read" },
+    { icon: "📞", label: "Chiamate (storico)", mode: "read" },
+    { icon: "📚", label: "Knowledge Base", mode: "read" },
+    { icon: "📂", label: "Documenti clienti", mode: "read" },
+  ],
+  echo: [
+    { icon: "📋", label: "Consulenze", mode: "read" },
+    { icon: "📧", label: "Email riepilogo", mode: "write" },
+    { icon: "📂", label: "Documenti clienti", mode: "read" },
+    { icon: "📚", label: "Knowledge Base", mode: "read" },
+  ],
+  nova: [
+    { icon: "📱", label: "Calendario editoriale", mode: "read" },
+    { icon: "🌐", label: "Ricerca web", mode: "read" },
+    { icon: "📝", label: "Contenuti (bozze)", mode: "write" },
+    { icon: "📚", label: "Knowledge Base", mode: "read" },
+  ],
+  stella: [
+    { icon: "💬", label: "WhatsApp", mode: "write" },
+    { icon: "📚", label: "Knowledge Base", mode: "read" },
+  ],
+  marco: [
+    { icon: "📅", label: "Agenda", mode: "read" },
+    { icon: "📋", label: "Task e obiettivi", mode: "read" },
+    { icon: "📞", label: "Chiamate a TE", mode: "write" },
+    { icon: "💬", label: "WhatsApp a TE", mode: "write" },
+    { icon: "📧", label: "Email a TE", mode: "write" },
+    { icon: "📚", label: "Knowledge Base", mode: "read" },
+  ],
+  robert: [
+    { icon: "📊", label: "Piattaforma", mode: "read" },
+    { icon: "👥", label: "Clienti", mode: "read" },
+    { icon: "💬", label: "WhatsApp a TE", mode: "write" },
+    { icon: "📧", label: "Email a TE", mode: "write" },
+    { icon: "📚", label: "Knowledge Base", mode: "read" },
+  ],
+  hunter: [
+    { icon: "🔍", label: "Google Maps/Search", mode: "read" },
+    { icon: "🌐", label: "Siti web (scraping)", mode: "read" },
+    { icon: "📊", label: "CRM Lead", mode: "write" },
+    { icon: "📞", label: "Chiamate a lead", mode: "write" },
+    { icon: "💬", label: "WhatsApp a lead", mode: "write" },
+    { icon: "📧", label: "Email a lead", mode: "write" },
+  ],
+  architetto: [
+    { icon: "🎨", label: "Brand Voice", mode: "read" },
+    { icon: "🔬", label: "Ricerca mercato", mode: "read" },
+    { icon: "🏗️", label: "Funnel", mode: "write" },
+  ],
+  personalizza: [
+    { icon: "📋", label: "Dati configurati", mode: "read" },
+    { icon: "⚡", label: "Azioni personalizzate", mode: "write" },
+    { icon: "📚", label: "Knowledge Base", mode: "read" },
+  ],
+};
+
 export const DEFAULT_SETTINGS: AutonomySettings = {
   is_active: false,
   autonomy_level: 1,
