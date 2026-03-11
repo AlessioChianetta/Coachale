@@ -3278,7 +3278,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                               <SocialPreview
                                 platform={formData.platform}
                                 hook={formData.hook}
-                                body={formData.body}
+                                body={formData.fullCopy || formData.body}
                                 cta={formData.cta}
                                 copyType={selectedCopyType}
                                 chiCosaCome={formData.chiCosaCome}
