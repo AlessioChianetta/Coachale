@@ -70,6 +70,7 @@ import {
   Maximize2,
   ZoomIn,
   ZoomOut,
+  Link2,
 } from "lucide-react";
 
 interface ContentPost {
@@ -615,6 +616,34 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     }
     
     setShowPublerDialog(true);
+  };
+
+  const [linkingToPost, setLinkingToPost] = useState<string | null>(null);
+
+  const handleLinkImageToPost = async (imageUrl: string) => {
+    const sourcePostId = activePost?.sourcePostId;
+    if (!sourcePostId) {
+      toast({ title: "Nessun post collegato", description: "Questo concept non è associato a un post esistente", variant: "destructive" });
+      return;
+    }
+    setLinkingToPost(sourcePostId);
+    try {
+      const res = await fetch(`/api/content/posts/${sourcePostId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ imageUrl }),
+      });
+      if (res.ok) {
+        toast({ title: "Immagine associata", description: `Immagine salvata nel post "${activePost?.sourcePostTitle || 'collegato'}"` });
+      } else {
+        throw new Error("Errore nel salvataggio");
+      }
+    } catch (err) {
+      console.error("Error linking image to post:", err);
+      toast({ title: "Errore", description: "Impossibile associare l'immagine al post", variant: "destructive" });
+    } finally {
+      setLinkingToPost(null);
+    }
   };
 
   const executePublerUpload = async () => {
@@ -1411,6 +1440,18 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                           >
                                             <Download className="w-4 h-4" />
                                           </Button>
+                                          {activePost?.sourcePostId && (
+                                            <Button
+                                              size="icon"
+                                              variant="secondary"
+                                              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                              onClick={() => handleLinkImageToPost(currentImg)}
+                                              disabled={!!linkingToPost}
+                                              title="Associa immagine al post"
+                                            >
+                                              {linkingToPost ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                                            </Button>
+                                          )}
                                           <Button
                                             size="icon"
                                             variant="default"
