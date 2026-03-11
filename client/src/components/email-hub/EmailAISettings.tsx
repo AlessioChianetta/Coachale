@@ -763,21 +763,54 @@ export function EmailAISettings({
                       Millie usa queste informazioni per generare risposte coerenti con il tuo brand
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-xs h-8"
-                    onClick={handleSaveBrandVoice}
-                    disabled={savingBrandVoice}
-                  >
-                    {savingBrandVoice ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Save className="h-3.5 w-3.5" />
+                  <div className="flex items-center gap-2">
+                    {allAgents.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 text-xs h-8"
+                            disabled={importingFromAgent}
+                          >
+                            {importingFromAgent ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
+                            Importa da Agente
+                            <ChevronDown className="h-3 w-3 opacity-60" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          {allAgents.map((agent) => (
+                            <DropdownMenuItem
+                              key={agent.id}
+                              onClick={() => handleImportFromAgent(agent.id, agent.agentName)}
+                            >
+                              <span className="truncate text-sm">{agent.agentName}</span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
-                    Salva Brand Voice
-                  </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs h-8"
+                      onClick={handleSaveBrandVoice}
+                      disabled={savingBrandVoice}
+                    >
+                      {savingBrandVoice ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Save className="h-3.5 w-3.5" />
+                      )}
+                      Salva Brand Voice
+                    </Button>
+                  </div>
                 </div>
                 <BrandVoiceSection
                   data={brandVoiceData}
@@ -807,12 +840,10 @@ export function EmailAISettings({
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="mt-3 rounded-lg border bg-slate-950 p-4">
-                    <ScrollArea className="max-h-[300px]">
-                      <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
-                        {systemPromptPreview}
-                      </pre>
-                    </ScrollArea>
+                  <div className="mt-3 rounded-lg border bg-slate-950 p-4 max-h-[300px] overflow-y-auto">
+                    <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                      {systemPromptPreview}
+                    </pre>
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-2">
                     Questo è il prompt base inviato a Gemini. A runtime vengono aggiunti: Knowledge Base, contesto CRM, storico conversazione e strategia adattiva.
