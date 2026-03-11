@@ -5017,6 +5017,9 @@ export const clientSalesAgents = pgTable("client_sales_agents", {
   // Voice configuration
   voiceName: varchar("voice_name", { length: 50 }).default("Puck"), // Voice name for Gemini Live (Puck, Charon, Kore, Fenrir, Aoede, Leda, Orus, Zephyr)
 
+  // Brand Voice (full jsonb)
+  brandVoiceData: jsonb("brand_voice_data").$type<Record<string, any>>().default(sql`'{}'::jsonb`),
+
   // Metadata
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

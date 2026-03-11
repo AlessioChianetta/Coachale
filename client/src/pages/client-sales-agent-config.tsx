@@ -17,6 +17,7 @@ import {
   FileText,
   Menu,
   ArrowLeft,
+  Download,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,10 +30,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { getAuthHeaders, getAuthUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { BrandVoiceSection, type BrandVoiceData } from '@/components/brand-voice/BrandVoiceSection';
 
 interface SalesAgent {
   id: string;
@@ -58,6 +61,7 @@ interface SalesAgent {
   caseStudies: Array<{client: string; result: string}>;
   servicesOffered: Array<{name: string; description: string; price: string}>;
   guarantees: string | null;
+  brandVoiceData: Record<string, any> | null;
   enableDiscovery: boolean;
   enableDemo: boolean;
   enablePayment: boolean;
@@ -108,6 +112,11 @@ export default function ClientSalesAgentConfig() {
     currentStep: '',
     extractedData: null,
   });
+
+  const [showImportAgentDialog, setShowImportAgentDialog] = useState(false);
+  const [availableAgents, setAvailableAgents] = useState<any[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [isImportingBrandVoice, setIsImportingBrandVoice] = useState(false);
 
   const [formData, setFormData] = useState<Partial<SalesAgent>>({
     agentName: '',
@@ -283,6 +292,141 @@ export default function ClientSalesAgentConfig() {
     }
 
     saveMutation.mutate(formData);
+  };
+
+  const formDataToBrandVoice = (fd: Partial<SalesAgent>): BrandVoiceData => {
+    const bv = (fd as any).brandVoiceData || {};
+    const str = (a: any, b: any) => (a !== undefined && a !== null ? a : b) ?? '';
+    const num = (a: any, b: any) => (a !== undefined && a !== null ? a : b) ?? 0;
+    const arr = (a: any, b: any) => (Array.isArray(a) && a.length > 0 ? a : Array.isArray(b) ? b : []);
+    return {
+      consultantDisplayName: str(fd.displayName, bv.consultantDisplayName),
+      businessName: str(fd.businessName, bv.businessName),
+      businessDescription: str(fd.businessDescription, bv.businessDescription),
+      consultantBio: str(fd.consultantBio, bv.consultantBio),
+      vision: str(fd.vision, bv.vision),
+      mission: str(fd.mission, bv.mission),
+      values: arr(fd.values, bv.values),
+      usp: str(fd.usp, bv.usp),
+      whoWeHelp: str(fd.targetClient, bv.whoWeHelp),
+      whoWeDontHelp: str(fd.nonTargetClient, bv.whoWeDontHelp),
+      audienceSegments: arr(bv.audienceSegments, []),
+      whatWeDo: str(fd.whatWeDo, bv.whatWeDo),
+      howWeDoIt: str(fd.howWeDoIt, bv.howWeDoIt),
+      yearsExperience: num(fd.yearsExperience, bv.yearsExperience),
+      clientsHelped: num(fd.clientsHelped, bv.clientsHelped),
+      resultsGenerated: str(fd.resultsGenerated, bv.resultsGenerated),
+      softwareCreated: arr(fd.softwareCreated, bv.softwareCreated),
+      booksPublished: arr(fd.booksPublished, bv.booksPublished),
+      caseStudies: arr(fd.caseStudies, bv.caseStudies),
+      servicesOffered: arr(fd.servicesOffered, bv.servicesOffered),
+      guarantees: str(fd.guarantees, bv.guarantees),
+      personalTone: str(bv.personalTone, ''),
+      contentPersonality: str(bv.contentPersonality, ''),
+      audienceLanguage: str(bv.audienceLanguage, ''),
+      avoidPatterns: str(bv.avoidPatterns, ''),
+      writingExamples: arr(bv.writingExamples, []),
+      signaturePhrases: arr(bv.signaturePhrases, []),
+    };
+  };
+
+  const handleBrandVoiceChange = (bvData: BrandVoiceData) => {
+    setFormData(prev => ({
+      ...prev,
+      displayName: bvData.consultantDisplayName || prev.displayName || '',
+      businessName: bvData.businessName || prev.businessName || '',
+      businessDescription: bvData.businessDescription || '',
+      consultantBio: bvData.consultantBio || '',
+      vision: bvData.vision || '',
+      mission: bvData.mission || '',
+      values: bvData.values || [],
+      usp: bvData.usp || '',
+      targetClient: bvData.whoWeHelp || '',
+      nonTargetClient: bvData.whoWeDontHelp || '',
+      whatWeDo: bvData.whatWeDo || '',
+      howWeDoIt: bvData.howWeDoIt || '',
+      yearsExperience: bvData.yearsExperience || 0,
+      clientsHelped: bvData.clientsHelped || 0,
+      resultsGenerated: bvData.resultsGenerated || '',
+      softwareCreated: bvData.softwareCreated || [],
+      booksPublished: bvData.booksPublished || [],
+      caseStudies: bvData.caseStudies || [],
+      servicesOffered: bvData.servicesOffered || [],
+      guarantees: bvData.guarantees || '',
+      brandVoiceData: bvData as any,
+    }));
+  };
+
+  const loadAvailableAgents = async () => {
+    try {
+      const res = await fetch("/api/whatsapp/agent-chat/agents", { headers: getAuthHeaders() });
+      if (res.ok) {
+        const response = await res.json();
+        setAvailableAgents(response.data || []);
+      }
+    } catch {}
+  };
+
+  const handleImportFromAgent = async () => {
+    if (!selectedAgentId) return;
+    setIsImportingBrandVoice(true);
+    try {
+      const res = await fetch(`/api/whatsapp/agents/${selectedAgentId}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore caricamento agente");
+      const agent = await res.json();
+      if (agent) {
+        const normCaseStudies = (agent.caseStudies || []).map((cs: any) => ({
+          client: cs.client || cs.clientName || '',
+          result: cs.result || [cs.before, cs.after, cs.timeFrame].filter(Boolean).join(' → ') || '',
+        }));
+        const normServices = (agent.servicesOffered || []).map((s: any) => ({
+          name: s.name || '',
+          description: s.description || s.forWho || '',
+          price: s.price || s.investment || '',
+        }));
+        const normSoftware = (agent.softwareCreated || []).map((sw: any) => ({
+          emoji: sw.emoji || '💻',
+          name: sw.name || '',
+          description: sw.description || '',
+        }));
+        const imported: BrandVoiceData = {
+          consultantDisplayName: agent.consultantDisplayName,
+          businessName: agent.businessName,
+          businessDescription: agent.businessDescription,
+          consultantBio: agent.consultantBio,
+          vision: agent.vision,
+          mission: agent.mission,
+          values: agent.values,
+          usp: agent.usp,
+          whoWeHelp: agent.whoWeHelp,
+          whoWeDontHelp: agent.whoWeDontHelp,
+          audienceSegments: agent.audienceSegments,
+          whatWeDo: agent.whatWeDo,
+          howWeDoIt: agent.howWeDoIt,
+          yearsExperience: agent.yearsExperience,
+          clientsHelped: agent.clientsHelped,
+          resultsGenerated: agent.resultsGenerated,
+          softwareCreated: normSoftware,
+          booksPublished: agent.booksPublished,
+          caseStudies: normCaseStudies,
+          servicesOffered: normServices,
+          guarantees: agent.guarantees,
+          personalTone: agent.personalTone,
+          contentPersonality: agent.contentPersonality,
+          audienceLanguage: agent.audienceLanguage,
+          avoidPatterns: agent.avoidPatterns,
+          writingExamples: agent.writingExamples,
+          signaturePhrases: agent.signaturePhrases,
+        };
+        handleBrandVoiceChange(imported);
+        toast({ title: "Dati importati", description: "Brand Voice importato dall'agente WhatsApp" });
+        setShowImportAgentDialog(false);
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsImportingBrandVoice(false);
+    }
   };
 
   if (isLoading) {
@@ -500,438 +644,20 @@ export default function ClientSalesAgentConfig() {
           </CardContent>
         </Card>
 
-        {/* SEZIONE 2: Authority & Posizionamento */}
-        <Card className="bg-white dark:bg-gray-800 shadow-xl mb-6">
-          <CardHeader>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400 text-sm font-bold">
-                2
-              </span>
-              Authority & Posizionamento
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="vision">Vision</Label>
-              <Textarea
-                id="vision"
-                placeholder="Dove vuole arrivare il business nel futuro..."
-                rows={2}
-                value={formData.vision || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, vision: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="mission">Mission</Label>
-              <Textarea
-                id="mission"
-                placeholder="Perché esiste il business, quale problema risolve..."
-                rows={2}
-                value={formData.mission || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, mission: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <Label>Valori (chips)</Label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {formData.values?.map((value, idx) => (
-                  <Badge key={idx} variant="secondary" className="px-3 py-1">
-                    {value}
-                    <button
-                      onClick={() => setFormData(prev => ({
-                        ...prev,
-                        values: prev.values?.filter((_, i) => i !== idx) || []
-                      }))}
-                      className="ml-2 hover:text-red-600"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="es: Integrità"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                      e.preventDefault();
-                      setFormData(prev => ({
-                        ...prev,
-                        values: [...(prev.values || []), e.currentTarget.value.trim()]
-                      }));
-                      e.currentTarget.value = '';
-                    }
-                  }}
-                />
-                <Button variant="outline" size="sm" onClick={(e) => {
-                  const input = (e.currentTarget.previousElementSibling as HTMLInputElement);
-                  if (input.value.trim()) {
-                    setFormData(prev => ({
-                      ...prev,
-                      values: [...(prev.values || []), input.value.trim()]
-                    }));
-                    input.value = '';
-                  }
-                }}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="usp">USP - Unique Selling Proposition</Label>
-              <Textarea
-                id="usp"
-                placeholder="Cosa ti rende unico rispetto ai competitor..."
-                rows={2}
-                value={formData.usp || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, usp: e.target.value }))}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="targetClient">Chi Aiutiamo</Label>
-                <Textarea
-                  id="targetClient"
-                  placeholder="Il cliente ideale..."
-                  rows={3}
-                  value={formData.targetClient || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, targetClient: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="nonTargetClient">Chi NON Aiutiamo</Label>
-                <Textarea
-                  id="nonTargetClient"
-                  placeholder="Chi non è il target..."
-                  rows={3}
-                  value={formData.nonTargetClient || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, nonTargetClient: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="whatWeDo">Cosa Facciamo</Label>
-                <Textarea
-                  id="whatWeDo"
-                  placeholder="Servizi principali offerti..."
-                  rows={3}
-                  value={formData.whatWeDo || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, whatWeDo: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="howWeDoIt">Come Lo Facciamo</Label>
-                <Textarea
-                  id="howWeDoIt"
-                  placeholder="Il metodo/processo utilizzato..."
-                  rows={3}
-                  value={formData.howWeDoIt || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, howWeDoIt: e.target.value }))}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SEZIONE 3: Credenziali & Risultati */}
-        <Card className="bg-white dark:bg-gray-800 shadow-xl mb-6">
-          <CardHeader>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 text-sm font-bold">
-                3
-              </span>
-              Credenziali & Risultati
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="yearsExperience">Anni Esperienza</Label>
-                <Input
-                  id="yearsExperience"
-                  type="number"
-                  min="0"
-                  value={formData.yearsExperience || 0}
-                  onChange={(e) => setFormData(prev => ({ ...prev, yearsExperience: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="clientsHelped">Clienti Aiutati</Label>
-                <Input
-                  id="clientsHelped"
-                  type="number"
-                  min="0"
-                  value={formData.clientsHelped || 0}
-                  onChange={(e) => setFormData(prev => ({ ...prev, clientsHelped: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="resultsGenerated">Risultati Generati</Label>
-                <Input
-                  id="resultsGenerated"
-                  placeholder="es: €10M+ fatturato"
-                  value={formData.resultsGenerated || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, resultsGenerated: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            <div>
-              <Label>Software Creati</Label>
-              <div className="space-y-2 mb-3">
-                {formData.softwareCreated?.map((sw, idx) => (
-                  <div key={idx} className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                    <Input
-                      placeholder="Emoji"
-                      className="w-16"
-                      value={sw.emoji}
-                      onChange={(e) => {
-                        const updated = [...(formData.softwareCreated || [])];
-                        updated[idx] = { ...updated[idx], emoji: e.target.value };
-                        setFormData(prev => ({ ...prev, softwareCreated: updated }));
-                      }}
-                    />
-                    <Input
-                      placeholder="Nome software"
-                      value={sw.name}
-                      onChange={(e) => {
-                        const updated = [...(formData.softwareCreated || [])];
-                        updated[idx] = { ...updated[idx], name: e.target.value };
-                        setFormData(prev => ({ ...prev, softwareCreated: updated }));
-                      }}
-                    />
-                    <Input
-                      placeholder="Descrizione"
-                      className="flex-1"
-                      value={sw.description}
-                      onChange={(e) => {
-                        const updated = [...(formData.softwareCreated || [])];
-                        updated[idx] = { ...updated[idx], description: e.target.value };
-                        setFormData(prev => ({ ...prev, softwareCreated: updated }));
-                      }}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({
-                        ...prev,
-                        softwareCreated: prev.softwareCreated?.filter((_, i) => i !== idx) || []
-                      }))}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setFormData(prev => ({
-                  ...prev,
-                  softwareCreated: [...(prev.softwareCreated || []), { emoji: '💻', name: '', description: '' }]
-                }))}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Aggiungi Software
-              </Button>
-            </div>
-
-            <div>
-              <Label>Libri Pubblicati</Label>
-              <div className="space-y-2 mb-3">
-                {formData.booksPublished?.map((book, idx) => (
-                  <div key={idx} className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                    <Input
-                      placeholder="Titolo libro"
-                      className="flex-1"
-                      value={book.title}
-                      onChange={(e) => {
-                        const updated = [...(formData.booksPublished || [])];
-                        updated[idx] = { ...updated[idx], title: e.target.value };
-                        setFormData(prev => ({ ...prev, booksPublished: updated }));
-                      }}
-                    />
-                    <Input
-                      placeholder="Anno"
-                      className="w-24"
-                      value={book.year}
-                      onChange={(e) => {
-                        const updated = [...(formData.booksPublished || [])];
-                        updated[idx] = { ...updated[idx], year: e.target.value };
-                        setFormData(prev => ({ ...prev, booksPublished: updated }));
-                      }}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({
-                        ...prev,
-                        booksPublished: prev.booksPublished?.filter((_, i) => i !== idx) || []
-                      }))}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setFormData(prev => ({
-                  ...prev,
-                  booksPublished: [...(prev.booksPublished || []), { title: '', year: '' }]
-                }))}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Aggiungi Libro
-              </Button>
-            </div>
-
-            <div>
-              <Label>Case Studies</Label>
-              <div className="space-y-2 mb-3">
-                {formData.caseStudies?.map((cs, idx) => (
-                  <div key={idx} className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                    <Input
-                      placeholder="Nome cliente"
-                      value={cs.client}
-                      onChange={(e) => {
-                        const updated = [...(formData.caseStudies || [])];
-                        updated[idx] = { ...updated[idx], client: e.target.value };
-                        setFormData(prev => ({ ...prev, caseStudies: updated }));
-                      }}
-                    />
-                    <Input
-                      placeholder="Risultato ottenuto"
-                      className="flex-1"
-                      value={cs.result}
-                      onChange={(e) => {
-                        const updated = [...(formData.caseStudies || [])];
-                        updated[idx] = { ...updated[idx], result: e.target.value };
-                        setFormData(prev => ({ ...prev, caseStudies: updated }));
-                      }}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({
-                        ...prev,
-                        caseStudies: prev.caseStudies?.filter((_, i) => i !== idx) || []
-                      }))}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setFormData(prev => ({
-                  ...prev,
-                  caseStudies: [...(prev.caseStudies || []), { client: '', result: '' }]
-                }))}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Aggiungi Case Study
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SEZIONE 4: Servizi & Garanzie */}
-        <Card className="bg-white dark:bg-gray-800 shadow-xl mb-6">
-          <CardHeader>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400 text-sm font-bold">
-                4
-              </span>
-              Servizi & Garanzie
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Servizi Offerti</Label>
-              <div className="space-y-3 mb-3">
-                {formData.servicesOffered?.map((service, idx) => (
-                  <div key={idx} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg space-y-2">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Nome servizio"
-                        value={service.name}
-                        onChange={(e) => {
-                          const updated = [...(formData.servicesOffered || [])];
-                          updated[idx] = { ...updated[idx], name: e.target.value };
-                          setFormData(prev => ({ ...prev, servicesOffered: updated }));
-                        }}
-                      />
-                      <Input
-                        placeholder="Prezzo (es: €5.000)"
-                        className="w-32"
-                        value={service.price}
-                        onChange={(e) => {
-                          const updated = [...(formData.servicesOffered || [])];
-                          updated[idx] = { ...updated[idx], price: e.target.value };
-                          setFormData(prev => ({ ...prev, servicesOffered: updated }));
-                        }}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setFormData(prev => ({
-                          ...prev,
-                          servicesOffered: prev.servicesOffered?.filter((_, i) => i !== idx) || []
-                        }))}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
-                    <Textarea
-                      placeholder="Descrizione servizio"
-                      rows={2}
-                      value={service.description}
-                      onChange={(e) => {
-                        const updated = [...(formData.servicesOffered || [])];
-                        updated[idx] = { ...updated[idx], description: e.target.value };
-                        setFormData(prev => ({ ...prev, servicesOffered: updated }));
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setFormData(prev => ({
-                  ...prev,
-                  servicesOffered: [...(prev.servicesOffered || []), { name: '', description: '', price: '' }]
-                }))}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Aggiungi Servizio
-              </Button>
-            </div>
-
-            <div>
-              <Label htmlFor="guarantees">Garanzie</Label>
-              <Textarea
-                id="guarantees"
-                placeholder="Le garanzie che offri ai tuoi clienti..."
-                rows={4}
-                value={formData.guarantees || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, guarantees: e.target.value }))}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* SEZIONE 2-4: Brand Voice (Authority, Credenziali, Servizi) */}
+        <BrandVoiceSection
+          data={formDataToBrandVoice(formData)}
+          onDataChange={handleBrandVoiceChange}
+          onSave={handleSave}
+          isSaving={saveMutation.isPending}
+          showImportButton={true}
+          onImportClick={() => {
+            loadAvailableAgents();
+            setShowImportAgentDialog(true);
+          }}
+          compact={false}
+          showSaveButton={false}
+        />
 
         {/* SEZIONE 5: Modalità Venditore */}
         <Card className="bg-white dark:bg-gray-800 shadow-xl mb-6">
@@ -1063,6 +789,78 @@ export default function ClientSalesAgentConfig() {
           </div>
         </div>
       </div>
+
+      <Dialog open={showImportAgentDialog} onOpenChange={setShowImportAgentDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Importa Brand Voice da Agente
+            </DialogTitle>
+            <DialogDescription>
+              Seleziona un agente WhatsApp per importare i dati del Brand Voice
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {availableAgents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">Nessun agente WhatsApp configurato.</p>
+                <p className="text-xs mt-2">Configura prima un agente nella sezione WhatsApp.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {availableAgents.map((agent: any) => (
+                  <div
+                    key={agent.id}
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      selectedAgentId === agent.id
+                        ? "border-primary bg-primary/5"
+                        : "hover:border-muted-foreground/50"
+                    }`}
+                    onClick={() => setSelectedAgentId(agent.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        checked={selectedAgentId === agent.id}
+                        onChange={() => setSelectedAgentId(agent.id)}
+                        className="h-4 w-4 text-primary"
+                      />
+                      <div>
+                        <p className="font-medium text-sm">{agent.agentName || agent.businessName || "Agente senza nome"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {agent.businessName || agent.agentType || "Nessuna descrizione"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowImportAgentDialog(false)}>
+                Annulla
+              </Button>
+              <Button
+                onClick={handleImportFromAgent}
+                disabled={!selectedAgentId || isImportingBrandVoice}
+              >
+                {isImportingBrandVoice ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Importazione...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Importa
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
