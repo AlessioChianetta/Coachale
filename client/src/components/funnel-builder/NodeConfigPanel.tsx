@@ -687,7 +687,7 @@ function LinkedEntityCard({ entity }: { entity: LinkedEntity }) {
                 </div>
               )}
               <div style={{ flex: "1 1 0%", minWidth: 0, overflow: "hidden" }}>
-                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entity.name}</p>
+                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 line-clamp-2" style={{ wordBreak: "break-word" }}>{entity.name}</p>
                 <div className="flex flex-wrap items-center gap-1 mt-0.5">
                   {entity.platform && <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">{entity.platform}</Badge>}
                   {extra.contentType && <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{extra.contentType as string}</Badge>}
