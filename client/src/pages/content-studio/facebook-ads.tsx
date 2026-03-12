@@ -257,7 +257,7 @@ function renderCellValue(col: string, val: unknown, row: AggRow, activeTab: stri
   return val != null ? String(val) : "—";
 }
 
-function AdTableRow({ row, activeColumns, activeTab, ads, setSelectedAdId, setLinkDialogAd, onRowClick }: {
+function AdTableRow({ row, activeColumns, activeTab, ads, setSelectedAdId, setLinkDialogAd, onRowClick, isSelected, onSelectToggle, rowKey }: {
   row: AggRow;
   activeColumns: string[];
   activeTab: string;
@@ -265,15 +265,24 @@ function AdTableRow({ row, activeColumns, activeTab, ads, setSelectedAdId, setLi
   setSelectedAdId: (id: string) => void;
   setLinkDialogAd: (ad: MetaAd) => void;
   onRowClick?: () => void;
+  isSelected?: boolean;
+  onSelectToggle?: (key: string) => void;
+  rowKey: string;
 }) {
   return (
     <tr className={`border-b hover:bg-blue-50/40 dark:hover:bg-blue-950/10 transition-colors group ${
       onRowClick ? "cursor-pointer" : ""
     } ${
       row.frequency != null && row.frequency > 4 ? "bg-red-50/40 dark:bg-red-950/10" : ""
+    } ${
+      isSelected ? "bg-blue-50/60 dark:bg-blue-950/20" : ""
     }`} onClick={onRowClick}>
-      <td className="px-3 py-2">
-        <div className={`w-2 h-2 rounded-full ${row.pubblicazione === "Attiva" ? "bg-green-500" : "bg-gray-300"}`} />
+      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          className="h-3.5 w-3.5"
+          checked={isSelected || false}
+          onCheckedChange={() => onSelectToggle?.(rowKey)}
+        />
       </td>
       {activeColumns.map(col => {
         const val = (row as Record<string, unknown>)[col];
@@ -470,6 +479,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   const activeColumns = useMemo(() => {
     if (tablePreset === "custom") return customColumns;
@@ -655,6 +665,33 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
       else next.add(name);
       return next;
     });
+  };
+
+  const getRowKey = (row: AggRow, idx: number) => {
+    if (activeTab === "ads") return row.metaAdId || `ad-${idx}`;
+    if (activeTab === "adsets") return `${row.campaignName}::${row.name}`;
+    return row.name;
+  };
+
+  const toggleRowSelect = (key: string) => {
+    setSelectedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const allCurrentKeys = useMemo(() => currentRows.map((r, i) => getRowKey(r, i)), [currentRows, activeTab]);
+  const allSelected = allCurrentKeys.length > 0 && allCurrentKeys.every(k => selectedRows.has(k));
+  const someSelected = allCurrentKeys.some(k => selectedRows.has(k));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(allCurrentKeys));
+    }
   };
 
   const handleColumnSort = (col: string) => {
@@ -1060,7 +1097,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                 ]).map(tab => (
                   <button
                     key={tab.key}
-                    onClick={() => { setActiveTab(tab.key); setSortColumn(null); }}
+                    onClick={() => { setActiveTab(tab.key); setSortColumn(null); setSelectedRows(new Set()); }}
                     className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                       activeTab === tab.key
                         ? "border-blue-600 text-blue-600 bg-white dark:bg-background"
@@ -1250,11 +1287,40 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
               </div>
             ) : (
               <div className="overflow-x-auto">
+                {selectedRows.size > 0 && (
+                  <div className="flex items-center gap-3 px-4 py-2 bg-blue-50 dark:bg-blue-950/30 border-b text-sm">
+                    <span className="font-medium">{selectedRows.size} selezionat{selectedRows.size === 1 ? "o" : "i"}</span>
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => {
+                      const selectedData = currentRows.filter((r, i) => selectedRows.has(getRowKey(r, i)));
+                      const cols = activeColumns;
+                      const header = cols.map(c => COLUMN_LABELS[c] || c).join(",");
+                      const rows = selectedData.map(row => cols.map(col => {
+                        const v = (row as Record<string, unknown>)[col];
+                        return v != null ? `"${String(v).replace(/"/g, '""')}"` : "";
+                      }).join(",")).join("\n");
+                      const blob = new Blob([header + "\n" + rows], { type: "text/csv" });
+                      const a = document.createElement("a");
+                      a.href = URL.createObjectURL(blob);
+                      a.download = `selezione-${activeTab}-${new Date().toISOString().split("T")[0]}.csv`;
+                      a.click();
+                    }}>
+                      <Download className="h-3 w-3" />
+                      Esporta selezione
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto" onClick={() => setSelectedRows(new Set())}>
+                      Deseleziona tutto
+                    </Button>
+                  </div>
+                )}
                 <table className="w-full text-[13px]">
                   <thead>
                     <tr className="border-b bg-muted/40">
                       <th className="px-3 py-2 text-left w-8">
-                        <Checkbox className="h-3.5 w-3.5" disabled />
+                        <Checkbox
+                          className="h-3.5 w-3.5"
+                          checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                          onCheckedChange={toggleSelectAll}
+                        />
                       </th>
                       {activeColumns.map(col => (
                         <th
@@ -1299,16 +1365,22 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                                 </div>
                               </td>
                             </tr>
-                            {!isCollapsed && group.rows.map((row, idx) => (
-                              <AdTableRow key={row.metaAdId || row.name + idx} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} />
-                            ))}
+                            {!isCollapsed && group.rows.map((row, idx) => {
+                              const rk = row.metaAdId || `ad-${idx}`;
+                              return (
+                                <AdTableRow key={rk} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} rowKey={rk} isSelected={selectedRows.has(rk)} onSelectToggle={toggleRowSelect} />
+                              );
+                            })}
                           </React.Fragment>
                         );
                       })
                     ) : (
-                      currentRows.map((row, idx) => (
-                        <AdTableRow key={row.name + idx} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} onRowClick={activeTab === "campaigns" ? () => { setSelectedCampaign(row.name); setActiveTab("ads"); } : undefined} />
-                      ))
+                      currentRows.map((row, idx) => {
+                        const rk = getRowKey(row, idx);
+                        return (
+                          <AdTableRow key={rk} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} onRowClick={activeTab === "campaigns" ? () => { setSelectedCampaign(row.name); setActiveTab("ads"); } : undefined} rowKey={rk} isSelected={selectedRows.has(rk)} onSelectToggle={toggleRowSelect} />
+                        );
+                      })
                     )}
                     </TooltipProvider>
                   </tbody>
