@@ -71,7 +71,9 @@ import {
   Layers,
   Megaphone,
   Home,
+  MessageCircle,
 } from "lucide-react";
+import AgentChat from "@/components/autonomy/AgentChat";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -480,6 +482,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [simoneChatOpen, setSimoneChatOpen] = useState(false);
 
   const activeColumns = useMemo(() => {
     if (tablePreset === "custom") return customColumns;
@@ -991,6 +994,15 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
               )}
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSimoneChatOpen(true)}
+                className="gap-1.5 border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/20"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Chiedi a Simone
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -1684,6 +1696,15 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
           )}
         </DialogContent>
       </Dialog>
+
+      <AgentChat
+        roleId="simone"
+        roleName="Simone – Ads Strategist"
+        avatar="📊"
+        accentColor="orange"
+        open={simoneChatOpen}
+        onClose={() => setSimoneChatOpen(false)}
+      />
     </div>
   );
 
