@@ -324,6 +324,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
           theme: overrideTheme || themeIdRef.current,
         };
 
+        let saveSuccess = false;
         if (activeFunnelId) {
           const res = await fetch(`/api/funnels/${activeFunnelId}`, {
             method: "PUT",
@@ -335,6 +336,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
             setFunnels((prev) =>
               prev.map((f) => (f.id === updated.id ? { ...f, ...updated } : f))
             );
+            saveSuccess = true;
           }
         } else {
           const res = await fetch("/api/funnels", {
@@ -346,9 +348,10 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
             const created = await res.json();
             setActiveFunnelId(created.id);
             setFunnels((prev) => [created, ...prev]);
+            saveSuccess = true;
           }
         }
-        markClean();
+        if (saveSuccess) markClean();
       } catch (err) {
         console.error("Error saving funnel:", err);
       } finally {
@@ -720,7 +723,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
             {THEME_LIST.map((t) => (
               <DropdownMenuItem
                 key={t.id}
-                onClick={() => { setThemeId(t.id); saveFunnel(false, t.id); }}
+                onClick={() => { setThemeId(t.id); markDirty(); saveFunnel(false, t.id); }}
                 className={cn("text-xs gap-2 cursor-pointer", t.id === themeId && "bg-accent")}
               >
                 <div className="flex gap-0.5 shrink-0">
@@ -894,6 +897,8 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
             data={selectedNode.data as unknown as FunnelNodeData}
             onUpdate={updateNodeData}
             onDelete={(id) => {
+              pushHistory();
+              markDirty();
               setNodes((nds) => nds.filter((n) => n.id !== id));
               setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
               setSelectedNodeId(null);

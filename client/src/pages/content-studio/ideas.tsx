@@ -516,6 +516,9 @@ export default function ContentStudioIdeas() {
   const handleUnsavedSaveAndExit = useCallback(async () => {
     if (funnelRef.current) {
       await funnelRef.current.save();
+      if (funnelRef.current.isDirty) {
+        return;
+      }
     }
     setShowUnsavedDialog(false);
     if (pendingTab) {
