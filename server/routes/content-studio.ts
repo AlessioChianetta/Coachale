@@ -4509,6 +4509,39 @@ router.post("/advisage/sessions/:id/images", authenticateToken, requireRole("con
   }
 });
 
+router.post("/advisage/save-image-file", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const { imageBase64 } = req.body;
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      return res.status(400).json({ success: false, error: "imageBase64 richiesto" });
+    }
+    const mimeMatch = imageBase64.match(/^data:image\/(png|jpeg|jpg|webp);base64,/);
+    if (!mimeMatch) {
+      return res.status(400).json({ success: false, error: "Formato immagine non valido" });
+    }
+    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const MAX_SIZE = 40 * 1024 * 1024;
+    if (buffer.length > MAX_SIZE) {
+      return res.status(400).json({ success: false, error: "Immagine troppo grande (max 40MB)" });
+    }
+    const uploadsDir = path.join(process.cwd(), "uploads", "advisage", "post-images");
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const ext = mimeMatch[1] === 'jpeg' || mimeMatch[1] === 'jpg' ? 'jpg' : mimeMatch[1];
+    const filename = `post-img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const filePath = path.join(uploadsDir, filename);
+    await fsPromises.writeFile(filePath, buffer);
+    const imagePath = `/uploads/advisage/post-images/${filename}`;
+    console.log(`[ADVISAGE] Saved image file: ${imagePath} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
+    res.json({ success: true, data: { imagePath } });
+  } catch (error: any) {
+    console.error("[ADVISAGE] Save image file error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ============================================================
 // AUTOPILOT BATCHES - Review Mode Endpoints
 // ============================================================

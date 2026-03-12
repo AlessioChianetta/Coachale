@@ -767,9 +767,58 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
 
   const [linkingToPost, setLinkingToPost] = useState<string | null>(null);
 
+  const saveBase64AsFile = (imageBase64: string, conceptId?: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const sizeMB = (imageBase64.length / 1024 / 1024).toFixed(1);
+      console.log(`[ADVISAGE-LINK] 📁 Salvataggio file immagine su disco | size=${sizeMB}MB`);
+      if (conceptId) setUploadProgress(prev => ({ ...prev, [`link_${conceptId}`]: 0 }));
+
+      const xhr = new XMLHttpRequest();
+      const authHeaders = getAuthHeaders();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable && conceptId) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(prev => ({ ...prev, [`link_${conceptId}`]: pct }));
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (conceptId) setUploadProgress(prev => { const n = { ...prev }; delete n[`link_${conceptId}`]; return n; });
+        try {
+          const result = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300 && result.success) {
+            console.log(`[ADVISAGE-LINK] ✅ File salvato: ${result.data.imagePath}`);
+            resolve(result.data.imagePath);
+          } else {
+            reject(new Error(result.error || `HTTP ${xhr.status}`));
+          }
+        } catch {
+          reject(new Error("Risposta server non valida"));
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        if (conceptId) setUploadProgress(prev => { const n = { ...prev }; delete n[`link_${conceptId}`]; return n; });
+        reject(new Error("Errore di rete"));
+      });
+
+      xhr.addEventListener('timeout', () => {
+        if (conceptId) setUploadProgress(prev => { const n = { ...prev }; delete n[`link_${conceptId}`]; return n; });
+        reject(new Error("Timeout upload"));
+      });
+
+      xhr.open('POST', '/api/content/advisage/save-image-file');
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      Object.entries(authHeaders).forEach(([k, v]) => xhr.setRequestHeader(k, v as string));
+      xhr.timeout = 120000;
+      xhr.send(JSON.stringify({ imageBase64 }));
+    });
+  };
+
   const handleLinkImageToPost = async (imageUrl: string) => {
     const sourcePostId = activePost?.sourcePostId;
-    console.log(`[ADVISAGE-LINK] ▶ Tentativo link immagine al post | sourcePostId=${sourcePostId} | activePostId=${activePostId} | imgLen=${imageUrl.length}`);
+    console.log(`[ADVISAGE-LINK] ▶ Tentativo link immagine al post | sourcePostId=${sourcePostId} | activePostId=${activePostId} | isBase64=${imageUrl.startsWith('data:')} | imgLen=${imageUrl.length}`);
     if (!sourcePostId) {
       console.warn(`[ADVISAGE-LINK] ⚠ Nessun sourcePostId disponibile per activePostId=${activePostId}`);
       toast({ title: "Nessun post collegato", description: "Questo concept non è associato a un post esistente", variant: "destructive" });
@@ -777,27 +826,34 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     }
     setLinkingToPost(sourcePostId);
     try {
+      let finalImageUrl = imageUrl;
+      if (imageUrl.startsWith('data:')) {
+        const conceptId = generatedImages.find(img => img.imageUrl === imageUrl)?.conceptId;
+        finalImageUrl = await saveBase64AsFile(imageUrl, conceptId);
+        console.log(`[ADVISAGE-LINK] 📁 Base64 convertita in file: ${finalImageUrl}`);
+      }
+
       const res = await fetch(`/api/content/posts/${sourcePostId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ imageUrl }),
+        body: JSON.stringify({ imageUrl: finalImageUrl }),
       });
       const resData = await res.json().catch(() => null);
-      console.log(`[ADVISAGE-LINK] Risposta server | status=${res.status} | ok=${res.ok} | data=`, resData);
+      console.log(`[ADVISAGE-LINK] Risposta server | status=${res.status} | ok=${res.ok}`);
       if (res.ok) {
         setGeneratedImages(prev => prev.map(img => {
           if (img.imageUrl === imageUrl) return { ...img, linkedToPost: true };
           return img;
         }));
         toast({ title: "Immagine associata", description: `Immagine salvata nel post "${activePost?.sourcePostTitle || 'collegato'}"` });
-        console.log(`[ADVISAGE-LINK] ✅ Link completato | postId=${sourcePostId} | postTitle=${activePost?.sourcePostTitle}`);
+        console.log(`[ADVISAGE-LINK] ✅ Link completato | postId=${sourcePostId} | imageUrl=${finalImageUrl}`);
       } else {
         console.error(`[ADVISAGE-LINK] ❌ Link fallito | status=${res.status} | error=${resData?.error || 'unknown'}`);
         throw new Error(resData?.error || "Errore nel salvataggio");
       }
     } catch (err: any) {
-      console.error(`[ADVISAGE-LINK] ❌ Errore rete/server | postId=${sourcePostId} | error=`, err.message);
-      toast({ title: "Errore", description: "Impossibile associare l'immagine al post", variant: "destructive" });
+      console.error(`[ADVISAGE-LINK] ❌ Errore | postId=${sourcePostId} | error=`, err.message);
+      toast({ title: "Errore", description: err.message || "Impossibile associare l'immagine al post", variant: "destructive" });
     } finally {
       setLinkingToPost(null);
     }
@@ -1885,23 +1941,30 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                         <p className="text-xs font-semibold uppercase tracking-wider">Synthesizing...</p>
                                       </div>
                                     )}
-                                    {typeof uploadProgress[concept.id] === 'number' && (
-                                      <div className="absolute bottom-0 left-0 right-0 z-20 bg-slate-900/80 backdrop-blur-sm p-3">
-                                        <div className="flex items-center gap-2 mb-1.5">
-                                          <CloudUpload className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-                                          <span className="text-[10px] font-bold text-white uppercase tracking-wider">
-                                            Salvataggio in corso...
-                                          </span>
-                                          <span className="ml-auto text-xs font-mono text-indigo-300">{uploadProgress[concept.id]}%</span>
+                                    {(() => {
+                                      const saveProgress = uploadProgress[concept.id];
+                                      const linkProgress = uploadProgress[`link_${concept.id}`];
+                                      const pct = typeof saveProgress === 'number' ? saveProgress : linkProgress;
+                                      const label = typeof saveProgress === 'number' ? 'Salvataggio in corso...' : 'Associazione al post...';
+                                      if (typeof pct !== 'number') return null;
+                                      return (
+                                        <div className="absolute bottom-0 left-0 right-0 z-20 bg-slate-900/80 backdrop-blur-sm p-3">
+                                          <div className="flex items-center gap-2 mb-1.5">
+                                            <CloudUpload className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                                            <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                                              {label}
+                                            </span>
+                                            <span className="ml-auto text-xs font-mono text-indigo-300">{pct}%</span>
+                                          </div>
+                                          <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                                            <div
+                                              className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-300 ease-out"
+                                              style={{ width: `${pct}%` }}
+                                            />
+                                          </div>
                                         </div>
-                                        <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-300 ease-out"
-                                            style={{ width: `${uploadProgress[concept.id]}%` }}
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
+                                      );
+                                    })()}
                                   </div>
                                   {conceptHistory.length > 0 && (
                                     <div className={`p-2 border-t ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-white/80'}`}>
