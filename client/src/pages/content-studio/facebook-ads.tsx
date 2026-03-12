@@ -187,7 +187,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   ARCHIVED: { label: "Archiviata", color: "bg-gray-500/10 text-gray-500 border-gray-300", icon: <Archive className="h-3 w-3" /> },
   CAMPAIGN_PAUSED: { label: "Campagna in Pausa", color: "bg-orange-500/10 text-orange-600 border-orange-300", icon: <PauseCircle className="h-3 w-3" /> },
   ADSET_PAUSED: { label: "Adset in Pausa", color: "bg-yellow-500/10 text-yellow-700 border-yellow-300", icon: <PauseCircle className="h-3 w-3" /> },
-  DELETED: { label: "Eliminata", color: "bg-red-800/10 text-red-800 border-red-400", icon: <XCircle className="h-3 w-3" /> },
+  DELETED: { label: "Eliminata", color: "bg-red-800/10 text-red-800 border-red-400", icon: <XCircle className="h-3 w-3" /> }, // kept for display only; Meta API does not return DELETED ads
   DISAPPROVED: { label: "Non Approvata", color: "bg-red-500/10 text-red-600 border-red-300", icon: <ShieldOff className="h-3 w-3" /> },
   PENDING_REVIEW: { label: "In Revisione", color: "bg-blue-500/10 text-blue-600 border-blue-300", icon: <AlertCircle className="h-3 w-3" /> },
   WITH_ISSUES: { label: "Con Problemi", color: "bg-red-500/10 text-red-600 border-red-300", icon: <AlertTriangle className="h-3 w-3" /> },
@@ -748,7 +748,6 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                 <SelectItem value="ARCHIVED">Archiviate</SelectItem>
                 <SelectItem value="CAMPAIGN_PAUSED">Campagna in Pausa</SelectItem>
                 <SelectItem value="ADSET_PAUSED">Adset in Pausa</SelectItem>
-                <SelectItem value="DELETED">Eliminate</SelectItem>
                 <SelectItem value="DISAPPROVED">Non Approvate</SelectItem>
               </SelectContent>
             </Select>
