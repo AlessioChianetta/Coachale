@@ -141,8 +141,12 @@ L'utente ha descritto manualmente queste tipologie aggiuntive. Genera UN concept
   }
 
   const totalRequested = selectedTypes.length + manualDescriptions.length;
-  instructions += `\n\nSpecifica nel campo styleType ESATTAMENTE il nome della tipologia (in italiano).
-Genera ESATTAMENTE ${totalRequested} concept, uno per ciascuna tipologia richiesta. NON aggiungere tipologie extra.`;
+  instructions += `\n\n⚠️ REGOLE TASSATIVE:
+- Genera ESATTAMENTE ${totalRequested} concept nell'array "concepts", UNO per ogni tipologia richiesta sopra.
+- NON aggiungere concept extra di tipologie non richieste.
+- NON sostituire le tipologie richieste con altre a tua scelta.
+- Il campo "styleType" di ogni concept DEVE corrispondere ESATTAMENTE alla tipologia richiesta (in italiano).
+- Se sono richieste ${totalRequested} tipologie, l'array concepts DEVE contenere esattamente ${totalRequested} elementi.`;
 
   return instructions;
 }
@@ -234,6 +238,10 @@ export async function analyzeAdTextServerSide(
     : '';
   
   const conceptTypeInstructions = buildConceptTypeInstructions(settings.conceptTypes);
+  const hasSpecificTypes = settings.conceptTypes && settings.conceptTypes.length > 0;
+  const manualCount = settings.conceptTypes?.filter(id => id.startsWith('manual:')).length || 0;
+  const standardCount = settings.conceptTypes?.filter(id => !id.startsWith('manual:') && CONCEPT_TYPE_PROMPTS[id]).length || 0;
+  const requestedConceptCount = hasSpecificTypes ? (standardCount + manualCount) : 3;
 
   const prompt = `Sei un direttore creativo senior esperto in Facebook/Meta Ads ad alta conversione.
 
@@ -246,7 +254,7 @@ STYLES MODE: ${settings.stylesMode === 'auto' ? 'AUTOMATICO — scegli TU le imp
 TEXT: "${text}"
 
 TASK: 
-1. Crea 3 concept visuali (immagini) ottimizzati per inserzioni pubblicitarie ad alta conversione.
+1. Crea ESATTAMENTE ${requestedConceptCount} concept visuali (immagini) ottimizzati per inserzioni pubblicitarie ad alta conversione.${hasSpecificTypes ? ` ⚠️ L'UTENTE HA SCELTO TIPOLOGIE SPECIFICHE — genera SOLO le tipologie indicate sotto, NESSUNA altra.` : ''}
 2. Crea 3 caption social (Emozionale, Tecnico, Diretto) con hashtag strategici.
 3. Fornisci un breve vantaggio competitivo.
 4. Suggerisci le impostazioni visive ottimali per questo specifico ads (recommendedSettings).
