@@ -1067,7 +1067,7 @@ export class FileSearchService {
         return { success: false, documents: [], error: 'No AI client available' };
       }
 
-      const fullStoreName = `fileSearchStores/${storeName}`;
+      const fullStoreName = storeName.startsWith('fileSearchStores/') ? storeName : `fileSearchStores/${storeName}`;
       const documents: Array<{ name: string; displayName?: string; createTime?: string }> = [];
 
       try {
