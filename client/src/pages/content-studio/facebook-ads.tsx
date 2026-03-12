@@ -143,6 +143,7 @@ interface MetaAd {
   lastSyncedAt: string;
   dateStart: string | null;
   dateStop: string | null;
+  linkedPost?: { id: string; title: string | null; hook: string | null; platform: string | null } | null;
 }
 
 interface AdsSummary {
@@ -237,6 +238,11 @@ function renderCellValue(col: string, val: unknown, row: AggRow, activeTab: stri
         <span className="truncate text-blue-700 dark:text-blue-400 hover:underline cursor-pointer font-medium">
           {row.name}
         </span>
+        {activeTab === "ads" && row.linkedPostTitle && (
+          <span title={`Collegato a: ${row.linkedPostTitle}`} className="flex-shrink-0">
+            <Link2 className="h-3.5 w-3.5 text-green-600" />
+          </span>
+        )}
       </div>
     );
   } else if (col === "pubblicazione") {
@@ -426,6 +432,7 @@ interface AggRow {
   lifetimeBudget?: number | null;
   dateStart?: string | null;
   dateStop?: string | null;
+  linkedPostTitle?: string | null;
 }
 
 function aggregateAds(adsArr: MetaAd[]): Omit<AggRow, "name" | "status" | "budget" | "risultati" | "costoPer" | "pubblicazione" | "adsCount"> {
@@ -729,6 +736,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
       lifetimeBudget: ad.lifetimeBudget,
       dateStart: ad.dateStart,
       dateStop: ad.dateStop,
+      linkedPostTitle: ad.linkedPost ? (ad.linkedPost.title || ad.linkedPost.hook || "Post collegato") : null,
     }));
   }, [ads]);
 
@@ -1373,11 +1381,16 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                         {row.campaignName && activeTab !== "campaigns" && (
                           <p className="text-xs text-muted-foreground truncate">{row.campaignName}</p>
                         )}
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                           {getStatusBadge(row.status)}
                           {row.frequency != null && row.frequency > 4 && (
                             <Badge className="bg-red-500/10 text-red-600 border-red-300 gap-1 text-[10px]">
                               <AlertTriangle className="h-2.5 w-2.5" />Ad Fatigue
+                            </Badge>
+                          )}
+                          {activeTab === "ads" && row.linkedPostTitle && (
+                            <Badge className="bg-green-500/10 text-green-700 border-green-300 gap-1 text-[10px]">
+                              <Link2 className="h-2.5 w-2.5" />Post collegato
                             </Badge>
                           )}
                         </div>
