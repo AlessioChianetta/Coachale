@@ -213,7 +213,7 @@ export const AI_ROLE_PROFILES: Record<string, { avatar: string; quote: string; r
   hunter: { avatar: hunterAvatar, quote: "Trovo i lead migliori e li passo al team per il primo contatto.", role: "Lead Prospector" },
   architetto: { avatar: archieAvatar, quote: "Progetto funnel di conversione basati sulla tua ricerca di mercato e brand voice.", role: "Funnel Architect" },
   personalizza: { avatar: "", quote: "Configurami come vuoi: definisci tu le mie regole.", role: "Assistente Custom" },
-  simone: { avatar: "", quote: "Analizzo le tue campagne Meta Ads e ti dico dove stai sprecando budget e dove scalare.", role: "Ads Strategist" },
+  simone: { avatar: "", quote: "Analizzo ogni inserzione attiva con tutti i KPI, confronto le performance, trovo gli sprechi e ti dico esattamente cosa scalare, cosa pausare e cosa testare.", role: "Media Buyer & Ads Optimizer" },
 };
 
 export const AI_ROLE_ACCENT_COLORS: Record<string, { ring: string; badge: string; border: string; text: string }> = {
@@ -568,7 +568,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "📧", text: "Non invia email autonomamente", category: "comunicazione" },
       { icon: "🔧", text: "Non modifica le inserzioni su Meta — solo raccomandazioni", category: "organizzazione" },
     ],
-    workflow: "Ogni 30 minuti carica tutte le inserzioni delle campagne attive con tutti i parametri (spesa, CTR, CPC, CPL, ROAS, frequenza, budget, creatività). Rileva anomalie critiche, identifica opportunità di ottimizzazione e genera raccomandazioni specifiche con azioni concrete.",
+    workflow: "Ogni 30 minuti carica TUTTE le inserzioni delle campagne attive con metriche complete (spesa, CTR, CPC, CPL, CPM, ROAS, frequenza, reach, link click, video views, budget, date, creatività). Confronta le performance tra inserzioni della stessa campagna, rileva ad fatigue e sprechi di budget, trova le winner da scalare, analizza le creatività (titolo e testo) per suggerire A/B test specifici. Genera raccomandazioni operative precise con nomi e numeri.",
   },
 };
 
