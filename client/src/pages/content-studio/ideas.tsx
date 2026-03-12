@@ -501,17 +501,39 @@ export default function ContentStudioIdeas() {
   const [funnelDirty, setFunnelDirty] = useState(false);
   const funnelRef = useRef<FunnelBuilderHandle>(null);
   const [pendingTab, setPendingTab] = useState<"ideas" | "posts" | "advisage" | "funnel" | null>(null);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const funnelDirtyRef = useRef(false);
+  funnelDirtyRef.current = funnelDirty;
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+  const blockerBypassRef = useRef(false);
 
   const handleTabChange = useCallback((tab: "ideas" | "posts" | "advisage" | "funnel") => {
     if (tab === activeTab) return;
     if (activeTab === "funnel" && funnelDirty) {
       setPendingTab(tab);
+      setPendingUrl(null);
       setShowUnsavedDialog(true);
       return;
     }
     setActiveTab(tab);
   }, [activeTab, funnelDirty]);
+
+  const executeNavigation = useCallback(() => {
+    setShowUnsavedDialog(false);
+    if (pendingTab) {
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+      setPendingUrl(null);
+    } else if (pendingUrl) {
+      const url = pendingUrl;
+      setPendingUrl(null);
+      setPendingTab(null);
+      blockerBypassRef.current = true;
+      window.location.assign(url);
+    }
+  }, [pendingTab, pendingUrl]);
 
   const handleUnsavedSaveAndExit = useCallback(async () => {
     if (funnelRef.current) {
@@ -520,38 +542,42 @@ export default function ContentStudioIdeas() {
         return;
       }
     }
-    setShowUnsavedDialog(false);
-    if (pendingTab) {
-      setActiveTab(pendingTab);
-      setPendingTab(null);
-    }
-  }, [pendingTab]);
+    executeNavigation();
+  }, [executeNavigation]);
 
   const handleUnsavedDiscard = useCallback(() => {
-    setShowUnsavedDialog(false);
     setFunnelDirty(false);
-    if (pendingTab) {
-      setActiveTab(pendingTab);
-      setPendingTab(null);
-    }
-  }, [pendingTab]);
+    funnelDirtyRef.current = false;
+    executeNavigation();
+  }, [executeNavigation]);
 
   const handleUnsavedCancel = useCallback(() => {
     setShowUnsavedDialog(false);
     setPendingTab(null);
+    setPendingUrl(null);
   }, []);
 
   useEffect(() => {
-    if (activeTab !== "funnel" || !funnelDirty) return;
+    if (activeTab !== "funnel") return;
 
     const originalPushState = history.pushState.bind(history);
     const originalReplaceState = history.replaceState.bind(history);
+    const currentUrl = window.location.href;
 
     const interceptNav = (original: typeof history.pushState): typeof history.pushState => {
       return function(data: any, unused: string, url?: string | URL | null) {
-        if (funnelRef.current?.isDirty) {
-          const confirmed = window.confirm("Hai modifiche non salvate nel Funnel Builder. Vuoi uscire senza salvare?");
-          if (!confirmed) return;
+        if (blockerBypassRef.current) {
+          blockerBypassRef.current = false;
+          return original(data, unused, url);
+        }
+        if (funnelDirtyRef.current && url) {
+          const targetUrl = new URL(url.toString(), window.location.origin).href;
+          if (targetUrl !== currentUrl) {
+            setPendingUrl(targetUrl);
+            setPendingTab(null);
+            setShowUnsavedDialog(true);
+            return;
+          }
         }
         return original(data, unused, url);
       };
@@ -560,12 +586,13 @@ export default function ContentStudioIdeas() {
     history.pushState = interceptNav(originalPushState);
     history.replaceState = interceptNav(originalReplaceState);
 
-    const handlePopState = (e: PopStateEvent) => {
-      if (funnelRef.current?.isDirty) {
-        const confirmed = window.confirm("Hai modifiche non salvate nel Funnel Builder. Vuoi uscire senza salvare?");
-        if (!confirmed) {
-          history.pushState(null, "", window.location.href);
-        }
+    const handlePopState = () => {
+      if (funnelDirtyRef.current) {
+        const targetUrl = window.location.href;
+        originalPushState(null, "", currentUrl);
+        setPendingUrl(targetUrl);
+        setPendingTab(null);
+        setShowUnsavedDialog(true);
       }
     };
 
@@ -576,7 +603,7 @@ export default function ContentStudioIdeas() {
       history.replaceState = originalReplaceState;
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [activeTab, funnelDirty]);
+  }, [activeTab]);
 
   const [topic, setTopic] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
