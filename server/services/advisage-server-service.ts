@@ -427,6 +427,30 @@ OUTPUT JSON VALIDO — TUTTO IN ITALIANO:
   return result;
 }
 
+function generateDiversitySeed(): string {
+  const ethnicities = ['caucasian European', 'African American', 'East Asian', 'South Asian', 'Middle Eastern', 'Latin American', 'mixed ethnicity'];
+  const genders = ['male', 'female'];
+  const ages = ['young adult (25-30)', 'mid-thirties professional (33-38)', 'experienced professional (40-48)', 'senior executive (50-58)'];
+  const hairStyles = ['short cropped hair', 'medium length styled hair', 'long flowing hair', 'curly voluminous hair', 'slicked back hair', 'natural textured hair', 'buzz cut'];
+  const clothing = ['tailored navy suit', 'casual smart blazer and t-shirt', 'crisp white shirt with rolled sleeves', 'turtleneck sweater', 'business casual polo', 'minimalist linen shirt', 'denim jacket over henley', 'structured wool coat'];
+  const environments = ['modern glass office', 'cozy home workspace', 'industrial loft studio', 'outdoor urban terrace', 'minimalist white studio', 'warm wooden interior', 'concrete brutalist space', 'garden greenhouse', 'rooftop city view'];
+  const compositions = ['rule of thirds with subject on left', 'centered symmetric composition', 'dynamic diagonal lines', 'subject on right third with negative space left', 'low horizon dramatic composition', 'tight framing with shallow depth of field', 'environmental portrait with context', 'over-the-shoulder perspective'];
+  const colorAccents = ['warm amber and terracotta tones', 'cool steel blue and silver', 'forest green and cream', 'burgundy and gold', 'teal and coral', 'charcoal and burnt orange', 'sage green and blush pink', 'navy and copper'];
+  const moods = ['confident and determined expression', 'thoughtful and contemplative pose', 'warm genuine smile', 'focused and intense gaze', 'relaxed and approachable demeanor', 'energetic and dynamic posture', 'serene and composed presence'];
+
+  const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+  return `\n\n═══ VARIATION SEED (genera un'immagine UNICA e DIVERSA da generazioni precedenti) ═══
+- Soggetto umano: ${pick(ethnicities)} ${pick(genders)}, ${pick(ages)}, ${pick(hairStyles)}
+- Abbigliamento: ${pick(clothing)}
+- Ambiente: ${pick(environments)}
+- Composizione: ${pick(compositions)}
+- Accenti cromatici secondari: ${pick(colorAccents)}
+- Espressione/posa: ${pick(moods)}
+- Seed univoco: #${Math.random().toString(36).substring(2, 10)}
+IMPORTANTE: Questi parametri di variazione servono a garantire diversità tra generazioni successive. Applicali SOLO dove coerenti con la scena richiesta — se il concept non richiede persone, ignora le indicazioni sul soggetto umano e concentra la variazione su ambiente, composizione e colori.`;
+}
+
 function buildCommonSections(opts: ImageGenOptions, aspectRatio: string): string {
   const formatGuide: Record<string, string> = {
     '1:1': 'Quadrato 1:1 (Instagram Feed)',
@@ -536,6 +560,7 @@ Pensa come un fotografo commerciale in studio: composizione intenzionale, illumi
   }
 
   prompt += `\n\nStile fotografico: ${promptVisual.stile_fotografico}`;
+  prompt += generateDiversitySeed();
 
   return prompt;
 }
@@ -569,6 +594,7 @@ Pensa come un fotografo commerciale in studio: composizione intenzionale, illumi
   if (visualDescription) {
     prompt += `\n\nRIFERIMENTO VISIVO (segui questa descrizione scena fedelmente):\n${visualDescription}`;
   }
+  prompt += generateDiversitySeed();
 
   return prompt;
 }
