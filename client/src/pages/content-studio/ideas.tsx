@@ -531,8 +531,9 @@ export default function ContentStudioIdeas() {
       setPendingUrl(null);
       setPendingTab(null);
       blockerBypassRef.current = true;
-      const path = new URL(url, window.location.origin).pathname;
-      history.pushState(null, "", path);
+      const urlObj = new URL(url, window.location.origin);
+      const fullPath = urlObj.pathname + urlObj.search + urlObj.hash;
+      history.pushState(null, "", fullPath);
       window.dispatchEvent(new PopStateEvent("popstate"));
     }
   }, [pendingTab, pendingUrl]);
