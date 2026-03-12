@@ -1024,9 +1024,11 @@ async function fetchSimoneData(consultantId: string, _clientIds: string[]): Prom
            spend, impressions, clicks, reach, leads, conversions,
            cpc, cpm, ctr, cpl, frequency, roas,
            link_clicks, cpc_link, ctr_link, result_type, video_views,
-           daily_budget, lifetime_budget, date_start, date_stop
+           daily_budget, lifetime_budget, date_start, date_stop,
+           creative_thumbnail_url, creative_body, creative_title
     FROM meta_ad_insights
     WHERE consultant_id = ${consultantId}
+      AND campaign_status = 'ACTIVE'
     ORDER BY spend DESC
   `);
 
@@ -1051,6 +1053,12 @@ async function fetchSimoneData(consultantId: string, _clientIds: string[]): Prom
     roas: r.roas != null ? Number(r.roas) : null,
     linkClicks: Number(r.link_clicks || 0),
     videoViews: Number(r.video_views || 0),
+    dailyBudget: r.daily_budget != null ? Number(r.daily_budget) : null,
+    lifetimeBudget: r.lifetime_budget != null ? Number(r.lifetime_budget) : null,
+    dateStart: r.date_start,
+    dateStop: r.date_stop,
+    creativeBody: r.creative_body || null,
+    creativeTitle: r.creative_title || null,
   }));
 
   const campaignMap: Record<string, any> = {};
@@ -3347,11 +3355,13 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 
 DATA/ORA ATTUALE: ${romeTimeStr}
 
-=== PANORAMICA ACCOUNT ===
-- Inserzioni totali: ${adsList.length} (${activeAds} attive)
+=== PANORAMICA ACCOUNT (SOLO CAMPAGNE ATTIVE) ===
+- Inserzioni in campagne attive: ${adsList.length} (${activeAds} con status ACTIVE)
 - Spesa totale: €${totalSpend.toFixed(2)}
 - Lead totali: ${totalLeads}
+- Conversioni totali: ${adsList.reduce((s: number, a: any) => s + (a.conversions || 0), 0)}
 - CPL medio: ${totalLeads > 0 ? `€${(totalSpend / totalLeads).toFixed(2)}` : 'N/A'}
+- Reach totale: ${adsList.reduce((s: number, a: any) => s + (a.reach || 0), 0).toLocaleString('it-IT')}
 
 === CAMPAGNE ===
 ${campaignsSummary.length > 0 ? JSON.stringify(campaignsSummary, null, 2) : 'Nessuna campagna trovata'}
@@ -3362,20 +3372,32 @@ ${anomalies.length > 0 ? anomalies.join('\n') : 'Nessuna anomalia critica rileva
 === TOP PERFORMER ===
 ${topPerformers.length > 0 ? topPerformers.join('\n') : 'Nessun top performer identificato.'}
 
-=== DETTAGLIO INSERZIONI (ultime 50 per spesa) ===
-${JSON.stringify(adsList.slice(0, 50).map((a: any) => ({
+=== DETTAGLIO INSERZIONI ATTIVE (per spesa) ===
+${JSON.stringify(adsList.slice(0, 80).map((a: any) => ({
   name: a.adName,
   campaign: a.campaignName,
-  status: a.adStatus,
+  adset: a.adsetName,
+  adStatus: a.adStatus,
   spend: a.spend,
   impressions: a.impressions,
   clicks: a.clicks,
+  reach: a.reach,
   leads: a.leads,
+  conversions: a.conversions,
   ctr: a.ctr,
   cpc: a.cpc,
+  cpm: a.cpm,
   cpl: a.cpl,
   roas: a.roas,
   frequency: a.frequency,
+  linkClicks: a.linkClicks,
+  videoViews: a.videoViews,
+  dailyBudget: a.dailyBudget,
+  lifetimeBudget: a.lifetimeBudget,
+  dateStart: a.dateStart,
+  dateStop: a.dateStop,
+  creativeTitle: a.creativeTitle,
+  creativeBody: a.creativeBody ? (a.creativeBody.length > 200 ? a.creativeBody.substring(0, 200) + '...' : a.creativeBody) : null,
 })), null, 2)}
 
 ${buildTaskMemorySection(recentAllTasks, 'simone', permanentBlocks, recentReasoningByRole)}

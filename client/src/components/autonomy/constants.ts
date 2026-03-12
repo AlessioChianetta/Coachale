@@ -213,6 +213,7 @@ export const AI_ROLE_PROFILES: Record<string, { avatar: string; quote: string; r
   hunter: { avatar: hunterAvatar, quote: "Trovo i lead migliori e li passo al team per il primo contatto.", role: "Lead Prospector" },
   architetto: { avatar: archieAvatar, quote: "Progetto funnel di conversione basati sulla tua ricerca di mercato e brand voice.", role: "Funnel Architect" },
   personalizza: { avatar: "", quote: "Configurami come vuoi: definisci tu le mie regole.", role: "Assistente Custom" },
+  simone: { avatar: "", quote: "Analizzo le tue campagne Meta Ads e ti dico dove stai sprecando budget e dove scalare.", role: "Ads Strategist" },
 };
 
 export const AI_ROLE_ACCENT_COLORS: Record<string, { ring: string; badge: string; border: string; text: string }> = {
@@ -354,6 +355,18 @@ export const AI_ROLE_EXECUTION_PIPELINES: Record<string, ExecutionPipelineInfo> 
     direction: "Dipende dalla configurazione personalizzata",
     directionIcon: "⚙️",
     directionColor: "text-muted-foreground",
+  },
+  simone: {
+    steps: [
+      { id: "fetch_ads_data", icon: "📊", label: "Caricamento inserzioni attive", description: "Recupera tutte le inserzioni delle campagne attive con metriche complete" },
+      { id: "aggregate_campaigns", icon: "📈", label: "Aggregazione campagne", description: "Calcola KPI aggregati per campagna: spesa, CTR, CPC, CPL, ROAS, frequenza" },
+      { id: "detect_anomalies", icon: "⚠️", label: "Rilevamento anomalie", description: "Identifica ad fatigue (freq>4), CTR basso (<0.5%), ROAS negativo, CPL elevato" },
+      { id: "find_opportunities", icon: "🚀", label: "Opportunità di scaling", description: "Trova inserzioni con ROAS alto da scalare e creatività vincenti da replicare" },
+      { id: "generate_recommendations", icon: "📝", label: "Raccomandazioni", description: "Genera task con azioni specifiche: pausa, scaling, A/B test, cambio creativo" },
+    ],
+    direction: "Nessun contatto diretto — analisi interna e report al consulente",
+    directionIcon: "🏠",
+    directionColor: "text-orange-600 dark:text-orange-400",
   },
 };
 
@@ -540,6 +553,23 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
     ],
     workflow: "Ogni 30 minuti legge i dati configurati dall'account, esegue esattamente le istruzioni personalizzate che hai scritto e crea i task secondo le regole di business che hai definito tu.",
   },
+  simone: {
+    canDo: [
+      { icon: "📊", text: "Analizza tutte le inserzioni delle campagne attive con metriche complete", category: "analisi" },
+      { icon: "⚠️", text: "Rileva anomalie: ad fatigue, CTR basso, ROAS negativo, CPL elevato", category: "analisi" },
+      { icon: "🚀", text: "Identifica top performer da scalare e creatività vincenti", category: "analisi" },
+      { icon: "📈", text: "Calcola KPI aggregati per campagna (spesa, CTR, CPC, CPL, ROAS)", category: "analisi" },
+      { icon: "💰", text: "Analizza budget (giornaliero/lifetime) e suggerisce riallocazioni", category: "analisi" },
+      { icon: "🎨", text: "Valuta le creatività (titolo, body) e suggerisce A/B test", category: "analisi" },
+    ],
+    cantDo: [
+      { icon: "📞", text: "Non contatta i clienti direttamente", category: "comunicazione" },
+      { icon: "💬", text: "Non invia messaggi WhatsApp", category: "comunicazione" },
+      { icon: "📧", text: "Non invia email autonomamente", category: "comunicazione" },
+      { icon: "🔧", text: "Non modifica le inserzioni su Meta — solo raccomandazioni", category: "organizzazione" },
+    ],
+    workflow: "Ogni 30 minuti carica tutte le inserzioni delle campagne attive con tutti i parametri (spesa, CTR, CPC, CPL, ROAS, frequenza, budget, creatività). Rileva anomalie critiche, identifica opportunità di ottimizzazione e genera raccomandazioni specifiche con azioni concrete.",
+  },
 };
 
 export interface ImpactItem {
@@ -610,6 +640,14 @@ export const AI_ROLE_IMPACT_MAP: Record<string, ImpactItem[]> = {
   personalizza: [
     { icon: "📋", label: "Dati configurati", mode: "read" },
     { icon: "⚡", label: "Azioni personalizzate", mode: "write" },
+    { icon: "📚", label: "Knowledge Base", mode: "read" },
+  ],
+  simone: [
+    { icon: "📊", label: "Meta Ads (inserzioni attive)", mode: "read" },
+    { icon: "📈", label: "Metriche campagne", mode: "read" },
+    { icon: "💰", label: "Budget e spesa", mode: "read" },
+    { icon: "🎨", label: "Creatività ads", mode: "read" },
+    { icon: "📝", label: "Report e raccomandazioni", mode: "write" },
     { icon: "📚", label: "Knowledge Base", mode: "read" },
   ],
 };
@@ -921,6 +959,32 @@ export const AI_ROLE_EXAMPLES: Record<string, RoleExample[]> = {
       title: "Copy per avatar specifico",
       scenario: "Il consulente aveva un cliente-tipo ben definito: imprenditore 40-55 anni, preoccupato per la pensione. Architetto ha scritto copy per ogni step del funnel parlando direttamente a quell'avatar, con obiezioni tipiche già gestite nel testo.",
       outcome: "Contenuti risonano molto di più con il target — richieste di consulenza aumentate",
+    },
+  ],
+  simone: [
+    {
+      icon: "⚠️",
+      title: "Ad fatigue rilevata su campagna principale",
+      scenario: "Simone ha analizzato le inserzioni attive e ha notato che 3 ads della campagna 'Lead Gen Maggio' avevano frequenza superiore a 5.2. Ha creato un task con raccomandazione specifica: mettere in pausa le 3 inserzioni e sostituire con nuove creatività.",
+      outcome: "Creatività sostituite, frequenza tornata a 2.1, CTR risalito del 40%",
+    },
+    {
+      icon: "🚀",
+      title: "Opportunità di scaling individuata",
+      scenario: "Un'inserzione aveva ROAS 4.2x con budget giornaliero di soli €15. Simone ha segnalato l'opportunità di scaling con aumento graduale del budget (+20% ogni 3 giorni) e ha suggerito di replicare l'angolo creativo su nuovi adset.",
+      outcome: "Budget triplicato mantenendo ROAS > 3x, lead raddoppiati",
+    },
+    {
+      icon: "💰",
+      title: "Spreco di budget bloccato in tempo",
+      scenario: "Una campagna con 5 inserzioni spendeva €120/giorno con ROAS 0.3x. Simone ha identificato che solo 1 inserzione su 5 aveva risultati accettabili e ha raccomandato di pausare le altre 4 immediatamente.",
+      outcome: "€96/giorno risparmiati, budget riallocato su inserzioni performanti",
+    },
+    {
+      icon: "📊",
+      title: "Report settimanale con trend e anomalie",
+      scenario: "Nessuna anomalia critica, ma Simone ha generato un report riepilogativo con: CPL medio per campagna, trend settimanale, confronto tra adset, e 3 suggerimenti di ottimizzazione basati sui dati (A/B test creatività, test nuovo pubblico, aumento budget top performer).",
+      outcome: "Consulente ha preso decisioni informate in 2 minuti invece di analizzare i dati manualmente",
     },
   ],
   personalizza: [
