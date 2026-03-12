@@ -10,7 +10,83 @@ import { decrypt, decryptForConsultant } from "../encryption";
 
 const FB_GRAPH_URL = "https://graph.facebook.com/v19.0";
 
-async function getDecryptedToken(config: any, consultantId: string): Promise<string | null> {
+interface MetaErrorResponse {
+  error?: { message?: string; type?: string; code?: number };
+}
+
+interface MetaAction {
+  action_type?: string;
+  value?: string;
+}
+
+interface MetaPurchaseRoas {
+  action_type?: string;
+  value?: string;
+}
+
+interface MetaAdCreative {
+  thumbnail_url?: string;
+  body?: string;
+  title?: string;
+}
+
+interface MetaAdCampaign {
+  id?: string;
+  name?: string;
+  status?: string;
+  daily_budget?: string;
+  lifetime_budget?: string;
+}
+
+interface MetaAdAdset {
+  id?: string;
+  name?: string;
+}
+
+interface MetaAd {
+  id: string;
+  name?: string;
+  status?: string;
+  creative?: MetaAdCreative;
+  campaign?: MetaAdCampaign;
+  adset?: MetaAdAdset;
+}
+
+interface MetaAdsResponse extends MetaErrorResponse {
+  data?: MetaAd[];
+}
+
+interface MetaInsightData {
+  spend?: string;
+  impressions?: string;
+  clicks?: string;
+  reach?: string;
+  cpc?: string;
+  cpm?: string;
+  ctr?: string;
+  frequency?: string;
+  actions?: MetaAction[];
+  cost_per_action_type?: MetaAction[];
+  purchase_roas?: MetaPurchaseRoas[];
+  date_start?: string;
+  date_stop?: string;
+}
+
+interface MetaInsightsResponse extends MetaErrorResponse {
+  data?: MetaInsightData[];
+}
+
+interface MetaAdsConfig {
+  id: string;
+  consultantId: string;
+  adAccountId: string | null;
+  accessToken: string | null;
+  isConnected: boolean | null;
+  isActive: boolean | null;
+  syncEnabled: boolean | null;
+}
+
+async function getDecryptedToken(config: MetaAdsConfig, consultantId: string): Promise<string | null> {
   if (!config.accessToken) return null;
 
   try {
@@ -92,7 +168,7 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
         .where(eq(consultantMetaAdsConfig.id, config.id));
       return { success: false, adsCount: 0, error: errorMsg };
     }
-    const adsData = (await adsRes.json()) as any;
+    const adsData: MetaAdsResponse = await adsRes.json();
 
     if (adsData.error) {
       const errorMsg = adsData.error.message || "Unknown API error";
@@ -120,8 +196,8 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
           console.warn(`[META-ADS SYNC] Insights fetch failed for ad ${ad.id}: HTTP ${insightsRes.status}`);
           continue;
         }
-        const insightsData = (await insightsRes.json()) as any;
-        const insights = insightsData.data?.[0] || {};
+        const insightsData: MetaInsightsResponse = await insightsRes.json();
+        const insights: MetaInsightData = insightsData.data?.[0] || {};
 
         const leads = extractActionValue(insights.actions, "lead");
         const conversions = extractActionValue(insights.actions, "offsite_conversion");
@@ -307,10 +383,10 @@ export async function syncAllConsultants(): Promise<void> {
   }
 }
 
-function extractActionValue(actions: any[], actionType: string): number {
+function extractActionValue(actions: MetaAction[] | undefined, actionType: string): number {
   if (!Array.isArray(actions)) return 0;
   const action = actions.find(
-    (a: any) => a.action_type === actionType || a.action_type?.includes(actionType)
+    (a: MetaAction) => a.action_type === actionType || a.action_type?.includes(actionType)
   );
   return action ? parseInt(action.value || "0") : 0;
 }

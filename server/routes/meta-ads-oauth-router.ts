@@ -10,6 +10,28 @@ import { eq, and } from "drizzle-orm";
 import { encrypt, encryptForConsultant, decrypt } from "../encryption";
 import crypto from "crypto";
 
+interface MetaErrorResponse {
+  error?: { message?: string; type?: string; code?: number };
+}
+
+interface MetaTokenResponse extends MetaErrorResponse {
+  access_token?: string;
+  token_type?: string;
+  expires_in?: number;
+}
+
+interface MetaAdAccount {
+  id?: string;
+  account_id?: string;
+  name?: string;
+  account_status?: number;
+  business?: { id?: string; name?: string };
+}
+
+interface MetaAdAccountsResponse extends MetaErrorResponse {
+  data?: MetaAdAccount[];
+}
+
 const router = Router();
 
 const FB_AUTH_URL = "https://www.facebook.com/v19.0/dialog/oauth";
@@ -21,7 +43,7 @@ function signState(payload: object): string {
   return `${data}.${sig}`;
 }
 
-function verifyState(state: string): Record<string, any> | null {
+function verifyState(state: string): Record<string, string> | null {
   const parts = String(state).split(".");
   if (parts.length !== 2) return null;
   const [data, sig] = parts;
@@ -188,7 +210,7 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
       console.error(`[META-ADS OAUTH] Token exchange HTTP error: ${tokenRes.status}`);
       return res.redirect(`/consultant/content-studio/facebook-ads?meta_ads_error=token_exchange_failed`);
     }
-    const tokenData = (await tokenRes.json()) as any;
+    const tokenData: MetaTokenResponse = await tokenRes.json();
 
     if (tokenData.error) {
       console.error("[META-ADS OAUTH] Token exchange error:", tokenData.error);
@@ -206,7 +228,7 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
     longLivedUrl.searchParams.set("fb_exchange_token", shortLivedToken);
 
     const longLivedRes = await fetch(longLivedUrl.toString());
-    const longLivedData = (await longLivedRes.json()) as any;
+    const longLivedData: MetaTokenResponse = await longLivedRes.json();
 
     const accessToken = longLivedData.access_token || shortLivedToken;
     const expiresIn = longLivedData.expires_in || 5184000;
@@ -217,7 +239,7 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
     const adAccountsRes = await fetch(
       `${FB_GRAPH_URL}/me/adaccounts?fields=account_id,name,account_status,business{id,name}&access_token=${accessToken}`
     );
-    const adAccountsData = (await adAccountsRes.json()) as any;
+    const adAccountsData: MetaAdAccountsResponse = await adAccountsRes.json();
 
     if (adAccountsData.error) {
       console.error("[META-ADS OAUTH] Error fetching ad accounts:", adAccountsData.error);
@@ -233,7 +255,7 @@ router.get("/oauth/callback", async (req: Request, res: Response) => {
       );
     }
 
-    const activeAccount = adAccounts.find((a: any) => a.account_status === 1) || adAccounts[0];
+    const activeAccount = adAccounts.find((a: MetaAdAccount) => a.account_status === 1) || adAccounts[0];
 
     const [consultant] = await db
       .select({ encryptionSalt: users.encryptionSalt })
@@ -358,14 +380,14 @@ router.get("/oauth/ad-accounts", authenticateToken, async (req: AuthRequest, res
     const adAccountsRes = await fetch(
       `${FB_GRAPH_URL}/me/adaccounts?fields=account_id,name,account_status,business{id,name}&access_token=${token}`
     );
-    const adAccountsData = (await adAccountsRes.json()) as any;
+    const adAccountsData: MetaAdAccountsResponse = await adAccountsRes.json();
 
     if (adAccountsData.error) {
       return res.status(400).json({ error: "Token scaduto, ricollega l'account" });
     }
 
     return res.json({
-      adAccounts: (adAccountsData.data || []).map((a: any) => ({
+      adAccounts: (adAccountsData.data || []).map((a: MetaAdAccount) => ({
         id: a.account_id || a.id?.replace("act_", ""),
         name: a.name,
         status: a.account_status === 1 ? "active" : "inactive",

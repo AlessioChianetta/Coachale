@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, boolean, integer, bigint, timestamp, json, jsonb, date, real, unique, index, serial, uuid, decimal, numeric, time } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, integer, bigint, timestamp, json, jsonb, date, real, unique, uniqueIndex, index, serial, uuid, decimal, numeric, time } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -11100,7 +11100,7 @@ export const metaAdInsights = pgTable("meta_ad_insights", {
   campaignName: varchar("campaign_name", { length: 500 }),
   adsetName: varchar("adset_name", { length: 500 }),
   
-  adStatus: varchar("ad_status", { length: 50 }).default("UNKNOWN"),
+  adStatus: varchar("ad_status", { length: 50 }),
   campaignStatus: varchar("campaign_status", { length: 50 }),
   
   dailyBudget: real("daily_budget"),
@@ -11127,13 +11127,13 @@ export const metaAdInsights = pgTable("meta_ad_insights", {
   dateStart: date("date_start"),
   dateStop: date("date_stop"),
   
-  lastSyncedAt: timestamp("last_synced_at").default(sql`now()`),
+  lastSyncedAt: timestamp("last_synced_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
   consultantIdx: index("idx_meta_ad_insights_consultant").on(table.consultantId),
   metaAdIdx: index("idx_meta_ad_insights_meta_ad").on(table.metaAdId),
-  campaignIdx: index("idx_meta_ad_insights_campaign").on(table.metaCampaignId),
+  configIdx: index("idx_meta_ad_insights_config").on(table.configId),
 }));
 
 export type MetaAdInsight = typeof metaAdInsights.$inferSelect;
@@ -11168,6 +11168,7 @@ export const metaAdInsightsDaily = pgTable("meta_ad_insights_daily", {
   consultantIdx: index("idx_meta_ad_daily_consultant").on(table.consultantId),
   metaAdIdx: index("idx_meta_ad_daily_ad").on(table.metaAdId),
   dateIdx: index("idx_meta_ad_daily_date").on(table.snapshotDate),
+  uniqueDaily: uniqueIndex("idx_meta_ad_daily_unique").on(table.consultantId, table.metaAdId, table.snapshotDate),
 }));
 
 export type MetaAdInsightDaily = typeof metaAdInsightsDaily.$inferSelect;
