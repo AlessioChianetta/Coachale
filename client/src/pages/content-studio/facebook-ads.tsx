@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2165,26 +2164,6 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
         </DialogContent>
       </Dialog>
 
-      <AnimatePresence>
-        {simoneChatOpen && (
-          <motion.div
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed top-0 right-0 h-full w-[380px] sm:w-[420px] z-50 border-l bg-background shadow-2xl"
-          >
-            <AgentChat
-              roleId="simone"
-              roleName="Simone – Ads Strategist"
-              avatar="📊"
-              accentColor="orange"
-              open={true}
-              onClose={() => setSimoneChatOpen(false)}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 
@@ -2197,19 +2176,33 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className={`flex-1 overflow-y-auto transition-all duration-300 ${simoneChatOpen ? "pr-[380px] sm:pr-[420px]" : ""}`}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                <Facebook className="h-6 w-6" />
+        <div className="flex-1 flex min-h-0">
+          <main className={`flex-1 overflow-y-auto transition-all duration-300`}>
+            <div className={`mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 ${simoneChatOpen ? "max-w-6xl" : "max-w-7xl"}`}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                  <Facebook className="h-6 w-6" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">Facebook Ads</h1>
+                  <p className="text-sm text-muted-foreground">Monitora le performance delle tue inserzioni Meta</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold">Facebook Ads</h1>
-                <p className="text-sm text-muted-foreground">Monitora le performance delle tue inserzioni Meta</p>
-              </div>
+              {content}
             </div>
-            {content}
-          </div>
+          </main>
+          {simoneChatOpen && (
+            <div className="w-[380px] sm:w-[420px] shrink-0 border-l bg-background h-full">
+              <AgentChat
+                roleId="simone"
+                roleName="Simone – Ads Strategist"
+                avatar="📊"
+                accentColor="orange"
+                open={true}
+                onClose={() => setSimoneChatOpen(false)}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
