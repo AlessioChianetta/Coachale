@@ -47,6 +47,7 @@ interface MetaAd {
   id: string;
   name?: string;
   status?: string;
+  effective_status?: string;
   creative?: MetaAdCreative;
   campaign?: MetaAdCampaign;
   adset?: MetaAdAdset;
@@ -182,15 +183,19 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
       return { success: false, adsCount: 0, error: errorMsg };
     }
 
-    const ads = adsData.data || [];
-    console.log(`[META-ADS SYNC] Found ${ads.length} ads for consultant ${consultantId}`);
+    const allAds = adsData.data || [];
+    const ads = allAds.filter((ad) => {
+      const status = ad.effective_status || ad.status;
+      return status === "ACTIVE" || status === "PAUSED";
+    });
+    console.log(`[META-ADS SYNC] Found ${allAds.length} total ads, ${ads.length} active/paused for consultant ${consultantId}`);
 
     let syncedCount = 0;
 
     for (const ad of ads) {
       try {
         const insightsRes = await fetch(
-          `${FB_GRAPH_URL}/${ad.id}/insights?fields=spend,impressions,clicks,reach,actions,cost_per_action_type,cpc,cpm,ctr,frequency,purchase_roas&date_preset=maximum&access_token=${accessToken}`
+          `${FB_GRAPH_URL}/${ad.id}/insights?fields=spend,impressions,clicks,reach,actions,cost_per_action_type,cpc,cpm,ctr,frequency,purchase_roas,date_start,date_stop&date_preset=maximum&access_token=${accessToken}`
         );
         if (!insightsRes.ok) {
           console.warn(`[META-ADS SYNC] Insights fetch failed for ad ${ad.id}: HTTP ${insightsRes.status}`);
@@ -263,6 +268,8 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
           creativeThumbnailUrl: ad.creative?.thumbnail_url || null,
           creativeBody: ad.creative?.body || null,
           creativeTitle: ad.creative?.title || null,
+          dateStart: insights.date_start || null,
+          dateStop: insights.date_stop || null,
           lastSyncedAt: new Date(),
           updatedAt: new Date(),
         };
