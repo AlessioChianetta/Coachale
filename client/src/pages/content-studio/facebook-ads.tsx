@@ -575,7 +575,8 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
     },
     enabled: isConnected,
   });
-  const aiExcludedCampaigns: string[] = aiExcludedData?.aiExcludedCampaigns || [];
+  const rawExcluded = aiExcludedData?.aiExcludedCampaigns;
+  const aiExcludedCampaigns: string[] = Array.isArray(rawExcluded) ? rawExcluded : [];
 
   const aiExcludedMutation = useMutation({
     mutationFn: async (campaigns: string[]) => {
