@@ -1,0 +1,132 @@
+IMAP] Finished parsing 2 emails from "INBOX.Sent"
+[EMAIL-HUB AUTO] Fetched 2 emails from INBOX.Sent (sent)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/knowledge-base-consulente-juw371zchi3s not found on Google (404)
+👻 [FileSync] Store "Knowledge Base Consulente": 121/121 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/store-globale-consulenze-cl-my932jiusvjz not found on Google (404)
+👻 [FileSync] Store "Store Globale Consulenze Clienti": 688/688 phantom records (DB says indexed, Google says missing)
+[IMAP] Opened folder "INBOX.Drafts": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from INBOX.Drafts (drafts)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-65eefa-chhplr8ynbv3 not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 65eefa26": 2/2 phantom records (DB says indexed, Google says missing)
+✅ [TokenTracker] Flushed 1 entries to DB
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-8a7f6b-r0u8xyz6uyn9 not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 8a7f6b63": 410/410 phantom records (DB says indexed, Google says missing)
+[IMAP] Opened folder "INBOX.Trash": server reports 6 total messages
+[IMAP] Finished parsing 6 emails from "INBOX.Trash"
+[EMAIL-HUB AUTO] Fetched 6 emails from INBOX.Trash (trash)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-bb4dac-ycuo0nbtir8m not found on Google (404)
+👻 [FileSync] Store "Private Store - Client bb4dac3d": 8/8 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-10de93-12u68aqqaoog not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 10de931f": 8/8 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-cf9405-z4iffq4s5jjt not found on Google (404)
+👻 [FileSync] Store "Private Store - Client cf9405d3": 8/8 phantom records (DB says indexed, Google says missing)
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-42105c-hzg7ixgbosa5 not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 42105c6d": 68/68 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-14503a-ei00gzehmifk not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 14503a6f": 54/54 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-fded8d-q7pqcmifh53q not found on Google (404)
+👻 [FileSync] Store "Private Store - Client fded8db5": 8/8 phantom records (DB says indexed, Google says missing)
+[IMAP IDLE] Inbox opened for f5eaa99d-efc3-46d0-84fc-80ada80ed89c, last UID: 481
+[IMAP IDLE] Started IDLE for account f5eaa99d-efc3-46d0-84fc-80ada80ed89c
+[EMAIL-HUB AUTO] IDLE started for no-reply@alessiochianetta.it
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-788725-f7zo7oh9vncj not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 788725fc": 8/8 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-b7f1ee-u7mdfx98q04t not found on Google (404)
+👻 [FileSync] Store "Private Store - Client b7f1ee28": 34/34 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-c21467-1jkj76fczn2k not found on Google (404)
+👻 [FileSync] Store "Private Store - Client c2146759": 84/84 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-bc754a-87ffhh5lixa6 not found on Google (404)
+👻 [FileSync] Store "Private Store - Client bc754af6": 8/8 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-eecd97-l19ucyzg5zka not found on Google (404)
+👻 [FileSync] Store "Private Store - Client eecd97d5": 31/31 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-e9c377-0qubcpy51a0r not found on Google (404)
+👻 [FileSync] Store "Private Store - Client e9c37790": 43/43 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-f39648-d3vfhqadd03c not found on Google (404)
+👻 [FileSync] Store "Private Store - Client f39648c5": 8/8 phantom records (DB says indexed, Google says missing)
+5:25:28 PM [express] GET /api/file-search/external-docs/missing 200 in 10510ms :: {"totalMissing":0,…
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-4fa460-vg2goz9ixl4r not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 4fa4606c": 8/8 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-117d8d-cok7k88r049j not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 117d8d1c": 151/151 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-31773f-kqpcl74jnazs not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 31773fa8": 8/8 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-bc1dec-r426ef884pbg not found on Google (404)
+👻 [FileSync] Store "Private Store - Client bc1dec4d": 461/461 phantom records (DB says indexed, Google says missing)
+[IMAP] Opened folder "[Gmail]/Bozze": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Bozze (drafts)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-7cdfb7-eunl6qmu9tp2 not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 7cdfb7ae": 378/378 phantom records (DB says indexed, Google says missing)
+[IMAP] Opened folder "[Gmail]/Cestino": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Cestino (trash)
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+[IMAP IDLE] Inbox opened for 1bc25001-c420-461a-9468-c1a3e3f2c531, last UID: 83
+[IMAP IDLE] Started IDLE for account 1bc25001-c420-461a-9468-c1a3e3f2c531
+[EMAIL-HUB AUTO] IDLE started for eurospace@elischool.it
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-7e40b5-g2rbtd1xrc4n not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 7e40b56c": 473/473 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-c806e7-l4oskp60v5l2 not found on Google (404)
+👻 [FileSync] Store "Private Store - Client c806e79d": 434/434 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-ad0f87-dnhdfau02on6 not found on Google (404)
+👻 [FileSync] Store "Private Store - Client ad0f878c": 392/392 phantom records (DB says indexed, Google says missing)
+🔍 [FileSync] Google verification complete in 21811ms: checked 3896 docs across 42 stores, reset 3896 phantoms
+👻 [Audit] Phase 0: Removed 3896 phantom records from 42 stores — audit will now reflect reality
+📊 [Audit] Phase 1: Loading consultant source documents...
+📚 [Audit] University deduplication: 473 total → 84 unique titles
+📊 [Audit] Phase 1 complete in 956ms - Library: 86, Knowledge: 4, Exercises: 179, University: 84
+📊 [Audit] Phase 2: Loading indexed documents...
+📊 [Audit] Phase 2 complete in 252ms - Found 0 indexed docs
+📊 [Audit] Phase 3: Calculating missing and outdated...
+📊 [Audit] Phase 3 complete in 378ms
+📊 [Audit] Phase 4: Bulk loading client data...
+📊 [Audit] Phase 4 complete in 3274ms
+📊 [Audit] Phase 5: Processing 13 clients...
+📊 [Audit] Phase 5 complete in 4302ms
+📊 [Audit] Phase 6: Auditing WhatsApp agents and Email accounts...
+📊 [Audit] Phase 6 complete in 1ms
+
+════════════════════════════════════════════════════════════
+✅ [FileSync] OPTIMIZED Comprehensive Audit Complete in 33732ms
+   📖 Consultant Guide: 0/1 indexed, 0 outdated
+   🤖 Dynamic Context: 0/3 indexed, 0 outdated
+   📚 Library: 0/86 indexed, 0 outdated
+   📖 Knowledge Base: 0/4 indexed, 0 outdated
+   🏋️ Exercises: 0/179 indexed, 0 outdated
+   🎓 University: 0/84 indexed, 0 outdated
+   👥 Clients: 11 with data, 2522 missing
+      📝 Assigned Exercises: 512 missing
+      📖 Assigned Library: 543 missing
+      🎓 Assigned University: 473 missing
+      🎯 Goals: 0 missing
+      ✅ Tasks: 29 missing
+   📱 WhatsApp Agents: 1 agents, 1 missing
+   📧 Email Accounts: 0 accounts, 0 missing
+   📊 Summary: 2882 missing, 0 outdated
+   🏥 Health Score: 0%
+══════════════════════════

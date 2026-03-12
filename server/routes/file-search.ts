@@ -1827,6 +1827,28 @@ router.get('/audit', authenticateToken, requireRole('consultant'), async (req: A
 });
 
 /**
+ * POST /api/file-search/confirm-phantom-deletion
+ * After phantom records are detected, user must confirm deletion via this endpoint.
+ * Receives the phantomIds grouped by store from the detection step.
+ */
+router.post('/confirm-phantom-deletion', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    console.log(`🗑️ [FileSearch] Phantom deletion confirmed by consultant ${consultantId.substring(0, 8)}`);
+    const phantomResult = await fileSearchSyncService.verifyAndResetPhantomRecords(consultantId, undefined, { autoDelete: true });
+    res.json({
+      success: true,
+      phantomsDeleted: phantomResult.phantomsReset,
+      storesChecked: phantomResult.storesChecked,
+      errors: phantomResult.errors,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error confirming phantom deletion:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/file-search/sync-single
  * Sync a single item to FileSearchStore
  */

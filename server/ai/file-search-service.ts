@@ -1071,16 +1071,31 @@ export class FileSearchService {
       const documents: Array<{ name: string; displayName?: string; createTime?: string }> = [];
 
       try {
-        const response = await ai.fileSearchStores.documents.list({ parent: fullStoreName });
-        
-        if (response && Array.isArray(response)) {
-          for (const doc of response) {
-            documents.push({
-              name: doc.name || '',
-              displayName: doc.displayName,
-              createTime: doc.createTime,
-            });
+        let pageToken: string | undefined = undefined;
+        let iteration = 0;
+        const MAX_PAGES = 500;
+
+        while (iteration < MAX_PAGES) {
+          iteration++;
+          const config: any = { pageSize: 20 };
+          if (pageToken) config.pageToken = pageToken;
+
+          const response = await ai.fileSearchStores.documents.list({ parent: fullStoreName, config });
+
+          const pageDocs = (response as any)?.pageInternal;
+          if (pageDocs && Array.isArray(pageDocs)) {
+            for (const doc of pageDocs) {
+              documents.push({
+                name: doc.name || '',
+                displayName: doc.displayName,
+                createTime: doc.createTime,
+              });
+            }
           }
+
+          const nextToken = (response as any)?.paramsInternal?.config?.pageToken;
+          if (!nextToken || nextToken === pageToken || !pageDocs || pageDocs.length === 0) break;
+          pageToken = nextToken;
         }
       } catch (listError: any) {
         const errStr = String(listError);
@@ -1090,7 +1105,7 @@ export class FileSearchService {
                        errStr.includes('404');
         if (is404) {
           console.log(`⚠️ [FileSearch] Store ${storeName} not found on Google (404)`);
-          return { success: true, documents: [] };
+          return { success: false, documents: [], error: `Store ${storeName} not found on Google (404)` };
         }
         throw listError;
       }

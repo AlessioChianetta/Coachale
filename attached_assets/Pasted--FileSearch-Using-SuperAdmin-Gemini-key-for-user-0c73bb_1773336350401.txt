@@ -1,0 +1,23 @@
+ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-7cdfb7-eunl6qmu9tp2 not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 7cdfb7ae": 378/378 phantom records (DB says indexed, Google says missing)
+[IMAP] Opened folder "[Gmail]/Cestino": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Cestino (trash)
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+[IMAP IDLE] Inbox opened for 1bc25001-c420-461a-9468-c1a3e3f2c531, last UID: 83
+[IMAP IDLE] Started IDLE for account 1bc25001-c420-461a-9468-c1a3e3f2c531
+[EMAIL-HUB AUTO] IDLE started for eurospace@elischool.it
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-7e40b5-g2rbtd1xrc4n not found on Google (404)
+👻 [FileSync] Store "Private Store - Client 7e40b56c": 473/473 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-c806e7-l4oskp60v5l2 not found on Google (404)
+👻 [FileSync] Store "Private Store - Client c806e79d": 434/434 phantom records (DB says indexed, Google says missing)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+⚠️ [FileSearch] Store fileSearchStores/private-store-client-ad0f87-dnhdfau02on6 not found on Google (404)
+👻 [FileSync] Store "Private Store - Client ad0f878c": 392/392 phantom records (DB says indexed, Google says missing)
+🔍 [FileSync] Google verification complete in 21811ms: checked 3896 docs across 42 stores, reset 3896 phantoms
+👻 [Audit] Phase 0: Removed 3896 phantom records from 42 stores — audit will now reflect reality
+📊 [Audit] Phase 1: Loading consultant source documents...
+📚 [Audit]

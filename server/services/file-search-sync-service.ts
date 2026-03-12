@@ -1487,16 +1487,20 @@ export class FileSearchSyncService {
 
   /**
    * Pre-sync step: verify DB "indexed" records actually exist on Google.
-   * Resets phantom records (indexed in DB but missing on Google) so the sync will re-upload them.
+   * DETECT ONLY by default — never auto-deletes. Set autoDelete=true only after explicit user confirmation.
+   * Returns phantom details per store so the caller can present a confirmation dialog.
    */
-  static async verifyAndResetPhantomRecords(consultantId: string, emitSSE?: (data: any) => void): Promise<{
+  static async verifyAndResetPhantomRecords(consultantId: string, emitSSE?: (data: any) => void, options?: { autoDelete?: boolean }): Promise<{
     totalChecked: number;
     phantomsReset: number;
     storesChecked: number;
     errors: string[];
+    phantomDetails?: Array<{ storeId: string; storeName: string; phantomCount: number; totalDocs: number; phantomIds: string[] }>;
+    requiresConfirmation?: boolean;
   }> {
     const startTime = Date.now();
-    console.log(`\n🔍 [FileSync] Pre-sync Google verification for consultant ${consultantId}`);
+    const shouldDelete = options?.autoDelete === true;
+    console.log(`\n🔍 [FileSync] Pre-sync Google verification for consultant ${consultantId} (mode: ${shouldDelete ? 'DELETE' : 'DETECT ONLY'})`);
 
     const stores = await db.query.fileSearchStores.findMany({
       where: and(
@@ -1534,6 +1538,7 @@ export class FileSearchSyncService {
     let totalChecked = 0;
     let phantomsReset = 0;
     const errors: string[] = [];
+    const phantomDetails: Array<{ storeId: string; storeName: string; phantomCount: number; totalDocs: number; phantomIds: string[] }> = [];
 
     if (emitSSE) {
       emitSSE({ type: 'log', message: `🔍 Verifica Google API per ${consultantStores.length} store...` });
@@ -1574,17 +1579,30 @@ export class FileSearchSyncService {
         }
 
         if (phantomIds.length > 0) {
-          console.log(`👻 [FileSync] Store "${store.displayName}": ${phantomIds.length}/${dbDocs.length} phantom records (DB says indexed, Google says missing)`);
-          
-          for (let i = 0; i < phantomIds.length; i += 100) {
-            const batch = phantomIds.slice(i, i + 100);
-            await db.delete(fileSearchDocuments).where(inArray(fileSearchDocuments.id, batch));
-          }
-          
-          phantomsReset += phantomIds.length;
+          console.log(`👻 [FileSync] Store "${store.displayName}": ${phantomIds.length}/${dbDocs.length} phantom records detected`);
+          phantomDetails.push({
+            storeId: store.id,
+            storeName: store.displayName,
+            phantomCount: phantomIds.length,
+            totalDocs: dbDocs.length,
+            phantomIds,
+          });
 
-          if (emitSSE) {
-            emitSSE({ type: 'log', message: `👻 Store "${store.displayName}": ${phantomIds.length} record fantasma rimossi (DB diceva indexed ma Google vuoto)` });
+          if (shouldDelete) {
+            for (let i = 0; i < phantomIds.length; i += 100) {
+              const batch = phantomIds.slice(i, i + 100);
+              await db.delete(fileSearchDocuments).where(inArray(fileSearchDocuments.id, batch));
+            }
+            phantomsReset += phantomIds.length;
+            console.log(`🗑️ [FileSync] Deleted ${phantomIds.length} phantom records from "${store.displayName}"`);
+
+            if (emitSSE) {
+              emitSSE({ type: 'log', message: `🗑️ Store "${store.displayName}": ${phantomIds.length} record fantasma rimossi (confermato dall'utente)` });
+            }
+          } else {
+            if (emitSSE) {
+              emitSSE({ type: 'log', message: `👻 Store "${store.displayName}": ${phantomIds.length}/${dbDocs.length} record fantasma rilevati (in attesa di conferma)` });
+            }
           }
         } else {
           console.log(`✅ [FileSync] Store "${store.displayName}": ${dbDocs.length} docs verified on Google`);
@@ -1595,16 +1613,25 @@ export class FileSearchSyncService {
       }
     }
 
+    const totalPhantoms = phantomDetails.reduce((s, d) => s + d.phantomCount, 0);
+    const requiresConfirmation = !shouldDelete && totalPhantoms > 0;
     const duration = Date.now() - startTime;
-    console.log(`🔍 [FileSync] Google verification complete in ${duration}ms: checked ${totalChecked} docs across ${consultantStores.length} stores, reset ${phantomsReset} phantoms`);
 
-    if (emitSSE && phantomsReset > 0) {
-      emitSSE({ type: 'log', message: `✅ Verifica completata: ${phantomsReset} record fantasma rimossi, il sync li ri-caricherà su Google` });
+    if (shouldDelete) {
+      console.log(`🔍 [FileSync] Google verification complete in ${duration}ms: checked ${totalChecked} docs across ${consultantStores.length} stores, deleted ${phantomsReset} phantoms`);
+    } else {
+      console.log(`🔍 [FileSync] Google verification complete in ${duration}ms: checked ${totalChecked} docs across ${consultantStores.length} stores, detected ${totalPhantoms} phantoms (NOT deleted — awaiting confirmation)`);
+    }
+
+    if (emitSSE && requiresConfirmation) {
+      emitSSE({ type: 'phantom_confirmation_required', message: `⚠️ Rilevati ${totalPhantoms} record fantasma in ${phantomDetails.length} store. Conferma per rimuoverli.`, phantomDetails, totalPhantoms });
+    } else if (emitSSE && phantomsReset > 0) {
+      emitSSE({ type: 'log', message: `✅ Verifica completata: ${phantomsReset} record fantasma rimossi (confermati)` });
     } else if (emitSSE) {
       emitSSE({ type: 'log', message: `✅ Verifica completata: tutti i documenti risultano presenti su Google` });
     }
 
-    return { totalChecked, phantomsReset, storesChecked: consultantStores.length, errors };
+    return { totalChecked, phantomsReset, storesChecked: consultantStores.length, errors, phantomDetails: phantomDetails.length > 0 ? phantomDetails : undefined, requiresConfirmation };
   }
 
   /**
@@ -1649,10 +1676,11 @@ export class FileSearchSyncService {
 
     // STEP 0: Pre-sync Google verification (same as manual sync)
     try {
-      console.log(`🔍 [Scheduled] Pre-sync Google verification...`);
+      console.log(`🔍 [Scheduled] Pre-sync Google verification (detect only)...`);
       const phantomResult = await this.verifyAndResetPhantomRecords(consultantId);
-      if (phantomResult.phantomsReset > 0) {
-        console.log(`👻 [Scheduled] Pre-sync cleanup: ${phantomResult.phantomsReset} phantom records removed`);
+      if (phantomResult.phantomDetails && phantomResult.phantomDetails.length > 0) {
+        const totalPhantoms = phantomResult.phantomDetails.reduce((s, d) => s + d.phantomCount, 0);
+        console.log(`⚠️ [Scheduled] Detected ${totalPhantoms} phantom records in ${phantomResult.phantomDetails.length} stores (NOT deleted — requires manual confirmation)`);
       }
     } catch (verifyErr: any) {
       console.error(`⚠️ [Scheduled] Pre-sync verification failed (non-blocking):`, verifyErr.message);
@@ -3036,12 +3064,15 @@ export class FileSearchSyncService {
         syncProgressEmitter.emit(`sync:${consultantId}`, { consultantId, ...data });
       });
       
-      if (phantomResult.phantomsReset > 0) {
-        console.log(`👻 [FileSync] Pre-sync cleanup: ${phantomResult.phantomsReset} phantom records removed from ${phantomResult.storesChecked} stores`);
+      if (phantomResult.requiresConfirmation && phantomResult.phantomDetails) {
+        const totalPhantoms = phantomResult.phantomDetails.reduce((s, d) => s + d.phantomCount, 0);
+        console.log(`⚠️ [FileSync] Detected ${totalPhantoms} phantom records — awaiting user confirmation before deletion`);
         syncProgressEmitter.emit(`sync:${consultantId}`, {
           consultantId,
-          type: 'log',
-          message: `👻 ${phantomResult.phantomsReset} documenti fantasma rimossi — verranno ri-caricati durante il sync`,
+          type: 'phantom_confirmation_required',
+          message: `⚠️ Rilevati ${totalPhantoms} record fantasma in ${phantomResult.phantomDetails.length} store — conferma per rimuoverli`,
+          phantomDetails: phantomResult.phantomDetails,
+          totalPhantoms,
         });
       } else {
         console.log(`✅ [FileSync] Pre-sync verification: all DB records verified on Google`);
@@ -5063,10 +5094,11 @@ export class FileSearchSyncService {
     // PHASE 0: VERIFY DB vs GOOGLE — remove phantom "indexed" records first
     // ═══════════════════════════════════════════════════════════════════════════
     try {
-      console.log(`🔍 [Audit] Phase 0: Verifying indexed records against Google API...`);
+      console.log(`🔍 [Audit] Phase 0: Verifying indexed records against Google API (detect only)...`);
       const phantomResult = await this.verifyAndResetPhantomRecords(consultantId);
-      if (phantomResult.phantomsReset > 0) {
-        console.log(`👻 [Audit] Phase 0: Removed ${phantomResult.phantomsReset} phantom records from ${phantomResult.storesChecked} stores — audit will now reflect reality`);
+      if (phantomResult.phantomDetails && phantomResult.phantomDetails.length > 0) {
+        const totalPhantoms = phantomResult.phantomDetails.reduce((s, d) => s + d.phantomCount, 0);
+        console.log(`⚠️ [Audit] Phase 0: Detected ${totalPhantoms} phantom records in ${phantomResult.phantomDetails.length} stores (NOT deleted — requires manual confirmation via sync page)`);
       } else {
         console.log(`✅ [Audit] Phase 0: All indexed records verified on Google (${phantomResult.totalChecked} docs, ${phantomResult.storesChecked} stores)`);
       }
