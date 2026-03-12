@@ -133,6 +133,8 @@ interface MetaAd {
   creativeBody: string | null;
   creativeTitle: string | null;
   lastSyncedAt: string;
+  dateStart: string | null;
+  dateStop: string | null;
 }
 
 interface AdsSummary {
@@ -230,9 +232,11 @@ function renderCellValue(col: string, val: unknown, row: AggRow, activeTab: stri
         {row.budget}
       </span>
     );
-  } else if (col === "risultati" || col === "costoPer") {
+  } else if (col === "risultati" || col === "costoPer" || col === "resultType") {
     return <span className="text-xs">{String(val ?? "—")}</span>;
-  } else if (col === "spend" || col === "cpc" || col === "cpcLink" || col === "cpm" || col === "cpl") {
+  } else if (col === "dateStart" || col === "dateStop") {
+    return val ? <span className="text-xs">{String(val)}</span> : "—";
+  } else if (col === "spend" || col === "cpc" || col === "cpcLink" || col === "cpm" || col === "cpl" || col === "lifetimeBudget") {
     return val != null ? formatCurrency(Number(val)) : "—";
   } else if (col === "ctr" || col === "ctrLink") {
     return val != null ? formatPercent(Number(val)) : "—";
@@ -320,7 +324,7 @@ const COLUMN_PRESETS: Record<string, { label: string; columns: string[] }> = {
   },
   complete: {
     label: "Completo",
-    columns: ["name", "pubblicazione", "risultati", "costoPer", "budget", "spend", "impressions", "clicks", "linkClicks", "reach", "frequency", "ctr", "ctrLink", "cpc", "cpcLink", "cpm", "cpl", "roas", "leads", "videoViews"],
+    columns: ["name", "pubblicazione", "risultati", "costoPer", "budget", "spend", "impressions", "clicks", "linkClicks", "reach", "frequency", "ctr", "ctrLink", "cpc", "cpcLink", "cpm", "cpl", "roas", "leads", "conversions", "videoViews", "resultType", "dateStart", "dateStop", "lifetimeBudget"],
   },
 };
 
@@ -352,6 +356,9 @@ const COLUMN_LABELS: Record<string, string> = {
   conversions: "Conversioni",
   resultType: "Tipo Risultato",
   videoViews: "Visualizzazioni Video",
+  dateStart: "Data Inizio",
+  dateStop: "Data Fine",
+  lifetimeBudget: "Budget Totale",
 };
 
 interface AggRow {
@@ -383,6 +390,11 @@ interface AggRow {
   metaAdId?: string;
   creativeThumbnailUrl?: string | null;
   id?: string;
+  resultType?: string | null;
+  conversions?: number;
+  lifetimeBudget?: number | null;
+  dateStart?: string | null;
+  dateStop?: string | null;
 }
 
 function aggregateAds(adsArr: MetaAd[]): Omit<AggRow, "name" | "status" | "budget" | "risultati" | "costoPer" | "pubblicazione" | "adsCount"> {
@@ -444,7 +456,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const [trendDays, setTrendDays] = useState(30);
   const [dateRange, setDateRange] = useState<string>("lifetime");
   const [activeTab, setActiveTab] = useState<"campaigns" | "adsets" | "ads">("campaigns");
-  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
   const [collapsedCampaigns, setCollapsedCampaigns] = useState<Set<string>>(new Set());
   const [tablePreset, setTablePreset] = useState("performance");
   const [linkSearchQuery, setLinkSearchQuery] = useState("");
@@ -584,6 +596,11 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
       metaAdId: ad.metaAdId,
       creativeThumbnailUrl: ad.creativeThumbnailUrl,
       id: ad.id,
+      resultType: ad.resultType,
+      conversions: ad.conversions,
+      lifetimeBudget: ad.lifetimeBudget,
+      dateStart: ad.dateStart,
+      dateStop: ad.dateStop,
     }));
   }, [ads]);
 
@@ -1277,8 +1294,14 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                             <span>{formatNumber(summary?.totalLeads || 0)}</span>
                           ) : col === "linkClicks" ? (
                             <span>{formatNumber(summary?.totalLinkClicks || 0)}</span>
-                          ) : col === "spend" ? (
-                            <span className="text-muted-foreground">Spesa totale</span>
+                          ) : col === "ctr" ? (
+                            <span>{summary?.avgCtr != null ? formatPercent(summary.avgCtr) : "—"}</span>
+                          ) : col === "cpc" ? (
+                            <span>{summary?.avgCpc != null ? formatCurrency(summary.avgCpc) : "—"}</span>
+                          ) : col === "cpl" ? (
+                            <span>{summary?.avgCpl != null ? formatCurrency(summary.avgCpl) : "—"}</span>
+                          ) : col === "roas" ? (
+                            <span>{summary?.avgRoas != null ? `${summary.avgRoas.toFixed(2)}x` : "—"}</span>
                           ) : ""}
                         </td>
                       ))}
@@ -1612,11 +1635,3 @@ function MetricCell({ label, value, highlight = false }: { label: string; value:
   );
 }
 
-function MiniKpi({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className={`p-2.5 rounded-lg ${highlight ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800" : "bg-muted/50"}`}>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`text-sm font-bold ${highlight ? "text-red-600" : ""}`}>{value}</p>
-    </div>
-  );
-}
