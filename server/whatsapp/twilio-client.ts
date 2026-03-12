@@ -153,7 +153,7 @@ export async function sendWhatsAppMessage(
     }
   }
   
-  // Fallback to first active agent with valid credentials if not found yet
+  // Fallback: prefer the default agent, then any active agent
   if (!config) {
     [config] = await db
       .select()
@@ -161,13 +161,29 @@ export async function sendWhatsAppMessage(
       .where(
         and(
           eq(consultantWhatsappConfig.consultantId, consultantId),
-          eq(consultantWhatsappConfig.isActive, true)
+          eq(consultantWhatsappConfig.isActive, true),
+          eq(consultantWhatsappConfig.isDefault, true)
         )
       )
       .limit(1);
     
     if (config) {
-      console.log(`⚠️  Using fallback agent (first active): ${config.agentName} (${config.id})`);
+      console.log(`✅ Using default agent: ${config.agentName} (${config.id})`);
+    } else {
+      [config] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.consultantId, consultantId),
+            eq(consultantWhatsappConfig.isActive, true)
+          )
+        )
+        .limit(1);
+      
+      if (config) {
+        console.log(`⚠️  Using fallback agent (first active): ${config.agentName} (${config.id})`);
+      }
     }
   }
 
