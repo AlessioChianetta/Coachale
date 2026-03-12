@@ -657,4 +657,77 @@ router.delete("/disconnect", authenticateToken, requireRole("consultant"), async
   }
 });
 
+router.get("/hidden-campaigns", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const [config] = await db
+      .select({ hiddenCampaigns: schema.consultantMetaAdsConfig.hiddenCampaigns })
+      .from(schema.consultantMetaAdsConfig)
+      .where(and(eq(schema.consultantMetaAdsConfig.consultantId, consultantId), eq(schema.consultantMetaAdsConfig.isActive, true)))
+      .limit(1);
+    return res.json({ success: true, hiddenCampaigns: (config?.hiddenCampaigns as string[]) || [] });
+  } catch (error) {
+    console.error("[META-ADS] Error getting hidden campaigns:", error);
+    return res.status(500).json({ success: false, error: "Failed" });
+  }
+});
+
+router.post("/hidden-campaigns", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { hiddenCampaigns } = req.body;
+    if (!Array.isArray(hiddenCampaigns)) {
+      return res.status(400).json({ success: false, error: "hiddenCampaigns must be an array" });
+    }
+    await db
+      .update(schema.consultantMetaAdsConfig)
+      .set({ hiddenCampaigns, updatedAt: new Date() })
+      .where(and(eq(schema.consultantMetaAdsConfig.consultantId, consultantId), eq(schema.consultantMetaAdsConfig.isActive, true)));
+    return res.json({ success: true, hiddenCampaigns });
+  } catch (error) {
+    console.error("[META-ADS] Error updating hidden campaigns:", error);
+    return res.status(500).json({ success: false, error: "Failed" });
+  }
+});
+
+router.get("/campaign-export/:campaignName", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const campaignName = decodeURIComponent(req.params.campaignName);
+
+    const insights = await db
+      .select()
+      .from(schema.metaAdInsights)
+      .where(and(
+        eq(schema.metaAdInsights.consultantId, consultantId),
+        eq(schema.metaAdInsights.campaignName, campaignName)
+      ));
+
+    const metaAdIds = insights.map(a => a.metaAdId);
+    let dailySnapshots: any[] = [];
+    if (metaAdIds.length > 0) {
+      dailySnapshots = await db
+        .select()
+        .from(schema.metaAdInsightsDaily)
+        .where(and(
+          eq(schema.metaAdInsightsDaily.consultantId, consultantId),
+          inArray(schema.metaAdInsightsDaily.metaAdId, metaAdIds)
+        ))
+        .orderBy(desc(schema.metaAdInsightsDaily.snapshotDate));
+    }
+
+    return res.json({
+      success: true,
+      campaignName,
+      exportDate: new Date().toISOString(),
+      totalAds: insights.length,
+      insights,
+      dailySnapshots,
+    });
+  } catch (error) {
+    console.error("[META-ADS] Error exporting campaign data:", error);
+    return res.status(500).json({ success: false, error: "Failed to export campaign data" });
+  }
+});
+
 export default router;

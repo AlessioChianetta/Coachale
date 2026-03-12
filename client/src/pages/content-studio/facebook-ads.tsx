@@ -59,6 +59,8 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronDown,
+  EyeOff,
+  FileJson,
   X,
   Download,
   Search,
@@ -497,6 +499,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [simoneChatOpen, setSimoneChatOpen] = useState(false);
+  const [showHiddenCampaigns, setShowHiddenCampaigns] = useState(false);
 
   const activeColumns = useMemo(() => {
     if (tablePreset === "custom") return customColumns;
@@ -535,8 +538,68 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
     enabled: isConnected,
   });
 
-  const allAds: MetaAd[] = adsData?.ads || [];
-  const summary: AdsSummary | null = adsData?.summary || null;
+  const { data: hiddenData } = useQuery({
+    queryKey: ["/api/meta-ads/hidden-campaigns"],
+    queryFn: async () => {
+      const res = await fetch("/api/meta-ads/hidden-campaigns", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: isConnected,
+  });
+  const hiddenCampaigns: string[] = hiddenData?.hiddenCampaigns || [];
+
+  const hiddenMutation = useMutation({
+    mutationFn: async (campaigns: string[]) => {
+      const res = await fetch("/api/meta-ads/hidden-campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ hiddenCampaigns: campaigns }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/meta-ads/hidden-campaigns"] });
+    },
+  });
+
+  const rawAllAds: MetaAd[] = adsData?.ads || [];
+  const rawSummary: AdsSummary | null = adsData?.summary || null;
+
+  const allAds = useMemo(() => {
+    if (hiddenCampaigns.length === 0) return rawAllAds;
+    const hiddenSet = new Set(hiddenCampaigns);
+    return rawAllAds.filter(ad => !hiddenSet.has(ad.campaignName || ""));
+  }, [rawAllAds, hiddenCampaigns]);
+
+  const summary: AdsSummary | null = useMemo(() => {
+    if (!rawSummary) return null;
+    if (hiddenCampaigns.length === 0) return rawSummary;
+    const totalSpend = allAds.reduce((s, a) => s + (a.spend || 0), 0);
+    const totalClicks = allAds.reduce((s, a) => s + (a.clicks || 0), 0);
+    const totalImpressions = allAds.reduce((s, a) => s + (a.impressions || 0), 0);
+    const totalLeads = allAds.reduce((s, a) => s + (a.leads || 0), 0);
+    return {
+      ...rawSummary,
+      totalSpend,
+      totalClicks,
+      totalImpressions,
+      totalLeads,
+      totalAds: allAds.length,
+      activeAds: allAds.filter(a => a.adStatus === "ACTIVE").length,
+      avgCpc: totalClicks > 0 ? totalSpend / totalClicks : 0,
+      avgCtr: totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0,
+      avgCpl: totalLeads > 0 ? totalSpend / totalLeads : 0,
+      avgRoas: 0,
+    };
+  }, [rawSummary, allAds, hiddenCampaigns]);
+
+  const allCampaignNames = useMemo(() => {
+    const names = new Set<string>();
+    rawAllAds.forEach(ad => { if (ad.campaignName) names.add(ad.campaignName); });
+    return Array.from(names).sort();
+  }, [rawAllAds]);
 
   const ads = useMemo(() => {
     let filtered = allAds;
@@ -876,6 +939,23 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
     URL.revokeObjectURL(url);
   };
 
+  const downloadCampaignData = async (campaignName: string) => {
+    try {
+      const res = await fetch(`/api/meta-ads/campaign-export/${encodeURIComponent(campaignName)}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `campagna-${campaignName.replace(/[^a-zA-Z0-9]/g, "_")}-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Download campaign data error:", e);
+    }
+  };
+
   const dailyData: DailySnapshot[] = useMemo(() => {
     if (!detailData?.dailyData) return [];
     return detailData.dailyData.map((d: DailySnapshot) => ({
@@ -1017,6 +1097,18 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
               >
                 <MessageCircle className="h-4 w-4" />
                 Chiedi a Simone
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowHiddenCampaigns(true)}
+                className="gap-1.5"
+              >
+                <EyeOff className="h-4 w-4" />
+                Nascondi Campagne
+                {hiddenCampaigns.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">{hiddenCampaigns.length}</Badge>
+                )}
               </Button>
               <Button
                 variant="outline"
@@ -1294,6 +1386,26 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                             style={{ width: `${Math.min(100, row.dailyBudget > 0 ? (row.spend / row.dailyBudget) * 100 : 0)}%` }}
                           />
                         </div>
+                      </div>
+                    )}
+                    {activeTab === "campaigns" && (
+                      <div className="flex gap-2 mt-3 pt-3 border-t">
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1 flex-1" onClick={(e) => {
+                          e.stopPropagation();
+                          downloadCampaignData(row.name);
+                        }}>
+                          <FileJson className="h-3 w-3" />Scarica Dati
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1 flex-1" onClick={(e) => {
+                          e.stopPropagation();
+                          const newHidden = hiddenCampaigns.includes(row.name)
+                            ? hiddenCampaigns.filter(c => c !== row.name)
+                            : [...hiddenCampaigns, row.name];
+                          hiddenMutation.mutate(newHidden);
+                        }}>
+                          <EyeOff className="h-3 w-3" />
+                          {hiddenCampaigns.includes(row.name) ? "Mostra" : "Nascondi"}
+                        </Button>
                       </div>
                     )}
                     {activeTab === "ads" && (
@@ -1912,6 +2024,81 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                   Associa a Inserzione
                 </Button>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showHiddenCampaigns} onOpenChange={setShowHiddenCampaigns}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <EyeOff className="h-5 w-5" />
+              Gestisci Campagne Nascoste
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Le campagne nascoste non verranno visualizzate e i loro dati saranno esclusi dai calcoli KPI.
+          </p>
+          {allCampaignNames.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nessuna campagna trovata.</p>
+          ) : (
+            <div className="space-y-1 mt-2">
+              {allCampaignNames.map(name => {
+                const isHidden = hiddenCampaigns.includes(name);
+                const campaignAds = rawAllAds.filter(a => a.campaignName === name);
+                const totalSpend = campaignAds.reduce((s, a) => s + (a.spend || 0), 0);
+                const activeCount = campaignAds.filter(a => a.adStatus === "ACTIVE").length;
+                return (
+                  <div
+                    key={name}
+                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                      isHidden ? "bg-muted/50 opacity-60" : "hover:bg-muted/30"
+                    }`}
+                  >
+                    <Checkbox
+                      checked={!isHidden}
+                      onCheckedChange={() => {
+                        const newHidden = isHidden
+                          ? hiddenCampaigns.filter(c => c !== name)
+                          : [...hiddenCampaigns, name];
+                        hiddenMutation.mutate(newHidden);
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${isHidden ? "line-through" : ""}`}>{name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-muted-foreground">{campaignAds.length} inserzioni</span>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <span className="text-xs text-muted-foreground">{activeCount} attive</span>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <span className="text-xs text-muted-foreground">{formatCurrency(totalSpend)}</span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => downloadCampaignData(name)}
+                      title="Scarica tutti i dati"
+                    >
+                      <FileJson className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {hiddenCampaigns.length > 0 && (
+            <div className="flex justify-end pt-2 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => hiddenMutation.mutate([])}
+                className="gap-1.5 text-xs"
+              >
+                Mostra tutte ({hiddenCampaigns.length} nascoste)
+              </Button>
             </div>
           )}
         </DialogContent>
