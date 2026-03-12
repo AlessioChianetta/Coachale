@@ -3,7 +3,7 @@ import { authenticateToken, type AuthRequest } from "../middleware/auth";
 import { requireRole } from "../middleware/auth";
 import { db } from "../db";
 import * as schema from "../../shared/schema";
-import { eq, and, desc, isNull, isNotNull, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, isNotNull, sql, inArray } from "drizzle-orm";
 import { syncMetaAdsForConsultant, syncDailySnapshot } from "../services/meta-ads-sync-service";
 
 const router = Router();
@@ -509,6 +509,7 @@ router.get("/unlinked-posts", authenticateToken, requireRole("consultant"), asyn
         metaAdId: schema.contentPosts.metaAdId,
         body: schema.contentPosts.body,
         cta: schema.contentPosts.cta,
+        folderId: schema.contentPosts.folderId,
       })
       .from(schema.contentPosts)
       .where(
@@ -521,7 +522,22 @@ router.get("/unlinked-posts", authenticateToken, requireRole("consultant"), asyn
       .orderBy(desc(schema.contentPosts.createdAt))
       .limit(100);
 
-    return res.json({ success: true, posts });
+    const folderIds = [...new Set(posts.map(p => p.folderId).filter(Boolean))] as string[];
+    let folders: { id: string; name: string; color: string | null; icon: string | null; folderType: string | null }[] = [];
+    if (folderIds.length > 0) {
+      folders = await db
+        .select({
+          id: schema.contentFolders.id,
+          name: schema.contentFolders.name,
+          color: schema.contentFolders.color,
+          icon: schema.contentFolders.icon,
+          folderType: schema.contentFolders.folderType,
+        })
+        .from(schema.contentFolders)
+        .where(inArray(schema.contentFolders.id, folderIds));
+    }
+
+    return res.json({ success: true, posts, folders });
   } catch (error) {
     console.error("[META-ADS] Error getting unlinked posts:", error);
     return res.status(500).json({ success: false, error: "Failed to get unlinked posts" });

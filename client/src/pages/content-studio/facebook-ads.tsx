@@ -166,6 +166,15 @@ interface UnlinkedPost {
   createdAt: string;
   body: string | null;
   cta: string | null;
+  folderId: string | null;
+}
+
+interface UnlinkedFolder {
+  id: string;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  folderType: string | null;
 }
 
 interface DailySnapshot {
@@ -721,6 +730,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
     enabled: isConnected,
   });
   const unlinkedPosts: UnlinkedPost[] = unlinkedData?.posts || [];
+  const unlinkedFolders: UnlinkedFolder[] = unlinkedData?.folders || [];
 
   const { data: detailData, isLoading: detailLoading } = useQuery({
     queryKey: ["/api/meta-ads/ads", selectedAdId, trendDays],
@@ -1442,11 +1452,30 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
           </Card>
 
           {unlinkedPosts.length > 0 && (() => {
+            const folderMap = new Map(unlinkedFolders.map(f => [f.id, f]));
+            const grouped: { folder: UnlinkedFolder | null; posts: UnlinkedPost[] }[] = [];
+            const byFolder = new Map<string, UnlinkedPost[]>();
+            const noFolder: UnlinkedPost[] = [];
+            unlinkedPosts.forEach(p => {
+              if (p.folderId) {
+                if (!byFolder.has(p.folderId)) byFolder.set(p.folderId, []);
+                byFolder.get(p.folderId)!.push(p);
+              } else {
+                noFolder.push(p);
+              }
+            });
+            byFolder.forEach((posts, fId) => {
+              grouped.push({ folder: folderMap.get(fId) || { id: fId, name: "Cartella sconosciuta", color: null, icon: null, folderType: null }, posts });
+            });
+            if (noFolder.length > 0) grouped.push({ folder: null, posts: noFolder });
+
             const perPage = 10;
-            const totalPages = Math.ceil(unlinkedPosts.length / perPage);
-            const safePage = Math.min(unlinkedPage, totalPages);
+            const allPostsFlat = grouped.flatMap(g => g.posts);
+            const totalPages = Math.ceil(allPostsFlat.length / perPage);
+            const safePage = Math.min(unlinkedPage, totalPages || 1);
             const startIdx = (safePage - 1) * perPage;
-            const pageItems = unlinkedPosts.slice(startIdx, startIdx + perPage);
+            const pagePostIds = new Set(allPostsFlat.slice(startIdx, startIdx + perPage).map(p => p.id));
+
             return (
               <Card>
                 <CardHeader className="pb-3">
@@ -1456,64 +1485,95 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                   </CardTitle>
                   <p className="text-xs text-muted-foreground mt-1">Post contrassegnati come Ad ma non ancora collegati a un'inserzione Meta</p>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  {pageItems.map((post) => (
-                    <div
-                      key={post.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => setPreviewPost(post)}
-                    >
-                      {post.imageUrl ? (
-                        <img
-                          src={post.imageUrl}
-                          alt=""
-                          className="w-12 h-12 rounded-lg object-cover border flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                          <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                <CardContent className="space-y-4">
+                  {grouped.map(({ folder, posts: groupPosts }) => {
+                    const visiblePosts = groupPosts.filter(p => pagePostIds.has(p.id));
+                    if (visiblePosts.length === 0) return null;
+                    return (
+                      <div key={folder?.id ?? "__no_folder__"} className="space-y-1.5">
+                        <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${
+                          folder
+                            ? folder.folderType === "project"
+                              ? "bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20"
+                              : "bg-muted border border-border"
+                            : "bg-muted/50 border border-border/50"
+                        }`}>
+                          {folder ? (
+                            folder.folderType === "project" ? (
+                              <FolderOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" style={{ color: folder.color || undefined }} />
+                            ) : (
+                              <FolderOpen className="w-3.5 h-3.5 text-muted-foreground shrink-0" style={{ color: folder.color || undefined }} />
+                            )
+                          ) : (
+                            <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          )}
+                          <span className="text-xs font-semibold truncate" style={{ color: folder?.color || undefined }}>
+                            {folder ? folder.name : "Senza cartella"}
+                          </span>
+                          <Badge variant="secondary" className="text-[10px] h-4 px-1.5 ml-auto">{groupPosts.length}</Badge>
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{post.title || post.hook || "Post senza titolo"}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs text-muted-foreground">{post.platform}</span>
-                          <span className="text-xs text-muted-foreground">·</span>
-                          <Badge variant="outline" className="text-[10px] h-4 px-1.5">{post.status}</Badge>
-                          <span className="text-xs text-muted-foreground">·</span>
-                          <span className="text-xs text-muted-foreground">{new Date(post.createdAt).toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}</span>
+                        <div className="space-y-1 pl-2">
+                          {visiblePosts.map((post) => (
+                            <div
+                              key={post.id}
+                              className="flex items-center gap-3 p-2.5 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                              onClick={() => setPreviewPost(post)}
+                            >
+                              {post.imageUrl ? (
+                                <img
+                                  src={post.imageUrl}
+                                  alt=""
+                                  className="w-10 h-10 rounded-lg object-cover border flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{post.title || post.hook || "Post senza titolo"}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-xs text-muted-foreground">{post.platform}</span>
+                                  <span className="text-xs text-muted-foreground">·</span>
+                                  <Badge variant="outline" className="text-[10px] h-4 px-1.5">{post.status}</Badge>
+                                  <span className="text-xs text-muted-foreground">·</span>
+                                  <span className="text-xs text-muted-foreground">{new Date(post.createdAt).toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={(e) => { e.stopPropagation(); setPreviewPost(post); }}
+                                  title="Anteprima"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLinkPostTarget(post);
+                                    setLinkPostSearch("");
+                                  }}
+                                >
+                                  <Link2 className="h-3.5 w-3.5" />
+                                  Associa
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={(e) => { e.stopPropagation(); setPreviewPost(post); }}
-                          title="Anteprima"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setLinkPostTarget(post);
-                            setLinkPostSearch("");
-                          }}
-                        >
-                          <Link2 className="h-3.5 w-3.5" />
-                          Associa
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between pt-3 border-t">
                       <p className="text-xs text-muted-foreground">
-                        {startIdx + 1}-{Math.min(startIdx + perPage, unlinkedPosts.length)} di {unlinkedPosts.length}
+                        {startIdx + 1}-{Math.min(startIdx + perPage, allPostsFlat.length)} di {allPostsFlat.length}
                       </p>
                       <div className="flex items-center gap-1">
                         <Button
@@ -1525,17 +1585,29 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                         >
                           <ChevronLeft className="h-3.5 w-3.5" />
                         </Button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(pg => (
-                          <Button
-                            key={pg}
-                            variant={pg === safePage ? "default" : "outline"}
-                            size="sm"
-                            className="h-7 w-7 p-0 text-xs"
-                            onClick={() => setUnlinkedPage(pg)}
-                          >
-                            {pg}
-                          </Button>
-                        ))}
+                        {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => {
+                          let pg: number;
+                          if (totalPages <= 10) {
+                            pg = i + 1;
+                          } else if (safePage <= 5) {
+                            pg = i + 1;
+                          } else if (safePage >= totalPages - 4) {
+                            pg = totalPages - 9 + i;
+                          } else {
+                            pg = safePage - 4 + i;
+                          }
+                          return (
+                            <Button
+                              key={pg}
+                              variant={pg === safePage ? "default" : "outline"}
+                              size="sm"
+                              className="h-7 w-7 p-0 text-xs"
+                              onClick={() => setUnlinkedPage(pg)}
+                            >
+                              {pg}
+                            </Button>
+                          );
+                        })}
                         <Button
                           variant="outline"
                           size="sm"
