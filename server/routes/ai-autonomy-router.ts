@@ -7136,13 +7136,56 @@ Rispondi in modo utile e professionale basandoti sulla conversazione con questa 
         const clientIds = (clientIdsResult.rows as any[]).map(r => r.id);
         const roleData = await autonomousRole.fetchRoleData(consultantId, clientIds);
         if (roleData && Object.keys(roleData).length > 0) {
-          if (autonomousRole?.buildPrompt) {
-            const romeTimeStr = new Date().toLocaleString('it-IT', {
-              timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit',
-              day: '2-digit', hour: '2-digit', minute: '2-digit',
-            });
-            const richPrompt = autonomousRole.buildPrompt({ roleData, romeTimeStr });
-            systemPrompt = richPrompt + '\n\n' + systemPrompt.substring(personality.length);
+          if (roleId === 'simone') {
+            const ads = roleData.ads || [];
+            const campaigns = roleData.campaigns || [];
+            if (ads.length > 0 || campaigns.length > 0) {
+              const totalSpend = ads.reduce((s: number, a: any) => s + (a.spend || 0), 0);
+              const totalLeads = ads.reduce((s: number, a: any) => s + (a.leads || 0), 0);
+              const activeAds = ads.filter((a: any) => a.adStatus === 'ACTIVE').length;
+              systemPrompt += `\n=== DATI REALI CAMPAGNE META ADS ===`;
+              systemPrompt += `\nInserzioni totali: ${ads.length} (${activeAds} attive)`;
+              systemPrompt += `\nSpesa totale: €${totalSpend.toFixed(2)}`;
+              systemPrompt += `\nLead totali: ${totalLeads}`;
+              systemPrompt += `\nCPL medio: ${totalLeads > 0 ? `€${(totalSpend / totalLeads).toFixed(2)}` : 'N/A'}`;
+              systemPrompt += `\nCampagne attive: ${campaigns.length}`;
+              if (campaigns.length > 0) {
+                systemPrompt += `\n\nDETTAGLIO CAMPAGNE:\n${JSON.stringify(campaigns, null, 2)}`;
+              }
+              if (ads.length > 0) {
+                systemPrompt += `\n\nDETTAGLIO INSERZIONI (max 40):\n${JSON.stringify(ads.slice(0, 40).map((a: any) => ({
+                  nome: a.adName, campagna: a.campaignName, status: a.adStatus,
+                  spesa: a.spend, impressioni: a.impressions, click: a.clicks, lead: a.leads,
+                  ctr: a.ctr, cpc: a.cpc, cpl: a.cpl, roas: a.roas, frequenza: a.frequency,
+                  titolo: a.creativeTitle, testo: a.creativeBody?.substring(0, 200) || null,
+                })), null, 2)}`;
+              }
+              systemPrompt += `\n\nUsa SOLO questi dati per le tue analisi. Cita nomi e numeri esatti da qui sopra.\n`;
+            } else {
+              systemPrompt += `\n=== STATO CAMPAGNE META ADS ===\nNessuna campagna attiva trovata nel database. L'account potrebbe non avere campagne in esecuzione oppure il sync con Meta non è ancora configurato.\nNON inventare dati — comunica chiaramente che al momento non hai campagne da analizzare e chiedi al consulente se vuole configurare il sync o fornirti i dati manualmente.\n`;
+            }
+          } else if (autonomousRole?.buildPrompt) {
+            try {
+              const romeTimeStr = new Date().toLocaleString('it-IT', {
+                timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit',
+                day: '2-digit', hour: '2-digit', minute: '2-digit',
+              });
+              const richPrompt = autonomousRole.buildPrompt({
+                roleData, romeTimeStr,
+                recentAllTasks: [], recentCompletedTasks: [],
+                permanentBlocks: [], recentReasoningByRole: {},
+                clientsList: [], settings: {},
+              });
+              systemPrompt = richPrompt + '\n\n' + systemPrompt.substring(personality.length);
+            } catch (buildErr: any) {
+              console.warn(`[AGENT-CHAT-INTERNAL] buildPrompt failed for ${roleId}, injecting raw data: ${buildErr.message}`);
+              let roleDataSection = '\nDATI OPERATIVI IN TEMPO REALE:\n';
+              for (const [key, value] of Object.entries(roleData)) {
+                if (key === 'fileSearchStoreNames' || key === 'kbDocumentTitles') continue;
+                roleDataSection += `${key}: ${JSON.stringify(value, null, 0)}\n`;
+              }
+              systemPrompt += roleDataSection;
+            }
           } else {
             let roleDataSection = '\nDATI OPERATIVI IN TEMPO REALE:\n';
             for (const [key, value] of Object.entries(roleData)) {
@@ -7234,14 +7277,14 @@ Quando il consulente dice frasi come "l'ho già fatta", "ci ho pensato io", "è 
 4. Se ci sono più task possibili, chiedi quale intende specificatamente
 5. Se il consulente è esplicito e sicuro (es. "quella su Mario Rossi l'ho fatta"), puoi marcarla direttamente senza doppia conferma
 
-FILE SEARCH (STORE GLOBALE CONSULENZE CLIENTI):
+${roleId !== 'simone' ? `FILE SEARCH (STORE GLOBALE CONSULENZE CLIENTI):
 Hai accesso automatico allo Store Globale Consulenze Clienti che contiene le Note Consulenze e i Progressi Email Journey di TUTTI i clienti attivi.
 REGOLE ANTI-ALLUCINAZIONE:
 - Ogni documento ha il nome del cliente nel titolo (es. "[CLIENTE: Mario Rossi] - Consulenza - 15/02/2026")
 - Cita SEMPRE il nome del cliente quando riporti informazioni da un documento
 - NON mescolare MAI dati di clienti diversi nella stessa risposta senza distinguerli chiaramente
 - Se non trovi informazioni su un cliente specifico, dillo esplicitamente invece di inventare
-- Quando cerchi informazioni su un cliente, usa il suo nome completo come query di ricerca`;
+- Quando cerchi informazioni su un cliente, usa il suo nome completo come query di ricerca` : ''}`;
   }
 
   if (roleId === 'simone') {
