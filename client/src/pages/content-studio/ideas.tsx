@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -119,7 +119,7 @@ import { cn } from "@/lib/utils";
 import { type MarketResearchData, EMPTY_MARKET_RESEARCH } from "@shared/schema";
 import ContentStudioPosts from "./posts";
 import AdVisagePage from "./advisage/AdVisagePage";
-import FunnelBuilderTab from "@/components/funnel-builder/FunnelBuilderTab";
+import FunnelBuilderTab, { type FunnelBuilderHandle } from "@/components/funnel-builder/FunnelBuilderTab";
 
 interface Idea {
   id: string;
@@ -498,6 +498,46 @@ export default function ContentStudioIdeas() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"ideas" | "posts" | "advisage" | "funnel">("ideas");
+  const [funnelDirty, setFunnelDirty] = useState(false);
+  const funnelRef = useRef<FunnelBuilderHandle>(null);
+  const [pendingTab, setPendingTab] = useState<"ideas" | "posts" | "advisage" | "funnel" | null>(null);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+
+  const handleTabChange = useCallback((tab: "ideas" | "posts" | "advisage" | "funnel") => {
+    if (tab === activeTab) return;
+    if (activeTab === "funnel" && funnelDirty) {
+      setPendingTab(tab);
+      setShowUnsavedDialog(true);
+      return;
+    }
+    setActiveTab(tab);
+  }, [activeTab, funnelDirty]);
+
+  const handleUnsavedSaveAndExit = useCallback(async () => {
+    if (funnelRef.current) {
+      await funnelRef.current.save();
+    }
+    setShowUnsavedDialog(false);
+    if (pendingTab) {
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+    }
+  }, [pendingTab]);
+
+  const handleUnsavedDiscard = useCallback(() => {
+    setShowUnsavedDialog(false);
+    setFunnelDirty(false);
+    if (pendingTab) {
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+    }
+  }, [pendingTab]);
+
+  const handleUnsavedCancel = useCallback(() => {
+    setShowUnsavedDialog(false);
+    setPendingTab(null);
+  }, []);
+
   const [topic, setTopic] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [objective, setObjective] = useState("");
@@ -2218,7 +2258,7 @@ export default function ContentStudioIdeas() {
               ] as const).map(tab => (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => handleTabChange(tab.key)}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
                     activeTab === tab.key
@@ -2243,7 +2283,7 @@ export default function ContentStudioIdeas() {
             </div>
           ) : activeTab === "funnel" ? (
             <div className="flex-1 overflow-hidden flex flex-col">
-              <FunnelBuilderTab />
+              <FunnelBuilderTab onDirtyChange={setFunnelDirty} funnelRef={funnelRef} />
             </div>
           ) : (
           <>
@@ -5340,6 +5380,28 @@ export default function ContentStudioIdeas() {
           )}
         </main>
       </div>
+
+      <Dialog open={showUnsavedDialog} onOpenChange={(open) => { if (!open) handleUnsavedCancel(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifiche non salvate</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Hai delle modifiche non salvate nel Funnel Builder. Vuoi salvare prima di uscire?
+          </p>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="ghost" size="sm" onClick={handleUnsavedCancel}>
+              Annulla
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleUnsavedDiscard}>
+              Esci senza salvare
+            </Button>
+            <Button size="sm" onClick={handleUnsavedSaveAndExit}>
+              Salva ed esci
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

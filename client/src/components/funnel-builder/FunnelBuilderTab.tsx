@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect, createContext, useContext } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect, createContext, useContext, useImperativeHandle, forwardRef } from "react";
 import {
   ReactFlow,
   addEdge,
@@ -140,7 +140,16 @@ function autoLayout(nodes: Node[], edges: Edge[]): Node[] {
   });
 }
 
-function FunnelBuilderInner() {
+export interface FunnelBuilderHandle {
+  isDirty: boolean;
+  save: () => Promise<void>;
+}
+
+interface FunnelBuilderInnerProps {
+  onDirtyChange?: (dirty: boolean) => void;
+}
+
+const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerProps>(function FunnelBuilderInner({ onDirtyChange }, ref) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [funnels, setFunnels] = useState<FunnelRecord[]>([]);
@@ -155,11 +164,46 @@ function FunnelBuilderInner() {
   const [loadingVersions, setLoadingVersions] = useState(false);
   const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
   const [themeId, setThemeId] = useState<FunnelThemeId>("classico");
+  const [isDirty, setIsDirty] = useState(false);
   const currentTheme = useMemo(() => getTheme(themeId), [themeId]);
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isDirtyRef = useRef(false);
+
+  const markDirty = useCallback(() => {
+    if (!isDirtyRef.current) {
+      isDirtyRef.current = true;
+      setIsDirty(true);
+      onDirtyChange?.(true);
+    }
+  }, [onDirtyChange]);
+
+  const markClean = useCallback(() => {
+    if (isDirtyRef.current) {
+      isDirtyRef.current = false;
+      setIsDirty(false);
+      onDirtyChange?.(false);
+    }
+  }, [onDirtyChange]);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  const saveFunnelRef = useRef<(immediate?: boolean) => Promise<void>>(async () => {});
+
+  useImperativeHandle(ref, () => ({
+    get isDirty() { return isDirtyRef.current; },
+    save: () => saveFunnelRef.current(true),
+  }), []);
 
   const historyRef = useRef<HistorySnapshot[]>([]);
   const futureRef = useRef<HistorySnapshot[]>([]);
@@ -257,6 +301,7 @@ function FunnelBuilderInner() {
         setEdges(funnel.edges_data || []);
         setThemeId((funnel.theme as FunnelThemeId) || "classico");
         setSelectedNodeId(null);
+        markClean();
       }
     } catch (err) {
       console.error("Error loading funnel:", err);
@@ -303,6 +348,7 @@ function FunnelBuilderInner() {
             setFunnels((prev) => [created, ...prev]);
           }
         }
+        markClean();
       } catch (err) {
         console.error("Error saving funnel:", err);
       } finally {
@@ -315,7 +361,8 @@ function FunnelBuilderInner() {
     } else {
       saveTimerRef.current = setTimeout(doSave, 2000);
     }
-  }, [activeFunnelId, funnelName, nodes, edges, themeId]);
+  }, [activeFunnelId, funnelName, nodes, edges, themeId, markClean]);
+  saveFunnelRef.current = saveFunnel;
 
   const createNewFunnel = () => {
     setActiveFunnelId(null);
@@ -324,6 +371,7 @@ function FunnelBuilderInner() {
     setEdges([]);
     setThemeId("classico");
     setSelectedNodeId(null);
+    markClean();
   };
 
   const deleteFunnel = async () => {
@@ -390,30 +438,33 @@ function FunnelBuilderInner() {
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
-      const hasRemove = changes.some((c) => c.type === "remove");
-      if (hasRemove) pushHistory();
+      const hasStructural = changes.some((c) => c.type === "remove" || c.type === "position" || c.type === "dimensions");
+      if (changes.some((c) => c.type === "remove")) pushHistory();
+      if (hasStructural) markDirty();
       setNodes((nds) => applyNodeChanges(changes, nds));
     },
-    [pushHistory]
+    [pushHistory, markDirty]
   );
 
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
       const hasRemove = changes.some((c) => c.type === "remove");
       if (hasRemove) pushHistory();
+      if (hasRemove) markDirty();
       setEdges((eds) => applyEdgeChanges(changes, eds));
     },
-    [pushHistory]
+    [pushHistory, markDirty]
   );
 
   const onConnect = useCallback(
     (connection: Connection) => {
       pushHistory();
+      markDirty();
       setEdges((eds) =>
         addEdge({ ...connection, type: "funnelEdge" }, eds)
       );
     },
-    [pushHistory]
+    [pushHistory, markDirty]
   );
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -461,13 +512,15 @@ function FunnelBuilderInner() {
       };
 
       pushHistory();
+      markDirty();
       setNodes((nds) => [...nds, newNode]);
     },
-    [screenToFlowPosition, pushHistory]
+    [screenToFlowPosition, pushHistory, markDirty]
   );
 
   const updateNodeData = useCallback(
     (nodeId: string, updates: Partial<FunnelNodeData>) => {
+      markDirty();
       setNodes((nds) =>
         nds.map((n) => {
           if (n.id === nodeId) {
@@ -480,7 +533,7 @@ function FunnelBuilderInner() {
         })
       );
     },
-    []
+    [markDirty]
   );
 
   const handleApplyFunnel = useCallback(async (name: string, generatedNodes: Node[], generatedEdges: Edge[]) => {
@@ -640,12 +693,12 @@ function FunnelBuilderInner() {
         <div className="flex-1 flex items-center gap-2">
           <Input
             value={funnelName}
-            onChange={(e) => setFunnelName(e.target.value)}
+            onChange={(e) => { setFunnelName(e.target.value); markDirty(); }}
             className="h-8 text-sm font-medium max-w-[280px] border-transparent hover:border-border focus:border-border bg-transparent"
           />
           {activeFunnelId && (
-            <Badge variant="secondary" className="text-[10px] shrink-0">
-              Salvato
+            <Badge variant={isDirty ? "outline" : "secondary"} className={cn("text-[10px] shrink-0", isDirty && "border-amber-400 text-amber-600 dark:text-amber-400")}>
+              {isDirty ? "Non salvato" : "Salvato"}
             </Badge>
           )}
         </div>
@@ -937,12 +990,17 @@ function FunnelBuilderInner() {
     </ThemeContext.Provider>
     </UndoContext.Provider>
   );
+});
+
+export interface FunnelBuilderTabProps {
+  onDirtyChange?: (dirty: boolean) => void;
+  funnelRef?: React.Ref<FunnelBuilderHandle>;
 }
 
-export default function FunnelBuilderTab() {
+export default function FunnelBuilderTab({ onDirtyChange, funnelRef }: FunnelBuilderTabProps = {}) {
   return (
     <ReactFlowProvider>
-      <FunnelBuilderInner />
+      <FunnelBuilderInner ref={funnelRef} onDirtyChange={onDirtyChange} />
     </ReactFlowProvider>
   );
 }
