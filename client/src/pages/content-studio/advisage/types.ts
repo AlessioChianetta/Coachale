@@ -91,6 +91,8 @@ export interface GeneratedImage {
   imageUrl: string;
   variant: 'clean' | 'text';
   timestamp: number;
+  savedToSession?: 'pending' | 'saved' | 'failed';
+  linkedToPost?: boolean;
 }
 
 export type AdImageFormat = '1:1' | '4:5' | '9:16' | '16:9' | '4:3' | '2:3' | '3:2' | '5:4' | '21:9';

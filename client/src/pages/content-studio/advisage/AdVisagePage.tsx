@@ -61,6 +61,7 @@ import {
   Twitter,
   ChevronRight,
   AlertCircle,
+  CheckCircle2,
   Layers,
   Calendar,
   Eye,
@@ -222,15 +223,35 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     return null;
   };
 
-  const saveImageToServer = async (sessionId: string, conceptId: string, variant: string, imageBase64: string) => {
+  const updateImageSaveStatus = (conceptId: string, timestamp: number, status: 'pending' | 'saved' | 'failed') => {
+    setGeneratedImages(prev => prev.map(img =>
+      img.conceptId === conceptId && img.timestamp === timestamp ? { ...img, savedToSession: status } : img
+    ));
+  };
+
+  const saveImageToServer = async (sessionId: string, conceptId: string, variant: string, imageBase64: string, timestamp?: number) => {
+    const ts = timestamp || Date.now();
+    console.log(`[ADVISAGE-SAVE] ▶ Inizio salvataggio immagine | session=${sessionId} | concept=${conceptId} | variant=${variant} | size=${Math.round(imageBase64.length / 1024)}KB`);
+    updateImageSaveStatus(conceptId, ts, 'pending');
     try {
-      await fetch(`/api/content/advisage/sessions/${sessionId}/images`, {
+      const response = await fetch(`/api/content/advisage/sessions/${sessionId}/images`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ conceptId, variant, imageBase64, settingsUsed: getMergedSettings(conceptId) }),
       });
-    } catch (err) {
-      console.error('[ADVISAGE] Save image error:', err);
+      const result = await response.json();
+      if (response.ok && result.success) {
+        console.log(`[ADVISAGE-SAVE] ✅ Immagine salvata con successo | concept=${conceptId} | dbId=${result.data?.id} | path=${result.data?.image_path}`);
+        updateImageSaveStatus(conceptId, ts, 'saved');
+      } else {
+        console.error(`[ADVISAGE-SAVE] ❌ Salvataggio fallito | concept=${conceptId} | status=${response.status} | error=${result.error || 'unknown'}`);
+        updateImageSaveStatus(conceptId, ts, 'failed');
+        toast({ title: "Salvataggio immagine fallito", description: result.error || `Errore HTTP ${response.status}`, variant: "destructive" });
+      }
+    } catch (err: any) {
+      console.error(`[ADVISAGE-SAVE] ❌ Errore rete/server | concept=${conceptId} | error=`, err.message);
+      updateImageSaveStatus(conceptId, ts, 'failed');
+      toast({ title: "Errore salvataggio immagine", description: err.message, variant: "destructive" });
     }
   };
 
@@ -614,11 +635,15 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         || concept.promptClean;
       if (!prompt) throw new Error("Prompt non disponibile per questo concept");
       const url = await generateImageConcept(prompt, aspectRatio, mergedSettings, variant, concept.textContent, concept.styleType, concept.promptVisual, concept.description, originalText);
-      setGeneratedImages(prev => [{ conceptId: concept.id, imageUrl: url, variant, timestamp: Date.now() }, ...prev]);
+      const genTimestamp = Date.now();
+      console.log(`[ADVISAGE-SAVE] 🎨 Immagine generata | concept=${concept.id} | variant=${variant} | ts=${genTimestamp} | urlLen=${url.length}`);
+      setGeneratedImages(prev => [{ conceptId: concept.id, imageUrl: url, variant, timestamp: genTimestamp, savedToSession: currentSessionId ? 'pending' : undefined }, ...prev]);
       setSelectedHistoryImage(prev => ({ ...prev, [concept.id]: 0 }));
       
       if (currentSessionId) {
-        saveImageToServer(currentSessionId, concept.id, variant, url);
+        saveImageToServer(currentSessionId, concept.id, variant, url, genTimestamp);
+      } else {
+        console.warn(`[ADVISAGE-SAVE] ⚠ Nessuna sessione attiva, immagine NON salvata sul server | concept=${concept.id}`);
       }
     } catch (err: any) { 
       setError(err.message); 
@@ -658,10 +683,14 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       reader.onload = () => {
         const base64 = reader.result as string;
         const variant = variantToggle[conceptId] || 'text';
-        setGeneratedImages(prev => [{ conceptId, imageUrl: base64, variant, timestamp: Date.now() }, ...prev]);
+        const uploadTimestamp = Date.now();
+        console.log(`[ADVISAGE-SAVE] 📤 Upload locale | concept=${conceptId} | variant=${variant} | ts=${uploadTimestamp} | size=${Math.round(base64.length / 1024)}KB`);
+        setGeneratedImages(prev => [{ conceptId, imageUrl: base64, variant, timestamp: uploadTimestamp, savedToSession: currentSessionId ? 'pending' : undefined }, ...prev]);
         setSelectedHistoryImage(prev => ({ ...prev, [conceptId]: 0 }));
         if (currentSessionId) {
-          saveImageToServer(currentSessionId, conceptId, variant, base64);
+          saveImageToServer(currentSessionId, conceptId, variant, base64, uploadTimestamp);
+        } else {
+          console.warn(`[ADVISAGE-SAVE] ⚠ Nessuna sessione attiva, upload locale NON salvato sul server | concept=${conceptId}`);
         }
         toast({ title: "Immagine caricata", description: "L'immagine è stata aggiunta allo storico del concept" });
       };
@@ -702,7 +731,9 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
 
   const handleLinkImageToPost = async (imageUrl: string) => {
     const sourcePostId = activePost?.sourcePostId;
+    console.log(`[ADVISAGE-LINK] ▶ Tentativo link immagine al post | sourcePostId=${sourcePostId} | activePostId=${activePostId} | imgLen=${imageUrl.length}`);
     if (!sourcePostId) {
+      console.warn(`[ADVISAGE-LINK] ⚠ Nessun sourcePostId disponibile per activePostId=${activePostId}`);
       toast({ title: "Nessun post collegato", description: "Questo concept non è associato a un post esistente", variant: "destructive" });
       return;
     }
@@ -713,13 +744,21 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ imageUrl }),
       });
+      const resData = await res.json().catch(() => null);
+      console.log(`[ADVISAGE-LINK] Risposta server | status=${res.status} | ok=${res.ok} | data=`, resData);
       if (res.ok) {
+        setGeneratedImages(prev => prev.map(img => {
+          if (img.imageUrl === imageUrl) return { ...img, linkedToPost: true };
+          return img;
+        }));
         toast({ title: "Immagine associata", description: `Immagine salvata nel post "${activePost?.sourcePostTitle || 'collegato'}"` });
+        console.log(`[ADVISAGE-LINK] ✅ Link completato | postId=${sourcePostId} | postTitle=${activePost?.sourcePostTitle}`);
       } else {
-        throw new Error("Errore nel salvataggio");
+        console.error(`[ADVISAGE-LINK] ❌ Link fallito | status=${res.status} | error=${resData?.error || 'unknown'}`);
+        throw new Error(resData?.error || "Errore nel salvataggio");
       }
-    } catch (err) {
-      console.error("Error linking image to post:", err);
+    } catch (err: any) {
+      console.error(`[ADVISAGE-LINK] ❌ Errore rete/server | postId=${sourcePostId} | error=`, err.message);
       toast({ title: "Errore", description: "Impossibile associare l'immagine al post", variant: "destructive" });
     } finally {
       setLinkingToPost(null);
@@ -1819,20 +1858,51 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                       </div>
                                       <div className="flex gap-1.5 overflow-x-auto pb-1">
                                         {conceptHistory.map((img, idx) => (
-                                          <button
-                                            key={`${img.conceptId}-${img.timestamp}-${idx}`}
-                                            onClick={() => {
-                                              setSelectedHistoryImage(prev => ({...prev, [concept.id]: idx}));
-                                            }}
-                                            className={`shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
-                                              selectedIdx === idx
-                                                ? 'border-indigo-500 ring-1 ring-indigo-500/50'
-                                                : isDark ? 'border-slate-600 hover:border-slate-400' : 'border-slate-300 hover:border-slate-500'
-                                            }`}
-                                            title={`${img.variant === 'text' ? 'Con Testo' : 'Solo Visual'} — ${new Date(img.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`}
-                                          >
-                                            <img src={img.imageUrl} className="w-full h-full object-cover" alt={`Gen ${idx + 1}`} />
-                                          </button>
+                                          <div key={`${img.conceptId}-${img.timestamp}-${idx}`} className="relative shrink-0">
+                                            <button
+                                              onClick={() => {
+                                                setSelectedHistoryImage(prev => ({...prev, [concept.id]: idx}));
+                                              }}
+                                              className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                                                selectedIdx === idx
+                                                  ? 'border-indigo-500 ring-1 ring-indigo-500/50'
+                                                  : isDark ? 'border-slate-600 hover:border-slate-400' : 'border-slate-300 hover:border-slate-500'
+                                              }`}
+                                              title={`${img.variant === 'text' ? 'Con Testo' : 'Solo Visual'} — ${new Date(img.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}${img.savedToSession === 'saved' ? ' ✅ Salvata' : img.savedToSession === 'failed' ? ' ❌ Non salvata' : img.savedToSession === 'pending' ? ' ⏳ Salvataggio...' : ''}`}
+                                            >
+                                              <img src={img.imageUrl} className="w-full h-full object-cover" alt={`Gen ${idx + 1}`} />
+                                            </button>
+                                            <div className="absolute -top-1 -right-1 flex gap-0.5">
+                                              {img.savedToSession === 'saved' && (
+                                                <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center" title="Salvata sul server">
+                                                  <CheckCircle2 className="w-2.5 h-2.5 text-white" />
+                                                </span>
+                                              )}
+                                              {img.savedToSession === 'failed' && (
+                                                <span className="w-3.5 h-3.5 rounded-full bg-red-500 flex items-center justify-center cursor-pointer" title="Salvataggio fallito — clicca per riprovare"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (currentSessionId) {
+                                                      console.log(`[ADVISAGE-SAVE] 🔄 Retry salvataggio | concept=${concept.id} | ts=${img.timestamp}`);
+                                                      saveImageToServer(currentSessionId, concept.id, img.variant, img.imageUrl, img.timestamp);
+                                                    }
+                                                  }}
+                                                >
+                                                  <AlertCircle className="w-2.5 h-2.5 text-white" />
+                                                </span>
+                                              )}
+                                              {img.savedToSession === 'pending' && (
+                                                <span className="w-3.5 h-3.5 rounded-full bg-amber-500 flex items-center justify-center animate-pulse" title="Salvataggio in corso...">
+                                                  <Loader2 className="w-2.5 h-2.5 text-white animate-spin" />
+                                                </span>
+                                              )}
+                                              {img.linkedToPost && (
+                                                <span className="w-3.5 h-3.5 rounded-full bg-blue-500 flex items-center justify-center" title="Assegnata al post">
+                                                  <Link2 className="w-2.5 h-2.5 text-white" />
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
                                         ))}
                                       </div>
                                     </div>
@@ -1852,6 +1922,59 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                       </div>
                                     </div>
                                   </div>
+
+                                  {(() => {
+                                    const savedCount = conceptHistory.filter(i => i.savedToSession === 'saved').length;
+                                    const failedCount = conceptHistory.filter(i => i.savedToSession === 'failed').length;
+                                    const pendingCount = conceptHistory.filter(i => i.savedToSession === 'pending').length;
+                                    const linkedCount = conceptHistory.filter(i => i.linkedToPost).length;
+                                    const noStatusCount = conceptHistory.filter(i => !i.savedToSession).length;
+                                    const hasSourcePost = !!activePost?.sourcePostId;
+                                    if (conceptHistory.length === 0) return null;
+                                    return (
+                                      <div className={`flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg text-xs ${isDark ? 'bg-slate-800/60 border border-slate-700/50' : 'bg-slate-50 border border-slate-200'}`}>
+                                        <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Stato Immagini:</span>
+                                        <span className="flex items-center gap-1">
+                                          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                                          <span>{savedCount} salvate</span>
+                                        </span>
+                                        {pendingCount > 0 && (
+                                          <span className="flex items-center gap-1 text-amber-500">
+                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                            <span>{pendingCount} in corso</span>
+                                          </span>
+                                        )}
+                                        {failedCount > 0 && (
+                                          <span className="flex items-center gap-1 text-red-500 font-semibold">
+                                            <AlertCircle className="w-3 h-3" />
+                                            <span>{failedCount} fallite</span>
+                                          </span>
+                                        )}
+                                        {noStatusCount > 0 && (
+                                          <span className="flex items-center gap-1 text-muted-foreground">
+                                            <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />
+                                            <span>{noStatusCount} pre-sessione</span>
+                                          </span>
+                                        )}
+                                        <span className="mx-1 text-muted-foreground">|</span>
+                                        {hasSourcePost ? (
+                                          linkedCount > 0 ? (
+                                            <span className="flex items-center gap-1 text-blue-500 font-semibold">
+                                              <Link2 className="w-3 h-3" />
+                                              <span>{linkedCount} assegnata/e al post</span>
+                                            </span>
+                                          ) : (
+                                            <span className="flex items-center gap-1 text-muted-foreground">
+                                              <Link2 className="w-3 h-3" />
+                                              <span>Nessuna assegnata al post</span>
+                                            </span>
+                                          )
+                                        ) : (
+                                          <span className="text-muted-foreground italic">Nessun post sorgente collegato</span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
 
                                   {activePost?.originalText && (
                                     <div className={`p-4 rounded-xl border ${isDark ? 'border-blue-500/30 bg-blue-950/20' : 'border-blue-200 bg-blue-50'}`}>
