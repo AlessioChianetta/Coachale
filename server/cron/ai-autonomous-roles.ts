@@ -1016,6 +1016,71 @@ async function fetchPersonalizzaData(consultantId: string, clientIds: string[]):
   };
 }
 
+async function fetchSimoneData(consultantId: string, _clientIds: string[]): Promise<Record<string, any>> {
+  const kbContext = await fetchAgentKbContext(consultantId, 'simone');
+
+  const allAdsResult = await db.execute(sql`
+    SELECT meta_ad_id, ad_name, campaign_name, adset_name, ad_status, campaign_status,
+           spend, impressions, clicks, reach, leads, conversions,
+           cpc, cpm, ctr, cpl, frequency, roas,
+           link_clicks, cpc_link, ctr_link, result_type, video_views,
+           daily_budget, lifetime_budget, date_start, date_stop
+    FROM meta_ad_insights
+    WHERE consultant_id = ${consultantId}
+    ORDER BY spend DESC
+  `);
+
+  const ads = (allAdsResult.rows as any[]).map(r => ({
+    metaAdId: r.meta_ad_id,
+    adName: r.ad_name,
+    campaignName: r.campaign_name,
+    adsetName: r.adset_name,
+    adStatus: r.ad_status,
+    campaignStatus: r.campaign_status,
+    spend: Number(r.spend || 0),
+    impressions: Number(r.impressions || 0),
+    clicks: Number(r.clicks || 0),
+    reach: Number(r.reach || 0),
+    leads: Number(r.leads || 0),
+    conversions: Number(r.conversions || 0),
+    cpc: r.cpc != null ? Number(r.cpc) : null,
+    cpm: r.cpm != null ? Number(r.cpm) : null,
+    ctr: r.ctr != null ? Number(r.ctr) : null,
+    cpl: r.cpl != null ? Number(r.cpl) : null,
+    frequency: r.frequency != null ? Number(r.frequency) : null,
+    roas: r.roas != null ? Number(r.roas) : null,
+    linkClicks: Number(r.link_clicks || 0),
+    videoViews: Number(r.video_views || 0),
+  }));
+
+  const campaignMap: Record<string, any> = {};
+  for (const ad of ads) {
+    const cName = ad.campaignName || "Sconosciuta";
+    if (!campaignMap[cName]) {
+      campaignMap[cName] = { name: cName, adsCount: 0, totalSpend: 0, totalImpressions: 0, totalClicks: 0, totalLeads: 0, totalReach: 0, roasSum: 0, roasCount: 0 };
+    }
+    const c = campaignMap[cName];
+    c.adsCount++;
+    c.totalSpend += ad.spend;
+    c.totalImpressions += ad.impressions;
+    c.totalClicks += ad.clicks;
+    c.totalLeads += ad.leads;
+    c.totalReach += ad.reach;
+    if (ad.roas != null && ad.roas > 0) { c.roasSum += ad.roas; c.roasCount++; }
+  }
+
+  const campaigns = Object.values(campaignMap).map((c: any) => ({
+    ...c,
+    avgCpc: c.totalClicks > 0 ? c.totalSpend / c.totalClicks : 0,
+    avgCtr: c.totalImpressions > 0 ? (c.totalClicks / c.totalImpressions) * 100 : 0,
+    avgCpl: c.totalLeads > 0 ? c.totalSpend / c.totalLeads : 0,
+    avgRoas: c.roasCount > 0 ? c.roasSum / c.roasCount : 0,
+    avgFrequency: c.totalImpressions > 0 && c.totalReach > 0 ? c.totalImpressions / c.totalReach : 0,
+  }));
+
+  return { ads, campaigns, ...kbContext };
+}
+
 async function fetchHunterData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
   const salesContextResult = await db.execute(sql`
     SELECT services_offered, target_audience, value_proposition, pricing_info,
@@ -3221,6 +3286,142 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
       "scheduling_reason": "Motivazione dell'orario scelto",
       "tone": "professionale|informale|empatico"
+    }
+  ]
+}`;
+    },
+  },
+
+  simone: {
+    id: "simone",
+    name: "Simone",
+    displayName: "Simone – Ads Strategist",
+    avatar: "simone",
+    accentColor: "orange",
+    description: "Analizza le performance delle campagne Meta Ads, identifica anomalie (frequency alta, CTR bassa, ROAS negativo) e suggerisce azioni concrete: mettere in pausa, scalare, cambiare creatività.",
+    shortDescription: "Monitoraggio e ottimizzazione Meta Ads",
+    categories: ["ads_optimization", "performance_alert", "analysis", "monitoring"],
+    preferredChannels: ["none"],
+    typicalPlan: ["fetch_client_data", "analyze_patterns", "generate_report"],
+    maxTasksPerRun: 3,
+    fetchRoleData: fetchSimoneData,
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks, recentReasoningByRole }) => {
+      const campaignsSummary = (roleData.campaigns || []).map((c: any) => ({
+        name: c.name,
+        adsCount: c.adsCount,
+        totalSpend: c.totalSpend,
+        totalImpressions: c.totalImpressions,
+        totalClicks: c.totalClicks,
+        totalLeads: c.totalLeads,
+        avgCpc: c.avgCpc,
+        avgCtr: c.avgCtr,
+        avgCpl: c.avgCpl,
+        avgRoas: c.avgRoas,
+        avgFrequency: c.avgFrequency,
+      }));
+
+      const anomalies: string[] = [];
+      const adsList = roleData.ads || [];
+      for (const ad of adsList) {
+        const issues: string[] = [];
+        if (ad.frequency && ad.frequency > 4) issues.push(`Frequenza ${ad.frequency.toFixed(1)} (>4 = ad fatigue)`);
+        if (ad.ctr != null && ad.ctr < 0.5 && ad.impressions > 1000) issues.push(`CTR ${ad.ctr.toFixed(2)}% (molto basso)`);
+        if (ad.roas != null && ad.roas < 1 && ad.spend > 10) issues.push(`ROAS ${ad.roas.toFixed(2)}x (sotto break-even)`);
+        if (ad.cpl != null && ad.cpl > 50 && ad.leads > 0) issues.push(`CPL €${ad.cpl.toFixed(2)} (elevato)`);
+        if (issues.length > 0) {
+          anomalies.push(`⚠️ "${ad.adName}" (${ad.campaignName}): ${issues.join(', ')}`);
+        }
+      }
+
+      const topPerformers = [...adsList]
+        .filter((a: any) => a.roas && a.roas > 1.5 && a.spend > 5)
+        .sort((a: any, b: any) => (b.roas || 0) - (a.roas || 0))
+        .slice(0, 5)
+        .map((a: any) => `✅ "${a.adName}" — ROAS ${a.roas?.toFixed(2)}x, CPL ${a.cpl ? `€${a.cpl.toFixed(2)}` : 'N/A'}, Spesa €${a.spend?.toFixed(2)}`);
+
+      const totalSpend = adsList.reduce((s: number, a: any) => s + (a.spend || 0), 0);
+      const totalLeads = adsList.reduce((s: number, a: any) => s + (a.leads || 0), 0);
+      const activeAds = adsList.filter((a: any) => a.adStatus === 'ACTIVE').length;
+
+      return `Sei SIMONE, l'Ads Strategist AI del consulente. Il tuo ruolo è monitorare le campagne Meta Ads (Facebook/Instagram) e fornire raccomandazioni concrete di ottimizzazione.
+
+DATA/ORA ATTUALE: ${romeTimeStr}
+
+=== PANORAMICA ACCOUNT ===
+- Inserzioni totali: ${adsList.length} (${activeAds} attive)
+- Spesa totale: €${totalSpend.toFixed(2)}
+- Lead totali: ${totalLeads}
+- CPL medio: ${totalLeads > 0 ? `€${(totalSpend / totalLeads).toFixed(2)}` : 'N/A'}
+
+=== CAMPAGNE ===
+${campaignsSummary.length > 0 ? JSON.stringify(campaignsSummary, null, 2) : 'Nessuna campagna trovata'}
+
+=== ANOMALIE RILEVATE ===
+${anomalies.length > 0 ? anomalies.join('\n') : 'Nessuna anomalia critica rilevata.'}
+
+=== TOP PERFORMER ===
+${topPerformers.length > 0 ? topPerformers.join('\n') : 'Nessun top performer identificato.'}
+
+=== DETTAGLIO INSERZIONI (ultime 50 per spesa) ===
+${JSON.stringify(adsList.slice(0, 50).map((a: any) => ({
+  name: a.adName,
+  campaign: a.campaignName,
+  status: a.adStatus,
+  spend: a.spend,
+  impressions: a.impressions,
+  clicks: a.clicks,
+  leads: a.leads,
+  ctr: a.ctr,
+  cpc: a.cpc,
+  cpl: a.cpl,
+  roas: a.roas,
+  frequency: a.frequency,
+})), null, 2)}
+
+${buildTaskMemorySection(recentAllTasks, 'simone', permanentBlocks, recentReasoningByRole)}
+
+=== IL TUO COMPITO ===
+1. ANALIZZA le performance di ogni campagna e inserzione
+2. IDENTIFICA problemi critici:
+   - Frequency > 4 = Ad Fatigue → suggerisci pausa o cambio creativo
+   - CTR < 0.5% con >1000 impressioni = Creatività debole → suggerisci A/B test o nuovo angolo
+   - ROAS < 1 con spesa significativa = Sotto break-even → suggerisci pausa o riduzione budget
+   - CPL troppo alto rispetto alla media → analizza causa
+3. IDENTIFICA opportunità:
+   - Inserzioni con ROAS > 2x → suggerisci scaling del budget
+   - CTR alto ma budget basso → suggerisci aumento budget
+4. GENERA task di tipo "analysis" o "monitoring" con raccomandazioni specifiche
+
+REGOLE SIMONE:
+- Ogni raccomandazione DEVE essere specifica: nomina l'inserzione/campagna esatta
+- NON creare task generici tipo "controlla le ads" — sii preciso
+- Se non ci sono anomalie, crea un task di report riepilogativo
+- Usa il campo "contact_phone" come "N/A" (non hai contatti telefonici)
+- Usa "contact_id" come null
+- Usa "contact_name" con il nome della campagna o "Report Generale"
+- task_category: usa "analysis" per analisi, "monitoring" per alert, "report" per riepiloghi
+- preferred_channel: usa sempre "none"
+- Il tono è sempre "professionale"
+
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task.
+
+Rispondi SOLO con JSON valido (senza markdown, senza backtick):
+{
+  "overall_reasoning": "Analisi dettagliata delle performance ads: cosa hai osservato, quali anomalie, quali opportunità, e perché hai deciso di creare (o non creare) determinati task.",
+  "tasks": [
+    {
+      "contact_id": null,
+      "contact_name": "Nome Campagna o Report Generale",
+      "contact_phone": "N/A",
+      "ai_instruction": "Raccomandazione dettagliata e specifica...",
+      "task_category": "analysis|monitoring|report",
+      "priority": 3,
+      "reasoning": "Motivazione basata sui dati",
+      "preferred_channel": "none",
+      "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
+      "scheduling_reason": "Motivazione dell'orario scelto",
+      "tone": "professionale"
     }
   ]
 }`;

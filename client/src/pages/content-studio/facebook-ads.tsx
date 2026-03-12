@@ -70,6 +70,7 @@ import {
   FolderOpen,
   Layers,
   Megaphone,
+  Home,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -256,18 +257,21 @@ function renderCellValue(col: string, val: unknown, row: AggRow, activeTab: stri
   return val != null ? String(val) : "—";
 }
 
-function AdTableRow({ row, activeColumns, activeTab, ads, setSelectedAdId, setLinkDialogAd }: {
+function AdTableRow({ row, activeColumns, activeTab, ads, setSelectedAdId, setLinkDialogAd, onRowClick }: {
   row: AggRow;
   activeColumns: string[];
   activeTab: string;
   ads: MetaAd[];
   setSelectedAdId: (id: string) => void;
   setLinkDialogAd: (ad: MetaAd) => void;
+  onRowClick?: () => void;
 }) {
   return (
     <tr className={`border-b hover:bg-blue-50/40 dark:hover:bg-blue-950/10 transition-colors group ${
+      onRowClick ? "cursor-pointer" : ""
+    } ${
       row.frequency != null && row.frequency > 4 ? "bg-red-50/40 dark:bg-red-950/10" : ""
-    }`}>
+    }`} onClick={onRowClick}>
       <td className="px-3 py-2">
         <div className={`w-2 h-2 rounded-full ${row.pubblicazione === "Attiva" ? "bg-green-500" : "bg-gray-300"}`} />
       </td>
@@ -465,6 +469,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const [customColumns, setCustomColumns] = useState<string[]>(["name", "pubblicazione", "spend", "impressions", "clicks", "ctr", "cpc", "leads"]);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
 
   const activeColumns = useMemo(() => {
     if (tablePreset === "custom") return customColumns;
@@ -507,14 +512,18 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const summary: AdsSummary | null = adsData?.summary || null;
 
   const ads = useMemo(() => {
-    if (!searchQuery.trim()) return allAds;
+    let filtered = allAds;
+    if (selectedCampaign) {
+      filtered = filtered.filter(ad => ad.campaignName === selectedCampaign);
+    }
+    if (!searchQuery.trim()) return filtered;
     const q = searchQuery.toLowerCase();
-    return allAds.filter(ad =>
+    return filtered.filter(ad =>
       (ad.adName || "").toLowerCase().includes(q) ||
       (ad.campaignName || "").toLowerCase().includes(q) ||
       (ad.adsetName || "").toLowerCase().includes(q)
     );
-  }, [allAds, searchQuery]);
+  }, [allAds, searchQuery, selectedCampaign]);
 
   const campaignRows: AggRow[] = useMemo(() => {
     const map: Record<string, MetaAd[]> = {};
@@ -1019,7 +1028,28 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
             />
           </div>
 
-          {/* 3 Tabs: Campagne / Gruppi di inserzioni / Inserzioni */}
+          {selectedCampaign && (
+            <div className="flex items-center gap-1.5 text-sm bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
+              <Megaphone className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+              <button
+                onClick={() => { setSelectedCampaign(null); setActiveTab("campaigns"); }}
+                className="text-blue-600 hover:underline font-medium"
+              >
+                Tutte le Campagne
+              </button>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="font-semibold truncate">{selectedCampaign}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 ml-auto"
+                onClick={() => { setSelectedCampaign(null); setActiveTab("campaigns"); }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+
           <Card className="overflow-hidden">
             <div className="border-b bg-muted/30">
               <div className="flex">
@@ -1138,8 +1168,16 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                   <div
                     key={row.name + idx}
                     className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                      activeTab === "campaigns" ? "cursor-pointer" : ""
+                    } ${
                       row.frequency != null && row.frequency > 4 ? "border-red-300 bg-red-50/30 dark:bg-red-950/10" : ""
                     }`}
+                    onClick={() => {
+                      if (activeTab === "campaigns") {
+                        setSelectedCampaign(row.name);
+                        setActiveTab("ads");
+                      }
+                    }}
                   >
                     <div className="flex items-start gap-3 mb-3">
                       {activeTab === "ads" && row.creativeThumbnailUrl && (
@@ -1269,7 +1307,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                       })
                     ) : (
                       currentRows.map((row, idx) => (
-                        <AdTableRow key={row.name + idx} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} />
+                        <AdTableRow key={row.name + idx} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} onRowClick={activeTab === "campaigns" ? () => { setSelectedCampaign(row.name); setActiveTab("ads"); } : undefined} />
                       ))
                     )}
                     </TooltipProvider>

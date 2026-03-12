@@ -14,7 +14,8 @@ export type AgentType =
     | "proactive_setter"    // Setter proattivo (outbound, fissa appuntamenti)
     | "informative_advisor" // Advisor informativo (supporto/consulenza)
     | "receptionist"        // Receptionist (gestione appuntamenti e info base)
-    | "onboarding_coach";   // Coach onboarding (accompagna nuovi clienti)
+    | "onboarding_coach"    // Coach onboarding (accompagna nuovi clienti)
+    | "ads_strategist";     // Ads Strategist (monitoraggio e ottimizzazione Meta Ads)
 
 export type FollowupStrategy = "aggressive" | "balanced" | "reactive" | "minimal";
 
@@ -193,7 +194,7 @@ export const AGENT_PROFILES: Record<AgentType, AgentProfile> = {
         longIntervalDays: 7,
         nurturingIntervalDays: 30,
 
-        maxFollowupsBeforePause: 5,      // Più tentativi per onboarding
+        maxFollowupsBeforePause: 5,
         maxTotalFollowups: 10,
 
         silenceConditions: ["explicit_no", "issue_resolved"],
@@ -205,6 +206,33 @@ export const AGENT_PROFILES: Record<AgentType, AgentProfile> = {
 - Dopo prima settimana: riduci frequenza, check settimanali
 - Se cliente è autonomo, passa a check mensili
 - Obiettivo: onboarding completo, poi passaggio a nurturing`
+    },
+
+    "ads_strategist": {
+        name: "Ads Strategist (Simone)",
+        description: "Monitora le campagne Meta Ads, identifica anomalie e suggerisce ottimizzazioni basate sui dati.",
+        followupStrategy: "reactive",
+
+        shortIntervalHours: 12,
+        mediumIntervalDays: 1,
+        longIntervalDays: 3,
+        nurturingIntervalDays: 7,
+
+        maxFollowupsBeforePause: 2,
+        maxTotalFollowups: 5,
+
+        silenceConditions: ["got_all_info", "issue_resolved"],
+        canSendFreeformMessages: false,
+        requiresHumanEscalation: false,
+
+        personalityPrompt: `Sei un Ads Strategist data-driven specializzato in Meta Ads.
+- Analizza SOLO dati oggettivi: spesa, CTR, CPC, CPL, ROAS, frequenza
+- Ogni raccomandazione DEVE citare numeri specifici e inserzioni precise
+- Se frequency > 4: segnala ad fatigue e suggerisci pausa o cambio creativo
+- Se ROAS > 2x: suggerisci scaling del budget
+- Se CTR < 0.5% con spesa: suggerisci A/B test creatività
+- NON creare alert generici — sii sempre specifico e actionable
+- Obiettivo: massimizzare ROAS e minimizzare sprechi di budget`
     }
 };
 
