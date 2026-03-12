@@ -647,6 +647,29 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     }
   };
 
+  const handleUploadLocalImage = (conceptId: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        const variant = variantToggle[conceptId] || 'text';
+        setGeneratedImages(prev => [{ conceptId, imageUrl: base64, variant, timestamp: Date.now() }, ...prev]);
+        setSelectedHistoryImage(prev => ({ ...prev, [conceptId]: 0 }));
+        if (currentSessionId) {
+          saveImageToServer(currentSessionId, conceptId, variant, base64);
+        }
+        toast({ title: "Immagine caricata", description: "L'immagine è stata aggiunta allo storico del concept" });
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
   const base64ToBlob = (base64: string): Blob => {
     const parts = base64.split(',');
     const mimeMatch = parts[0].match(/:(.*?);/);
@@ -1752,12 +1775,31 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                           >
                                             <CloudUpload className="w-4 h-4" />
                                           </Button>
+                                          <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            onClick={() => handleUploadLocalImage(concept.id)}
+                                            title="Carica immagine dal PC"
+                                          >
+                                            <Upload className="w-4 h-4" />
+                                          </Button>
                                         </div>
                                       </>
                                     ) : (
-                                      <div className="flex flex-col items-center opacity-30">
-                                        <ImageIcon className="w-16 h-16 mb-4" />
-                                        <p className="text-xs font-semibold uppercase tracking-wider">Pronto per la Generazione</p>
+                                      <div className="flex flex-col items-center gap-3">
+                                        <div className="flex flex-col items-center opacity-30">
+                                          <ImageIcon className="w-16 h-16 mb-4" />
+                                          <p className="text-xs font-semibold uppercase tracking-wider">Pronto per la Generazione</p>
+                                        </div>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="text-xs opacity-60 hover:opacity-100"
+                                          onClick={() => handleUploadLocalImage(concept.id)}
+                                        >
+                                          <Upload className="w-3.5 h-3.5 mr-1.5" />
+                                          Carica immagine
+                                        </Button>
                                       </div>
                                     )}
                                     {isGen && (
