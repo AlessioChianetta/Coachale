@@ -1697,14 +1697,24 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
         </DialogContent>
       </Dialog>
 
-      <AgentChat
-        roleId="simone"
-        roleName="Simone – Ads Strategist"
-        avatar="📊"
-        accentColor="orange"
-        open={simoneChatOpen}
-        onClose={() => setSimoneChatOpen(false)}
-      />
+      {simoneChatOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/20 z-40"
+            onClick={() => setSimoneChatOpen(false)}
+          />
+          <div className="fixed top-0 right-0 h-full w-[380px] sm:w-[420px] z-50 border-l bg-background shadow-2xl">
+            <AgentChat
+              roleId="simone"
+              roleName="Simone – Ads Strategist"
+              avatar="📊"
+              accentColor="orange"
+              open={true}
+              onClose={() => setSimoneChatOpen(false)}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 
