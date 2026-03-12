@@ -507,18 +507,6 @@ export default function ContentStudioIdeas() {
   funnelDirtyRef.current = funnelDirty;
   const blockerBypassRef = useRef(false);
   const [savingBeforeExit, setSavingBeforeExit] = useState(false);
-
-  const handleTabChange = useCallback((tab: "ideas" | "posts" | "advisage" | "funnel") => {
-    if (tab === activeTab) return;
-    if (activeTab === "funnel" && funnelDirty) {
-      setPendingTabTracked(tab);
-      setPendingUrlTracked(null);
-      setShowUnsavedDialog(true);
-      return;
-    }
-    setActiveTab(tab);
-  }, [activeTab, funnelDirty, setPendingTabTracked, setPendingUrlTracked]);
-
   const pendingTabRef = useRef<"ideas" | "posts" | "advisage" | "funnel" | null>(null);
   const pendingUrlRef = useRef<string | null>(null);
 
@@ -531,6 +519,17 @@ export default function ContentStudioIdeas() {
     pendingUrlRef.current = url;
     setPendingUrl(url);
   }, []);
+
+  const handleTabChange = useCallback((tab: "ideas" | "posts" | "advisage" | "funnel") => {
+    if (tab === activeTab) return;
+    if (activeTab === "funnel" && funnelDirty) {
+      setPendingTabTracked(tab);
+      setPendingUrlTracked(null);
+      setShowUnsavedDialog(true);
+      return;
+    }
+    setActiveTab(tab);
+  }, [activeTab, funnelDirty, setPendingTabTracked, setPendingUrlTracked]);
 
   const executeNavigation = useCallback(() => {
     setShowUnsavedDialog(false);

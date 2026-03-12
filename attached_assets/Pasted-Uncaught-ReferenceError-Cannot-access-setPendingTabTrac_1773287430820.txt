@@ -1,0 +1,44 @@
+Uncaught ReferenceError: Cannot access 'setPendingTabTracked' before initialization
+    at ContentStudioIdeas (ideas.tsx:520:31)
+    at renderWithHooks (chunk-XQLYTHWV.js?v=2547ce87:11548:26)
+    at updateFunctionComponent (chunk-XQLYTHWV.js?v=2547ce87:14582:28)
+    at mountLazyComponent (chunk-XQLYTHWV.js?v=2547ce87:14833:23)
+    at beginWork (chunk-XQLYTHWV.js?v=2547ce87:15918:22)
+    at HTMLUnknownElement.callCallback2 (chunk-XQLYTHWV.js?v=2547ce87:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-XQLYTHWV.js?v=2547ce87:3699:24)
+    at invokeGuardedCallback (chunk-XQLYTHWV.js?v=2547ce87:3733:39)
+    at beginWork$1 (chunk-XQLYTHWV.js?v=2547ce87:19765:15)
+    at performUnitOfWork (chunk-XQLYTHWV.js?v=2547ce87:19198:20)Understand this error
+injected.js:37 The above error occurred in the <ContentStudioIdeas> component:
+
+    at ContentStudioIdeas (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/src/pages/content-studio/ideas.tsx:459:20)
+    at AuthGuard (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2547ce87:226:16)
+    at Switch (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=2547ce87:283:17)
+    at Suspense
+    at Router (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/src/App.tsx?v=qv3VB5CU2O8HgKVWgEg1j:353:35)
+    at Provider (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-E5NDDLFL.js?v=2547ce87:38:15)
+    at TooltipProvider (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=2547ce87:160:5)
+    at TourProvider (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=2547ce87:3096:3)
+    at V (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=2547ce87:44:25)
+    at J (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=2547ce87:42:18)
+    at App (https://07f7a823-8ec4-4259-96a0-f6be8ce5676e-00-2wgcup2pqt38u.worf.replit.dev/src/App.tsx?v=qv3VB5CU2O8HgKVWgEg1j:2307:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+(anonymous) @ injected.js:37Understand this error
+chunk-XQLYTHWV.js?v=2547ce87:19413 Uncaught ReferenceError: Cannot access 'setPendingTabTracked' before initialization
+    at ContentStudioIdeas (ideas.tsx:520:31)
+    at renderWithHooks (chunk-XQLYTHWV.js?v=2547ce87:11548:26)
+    at updateFunctionComponent (chunk-XQLYTHWV.js?v=2547ce87:14582:28)
+    at mountLazyComponent (chunk-XQLYTHWV.js?v=2547ce87:14833:23)
+    at beginWork (chunk-XQLYTHWV.js?v=2547ce87:15918:22)
+    at beginWork$1 (chunk-XQLYTHWV.js?v=2547ce87:19753:22)
+    at performUnitOfWork (chunk-XQLYTHWV.js?v=2547ce87:19198:20)
+    at workLoopSync (chunk-XQLYTHWV.js?v=2547ce87:19137:13)
+    at renderRootSync (chunk-XQLYTHWV.js?v=2547ce87:19116:15)
+    at recoverFromConcurrentError (chunk-XQLYTHWV.js?v=2547ce87:18736:28)
