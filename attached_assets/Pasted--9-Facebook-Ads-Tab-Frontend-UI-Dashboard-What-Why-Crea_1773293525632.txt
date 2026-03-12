@@ -1,0 +1,72 @@
+#9 - Facebook Ads — Tab Frontend & UI Dashboard
+What & Why
+Creare il tab "Facebook Ads" nel Content Studio con una dashboard completa per visualizzare, associare e monitorare le inserzioni Meta collegate ai post. L'utente deve poter vedere a colpo d'occhio come performano le sue ads, quali post non hanno ancora una campagna associata, e gestire le associazioni.
+
+Done looks like
+Nuovo tab "Facebook Ads" nella barra di navigazione del Content Studio (accanto a Generatore Idee, Gestione Post, AdVisage, Funnel Builder)
+Pagina di connessione account Meta Ads (bottone OAuth, stato connessione, nome Business Manager collegato)
+Dashboard con KPI principali in alto: spesa totale, CPC medio, CTR medio, lead totali, ROAS medio
+Lista inserzioni sincronizzate con metriche real-time in cards/tabella: nome campagna, nome inserzione, stato (attiva/in pausa/terminata), budget giornaliero, spesa, impressions, click, CTR, CPC, CPL, ROAS
+Sezione "Post senza campagna" che mostra i post del Content Studio non ancora associati a un'inserzione Facebook, con possibilità di associarli selezionando l'inserzione corrispondente da un dropdown
+Dettaglio singola inserzione con grafico trend storico (spesa, CPC, CTR nel tempo) usando i dati degli snapshot giornalieri
+Badge nell'elenco post di Gestione Post che indica se un post ha un'inserzione Facebook associata
+Filtri per stato inserzione (attiva, in pausa, tutte) e ordinamento per performance
+Route /consultant/content-studio/facebook-ads in App.tsx
+Voce nel sidebar sotto CONTENT STUDIO
+Out of scope
+Modifica/creazione inserzioni via API (solo visualizzazione)
+Agente AI che analizza le ads (task separato)
+Grafici complessi con librerie esterne pesanti (usare componenti semplici con div/svg o recharts se già presente)
+Tasks
+Route e navigazione — Aggiungere la route /consultant/content-studio/facebook-ads in App.tsx, aggiungere il tab nella barra di navigazione del Content Studio in ideas.tsx (5° tab con icona e gradiente), aggiungere voce "Facebook Ads" nel sidebar sotto CONTENT STUDIO.
+
+Pagina principale Facebook Ads — Nuovo file client/src/pages/content-studio/facebook-ads.tsx con: stato connessione account (pulsante "Collega Account Meta" o info account collegato), KPI cards in alto (spesa totale, CPC medio, CTR, lead, ROAS), lista inserzioni sincronizzate in formato card con metriche, filtri per stato e ordinamento.
+
+Sezione associazione post ↔ inserzione — Nella stessa pagina, sezione che mostra i post del Content Studio che non hanno meta_ad_id associato. Per ogni post mostrare titolo, piattaforma, hook. Dropdown/dialog per selezionare l'inserzione da associare. Una volta associata, mostrare il badge nel post.
+
+Vista dettaglio inserzione — Dialog o vista espansa che mostra i dati completi di una singola inserzione con grafico trend storico dei KPI giornalieri (ultimi 7/14/30 giorni).
+
+Badge inserzione in Gestione Post — Nella lista post di posts.tsx, aggiungere un piccolo badge/indicatore che mostra se il post ha un'inserzione Facebook collegata e un mini-riassunto delle metriche principali (CPC, CTR).
+
+Relevant files
+client/src/pages/content-studio/ideas.tsx:2346-2383 (tab navigation)
+client/src/pages/content-studio/posts.tsx
+client/src/components/sidebar.tsx:172-181 (CONTENT STUDIO section)
+client/src/App.tsx:793 (content studio routes)
+client/src/pages/content-studio/campaigns.tsx (pattern esistente campagne)
+
+
+#10 - Facebook Ads — Agente AI Ads Analyst
+What & Why
+Creare un nuovo "dipendente AI" chiamato Ads Analyst (o "Luca - Ads Strategist") nel sistema degli agenti autonomi. Questo agente monitora automaticamente le performance delle inserzioni Facebook, risponde a domande come "come va l'ads X?", e fornisce raccomandazioni strategiche (spegnere, aumentare budget, cambiare creatività, ecc.). Funziona come gli altri agenti autonomi (Alessia, Hunter, Marco) — viene interrogabile dal Generatore Idee e può generare task autonomi.
+
+Done looks like
+Nuovo ruolo AI "ads_analyst" registrato nel sistema degli agenti autonomi con persona, avatar, colori, descrizione
+L'agente ha accesso ai dati delle inserzioni sincronizzate (metriche, trend, associazioni con post)
+Quando interrogato ("come va l'ads X?"), analizza i KPI dell'inserzione e restituisce un report strutturato con: stato attuale, performance vs benchmark di settore, trend (miglioramento/peggioramento), raccomandazioni concrete
+Monitora automaticamente le inserzioni e segnala anomalie: CPC troppo alto, frequenza troppo alta (ad fatigue), CTR in calo, spesa fuori budget
+Può suggerire azioni concrete: "Spegnere inserzione X (CTR sotto 0.5% da 3 giorni)", "Aumentare budget inserzione Y (ROAS > 3x)", "Cambiare creatività Z (frequency > 4)"
+Integrato nella sezione Generatore Idee come gli altri dipendenti AI
+Visibile nello Skills Store / Autonomy Settings con il suo profilo configurabile
+Out of scope
+Esecuzione automatica delle azioni suggerite (solo suggerimenti, l'utente decide)
+Creazione/modifica inserzioni via Meta API
+Analisi cross-platform (solo Facebook/Meta)
+Tasks
+Definizione ruolo agente — Aggiungere il ruolo ads_analyst in ai-autonomous-roles.ts con: persona (Luca, Ads Strategist), avatar, descrizione, categorie (["ads_analysis", "optimization", "reporting"]), canali preferiti, piano tipico di esecuzione.
+
+Funzione fetchRoleData — Implementare fetchAdsAnalystData che recupera dal DB: lista inserzioni attive con metriche correnti, snapshot storici degli ultimi 7 giorni per trend, post associati con il loro contenuto/hook/CTA, soglie/benchmark configurabili per il consulente.
+
+Prompt di sistema — Costruire il buildPrompt dell'agente con: istruzioni su come analizzare KPI (CPC, CTR, CPL, ROAS, frequency), benchmark di settore per Facebook Ads, framework decisionale (quando spegnere, quando scalare, quando cambiare creatività), formato di risposta strutturato con raccomandazioni prioritizzate.
+
+Integrazione nel reasoning stream — Assicurarsi che l'agente possa essere interrogato dal Generatore Idee e che le sue risposte appaiano nel reasoning stream come gli altri agenti. L'utente deve poter chiedere "come vanno le mie ads?" e ricevere un'analisi completa.
+
+Monitoraggio proattivo — Implementare la logica di scansione periodica che l'agente esegue autonomamente per identificare anomalie e creare task di segnalazione (es. "L'inserzione X ha frequency > 4, rischio ad fatigue").
+
+Relevant files
+server/cron/ai-autonomous-roles.ts (definizione ruoli agenti — pattern da seguire)
+server/ai/autonomous-decision-engine.ts (logica autonomia e decisioni)
+server/cron/ai-task-scheduler.ts (scheduler che triggera gli agenti)
+server/ai/ai-task-executor.ts (esecuzione task)
+server/ai/agent-profiles.ts (profili agenti)
+client/src/pages/content-studio/ideas.tsx (integrazione nel Generatore Idee)
