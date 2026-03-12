@@ -2780,25 +2780,7 @@ export default function ExerciseDetails() {
                       </CardContent>
                     )}
                   </Card>
-                ) : (
-                  <Card className="border-2 border-dashed border-muted-foreground/20 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-                    <CardContent className="p-8 text-center">
-                      <div className="space-y-4">
-                        <div className="w-16 h-16 bg-gradient-to-r from-gray-300 to-gray-400 rounded-full flex items-center justify-center mx-auto">
-                          <AlertCircle size={32} className="text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-lg text-foreground mb-2">
-                            📝 Istruzioni non ancora disponibili
-                          </h3>
-                          <p className="text-muted-foreground text-base">
-                            Le istruzioni dettagliate per questo esercizio saranno aggiunte a breve.
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                ) : null}
 
 
 
@@ -3708,64 +3690,8 @@ export default function ExerciseDetails() {
             </Tabs>
           </div>
 
-          {/* Mobile-friendly Quick Stats - Only show on larger screens */}
+          {/* Sidebar - Only show on larger screens */}
           <div className="hidden lg:block lg:col-span-1 space-y-6">
-            {/* Quick Stats */}
-            <Card data-testid="card-quick-stats">
-              <CardHeader>
-                <CardTitle className="text-base">Riepilogo</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {questions.length > 0 && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Domande totali</Label>
-                    <p className="text-sm font-medium">{String(questions.length)}</p>
-                  </div>
-                )}
-
-                {exercise.attachments && exercise.attachments.length > 0 && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Materiali allegati</Label>
-                    <p className="text-sm font-medium">{String(exercise.attachments.length)} file</p>
-                  </div>
-                )}
-
-                {assignment?.createdAt && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Assegnato il</Label>
-                    <p className="text-sm font-medium">
-                      {new Date(assignment.createdAt).toLocaleDateString('it-IT')}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Stats for this exercise */}
-            {canSubmit && questions.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Il tuo progresso</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Domande completate</span>
-                    <span className="text-sm font-medium">{getAnsweredQuestions()}/{getTotalQuestions()}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Tempo trascorso</span>
-                    <span className="text-sm font-medium">{formatTime(timeElapsed)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Progresso</span>
-                    <span className="text-sm font-medium">{getProgressPercentage()}%</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Completion Status */}
             {isCompleted && assignment?.completedAt && (
               <Card className="border-success/30 bg-success/5" data-testid="card-completion-status">
@@ -3780,56 +3706,9 @@ export default function ExerciseDetails() {
                 </CardContent>
               </Card>
             )}
-
-            {/* Tips and encouragement */}
-            {canSubmit && !isCompleted && (
-              <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center space-x-2">
-                    <BookOpen size={16} />
-                    <span>Suggerimenti</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm space-y-2">
-                  <p>• Leggi attentamente ogni domanda prima di rispondere</p>
-                  <p>• Le tue risposte vengono salvate automaticamente</p>
-                  <p>• Puoi navigare tra le domande liberamente</p>
-                  <p>• Controlla tutte le risposte prima di inviare</p>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
 
-        {/* Mobile-only Progress Card at bottom */}
-        {canSubmit && questions.length > 0 && (
-          <div className="lg:hidden mt-6">
-            <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center space-x-2">
-                  <BookOpen size={16} />
-                  <span>Il tuo progresso</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="text-center">
-                    <Label className="text-xs text-muted-foreground">Completate</Label>
-                    <p className="font-medium">{getAnsweredQuestions()}/{getTotalQuestions()}</p>
-                  </div>
-                  <div className="text-center">
-                    <Label className="text-xs text-muted-foreground">Tempo</Label>
-                    <p className="font-medium">{formatTime(timeElapsed)}</p>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <Label className="text-xs text-muted-foreground">Progresso</Label>
-                  <p className="font-medium text-lg">{getProgressPercentage()}%</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </div>
 
       {/* Confirmation Dialog */}
