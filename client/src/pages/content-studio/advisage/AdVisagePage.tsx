@@ -175,6 +175,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   const [showProductionTypePicker, setShowProductionTypePicker] = useState(false);
   const [queueExpanded, setQueueExpanded] = useState(false);
   const [isAddingProductionConcepts, setIsAddingProductionConcepts] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   const { data: sessionsData, refetch: refetchSessions } = useQuery({
     queryKey: ['/api/content/advisage/sessions'],
@@ -231,28 +232,65 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
 
   const saveImageToServer = async (sessionId: string, conceptId: string, variant: string, imageBase64: string, timestamp?: number) => {
     const ts = timestamp || Date.now();
-    console.log(`[ADVISAGE-SAVE] ▶ Inizio salvataggio immagine | session=${sessionId} | concept=${conceptId} | variant=${variant} | size=${Math.round(imageBase64.length / 1024)}KB`);
+    const sizeMB = (imageBase64.length / 1024 / 1024).toFixed(1);
+    console.log(`[ADVISAGE-SAVE] ▶ Inizio salvataggio immagine | session=${sessionId} | concept=${conceptId} | variant=${variant} | size=${sizeMB}MB`);
     updateImageSaveStatus(conceptId, ts, 'pending');
-    try {
-      const response = await fetch(`/api/content/advisage/sessions/${sessionId}/images`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ conceptId, variant, imageBase64, settingsUsed: getMergedSettings(conceptId) }),
+    setUploadProgress(prev => ({ ...prev, [conceptId]: 0 }));
+
+    return new Promise<void>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      const authHeaders = getAuthHeaders();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(prev => ({ ...prev, [conceptId]: pct }));
+          if (pct % 20 === 0) console.log(`[ADVISAGE-SAVE] 📊 Progresso upload | concept=${conceptId} | ${pct}%`);
+        }
       });
-      const result = await response.json();
-      if (response.ok && result.success) {
-        console.log(`[ADVISAGE-SAVE] ✅ Immagine salvata con successo | concept=${conceptId} | dbId=${result.data?.id} | path=${result.data?.image_path}`);
-        updateImageSaveStatus(conceptId, ts, 'saved');
-      } else {
-        console.error(`[ADVISAGE-SAVE] ❌ Salvataggio fallito | concept=${conceptId} | status=${response.status} | error=${result.error || 'unknown'}`);
+
+      xhr.addEventListener('load', () => {
+        setUploadProgress(prev => { const n = { ...prev }; delete n[conceptId]; return n; });
+        try {
+          const result = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300 && result.success) {
+            console.log(`[ADVISAGE-SAVE] ✅ Immagine salvata con successo | concept=${conceptId} | dbId=${result.data?.id} | path=${result.data?.image_path}`);
+            updateImageSaveStatus(conceptId, ts, 'saved');
+          } else {
+            console.error(`[ADVISAGE-SAVE] ❌ Salvataggio fallito | concept=${conceptId} | status=${xhr.status} | error=${result.error || 'unknown'}`);
+            updateImageSaveStatus(conceptId, ts, 'failed');
+            toast({ title: "Salvataggio immagine fallito", description: result.error || `Errore HTTP ${xhr.status}`, variant: "destructive" });
+          }
+        } catch (parseErr) {
+          console.error(`[ADVISAGE-SAVE] ❌ Errore parsing risposta | concept=${conceptId} | status=${xhr.status}`);
+          updateImageSaveStatus(conceptId, ts, 'failed');
+          toast({ title: "Errore salvataggio", description: "Risposta server non valida", variant: "destructive" });
+        }
+        resolve();
+      });
+
+      xhr.addEventListener('error', () => {
+        setUploadProgress(prev => { const n = { ...prev }; delete n[conceptId]; return n; });
+        console.error(`[ADVISAGE-SAVE] ❌ Errore rete | concept=${conceptId}`);
         updateImageSaveStatus(conceptId, ts, 'failed');
-        toast({ title: "Salvataggio immagine fallito", description: result.error || `Errore HTTP ${response.status}`, variant: "destructive" });
-      }
-    } catch (err: any) {
-      console.error(`[ADVISAGE-SAVE] ❌ Errore rete/server | concept=${conceptId} | error=`, err.message);
-      updateImageSaveStatus(conceptId, ts, 'failed');
-      toast({ title: "Errore salvataggio immagine", description: err.message, variant: "destructive" });
-    }
+        toast({ title: "Errore rete", description: "Impossibile raggiungere il server", variant: "destructive" });
+        resolve();
+      });
+
+      xhr.addEventListener('timeout', () => {
+        setUploadProgress(prev => { const n = { ...prev }; delete n[conceptId]; return n; });
+        console.error(`[ADVISAGE-SAVE] ❌ Timeout | concept=${conceptId}`);
+        updateImageSaveStatus(conceptId, ts, 'failed');
+        toast({ title: "Timeout upload", description: "Il server non ha risposto in tempo", variant: "destructive" });
+        resolve();
+      });
+
+      xhr.open('POST', `/api/content/advisage/sessions/${sessionId}/images`);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      Object.entries(authHeaders).forEach(([k, v]) => xhr.setRequestHeader(k, v as string));
+      xhr.timeout = 120000;
+      xhr.send(JSON.stringify({ conceptId, variant, imageBase64, settingsUsed: getMergedSettings(conceptId) }));
+    });
   };
 
   const loadSessionFromServer = async (sessionId: string) => {
@@ -1845,6 +1883,23 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                       <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center z-10">
                                         <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-4" />
                                         <p className="text-xs font-semibold uppercase tracking-wider">Synthesizing...</p>
+                                      </div>
+                                    )}
+                                    {typeof uploadProgress[concept.id] === 'number' && (
+                                      <div className="absolute bottom-0 left-0 right-0 z-20 bg-slate-900/80 backdrop-blur-sm p-3">
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                          <CloudUpload className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                                          <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                                            Salvataggio in corso...
+                                          </span>
+                                          <span className="ml-auto text-xs font-mono text-indigo-300">{uploadProgress[concept.id]}%</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-300 ease-out"
+                                            style={{ width: `${uploadProgress[concept.id]}%` }}
+                                          />
+                                        </div>
                                       </div>
                                     )}
                                   </div>

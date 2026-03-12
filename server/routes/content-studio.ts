@@ -4469,9 +4469,9 @@ router.post("/advisage/sessions/:id/images", authenticateToken, requireRole("con
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
     
-    const MAX_SIZE = 20 * 1024 * 1024;
+    const MAX_SIZE = 40 * 1024 * 1024;
     if (buffer.length > MAX_SIZE) {
-      return res.status(400).json({ success: false, error: "Immagine troppo grande (max 20MB)" });
+      return res.status(400).json({ success: false, error: "Immagine troppo grande (max 40MB)" });
     }
     
     const sessionCheck = await db.execute(sql`
