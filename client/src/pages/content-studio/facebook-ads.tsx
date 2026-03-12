@@ -75,6 +75,7 @@ import {
   Megaphone,
   Home,
   MessageCircle,
+  Bot,
 } from "lucide-react";
 import AgentChat from "@/components/autonomy/AgentChat";
 import Navbar from "@/components/navbar";
@@ -561,6 +562,32 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/meta-ads/hidden-campaigns"] });
+    },
+  });
+
+  const { data: aiExcludedData } = useQuery({
+    queryKey: ["/api/meta-ads/ai-excluded-campaigns"],
+    queryFn: async () => {
+      const res = await fetch("/api/meta-ads/ai-excluded-campaigns", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: isConnected,
+  });
+  const aiExcludedCampaigns: string[] = aiExcludedData?.aiExcludedCampaigns || [];
+
+  const aiExcludedMutation = useMutation({
+    mutationFn: async (campaigns: string[]) => {
+      const res = await fetch("/api/meta-ads/ai-excluded-campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ aiExcludedCampaigns: campaigns }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/meta-ads/ai-excluded-campaigns"] });
     },
   });
 
@@ -1406,6 +1433,21 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                           <EyeOff className="h-3 w-3" />
                           {hiddenCampaigns.includes(row.name) ? "Mostra" : "Nascondi"}
                         </Button>
+                        <Button
+                          variant={aiExcludedCampaigns.includes(row.name) ? "destructive" : "outline"}
+                          size="sm"
+                          className="h-7 text-xs gap-1 flex-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newExcluded = aiExcludedCampaigns.includes(row.name)
+                              ? aiExcludedCampaigns.filter(c => c !== row.name)
+                              : [...aiExcludedCampaigns, row.name];
+                            aiExcludedMutation.mutate(newExcluded);
+                          }}
+                        >
+                          <Bot className="h-3 w-3" />
+                          {aiExcludedCampaigns.includes(row.name) ? "AI Off" : "AI On"}
+                        </Button>
                       </div>
                     )}
                     {activeTab === "ads" && (
@@ -2083,6 +2125,21 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                       title="Scarica tutti i dati"
                     >
                       <FileJson className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant={aiExcludedCampaigns.includes(name) ? "destructive" : "ghost"}
+                      size="sm"
+                      className="h-7 px-2 text-xs gap-1"
+                      onClick={() => {
+                        const newExcluded = aiExcludedCampaigns.includes(name)
+                          ? aiExcludedCampaigns.filter(c => c !== name)
+                          : [...aiExcludedCampaigns, name];
+                        aiExcludedMutation.mutate(newExcluded);
+                      }}
+                      title={aiExcludedCampaigns.includes(name) ? "Simone non analizza questa campagna" : "Simone analizza questa campagna"}
+                    >
+                      <Bot className="h-3.5 w-3.5" />
+                      {aiExcludedCampaigns.includes(name) ? "Off" : "On"}
                     </Button>
                   </div>
                 );

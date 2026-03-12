@@ -1019,6 +1019,18 @@ async function fetchPersonalizzaData(consultantId: string, clientIds: string[]):
 async function fetchSimoneData(consultantId: string, _clientIds: string[]): Promise<Record<string, any>> {
   const kbContext = await fetchAgentKbContext(consultantId, 'simone');
 
+  let aiExcludedCampaigns: string[] = [];
+  try {
+    const configResult = await db.execute(sql`
+      SELECT ai_excluded_campaigns FROM consultant_meta_ads_config
+      WHERE consultant_id = ${consultantId} AND is_active = true LIMIT 1
+    `);
+    const configRow = configResult.rows[0] as any;
+    if (configRow?.ai_excluded_campaigns && Array.isArray(configRow.ai_excluded_campaigns)) {
+      aiExcludedCampaigns = configRow.ai_excluded_campaigns;
+    }
+  } catch {}
+
   const allAdsResult = await db.execute(sql`
     SELECT meta_ad_id, ad_name, campaign_name, adset_name, ad_status, campaign_status,
            spend, impressions, clicks, reach, leads, conversions,
@@ -1032,7 +1044,13 @@ async function fetchSimoneData(consultantId: string, _clientIds: string[]): Prom
     ORDER BY spend DESC
   `);
 
-  const ads = (allAdsResult.rows as any[]).map(r => ({
+  const allAds = allAdsResult.rows as any[];
+  const excludedSet = new Set(aiExcludedCampaigns);
+  const filteredAds = excludedSet.size > 0
+    ? allAds.filter(r => !excludedSet.has(r.campaign_name))
+    : allAds;
+
+  const ads = filteredAds.map(r => ({
     metaAdId: r.meta_ad_id,
     adName: r.ad_name,
     campaignName: r.campaign_name,

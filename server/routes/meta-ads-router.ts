@@ -690,6 +690,39 @@ router.post("/hidden-campaigns", authenticateToken, requireRole("consultant"), a
   }
 });
 
+router.get("/ai-excluded-campaigns", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const [config] = await db
+      .select({ aiExcludedCampaigns: schema.consultantMetaAdsConfig.aiExcludedCampaigns })
+      .from(schema.consultantMetaAdsConfig)
+      .where(and(eq(schema.consultantMetaAdsConfig.consultantId, consultantId), eq(schema.consultantMetaAdsConfig.isActive, true)))
+      .limit(1);
+    return res.json({ success: true, aiExcludedCampaigns: (config?.aiExcludedCampaigns as string[]) || [] });
+  } catch (error) {
+    console.error("[META-ADS] Error getting AI excluded campaigns:", error);
+    return res.status(500).json({ success: false, error: "Failed" });
+  }
+});
+
+router.post("/ai-excluded-campaigns", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { aiExcludedCampaigns } = req.body;
+    if (!Array.isArray(aiExcludedCampaigns)) {
+      return res.status(400).json({ success: false, error: "aiExcludedCampaigns must be an array" });
+    }
+    await db
+      .update(schema.consultantMetaAdsConfig)
+      .set({ aiExcludedCampaigns, updatedAt: new Date() })
+      .where(and(eq(schema.consultantMetaAdsConfig.consultantId, consultantId), eq(schema.consultantMetaAdsConfig.isActive, true)));
+    return res.json({ success: true, aiExcludedCampaigns });
+  } catch (error) {
+    console.error("[META-ADS] Error updating AI excluded campaigns:", error);
+    return res.status(500).json({ success: false, error: "Failed" });
+  }
+});
+
 router.get("/campaign-export/:campaignName", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;

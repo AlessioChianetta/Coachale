@@ -11078,6 +11078,7 @@ export const consultantMetaAdsConfig = pgTable("consultant_meta_ads_config", {
   syncError: text("sync_error"),
   
   hiddenCampaigns: jsonb("hidden_campaigns").$type<string[]>().default([]),
+  aiExcludedCampaigns: jsonb("ai_excluded_campaigns").$type<string[]>().default([]),
   
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
