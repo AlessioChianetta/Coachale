@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -281,7 +282,7 @@ function renderCellValue(col: string, val: unknown, row: AggRow, activeTab: stri
   return val != null ? String(val) : "—";
 }
 
-function AdTableRow({ row, activeColumns, activeTab, ads, setSelectedAdId, setLinkDialogAd, onRowClick, isSelected, onSelectToggle, rowKey }: {
+function AdTableRow({ row, activeColumns, activeTab, ads, setSelectedAdId, setLinkDialogAd, onRowClick, isSelected, onSelectToggle, rowKey, onLinkedPostClick }: {
   row: AggRow;
   activeColumns: string[];
   activeTab: string;
@@ -292,6 +293,7 @@ function AdTableRow({ row, activeColumns, activeTab, ads, setSelectedAdId, setLi
   isSelected?: boolean;
   onSelectToggle?: (key: string) => void;
   rowKey: string;
+  onLinkedPostClick?: (metaAdId: string, adName: string, postTitle: string) => void;
 }) {
   return (
     <tr className={`border-b hover:bg-blue-50/40 dark:hover:bg-blue-950/10 transition-colors group ${
@@ -316,6 +318,21 @@ function AdTableRow({ row, activeColumns, activeTab, ads, setSelectedAdId, setLi
           </td>
         );
       })}
+      {activeTab === "ads" && (
+        <td className="px-3 py-2 whitespace-nowrap text-[13px]" onClick={(e) => e.stopPropagation()}>
+          {row.linkedPostTitle ? (
+            <button
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/50 transition-colors max-w-[200px]"
+              onClick={() => row.metaAdId && onLinkedPostClick?.(row.metaAdId, row.name, row.linkedPostTitle!)}
+            >
+              <Link2 className="h-3 w-3 flex-shrink-0" />
+              <span className="text-xs truncate">{row.linkedPostTitle}</span>
+            </button>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </td>
+      )}
       {activeTab === "ads" && (
         <td className="px-3 py-2 whitespace-nowrap">
           <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -433,6 +450,7 @@ interface AggRow {
   dateStart?: string | null;
   dateStop?: string | null;
   linkedPostTitle?: string | null;
+  linkedPostId?: string | null;
 }
 
 function aggregateAds(adsArr: MetaAd[]): Omit<AggRow, "name" | "status" | "budget" | "risultati" | "costoPer" | "pubblicazione" | "adsCount"> {
@@ -509,6 +527,8 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [simoneChatOpen, setSimoneChatOpen] = useState(false);
   const [showHiddenCampaigns, setShowHiddenCampaigns] = useState(false);
+  const [confirmUnlinkAdId, setConfirmUnlinkAdId] = useState<string | null>(null);
+  const [linkedPostDetail, setLinkedPostDetail] = useState<{ metaAdId: string; adName: string; postTitle: string } | null>(null);
 
   const activeColumns = useMemo(() => {
     if (tablePreset === "custom") return customColumns;
@@ -737,6 +757,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
       dateStart: ad.dateStart,
       dateStop: ad.dateStop,
       linkedPostTitle: ad.linkedPost ? (ad.linkedPost.title || ad.linkedPost.hook || "Post collegato") : null,
+      linkedPostId: ad.linkedPost?.id || null,
     }));
   }, [ads]);
 
@@ -1430,6 +1451,20 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                         </div>
                       </div>
                     )}
+                    {activeTab === "ads" && row.linkedPostTitle && row.metaAdId && (
+                      <div className="mt-3 pt-3 border-t">
+                        <button
+                          className="w-full flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/50 transition-colors text-left"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLinkedPostDetail({ metaAdId: row.metaAdId!, adName: row.name, postTitle: row.linkedPostTitle! });
+                          }}
+                        >
+                          <Link2 className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="text-xs truncate flex-1">{row.linkedPostTitle}</span>
+                        </button>
+                      </div>
+                    )}
                     {activeTab === "campaigns" && (
                       <div className="flex gap-2 mt-3 pt-3 border-t">
                         <Button variant="outline" size="sm" className="h-7 text-xs gap-1 flex-1" onClick={(e) => {
@@ -1533,6 +1568,9 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                         </th>
                       ))}
                       {activeTab === "ads" && (
+                        <th className="px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">Post collegato</th>
+                      )}
+                      {activeTab === "ads" && (
                         <th className="px-3 py-2 text-left font-medium text-muted-foreground w-16"></th>
                       )}
                     </tr>
@@ -1551,7 +1589,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                               <td className="px-3 py-2" colSpan={1}>
                                 {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                               </td>
-                              <td className="px-3 py-2 font-semibold text-sm" colSpan={activeColumns.length + (activeTab === "ads" ? 1 : 0)}>
+                              <td className="px-3 py-2 font-semibold text-sm" colSpan={activeColumns.length + (activeTab === "ads" ? 2 : 0)}>
                                 <div className="flex items-center gap-2">
                                   <Megaphone className="h-3.5 w-3.5 text-blue-500" />
                                   <span>{group.campaignName}</span>
@@ -1565,7 +1603,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                             {!isCollapsed && group.rows.map((row, idx) => {
                               const rk = row.metaAdId || `ad-${idx}`;
                               return (
-                                <AdTableRow key={rk} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} rowKey={rk} isSelected={selectedRows.has(rk)} onSelectToggle={toggleRowSelect} />
+                                <AdTableRow key={rk} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} rowKey={rk} isSelected={selectedRows.has(rk)} onSelectToggle={toggleRowSelect} onLinkedPostClick={(metaAdId, adName, postTitle) => setLinkedPostDetail({ metaAdId, adName, postTitle })} />
                               );
                             })}
                           </React.Fragment>
@@ -1575,7 +1613,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                       currentRows.map((row, idx) => {
                         const rk = getRowKey(row, idx);
                         return (
-                          <AdTableRow key={rk} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} onRowClick={activeTab === "campaigns" ? () => { setSelectedCampaign(row.name); setActiveTab("ads"); } : undefined} rowKey={rk} isSelected={selectedRows.has(rk)} onSelectToggle={toggleRowSelect} />
+                          <AdTableRow key={rk} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} onRowClick={activeTab === "campaigns" ? () => { setSelectedCampaign(row.name); setActiveTab("ads"); } : undefined} rowKey={rk} isSelected={selectedRows.has(rk)} onSelectToggle={toggleRowSelect} onLinkedPostClick={(metaAdId, adName, postTitle) => setLinkedPostDetail({ metaAdId, adName, postTitle })} />
                         );
                       })
                     )}
@@ -1613,6 +1651,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                           ) : ""}
                         </td>
                       ))}
+                      {activeTab === "ads" && <td className="px-3 py-2"></td>}
                       {activeTab === "ads" && <td className="px-3 py-2"></td>}
                     </tr>
                   </tfoot>
@@ -2084,6 +2123,83 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!linkedPostDetail} onOpenChange={(open) => { if (!open) setLinkedPostDetail(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5 text-green-600" />
+              Post collegato
+            </DialogTitle>
+            <DialogDescription>
+              Questa inserzione è associata a un post del Content Studio.
+            </DialogDescription>
+          </DialogHeader>
+          {linkedPostDetail && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted/50 border space-y-2">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Inserzione</p>
+                  <p className="text-sm font-semibold">{linkedPostDetail.adName}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Post associato</p>
+                  <p className="text-sm font-semibold">{linkedPostDetail.postTitle}</p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setLinkedPostDetail(null)}>
+                  Chiudi
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setConfirmUnlinkAdId(linkedPostDetail.metaAdId);
+                  }}
+                >
+                  <Unlink className="h-3.5 w-3.5" />
+                  Disassocia
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmUnlinkAdId} onOpenChange={(open) => { if (!open) setConfirmUnlinkAdId(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Unlink className="h-5 w-5 text-red-500" />
+              Conferma disassociazione
+            </DialogTitle>
+            <DialogDescription>
+              Vuoi davvero scollegare il post da questa inserzione? Potrai riassociarli in qualsiasi momento.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setConfirmUnlinkAdId(null)}>
+              Annulla
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (confirmUnlinkAdId) {
+                  unlinkMutation.mutate(confirmUnlinkAdId);
+                  setConfirmUnlinkAdId(null);
+                  setLinkedPostDetail(null);
+                }
+              }}
+              disabled={unlinkMutation.isPending}
+            >
+              {unlinkMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Disassocia
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

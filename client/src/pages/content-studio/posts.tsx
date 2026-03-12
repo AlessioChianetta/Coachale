@@ -105,6 +105,8 @@ import {
   Download,
   Megaphone,
   Target,
+  Link2,
+  Unlink,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -1124,6 +1126,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
   const [bulkPublishDialogOpen, setBulkPublishDialogOpen] = useState(false);
   const [publerPost, setPublerPost] = useState<Post | null>(null);
   const [openPublerAfterSave, setOpenPublerAfterSave] = useState(false);
+  const [confirmUnlinkPostId, setConfirmUnlinkPostId] = useState<string | null>(null);
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedPublerFilter, setSelectedPublerFilter] = useState<string>("all");
@@ -1404,10 +1407,10 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
     staleTime: 5 * 60 * 1000,
   });
   const metaAdsByMetaId = useMemo(() => {
-    const map: Record<string, { spend: number; cpc: number | null; ctr: number | null }> = {};
+    const map: Record<string, { spend: number; cpc: number | null; ctr: number | null; adName: string; campaignName: string }> = {};
     if (metaAdsLookupData?.ads) {
       for (const ad of metaAdsLookupData.ads) {
-        map[ad.metaAdId] = { spend: ad.spend || 0, cpc: ad.cpc || null, ctr: ad.ctr || null };
+        map[ad.metaAdId] = { spend: ad.spend || 0, cpc: ad.cpc || null, ctr: ad.ctr || null, adName: ad.adName || "Inserzione", campaignName: ad.campaignName || "" };
       }
     }
     return map;
@@ -1714,6 +1717,28 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
     onError: (error: Error) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     },
+  });
+
+  const unlinkMetaAdMutation = useMutation({
+    mutationFn: async (metaAdId: string) => {
+      const res = await fetch(`/api/meta-ads/ads/${metaAdId}/unlink-post`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Unlink failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/meta-ads/ads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/meta-ads/unlinked-posts"] });
+      setConfirmUnlinkPostId(null);
+      if (viewingPost) {
+        setViewingPost({ ...viewingPost, metaAdId: null } as Post);
+      }
+      toast({ title: "Disassociato", description: "Il post è stato scollegato dall'inserzione" });
+    },
+    onError: () => toast({ title: "Errore", description: "Disassociazione fallita", variant: "destructive" }),
   });
 
   const toggleProjectExpanded = (projectId: string) => {
@@ -5024,7 +5049,34 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                   </div>
 
                   {/* Footer */}
-                  <div className="px-6 py-3 border-t bg-slate-50 dark:bg-zinc-900 flex-shrink-0">
+                  <div className="px-6 py-3 border-t bg-slate-50 dark:bg-zinc-900 flex-shrink-0 space-y-2">
+                    {viewingPost.metaAdId && (
+                      <div className="flex items-center gap-3 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                        <Link2 className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-blue-800 dark:text-blue-300 truncate">
+                            {metaAdsByMetaId[viewingPost.metaAdId]
+                              ? metaAdsByMetaId[viewingPost.metaAdId].adName
+                              : "Inserzione collegata"}
+                          </p>
+                          {metaAdsByMetaId[viewingPost.metaAdId]?.campaignName && (
+                            <p className="text-[11px] text-blue-600/70 dark:text-blue-400/70 truncate">
+                              {metaAdsByMetaId[viewingPost.metaAdId].campaignName}
+                              {" · "}Spesa: {new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(metaAdsByMetaId[viewingPost.metaAdId].spend)}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-950/30 gap-1 flex-shrink-0"
+                          onClick={() => setConfirmUnlinkPostId(viewingPost.metaAdId!)}
+                        >
+                          <Unlink className="h-3.5 w-3.5" />
+                          <span className="text-xs">Disassocia</span>
+                        </Button>
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       Creato il {new Date(viewingPost.createdAt).toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </p>
@@ -5033,6 +5085,37 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmUnlinkPostId} onOpenChange={(open) => { if (!open) setConfirmUnlinkPostId(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Unlink className="h-5 w-5 text-red-500" />
+              Disassociare inserzione?
+            </DialogTitle>
+            <DialogDescription>
+              Il post verrà scollegato dall'inserzione Meta Ads. Potrai riassociarlo in qualsiasi momento dalla pagina Facebook Ads.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setConfirmUnlinkPostId(null)}>
+              Annulla
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (confirmUnlinkPostId) {
+                  unlinkMetaAdMutation.mutate(confirmUnlinkPostId);
+                }
+              }}
+              disabled={unlinkMetaAdMutation.isPending}
+            >
+              {unlinkMetaAdMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Disassocia
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
