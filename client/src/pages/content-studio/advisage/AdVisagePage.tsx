@@ -256,6 +256,11 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
           if (xhr.status >= 200 && xhr.status < 300 && result.success) {
             console.log(`[ADVISAGE-SAVE] ✅ Immagine salvata con successo | concept=${conceptId} | dbId=${result.data?.id} | path=${result.data?.image_path}`);
             updateImageSaveStatus(conceptId, ts, 'saved');
+            if (result.data?.image_path) {
+              setGeneratedImages(prev => prev.map(img =>
+                img.conceptId === conceptId && img.timestamp === ts ? { ...img, savedFilePath: result.data.image_path } : img
+              ));
+            }
           } else {
             console.error(`[ADVISAGE-SAVE] ❌ Salvataggio fallito | concept=${conceptId} | status=${xhr.status} | error=${result.error || 'unknown'}`);
             updateImageSaveStatus(conceptId, ts, 'failed');
@@ -828,9 +833,14 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     try {
       let finalImageUrl = imageUrl;
       if (imageUrl.startsWith('data:')) {
-        const conceptId = generatedImages.find(img => img.imageUrl === imageUrl)?.conceptId;
-        finalImageUrl = await saveBase64AsFile(imageUrl, conceptId);
-        console.log(`[ADVISAGE-LINK] 📁 Base64 convertita in file: ${finalImageUrl}`);
+        const matchingImg = generatedImages.find(img => img.imageUrl === imageUrl);
+        if (matchingImg?.savedFilePath) {
+          finalImageUrl = matchingImg.savedFilePath;
+          console.log(`[ADVISAGE-LINK] ♻ Riuso path sessione esistente: ${finalImageUrl}`);
+        } else {
+          finalImageUrl = await saveBase64AsFile(imageUrl, matchingImg?.conceptId);
+          console.log(`[ADVISAGE-LINK] 📁 Base64 convertita in file: ${finalImageUrl}`);
+        }
       }
 
       const res = await fetch(`/api/content/posts/${sourcePostId}`, {
@@ -842,7 +852,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       console.log(`[ADVISAGE-LINK] Risposta server | status=${res.status} | ok=${res.ok}`);
       if (res.ok) {
         setGeneratedImages(prev => prev.map(img => {
-          if (img.imageUrl === imageUrl) return { ...img, linkedToPost: true };
+          if (img.imageUrl === imageUrl) return { ...img, linkedToPost: true, savedFilePath: img.savedFilePath || finalImageUrl };
           return img;
         }));
         toast({ title: "Immagine associata", description: `Immagine salvata nel post "${activePost?.sourcePostTitle || 'collegato'}"` });

@@ -92,6 +92,7 @@ export interface GeneratedImage {
   variant: 'clean' | 'text';
   timestamp: number;
   savedToSession?: 'pending' | 'saved' | 'failed';
+  savedFilePath?: string;
   linkedToPost?: boolean;
 }
 
