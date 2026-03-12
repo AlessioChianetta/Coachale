@@ -349,4 +349,48 @@ router.get("/summary", authenticateToken, requireRole("consultant"), async (req:
   }
 });
 
+router.delete("/disconnect", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const [config] = await db
+      .select()
+      .from(schema.consultantMetaAdsConfig)
+      .where(
+        and(
+          eq(schema.consultantMetaAdsConfig.consultantId, consultantId),
+          eq(schema.consultantMetaAdsConfig.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (!config) {
+      return res.status(404).json({ success: false, error: "Nessun account Meta Ads collegato" });
+    }
+
+    await db
+      .update(schema.consultantMetaAdsConfig)
+      .set({
+        isActive: false,
+        isConnected: false,
+        accessToken: null,
+        syncEnabled: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.consultantMetaAdsConfig.id, config.id));
+
+    await db
+      .update(schema.contentPosts)
+      .set({ metaAdId: null, updatedAt: new Date() })
+      .where(eq(schema.contentPosts.consultantId, consultantId));
+
+    console.log(`[META-ADS] Disconnected account for consultant ${consultantId}`);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("[META-ADS] Error disconnecting:", error);
+    return res.status(500).json({ success: false, error: "Failed to disconnect" });
+  }
+});
+
 export default router;

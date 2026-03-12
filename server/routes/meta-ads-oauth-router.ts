@@ -40,6 +40,7 @@ const FB_GRAPH_URL = "https://graph.facebook.com/v19.0";
 const ADS_SCOPES = [
   "public_profile",
   "ads_read",
+  "ads_management",
   "business_management",
   "pages_show_list",
 ].join(",");

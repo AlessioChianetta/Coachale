@@ -114,7 +114,7 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
     for (const ad of ads) {
       try {
         const insightsRes = await fetch(
-          `${FB_GRAPH_URL}/${ad.id}/insights?fields=spend,impressions,clicks,reach,actions,cost_per_action_type,cpc,cpm,ctr,frequency&date_preset=maximum&access_token=${accessToken}`
+          `${FB_GRAPH_URL}/${ad.id}/insights?fields=spend,impressions,clicks,reach,actions,cost_per_action_type,cpc,cpm,ctr,frequency,purchase_roas&date_preset=maximum&access_token=${accessToken}`
         );
         if (!insightsRes.ok) {
           console.warn(`[META-ADS SYNC] Insights fetch failed for ad ${ad.id}: HTTP ${insightsRes.status}`);
@@ -135,6 +135,11 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
         const ctr = parseFloat(insights.ctr || "0") || (impressionsVal > 0 ? (clicksVal / impressionsVal) * 100 : null);
         const cpl = leads > 0 ? spend / leads : null;
         const frequency = parseFloat(insights.frequency || "0") || null;
+
+        let roas: number | null = null;
+        if (insights.purchase_roas && Array.isArray(insights.purchase_roas) && insights.purchase_roas.length > 0) {
+          roas = parseFloat(insights.purchase_roas[0]?.value || "0") || null;
+        }
 
         const campaignBudget = ad.campaign?.daily_budget
           ? parseFloat(ad.campaign.daily_budget) / 100
@@ -178,7 +183,7 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
           ctr,
           cpl,
           frequency,
-          roas: null as number | null,
+          roas,
           creativeThumbnailUrl: ad.creative?.thumbnail_url || null,
           creativeBody: ad.creative?.body || null,
           creativeTitle: ad.creative?.title || null,
@@ -311,7 +316,7 @@ function extractActionValue(actions: any[], actionType: string): number {
 }
 
 export function startMetaAdsSyncScheduler(): void {
-  const enabled = process.env.META_ADS_SYNC_ENABLED !== "false";
+  const enabled = process.env.META_ADS_SYNC_ENABLED === "true";
   if (!enabled) {
     console.log("[META-ADS SYNC] Scheduler is disabled (set META_ADS_SYNC_ENABLED=true to enable)");
     return;

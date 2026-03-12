@@ -592,4 +592,14 @@ app.use((req, res, next) => {
   } else {
     log("📞 Telnyx provisioning poller is disabled (set TELNYX_POLLING_ENABLED=true to enable)");
   }
+
+  const metaAdsSyncEnabled = schedulersMasterEnabled && process.env.META_ADS_SYNC_ENABLED === "true";
+  if (metaAdsSyncEnabled) {
+    const { startMetaAdsSyncScheduler } = await import("./services/meta-ads-sync-service");
+    log("📊 Meta Ads sync scheduler enabled - starting (every 15 min)...");
+    startMetaAdsSyncScheduler();
+    log("✅ Meta Ads sync scheduler started");
+  } else {
+    log("📊 Meta Ads sync scheduler is disabled (set META_ADS_SYNC_ENABLED=true to enable)");
+  }
 })();
