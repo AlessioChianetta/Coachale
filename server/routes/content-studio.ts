@@ -3485,7 +3485,9 @@ router.post("/ai/generate-lead-form", authenticateToken, requireRole("consultant
     const postTitle = validatedData.title || post.title || "";
     const postPlatform = validatedData.platform || post.platform || "facebook";
 
-    const { trackedGenerateContent } = await getAIProvider(consultantId, "lead-form-generator");
+    const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, "lead-form-generator");
+    setFeature?.('lead-form-generator');
+    const { model } = getModelWithThinking(metadata?.name);
 
     const leadFormPrompt = `Sei un esperto di Facebook Ads e Lead Generation. Devi creare il contenuto completo per un Facebook Lead Form (Modulo Interattivo / Instant Form) basato sull'inserzione fornita.
 
@@ -3566,18 +3568,16 @@ RISPONDI IN JSON con questa struttura ESATTA:
   }
 }`;
 
-    const result = await trackedGenerateContent(
-      {
-        contents: [{ role: "user", parts: [{ text: leadFormPrompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.7,
-        },
+    const result = await trackedGenerateContent({
+      model,
+      contents: [{ role: "user", parts: [{ text: leadFormPrompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.7,
       },
-      { consultantId, feature: "lead-form-generator" }
-    );
+    } as any, { consultantId, feature: "lead-form-generator", callerRole: "consultant" });
 
-    const responseText = result.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const responseText = result.response?.text?.() || result.response?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!responseText) {
       throw new Error("No response from AI");
     }
