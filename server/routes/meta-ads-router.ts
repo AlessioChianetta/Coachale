@@ -723,6 +723,19 @@ router.post("/ai-excluded-campaigns", authenticateToken, requireRole("consultant
   }
 });
 
+router.post("/simone-cleanup", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { cleanupSimoneStaleData } = await import("../scripts/cleanup-simone-stale-data");
+    const result = await cleanupSimoneStaleData(consultantId);
+    console.log(`[META-ADS] Simone cleanup for ${consultantId}:`, result);
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("[META-ADS] Error cleaning Simone data:", error);
+    return res.status(500).json({ success: false, error: "Cleanup failed" });
+  }
+});
+
 router.get("/campaign-export/:campaignName", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;

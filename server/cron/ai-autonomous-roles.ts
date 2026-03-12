@@ -3441,7 +3441,7 @@ DATA/ORA ATTUALE: ${romeTimeStr}
 - Video views totali: ${totalVideoViews.toLocaleString('it-IT')}
 
 === CAMPAGNE (AGGREGATI) ===
-${campaignsSummary.length > 0 ? JSON.stringify(campaignsSummary, null, 2) : 'Nessuna campagna attiva trovata. L\'account potrebbe non avere campagne in esecuzione o il sync potrebbe non essere aggiornato.'}
+${campaignsSummary.length > 0 ? JSON.stringify(campaignsSummary, null, 2) : (roleData.aiExcludedCount > 0 ? `Tutte le campagne sono state escluse dall'analisi AI dal consulente (${roleData.aiExcludedCount} escluse). Non ci sono campagne disponibili per l'analisi.` : 'Nessuna campagna trovata nel database. Il sync con Meta potrebbe non essere configurato.')}
 
 === ANOMALIE GIÀ RILEVATE (pre-analisi automatica) ===
 ${anomalies.length > 0 ? anomalies.join('\n') : '✅ Nessuna anomalia critica rilevata dalla pre-analisi automatica. Ma analizza comunque i dati in profondità — potresti trovare pattern che la pre-analisi non coglie.'}

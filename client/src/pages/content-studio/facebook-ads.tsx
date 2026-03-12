@@ -76,6 +76,7 @@ import {
   Home,
   MessageCircle,
   Bot,
+  BotOff,
 } from "lucide-react";
 import AgentChat from "@/components/autonomy/AgentChat";
 import Navbar from "@/components/navbar";
@@ -1446,8 +1447,8 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                           }}
                           title={aiExcludedCampaigns.includes(row.name) ? "Clicca per riattivare l'analisi AI di Simone" : "Clicca per escludere dall'analisi AI di Simone"}
                         >
-                          <Bot className="h-3 w-3" />
-                          {aiExcludedCampaigns.includes(row.name) ? "🚫 Esclusa da AI" : "✅ Simone analizza"}
+                          {aiExcludedCampaigns.includes(row.name) ? <BotOff className="h-3 w-3" /> : <Bot className="h-3 w-3" />}
+                          {aiExcludedCampaigns.includes(row.name) ? "Esclusa da AI" : "Simone analizza"}
                         </Button>
                       </div>
                     )}
@@ -2139,8 +2140,8 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                       }}
                       title={aiExcludedCampaigns.includes(name) ? "Clicca per riattivare l'analisi AI" : "Clicca per escludere dall'analisi AI"}
                     >
-                      <Bot className="h-3.5 w-3.5" />
-                      {aiExcludedCampaigns.includes(name) ? "🚫 Esclusa" : "✅ AI On"}
+                      {aiExcludedCampaigns.includes(name) ? <BotOff className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
+                      {aiExcludedCampaigns.includes(name) ? "Esclusa" : "AI On"}
                     </Button>
                   </div>
                 );
