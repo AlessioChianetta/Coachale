@@ -9011,6 +9011,9 @@ export const contentPosts = pgTable("content_posts", {
   soluzione: text("soluzione"),
   riprovaSociale: text("riprova_sociale"),
   
+  // Meta Ads association
+  metaAdId: varchar("meta_ad_id", { length: 100 }),
+  
   // Publer integration fields
   publerPostId: varchar("publer_post_id"),
   publerStatus: varchar("publer_status").$type<"draft" | "scheduled" | "published" | "failed">(),
@@ -11046,3 +11049,126 @@ export const consultantFunnels = pgTable("consultant_funnels", {
 
 export type ConsultantFunnel = typeof consultantFunnels.$inferSelect;
 export type InsertConsultantFunnel = typeof consultantFunnels.$inferInsert;
+
+// ============================================================
+// META ADS CONFIGURATION (per consultant)
+// ============================================================
+
+export const consultantMetaAdsConfig = pgTable("consultant_meta_ads_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  adAccountId: varchar("ad_account_id", { length: 100 }),
+  adAccountName: varchar("ad_account_name", { length: 255 }),
+  businessId: varchar("business_id", { length: 100 }),
+  businessName: varchar("business_name", { length: 255 }),
+  
+  accessToken: text("access_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  
+  isActive: boolean("is_active").notNull().default(true),
+  isConnected: boolean("is_connected").notNull().default(false),
+  connectedAt: timestamp("connected_at"),
+  
+  syncEnabled: boolean("sync_enabled").notNull().default(true),
+  lastSyncedAt: timestamp("last_synced_at"),
+  syncError: text("sync_error"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_meta_ads_config_consultant").on(table.consultantId),
+}));
+
+export type ConsultantMetaAdsConfig = typeof consultantMetaAdsConfig.$inferSelect;
+export type InsertConsultantMetaAdsConfig = typeof consultantMetaAdsConfig.$inferInsert;
+
+// ============================================================
+// META AD INSIGHTS (current metrics per ad)
+// ============================================================
+
+export const metaAdInsights = pgTable("meta_ad_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  configId: varchar("config_id").references(() => consultantMetaAdsConfig.id, { onDelete: "cascade" }),
+  
+  metaAdId: varchar("meta_ad_id", { length: 100 }).notNull(),
+  metaCampaignId: varchar("meta_campaign_id", { length: 100 }),
+  metaAdsetId: varchar("meta_adset_id", { length: 100 }),
+  
+  adName: varchar("ad_name", { length: 500 }),
+  campaignName: varchar("campaign_name", { length: 500 }),
+  adsetName: varchar("adset_name", { length: 500 }),
+  
+  adStatus: varchar("ad_status", { length: 50 }).default("UNKNOWN"),
+  campaignStatus: varchar("campaign_status", { length: 50 }),
+  
+  dailyBudget: real("daily_budget"),
+  lifetimeBudget: real("lifetime_budget"),
+  
+  spend: real("spend").default(0),
+  impressions: integer("impressions").default(0),
+  clicks: integer("clicks").default(0),
+  reach: integer("reach").default(0),
+  leads: integer("leads").default(0),
+  conversions: integer("conversions").default(0),
+  
+  cpc: real("cpc"),
+  cpm: real("cpm"),
+  ctr: real("ctr"),
+  cpl: real("cpl"),
+  frequency: real("frequency"),
+  roas: real("roas"),
+  
+  creativeThumbnailUrl: text("creative_thumbnail_url"),
+  creativeBody: text("creative_body"),
+  creativeTitle: text("creative_title"),
+  
+  dateStart: date("date_start"),
+  dateStop: date("date_stop"),
+  
+  lastSyncedAt: timestamp("last_synced_at").default(sql`now()`),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_meta_ad_insights_consultant").on(table.consultantId),
+  metaAdIdx: index("idx_meta_ad_insights_meta_ad").on(table.metaAdId),
+  campaignIdx: index("idx_meta_ad_insights_campaign").on(table.metaCampaignId),
+}));
+
+export type MetaAdInsight = typeof metaAdInsights.$inferSelect;
+export type InsertMetaAdInsight = typeof metaAdInsights.$inferInsert;
+
+// ============================================================
+// META AD INSIGHTS DAILY (historical snapshots for trends)
+// ============================================================
+
+export const metaAdInsightsDaily = pgTable("meta_ad_insights_daily", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  metaAdId: varchar("meta_ad_id", { length: 100 }).notNull(),
+  
+  snapshotDate: date("snapshot_date").notNull(),
+  
+  spend: real("spend").default(0),
+  impressions: integer("impressions").default(0),
+  clicks: integer("clicks").default(0),
+  reach: integer("reach").default(0),
+  leads: integer("leads").default(0),
+  conversions: integer("conversions").default(0),
+  cpc: real("cpc"),
+  cpm: real("cpm"),
+  ctr: real("ctr"),
+  cpl: real("cpl"),
+  frequency: real("frequency"),
+  roas: real("roas"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_meta_ad_daily_consultant").on(table.consultantId),
+  metaAdIdx: index("idx_meta_ad_daily_ad").on(table.metaAdId),
+  dateIdx: index("idx_meta_ad_daily_date").on(table.snapshotDate),
+}));
+
+export type MetaAdInsightDaily = typeof metaAdInsightsDaily.$inferSelect;
+export type InsertMetaAdInsightDaily = typeof metaAdInsightsDaily.$inferInsert;

@@ -101,6 +101,7 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 *   **Telnyx API v2**: VoIP number provisioning, SIP connections, managed accounts for multi-tenant telephony.
 *   **@xyflow/react**: React Flow v12 for the Funnel Flow Builder (drag-and-drop canvas).
 *   **dagre**: Auto-layout engine for AI-generated funnels.
+*   **Meta Marketing API v19.0**: Facebook Ads insights sync (ads_read, business_management scopes). OAuth reuses `superadminInstagramConfig` app credentials. Tables: `consultant_meta_ads_config`, `meta_ad_insights`, `meta_ad_insights_daily`. Files: `server/routes/meta-ads-oauth-router.ts` (HMAC-signed state), `server/routes/meta-ads-router.ts` (CRUD + sync), `server/services/meta-ads-sync-service.ts`. Scheduler disabled by default (`META_ADS_SYNC_ENABLED=true`).
 
 # Academy Modules
 The Academy system (`/consultant/academy`) has 16 modules total:

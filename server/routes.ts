@@ -129,6 +129,8 @@ import instagramWebhookRouter from "./routes/instagram/instagram-webhook-router"
 import instagramConfigRouter from "./routes/instagram/instagram-config-router";
 import instagramOAuthRouter from "./routes/instagram/instagram-oauth-router";
 import agentInstagramRouter from "./routes/instagram/agent-instagram-router";
+import metaAdsOAuthRouter from "./routes/meta-ads-oauth-router";
+import metaAdsRouter from "./routes/meta-ads-router";
 import twitterWebhookRouter from "./routes/twitter/twitter-webhook-router";
 import twitterConfigRouter from "./routes/twitter/twitter-config-router";
 import twitterOAuthRouter from "./routes/twitter/twitter-oauth-router";
@@ -14173,6 +14175,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   app.use("/api/instagram", instagramConfigRouter); // Authenticated config endpoints
   app.use("/api/instagram", instagramOAuthRouter); // OAuth flow endpoints
   app.use("/api/consultant/agents", agentInstagramRouter); // Per-agent Instagram config
+
+  // Meta Ads Integration routes
+  app.use("/api/meta-ads", metaAdsOAuthRouter); // OAuth flow for Meta Ads
+  app.use("/api/meta-ads", metaAdsRouter); // Ads data, sync, link endpoints
 
   // Twitter/X Integration routes (order matters: more specific paths first)
   app.use("/api/twitter/webhook", twitterWebhookRouter); // Public webhook endpoints
