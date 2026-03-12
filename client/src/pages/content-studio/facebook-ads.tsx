@@ -2168,7 +2168,23 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   );
 
   if (embedded) {
-    return <div className="p-4 sm:p-6">{content}</div>;
+    return (
+      <div className="p-4 sm:p-6">
+        {content}
+        {simoneChatOpen && (
+          <div className="fixed top-0 right-0 h-full w-[380px] sm:w-[420px] z-50 border-l bg-background shadow-2xl">
+            <AgentChat
+              roleId="simone"
+              roleName="Simone – Ads Strategist"
+              avatar="📊"
+              accentColor="orange"
+              open={true}
+              onClose={() => setSimoneChatOpen(false)}
+            />
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
