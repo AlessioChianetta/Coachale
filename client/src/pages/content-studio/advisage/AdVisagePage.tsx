@@ -559,12 +559,13 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     try {
       const typesToSend = hasManual ? [...allTypes, `manual:${productionManualText.trim()}`] : allTypes;
       const result = await analyzeAdText(activePost.originalText, activePost.socialNetwork, settings, typesToSend, stylesMode);
-      setBatchResults(prev => prev.map(p => {
+      const updatedBatch = batchResults.map(p => {
         if (p.id !== activePost.id) return p;
         const existingIds = new Set(p.concepts.map(c => c.id));
         const newConcepts = result.concepts.filter(c => !existingIds.has(c.id));
         return { ...p, concepts: [...p.concepts, ...newConcepts] };
-      }));
+      });
+      setBatchResults(updatedBatch);
       setCustomPrompts(prev => {
         const updated = { ...prev };
         result.concepts.forEach(c => {
@@ -573,11 +574,14 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         });
         return updated;
       });
+      if (currentSessionId) {
+        await saveSessionToServer(updatedBatch, postInputs, currentSessionId);
+      }
       setProductionConceptTypes([]);
       setProductionRegenTypes([]);
       setProductionManualText('');
       setShowProductionTypePicker(false);
-      toast({ title: "Concetti aggiunti", description: `${result.concepts.length} nuovi concept aggiunti al post` });
+      toast({ title: "Concetti aggiunti e salvati", description: `${result.concepts.length} nuovi concept aggiunti al post` });
     } catch (err: any) {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
     } finally {
