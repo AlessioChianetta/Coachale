@@ -531,7 +531,9 @@ export default function ContentStudioIdeas() {
       setPendingUrl(null);
       setPendingTab(null);
       blockerBypassRef.current = true;
-      window.location.assign(url);
+      const path = new URL(url, window.location.origin).pathname;
+      history.pushState(null, "", path);
+      window.dispatchEvent(new PopStateEvent("popstate"));
     }
   }, [pendingTab, pendingUrl]);
 
@@ -587,6 +589,10 @@ export default function ContentStudioIdeas() {
     history.replaceState = interceptNav(originalReplaceState);
 
     const handlePopState = () => {
+      if (blockerBypassRef.current) {
+        blockerBypassRef.current = false;
+        return;
+      }
       if (funnelDirtyRef.current) {
         const targetUrl = window.location.href;
         originalPushState(null, "", currentUrl);
