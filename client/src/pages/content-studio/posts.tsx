@@ -103,6 +103,8 @@ import {
   CheckCircle,
   MessageSquarePlus,
   Download,
+  Megaphone,
+  Target,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -152,6 +154,7 @@ interface Post {
   imageUrl?: string;
   imageDescription?: string;
   imageOverlayText?: string;
+  isAd?: boolean;
   structuredContent?: {
     copyType?: string;
     mediaType?: string;
@@ -1088,6 +1091,8 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
   const [videoSectionOpen, setVideoSectionOpen] = useState(true);
   const [imageSectionOpen, setImageSectionOpen] = useState(true);
 
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
+  const [isAd, setIsAd] = useState(false);
   const [isCarouselMode, setIsCarouselMode] = useState(false);
   const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[]>([
     { title: "", content: "" },
@@ -1534,6 +1539,8 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
       setIsDialogOpen(false);
       setEditingPost(null);
       setFormData({ title: "", hook: "", body: "", cta: "", fullCopy: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", videoFullScript: "", videoUrl: "", imageDescription: "", imageOverlayText: "" });
+      setIsAd(false);
+      setWizardStep(1);
       setSuggestedHashtags([]);
       resetCarouselState();
       setCopyTypeFromIdea(false);
@@ -2219,11 +2226,11 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
       publerMediaIds = editingPost.publerMediaIds as Array<{ id: string; path?: string; thumbnail?: string }>;
     }
 
-    // Base payload with all flat fields for database columns
     const basePayload = {
       ...formData,
       copyType: selectedCopyType,
       mediaType: selectedMediaType,
+      isAd,
       fullCopy: formData.fullCopy || undefined,
       chiCosaCome: formData.chiCosaCome || undefined,
       errore: formData.errore || undefined,
@@ -2346,6 +2353,8 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
       setSelectedMediaType(mediaType);
     }
     
+    setIsAd(!!post.isAd);
+    setWizardStep(1);
     setEditingPost(post);
     setIsDialogOpen(true);
   };
@@ -2775,16 +2784,17 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                   setEditingPost(null);
                   setSourceIdeaId(null);
                   setSourceIdeaTitle(null);
-                  setFormData({ title: "", hook: "", body: "", cta: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", videoFullScript: "", videoUrl: "", imageDescription: "", imageOverlayText: "" });
+                  setFormData({ title: "", hook: "", body: "", cta: "", fullCopy: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", videoFullScript: "", videoUrl: "", imageDescription: "", imageOverlayText: "" });
                   setSuggestedHashtags([]);
+                  setIsAd(false);
+                  setWizardStep(1);
                   resetCarouselState();
-                  // Cleanup object URLs when dialog is closed without saving
                   uploadedMedia.forEach(m => {
                     if (m.localPreview) URL.revokeObjectURL(m.localPreview);
                   });
                   setUploadedMedia([]);
                   setUploadedVideo(null);
-                  setMediaModified(false); // Reset flag modifica immagini
+                  setMediaModified(false);
                 }
               }}>
                 <DialogTrigger asChild>
@@ -2807,13 +2817,41 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                       </div>
                     )}
                   </DialogHeader>
+
+                  {/* Wizard Step Indicator */}
+                  <div className="flex items-center gap-2 py-3 border-b">
+                    {[
+                      { step: 1, label: "Impostazioni", icon: <Filter className="h-3.5 w-3.5" /> },
+                      { step: 2, label: "Contenuto", icon: <FileText className="h-3.5 w-3.5" /> },
+                      { step: 3, label: "Anteprima & Pubblica", icon: <Eye className="h-3.5 w-3.5" /> },
+                    ].map(({ step, label, icon }, idx) => (
+                      <div key={step} className="flex items-center gap-2">
+                        {idx > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                        <button
+                          type="button"
+                          onClick={() => setWizardStep(step as 1 | 2 | 3)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                            wizardStep === step
+                              ? "bg-primary text-primary-foreground"
+                              : wizardStep > step
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {wizardStep > step ? <Check className="h-3.5 w-3.5" /> : icon}
+                          {label}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
                   <div className="py-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      {/* Colonna sinistra - Impostazioni */}
-                      <div className="space-y-4">
+                    {/* ===== STEP 1: Impostazioni ===== */}
+                    {wizardStep === 1 && (
+                      <div className="max-w-2xl mx-auto space-y-6">
                         <div className="space-y-4">
                           <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                            Impostazioni
+                            Impostazioni Base
                           </h4>
                           
                           <div className="space-y-2">
@@ -2931,54 +2969,106 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                               </p>
                             )}
                           </div>
-                        </div>
 
-                        <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 space-y-3">
-                          <h4 className="font-semibold text-sm flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-gray-500" />
-                            Genera con AI
-                          </h4>
-                          <Textarea
-                            placeholder="Descrivi l'idea del post..."
-                            value={ideaForCopy}
-                            onChange={(e) => setIdeaForCopy(e.target.value)}
-                            className="bg-background min-h-[60px]"
-                            style={{ fieldSizing: 'content' } as React.CSSProperties}
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              variant="default"
-                              onClick={handleGenerateCopy}
-                              disabled={isGenerating}
-                              className="flex-1"
-                            >
-                              {isGenerating ? (
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              ) : (
-                                <Sparkles className="h-4 w-4 mr-2" />
-                              )}
-                              {isCarouselMode ? "Genera" : "3 Variazioni"}
-                            </Button>
-                            {isCarouselMode && (formData.body || ideaForCopy) && (
-                              <Button
-                                variant="secondary"
-                                onClick={handleConvertToCarouselSlides}
-                                title="Dividi contenuto in slide"
-                              >
-                                <Layers className="h-4 w-4" />
-                              </Button>
-                            )}
+                          <div className="flex items-center gap-3 p-3 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20">
+                            <Megaphone className="h-5 w-5 text-orange-500" />
+                            <div className="flex-1">
+                              <Label htmlFor="is-ad-mode" className="font-medium cursor-pointer text-sm">
+                                Contenuto Ads
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Segna come inserzione pubblicitaria
+                              </p>
+                            </div>
+                            <Switch
+                              id="is-ad-mode"
+                              checked={isAd}
+                              onCheckedChange={setIsAd}
+                            />
                           </div>
-                          {isCarouselMode && (
-                            <p className="text-xs text-muted-foreground">
-                              Genera il contenuto AI, poi clicca l'icona Layers per dividerlo in slide
-                            </p>
+                          {isAd && (
+                            <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                              <p className="text-xs text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
+                                <Target className="h-3.5 w-3.5" />
+                                Questo post verrà salvato come Ad e potrà essere associato a campagne Facebook Ads
+                              </p>
+                            </div>
                           )}
                         </div>
-                      </div>
 
-                      {/* Colonna destra - Contenuto (2 colonne) */}
-                      <div className="lg:col-span-2 space-y-4">
+                        <div className="flex justify-end pt-4 border-t">
+                          <Button onClick={() => setWizardStep(2)}>
+                            Avanti
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ===== STEP 2: Contenuto ===== */}
+                    {wizardStep === 2 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                          <div className="space-y-4">
+                            <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 space-y-3">
+                              <h4 className="font-semibold text-sm flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-gray-500" />
+                                Genera con AI
+                              </h4>
+                              <Textarea
+                                placeholder="Descrivi l'idea del post..."
+                                value={ideaForCopy}
+                                onChange={(e) => setIdeaForCopy(e.target.value)}
+                                className="bg-background min-h-[60px]"
+                                style={{ fieldSizing: 'content' } as React.CSSProperties}
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="default"
+                                  onClick={handleGenerateCopy}
+                                  disabled={isGenerating}
+                                  className="flex-1"
+                                >
+                                  {isGenerating ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  ) : (
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                  )}
+                                  {isCarouselMode ? "Genera" : "3 Variazioni"}
+                                </Button>
+                                {isCarouselMode && (formData.body || ideaForCopy) && (
+                                  <Button
+                                    variant="secondary"
+                                    onClick={handleConvertToCarouselSlides}
+                                    title="Dividi contenuto in slide"
+                                  >
+                                    <Layers className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                              {isCarouselMode && (
+                                <p className="text-xs text-muted-foreground">
+                                  Genera il contenuto AI, poi clicca l'icona Layers per dividerlo in slide
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
+                              <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Riepilogo Impostazioni</h4>
+                              <div className="flex flex-wrap gap-1.5">
+                                {formData.platform && <Badge variant="secondary" className="text-xs">{formData.platform}</Badge>}
+                                <Badge variant="secondary" className="text-xs">{selectedCopyType === "long" ? "Copy Lungo" : "Copy Corto"}</Badge>
+                                <Badge variant="secondary" className="text-xs">{selectedMediaType === "video" ? "Video" : "Foto"}</Badge>
+                                {isCarouselMode && <Badge variant="secondary" className="text-xs">Carosello</Badge>}
+                                {isAd && <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">Ads</Badge>}
+                              </div>
+                              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setWizardStep(1)}>
+                                <Pencil className="h-3 w-3 mr-1" /> Modifica Impostazioni
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="lg:col-span-2 space-y-4">
 
                     {isCarouselMode ? (
                       <div className="space-y-4">
@@ -3686,99 +3776,102 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                       </div>
                     )}
 
-                        <Collapsible open={showPreview} onOpenChange={setShowPreview}>
-                          <CollapsibleTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full justify-between"
-                              type="button"
-                            >
-                              <div className="flex items-center gap-2">
-                                <Eye className="h-4 w-4" />
-                                Anteprima Social
-                              </div>
-                              {showPreview ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="mt-4">
-                            <div className="rounded-lg border bg-muted/30 p-4">
-                              <div className="flex items-center gap-2 mb-4">
-                                {formData.platform && (
-                                  <>
-                                    {formData.platform === "instagram" && (
-                                      <Instagram className="h-4 w-4 text-pink-500" />
-                                    )}
-                                    {formData.platform === "facebook" && (
-                                      <Facebook className="h-4 w-4 text-blue-600" />
-                                    )}
-                                    {formData.platform === "linkedin" && (
-                                      <Linkedin className="h-4 w-4 text-blue-700" />
-                                    )}
-                                    {formData.platform === "twitter" && (
-                                      <Twitter className="h-4 w-4 text-sky-500" />
-                                    )}
-                                    {formData.platform === "tiktok" && (
-                                      <span className="text-sm">🎵</span>
-                                    )}
-                                  </>
-                                )}
-                                <span className="text-sm font-medium">
-                                  {formData.platform
-                                    ? `Anteprima ${formData.platform.charAt(0).toUpperCase() + formData.platform.slice(1)}`
-                                    : "Seleziona una piattaforma"}
-                                </span>
-                              </div>
-                              <SocialPreview
-                                platform={formData.platform}
-                                hook={formData.hook}
-                                body={formData.fullCopy || formData.body}
-                                cta={formData.cta}
-                                copyType={selectedCopyType}
-                                chiCosaCome={formData.chiCosaCome}
-                                errore={formData.errore}
-                                soluzione={formData.soluzione}
-                                riprovaSociale={formData.riprovaSociale}
-                                imageUrl={editingPost?.imageUrl}
-                              />
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
                       </div>
                     </div>
 
-                    <div className="flex gap-2 pt-4 border-t mt-4">
-                      <Button
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => {
-                          setFormData({ ...formData, status: "draft" });
-                          handleCreatePost();
-                        }}
-                        disabled={createPostMutation.isPending}
-                      >
-                        Salva Bozza
-                      </Button>
-                      <Button
-                        className="flex-1"
-                        onClick={() => {
-                          setFormData({ ...formData, status: "draft" });
-                          setOpenPublerAfterSave(true);
-                          handleCreatePost();
-                        }}
-                        disabled={createPostMutation.isPending}
-                      >
-                        {createPostMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4 mr-2" />
-                        )}
-                        Pubblica con Publer
-                      </Button>
-                    </div>
+                        <div className="flex justify-between pt-4 border-t mt-4">
+                          <Button variant="outline" onClick={() => setWizardStep(1)}>
+                            <ChevronLeft className="h-4 w-4 mr-1" />
+                            Indietro
+                          </Button>
+                          <Button onClick={() => setWizardStep(3)}>
+                            Anteprima & Pubblica
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ===== STEP 3: Anteprima & Pubblica ===== */}
+                    {wizardStep === 3 && (
+                      <div className="max-w-3xl mx-auto space-y-6">
+                        <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
+                          <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Riepilogo</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {formData.platform && <Badge variant="secondary" className="text-xs">{formData.platform}</Badge>}
+                            <Badge variant="secondary" className="text-xs">{selectedCopyType === "long" ? "Copy Lungo" : "Copy Corto"}</Badge>
+                            <Badge variant="secondary" className="text-xs">{selectedMediaType === "video" ? "Video" : "Foto"}</Badge>
+                            {isCarouselMode && <Badge variant="secondary" className="text-xs">Carosello</Badge>}
+                            {isAd && <Badge className="text-xs bg-orange-500 hover:bg-orange-600 text-white"><Megaphone className="h-3 w-3 mr-1" />Ads</Badge>}
+                          </div>
+                          {formData.title && <p className="text-sm font-medium">{formData.title}</p>}
+                        </div>
+
+                        <div className="rounded-lg border bg-muted/30 p-4">
+                          <div className="flex items-center gap-2 mb-4">
+                            {formData.platform && (
+                              <>
+                                {formData.platform === "instagram" && <Instagram className="h-4 w-4 text-pink-500" />}
+                                {formData.platform === "facebook" && <Facebook className="h-4 w-4 text-blue-600" />}
+                                {formData.platform === "linkedin" && <Linkedin className="h-4 w-4 text-blue-700" />}
+                                {formData.platform === "twitter" && <Twitter className="h-4 w-4 text-sky-500" />}
+                                {formData.platform === "tiktok" && <span className="text-sm">🎵</span>}
+                              </>
+                            )}
+                            <span className="text-sm font-medium">
+                              {formData.platform
+                                ? `Anteprima ${formData.platform.charAt(0).toUpperCase() + formData.platform.slice(1)}`
+                                : "Seleziona una piattaforma"}
+                            </span>
+                          </div>
+                          <SocialPreview
+                            platform={formData.platform}
+                            hook={formData.hook}
+                            body={formData.fullCopy || formData.body}
+                            cta={formData.cta}
+                            copyType={selectedCopyType}
+                            chiCosaCome={formData.chiCosaCome}
+                            errore={formData.errore}
+                            soluzione={formData.soluzione}
+                            riprovaSociale={formData.riprovaSociale}
+                            imageUrl={editingPost?.imageUrl}
+                          />
+                        </div>
+
+                        <div className="flex gap-2 pt-4 border-t">
+                          <Button variant="outline" onClick={() => setWizardStep(2)}>
+                            <ChevronLeft className="h-4 w-4 mr-1" />
+                            Indietro
+                          </Button>
+                          <div className="flex-1" />
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setFormData({ ...formData, status: "draft" });
+                              handleCreatePost();
+                            }}
+                            disabled={createPostMutation.isPending}
+                          >
+                            Salva Bozza
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setFormData({ ...formData, status: "draft" });
+                              setOpenPublerAfterSave(true);
+                              handleCreatePost();
+                            }}
+                            disabled={createPostMutation.isPending}
+                          >
+                            {createPostMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-2" />
+                            )}
+                            Pubblica con Publer
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </DialogContent>
               </Dialog>
@@ -4120,6 +4213,12 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                         
                         <div className="text-sm flex items-center gap-1.5">
                           {renderPublerStatus() || getSimpleStatusText(post.status)}
+                          {post.isAd && !post.metaAdId && (
+                            <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-[10px] px-1.5 py-0 h-5 gap-0.5">
+                              <Megaphone className="h-2.5 w-2.5" />
+                              Ads
+                            </Badge>
+                          )}
                           {post.metaAdId && (
                             <TooltipProvider>
                               <Tooltip>
@@ -4387,11 +4486,19 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                         </h3>
 
                         {/* Content type badge */}
-                        {post.contentType && (
-                          <div className="mb-3">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              {post.contentType}
-                            </span>
+                        {(post.contentType || post.isAd) && (
+                          <div className="mb-3 flex items-center gap-1.5">
+                            {post.contentType && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                {post.contentType}
+                              </span>
+                            )}
+                            {post.isAd && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                                <Megaphone className="h-3 w-3" />
+                                Ads
+                              </span>
+                            )}
                           </div>
                         )}
 

@@ -9011,6 +9011,9 @@ export const contentPosts = pgTable("content_posts", {
   soluzione: text("soluzione"),
   riprovaSociale: text("riprova_sociale"),
   
+  // Ad flag
+  isAd: boolean("is_ad").default(false),
+  
   // Meta Ads association
   metaAdId: varchar("meta_ad_id", { length: 100 }),
   

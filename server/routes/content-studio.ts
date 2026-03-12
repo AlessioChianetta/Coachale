@@ -824,8 +824,8 @@ router.post("/posts", authenticateToken, requireRole("consultant"), async (req: 
   try {
     const consultantId = req.user!.id;
     
-    // Debug log to trace what fields arrive
-    console.log("📝 [CONTENT-STUDIO] POST /posts - Incoming long copy fields:", {
+    console.log("📝 [CONTENT-STUDIO] POST /posts - Incoming fields:", {
+      isAd: req.body.isAd,
       chiCosaCome: req.body.chiCosaCome?.substring(0, 50) || "(empty)",
       errore: req.body.errore?.substring(0, 50) || "(empty)",
       soluzione: req.body.soluzione?.substring(0, 50) || "(empty)",
@@ -910,6 +910,7 @@ router.put("/posts/:id", authenticateToken, requireRole("consultant"), async (re
       });
     }
     
+    console.log("📝 [CONTENT-STUDIO] PUT /posts/:id - isAd:", req.body.isAd);
     const validatedData = insertContentPostSchema.partial().parse(req.body);
     
     const [updated] = await db.update(schema.contentPosts)
