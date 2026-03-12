@@ -99,26 +99,45 @@ router.get("/ads", authenticateToken, requireRole("consultant"), async (req: Aut
       processedAds = ads.map(ad => {
         const snapshots = dailyByAd[ad.metaAdId];
         if (!snapshots || snapshots.length === 0) return ad;
+
+        const spend = snapshots.reduce((s, d) => s + (d.spend || 0), 0);
+        const impressions = snapshots.reduce((s, d) => s + (d.impressions || 0), 0);
+        const clicks = snapshots.reduce((s, d) => s + (d.clicks || 0), 0);
+        const reach = snapshots.reduce((s, d) => s + (d.reach || 0), 0);
+        const leads = snapshots.reduce((s, d) => s + (d.leads || 0), 0);
+        const conversions = snapshots.reduce((s, d) => s + (d.conversions || 0), 0);
+        const linkClicks = snapshots.reduce((s, d) => s + (d.linkClicks || 0), 0);
+        const videoViews = snapshots.reduce((s, d) => s + (d.videoViews || 0), 0);
+
+        const cpc = clicks > 0 ? spend / clicks : null;
+        const cpm = impressions > 0 ? (spend / impressions) * 1000 : null;
+        const ctr = impressions > 0 ? (clicks / impressions) * 100 : null;
+        const cpl = leads > 0 ? spend / leads : null;
+        const frequency = impressions > 0 && reach > 0 ? impressions / reach : null;
+        const cpcLink = linkClicks > 0 ? spend / linkClicks : null;
+        const ctrLink = impressions > 0 && linkClicks > 0 ? (linkClicks / impressions) * 100 : null;
+
         const latest = snapshots[snapshots.length - 1];
+
         return {
           ...ad,
-          spend: latest.spend ?? 0,
-          impressions: latest.impressions ?? 0,
-          clicks: latest.clicks ?? 0,
-          reach: latest.reach ?? 0,
-          leads: latest.leads ?? 0,
-          conversions: latest.conversions ?? 0,
-          cpc: latest.cpc,
-          cpm: latest.cpm,
-          ctr: latest.ctr,
-          cpl: latest.cpl,
-          frequency: latest.frequency,
+          spend,
+          impressions,
+          clicks,
+          reach,
+          leads,
+          conversions,
+          cpc,
+          cpm,
+          ctr,
+          cpl,
+          frequency,
           roas: latest.roas,
-          linkClicks: latest.linkClicks ?? 0,
-          cpcLink: latest.cpcLink,
-          ctrLink: latest.ctrLink,
+          linkClicks,
+          cpcLink,
+          ctrLink,
           resultType: latest.resultType ?? ad.resultType,
-          videoViews: latest.videoViews ?? ad.videoViews,
+          videoViews,
         };
       });
     }
@@ -341,12 +360,25 @@ router.get("/data-export", authenticateToken, requireRole("consultant"), async (
       c.totalReach += ad.reach || 0;
     }
 
-    const campaigns = Object.values(campaignMap).map(c => ({
-      ...c,
-      avgCpc: c.totalClicks > 0 ? c.totalSpend / c.totalClicks : 0,
-      avgCtr: c.totalImpressions > 0 ? (c.totalClicks / c.totalImpressions) * 100 : 0,
-      avgCpl: c.totalLeads > 0 ? c.totalSpend / c.totalLeads : 0,
-    }));
+    for (const ad of allAds) {
+      const cName = ad.campaignName || "Sconosciuta";
+      const c = campaignMap[cName];
+      if (c && ad.roas && ad.roas > 0) {
+        c.avgRoas += ad.roas;
+      }
+    }
+
+    const campaigns = Object.values(campaignMap).map(c => {
+      const roasAds = allAds.filter(a => (a.campaignName || "Sconosciuta") === c.name && a.roas && a.roas > 0).length;
+      return {
+        ...c,
+        avgCpc: c.totalClicks > 0 ? c.totalSpend / c.totalClicks : 0,
+        avgCtr: c.totalImpressions > 0 ? (c.totalClicks / c.totalImpressions) * 100 : 0,
+        avgCpl: c.totalLeads > 0 ? c.totalSpend / c.totalLeads : 0,
+        avgRoas: roasAds > 0 ? c.avgRoas / roasAds : 0,
+        avgFrequency: c.totalImpressions > 0 && c.totalReach > 0 ? c.totalImpressions / c.totalReach : 0,
+      };
+    });
 
     const totalSpend = allAds.reduce((s, a) => s + (a.spend || 0), 0);
     const totalClicks = allAds.reduce((s, a) => s + (a.clicks || 0), 0);

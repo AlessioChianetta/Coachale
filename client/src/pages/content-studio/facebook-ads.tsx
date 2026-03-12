@@ -197,6 +197,103 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   WITH_ISSUES: { label: "Con Problemi", color: "bg-red-500/10 text-red-600 border-red-300", icon: <AlertTriangle className="h-3 w-3" /> },
 };
 
+function MiniKpi({ label, value, highlight }: { label: string; value: string | number; highlight?: boolean }) {
+  return (
+    <div className={`rounded-md px-2 py-1.5 ${highlight ? "bg-red-100 dark:bg-red-900/20" : "bg-muted/40"}`}>
+      <p className={`text-[10px] font-medium ${highlight ? "text-red-600" : "text-muted-foreground"}`}>{label}</p>
+      <p className={`text-sm font-semibold ${highlight ? "text-red-700" : ""}`}>{value}</p>
+    </div>
+  );
+}
+
+function renderCellValue(col: string, val: unknown, row: AggRow, activeTab: string): React.ReactNode {
+  if (col === "name") {
+    return (
+      <div className="flex items-center gap-2 max-w-[320px]">
+        {activeTab === "ads" && row.creativeThumbnailUrl && (
+          <img src={row.creativeThumbnailUrl} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0" />
+        )}
+        <span className="truncate text-blue-700 dark:text-blue-400 hover:underline cursor-pointer font-medium">
+          {row.name}
+        </span>
+      </div>
+    );
+  } else if (col === "pubblicazione") {
+    return (
+      <span className={`text-xs ${row.pubblicazione === "Attiva" ? "text-green-600" : "text-muted-foreground"}`}>
+        {row.pubblicazione}
+      </span>
+    );
+  } else if (col === "budget") {
+    return (
+      <span className="text-xs text-muted-foreground max-w-[180px] truncate block">
+        {row.budget}
+      </span>
+    );
+  } else if (col === "risultati" || col === "costoPer") {
+    return <span className="text-xs">{String(val ?? "—")}</span>;
+  } else if (col === "spend" || col === "cpc" || col === "cpcLink" || col === "cpm" || col === "cpl") {
+    return val != null ? formatCurrency(Number(val)) : "—";
+  } else if (col === "ctr" || col === "ctrLink") {
+    return val != null ? formatPercent(Number(val)) : "—";
+  } else if (col === "frequency") {
+    const freq = val != null ? Number(val) : null;
+    return freq != null ? (
+      <span className={freq > 4 ? "text-red-600 font-semibold" : ""}>
+        {freq.toFixed(2)}
+        {freq > 4 && <AlertTriangle className="inline h-3 w-3 ml-1 text-red-500" />}
+      </span>
+    ) : "—";
+  } else if (col === "roas") {
+    return val != null ? `${Number(val).toFixed(2)}x` : "—";
+  } else if (typeof val === "number") {
+    return formatNumber(val);
+  }
+  return val != null ? String(val) : "—";
+}
+
+function AdTableRow({ row, activeColumns, activeTab, ads, setSelectedAdId, setLinkDialogAd }: {
+  row: AggRow;
+  activeColumns: string[];
+  activeTab: string;
+  ads: MetaAd[];
+  setSelectedAdId: (id: string) => void;
+  setLinkDialogAd: (ad: MetaAd) => void;
+}) {
+  return (
+    <tr className={`border-b hover:bg-blue-50/40 dark:hover:bg-blue-950/10 transition-colors group ${
+      row.frequency != null && row.frequency > 4 ? "bg-red-50/40 dark:bg-red-950/10" : ""
+    }`}>
+      <td className="px-3 py-2">
+        <div className={`w-2 h-2 rounded-full ${row.pubblicazione === "Attiva" ? "bg-green-500" : "bg-gray-300"}`} />
+      </td>
+      {activeColumns.map(col => {
+        const val = (row as Record<string, unknown>)[col];
+        return (
+          <td key={col} className="px-3 py-2 whitespace-nowrap text-[13px]">
+            {renderCellValue(col, val, row, activeTab)}
+          </td>
+        );
+      })}
+      {activeTab === "ads" && (
+        <td className="px-3 py-2 whitespace-nowrap">
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => row.metaAdId && setSelectedAdId(row.metaAdId)}>
+              <BarChart3 className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => {
+              const ad = ads.find(a => a.metaAdId === row.metaAdId);
+              if (ad) setLinkDialogAd(ad);
+            }}>
+              <Link2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </td>
+      )}
+    </tr>
+  );
+}
+
 function getStatusBadge(status: string) {
   const s = status?.toUpperCase();
   const cfg = STATUS_CONFIG[s];
@@ -207,7 +304,7 @@ function getStatusBadge(status: string) {
 const COLUMN_PRESETS: Record<string, { label: string; columns: string[] }> = {
   performance: {
     label: "Prestazioni",
-    columns: ["name", "pubblicazione", "risultati", "costoPer", "budget", "spend", "impressions", "reach"],
+    columns: ["name", "pubblicazione", "risultati", "costoPer", "spend", "roas", "impressions", "reach"],
   },
   delivery: {
     label: "Distribuzione",
@@ -347,6 +444,8 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const [trendDays, setTrendDays] = useState(30);
   const [dateRange, setDateRange] = useState<string>("lifetime");
   const [activeTab, setActiveTab] = useState<"campaigns" | "adsets" | "ads">("campaigns");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [collapsedCampaigns, setCollapsedCampaigns] = useState<Set<string>>(new Set());
   const [tablePreset, setTablePreset] = useState("performance");
   const [linkSearchQuery, setLinkSearchQuery] = useState("");
   const [linkPostTarget, setLinkPostTarget] = useState<UnlinkedPost | null>(null);
@@ -500,6 +599,37 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
       return sortDir === "asc" ? Number(va) - Number(vb) : Number(vb) - Number(va);
     });
   }, [activeTab, campaignRows, adsetRows, adRows, sortColumn, sortDir]);
+
+  const groupedByCampaign = useMemo(() => {
+    if (activeTab !== "ads") return null;
+    const groups: { campaignName: string; rows: AggRow[]; agg: ReturnType<typeof aggregateAds> }[] = [];
+    const map = new Map<string, AggRow[]>();
+    for (const row of currentRows) {
+      const key = row.campaignName || "Senza Campagna";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(row);
+    }
+    for (const [campaignName, rows] of map) {
+      const fakeAds = rows.map(r => ({
+        spend: r.spend, impressions: r.impressions, clicks: r.clicks,
+        reach: r.reach, leads: r.leads, linkClicks: r.linkClicks,
+        frequency: r.frequency, cpc: r.cpc, cpm: r.cpm, ctr: r.ctr,
+        ctrLink: r.ctrLink, cpcLink: r.cpcLink, cpl: r.cpl, roas: r.roas,
+        dailyBudget: r.dailyBudget, videoViews: r.videoViews,
+      })) as MetaAd[];
+      groups.push({ campaignName, rows, agg: aggregateAds(fakeAds) });
+    }
+    return groups;
+  }, [activeTab, currentRows]);
+
+  const toggleCampaignCollapse = (name: string) => {
+    setCollapsedCampaigns(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
 
   const handleColumnSort = (col: string) => {
     if (sortColumn === col) {
@@ -900,7 +1030,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
             {/* Toolbar row */}
             <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/20 flex-wrap">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectTrigger className="w-[160px] h-8 text-xs">
                   <SelectValue placeholder="Stato" />
                 </SelectTrigger>
                 <SelectContent>
@@ -908,8 +1038,28 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                   <SelectItem value="ACTIVE">Attive</SelectItem>
                   <SelectItem value="PAUSED">In Pausa</SelectItem>
                   <SelectItem value="ARCHIVED">Archiviate</SelectItem>
+                  <SelectItem value="CAMPAIGN_PAUSED">Campagna in Pausa</SelectItem>
+                  <SelectItem value="ADSET_PAUSED">Adset in Pausa</SelectItem>
+                  <SelectItem value="DISAPPROVED">Non Approvate</SelectItem>
+                  <SelectItem value="PENDING_REVIEW">In Revisione</SelectItem>
+                  <SelectItem value="WITH_ISSUES">Con Problemi</SelectItem>
                 </SelectContent>
               </Select>
+
+              <div className="flex bg-muted/50 rounded-md p-0.5">
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`p-1.5 rounded transition-colors ${viewMode === "table" ? "bg-white dark:bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <Table2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => setViewMode("cards")}
+                  className={`p-1.5 rounded transition-colors ${viewMode === "cards" ? "bg-white dark:bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                </button>
+              </div>
 
               <div className="ml-auto flex items-center gap-2">
                 <Select value={tablePreset} onValueChange={setTablePreset}>
@@ -956,7 +1106,6 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
               </div>
             </div>
 
-            {/* Table */}
             {adsLoading ? (
               <div className="p-6 space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
@@ -965,6 +1114,84 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
               <div className="py-16 text-center text-muted-foreground">
                 <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-40" />
                 <p>Nessuna inserzione trovata. Prova a sincronizzare.</p>
+              </div>
+            ) : viewMode === "cards" ? (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {currentRows.map((row, idx) => (
+                  <div
+                    key={row.name + idx}
+                    className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                      row.frequency != null && row.frequency > 4 ? "border-red-300 bg-red-50/30 dark:bg-red-950/10" : ""
+                    }`}
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      {activeTab === "ads" && row.creativeThumbnailUrl && (
+                        <img src={row.creativeThumbnailUrl} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{row.name}</p>
+                        {row.campaignName && activeTab !== "campaigns" && (
+                          <p className="text-xs text-muted-foreground truncate">{row.campaignName}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                          {getStatusBadge(row.status)}
+                          {row.frequency != null && row.frequency > 4 && (
+                            <Badge className="bg-red-500/10 text-red-600 border-red-300 gap-1 text-[10px]">
+                              <AlertTriangle className="h-2.5 w-2.5" />Ad Fatigue
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <MiniKpi label="Spesa" value={formatCurrency(row.spend)} />
+                      <MiniKpi label="Impressioni" value={formatNumber(row.impressions)} />
+                      <MiniKpi label="Clic" value={formatNumber(row.clicks)} />
+                      <MiniKpi label="CTR" value={row.ctr != null ? formatPercent(row.ctr) : "—"} />
+                      <MiniKpi label="CPC" value={row.cpc != null ? formatCurrency(row.cpc) : "—"} />
+                      <MiniKpi label="Lead" value={formatNumber(row.leads)} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs mt-2">
+                      <MiniKpi label="Copertura" value={formatNumber(row.reach)} />
+                      <MiniKpi
+                        label="Frequenza"
+                        value={row.frequency != null ? row.frequency.toFixed(2) : "—"}
+                        highlight={row.frequency != null && row.frequency > 4}
+                      />
+                      <MiniKpi label="ROAS" value={row.roas != null ? `${row.roas.toFixed(2)}x` : "—"} />
+                      <MiniKpi label="CPL" value={row.cpl != null ? formatCurrency(row.cpl) : "—"} />
+                      <MiniKpi label="CTR link" value={row.ctrLink != null ? formatPercent(row.ctrLink) : "—"} />
+                      <MiniKpi label="CPC link" value={row.cpcLink != null ? formatCurrency(row.cpcLink) : "—"} />
+                    </div>
+                    {row.dailyBudget != null && row.dailyBudget > 0 && (
+                      <div className="mt-3">
+                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                          <span>Budget {formatCurrency(row.dailyBudget)}/g</span>
+                          <span>{row.dailyBudget > 0 ? Math.min(100, Math.round((row.spend / row.dailyBudget) * 100)) : 0}%</span>
+                        </div>
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500 rounded-full transition-all"
+                            style={{ width: `${Math.min(100, row.dailyBudget > 0 ? (row.spend / row.dailyBudget) * 100 : 0)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {activeTab === "ads" && (
+                      <div className="flex gap-2 mt-3 pt-3 border-t">
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1 flex-1" onClick={() => row.metaAdId && setSelectedAdId(row.metaAdId)}>
+                          <BarChart3 className="h-3 w-3" />Dettaglio
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1 flex-1" onClick={() => {
+                          const ad = ads.find(a => a.metaAdId === row.metaAdId);
+                          if (ad) setLinkDialogAd(ad);
+                        }}>
+                          <Link2 className="h-3 w-3" />Associa
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -993,78 +1220,40 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                   </thead>
                   <tbody>
                     <TooltipProvider>
-                    {currentRows.map((row, idx) => (
-                      <tr
-                        key={row.name + idx}
-                        className="border-b hover:bg-blue-50/40 dark:hover:bg-blue-950/10 transition-colors group"
-                      >
-                        <td className="px-3 py-2">
-                          <div className={`w-2 h-2 rounded-full ${row.pubblicazione === "Attiva" ? "bg-green-500" : "bg-gray-300"}`} />
-                        </td>
-                        {activeColumns.map(col => {
-                          const val = (row as Record<string, unknown>)[col];
-                          let display: React.ReactNode;
-                          if (col === "name") {
-                            display = (
-                              <div className="flex items-center gap-2 max-w-[320px]">
-                                {activeTab === "ads" && row.creativeThumbnailUrl && (
-                                  <img src={row.creativeThumbnailUrl} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0" />
-                                )}
-                                <span className="truncate text-blue-700 dark:text-blue-400 hover:underline cursor-pointer font-medium">
-                                  {row.name}
-                                </span>
-                              </div>
-                            );
-                          } else if (col === "pubblicazione") {
-                            display = (
-                              <span className={`text-xs ${row.pubblicazione === "Attiva" ? "text-green-600" : "text-muted-foreground"}`}>
-                                {row.pubblicazione}
-                              </span>
-                            );
-                          } else if (col === "budget") {
-                            display = (
-                              <span className="text-xs text-muted-foreground max-w-[180px] truncate block">
-                                {row.budget}
-                              </span>
-                            );
-                          } else if (col === "risultati" || col === "costoPer") {
-                            display = <span className="text-xs">{String(val ?? "—")}</span>;
-                          } else if (col === "spend" || col === "cpc" || col === "cpcLink" || col === "cpm" || col === "cpl") {
-                            display = val != null ? formatCurrency(Number(val)) : "—";
-                          } else if (col === "ctr" || col === "ctrLink") {
-                            display = val != null ? formatPercent(Number(val)) : "—";
-                          } else if (col === "frequency") {
-                            display = val != null ? Number(val).toFixed(2) : "—";
-                          } else if (col === "roas") {
-                            display = val != null ? `${Number(val).toFixed(2)}x` : "—";
-                          } else if (typeof val === "number") {
-                            display = formatNumber(val);
-                          } else {
-                            display = val != null ? String(val) : "—";
-                          }
-                          return (
-                            <td key={col} className="px-3 py-2 whitespace-nowrap text-[13px]">
-                              {display}
-                            </td>
-                          );
-                        })}
-                        {activeTab === "ads" && (
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => row.metaAdId && setSelectedAdId(row.metaAdId)}>
-                                <BarChart3 className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => {
-                                const ad = ads.find(a => a.metaAdId === row.metaAdId);
-                                if (ad) setLinkDialogAd(ad);
-                              }}>
-                                <Link2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
+                    {activeTab === "ads" && groupedByCampaign ? (
+                      groupedByCampaign.map(group => {
+                        const isCollapsed = collapsedCampaigns.has(group.campaignName);
+                        return (
+                          <React.Fragment key={group.campaignName}>
+                            <tr
+                              className="border-b bg-blue-50/30 dark:bg-blue-950/10 cursor-pointer hover:bg-blue-100/40"
+                              onClick={() => toggleCampaignCollapse(group.campaignName)}
+                            >
+                              <td className="px-3 py-2" colSpan={1}>
+                                {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                              </td>
+                              <td className="px-3 py-2 font-semibold text-sm" colSpan={activeColumns.length + (activeTab === "ads" ? 1 : 0)}>
+                                <div className="flex items-center gap-2">
+                                  <Megaphone className="h-3.5 w-3.5 text-blue-500" />
+                                  <span>{group.campaignName}</span>
+                                  <Badge variant="secondary" className="text-[10px] h-5">{group.rows.length} inserzioni</Badge>
+                                  <span className="ml-auto text-xs text-muted-foreground font-normal">
+                                    Spesa: {formatCurrency(group.agg.spend)} · Impressioni: {formatNumber(group.agg.impressions)} · Clic: {formatNumber(group.agg.clicks)}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                            {!isCollapsed && group.rows.map((row, idx) => (
+                              <AdTableRow key={row.metaAdId || row.name + idx} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} />
+                            ))}
+                          </React.Fragment>
+                        );
+                      })
+                    ) : (
+                      currentRows.map((row, idx) => (
+                        <AdTableRow key={row.name + idx} row={row} activeColumns={activeColumns} activeTab={activeTab} ads={ads} setSelectedAdId={setSelectedAdId} setLinkDialogAd={setLinkDialogAd} />
+                      ))
+                    )}
                     </TooltipProvider>
                   </tbody>
                   <tfoot>
