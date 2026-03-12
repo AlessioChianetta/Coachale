@@ -59,7 +59,6 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronDown,
-  Eye,
   X,
   Download,
   Search,
