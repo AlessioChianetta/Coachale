@@ -7244,6 +7244,12 @@ REGOLE ANTI-ALLUCINAZIONE:
 - Quando cerchi informazioni su un cliente, usa il suo nome completo come query di ricerca`;
   }
 
+  if (roleId === 'simone') {
+    console.log('\n========== [SIMONE SYSTEM PROMPT COMPLETO] ==========\n');
+    console.log(systemPrompt);
+    console.log('\n========== [FINE SYSTEM PROMPT SIMONE] ==========\n');
+  }
+
   const MAX_CHAT_CHARS = 32000;
 
   let charCount = 0;
