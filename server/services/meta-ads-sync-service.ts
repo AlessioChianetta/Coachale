@@ -579,8 +579,41 @@ export async function syncAllConsultants(): Promise<void> {
     console.log(`[META-ADS SYNC] Starting sync for ${configs.length} consultant(s)`);
 
     for (const config of configs) {
-      await syncMetaAdsForConsultant(config.consultantId);
+      const syncResult = await syncMetaAdsForConsultant(config.consultantId);
+      if (!syncResult.success) {
+        console.warn(`[META-ADS SYNC] ⚠️ Sync failed for ${config.consultantId.substring(0, 8)}, skipping snapshot and File Search`);
+        continue;
+      }
       await syncDailySnapshot(config.consultantId);
+
+      try {
+        const { syncMetaAdsToFileSearch } = await import("../ai/dynamic-context-documents");
+        const fsResult = await syncMetaAdsToFileSearch(config.consultantId);
+        if (fsResult.success && fsResult.stats) {
+          console.log(`[META-ADS SYNC] 📊 File Search synced for ${config.consultantId.substring(0, 8)}: ${fsResult.stats.totalCampaigns} campaigns, ${fsResult.stats.totalAds} ads, ${fsResult.stats.anomaliesFound} anomalies`);
+
+          try {
+            const { logActivity } = await import("../cron/ai-task-scheduler");
+            await logActivity(config.consultantId, {
+              event_type: 'meta_ads_file_search_synced',
+              ai_role: 'simone',
+              title: `Meta Ads sincronizzati nel File Search`,
+              description: `Ho aggiornato la mia knowledge base con i dati delle campagne Meta Ads: ${fsResult.stats.totalCampaigns} campagne, ${fsResult.stats.totalAds} inserzioni analizzate${fsResult.stats.anomaliesFound > 0 ? `, ${fsResult.stats.anomaliesFound} anomalie rilevate` : ''}.${fsResult.stats.excludedCampaigns > 0 ? ` ${fsResult.stats.excludedCampaigns} campagne escluse dall'analisi.` : ''}`,
+              icon: '📊',
+              severity: fsResult.stats.anomaliesFound > 0 ? 'warning' : 'info',
+              event_data: {
+                source: 'scheduled_sync',
+                ...fsResult.stats,
+                tokensEstimate: fsResult.tokensEstimate,
+              },
+            });
+          } catch (logErr: any) {
+            console.warn(`[META-ADS SYNC] ⚠️ Failed to log activity: ${logErr.message}`);
+          }
+        }
+      } catch (fsErr: any) {
+        console.warn(`[META-ADS SYNC] ⚠️ File Search sync failed for ${config.consultantId.substring(0, 8)}: ${fsErr.message}`);
+      }
     }
 
     console.log(`[META-ADS SYNC] ✅ Completed sync cycle for ${configs.length} consultant(s)`);

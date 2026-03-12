@@ -551,6 +551,14 @@ router.post("/sync", authenticateToken, requireRole("consultant"), async (req: A
     const result = await syncMetaAdsForConsultant(consultantId);
     if (result.success) {
       await syncDailySnapshot(consultantId);
+
+      try {
+        const { syncMetaAdsToFileSearch } = await import("../ai/dynamic-context-documents");
+        await syncMetaAdsToFileSearch(consultantId);
+        console.log(`[META-ADS] File Search synced after manual sync for ${consultantId.substring(0, 8)}`);
+      } catch (fsErr: any) {
+        console.warn(`[META-ADS] File Search sync failed: ${fsErr.message}`);
+      }
     }
 
     return res.json({

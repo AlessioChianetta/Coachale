@@ -1100,7 +1100,24 @@ function ActivityTab({
                   </Badge>
                 )}
               </div>
-              {item.event_type === 'system_prompt_log' ? (
+              {item.event_type === 'meta_ads_file_search_synced' ? (
+                (() => {
+                  let ed: any = {};
+                  try { ed = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {}); } catch { ed = {}; }
+                  return (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-sm text-muted-foreground">{item.description}</p>
+                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                        <span>Campagne: <strong>{ed.totalCampaigns || 0}</strong></span>
+                        <span>Inserzioni: <strong>{ed.totalAds || 0}</strong></span>
+                        {ed.excludedCampaigns > 0 && <span>Escluse: <strong>{ed.excludedCampaigns}</strong></span>}
+                        {ed.anomaliesFound > 0 && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200">⚠️ {ed.anomaliesFound} anomalie</Badge>}
+                        {ed.tokensEstimate && <span>Token: <strong>~{ed.tokensEstimate.toLocaleString()}</strong></span>}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : item.event_type === 'system_prompt_log' ? (
                 <>
                   {(() => {
                     let ed: any = {};

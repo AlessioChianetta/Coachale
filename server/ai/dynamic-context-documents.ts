@@ -35,6 +35,9 @@ import {
   whatsappCustomTemplates,
   whatsappTemplateVersions,
   goals,
+  metaAdInsights,
+  metaAdInsightsDaily,
+  consultantMetaAdsConfig,
 } from "../../shared/schema";
 import { eq, and, desc, gte, sql, count as sqlCount, inArray, asc } from "drizzle-orm";
 import { FileSearchService } from "./file-search-service";
@@ -63,6 +66,7 @@ export interface SyncResult {
   calendar?: DynamicDocumentResult;
   exercisesPending?: DynamicDocumentResult;
   consultationsDoc?: DynamicDocumentResult;
+  metaAdsPerformance?: DynamicDocumentResult;
   totalDocuments: number;
   syncedAt: Date;
 }
@@ -1646,6 +1650,338 @@ export async function generateConsultationsDocument(consultantId: string): Promi
 }
 
 // ============================================================
+// META ADS PERFORMANCE DOCUMENT (for Simone File Search)
+// ============================================================
+
+export interface MetaAdsDocumentResult {
+  success: boolean;
+  consultantStoreSuccess?: boolean;
+  simoneStoreSuccess?: boolean;
+  documentId?: string;
+  error?: string;
+  tokensEstimate?: number;
+  stats?: {
+    totalCampaigns: number;
+    totalAds: number;
+    excludedCampaigns: number;
+    anomaliesFound: number;
+  };
+}
+
+export async function generateMetaAdsPerformanceDocument(consultantId: string): Promise<{ content: string; stats: { totalCampaigns: number; totalAds: number; excludedCampaigns: number; anomaliesFound: number } }> {
+  console.log(`📊 [MetaAdsDoc] Starting for consultant ${consultantId.substring(0, 8)}...`);
+
+  let aiExcludedCampaigns: string[] = [];
+  try {
+    const configResult = await db
+      .select({ aiExcludedCampaigns: consultantMetaAdsConfig.aiExcludedCampaigns })
+      .from(consultantMetaAdsConfig)
+      .where(and(
+        eq(consultantMetaAdsConfig.consultantId, consultantId),
+        eq(consultantMetaAdsConfig.isActive, true)
+      ))
+      .limit(1);
+    const raw = (configResult[0] as any)?.aiExcludedCampaigns;
+    if (raw && Array.isArray(raw)) {
+      aiExcludedCampaigns = raw;
+    }
+  } catch (cfgErr: any) {
+    console.warn(`⚠️ [MetaAdsDoc] Failed to read config for excluded campaigns: ${cfgErr.message}`);
+  }
+
+  const excludedSet = new Set(aiExcludedCampaigns);
+
+  const allAds = await db
+    .select()
+    .from(metaAdInsights)
+    .where(eq(metaAdInsights.consultantId, consultantId))
+    .orderBy(desc(metaAdInsights.spend));
+
+  const filteredAds = excludedSet.size > 0
+    ? allAds.filter(r => !excludedSet.has(r.campaignName || ''))
+    : allAds;
+
+  const campaignMap = new Map<string, typeof filteredAds>();
+  for (const ad of filteredAds) {
+    const name = ad.campaignName || 'Senza Campagna';
+    if (!campaignMap.has(name)) campaignMap.set(name, []);
+    campaignMap.get(name)!.push(ad);
+  }
+
+  let anomaliesFound = 0;
+  const anomalies: string[] = [];
+
+  for (const ad of filteredAds) {
+    const freq = Number(ad.frequency || 0);
+    const ctr = Number(ad.ctr || 0);
+    const adStatus = ad.adStatus || '';
+    if (freq > 4 && adStatus === 'ACTIVE') {
+      anomalies.push(`⚠️ AD FATIGUE: "${ad.adName}" (Campagna: ${ad.campaignName}) — Frequenza ${freq.toFixed(1)} (soglia: 4.0)`);
+      anomaliesFound++;
+    }
+    if (ctr < 0.5 && Number(ad.impressions || 0) > 1000 && adStatus === 'ACTIVE') {
+      anomalies.push(`⚠️ CTR BASSO: "${ad.adName}" (Campagna: ${ad.campaignName}) — CTR ${ctr.toFixed(2)}% (soglia: 0.5%)`);
+      anomaliesFound++;
+    }
+    const cpl = Number(ad.cpl || 0);
+    if (cpl > 50 && Number(ad.leads || 0) > 0 && adStatus === 'ACTIVE') {
+      anomalies.push(`⚠️ CPL ALTO: "${ad.adName}" (Campagna: ${ad.campaignName}) — CPL €${cpl.toFixed(2)} (soglia: €50)`);
+      anomaliesFound++;
+    }
+  }
+
+  let sevenDayTrend = '';
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const adIds = filteredAds.map(a => a.metaAdId).filter(Boolean);
+    if (adIds.length > 0) {
+      const dailyRows = await db
+        .select()
+        .from(metaAdInsightsDaily)
+        .where(and(
+          eq(metaAdInsightsDaily.consultantId, consultantId),
+          inArray(metaAdInsightsDaily.metaAdId, adIds),
+          gte(metaAdInsightsDaily.snapshotDate, sevenDaysAgo)
+        ))
+        .orderBy(asc(metaAdInsightsDaily.snapshotDate));
+
+      const byDate = new Map<string, { spend: number; impressions: number; clicks: number; leads: number; reach: number }>();
+      for (const row of dailyRows) {
+        const dateKey = row.snapshotDate ? new Date(row.snapshotDate).toLocaleDateString('it-IT') : 'N/A';
+        if (!byDate.has(dateKey)) byDate.set(dateKey, { spend: 0, impressions: 0, clicks: 0, leads: 0, reach: 0 });
+        const d = byDate.get(dateKey)!;
+        d.spend += Number(row.spend || 0);
+        d.impressions += Number(row.impressions || 0);
+        d.clicks += Number(row.clicks || 0);
+        d.leads += Number(row.leads || 0);
+        d.reach += Number(row.reach || 0);
+      }
+
+      if (byDate.size > 0) {
+        sevenDayTrend = `\n## 📈 Trend Ultimi 7 Giorni\n\n| Data | Spesa | Impressioni | Clic | Lead | Copertura |\n|------|-------|-------------|------|------|-----------|\n`;
+        for (const [date, d] of byDate) {
+          sevenDayTrend += `| ${date} | €${d.spend.toFixed(2)} | ${d.impressions.toLocaleString('it-IT')} | ${d.clicks.toLocaleString('it-IT')} | ${d.leads} | ${d.reach.toLocaleString('it-IT')} |\n`;
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn(`⚠️ [MetaAdsDoc] Failed to fetch daily trends: ${err.message}`);
+  }
+
+  let document = `# Report Performance Meta Ads
+## Dashboard Completo — ${filteredAds.filter(a => a.adStatus === 'ACTIVE').length} Inserzioni Attive su ${filteredAds.length} Totali in ${campaignMap.size} Campagne
+
+Questo documento contiene le performance dettagliate delle inserzioni Meta Ads (Facebook/Instagram),
+con KPI aggregati per campagna, dettagli per inserzione, anomalie rilevate e trend recenti.
+${excludedSet.size > 0 ? `\n> **Nota:** ${excludedSet.size} campagne escluse dall'analisi AI: ${Array.from(excludedSet).join(', ')}` : ''}
+
+---
+
+## 📊 Panoramica Generale
+
+| Metrica | Valore |
+|---------|--------|
+| Campagne analizzate | ${campaignMap.size} |
+| Inserzioni totali | ${filteredAds.length} |
+| Inserzioni attive | ${filteredAds.filter(a => a.adStatus === 'ACTIVE').length} |
+| Spesa totale | €${filteredAds.reduce((s, a) => s + Number(a.spend || 0), 0).toFixed(2)} |
+| Impressioni totali | ${filteredAds.reduce((s, a) => s + Number(a.impressions || 0), 0).toLocaleString('it-IT')} |
+| Clic totali | ${filteredAds.reduce((s, a) => s + Number(a.clicks || 0), 0).toLocaleString('it-IT')} |
+| Lead totali | ${filteredAds.reduce((s, a) => s + Number(a.leads || 0), 0)} |
+| Copertura totale | ${filteredAds.reduce((s, a) => s + Number(a.reach || 0), 0).toLocaleString('it-IT')} |
+| Campagne escluse AI | ${excludedSet.size} |
+| Anomalie rilevate | ${anomaliesFound} |
+
+---
+
+## 🏷️ Performance per Campagna
+
+`;
+
+  for (const [campaignName, campAds] of campaignMap) {
+    const activeAds = campAds.filter(a => a.adStatus === 'ACTIVE').length;
+    const totalSpend = campAds.reduce((s, a) => s + Number(a.spend || 0), 0);
+    const totalImpressions = campAds.reduce((s, a) => s + Number(a.impressions || 0), 0);
+    const totalClicks = campAds.reduce((s, a) => s + Number(a.clicks || 0), 0);
+    const totalLeads = campAds.reduce((s, a) => s + Number(a.leads || 0), 0);
+    const totalReach = campAds.reduce((s, a) => s + Number(a.reach || 0), 0);
+    const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+    const avgCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+    const avgCpl = totalLeads > 0 ? totalSpend / totalLeads : 0;
+    const roasValues = campAds.filter(a => a.roas != null).map(a => Number(a.roas));
+    const avgRoas = roasValues.length > 0 ? roasValues.reduce((s, v) => s + v, 0) / roasValues.length : 0;
+    const avgFreq = campAds.filter(a => a.frequency != null).length > 0
+      ? campAds.reduce((s, a) => s + Number(a.frequency || 0), 0) / campAds.filter(a => a.frequency != null).length : 0;
+    const campStatus = campAds[0]?.campaignStatus || 'N/A';
+
+    document += `### ${campaignName}
+- **Stato campagna**: ${campStatus}
+- **Inserzioni**: ${campAds.length} totali, ${activeAds} attive
+- **Spesa**: €${totalSpend.toFixed(2)}
+- **Impressioni**: ${totalImpressions.toLocaleString('it-IT')}
+- **Clic**: ${totalClicks.toLocaleString('it-IT')}
+- **Lead**: ${totalLeads}
+- **Copertura**: ${totalReach.toLocaleString('it-IT')}
+- **CTR medio**: ${avgCtr.toFixed(2)}%
+- **CPC medio**: €${avgCpc.toFixed(2)}
+- **CPL medio**: ${totalLeads > 0 ? '€' + avgCpl.toFixed(2) : 'N/D'}
+- **ROAS medio**: ${avgRoas > 0 ? avgRoas.toFixed(2) + 'x' : 'N/D'}
+- **Frequenza media**: ${avgFreq.toFixed(2)}
+
+`;
+  }
+
+  if (filteredAds.length > 0) {
+    document += `---\n\n## 📋 Dettaglio Inserzioni\n\n`;
+    for (const ad of filteredAds.slice(0, 50)) {
+      document += `### ${ad.adName}
+- **Campagna**: ${ad.campaignName}
+- **Gruppo**: ${ad.adsetName || 'N/A'}
+- **Stato**: ${ad.adStatus}
+- **Spesa**: €${Number(ad.spend || 0).toFixed(2)}
+- **Impressioni**: ${Number(ad.impressions || 0).toLocaleString('it-IT')}
+- **Clic**: ${Number(ad.clicks || 0).toLocaleString('it-IT')}
+- **CTR**: ${ad.ctr != null ? Number(ad.ctr).toFixed(2) + '%' : 'N/D'}
+- **CPC**: ${ad.cpc != null ? '€' + Number(ad.cpc).toFixed(2) : 'N/D'}
+- **Lead**: ${Number(ad.leads || 0)}
+- **CPL**: ${ad.cpl != null ? '€' + Number(ad.cpl).toFixed(2) : 'N/D'}
+- **ROAS**: ${ad.roas != null ? Number(ad.roas).toFixed(2) + 'x' : 'N/D'}
+- **Frequenza**: ${ad.frequency != null ? Number(ad.frequency).toFixed(2) : 'N/D'}
+- **Copertura**: ${Number(ad.reach || 0).toLocaleString('it-IT')}
+- **Testo creativo**: ${ad.creativeBody ? ad.creativeBody.substring(0, 200) + (ad.creativeBody.length > 200 ? '...' : '') : 'N/D'}
+- **Titolo creativo**: ${ad.creativeTitle || 'N/D'}
+
+`;
+    }
+    if (filteredAds.length > 50) {
+      document += `> *...e altre ${filteredAds.length - 50} inserzioni non mostrate per limiti di dimensione*\n\n`;
+    }
+  }
+
+  if (anomalies.length > 0) {
+    document += `---\n\n## 🚨 Anomalie Rilevate (${anomalies.length})\n\n`;
+    for (const a of anomalies) {
+      document += `${a}\n`;
+    }
+    document += `\n`;
+  }
+
+  if (sevenDayTrend) {
+    document += `---\n${sevenDayTrend}\n`;
+  }
+
+  const topByRoas = [...filteredAds].filter(a => a.roas != null && Number(a.roas) > 0).sort((a, b) => Number(b.roas || 0) - Number(a.roas || 0)).slice(0, 5);
+  const topBySpend = [...filteredAds].sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0)).slice(0, 5);
+
+  if (topByRoas.length > 0) {
+    document += `---\n\n## 🏆 Top 5 per ROAS\n\n| Inserzione | Campagna | ROAS | Spesa | Lead |\n|-----------|----------|------|-------|------|\n`;
+    for (const ad of topByRoas) {
+      document += `| ${ad.adName} | ${ad.campaignName} | ${Number(ad.roas).toFixed(2)}x | €${Number(ad.spend || 0).toFixed(2)} | ${Number(ad.leads || 0)} |\n`;
+    }
+    document += `\n`;
+  }
+
+  if (topBySpend.length > 0) {
+    document += `## 💰 Top 5 per Spesa\n\n| Inserzione | Campagna | Spesa | CTR | CPC |\n|-----------|----------|-------|-----|-----|\n`;
+    for (const ad of topBySpend) {
+      document += `| ${ad.adName} | ${ad.campaignName} | €${Number(ad.spend || 0).toFixed(2)} | ${ad.ctr != null ? Number(ad.ctr).toFixed(2) + '%' : 'N/D'} | ${ad.cpc != null ? '€' + Number(ad.cpc).toFixed(2) : 'N/D'} |\n`;
+    }
+    document += `\n`;
+  }
+
+  document += `---\n\nGenerato il: ${formatItalianDate(new Date())}\n`;
+
+  const stats = {
+    totalCampaigns: campaignMap.size,
+    totalAds: filteredAds.length,
+    excludedCampaigns: excludedSet.size,
+    anomaliesFound,
+  };
+
+  console.log(`📊 [MetaAdsDoc] Document generated: ${document.length} chars, ${campaignMap.size} campaigns, ${filteredAds.length} ads, ${anomaliesFound} anomalies`);
+  return { content: document, stats };
+}
+
+export async function syncMetaAdsToFileSearch(consultantId: string): Promise<MetaAdsDocumentResult> {
+  console.log(`📊 [MetaAdsFileSearch] Starting sync for consultant ${consultantId.substring(0, 8)}...`);
+
+  try {
+    const store = await db
+      .select()
+      .from(fileSearchStores)
+      .where(and(
+        eq(fileSearchStores.ownerId, consultantId),
+        eq(fileSearchStores.ownerType, "consultant"),
+        eq(fileSearchStores.isActive, true)
+      ))
+      .limit(1);
+
+    if (!store[0]) {
+      console.log(`⚠️ [MetaAdsFileSearch] No active consultant File Search store found`);
+      return { success: false, error: "No active File Search store configured" };
+    }
+
+    const { content, stats } = await generateMetaAdsPerformanceDocument(consultantId);
+
+    if (content.length < 100) {
+      console.log(`ℹ️ [MetaAdsFileSearch] No Meta Ads data to sync`);
+      return { success: true, consultantStoreSuccess: true, simoneStoreSuccess: true, stats, tokensEstimate: 0 };
+    }
+
+    const result = await fileSearchService.uploadDocumentFromContent({
+      content,
+      displayName: "Report Performance Meta Ads (Auto-generato)",
+      storeId: store[0].id,
+      sourceType: "dynamic_context",
+      sourceId: `meta_ads_performance_${consultantId}`,
+      userId: consultantId,
+      skipHashCheck: true,
+    });
+
+    const consultantStoreSuccess = result.success;
+    let simoneStoreSuccess = false;
+
+    console.log(`📊 [MetaAdsFileSearch] Consultant store sync: ${result.success ? "✅" : "❌"}`);
+
+    try {
+      const { FileSearchSyncService } = await import("../services/file-search-sync-service");
+      const agentStore = await FileSearchSyncService.getOrCreateAutonomousAgentStore('simone', consultantId);
+      if (agentStore) {
+        const agentResult = await fileSearchService.uploadDocumentFromContent({
+          content,
+          displayName: "Report Performance Meta Ads (Auto-generato)",
+          storeId: agentStore.id,
+          sourceType: "dynamic_context",
+          sourceId: `meta_ads_performance_simone_${consultantId}`,
+          userId: consultantId,
+          skipHashCheck: true,
+        });
+        simoneStoreSuccess = agentResult.success;
+        console.log(`📊 [MetaAdsFileSearch] Simone agent store sync: ${agentResult.success ? "✅" : "❌"}`);
+      }
+    } catch (agentErr: any) {
+      console.warn(`⚠️ [MetaAdsFileSearch] Failed to sync to Simone agent store: ${agentErr.message}`);
+    }
+
+    const docResult: MetaAdsDocumentResult = {
+      success: consultantStoreSuccess && simoneStoreSuccess,
+      consultantStoreSuccess,
+      simoneStoreSuccess,
+      documentId: result.fileId,
+      error: result.error,
+      tokensEstimate: estimateTokens(content),
+      stats,
+    };
+
+    return docResult;
+  } catch (error: any) {
+    console.error(`❌ [MetaAdsFileSearch] Error:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// ============================================================
 // SYNC AND PREVIEW FUNCTIONS
 // ============================================================
 
@@ -1804,7 +2140,23 @@ export async function syncDynamicDocuments(consultantId: string, operationalSett
     }
   }
 
-  const totalPossible = 3 + (operationalSettings ? 10 : 0);
+  try {
+    console.log(`📄 [DynamicDocs] Generating Meta Ads performance document...`);
+    const metaAdsResult = await syncMetaAdsToFileSearch(consultantId);
+    results.metaAdsPerformance = {
+      success: metaAdsResult.success,
+      documentId: metaAdsResult.documentId,
+      error: metaAdsResult.error,
+      tokensEstimate: metaAdsResult.tokensEstimate,
+    };
+    if (metaAdsResult.success) results.totalDocuments++;
+    console.log(`📄 [DynamicDocs] Meta Ads performance: ${metaAdsResult.success ? "✅" : "❌"}`);
+  } catch (error: any) {
+    results.metaAdsPerformance = { success: false, error: error.message };
+    console.error(`❌ [DynamicDocs] Meta Ads performance error:`, error.message);
+  }
+
+  const totalPossible = 4 + (operationalSettings ? 10 : 0);
   console.log(`📄 [DynamicDocs] Sync complete: ${results.totalDocuments}/${totalPossible} documents synced`);
   return results;
 }
