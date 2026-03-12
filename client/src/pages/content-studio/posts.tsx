@@ -1387,6 +1387,27 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
   const posts: Post[] = postsResponse?.data || [];
   const folders: ContentFolder[] = foldersData?.data || [];
 
+  const hasMetaLinkedPosts = useMemo(() => posts.some(p => p.metaAdId), [posts]);
+  const { data: metaAdsLookupData } = useQuery({
+    queryKey: ["/api/meta-ads/ads", "tooltip-lookup"],
+    queryFn: async () => {
+      const res = await fetch("/api/meta-ads/ads", { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: hasMetaLinkedPosts,
+    staleTime: 5 * 60 * 1000,
+  });
+  const metaAdsByMetaId = useMemo(() => {
+    const map: Record<string, { spend: number; cpc: number | null; ctr: number | null }> = {};
+    if (metaAdsLookupData?.ads) {
+      for (const ad of metaAdsLookupData.ads) {
+        map[ad.metaAdId] = { spend: ad.spend || 0, cpc: ad.cpc || null, ctr: ad.ctr || null };
+      }
+    }
+    return map;
+  }, [metaAdsLookupData]);
+
   const filteredPosts = useMemo(() => {
     let result = [...posts];
 
@@ -4110,7 +4131,15 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="text-xs">
                                   <p className="font-semibold mb-1">Inserzione Meta collegata</p>
-                                  <p>Vai a Facebook Ads per i dettagli</p>
+                                  {metaAdsByMetaId[post.metaAdId] ? (
+                                    <div className="space-y-0.5">
+                                      <p>Spesa: {new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(metaAdsByMetaId[post.metaAdId].spend)}</p>
+                                      <p>CPC: {metaAdsByMetaId[post.metaAdId].cpc !== null ? new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(metaAdsByMetaId[post.metaAdId].cpc!) : "N/D"}</p>
+                                      <p>CTR: {metaAdsByMetaId[post.metaAdId].ctr !== null ? `${metaAdsByMetaId[post.metaAdId].ctr!.toFixed(2)}%` : "N/D"}</p>
+                                    </div>
+                                  ) : (
+                                    <p>Vai a Facebook Ads per i dettagli</p>
+                                  )}
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -4256,7 +4285,15 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                                       </TooltipTrigger>
                                       <TooltipContent side="top" className="text-xs">
                                         <p className="font-semibold mb-1">Inserzione Meta collegata</p>
-                                        <p>Vai a Facebook Ads per i dettagli</p>
+                                        {metaAdsByMetaId[post.metaAdId] ? (
+                                          <div className="space-y-0.5">
+                                            <p>Spesa: {new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(metaAdsByMetaId[post.metaAdId].spend)}</p>
+                                            <p>CPC: {metaAdsByMetaId[post.metaAdId].cpc !== null ? new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(metaAdsByMetaId[post.metaAdId].cpc!) : "N/D"}</p>
+                                            <p>CTR: {metaAdsByMetaId[post.metaAdId].ctr !== null ? `${metaAdsByMetaId[post.metaAdId].ctr!.toFixed(2)}%` : "N/D"}</p>
+                                          </div>
+                                        ) : (
+                                          <p>Vai a Facebook Ads per i dettagli</p>
+                                        )}
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>

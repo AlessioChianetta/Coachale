@@ -228,7 +228,8 @@ export async function renewMetaAdsToken(consultantId: string): Promise<{ success
 
 async function fetchAllAds(actId: string, accessToken: string, adsFields: string): Promise<MetaAd[]> {
   const allAds: MetaAd[] = [];
-  let url = `${FB_GRAPH_URL}/${actId}/ads?fields=${adsFields}&effective_status=${encodeURIComponent(`["${ALL_EFFECTIVE_STATUSES.split(",").join('","')}"]`)}&limit=200&access_token=${accessToken}`;
+  const statusArray = JSON.stringify(ALL_EFFECTIVE_STATUSES.split(","));
+  let url = `${FB_GRAPH_URL}/${actId}/ads?fields=${adsFields}&effective_status=${statusArray}&limit=200&access_token=${accessToken}`;
 
   let pageCount = 0;
   const MAX_PAGES = 10;

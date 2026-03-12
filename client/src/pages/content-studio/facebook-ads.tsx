@@ -26,6 +26,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   Facebook,
   TrendingUp,
   TrendingDown,
@@ -59,6 +65,8 @@ import {
   Table2,
   Columns3,
   ImageIcon,
+  Settings2,
+  Repeat,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -274,6 +282,18 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const [tablePreset, setTablePreset] = useState("performance");
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
   const [linkSearchQuery, setLinkSearchQuery] = useState("");
+  const [customColumns, setCustomColumns] = useState<string[]>(["adName", "adStatus", "spend", "impressions", "clicks", "ctr", "cpc", "leads"]);
+
+  const activeColumns = useMemo(() => {
+    if (tablePreset === "custom") return customColumns;
+    return COLUMN_PRESETS[tablePreset]?.columns || COLUMN_PRESETS.performance.columns;
+  }, [tablePreset, customColumns]);
+
+  const toggleCustomColumn = (col: string) => {
+    setCustomColumns(prev =>
+      prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]
+    );
+  };
 
   const { data: configData, isLoading: configLoading } = useQuery({
     queryKey: ["/api/meta-ads/config"],
@@ -390,6 +410,35 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
     },
   });
 
+  const { data: adAccountsData } = useQuery({
+    queryKey: ["/api/meta-ads/oauth/ad-accounts"],
+    queryFn: async () => {
+      const res = await fetch("/api/meta-ads/oauth/ad-accounts", { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: isConnected,
+  });
+
+  const switchAccountMutation = useMutation({
+    mutationFn: async ({ adAccountId, adAccountName }: { adAccountId: string; adAccountName: string }) => {
+      const res = await fetch("/api/meta-ads/oauth/switch-account", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ adAccountId, adAccountName }),
+      });
+      if (!res.ok) throw new Error("Switch failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Account cambiato", description: "Sincronizzazione in corso..." });
+      queryClient.invalidateQueries({ queryKey: ["/api/meta-ads/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/meta-ads/ads"] });
+      syncMutation.mutate();
+    },
+    onError: () => toast({ title: "Errore", description: "Cambio account fallito", variant: "destructive" }),
+  });
+
   const disconnectMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/meta-ads/disconnect", { method: "DELETE", headers: getAuthHeaders() });
@@ -429,8 +478,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   }
 
   const exportCSV = () => {
-    const preset = COLUMN_PRESETS[tablePreset];
-    const cols = preset?.columns || COLUMN_PRESETS.complete.columns;
+    const cols = tablePreset === "custom" ? customColumns : (COLUMN_PRESETS[tablePreset]?.columns || COLUMN_PRESETS.complete.columns);
     const headers = cols.map(c => COLUMN_LABELS[c] || c);
     const rows = ads.map(ad => cols.map(c => {
       if (c === "adStatus") {
@@ -559,6 +607,29 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                   Account: {config?.adAccountId} - Ultima sync: {config?.lastSyncedAt ? new Date(config.lastSyncedAt).toLocaleString("it-IT") : "Mai"}
                 </p>
               </div>
+              {adAccountsData?.adAccounts && adAccountsData.adAccounts.length > 1 && (
+                <Select
+                  value={config?.adAccountId || ""}
+                  onValueChange={(val) => {
+                    const acc = adAccountsData.adAccounts.find((a: any) => a.id === val);
+                    if (acc && acc.id !== config?.adAccountId) {
+                      switchAccountMutation.mutate({ adAccountId: acc.id, adAccountName: acc.name });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[200px] h-8 text-xs">
+                    <Repeat className="h-3.5 w-3.5 mr-1" />
+                    <SelectValue placeholder="Cambia account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {adAccountsData.adAccounts.map((acc: any) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.name || acc.id} {acc.status === "inactive" ? "(inattivo)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {config?.syncError && (
                 <Badge variant="destructive" className="gap-1 text-xs">
                   <AlertCircle className="h-3 w-3" />Errore sync
@@ -626,17 +697,44 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
             </div>
 
             {viewMode === "table" && (
-              <Select value={tablePreset} onValueChange={setTablePreset}>
-                <SelectTrigger className="w-[160px]">
-                  <Columns3 className="h-4 w-4 mr-1" />
-                  <SelectValue placeholder="Preset" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(COLUMN_PRESETS).map(([key, p]) => (
-                    <SelectItem key={key} value={key}>{p.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <>
+                <Select value={tablePreset} onValueChange={setTablePreset}>
+                  <SelectTrigger className="w-[160px]">
+                    <Columns3 className="h-4 w-4 mr-1" />
+                    <SelectValue placeholder="Preset" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(COLUMN_PRESETS).map(([key, p]) => (
+                      <SelectItem key={key} value={key}>{p.label}</SelectItem>
+                    ))}
+                    <SelectItem value="custom">Personalizzato</SelectItem>
+                  </SelectContent>
+                </Select>
+                {tablePreset === "custom" && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1.5">
+                        <Settings2 className="h-4 w-4" />
+                        Colonne ({customColumns.length})
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-3" align="start">
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Seleziona colonne</p>
+                      <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
+                        {Object.entries(COLUMN_LABELS).map(([key, label]) => (
+                          <label key={key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1.5 py-1">
+                            <Checkbox
+                              checked={customColumns.includes(key)}
+                              onCheckedChange={() => toggleCustomColumn(key)}
+                            />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </>
             )}
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -708,7 +806,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      {(COLUMN_PRESETS[tablePreset]?.columns || []).map(col => (
+                      {activeColumns.map(col => (
                         <th key={col} className="px-3 py-2.5 text-left font-medium text-muted-foreground whitespace-nowrap">
                           {COLUMN_LABELS[col] || col}
                         </th>
@@ -719,7 +817,6 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                   <tbody>
                     {Object.entries(campaignGroups).map(([campaignName, campaignAds]) => {
                       const isExpanded = expandedCampaigns.has(campaignName);
-                      const cols = COLUMN_PRESETS[tablePreset]?.columns || [];
                       const campSpend = campaignAds.reduce((s, a) => s + (a.spend || 0), 0);
 
                       return (
@@ -728,7 +825,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                             className="border-b bg-muted/30 cursor-pointer hover:bg-muted/50"
                             onClick={() => toggleCampaign(campaignName)}
                           >
-                            <td className="px-3 py-2 font-semibold flex items-center gap-2" colSpan={cols.length + 1}>
+                            <td className="px-3 py-2 font-semibold flex items-center gap-2" colSpan={activeColumns.length + 1}>
                               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                               {campaignName} ({campaignAds.length} inserzioni) — {formatCurrency(campSpend)}
                             </td>
@@ -737,7 +834,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                             <tr key={ad.id} className={`border-b hover:bg-muted/30 ${
                               (ad.frequency || 0) > 4 ? "bg-red-50/50 dark:bg-red-950/10" : ""
                             }`}>
-                              {cols.map(col => (
+                              {activeColumns.map(col => (
                                 <td key={col} className="px-3 py-2 whitespace-nowrap">
                                   {col === "adStatus" ? (
                                     getStatusBadge(ad.adStatus)
@@ -779,7 +876,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 bg-muted/50 font-semibold">
-                      {(COLUMN_PRESETS[tablePreset]?.columns || []).map((col, idx) => (
+                      {activeColumns.map((col, idx) => (
                         <td key={col} className="px-3 py-2.5 whitespace-nowrap">
                           {idx === 0 ? `Totale (${ads.length})` :
                            col === "adStatus" ? "" :
