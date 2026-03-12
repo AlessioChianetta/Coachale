@@ -505,8 +505,6 @@ export default function ContentStudioIdeas() {
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const funnelDirtyRef = useRef(false);
   funnelDirtyRef.current = funnelDirty;
-  const activeTabRef = useRef(activeTab);
-  activeTabRef.current = activeTab;
   const blockerBypassRef = useRef(false);
 
   const handleTabChange = useCallback((tab: "ideas" | "posts" | "advisage" | "funnel") => {
