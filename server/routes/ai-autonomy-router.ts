@@ -5400,13 +5400,7 @@ In chat: fai domande SCOMODE, chiedi aggiornamenti su quello che avevi suggerito
 
 Ma sei anche un COACH intelligente: DIALOGA, ascolta le risposte, fai follow-up, adatta i consigli. Non fare monologhi — fai conversazione. Chiedi "e poi?", "quanto hai fatto?", "perché no?". Provoca, ma poi ascolta.
 
-Il tuo obiettivo: portare questa attività ai massimi livelli, a numeri mai visti. Se il consulente sta nella comfort zone, scuotilo.
-
-REGOLA CRITICA PER LA CHAT:
-- Rispondi SEMPRE come un umano su WhatsApp: messaggi brevi, diretti, naturali.
-- NON usare MAI formati strutturati come { "overall_reasoning": ... }, JSON, o blocchi 📊/⚠️/💡/🎯 nelle risposte in chat.
-- NON fare report o analisi formali — quelli sono per il sistema autonomo, NON per la chat diretta.
-- In chat sei un INTERLOCUTORE, non un analista. Parla, non scrivere report.`,
+Il tuo obiettivo: portare questa attività ai massimi livelli, a numeri mai visti. Se il consulente sta nella comfort zone, scuotilo.`,
   simone: `Sei SIMONE, Media Buyer & Ads Strategist AI specializzato in Meta Ads (Facebook e Instagram).
 Non sei un generico assistente — sei un MEDIA BUYER ESPERTO che analizza inserzioni reali con dati reali.
 
@@ -7298,28 +7292,6 @@ Rispondi in modo utile e professionale basandoti sulla conversazione con questa 
                 : `Nessuna campagna trovata nel database. Il sync con Meta potrebbe non essere configurato, oppure non ci sono campagne nell'account.`;
               systemPrompt += `\n=== STATO CAMPAGNE META ADS ===\n${aiExcludedInfo}\nNON inventare dati — comunica chiaramente la situazione.\n`;
             }
-          } else if (autonomousRole?.buildPrompt) {
-            try {
-              const romeTimeStr = new Date().toLocaleString('it-IT', {
-                timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit',
-                day: '2-digit', hour: '2-digit', minute: '2-digit',
-              });
-              const richPrompt = autonomousRole.buildPrompt({
-                roleData, romeTimeStr,
-                recentAllTasks: [], recentCompletedTasks: [],
-                permanentBlocks: [], recentReasoningByRole: {},
-                clientsList: [], settings: {},
-              });
-              systemPrompt = richPrompt + '\n\n' + systemPrompt.substring(personality.length);
-            } catch (buildErr: any) {
-              console.warn(`[AGENT-CHAT-INTERNAL] buildPrompt failed for ${roleId}, injecting raw data: ${buildErr.message}`);
-              let roleDataSection = '\nDATI OPERATIVI IN TEMPO REALE:\n';
-              for (const [key, value] of Object.entries(roleData)) {
-                if (key === 'fileSearchStoreNames' || key === 'kbDocumentTitles') continue;
-                roleDataSection += `${key}: ${JSON.stringify(value, null, 0)}\n`;
-              }
-              systemPrompt += roleDataSection;
-            }
           } else {
             let roleDataSection = '\nDATI OPERATIVI IN TEMPO REALE:\n';
             for (const [key, value] of Object.entries(roleData)) {
@@ -7646,29 +7618,6 @@ REGOLE ANTI-ALLUCINAZIONE:
   }
 
   aiResponse = aiResponse.replace(/\[\[APPROVA:[^\]]+\]\]/gi, '').replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '').replace(/\[\[COMPLETATO:[^\]]+\]\]/gi, '').trim();
-
-  if (aiResponse.includes('"overall_reasoning"') || (aiResponse.startsWith('{') && aiResponse.includes('"tasks"'))) {
-    const jsonEndIdx = aiResponse.lastIndexOf('}');
-    if (jsonEndIdx !== -1 && jsonEndIdx < aiResponse.length - 1) {
-      const afterJson = aiResponse.substring(jsonEndIdx + 1).trim();
-      if (afterJson.length > 20) {
-        aiResponse = afterJson;
-      }
-    }
-    if (aiResponse.includes('"overall_reasoning"')) {
-      aiResponse = aiResponse.replace(/\{[\s\S]*?"overall_reasoning"[\s\S]*?\}[\s\S]*?\}(?:\s*\n\s*)/g, '').trim();
-    }
-    if (aiResponse.startsWith('{')) {
-      const cleanMatch = aiResponse.match(/\}\s*\n\s*([\s\S]{20,})/);
-      if (cleanMatch) {
-        aiResponse = cleanMatch[1].trim();
-      }
-    }
-    aiResponse = aiResponse.replace(/^[\s\n]*\{[\s\S]*?"tasks"\s*:\s*\[[\s\S]*?\]\s*\}\s*/g, '').trim();
-    if (!aiResponse || aiResponse.length < 10) {
-      aiResponse = 'Mi dispiace, c\'è stato un problema con la risposta. Riproviamo — cosa stavi dicendo?';
-    }
-  }
 
   // ── CREATE TASK: server-side execution (works on ALL channels) ──────────────
   // On Telegram (source='telegram' or isOpenMode), auto-execute create_task actions.
