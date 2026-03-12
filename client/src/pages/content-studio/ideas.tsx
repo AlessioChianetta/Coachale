@@ -541,6 +541,43 @@ export default function ContentStudioIdeas() {
     setPendingTab(null);
   }, []);
 
+  useEffect(() => {
+    if (activeTab !== "funnel" || !funnelDirty) return;
+
+    const originalPushState = history.pushState.bind(history);
+    const originalReplaceState = history.replaceState.bind(history);
+
+    const interceptNav = (original: typeof history.pushState): typeof history.pushState => {
+      return function(data: any, unused: string, url?: string | URL | null) {
+        if (funnelRef.current?.isDirty) {
+          const confirmed = window.confirm("Hai modifiche non salvate nel Funnel Builder. Vuoi uscire senza salvare?");
+          if (!confirmed) return;
+        }
+        return original(data, unused, url);
+      };
+    };
+
+    history.pushState = interceptNav(originalPushState);
+    history.replaceState = interceptNav(originalReplaceState);
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (funnelRef.current?.isDirty) {
+        const confirmed = window.confirm("Hai modifiche non salvate nel Funnel Builder. Vuoi uscire senza salvare?");
+        if (!confirmed) {
+          history.pushState(null, "", window.location.href);
+        }
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      history.pushState = originalPushState;
+      history.replaceState = originalReplaceState;
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [activeTab, funnelDirty]);
+
   const [topic, setTopic] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [objective, setObjective] = useState("");
