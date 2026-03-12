@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2164,13 +2165,15 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
         </DialogContent>
       </Dialog>
 
-      {simoneChatOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/20 z-40"
-            onClick={() => setSimoneChatOpen(false)}
-          />
-          <div className="fixed top-0 right-0 h-full w-[380px] sm:w-[420px] z-50 border-l bg-background shadow-2xl">
+      <AnimatePresence>
+        {simoneChatOpen && (
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed top-0 right-0 h-full w-[380px] sm:w-[420px] z-50 border-l bg-background shadow-2xl"
+          >
             <AgentChat
               roleId="simone"
               roleName="Simone – Ads Strategist"
@@ -2179,9 +2182,9 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
               open={true}
               onClose={() => setSimoneChatOpen(false)}
             />
-          </div>
-        </>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 
