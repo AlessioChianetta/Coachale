@@ -426,6 +426,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
         setNodes(funnel.nodes_data || []);
         setEdges(funnel.edges_data || []);
         setShowHistory(false);
+        markClean();
         toast({ title: `Funnel ripristinato alla versione ${versionNumber}` });
       } else {
         const errData = await res.json().catch(() => null);
@@ -612,6 +613,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
     setSaving(true);
     try {
       const body = { name: appliedName, nodes_data: finalNodes, edges_data: generatedEdges, theme: themeIdRef.current };
+      let applySuccess = false;
       if (activeFunnelId) {
         const res = await fetch(`/api/funnels/${activeFunnelId}`, {
           method: "PUT",
@@ -621,6 +623,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
         if (res.ok) {
           const updated = await res.json();
           setFunnels((prev) => prev.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)));
+          applySuccess = true;
         }
       } else {
         const res = await fetch("/api/funnels", {
@@ -632,14 +635,17 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
           const created = await res.json();
           setActiveFunnelId(created.id);
           setFunnels((prev) => [created, ...prev]);
+          applySuccess = true;
         }
       }
+      if (applySuccess) markClean(); else markDirty();
     } catch (err) {
       console.error("Error saving applied funnel:", err);
+      markDirty();
     } finally {
       setSaving(false);
     }
-  }, [activeFunnelId, toast]);
+  }, [activeFunnelId, toast, markClean, markDirty]);
 
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selectedNodeId),
