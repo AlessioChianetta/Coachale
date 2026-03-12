@@ -89,6 +89,7 @@ interface MetaInsightData {
   outbound_clicks?: MetaAction[];
   cost_per_outbound_click?: MetaAction[];
   outbound_clicks_ctr?: MetaAction[];
+  video_views?: MetaAction[];
   date_start?: string;
   date_stop?: string;
 }
@@ -368,6 +369,7 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
           "actions", "cost_per_action_type",
           "cpc", "cpm", "ctr", "frequency", "purchase_roas",
           "outbound_clicks", "cost_per_outbound_click", "outbound_clicks_ctr",
+          "video_views",
           "date_start", "date_stop",
         ].join(",");
 
@@ -402,6 +404,7 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
         const linkClicks = extractOutboundValue(insights.outbound_clicks);
         const cpcLink = extractOutboundFloat(insights.cost_per_outbound_click);
         const ctrLink = extractOutboundFloat(insights.outbound_clicks_ctr);
+        const videoViews = extractActionValue(insights.video_views, "video_view");
 
         let resultType: string | null = null;
         if (leads > 0) resultType = "lead";
@@ -455,6 +458,7 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
           cpcLink,
           ctrLink,
           resultType,
+          videoViews,
           creativeThumbnailUrl: ad.creative?.thumbnail_url || null,
           creativeBody: ad.creative?.body || null,
           creativeTitle: ad.creative?.title || null,
@@ -539,6 +543,8 @@ export async function syncDailySnapshot(consultantId: string): Promise<void> {
         linkClicks: ad.linkClicks,
         cpcLink: ad.cpcLink,
         ctrLink: ad.ctrLink,
+        resultType: ad.resultType,
+        videoViews: ad.videoViews,
       };
 
       if (existing) {

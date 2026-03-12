@@ -11124,6 +11124,7 @@ export const metaAdInsights = pgTable("meta_ad_insights", {
   cpcLink: real("cpc_link"),
   ctrLink: real("ctr_link"),
   resultType: varchar("result_type", { length: 100 }),
+  videoViews: integer("video_views").default(0),
   
   creativeThumbnailUrl: text("creative_thumbnail_url"),
   creativeBody: text("creative_body"),
@@ -11171,6 +11172,8 @@ export const metaAdInsightsDaily = pgTable("meta_ad_insights_daily", {
   linkClicks: integer("link_clicks").default(0),
   cpcLink: real("cpc_link"),
   ctrLink: real("ctr_link"),
+  resultType: varchar("result_type", { length: 100 }),
+  videoViews: integer("video_views").default(0),
   
   createdAt: timestamp("created_at").default(sql`now()`),
 }, (table) => ({

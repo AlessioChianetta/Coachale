@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,6 +67,9 @@ import {
   ImageIcon,
   Settings2,
   Repeat,
+  FolderOpen,
+  Layers,
+  Megaphone,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -125,6 +128,7 @@ interface MetaAd {
   cpcLink: number | null;
   ctrLink: number | null;
   resultType: string | null;
+  videoViews: number | null;
   creativeThumbnailUrl: string | null;
   creativeBody: string | null;
   creativeTitle: string | null;
@@ -202,63 +206,126 @@ function getStatusBadge(status: string) {
 
 const COLUMN_PRESETS: Record<string, { label: string; columns: string[] }> = {
   performance: {
-    label: "Performance",
-    columns: ["adName", "adStatus", "leads", "spend", "cpl", "roas"],
+    label: "Prestazioni",
+    columns: ["name", "pubblicazione", "risultati", "costoPer", "budget", "spend", "impressions", "reach"],
   },
   delivery: {
-    label: "Delivery",
-    columns: ["adName", "adStatus", "reach", "impressions", "frequency", "spend"],
+    label: "Distribuzione",
+    columns: ["name", "pubblicazione", "spend", "impressions", "reach", "frequency", "cpm"],
   },
   engagement: {
-    label: "Engagement",
-    columns: ["adName", "clicks", "ctr", "linkClicks", "ctrLink", "cpcLink"],
+    label: "Interazioni",
+    columns: ["name", "pubblicazione", "clicks", "ctr", "linkClicks", "ctrLink", "cpcLink", "spend"],
+  },
+  video: {
+    label: "Video",
+    columns: ["name", "pubblicazione", "videoViews", "reach", "impressions", "spend", "cpm", "ctr"],
   },
   complete: {
     label: "Completo",
-    columns: ["adName", "adStatus", "spend", "impressions", "clicks", "linkClicks", "reach", "frequency", "ctr", "ctrLink", "cpc", "cpcLink", "cpm", "cpl", "roas", "leads", "dailyBudget"],
+    columns: ["name", "pubblicazione", "risultati", "costoPer", "budget", "spend", "impressions", "clicks", "linkClicks", "reach", "frequency", "ctr", "ctrLink", "cpc", "cpcLink", "cpm", "cpl", "roas", "leads", "videoViews"],
   },
 };
 
 const COLUMN_LABELS: Record<string, string> = {
+  name: "Nome",
   adName: "Nome Inserzione",
   campaignName: "Campagna",
-  adsetName: "Adset",
+  adsetName: "Gruppo",
+  pubblicazione: "Pubblicazione",
   adStatus: "Stato",
-  spend: "Spesa",
+  risultati: "Risultati",
+  costoPer: "Costo per risultato",
+  budget: "Budget",
+  spend: "Importo speso",
   dailyBudget: "Budget/g",
-  impressions: "Impressions",
+  impressions: "Impressioni",
   clicks: "Clic (tutti)",
-  linkClicks: "Clic Link",
+  linkClicks: "Clic sul link",
   reach: "Copertura",
   frequency: "Frequenza",
   cpc: "CPC (tutti)",
-  cpcLink: "CPC Link",
+  cpcLink: "CPC link",
   cpm: "CPM",
   ctr: "CTR (tutti)",
-  ctrLink: "CTR Link",
+  ctrLink: "CTR link",
   cpl: "CPL",
   roas: "ROAS",
   leads: "Lead",
   conversions: "Conversioni",
   resultType: "Tipo Risultato",
+  videoViews: "Visualizzazioni Video",
 };
 
-function formatColumnValue(col: string, ad: MetaAd): string {
-  const v = (ad as any)[col];
+interface AggRow {
+  name: string;
+  status: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  reach: number;
+  leads: number;
+  linkClicks: number;
+  frequency: number | null;
+  cpc: number | null;
+  cpm: number | null;
+  ctr: number | null;
+  ctrLink: number | null;
+  cpcLink: number | null;
+  cpl: number | null;
+  roas: number | null;
+  budget: string;
+  risultati: string;
+  costoPer: string;
+  pubblicazione: string;
+  videoViews: number;
+  adsCount: number;
+  dailyBudget: number | null;
+  campaignName?: string;
+  adsetName?: string;
+  metaAdId?: string;
+  creativeThumbnailUrl?: string | null;
+  id?: string;
+}
+
+function aggregateAds(adsArr: MetaAd[]): Omit<AggRow, "name" | "status" | "budget" | "risultati" | "costoPer" | "pubblicazione" | "adsCount"> {
+  const spend = adsArr.reduce((s, a) => s + (a.spend || 0), 0);
+  const impressions = adsArr.reduce((s, a) => s + (a.impressions || 0), 0);
+  const clicks = adsArr.reduce((s, a) => s + (a.clicks || 0), 0);
+  const reach = adsArr.reduce((s, a) => s + (a.reach || 0), 0);
+  const leads = adsArr.reduce((s, a) => s + (a.leads || 0), 0);
+  const linkClicks = adsArr.reduce((s, a) => s + (a.linkClicks || 0), 0);
+  const videoViews = adsArr.reduce((s, a) => s + (a.videoViews || 0), 0);
+  return {
+    spend, impressions, clicks, reach, leads, linkClicks, videoViews,
+    frequency: impressions > 0 && reach > 0 ? impressions / reach : null,
+    cpc: clicks > 0 ? spend / clicks : null,
+    cpm: impressions > 0 ? (spend / impressions) * 1000 : null,
+    ctr: impressions > 0 ? (clicks / impressions) * 100 : null,
+    ctrLink: impressions > 0 && linkClicks > 0 ? (linkClicks / impressions) * 100 : null,
+    cpcLink: linkClicks > 0 ? spend / linkClicks : null,
+    cpl: leads > 0 ? spend / leads : null,
+    roas: null,
+    dailyBudget: null,
+  };
+}
+
+function formatColumnValue(col: string, row: Record<string, unknown>): string {
+  const v = row[col];
   if (v === null || v === undefined) return "—";
   switch (col) {
-    case "adName": case "campaignName": case "adsetName": case "resultType": case "adStatus":
+    case "name": case "adName": case "campaignName": case "adsetName": case "resultType": case "adStatus": case "pubblicazione": case "risultati": case "costoPer": case "budget":
       return String(v);
     case "spend": case "cpc": case "cpcLink": case "cpm": case "cpl": case "dailyBudget":
-      return formatCurrency(v);
+      return formatCurrency(Number(v));
     case "ctr": case "ctrLink":
-      return formatPercent(v);
+      return formatPercent(Number(v));
     case "roas":
       return `${Number(v).toFixed(2)}x`;
     case "frequency":
       return Number(v).toFixed(2);
     default:
-      return formatNumber(v);
+      return formatNumber(Number(v));
   }
 }
 
@@ -278,11 +345,15 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const [selectedAdId, setSelectedAdId] = useState<string | null>(null);
   const [linkDialogAd, setLinkDialogAd] = useState<MetaAd | null>(null);
   const [trendDays, setTrendDays] = useState(30);
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [dateRange, setDateRange] = useState<string>("lifetime");
+  const [activeTab, setActiveTab] = useState<"campaigns" | "adsets" | "ads">("campaigns");
   const [tablePreset, setTablePreset] = useState("performance");
-  const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
   const [linkSearchQuery, setLinkSearchQuery] = useState("");
+  const [linkPostTarget, setLinkPostTarget] = useState<UnlinkedPost | null>(null);
+  const [linkPostSearch, setLinkPostSearch] = useState("");
   const [customColumns, setCustomColumns] = useState<string[]>(["adName", "adStatus", "spend", "impressions", "clicks", "ctr", "cpc", "leads"]);
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const activeColumns = useMemo(() => {
     if (tablePreset === "custom") return customColumns;
@@ -308,11 +379,12 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const isConnected = config?.isConnected === true;
 
   const { data: adsData, isLoading: adsLoading } = useQuery({
-    queryKey: ["/api/meta-ads/ads", statusFilter, sortBy],
+    queryKey: ["/api/meta-ads/ads", statusFilter, sortBy, dateRange],
     queryFn: async () => {
       const url = new URL("/api/meta-ads/ads", window.location.origin);
       if (statusFilter !== "all") url.searchParams.set("status", statusFilter);
       url.searchParams.set("sort", sortBy);
+      if (dateRange !== "lifetime") url.searchParams.set("days", dateRange);
       const res = await fetch(url.toString(), { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Failed to fetch ads");
       return res.json();
@@ -333,15 +405,110 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
     );
   }, [allAds, searchQuery]);
 
-  const campaignGroups = useMemo(() => {
-    const groups: Record<string, MetaAd[]> = {};
+  const campaignRows: AggRow[] = useMemo(() => {
+    const map: Record<string, MetaAd[]> = {};
     for (const ad of ads) {
       const key = ad.campaignName || "Sconosciuta";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(ad);
+      if (!map[key]) map[key] = [];
+      map[key].push(ad);
     }
-    return groups;
+    return Object.entries(map).map(([cName, cAds]) => {
+      const agg = aggregateAds(cAds);
+      const status = cAds[0]?.campaignStatus || "";
+      const hasAdsetBudgets = cAds.some(a => a.dailyBudget);
+      const budget = hasAdsetBudgets ? "Uso del budget del gruppo di inserzioni" : (cAds[0]?.dailyBudget ? formatCurrency(cAds[0].dailyBudget) + " Giornaliero" : "—");
+      return {
+        ...agg,
+        name: cName,
+        status,
+        budget,
+        risultati: agg.leads > 0 ? String(agg.leads) : "—",
+        costoPer: agg.cpl ? formatCurrency(agg.cpl) : "—",
+        pubblicazione: status === "ACTIVE" ? "Attiva" : "Non attiva",
+        adsCount: cAds.length,
+      };
+    });
   }, [ads]);
+
+  const adsetRows: AggRow[] = useMemo(() => {
+    const map: Record<string, MetaAd[]> = {};
+    for (const ad of ads) {
+      const key = `${ad.campaignName}::${ad.adsetName || "Sconosciuto"}`;
+      if (!map[key]) map[key] = [];
+      map[key].push(ad);
+    }
+    return Object.entries(map).map(([key, asAds]) => {
+      const agg = aggregateAds(asAds);
+      const [campName, asName] = key.split("::");
+      const budget = asAds[0]?.dailyBudget ? formatCurrency(asAds[0].dailyBudget) + " Giornaliero" : (asAds[0]?.lifetimeBudget ? formatCurrency(asAds[0].lifetimeBudget) + " Lifetime" : "—");
+      return {
+        ...agg,
+        name: asName,
+        campaignName: campName,
+        status: asAds[0]?.adStatus || "",
+        budget,
+        risultati: agg.leads > 0 ? String(agg.leads) : "—",
+        costoPer: agg.cpl ? formatCurrency(agg.cpl) : "—",
+        pubblicazione: asAds.some(a => a.adStatus === "ACTIVE") ? "Attiva" : "Non attiva",
+        adsCount: asAds.length,
+      };
+    });
+  }, [ads]);
+
+  const adRows: AggRow[] = useMemo(() => {
+    return ads.map(ad => ({
+      name: ad.adName || "Inserzione",
+      status: ad.adStatus,
+      spend: ad.spend,
+      impressions: ad.impressions,
+      clicks: ad.clicks,
+      reach: ad.reach,
+      leads: ad.leads,
+      linkClicks: ad.linkClicks || 0,
+      frequency: ad.frequency,
+      cpc: ad.cpc,
+      cpm: ad.cpm,
+      ctr: ad.ctr,
+      ctrLink: ad.ctrLink,
+      cpcLink: ad.cpcLink,
+      cpl: ad.cpl,
+      roas: ad.roas,
+      videoViews: ad.videoViews || 0,
+      budget: ad.dailyBudget ? formatCurrency(ad.dailyBudget) + " Giornaliero" : "—",
+      risultati: ad.leads > 0 ? String(ad.leads) : "—",
+      costoPer: ad.cpl ? formatCurrency(ad.cpl) : "—",
+      pubblicazione: ad.adStatus === "ACTIVE" ? "Attiva" : "Non attiva",
+      adsCount: 1,
+      dailyBudget: ad.dailyBudget,
+      campaignName: ad.campaignName,
+      adsetName: ad.adsetName,
+      metaAdId: ad.metaAdId,
+      creativeThumbnailUrl: ad.creativeThumbnailUrl,
+      id: ad.id,
+    }));
+  }, [ads]);
+
+  const currentRows: AggRow[] = useMemo(() => {
+    const rows = activeTab === "campaigns" ? campaignRows : activeTab === "adsets" ? adsetRows : adRows;
+    if (!sortColumn) return rows;
+    return [...rows].sort((a, b) => {
+      const va = (a as Record<string, unknown>)[sortColumn];
+      const vb = (b as Record<string, unknown>)[sortColumn];
+      if (va === null || va === undefined) return 1;
+      if (vb === null || vb === undefined) return -1;
+      if (typeof va === "string" && typeof vb === "string") return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      return sortDir === "asc" ? Number(va) - Number(vb) : Number(vb) - Number(va);
+    });
+  }, [activeTab, campaignRows, adsetRows, adRows, sortColumn, sortDir]);
+
+  const handleColumnSort = (col: string) => {
+    if (sortColumn === col) {
+      setSortDir(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(col);
+      setSortDir("desc");
+    }
+  };
 
   const { data: unlinkedData } = useQuery({
     queryKey: ["/api/meta-ads/unlinked-posts"],
@@ -478,21 +645,22 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   }
 
   const exportCSV = () => {
-    const cols = tablePreset === "custom" ? customColumns : (COLUMN_PRESETS[tablePreset]?.columns || COLUMN_PRESETS.complete.columns);
+    const cols = activeColumns;
     const headers = cols.map(c => COLUMN_LABELS[c] || c);
-    const rows = ads.map(ad => cols.map(c => {
-      if (c === "adStatus") {
-        const cfg = STATUS_CONFIG[ad.adStatus?.toUpperCase()];
-        return cfg?.label || ad.adStatus;
-      }
-      return formatColumnValue(c, ad).replace(/[€%]/g, "").trim();
+    const rows = currentRows.map(row => cols.map(c => {
+      const v = (row as Record<string, unknown>)[c];
+      if (v === null || v === undefined) return "";
+      if (c === "spend" || c === "cpc" || c === "cpcLink" || c === "cpm" || c === "cpl") return String(v);
+      if (c === "ctr" || c === "ctrLink") return String(v);
+      if (c === "frequency") return v != null ? Number(v).toFixed(2) : "";
+      return String(v);
     }));
     const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `meta-ads-export-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `meta-ads-${activeTab}-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -505,13 +673,6 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
     }));
   }, [detailData]);
 
-  const toggleCampaign = (name: string) => {
-    setExpandedCampaigns(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
-      return next;
-    });
-  };
 
   const content = (
     <div className="space-y-6">
@@ -664,44 +825,98 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
           </div>
 
           {summary && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              <KpiCard label="Spesa Totale" value={formatCurrency(summary.totalSpend)} icon={<DollarSign className="h-4 w-4" />} color="red" />
-              <KpiCard label="CPC Medio" value={formatCurrency(summary.avgCpc)} icon={<MousePointer className="h-4 w-4" />} color="blue" />
-              <KpiCard label="CTR Medio" value={formatPercent(summary.avgCtr)} icon={<TrendingUp className="h-4 w-4" />} color="green" />
-              <KpiCard label="Lead Totali" value={formatNumber(summary.totalLeads)} icon={<Users className="h-4 w-4" />} color="purple" />
-              <KpiCard label="ROAS Medio" value={summary.avgRoas ? `${summary.avgRoas.toFixed(2)}x` : "N/D"} icon={<Target className="h-4 w-4" />} color="amber" />
-              <KpiCard label="CPL Medio" value={summary.avgCpl ? formatCurrency(summary.avgCpl) : "N/D"} icon={<DollarSign className="h-4 w-4" />} color="indigo" />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Periodo</span>
+                <div className="flex gap-1 bg-muted/50 rounded-lg p-0.5">
+                  {[
+                    { key: "1", label: "Oggi" },
+                    { key: "7", label: "7gg" },
+                    { key: "30", label: "30gg" },
+                    { key: "90", label: "90gg" },
+                    { key: "lifetime", label: "Lifetime" },
+                  ].map(d => (
+                    <button
+                      key={d.key}
+                      onClick={() => setDateRange(d.key)}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                        dateRange === d.key
+                          ? "bg-white dark:bg-background shadow-sm text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <KpiCard label="Spesa Totale" value={formatCurrency(summary.totalSpend)} icon={<DollarSign className="h-4 w-4" />} color="red" />
+                <KpiCard label="CPC Medio" value={formatCurrency(summary.avgCpc)} icon={<MousePointer className="h-4 w-4" />} color="blue" />
+                <KpiCard label="CTR Medio" value={formatPercent(summary.avgCtr)} icon={<TrendingUp className="h-4 w-4" />} color="green" />
+                <KpiCard label="Lead Totali" value={formatNumber(summary.totalLeads)} icon={<Users className="h-4 w-4" />} color="purple" />
+                <KpiCard label="ROAS Medio" value={summary.avgRoas ? `${summary.avgRoas.toFixed(2)}x` : "N/D"} icon={<Target className="h-4 w-4" />} color="amber" />
+                <KpiCard label="CPL Medio" value={summary.avgCpl ? formatCurrency(summary.avgCpl) : "N/D"} icon={<DollarSign className="h-4 w-4" />} color="indigo" />
+              </div>
             </div>
           )}
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-              <Button
-                variant={viewMode === "cards" ? "secondary" : "ghost"}
-                size="sm"
-                className="h-8 px-3 gap-1.5"
-                onClick={() => setViewMode("cards")}
-              >
-                <LayoutGrid className="h-4 w-4" />
-                Schede
-              </Button>
-              <Button
-                variant={viewMode === "table" ? "secondary" : "ghost"}
-                size="sm"
-                className="h-8 px-3 gap-1.5"
-                onClick={() => setViewMode("table")}
-              >
-                <Table2 className="h-4 w-4" />
-                Tabella
-              </Button>
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Cerca e filtra per: nome, ID o metrica..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 bg-background"
+            />
+          </div>
+
+          {/* 3 Tabs: Campagne / Gruppi di inserzioni / Inserzioni */}
+          <Card className="overflow-hidden">
+            <div className="border-b bg-muted/30">
+              <div className="flex">
+                {([
+                  { key: "campaigns" as const, label: "Campagne", icon: <Megaphone className="h-3.5 w-3.5" /> },
+                  { key: "adsets" as const, label: "Gruppi di inserzioni", icon: <Layers className="h-3.5 w-3.5" /> },
+                  { key: "ads" as const, label: "Inserzioni", icon: <FolderOpen className="h-3.5 w-3.5" /> },
+                ]).map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => { setActiveTab(tab.key); setSortColumn(null); }}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === tab.key
+                        ? "border-blue-600 text-blue-600 bg-white dark:bg-background"
+                        : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {viewMode === "table" && (
-              <>
+            {/* Toolbar row */}
+            <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/20 flex-wrap">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px] h-8 text-xs">
+                  <SelectValue placeholder="Stato" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutte</SelectItem>
+                  <SelectItem value="ACTIVE">Attive</SelectItem>
+                  <SelectItem value="PAUSED">In Pausa</SelectItem>
+                  <SelectItem value="ARCHIVED">Archiviate</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="ml-auto flex items-center gap-2">
                 <Select value={tablePreset} onValueChange={setTablePreset}>
-                  <SelectTrigger className="w-[160px]">
-                    <Columns3 className="h-4 w-4 mr-1" />
-                    <SelectValue placeholder="Preset" />
+                  <SelectTrigger className="h-8 text-xs w-auto min-w-[140px]">
+                    <Columns3 className="h-3.5 w-3.5 mr-1" />
+                    <span>Colonne: </span>
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(COLUMN_PRESETS).map(([key, p]) => (
@@ -713,12 +928,12 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                 {tablePreset === "custom" && (
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-1.5">
-                        <Settings2 className="h-4 w-4" />
-                        Colonne ({customColumns.length})
+                      <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+                        <Settings2 className="h-3.5 w-3.5" />
+                        ({customColumns.length})
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-56 p-3" align="start">
+                    <PopoverContent className="w-56 p-3" align="end">
                       <p className="text-xs font-semibold text-muted-foreground mb-2">Seleziona colonne</p>
                       <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
                         {Object.entries(COLUMN_LABELS).map(([key, label]) => (
@@ -734,251 +949,157 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                     </PopoverContent>
                   </Popover>
                 )}
-              </>
-            )}
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Stato" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutte</SelectItem>
-                <SelectItem value="ACTIVE">Attive</SelectItem>
-                <SelectItem value="PAUSED">In Pausa</SelectItem>
-                <SelectItem value="ARCHIVED">Archiviate</SelectItem>
-                <SelectItem value="CAMPAIGN_PAUSED">Campagna in Pausa</SelectItem>
-                <SelectItem value="ADSET_PAUSED">Adset in Pausa</SelectItem>
-                <SelectItem value="DISAPPROVED">Non Approvate</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[140px]">
-                <ArrowUpDown className="h-4 w-4 mr-1" />
-                <SelectValue placeholder="Ordina per" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="spend">Spesa</SelectItem>
-                <SelectItem value="cpc">CPC</SelectItem>
-                <SelectItem value="ctr">CTR</SelectItem>
-                <SelectItem value="roas">ROAS</SelectItem>
-                <SelectItem value="frequency">Frequenza</SelectItem>
-                <SelectItem value="leads">Lead</SelectItem>
-                <SelectItem value="cpl">CPL</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Cerca inserzione o campagna..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 h-9"
-              />
+                <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={exportCSV}>
+                  <Download className="h-3.5 w-3.5" />
+                  CSV
+                </Button>
+              </div>
             </div>
 
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
-              <Download className="h-4 w-4" />
-              CSV
-            </Button>
-
-            <span className="text-sm text-muted-foreground">
-              {ads.length} inserzioni
-            </span>
-          </div>
-
-          {adsLoading ? (
-            <div className="grid gap-3">
-              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
-            </div>
-          ) : ads.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="py-12 text-center text-muted-foreground">
+            {/* Table */}
+            {adsLoading ? (
+              <div className="p-6 space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
+              </div>
+            ) : ads.length === 0 ? (
+              <div className="py-16 text-center text-muted-foreground">
                 <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-40" />
                 <p>Nessuna inserzione trovata. Prova a sincronizzare.</p>
-              </CardContent>
-            </Card>
-          ) : viewMode === "table" ? (
-            <Card>
+              </div>
+            ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-[13px]">
                   <thead>
-                    <tr className="border-b bg-muted/50">
+                    <tr className="border-b bg-muted/40">
+                      <th className="px-3 py-2 text-left w-8">
+                        <Checkbox className="h-3.5 w-3.5" disabled />
+                      </th>
                       {activeColumns.map(col => (
-                        <th key={col} className="px-3 py-2.5 text-left font-medium text-muted-foreground whitespace-nowrap">
-                          {COLUMN_LABELS[col] || col}
+                        <th
+                          key={col}
+                          className="px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap cursor-pointer hover:text-foreground select-none group"
+                          onClick={() => handleColumnSort(col)}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            {COLUMN_LABELS[col] || col}
+                            <ArrowUpDown className={`h-3 w-3 transition-opacity ${sortColumn === col ? "opacity-100 text-foreground" : "opacity-0 group-hover:opacity-50"}`} />
+                          </span>
                         </th>
                       ))}
-                      <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Azioni</th>
+                      {activeTab === "ads" && (
+                        <th className="px-3 py-2 text-left font-medium text-muted-foreground w-16"></th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(campaignGroups).map(([campaignName, campaignAds]) => {
-                      const isExpanded = expandedCampaigns.has(campaignName);
-                      const campSpend = campaignAds.reduce((s, a) => s + (a.spend || 0), 0);
-
-                      return (
-                        <TooltipProvider key={campaignName}>
-                          <tr
-                            className="border-b bg-muted/30 cursor-pointer hover:bg-muted/50"
-                            onClick={() => toggleCampaign(campaignName)}
-                          >
-                            <td className="px-3 py-2 font-semibold flex items-center gap-2" colSpan={activeColumns.length + 1}>
-                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                              {campaignName} ({campaignAds.length} inserzioni) — {formatCurrency(campSpend)}
+                    <TooltipProvider>
+                    {currentRows.map((row, idx) => (
+                      <tr
+                        key={row.name + idx}
+                        className="border-b hover:bg-blue-50/40 dark:hover:bg-blue-950/10 transition-colors group"
+                      >
+                        <td className="px-3 py-2">
+                          <div className={`w-2 h-2 rounded-full ${row.pubblicazione === "Attiva" ? "bg-green-500" : "bg-gray-300"}`} />
+                        </td>
+                        {activeColumns.map(col => {
+                          const val = (row as Record<string, unknown>)[col];
+                          let display: React.ReactNode;
+                          if (col === "name") {
+                            display = (
+                              <div className="flex items-center gap-2 max-w-[320px]">
+                                {activeTab === "ads" && row.creativeThumbnailUrl && (
+                                  <img src={row.creativeThumbnailUrl} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0" />
+                                )}
+                                <span className="truncate text-blue-700 dark:text-blue-400 hover:underline cursor-pointer font-medium">
+                                  {row.name}
+                                </span>
+                              </div>
+                            );
+                          } else if (col === "pubblicazione") {
+                            display = (
+                              <span className={`text-xs ${row.pubblicazione === "Attiva" ? "text-green-600" : "text-muted-foreground"}`}>
+                                {row.pubblicazione}
+                              </span>
+                            );
+                          } else if (col === "budget") {
+                            display = (
+                              <span className="text-xs text-muted-foreground max-w-[180px] truncate block">
+                                {row.budget}
+                              </span>
+                            );
+                          } else if (col === "risultati" || col === "costoPer") {
+                            display = <span className="text-xs">{String(val ?? "—")}</span>;
+                          } else if (col === "spend" || col === "cpc" || col === "cpcLink" || col === "cpm" || col === "cpl") {
+                            display = val != null ? formatCurrency(Number(val)) : "—";
+                          } else if (col === "ctr" || col === "ctrLink") {
+                            display = val != null ? formatPercent(Number(val)) : "—";
+                          } else if (col === "frequency") {
+                            display = val != null ? Number(val).toFixed(2) : "—";
+                          } else if (col === "roas") {
+                            display = val != null ? `${Number(val).toFixed(2)}x` : "—";
+                          } else if (typeof val === "number") {
+                            display = formatNumber(val);
+                          } else {
+                            display = val != null ? String(val) : "—";
+                          }
+                          return (
+                            <td key={col} className="px-3 py-2 whitespace-nowrap text-[13px]">
+                              {display}
                             </td>
-                          </tr>
-                          {isExpanded && campaignAds.map(ad => (
-                            <tr key={ad.id} className={`border-b hover:bg-muted/30 ${
-                              (ad.frequency || 0) > 4 ? "bg-red-50/50 dark:bg-red-950/10" : ""
-                            }`}>
-                              {activeColumns.map(col => (
-                                <td key={col} className="px-3 py-2 whitespace-nowrap">
-                                  {col === "adStatus" ? (
-                                    getStatusBadge(ad.adStatus)
-                                  ) : col === "adName" ? (
-                                    <div className="flex items-center gap-2 max-w-[250px]">
-                                      {ad.creativeThumbnailUrl && (
-                                        <img src={ad.creativeThumbnailUrl} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                                      )}
-                                      <span className="truncate font-medium">{ad.adName || "Inserzione"}</span>
-                                      {(ad.frequency || 0) > 4 && (
-                                        <Tooltip>
-                                          <TooltipTrigger>
-                                            <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
-                                          </TooltipTrigger>
-                                          <TooltipContent>Ad Fatigue: Frequenza {ad.frequency?.toFixed(1)}</TooltipContent>
-                                        </Tooltip>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    formatColumnValue(col, ad)
-                                  )}
-                                </td>
-                              ))}
-                              <td className="px-3 py-2 whitespace-nowrap">
-                                <div className="flex gap-1">
-                                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); setSelectedAdId(ad.metaAdId); }}>
-                                    <BarChart3 className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); setLinkDialogAd(ad); }}>
-                                    <Link2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </TooltipProvider>
-                      );
-                    })}
+                          );
+                        })}
+                        {activeTab === "ads" && (
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => row.metaAdId && setSelectedAdId(row.metaAdId)}>
+                                <BarChart3 className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => {
+                                const ad = ads.find(a => a.metaAdId === row.metaAdId);
+                                if (ad) setLinkDialogAd(ad);
+                              }}>
+                                <Link2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                    </TooltipProvider>
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 bg-muted/50 font-semibold">
+                    <tr className="border-t bg-muted/30 font-medium text-[13px]">
+                      <td className="px-3 py-2"></td>
                       {activeColumns.map((col, idx) => (
-                        <td key={col} className="px-3 py-2.5 whitespace-nowrap">
-                          {idx === 0 ? `Totale (${ads.length})` :
-                           col === "adStatus" ? "" :
-                           col === "spend" ? formatCurrency(summary?.totalSpend || 0) :
-                           col === "impressions" ? formatNumber(summary?.totalImpressions || 0) :
-                           col === "clicks" ? formatNumber(summary?.totalClicks || 0) :
-                           col === "linkClicks" ? formatNumber(summary?.totalLinkClicks || 0) :
-                           col === "reach" ? formatNumber(summary?.totalReach || 0) :
-                           col === "leads" ? formatNumber(summary?.totalLeads || 0) :
-                           col === "cpc" ? formatCurrency(summary?.avgCpc || 0) :
-                           col === "ctr" ? formatPercent(summary?.avgCtr || 0) :
-                           col === "cpl" ? (summary?.avgCpl ? formatCurrency(summary.avgCpl) : "—") :
-                           col === "roas" ? (summary?.avgRoas ? `${summary.avgRoas.toFixed(2)}x` : "—") :
-                           ""}
+                        <td key={col} className="px-3 py-2 whitespace-nowrap">
+                          {idx === 0 ? (
+                            <span className="text-muted-foreground">
+                              Risultati di {currentRows.length} {activeTab === "campaigns" ? "campagne" : activeTab === "adsets" ? "gruppi" : "inserzioni"}
+                            </span>
+                          ) : col === "spend" ? (
+                            <span>{formatCurrency(summary?.totalSpend || 0)}</span>
+                          ) : col === "impressions" ? (
+                            <span>{formatNumber(summary?.totalImpressions || 0)}</span>
+                          ) : col === "clicks" ? (
+                            <span>{formatNumber(summary?.totalClicks || 0)}</span>
+                          ) : col === "reach" ? (
+                            <span>{formatNumber(summary?.totalReach || 0)}</span>
+                          ) : col === "leads" || col === "risultati" ? (
+                            <span>{formatNumber(summary?.totalLeads || 0)}</span>
+                          ) : col === "linkClicks" ? (
+                            <span>{formatNumber(summary?.totalLinkClicks || 0)}</span>
+                          ) : col === "spend" ? (
+                            <span className="text-muted-foreground">Spesa totale</span>
+                          ) : ""}
                         </td>
                       ))}
-                      <td className="px-3 py-2.5"></td>
+                      {activeTab === "ads" && <td className="px-3 py-2"></td>}
                     </tr>
                   </tfoot>
                 </table>
               </div>
-            </Card>
-          ) : (
-            <div className="grid gap-3">
-              {ads.map((ad) => (
-                <Card key={ad.id} className={`hover:shadow-md transition-shadow ${
-                  (ad.frequency || 0) > 4 ? "border-red-300 dark:border-red-800" : ""
-                }`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex gap-3 flex-1 min-w-0">
-                        {ad.creativeThumbnailUrl && (
-                          <img
-                            src={ad.creativeThumbnailUrl}
-                            alt={ad.adName || ""}
-                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 className="font-semibold truncate">{ad.adName || "Inserzione"}</h3>
-                            {getStatusBadge(ad.adStatus)}
-                            {(ad.frequency || 0) > 4 && (
-                              <Badge className="bg-red-500/10 text-red-600 border-red-300 gap-1">
-                                <AlertTriangle className="h-3 w-3" />Ad Fatigue
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate mb-3">
-                            {ad.campaignName && <span>Campagna: {ad.campaignName}</span>}
-                            {ad.adsetName && <span className="ml-2">- Adset: {ad.adsetName}</span>}
-                          </p>
-                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
-                            <MetricCell label="Spesa" value={formatCurrency(ad.spend)} />
-                            <MetricCell label="Impressions" value={formatNumber(ad.impressions)} />
-                            <MetricCell label="Click" value={formatNumber(ad.clicks)} />
-                            <MetricCell label="CTR" value={formatPercent(ad.ctr || 0)} />
-                            <MetricCell label="CPC" value={formatCurrency(ad.cpc || 0)} />
-                            <MetricCell label="Lead" value={formatNumber(ad.leads)} />
-                          </div>
-                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center mt-2 pt-2 border-t border-dashed">
-                            <MetricCell label="Copertura" value={formatNumber(ad.reach)} />
-                            <MetricCell label="Frequenza" value={ad.frequency?.toFixed(2) || "—"} highlight={(ad.frequency || 0) > 4} />
-                            <MetricCell label="ROAS" value={ad.roas ? `${ad.roas.toFixed(2)}x` : "—"} />
-                            <MetricCell label="CPL" value={ad.cpl ? formatCurrency(ad.cpl) : "—"} />
-                            <MetricCell label="Clic Link" value={formatNumber(ad.linkClicks || 0)} />
-                            <MetricCell label="Budget/g" value={ad.dailyBudget ? formatCurrency(ad.dailyBudget) : "—"} />
-                          </div>
-                          {ad.dailyBudget && ad.dailyBudget > 0 && (
-                            <div className="mt-2">
-                              <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
-                                <span>Utilizzo budget</span>
-                                <span>{Math.min(100, ((ad.spend / ad.dailyBudget) * 100)).toFixed(0)}%</span>
-                              </div>
-                              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${
-                                    (ad.spend / ad.dailyBudget) > 1 ? "bg-red-500" :
-                                    (ad.spend / ad.dailyBudget) > 0.8 ? "bg-amber-500" : "bg-green-500"
-                                  }`}
-                                  style={{ width: `${Math.min(100, (ad.spend / ad.dailyBudget) * 100)}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1.5 flex-shrink-0">
-                        <Button variant="ghost" size="sm" className="gap-1" onClick={() => setSelectedAdId(ad.metaAdId)}>
-                          <BarChart3 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Dettaglio</span>
-                        </Button>
-                        <Button variant="ghost" size="sm" className="gap-1" onClick={() => setLinkDialogAd(ad)}>
-                          <Link2 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Associa</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+            )}
+          </Card>
 
           {unlinkedPosts.length > 0 && (
             <Card>
@@ -1000,11 +1121,12 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                       size="sm"
                       className="gap-1.5 flex-shrink-0"
                       onClick={() => {
-                        toast({ title: "Associa da inserzione", description: "Vai alla scheda di un'inserzione e clicca 'Associa' per collegare questo post" });
+                        setLinkPostTarget(post);
+                        setLinkPostSearch("");
                       }}
                     >
                       <Link2 className="h-3.5 w-3.5" />
-                      Info
+                      Associa
                     </Button>
                   </div>
                 ))}
@@ -1175,6 +1297,62 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{post.title || post.hook || "Post senza titolo"}</p>
                     <p className="text-xs text-muted-foreground">{post.platform} - {post.status}</p>
+                  </div>
+                  {linkMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4 text-muted-foreground" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!linkPostTarget} onOpenChange={(open) => { if (!open) { setLinkPostTarget(null); setLinkPostSearch(""); } }}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5" />
+              Associa Inserzione a "{linkPostTarget?.title || linkPostTarget?.hook || "Post"}"
+            </DialogTitle>
+          </DialogHeader>
+          <div className="relative mb-3">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Cerca inserzione..."
+              value={linkPostSearch}
+              onChange={e => setLinkPostSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {allAds.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Nessuna inserzione disponibile.
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              {allAds
+                .filter(a => {
+                  if (!linkPostSearch.trim()) return true;
+                  const q = linkPostSearch.toLowerCase();
+                  return (a.adName || "").toLowerCase().includes(q) || (a.campaignName || "").toLowerCase().includes(q);
+                })
+                .map((ad) => (
+                <button
+                  key={ad.metaAdId}
+                  onClick={() => {
+                    if (linkPostTarget) {
+                      linkMutation.mutate({ metaAdId: ad.metaAdId, postId: linkPostTarget.id });
+                      setLinkPostTarget(null);
+                    }
+                  }}
+                  className="w-full text-left p-3 rounded-lg border hover:bg-muted/50 transition-colors flex items-center gap-3"
+                  disabled={linkMutation.isPending}
+                >
+                  {ad.creativeThumbnailUrl && (
+                    <img src={ad.creativeThumbnailUrl} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{ad.adName}</p>
+                    <p className="text-xs text-muted-foreground">{ad.campaignName} &middot; {formatCurrency(ad.spend)}</p>
                   </div>
                   {linkMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4 text-muted-foreground" />}
                 </button>

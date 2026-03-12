@@ -61,7 +61,7 @@ router.get("/config", authenticateToken, requireRole("consultant"), async (req: 
 router.get("/ads", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { status, campaignId, sort } = req.query;
+    const { status, campaignId, sort, days } = req.query;
 
     const ads = await db
       .select()
@@ -69,7 +69,61 @@ router.get("/ads", authenticateToken, requireRole("consultant"), async (req: Aut
       .where(eq(schema.metaAdInsights.consultantId, consultantId))
       .orderBy(desc(schema.metaAdInsights.spend));
 
-    let filteredAds = ads;
+    type AdWithOverrides = typeof ads[number];
+
+    let processedAds: AdWithOverrides[] = ads;
+
+    if (days && days !== "lifetime") {
+      const daysNum = Math.min(365, Math.max(1, parseInt(String(days)) || 30));
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - daysNum);
+      const cutoffStr = cutoff.toISOString().split("T")[0];
+
+      const dailyRows = await db
+        .select()
+        .from(schema.metaAdInsightsDaily)
+        .where(
+          and(
+            eq(schema.metaAdInsightsDaily.consultantId, consultantId),
+            sql`${schema.metaAdInsightsDaily.snapshotDate} >= ${cutoffStr}`
+          )
+        )
+        .orderBy(schema.metaAdInsightsDaily.snapshotDate);
+
+      const dailyByAd: Record<string, typeof dailyRows> = {};
+      for (const d of dailyRows) {
+        if (!dailyByAd[d.metaAdId]) dailyByAd[d.metaAdId] = [];
+        dailyByAd[d.metaAdId].push(d);
+      }
+
+      processedAds = ads.map(ad => {
+        const snapshots = dailyByAd[ad.metaAdId];
+        if (!snapshots || snapshots.length === 0) return ad;
+        const latest = snapshots[snapshots.length - 1];
+        return {
+          ...ad,
+          spend: latest.spend ?? 0,
+          impressions: latest.impressions ?? 0,
+          clicks: latest.clicks ?? 0,
+          reach: latest.reach ?? 0,
+          leads: latest.leads ?? 0,
+          conversions: latest.conversions ?? 0,
+          cpc: latest.cpc,
+          cpm: latest.cpm,
+          ctr: latest.ctr,
+          cpl: latest.cpl,
+          frequency: latest.frequency,
+          roas: latest.roas,
+          linkClicks: latest.linkClicks ?? 0,
+          cpcLink: latest.cpcLink,
+          ctrLink: latest.ctrLink,
+          resultType: latest.resultType ?? ad.resultType,
+          videoViews: latest.videoViews ?? ad.videoViews,
+        };
+      });
+    }
+
+    let filteredAds = processedAds;
     if (status && status !== "all") {
       filteredAds = filteredAds.filter((a) => a.adStatus === String(status));
     }
