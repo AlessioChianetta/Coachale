@@ -1040,7 +1040,6 @@ async function fetchSimoneData(consultantId: string, _clientIds: string[]): Prom
            creative_thumbnail_url, creative_body, creative_title
     FROM meta_ad_insights
     WHERE consultant_id = ${consultantId}
-      AND campaign_status = 'ACTIVE'
     ORDER BY spend DESC
   `);
 
@@ -1083,15 +1082,18 @@ async function fetchSimoneData(consultantId: string, _clientIds: string[]): Prom
   for (const ad of ads) {
     const cName = ad.campaignName || "Sconosciuta";
     if (!campaignMap[cName]) {
-      campaignMap[cName] = { name: cName, adsCount: 0, totalSpend: 0, totalImpressions: 0, totalClicks: 0, totalLeads: 0, totalReach: 0, roasSum: 0, roasCount: 0 };
+      campaignMap[cName] = { name: cName, campaignStatus: ad.campaignStatus, adsCount: 0, activeAdsCount: 0, pausedAdsCount: 0, totalSpend: 0, totalImpressions: 0, totalClicks: 0, totalLeads: 0, totalReach: 0, totalConversions: 0, roasSum: 0, roasCount: 0 };
     }
     const c = campaignMap[cName];
     c.adsCount++;
+    if (ad.adStatus === 'ACTIVE') c.activeAdsCount++;
+    if (ad.adStatus === 'PAUSED') c.pausedAdsCount++;
     c.totalSpend += ad.spend;
     c.totalImpressions += ad.impressions;
     c.totalClicks += ad.clicks;
     c.totalLeads += ad.leads;
     c.totalReach += ad.reach;
+    c.totalConversions += ad.conversions;
     if (ad.roas != null && ad.roas > 0) { c.roasSum += ad.roas; c.roasCount++; }
   }
 
@@ -1104,7 +1106,7 @@ async function fetchSimoneData(consultantId: string, _clientIds: string[]): Prom
     avgFrequency: c.totalImpressions > 0 && c.totalReach > 0 ? c.totalImpressions / c.totalReach : 0,
   }));
 
-  return { ads, campaigns, ...kbContext };
+  return { ads, campaigns, aiExcludedCount: aiExcludedCampaigns.length, ...kbContext };
 }
 
 async function fetchHunterData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
@@ -3324,7 +3326,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     displayName: "Simone – Ads Strategist",
     avatar: "simone",
     accentColor: "orange",
-    description: "Media buyer AI esperto in Meta Ads. Analizza ogni inserzione attiva con tutti i KPI (CTR, CPC, CPL, ROAS, frequenza, budget, creatività), confronta le performance tra inserzioni e campagne, rileva ad fatigue e sprechi di budget, identifica le winner da scalare e suggerisce azioni operative precise: pausa, scaling, A/B test creatività, riallocazione budget.",
+    description: "Media buyer AI esperto in Meta Ads. Analizza ogni inserzione (attiva e pausata) con tutti i KPI (CTR, CPC, CPL, ROAS, frequenza, budget, creatività), confronta le performance tra inserzioni e campagne, rileva ad fatigue e sprechi di budget, identifica le winner da scalare e suggerisce azioni operative precise: pausa, scaling, A/B test creatività, riallocazione budget.",
     shortDescription: "Media Buyer & Ads Optimizer",
     categories: ["ads_optimization", "performance_alert", "analysis", "monitoring"],
     preferredChannels: ["none"],
@@ -3334,11 +3336,15 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks, recentReasoningByRole }) => {
       const campaignsSummary = (roleData.campaigns || []).map((c: any) => ({
         name: c.name,
+        campaignStatus: c.campaignStatus,
         adsCount: c.adsCount,
+        activeAdsCount: c.activeAdsCount || 0,
+        pausedAdsCount: c.pausedAdsCount || 0,
         totalSpend: c.totalSpend,
         totalImpressions: c.totalImpressions,
         totalClicks: c.totalClicks,
         totalLeads: c.totalLeads,
+        totalConversions: c.totalConversions || 0,
         avgCpc: c.avgCpc,
         avgCtr: c.avgCtr,
         avgCpl: c.avgCpl,
@@ -3368,6 +3374,9 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       const totalSpend = adsList.reduce((s: number, a: any) => s + (a.spend || 0), 0);
       const totalLeads = adsList.reduce((s: number, a: any) => s + (a.leads || 0), 0);
       const activeAds = adsList.filter((a: any) => a.adStatus === 'ACTIVE').length;
+      const pausedAds = adsList.filter((a: any) => a.adStatus === 'PAUSED').length;
+      const activeCampaigns = campaignsSummary.filter((c: any) => c.campaignStatus === 'ACTIVE').length;
+      const pausedCampaigns = campaignsSummary.filter((c: any) => c.campaignStatus === 'PAUSED').length;
 
       const totalConversions = adsList.reduce((s: number, a: any) => s + (a.conversions || 0), 0);
       const totalReach = adsList.reduce((s: number, a: any) => s + (a.reach || 0), 0);
@@ -3383,7 +3392,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 Non sei un generico assistente: sei un MEDIA BUYER ESPERTO che analizza inserzioni reali con dati reali e produce consulenze operative di altissimo livello.
 
 === CHI SEI E COSA SAI FARE ===
-- Analizzi le performance di OGNI singola inserzione attiva con tutti i KPI disponibili
+- Analizzi le performance di OGNI singola inserzione (attiva e pausata) con tutti i KPI disponibili
 - Confronti le performance tra inserzioni della STESSA campagna per trovare winner e loser
 - Confronti le performance tra CAMPAGNE diverse per capire dove riallocare il budget
 - Analizzi la CREATIVITÀ (titolo e testo dell'ad) e suggerisci miglioramenti specifici basati sui dati
@@ -3416,9 +3425,10 @@ Hai accesso al TITOLO e al TESTO di ogni inserzione. Usali per:
 
 DATA/ORA ATTUALE: ${romeTimeStr}
 
-=== PANORAMICA ACCOUNT (SOLO CAMPAGNE ATTIVE) ===
-- Inserzioni in campagne attive: ${adsList.length} (${activeAds} con ad_status ACTIVE)
-- Spesa totale account: €${totalSpend.toFixed(2)}
+=== PANORAMICA ACCOUNT (TUTTE LE CAMPAGNE NON ESCLUSE) ===
+- Campagne totali: ${campaignsSummary.length} (${activeCampaigns} con campaign_status ACTIVE, ${pausedCampaigns} PAUSED)
+- Inserzioni totali: ${adsList.length} (${activeAds} con ad_status ACTIVE, ${pausedAds} PAUSED)
+- Spesa totale storica account: €${totalSpend.toFixed(2)}
 - Budget giornaliero totale allocato: €${totalDailyBudget.toFixed(2)}
 - Impressioni totali: ${totalImpressions.toLocaleString('it-IT')}
 - Click totali: ${totalClicks.toLocaleString('it-IT')} (di cui ${totalLinkClicks.toLocaleString('it-IT')} link click)
@@ -3429,7 +3439,6 @@ DATA/ORA ATTUALE: ${romeTimeStr}
 - Conversioni totali: ${totalConversions}
 - CPL medio account: ${totalLeads > 0 ? `€${(totalSpend / totalLeads).toFixed(2)}` : 'N/A (nessun lead)'}
 - Video views totali: ${totalVideoViews.toLocaleString('it-IT')}
-- Campagne attive: ${campaignsSummary.length}
 
 === CAMPAGNE (AGGREGATI) ===
 ${campaignsSummary.length > 0 ? JSON.stringify(campaignsSummary, null, 2) : 'Nessuna campagna attiva trovata. L\'account potrebbe non avere campagne in esecuzione o il sync potrebbe non essere aggiornato.'}
@@ -3440,15 +3449,17 @@ ${anomalies.length > 0 ? anomalies.join('\n') : '✅ Nessuna anomalia critica ri
 === TOP PERFORMER (inserzioni migliori) ===
 ${topPerformers.length > 0 ? topPerformers.join('\n') : 'Nessun top performer chiaro. Analizza i dati per capire se qualche inserzione ha potenziale nascosto.'}
 
-=== DETTAGLIO COMPLETO INSERZIONI ATTIVE ===
-Ogni inserzione include: nome, campagna, adset, status, tutti i KPI, budget, date, e creatività (titolo + testo).
+=== DETTAGLIO COMPLETO INSERZIONI (TUTTE LE CAMPAGNE NON ESCLUSE) ===
+Ogni inserzione include: nome, campagna, adset, status campagna, status inserzione, tutti i KPI, budget, date, e creatività (titolo + testo).
+NOTA: Sono incluse campagne ACTIVE e PAUSED — usa lo status per contestualizzare l'analisi.
 Usa TUTTI questi dati per la tua analisi — non limitarti a guardare solo spesa e CTR.
 
 ${JSON.stringify(adsList.slice(0, 80).map((a: any) => ({
   nome_inserzione: a.adName,
   campagna: a.campaignName,
   adset: a.adsetName,
-  status_ad: a.adStatus,
+  status_campagna: a.campaignStatus,
+  status_inserzione: a.adStatus,
   spesa_euro: a.spend,
   impressioni: a.impressions,
   click_totali: a.clicks,

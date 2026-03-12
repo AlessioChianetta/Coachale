@@ -1436,7 +1436,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                         <Button
                           variant={aiExcludedCampaigns.includes(row.name) ? "destructive" : "outline"}
                           size="sm"
-                          className="h-7 text-xs gap-1 flex-1"
+                          className={`h-7 text-xs gap-1 flex-1 ${!aiExcludedCampaigns.includes(row.name) ? "border-green-500 text-green-700 hover:bg-green-50" : ""}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             const newExcluded = aiExcludedCampaigns.includes(row.name)
@@ -1444,9 +1444,10 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                               : [...aiExcludedCampaigns, row.name];
                             aiExcludedMutation.mutate(newExcluded);
                           }}
+                          title={aiExcludedCampaigns.includes(row.name) ? "Clicca per riattivare l'analisi AI di Simone" : "Clicca per escludere dall'analisi AI di Simone"}
                         >
                           <Bot className="h-3 w-3" />
-                          {aiExcludedCampaigns.includes(row.name) ? "AI Off" : "AI On"}
+                          {aiExcludedCampaigns.includes(row.name) ? "🚫 Esclusa da AI" : "✅ Simone analizza"}
                         </Button>
                       </div>
                     )}
@@ -2129,17 +2130,17 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                     <Button
                       variant={aiExcludedCampaigns.includes(name) ? "destructive" : "ghost"}
                       size="sm"
-                      className="h-7 px-2 text-xs gap-1"
+                      className={`h-7 px-2 text-xs gap-1 ${!aiExcludedCampaigns.includes(name) ? "text-green-700 hover:bg-green-50" : ""}`}
                       onClick={() => {
                         const newExcluded = aiExcludedCampaigns.includes(name)
                           ? aiExcludedCampaigns.filter(c => c !== name)
                           : [...aiExcludedCampaigns, name];
                         aiExcludedMutation.mutate(newExcluded);
                       }}
-                      title={aiExcludedCampaigns.includes(name) ? "Simone non analizza questa campagna" : "Simone analizza questa campagna"}
+                      title={aiExcludedCampaigns.includes(name) ? "Clicca per riattivare l'analisi AI" : "Clicca per escludere dall'analisi AI"}
                     >
                       <Bot className="h-3.5 w-3.5" />
-                      {aiExcludedCampaigns.includes(name) ? "Off" : "On"}
+                      {aiExcludedCampaigns.includes(name) ? "🚫 Esclusa" : "✅ AI On"}
                     </Button>
                   </div>
                 );

@@ -5407,23 +5407,35 @@ Non sei un generico assistente — sei un MEDIA BUYER ESPERTO che analizza inser
 Il tuo unico focus sono le CAMPAGNE META ADS del consulente (il tuo "capo"). Non hai clienti da cercare, non gestisci task generici, non fai CRM. Tu analizzi ADS.
 
 Quando il consulente ti scrive, parli di:
-- Performance delle sue campagne attive: CTR, CPC, CPL, ROAS, frequenza, budget
+- Performance delle campagne: CTR, CPC, CPL, ROAS, frequenza, budget, reach, impressioni
 - Anomalie e problemi sulle inserzioni (ad fatigue, spesa inefficiente, ROAS basso)
 - Confronti tra inserzioni della stessa campagna per trovare winner e loser
 - Suggerimenti operativi: pausa, scaling, A/B test creatività, riallocazione budget
 - Analisi delle creatività (titoli e testi degli ad) e quale angolo performa meglio
+- Campagne pausate: analizza i dati storici e suggerisci se riattivare, modificare o archiviare
+
+COME FAI ANALISI CONCRETE (NON GENERICHE):
+Quando hai dati, la tua analisi DEVE essere specifica e chirurgica. Esempio sbagliato: "Il CPL è basso quindi è buono". Esempio corretto:
+- "L'inserzione 'VIDEO DIPENDENTE' ha un CPL di €2.52 su 61 lead — il più basso dell'account. Ma la frequency è a 2.8 e il reach è 8.127: stai saturando l'audience. Se riattivi senza cambiare pubblico, il CPL salirà. Suggerisco: duplica l'inserzione su una lookalike 1% dei lead attuali prima di riattivare."
+- "La campagna Ristoranti ha speso €49.75 per 3 lead (CPL €16.58) — 5x il costo della campagna Dipendenti. Ma il vero problema non è solo il CPL alto: il CTR medio è 1.52% (accettabile) ma i link click sono solo 24 su 46 click totali — il 48% dei click non porta al sito. Il copy genera curiosità ma non azione."
+
+Per OGNI metrica che citi, spiega:
+1. Il NUMERO esatto (dal contesto)
+2. Se è buono/cattivo/neutro E PERCHÉ (con benchmark o confronto interno)
+3. L'AZIONE concreta che ne consegue
 
 Come parli in chat:
 - Sei diretto, concreto, professionale ma informale — come un media buyer senior al telefono col suo cliente
-- Citi numeri SOLO se sono presenti nel contesto fornito (task, dati operativi, attività recenti) — mai inventarli
+- Citi numeri SOLO se sono presenti nel contesto fornito (dati campagne, task, attività recenti) — mai inventarli
 - Non fai monologhi — fai domande: "Vuoi che approfondiamo questa campagna?" / "Hai testato nuovi angoli?"
 - Se il consulente chiede qualcosa che non riguarda le ads, rispondi brevemente ma riporta il focus sulle performance
 - Non offri servizi generici tipo "ricerca clienti" o "gestione task" — quello non è il tuo lavoro
+- IMPORTANTE: I dati che ricevi includono sia campagne ACTIVE che PAUSED — specifica sempre lo status quando analizzi
 
 REGOLA ASSOLUTA — ZERO ALLUCINAZIONI:
 NON inventare MAI nomi di clienti, nomi di campagne, CPL, ROAS, CTR, CPC, budget, creatività o qualsiasi altro dato numerico.
-Se nel contesto non hai dati reali di campagne Meta Ads, dillo esplicitamente: "In questo momento non ho dati live delle campagne nel contesto. Dimmi su quale cliente o campagna vuoi che faccia un'analisi, oppure aspettiamo il prossimo ciclo di analisi automatica."
-Non promettere di "recuperare dati dallo Store Globale" se non li hai già nel contesto — non hai capacità di ricerca in tempo reale durante la chat.`,
+Se nel contesto non hai dati reali di campagne Meta Ads, dillo esplicitamente: "In questo momento non ho dati delle campagne nel contesto. Vuoi configurare il sync con Meta o fornirmi i dati manualmente?"
+Non promettere di "recuperare dati" se non li hai già nel contesto — non hai capacità di ricerca in tempo reale durante la chat.`,
   personalizza: `Sei un assistente AI personalizzato. Segui le istruzioni specifiche del consulente per il tuo ruolo e comportamento. In chat sei collaborativo e disponibile al dialogo.`,
   architetto: `Sei Leonardo, l'Architetto dei Funnel — un esperto di marketing strategico e automazione di vendita. Parli SEMPRE in italiano, sei diretto, pragmatico e orientato ai risultati. Aiuti i consulenti a progettare funnel di vendita efficaci attraverso una conversazione strategica.
 
@@ -7142,27 +7154,85 @@ Rispondi in modo utile e professionale basandoti sulla conversazione con questa 
             if (ads.length > 0 || campaigns.length > 0) {
               const totalSpend = ads.reduce((s: number, a: any) => s + (a.spend || 0), 0);
               const totalLeads = ads.reduce((s: number, a: any) => s + (a.leads || 0), 0);
+              const totalConversions = ads.reduce((s: number, a: any) => s + (a.conversions || 0), 0);
+              const totalClicks = ads.reduce((s: number, a: any) => s + (a.clicks || 0), 0);
+              const totalImpressions = ads.reduce((s: number, a: any) => s + (a.impressions || 0), 0);
+              const totalReach = ads.reduce((s: number, a: any) => s + (a.reach || 0), 0);
+              const totalLinkClicks = ads.reduce((s: number, a: any) => s + (a.linkClicks || 0), 0);
+              const totalVideoViews = ads.reduce((s: number, a: any) => s + (a.videoViews || 0), 0);
               const activeAds = ads.filter((a: any) => a.adStatus === 'ACTIVE').length;
-              systemPrompt += `\n=== DATI REALI CAMPAGNE META ADS ===`;
-              systemPrompt += `\nInserzioni totali: ${ads.length} (${activeAds} attive)`;
-              systemPrompt += `\nSpesa totale: €${totalSpend.toFixed(2)}`;
+              const pausedAds = ads.filter((a: any) => a.adStatus === 'PAUSED').length;
+              const activeCampaigns = campaigns.filter((c: any) => c.campaignStatus === 'ACTIVE').length;
+              const pausedCampaigns = campaigns.filter((c: any) => c.campaignStatus === 'PAUSED').length;
+              const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions * 100) : 0;
+              const avgCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+              const avgFrequency = totalImpressions > 0 && totalReach > 0 ? totalImpressions / totalReach : 0;
+
+              systemPrompt += `\n=== DATI REALI META ADS — TUTTE LE CAMPAGNE NON ESCLUSE ===`;
+              systemPrompt += `\nCampagne totali: ${campaigns.length} (${activeCampaigns} con campaign_status ACTIVE, ${pausedCampaigns} PAUSED)`;
+              systemPrompt += `\nInserzioni totali: ${ads.length} (${activeAds} con ad_status ACTIVE, ${pausedAds} PAUSED)`;
+              systemPrompt += `\nSpesa totale storica: €${totalSpend.toFixed(2)}`;
+              systemPrompt += `\nImpressions totali: ${totalImpressions.toLocaleString('it-IT')}`;
+              systemPrompt += `\nClick totali: ${totalClicks.toLocaleString('it-IT')} (di cui ${totalLinkClicks.toLocaleString('it-IT')} link click)`;
+              systemPrompt += `\nCTR medio: ${avgCtr.toFixed(2)}%`;
+              systemPrompt += `\nCPC medio: €${avgCpc.toFixed(2)}`;
+              systemPrompt += `\nReach totale: ${totalReach.toLocaleString('it-IT')}`;
+              systemPrompt += `\nFrequency media: ${avgFrequency.toFixed(2)}`;
               systemPrompt += `\nLead totali: ${totalLeads}`;
-              systemPrompt += `\nCPL medio: ${totalLeads > 0 ? `€${(totalSpend / totalLeads).toFixed(2)}` : 'N/A'}`;
-              systemPrompt += `\nCampagne attive: ${campaigns.length}`;
+              systemPrompt += `\nConversioni totali: ${totalConversions}`;
+              systemPrompt += `\nCPL medio: ${totalLeads > 0 ? `€${(totalSpend / totalLeads).toFixed(2)}` : 'N/A (nessun lead)'}`;
+              systemPrompt += `\nVideo views totali: ${totalVideoViews.toLocaleString('it-IT')}`;
+
               if (campaigns.length > 0) {
-                systemPrompt += `\n\nDETTAGLIO CAMPAGNE:\n${JSON.stringify(campaigns, null, 2)}`;
+                const MAX_CAMPAIGN_DETAIL = 15;
+                const sortedCampaigns = [...campaigns].sort((a: any, b: any) => b.totalSpend - a.totalSpend);
+                const displayCampaigns = sortedCampaigns.slice(0, MAX_CAMPAIGN_DETAIL);
+                const remainingCount = campaigns.length - displayCampaigns.length;
+                systemPrompt += `\n\n--- RIEPILOGO PER CAMPAGNA (top ${displayCampaigns.length} per spesa${remainingCount > 0 ? `, +${remainingCount} omesse` : ''}) ---`;
+                for (const camp of displayCampaigns) {
+                  systemPrompt += `\n\n📊 CAMPAGNA: "${camp.name}"`;
+                  systemPrompt += `\n   Status campagna: ${camp.campaignStatus} | Inserzioni: ${camp.adsCount} (${camp.activeAdsCount || 0} active, ${camp.pausedAdsCount || 0} paused)`;
+                  systemPrompt += `\n   Spesa: €${camp.totalSpend.toFixed(2)} | Impressioni: ${camp.totalImpressions.toLocaleString('it-IT')} | Click: ${camp.totalClicks.toLocaleString('it-IT')}`;
+                  systemPrompt += `\n   Lead: ${camp.totalLeads} | Conversioni: ${camp.totalConversions || 0} | Reach: ${camp.totalReach.toLocaleString('it-IT')}`;
+                  systemPrompt += `\n   CTR: ${camp.avgCtr.toFixed(2)}% | CPC: €${camp.avgCpc.toFixed(2)} | CPL: ${camp.totalLeads > 0 ? `€${camp.avgCpl.toFixed(2)}` : 'N/A'}`;
+                  systemPrompt += `\n   ROAS: ${camp.avgRoas > 0 ? `${camp.avgRoas.toFixed(2)}x` : 'N/A'} | Frequency: ${camp.avgFrequency.toFixed(2)}`;
+                }
               }
+
               if (ads.length > 0) {
-                systemPrompt += `\n\nDETTAGLIO INSERZIONI (max 40):\n${JSON.stringify(ads.slice(0, 40).map((a: any) => ({
-                  nome: a.adName, campagna: a.campaignName, status: a.adStatus,
-                  spesa: a.spend, impressioni: a.impressions, click: a.clicks, lead: a.leads,
-                  ctr: a.ctr, cpc: a.cpc, cpl: a.cpl, roas: a.roas, frequenza: a.frequency,
-                  titolo: a.creativeTitle, testo: a.creativeBody?.substring(0, 200) || null,
+                systemPrompt += `\n\n--- DETTAGLIO INSERZIONI (max 50) ---\n${JSON.stringify(ads.slice(0, 50).map((a: any) => ({
+                  nome_inserzione: a.adName,
+                  campagna: a.campaignName,
+                  adset: a.adsetName,
+                  status_campagna: a.campaignStatus,
+                  status_inserzione: a.adStatus,
+                  spesa_euro: a.spend,
+                  impressioni: a.impressions,
+                  click_totali: a.clicks,
+                  link_click: a.linkClicks,
+                  reach: a.reach,
+                  lead: a.leads,
+                  conversioni: a.conversions,
+                  ctr_pct: a.ctr,
+                  cpc_euro: a.cpc,
+                  cpl_euro: a.cpl,
+                  roas: a.roas,
+                  frequenza: a.frequency,
+                  video_views: a.videoViews,
+                  budget_giornaliero: a.dailyBudget,
+                  budget_lifetime: a.lifetimeBudget,
+                  data_inizio: a.dateStart,
+                  data_fine: a.dateStop,
+                  titolo_creativita: a.creativeTitle,
+                  testo_creativita: a.creativeBody ? (a.creativeBody.length > 300 ? a.creativeBody.substring(0, 300) + '...' : a.creativeBody) : null,
                 })), null, 2)}`;
               }
-              systemPrompt += `\n\nUsa SOLO questi dati per le tue analisi. Cita nomi e numeri esatti da qui sopra.\n`;
+              systemPrompt += `\n\nIMPORTANTE: Usa SOLO questi dati per le tue analisi. Cita nomi esatti e numeri esatti. NON inventare dati che non sono qui sopra.\n`;
             } else {
-              systemPrompt += `\n=== STATO CAMPAGNE META ADS ===\nNessuna campagna attiva trovata nel database. L'account potrebbe non avere campagne in esecuzione oppure il sync con Meta non è ancora configurato.\nNON inventare dati — comunica chiaramente che al momento non hai campagne da analizzare e chiedi al consulente se vuole configurare il sync o fornirti i dati manualmente.\n`;
+              const aiExcludedInfo = roleData.aiExcludedCount > 0
+                ? `Tutte le ${roleData.aiExcludedCount} campagne sono state escluse dall'analisi AI dal consulente. Chiedi se vuole riattivarne qualcuna per l'analisi.`
+                : `Nessuna campagna trovata nel database. Il sync con Meta potrebbe non essere configurato, oppure non ci sono campagne nell'account.`;
+              systemPrompt += `\n=== STATO CAMPAGNE META ADS ===\n${aiExcludedInfo}\nNON inventare dati — comunica chiaramente la situazione.\n`;
             }
           } else if (autonomousRole?.buildPrompt) {
             try {
