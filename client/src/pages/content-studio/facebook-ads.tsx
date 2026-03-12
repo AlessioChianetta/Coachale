@@ -462,7 +462,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const [linkSearchQuery, setLinkSearchQuery] = useState("");
   const [linkPostTarget, setLinkPostTarget] = useState<UnlinkedPost | null>(null);
   const [linkPostSearch, setLinkPostSearch] = useState("");
-  const [customColumns, setCustomColumns] = useState<string[]>(["adName", "adStatus", "spend", "impressions", "clicks", "ctr", "cpc", "leads"]);
+  const [customColumns, setCustomColumns] = useState<string[]>(["name", "pubblicazione", "spend", "impressions", "clicks", "ctr", "cpc", "leads"]);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
@@ -1222,6 +1222,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                         <th
                           key={col}
                           className="px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap cursor-pointer hover:text-foreground select-none group"
+                          style={{ minWidth: col === "name" ? 200 : 80, resize: "horizontal", overflow: "hidden" }}
                           onClick={() => handleColumnSort(col)}
                         >
                           <span className="inline-flex items-center gap-1">
