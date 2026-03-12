@@ -3408,6 +3408,300 @@ router.post("/ai/generate-image", authenticateToken, requireRole("consultant"), 
 });
 
 // ============================================================
+// LEAD FORM GENERATION (AI + Imagen 4)
+// ============================================================
+
+const generateLeadFormSchema = z.object({
+  postId: z.string().min(1, "Post ID is required"),
+  body: z.string().max(5000).optional(),
+  hook: z.string().max(1000).optional(),
+  cta: z.string().max(1000).optional(),
+  platform: z.string().max(100).optional(),
+  title: z.string().max(500).optional(),
+  generateImage: z.boolean().optional().default(true),
+});
+
+async function callImagen4Api(
+  apiKey: string,
+  prompt: string,
+  aspectRatio: string = "1.91:1"
+): Promise<{ imageData: string; mimeType: string }> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict?key=${apiKey}`;
+  
+  const requestBody = {
+    instances: [{ prompt }],
+    parameters: {
+      aspectRatio,
+      sampleCount: 1,
+    }
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[IMAGEN4] API Error: ${response.status}`, errorText);
+    throw new Error(`Imagen 4 API error: ${response.status} - ${errorText}`);
+  }
+
+  const result = await response.json();
+  if (!result.predictions || result.predictions.length === 0) {
+    throw new Error("No image generated from Imagen 4 API");
+  }
+
+  return {
+    imageData: result.predictions[0].bytesBase64Encoded,
+    mimeType: result.predictions[0].mimeType || "image/png",
+  };
+}
+
+router.post("/ai/generate-lead-form", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  const startTime = Date.now();
+  try {
+    const consultantId = req.user!.id;
+    const validatedData = generateLeadFormSchema.parse(req.body);
+    
+    console.log(`📋 [LEAD-FORM] Generating lead form for post ${validatedData.postId}`);
+    
+    const [post] = await db.select()
+      .from(schema.contentPosts)
+      .where(and(
+        eq(schema.contentPosts.id, validatedData.postId),
+        eq(schema.contentPosts.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!post) {
+      return res.status(404).json({ success: false, error: "Post not found" });
+    }
+
+    const postBody = validatedData.body || post.fullCopy || post.body || "";
+    const postHook = validatedData.hook || post.hook || "";
+    const postCta = validatedData.cta || post.cta || "";
+    const postTitle = validatedData.title || post.title || "";
+    const postPlatform = validatedData.platform || post.platform || "facebook";
+
+    const { trackedGenerateContent } = await getAIProvider(consultantId, "lead-form-generator");
+
+    const leadFormPrompt = `Sei un esperto di Facebook Ads e Lead Generation. Devi creare il contenuto completo per un Facebook Lead Form (Modulo Interattivo / Instant Form) basato sull'inserzione fornita.
+
+OBIETTIVO OSSESSIVO: Massimizzare i contatti REALI e filtrare i curiosi. Ogni elemento deve essere progettato per:
+1. Far restare le persone nel modulo (NON farle uscire)
+2. Motivare a lasciare dati VERI (email vera, telefono vero)
+3. Qualificare i lead con domande strategiche
+4. Creare urgenza e valore percepito
+
+DATI DELL'INSERZIONE:
+- Titolo: ${postTitle}
+- Hook: ${postHook}
+- Body: ${postBody}
+- CTA: ${postCta}
+- Piattaforma: ${postPlatform}
+
+STRUTTURA FACEBOOK INSTANT FORM DA COMPILARE:
+
+1. TIPO MODULO: Scegli "higher_intent" (Intenzione più elevata) — aggiunge una schermata di revisione prima dell'invio, riducendo i lead fake.
+
+2. SCHERMATA INTRO/BENVENUTO:
+   - headline: Titolo accattivante (MAX 60 caratteri) che promette un beneficio concreto
+   - description: Paragrafo persuasivo (2-3 frasi) che spiega COSA riceveranno e PERCHÉ vale la pena compilare. Deve creare urgenza e valore percepito. NON ripetere il copy dell'inserzione.
+   - imagePrompt: Descrizione dettagliata per generare un'immagine di sfondo professionale e coerente col messaggio. L'immagine deve trasmettere fiducia, professionalità e il valore dell'offerta. Descrivi colori, elementi, stile.
+
+3. DOMANDE STANDARD (prefilled da Facebook):
+   Per ognuna, scrivi una "motivazione" breve che appare sopra il campo per spiegare PERCHÉ serve quel dato:
+   - email: motivazione (es. "Dove ti mandiamo la guida gratuita?")
+   - fullName: motivazione (es. "Per personalizzare il tuo piano")
+   - phoneNumber: motivazione (es. "Per fissare la call gratuita di 15 min")
+
+4. DOMANDE PERSONALIZZATE (2-3 domande qualificanti):
+   Domande strategiche che:
+   - Filtrano chi è davvero interessato da chi clicca per curiosità
+   - Sono coerenti con l'offerta/servizio
+   - Aiutano a preparare il follow-up
+   Ogni domanda ha: question, type ("short_answer" o "multiple_choice"), options (se multiple_choice)
+
+5. PRIVACY/DISCLAIMER:
+   Testo rassicurante che:
+   - Spiega come verranno usati i dati
+   - Rassicura sulla privacy
+   - Menziona GDPR compliance
+   - MAX 2 frasi
+
+6. SCHERMATA THANK YOU:
+   - headline: Messaggio di conferma entusiasta
+   - description: Spiega i PROSSIMI STEP concreti (cosa succede ora, quando verranno contattati)
+   - buttonText: Testo del pulsante CTA (es. "Visita il sito", "Scarica ora")
+   - buttonUrl: Suggerimento URL (es. "URL_DEL_TUO_SITO")
+
+RISPONDI IN JSON con questa struttura ESATTA:
+{
+  "formType": "higher_intent",
+  "intro": {
+    "headline": "...",
+    "description": "...",
+    "imagePrompt": "..."
+  },
+  "standardQuestions": {
+    "email": { "enabled": true, "motivation": "..." },
+    "fullName": { "enabled": true, "motivation": "..." },
+    "phoneNumber": { "enabled": true, "motivation": "..." }
+  },
+  "customQuestions": [
+    {
+      "question": "...",
+      "type": "short_answer|multiple_choice",
+      "options": ["...", "..."]
+    }
+  ],
+  "privacyDisclaimer": "...",
+  "thankYou": {
+    "headline": "...",
+    "description": "...",
+    "buttonText": "...",
+    "buttonUrl": "..."
+  }
+}`;
+
+    const result = await trackedGenerateContent({
+      contents: [{ role: "user", parts: [{ text: leadFormPrompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.7,
+      },
+    });
+
+    const responseText = result.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!responseText) {
+      throw new Error("No response from AI");
+    }
+
+    let leadFormData: any;
+    try {
+      leadFormData = JSON.parse(responseText);
+    } catch (e) {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        leadFormData = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("Failed to parse AI response as JSON");
+      }
+    }
+
+    if (!leadFormData.intro || typeof leadFormData.intro !== "object") {
+      leadFormData.intro = { headline: "", description: "", imagePrompt: "" };
+    }
+    leadFormData.intro.headline = leadFormData.intro.headline || "";
+    leadFormData.intro.description = leadFormData.intro.description || "";
+    
+    if (!leadFormData.standardQuestions || typeof leadFormData.standardQuestions !== "object") {
+      leadFormData.standardQuestions = {};
+    }
+    for (const field of ["email", "fullName", "phoneNumber"]) {
+      if (!leadFormData.standardQuestions[field]) {
+        leadFormData.standardQuestions[field] = { enabled: true, motivation: "" };
+      }
+    }
+    
+    if (!Array.isArray(leadFormData.customQuestions)) {
+      leadFormData.customQuestions = [];
+    }
+    leadFormData.customQuestions = leadFormData.customQuestions.map((q: any) => ({
+      question: q?.question || "",
+      type: q?.type === "multiple_choice" ? "multiple_choice" : "short_answer",
+      options: Array.isArray(q?.options) ? q.options : [],
+    }));
+    
+    leadFormData.privacyDisclaimer = leadFormData.privacyDisclaimer || "";
+    
+    if (!leadFormData.thankYou || typeof leadFormData.thankYou !== "object") {
+      leadFormData.thankYou = { headline: "", description: "", buttonText: "", buttonUrl: "" };
+    }
+    leadFormData.thankYou.headline = leadFormData.thankYou.headline || "";
+    leadFormData.thankYou.description = leadFormData.thankYou.description || "";
+    leadFormData.thankYou.buttonText = leadFormData.thankYou.buttonText || "";
+    leadFormData.thankYou.buttonUrl = leadFormData.thankYou.buttonUrl || "";
+    
+    leadFormData.formType = leadFormData.formType || "higher_intent";
+
+    console.log(`✅ [LEAD-FORM] Text content generated in ${Date.now() - startTime}ms`);
+
+    let introBackgroundImage: string | null = null;
+    if (validatedData.generateImage && leadFormData.intro?.imagePrompt) {
+      try {
+        const apiKey = await getGeminiApiKey(consultantId);
+        if (apiKey) {
+          console.log(`🖼️ [LEAD-FORM] Generating intro background image with Imagen 4...`);
+          
+          const { imageData, mimeType } = await callImagen4Api(
+            apiKey,
+            leadFormData.intro.imagePrompt + ". Professional, clean, high-quality marketing image. No text overlay.",
+            "1.91:1"
+          );
+
+          const uploadsDir = path.join(process.cwd(), "uploads", "advisage", "lead-forms");
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+
+          const extension = mimeType === "image/jpeg" ? "jpg" : "png";
+          const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${extension}`;
+          const filePath = path.join(uploadsDir, filename);
+          
+          const imageBuffer = Buffer.from(imageData, "base64");
+          fs.writeFileSync(filePath, imageBuffer);
+          
+          introBackgroundImage = `/uploads/advisage/lead-forms/${filename}`;
+          console.log(`✅ [LEAD-FORM] Background image saved: ${introBackgroundImage}`);
+        }
+      } catch (imgError: any) {
+        console.error(`⚠️ [LEAD-FORM] Image generation failed (continuing without image):`, imgError.message);
+      }
+    }
+
+    leadFormData.intro.backgroundImage = introBackgroundImage;
+    leadFormData.generatedAt = new Date().toISOString();
+
+    const existingStructured = (post.structuredContent as Record<string, unknown>) || {};
+    const updatedStructured = { ...existingStructured, leadForm: leadFormData };
+    
+    await db.update(schema.contentPosts)
+      .set({ 
+        structuredContent: updatedStructured,
+        updatedAt: new Date() 
+      })
+      .where(eq(schema.contentPosts.id, validatedData.postId));
+
+    const totalTime = Date.now() - startTime;
+    console.log(`✅ [LEAD-FORM] Complete generation finished in ${totalTime}ms`);
+
+    res.json({
+      success: true,
+      data: leadFormData,
+      generationTimeMs: totalTime,
+    });
+  } catch (error: any) {
+    console.error(`❌ [LEAD-FORM] Error:`, error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+      });
+    }
+    const safeMessage = error.message?.includes("API")
+      ? "AI generation service error. Please try again."
+      : (error.message || "Failed to generate lead form");
+    res.status(500).json({
+      success: false,
+      error: safeMessage,
+    });
+  }
+});
+
+// ============================================================
 // CONTENT FOLDERS
 // ============================================================
 
