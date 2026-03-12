@@ -339,12 +339,18 @@ function AdTableRow({ row, activeColumns, activeTab, ads, setSelectedAdId, setLi
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => row.metaAdId && setSelectedAdId(row.metaAdId)}>
               <BarChart3 className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => {
-              const ad = ads.find(a => a.metaAdId === row.metaAdId);
-              if (ad) setLinkDialogAd(ad);
-            }}>
-              <Link2 className="h-3.5 w-3.5" />
-            </Button>
+            {row.linkedPostTitle ? (
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-600" title="Disassocia post" onClick={() => row.metaAdId && onLinkedPostClick?.(row.metaAdId, row.name, row.linkedPostTitle!)}>
+                <Unlink className="h-3.5 w-3.5" />
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Associa post" onClick={() => {
+                const ad = ads.find(a => a.metaAdId === row.metaAdId);
+                if (ad) setLinkDialogAd(ad);
+              }}>
+                <Link2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </td>
       )}
@@ -1506,12 +1512,26 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                         <Button variant="outline" size="sm" className="h-7 text-xs gap-1 flex-1" onClick={() => row.metaAdId && setSelectedAdId(row.metaAdId)}>
                           <BarChart3 className="h-3 w-3" />Dettaglio
                         </Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1 flex-1" onClick={() => {
-                          const ad = ads.find(a => a.metaAdId === row.metaAdId);
-                          if (ad) setLinkDialogAd(ad);
-                        }}>
-                          <Link2 className="h-3 w-3" />Associa
-                        </Button>
+                        {row.linkedPostTitle && row.metaAdId ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1 flex-1 border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/30"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLinkedPostDetail({ metaAdId: row.metaAdId!, adName: row.name, postTitle: row.linkedPostTitle! });
+                            }}
+                          >
+                            <Link2 className="h-3 w-3" />Collegato
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1 flex-1" onClick={() => {
+                            const ad = ads.find(a => a.metaAdId === row.metaAdId);
+                            if (ad) setLinkDialogAd(ad);
+                          }}>
+                            <Link2 className="h-3 w-3" />Associa
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
