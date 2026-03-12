@@ -261,6 +261,7 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
   error?: string;
 }> {
   const startTime = Date.now();
+  let renewalError: string | null = null;
 
   try {
     let [config] = await db
@@ -295,10 +296,11 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
         const renewResult = await renewMetaAdsToken(consultantId);
         if (!renewResult.success) {
           console.warn(`[META-ADS SYNC] Token renewal failed: ${renewResult.error}`);
+          renewalError = `Rinnovo token fallito: ${renewResult.error || "errore sconosciuto"}`;
           await db
             .update(consultantMetaAdsConfig)
             .set({
-              syncError: `Rinnovo token fallito: ${renewResult.error || "errore sconosciuto"}`,
+              syncError: renewalError,
               updatedAt: new Date(),
             })
             .where(eq(consultantMetaAdsConfig.id, config.id));
@@ -477,7 +479,7 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
       .update(consultantMetaAdsConfig)
       .set({
         lastSyncedAt: new Date(),
-        syncError: null,
+        syncError: renewalError,
         updatedAt: new Date(),
       })
       .where(eq(consultantMetaAdsConfig.id, config.id));

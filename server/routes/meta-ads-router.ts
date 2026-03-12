@@ -28,9 +28,12 @@ router.get("/config", authenticateToken, requireRole("consultant"), async (req: 
     }
 
     const tokenExpiresAt = config.tokenExpiresAt ? config.tokenExpiresAt.toISOString() : null;
-    const tokenDaysLeft = config.tokenExpiresAt
-      ? Math.round((config.tokenExpiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-      : null;
+    let tokenDaysLeft: number | null = null;
+    if (config.tokenExpiresAt) {
+      const diffMs = config.tokenExpiresAt.getTime() - Date.now();
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      tokenDaysLeft = diffMs >= 0 ? Math.ceil(diffDays) : Math.floor(diffDays);
+    }
 
     return res.json({
       success: true,
