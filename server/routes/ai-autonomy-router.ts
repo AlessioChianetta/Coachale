@@ -6005,75 +6005,116 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
     const requestedLimit = parseInt(req.query.limit as string) || 0;
     const before = req.query.before as string;
 
+    const ownerLinkResult = await db.execute(sql`
+      SELECT telegram_chat_id FROM telegram_chat_links
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_owner = true AND active = true
+      LIMIT 1
+    `);
+    const ownerTgChatId = (ownerLinkResult.rows as any[])[0]?.telegram_chat_id;
+
     let result;
     if (requestedLimit > 0) {
       const safeLimit = Math.min(requestedLimit, 5000);
       if (before) {
-        result = await db.execute(sql`
-          SELECT * FROM (
-            SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
-            FROM agent_chat_messages
-            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-              AND created_at < ${before}::timestamptz
-            UNION ALL
-            SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
-              CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
-              message, created_at, NULL as metadata, 'telegram' as source, sender_name
-            FROM telegram_open_mode_messages
-            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-              AND created_at < ${before}::timestamptz
-          ) combined
-          ORDER BY created_at DESC LIMIT ${safeLimit}
-        `);
+        result = ownerTgChatId
+          ? await db.execute(sql`
+              SELECT * FROM (
+                SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+                FROM agent_chat_messages
+                WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+                  AND created_at < ${before}::timestamptz
+                UNION ALL
+                SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
+                  CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
+                  message, created_at, NULL as metadata, 'telegram' as source, sender_name
+                FROM telegram_open_mode_messages
+                WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+                  AND telegram_chat_id = ${ownerTgChatId}
+                  AND created_at < ${before}::timestamptz
+              ) combined
+              ORDER BY created_at DESC LIMIT ${safeLimit}
+            `)
+          : await db.execute(sql`
+              SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+              FROM agent_chat_messages
+              WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+                AND created_at < ${before}::timestamptz
+              ORDER BY created_at DESC LIMIT ${safeLimit}
+            `);
       } else {
-        result = await db.execute(sql`
-          SELECT * FROM (
-            SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
-            FROM agent_chat_messages
-            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-            UNION ALL
-            SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
-              CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
-              message, created_at, NULL as metadata, 'telegram' as source, sender_name
-            FROM telegram_open_mode_messages
-            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-          ) combined
-          ORDER BY created_at DESC LIMIT ${safeLimit}
-        `);
+        result = ownerTgChatId
+          ? await db.execute(sql`
+              SELECT * FROM (
+                SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+                FROM agent_chat_messages
+                WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+                UNION ALL
+                SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
+                  CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
+                  message, created_at, NULL as metadata, 'telegram' as source, sender_name
+                FROM telegram_open_mode_messages
+                WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+                  AND telegram_chat_id = ${ownerTgChatId}
+              ) combined
+              ORDER BY created_at DESC LIMIT ${safeLimit}
+            `)
+          : await db.execute(sql`
+              SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+              FROM agent_chat_messages
+              WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+              ORDER BY created_at DESC LIMIT ${safeLimit}
+            `);
       }
     } else {
       if (before) {
-        result = await db.execute(sql`
-          SELECT * FROM (
-            SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
-            FROM agent_chat_messages
-            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-              AND created_at < ${before}::timestamptz
-            UNION ALL
-            SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
-              CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
-              message, created_at, NULL as metadata, 'telegram' as source, sender_name
-            FROM telegram_open_mode_messages
-            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-              AND created_at < ${before}::timestamptz
-          ) combined
-          ORDER BY created_at ASC
-        `);
+        result = ownerTgChatId
+          ? await db.execute(sql`
+              SELECT * FROM (
+                SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+                FROM agent_chat_messages
+                WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+                  AND created_at < ${before}::timestamptz
+                UNION ALL
+                SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
+                  CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
+                  message, created_at, NULL as metadata, 'telegram' as source, sender_name
+                FROM telegram_open_mode_messages
+                WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+                  AND telegram_chat_id = ${ownerTgChatId}
+                  AND created_at < ${before}::timestamptz
+              ) combined
+              ORDER BY created_at ASC
+            `)
+          : await db.execute(sql`
+              SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+              FROM agent_chat_messages
+              WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+                AND created_at < ${before}::timestamptz
+              ORDER BY created_at ASC
+            `);
       } else {
-        result = await db.execute(sql`
-          SELECT * FROM (
-            SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
-            FROM agent_chat_messages
-            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-            UNION ALL
-            SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
-              CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
-              message, created_at, NULL as metadata, 'telegram' as source, sender_name
-            FROM telegram_open_mode_messages
-            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-          ) combined
-          ORDER BY created_at ASC
-        `);
+        result = ownerTgChatId
+          ? await db.execute(sql`
+              SELECT * FROM (
+                SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+                FROM agent_chat_messages
+                WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+                UNION ALL
+                SELECT id::text as id, ${roleId} as ai_role, NULL as role_name,
+                  CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
+                  message, created_at, NULL as metadata, 'telegram' as source, sender_name
+                FROM telegram_open_mode_messages
+                WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+                  AND telegram_chat_id = ${ownerTgChatId}
+              ) combined
+              ORDER BY created_at ASC
+            `)
+          : await db.execute(sql`
+              SELECT id::text as id, ai_role, role_name, sender, message, created_at, metadata, 'in_app' as source, NULL::text as sender_name
+              FROM agent_chat_messages
+              WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+              ORDER BY created_at ASC
+            `);
       }
     }
     const messages = requestedLimit > 0 ? (result.rows as any[]).reverse() : (result.rows as any[]);
@@ -7605,6 +7646,29 @@ REGOLE ANTI-ALLUCINAZIONE:
   }
 
   aiResponse = aiResponse.replace(/\[\[APPROVA:[^\]]+\]\]/gi, '').replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '').replace(/\[\[COMPLETATO:[^\]]+\]\]/gi, '').trim();
+
+  if (aiResponse.includes('"overall_reasoning"') || (aiResponse.startsWith('{') && aiResponse.includes('"tasks"'))) {
+    const jsonEndIdx = aiResponse.lastIndexOf('}');
+    if (jsonEndIdx !== -1 && jsonEndIdx < aiResponse.length - 1) {
+      const afterJson = aiResponse.substring(jsonEndIdx + 1).trim();
+      if (afterJson.length > 20) {
+        aiResponse = afterJson;
+      }
+    }
+    if (aiResponse.includes('"overall_reasoning"')) {
+      aiResponse = aiResponse.replace(/\{[\s\S]*?"overall_reasoning"[\s\S]*?\}[\s\S]*?\}(?:\s*\n\s*)/g, '').trim();
+    }
+    if (aiResponse.startsWith('{')) {
+      const cleanMatch = aiResponse.match(/\}\s*\n\s*([\s\S]{20,})/);
+      if (cleanMatch) {
+        aiResponse = cleanMatch[1].trim();
+      }
+    }
+    aiResponse = aiResponse.replace(/^[\s\n]*\{[\s\S]*?"tasks"\s*:\s*\[[\s\S]*?\]\s*\}\s*/g, '').trim();
+    if (!aiResponse || aiResponse.length < 10) {
+      aiResponse = 'Mi dispiace, c\'è stato un problema con la risposta. Riproviamo — cosa stavi dicendo?';
+    }
+  }
 
   // ── CREATE TASK: server-side execution (works on ALL channels) ──────────────
   // On Telegram (source='telegram' or isOpenMode), auto-execute create_task actions.
