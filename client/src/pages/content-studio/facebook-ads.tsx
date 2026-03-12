@@ -2197,7 +2197,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 overflow-y-auto">
+        <div className={`flex-1 overflow-y-auto transition-all duration-300 ${simoneChatOpen ? "pr-[380px] sm:pr-[420px]" : ""}`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
