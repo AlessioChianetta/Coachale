@@ -1073,7 +1073,7 @@ export class FileSearchService {
       try {
         let pageToken: string | undefined = undefined;
         let iteration = 0;
-        const MAX_PAGES = 500;
+        const MAX_PAGES = 2000;
 
         while (iteration < MAX_PAGES) {
           iteration++;
