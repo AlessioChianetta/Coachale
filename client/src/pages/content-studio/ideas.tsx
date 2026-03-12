@@ -506,6 +506,7 @@ export default function ContentStudioIdeas() {
   const funnelDirtyRef = useRef(false);
   funnelDirtyRef.current = funnelDirty;
   const blockerBypassRef = useRef(false);
+  const [savingBeforeExit, setSavingBeforeExit] = useState(false);
 
   const handleTabChange = useCallback((tab: "ideas" | "posts" | "advisage" | "funnel") => {
     if (tab === activeTab) return;
@@ -537,13 +538,18 @@ export default function ContentStudioIdeas() {
   }, [pendingTab, pendingUrl]);
 
   const handleUnsavedSaveAndExit = useCallback(async () => {
-    if (funnelRef.current) {
-      await funnelRef.current.save();
-      if (funnelRef.current.isDirty) {
-        return;
+    setSavingBeforeExit(true);
+    try {
+      if (funnelRef.current) {
+        await funnelRef.current.save();
+        if (funnelRef.current.isDirty) {
+          return;
+        }
       }
+      executeNavigation();
+    } finally {
+      setSavingBeforeExit(false);
     }
-    executeNavigation();
   }, [executeNavigation]);
 
   const handleUnsavedDiscard = useCallback(() => {
@@ -5462,14 +5468,21 @@ export default function ContentStudioIdeas() {
             Hai delle modifiche non salvate nel Funnel Builder. Vuoi salvare prima di uscire?
           </p>
           <div className="flex justify-end gap-2 mt-4">
-            <Button variant="ghost" size="sm" onClick={handleUnsavedCancel}>
+            <Button variant="ghost" size="sm" onClick={handleUnsavedCancel} disabled={savingBeforeExit}>
               Annulla
             </Button>
-            <Button variant="outline" size="sm" onClick={handleUnsavedDiscard}>
+            <Button variant="outline" size="sm" onClick={handleUnsavedDiscard} disabled={savingBeforeExit}>
               Esci senza salvare
             </Button>
-            <Button size="sm" onClick={handleUnsavedSaveAndExit}>
-              Salva ed esci
+            <Button size="sm" onClick={handleUnsavedSaveAndExit} disabled={savingBeforeExit}>
+              {savingBeforeExit ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                  Salvataggio...
+                </>
+              ) : (
+                "Salva ed esci"
+              )}
             </Button>
           </div>
         </DialogContent>
