@@ -36,10 +36,17 @@ const router = Router();
 
 const FB_AUTH_URL = "https://www.facebook.com/v19.0/dialog/oauth";
 
+function getStateSecret(): string {
+  const secret = process.env.SESSION_SECRET || process.env.ENCRYPTION_KEY;
+  if (!secret) {
+    throw new Error("[META-ADS OAUTH] SESSION_SECRET or ENCRYPTION_KEY must be configured for OAuth state signing");
+  }
+  return secret;
+}
+
 function signState(payload: object): string {
   const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const secret = process.env.SESSION_SECRET || process.env.ENCRYPTION_KEY || "meta-ads-fallback";
-  const sig = crypto.createHmac("sha256", secret).update(data).digest("base64url");
+  const sig = crypto.createHmac("sha256", getStateSecret()).update(data).digest("base64url");
   return `${data}.${sig}`;
 }
 
@@ -47,8 +54,7 @@ function verifyState(state: string): Record<string, string> | null {
   const parts = String(state).split(".");
   if (parts.length !== 2) return null;
   const [data, sig] = parts;
-  const secret = process.env.SESSION_SECRET || process.env.ENCRYPTION_KEY || "meta-ads-fallback";
-  const expectedSig = crypto.createHmac("sha256", secret).update(data).digest("base64url");
+  const expectedSig = crypto.createHmac("sha256", getStateSecret()).update(data).digest("base64url");
   if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) return null;
   try {
     return JSON.parse(Buffer.from(data, "base64url").toString());
