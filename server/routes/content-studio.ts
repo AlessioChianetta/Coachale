@@ -3566,13 +3566,16 @@ RISPONDI IN JSON con questa struttura ESATTA:
   }
 }`;
 
-    const result = await trackedGenerateContent({
-      contents: [{ role: "user", parts: [{ text: leadFormPrompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.7,
+    const result = await trackedGenerateContent(
+      {
+        contents: [{ role: "user", parts: [{ text: leadFormPrompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.7,
+        },
       },
-    });
+      { consultantId, feature: "lead-form-generator" }
+    );
 
     const responseText = result.response?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!responseText) {
