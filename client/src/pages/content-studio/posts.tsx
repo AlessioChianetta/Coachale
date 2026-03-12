@@ -4100,10 +4100,20 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                         <div className="text-sm flex items-center gap-1.5">
                           {renderPublerStatus() || getSimpleStatusText(post.status)}
                           {post.metaAdId && (
-                            <Badge className="bg-blue-500/10 text-blue-600 border-blue-300 text-[10px] px-1.5 py-0 h-5 gap-0.5">
-                              <Facebook className="h-2.5 w-2.5" />
-                              Ad
-                            </Badge>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge className="bg-blue-500/10 text-blue-600 border-blue-300 text-[10px] px-1.5 py-0 h-5 gap-0.5 cursor-help">
+                                    <Facebook className="h-2.5 w-2.5" />
+                                    Ad
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  <p className="font-semibold mb-1">Inserzione Meta collegata</p>
+                                  <p>Vai a Facebook Ads per i dettagli</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
                         </div>
                         
@@ -4236,10 +4246,20 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                                 <span className="text-sm font-semibold capitalize">{post.platform}</span>
                                 {getStatusBadge(post.status)}
                                 {post.metaAdId && (
-                                  <Badge className="bg-blue-500/10 text-blue-600 border-blue-300 text-[10px] px-1.5 py-0 h-5 gap-0.5">
-                                    <Facebook className="h-2.5 w-2.5" />
-                                    Ad
-                                  </Badge>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge className="bg-blue-500/10 text-blue-600 border-blue-300 text-[10px] px-1.5 py-0 h-5 gap-0.5 cursor-help">
+                                          <Facebook className="h-2.5 w-2.5" />
+                                          Ad
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs">
+                                        <p className="font-semibold mb-1">Inserzione Meta collegata</p>
+                                        <p>Vai a Facebook Ads per i dettagli</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
                                 )}
                               </div>
                               <span className="text-xs text-muted-foreground">

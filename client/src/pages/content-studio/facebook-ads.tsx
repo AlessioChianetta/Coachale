@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +20,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Facebook,
   TrendingUp,
+  TrendingDown,
   DollarSign,
   MousePointer,
   Users,
@@ -31,15 +39,26 @@ import {
   Link2,
   Unlink,
   AlertCircle,
+  AlertTriangle,
   CheckCircle,
   PauseCircle,
+  Archive,
+  XCircle,
+  ShieldOff,
   BarChart3,
   ArrowUpDown,
   ExternalLink,
   Plug,
   PlugZap,
   ChevronRight,
+  ChevronDown,
   X,
+  Download,
+  Search,
+  LayoutGrid,
+  Table2,
+  Columns3,
+  ImageIcon,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -68,6 +87,8 @@ interface MetaAdsConfig {
   syncEnabled: boolean;
   lastSyncedAt: string;
   syncError: string | null;
+  tokenExpiresAt: string | null;
+  tokenDaysLeft: number | null;
 }
 
 interface MetaAd {
@@ -92,6 +113,10 @@ interface MetaAd {
   cpl: number | null;
   frequency: number | null;
   roas: number | null;
+  linkClicks: number | null;
+  cpcLink: number | null;
+  ctrLink: number | null;
+  resultType: string | null;
   creativeThumbnailUrl: string | null;
   creativeBody: string | null;
   creativeTitle: string | null;
@@ -105,9 +130,12 @@ interface AdsSummary {
   totalImpressions: number;
   totalClicks: number;
   totalLeads: number;
+  totalReach: number;
+  totalLinkClicks: number;
   avgCpc: number;
   avgCtr: number;
   avgCpl: number;
+  avgRoas: number;
 }
 
 interface UnlinkedPost {
@@ -131,6 +159,9 @@ interface DailySnapshot {
   cpm: number | null;
   ctr: number | null;
   roas: number | null;
+  linkClicks: number | null;
+  cpcLink: number | null;
+  ctrLink: number | null;
 }
 
 const formatCurrency = (value: number) =>
@@ -142,11 +173,85 @@ const formatNumber = (value: number) =>
 const formatPercent = (value: number) =>
   `${(value || 0).toFixed(2)}%`;
 
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  ACTIVE: { label: "Attiva", color: "bg-green-500/10 text-green-600 border-green-300", icon: <CheckCircle className="h-3 w-3" /> },
+  PAUSED: { label: "In Pausa", color: "bg-amber-500/10 text-amber-600 border-amber-300", icon: <PauseCircle className="h-3 w-3" /> },
+  ARCHIVED: { label: "Archiviata", color: "bg-gray-500/10 text-gray-500 border-gray-300", icon: <Archive className="h-3 w-3" /> },
+  CAMPAIGN_PAUSED: { label: "Campagna in Pausa", color: "bg-orange-500/10 text-orange-600 border-orange-300", icon: <PauseCircle className="h-3 w-3" /> },
+  ADSET_PAUSED: { label: "Adset in Pausa", color: "bg-yellow-500/10 text-yellow-700 border-yellow-300", icon: <PauseCircle className="h-3 w-3" /> },
+  DELETED: { label: "Eliminata", color: "bg-red-800/10 text-red-800 border-red-400", icon: <XCircle className="h-3 w-3" /> },
+  DISAPPROVED: { label: "Non Approvata", color: "bg-red-500/10 text-red-600 border-red-300", icon: <ShieldOff className="h-3 w-3" /> },
+  PENDING_REVIEW: { label: "In Revisione", color: "bg-blue-500/10 text-blue-600 border-blue-300", icon: <AlertCircle className="h-3 w-3" /> },
+  WITH_ISSUES: { label: "Con Problemi", color: "bg-red-500/10 text-red-600 border-red-300", icon: <AlertTriangle className="h-3 w-3" /> },
+};
+
 function getStatusBadge(status: string) {
   const s = status?.toUpperCase();
-  if (s === "ACTIVE") return <Badge className="bg-green-500/10 text-green-600 border-green-300 gap-1"><CheckCircle className="h-3 w-3" />Attiva</Badge>;
-  if (s === "PAUSED") return <Badge className="bg-amber-500/10 text-amber-600 border-amber-300 gap-1"><PauseCircle className="h-3 w-3" />In Pausa</Badge>;
+  const cfg = STATUS_CONFIG[s];
+  if (cfg) return <Badge className={`${cfg.color} gap-1`}>{cfg.icon}{cfg.label}</Badge>;
   return <Badge variant="secondary" className="gap-1"><AlertCircle className="h-3 w-3" />{status || "N/D"}</Badge>;
+}
+
+const COLUMN_PRESETS: Record<string, { label: string; columns: string[] }> = {
+  performance: {
+    label: "Performance",
+    columns: ["adName", "adStatus", "leads", "spend", "cpl", "roas"],
+  },
+  delivery: {
+    label: "Delivery",
+    columns: ["adName", "adStatus", "reach", "impressions", "frequency", "spend"],
+  },
+  engagement: {
+    label: "Engagement",
+    columns: ["adName", "clicks", "ctr", "linkClicks", "ctrLink", "cpcLink"],
+  },
+  complete: {
+    label: "Completo",
+    columns: ["adName", "adStatus", "spend", "impressions", "clicks", "linkClicks", "reach", "frequency", "ctr", "ctrLink", "cpc", "cpcLink", "cpm", "cpl", "roas", "leads", "dailyBudget"],
+  },
+};
+
+const COLUMN_LABELS: Record<string, string> = {
+  adName: "Nome Inserzione",
+  campaignName: "Campagna",
+  adsetName: "Adset",
+  adStatus: "Stato",
+  spend: "Spesa",
+  dailyBudget: "Budget/g",
+  impressions: "Impressions",
+  clicks: "Clic (tutti)",
+  linkClicks: "Clic Link",
+  reach: "Copertura",
+  frequency: "Frequenza",
+  cpc: "CPC (tutti)",
+  cpcLink: "CPC Link",
+  cpm: "CPM",
+  ctr: "CTR (tutti)",
+  ctrLink: "CTR Link",
+  cpl: "CPL",
+  roas: "ROAS",
+  leads: "Lead",
+  conversions: "Conversioni",
+  resultType: "Tipo Risultato",
+};
+
+function formatColumnValue(col: string, ad: MetaAd): string {
+  const v = (ad as any)[col];
+  if (v === null || v === undefined) return "—";
+  switch (col) {
+    case "adName": case "campaignName": case "adsetName": case "resultType": case "adStatus":
+      return String(v);
+    case "spend": case "cpc": case "cpcLink": case "cpm": case "cpl": case "dailyBudget":
+      return formatCurrency(v);
+    case "ctr": case "ctrLink":
+      return formatPercent(v);
+    case "roas":
+      return `${Number(v).toFixed(2)}x`;
+    case "frequency":
+      return Number(v).toFixed(2);
+    default:
+      return formatNumber(v);
+  }
 }
 
 export default function FacebookAdsPage({ embedded = false }: { embedded?: boolean }) {
@@ -157,12 +262,18 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const search = useSearch();
   const params = new URLSearchParams(search);
   const oauthError = params.get("meta_ads_error");
+  const oauthConnected = params.get("meta_ads_connected");
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("spend");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedAdId, setSelectedAdId] = useState<string | null>(null);
   const [linkDialogAd, setLinkDialogAd] = useState<MetaAd | null>(null);
   const [trendDays, setTrendDays] = useState(30);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [tablePreset, setTablePreset] = useState("performance");
+  const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
+  const [linkSearchQuery, setLinkSearchQuery] = useState("");
 
   const { data: configData, isLoading: configLoading } = useQuery({
     queryKey: ["/api/meta-ads/config"],
@@ -189,8 +300,28 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
     enabled: isConnected,
   });
 
-  const ads: MetaAd[] = adsData?.ads || [];
+  const allAds: MetaAd[] = adsData?.ads || [];
   const summary: AdsSummary | null = adsData?.summary || null;
+
+  const ads = useMemo(() => {
+    if (!searchQuery.trim()) return allAds;
+    const q = searchQuery.toLowerCase();
+    return allAds.filter(ad =>
+      (ad.adName || "").toLowerCase().includes(q) ||
+      (ad.campaignName || "").toLowerCase().includes(q) ||
+      (ad.adsetName || "").toLowerCase().includes(q)
+    );
+  }, [allAds, searchQuery]);
+
+  const campaignGroups = useMemo(() => {
+    const groups: Record<string, MetaAd[]> = {};
+    for (const ad of ads) {
+      const key = ad.campaignName || "Sconosciuta";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(ad);
+    }
+    return groups;
+  }, [ads]);
 
   const { data: unlinkedData } = useQuery({
     queryKey: ["/api/meta-ads/unlinked-posts"],
@@ -287,6 +418,37 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
     }
   };
 
+  const [oauthHandled, setOauthHandled] = useState(false);
+  
+  if (oauthConnected === "true" && !oauthHandled) {
+    setOauthHandled(true);
+    setTimeout(() => {
+      toast({ title: "Account Meta Ads collegato!", description: "Sincronizzazione in corso..." });
+      syncMutation.mutate();
+    }, 0);
+  }
+
+  const exportCSV = () => {
+    const preset = COLUMN_PRESETS[tablePreset];
+    const cols = preset?.columns || COLUMN_PRESETS.complete.columns;
+    const headers = cols.map(c => COLUMN_LABELS[c] || c);
+    const rows = ads.map(ad => cols.map(c => {
+      if (c === "adStatus") {
+        const cfg = STATUS_CONFIG[ad.adStatus?.toUpperCase()];
+        return cfg?.label || ad.adStatus;
+      }
+      return formatColumnValue(c, ad).replace(/[€%]/g, "").trim();
+    }));
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `meta-ads-export-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const dailyData: DailySnapshot[] = useMemo(() => {
     if (!detailData?.dailyData) return [];
     return detailData.dailyData.map((d: DailySnapshot) => ({
@@ -294,6 +456,14 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
       snapshotDate: new Date(d.snapshotDate).toLocaleDateString("it-IT", { day: "2-digit", month: "short" }),
     }));
   }, [detailData]);
+
+  const toggleCampaign = (name: string) => {
+    setExpandedCampaigns(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  };
 
   const content = (
     <div className="space-y-6">
@@ -310,8 +480,8 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
       {configLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-32 w-full" />
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
           </div>
         </div>
       ) : !isConnected ? (
@@ -336,6 +506,38 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
         </Card>
       ) : (
         <>
+          {config && config.tokenDaysLeft !== null && config.tokenDaysLeft <= 10 && (
+            <div className={`rounded-lg p-4 flex items-start gap-3 ${
+              config.tokenDaysLeft <= 0
+                ? "bg-red-500/10 border border-red-500/30"
+                : "bg-amber-500/10 border border-amber-500/30"
+            }`}>
+              <AlertTriangle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+                config.tokenDaysLeft <= 0 ? "text-red-600" : "text-amber-600"
+              }`} />
+              <div className="flex-1">
+                <p className={`font-medium ${config.tokenDaysLeft <= 0 ? "text-red-600" : "text-amber-600"}`}>
+                  {config.tokenDaysLeft <= 0
+                    ? "Token Meta Ads scaduto"
+                    : `Token Meta Ads scade tra ${config.tokenDaysLeft} giorni`
+                  }
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {config.tokenDaysLeft <= 0
+                    ? "La sincronizzazione e' stata interrotta. Ricollegati per ripristinare il servizio."
+                    : "Il rinnovo automatico verra' tentato alla prossima sincronizzazione."
+                  }
+                </p>
+              </div>
+              {config.tokenDaysLeft <= 0 && (
+                <Button size="sm" onClick={handleConnect} className="gap-1.5 bg-red-600 hover:bg-red-700 text-white">
+                  <Plug className="h-4 w-4" />
+                  Ricollegati
+                </Button>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-green-100 dark:bg-green-950/30">
@@ -381,28 +583,70 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
           </div>
 
           {summary && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               <KpiCard label="Spesa Totale" value={formatCurrency(summary.totalSpend)} icon={<DollarSign className="h-4 w-4" />} color="red" />
               <KpiCard label="CPC Medio" value={formatCurrency(summary.avgCpc)} icon={<MousePointer className="h-4 w-4" />} color="blue" />
               <KpiCard label="CTR Medio" value={formatPercent(summary.avgCtr)} icon={<TrendingUp className="h-4 w-4" />} color="green" />
               <KpiCard label="Lead Totali" value={formatNumber(summary.totalLeads)} icon={<Users className="h-4 w-4" />} color="purple" />
-              <KpiCard label="Inserzioni Attive" value={String(summary.activeAds)} icon={<Target className="h-4 w-4" />} color="amber" />
+              <KpiCard label="ROAS Medio" value={summary.avgRoas ? `${summary.avgRoas.toFixed(2)}x` : "N/D"} icon={<Target className="h-4 w-4" />} color="amber" />
+              <KpiCard label="CPL Medio" value={summary.avgCpl ? formatCurrency(summary.avgCpl) : "N/D"} icon={<DollarSign className="h-4 w-4" />} color="indigo" />
             </div>
           )}
 
           <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === "cards" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 px-3 gap-1.5"
+                onClick={() => setViewMode("cards")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                Schede
+              </Button>
+              <Button
+                variant={viewMode === "table" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 px-3 gap-1.5"
+                onClick={() => setViewMode("table")}
+              >
+                <Table2 className="h-4 w-4" />
+                Tabella
+              </Button>
+            </div>
+
+            {viewMode === "table" && (
+              <Select value={tablePreset} onValueChange={setTablePreset}>
+                <SelectTrigger className="w-[160px]">
+                  <Columns3 className="h-4 w-4 mr-1" />
+                  <SelectValue placeholder="Preset" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(COLUMN_PRESETS).map(([key, p]) => (
+                    <SelectItem key={key} value={key}>{p.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Stato" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tutte</SelectItem>
                 <SelectItem value="ACTIVE">Attive</SelectItem>
                 <SelectItem value="PAUSED">In Pausa</SelectItem>
+                <SelectItem value="ARCHIVED">Archiviate</SelectItem>
+                <SelectItem value="CAMPAIGN_PAUSED">Campagna in Pausa</SelectItem>
+                <SelectItem value="ADSET_PAUSED">Adset in Pausa</SelectItem>
+                <SelectItem value="DELETED">Eliminate</SelectItem>
+                <SelectItem value="DISAPPROVED">Non Approvate</SelectItem>
               </SelectContent>
             </Select>
+
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[140px]">
                 <ArrowUpDown className="h-4 w-4 mr-1" />
                 <SelectValue placeholder="Ordina per" />
               </SelectTrigger>
@@ -410,9 +654,29 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                 <SelectItem value="spend">Spesa</SelectItem>
                 <SelectItem value="cpc">CPC</SelectItem>
                 <SelectItem value="ctr">CTR</SelectItem>
+                <SelectItem value="roas">ROAS</SelectItem>
+                <SelectItem value="frequency">Frequenza</SelectItem>
+                <SelectItem value="leads">Lead</SelectItem>
+                <SelectItem value="cpl">CPL</SelectItem>
               </SelectContent>
             </Select>
-            <span className="text-sm text-muted-foreground ml-auto">
+
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Cerca inserzione o campagna..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
+              <Download className="h-4 w-4" />
+              CSV
+            </Button>
+
+            <span className="text-sm text-muted-foreground">
               {ads.length} inserzioni
             </span>
           </div>
@@ -428,28 +692,169 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                 <p>Nessuna inserzione trovata. Prova a sincronizzare.</p>
               </CardContent>
             </Card>
+          ) : viewMode === "table" ? (
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      {(COLUMN_PRESETS[tablePreset]?.columns || []).map(col => (
+                        <th key={col} className="px-3 py-2.5 text-left font-medium text-muted-foreground whitespace-nowrap">
+                          {COLUMN_LABELS[col] || col}
+                        </th>
+                      ))}
+                      <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Azioni</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(campaignGroups).map(([campaignName, campaignAds]) => {
+                      const isExpanded = expandedCampaigns.has(campaignName);
+                      const cols = COLUMN_PRESETS[tablePreset]?.columns || [];
+                      const campSpend = campaignAds.reduce((s, a) => s + (a.spend || 0), 0);
+
+                      return (
+                        <TooltipProvider key={campaignName}>
+                          <tr
+                            className="border-b bg-muted/30 cursor-pointer hover:bg-muted/50"
+                            onClick={() => toggleCampaign(campaignName)}
+                          >
+                            <td className="px-3 py-2 font-semibold flex items-center gap-2" colSpan={cols.length + 1}>
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                              {campaignName} ({campaignAds.length} inserzioni) — {formatCurrency(campSpend)}
+                            </td>
+                          </tr>
+                          {isExpanded && campaignAds.map(ad => (
+                            <tr key={ad.id} className={`border-b hover:bg-muted/30 ${
+                              (ad.frequency || 0) > 4 ? "bg-red-50/50 dark:bg-red-950/10" : ""
+                            }`}>
+                              {cols.map(col => (
+                                <td key={col} className="px-3 py-2 whitespace-nowrap">
+                                  {col === "adStatus" ? (
+                                    getStatusBadge(ad.adStatus)
+                                  ) : col === "adName" ? (
+                                    <div className="flex items-center gap-2 max-w-[250px]">
+                                      {ad.creativeThumbnailUrl && (
+                                        <img src={ad.creativeThumbnailUrl} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                                      )}
+                                      <span className="truncate font-medium">{ad.adName || "Inserzione"}</span>
+                                      {(ad.frequency || 0) > 4 && (
+                                        <Tooltip>
+                                          <TooltipTrigger>
+                                            <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                                          </TooltipTrigger>
+                                          <TooltipContent>Ad Fatigue: Frequenza {ad.frequency?.toFixed(1)}</TooltipContent>
+                                        </Tooltip>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    formatColumnValue(col, ad)
+                                  )}
+                                </td>
+                              ))}
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <div className="flex gap-1">
+                                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); setSelectedAdId(ad.metaAdId); }}>
+                                    <BarChart3 className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); setLinkDialogAd(ad); }}>
+                                    <Link2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </TooltipProvider>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 bg-muted/50 font-semibold">
+                      {(COLUMN_PRESETS[tablePreset]?.columns || []).map((col, idx) => (
+                        <td key={col} className="px-3 py-2.5 whitespace-nowrap">
+                          {idx === 0 ? `Totale (${ads.length})` :
+                           col === "adStatus" ? "" :
+                           col === "spend" ? formatCurrency(summary?.totalSpend || 0) :
+                           col === "impressions" ? formatNumber(summary?.totalImpressions || 0) :
+                           col === "clicks" ? formatNumber(summary?.totalClicks || 0) :
+                           col === "linkClicks" ? formatNumber(summary?.totalLinkClicks || 0) :
+                           col === "reach" ? formatNumber(summary?.totalReach || 0) :
+                           col === "leads" ? formatNumber(summary?.totalLeads || 0) :
+                           col === "cpc" ? formatCurrency(summary?.avgCpc || 0) :
+                           col === "ctr" ? formatPercent(summary?.avgCtr || 0) :
+                           col === "cpl" ? (summary?.avgCpl ? formatCurrency(summary.avgCpl) : "—") :
+                           col === "roas" ? (summary?.avgRoas ? `${summary.avgRoas.toFixed(2)}x` : "—") :
+                           ""}
+                        </td>
+                      ))}
+                      <td className="px-3 py-2.5"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </Card>
           ) : (
             <div className="grid gap-3">
               {ads.map((ad) => (
-                <Card key={ad.id} className="hover:shadow-md transition-shadow">
+                <Card key={ad.id} className={`hover:shadow-md transition-shadow ${
+                  (ad.frequency || 0) > 4 ? "border-red-300 dark:border-red-800" : ""
+                }`}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <h3 className="font-semibold truncate">{ad.adName || "Inserzione"}</h3>
-                          {getStatusBadge(ad.adStatus)}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate mb-3">
-                          {ad.campaignName && <span>Campagna: {ad.campaignName}</span>}
-                          {ad.adsetName && <span className="ml-2">- Adset: {ad.adsetName}</span>}
-                        </p>
-                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
-                          <MetricCell label="Spesa" value={formatCurrency(ad.spend)} />
-                          <MetricCell label="Impressions" value={formatNumber(ad.impressions)} />
-                          <MetricCell label="Click" value={formatNumber(ad.clicks)} />
-                          <MetricCell label="CTR" value={formatPercent(ad.ctr || 0)} />
-                          <MetricCell label="CPC" value={formatCurrency(ad.cpc || 0)} />
-                          <MetricCell label="Lead" value={formatNumber(ad.leads)} />
+                      <div className="flex gap-3 flex-1 min-w-0">
+                        {ad.creativeThumbnailUrl && (
+                          <img
+                            src={ad.creativeThumbnailUrl}
+                            alt={ad.adName || ""}
+                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 className="font-semibold truncate">{ad.adName || "Inserzione"}</h3>
+                            {getStatusBadge(ad.adStatus)}
+                            {(ad.frequency || 0) > 4 && (
+                              <Badge className="bg-red-500/10 text-red-600 border-red-300 gap-1">
+                                <AlertTriangle className="h-3 w-3" />Ad Fatigue
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate mb-3">
+                            {ad.campaignName && <span>Campagna: {ad.campaignName}</span>}
+                            {ad.adsetName && <span className="ml-2">- Adset: {ad.adsetName}</span>}
+                          </p>
+                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
+                            <MetricCell label="Spesa" value={formatCurrency(ad.spend)} />
+                            <MetricCell label="Impressions" value={formatNumber(ad.impressions)} />
+                            <MetricCell label="Click" value={formatNumber(ad.clicks)} />
+                            <MetricCell label="CTR" value={formatPercent(ad.ctr || 0)} />
+                            <MetricCell label="CPC" value={formatCurrency(ad.cpc || 0)} />
+                            <MetricCell label="Lead" value={formatNumber(ad.leads)} />
+                          </div>
+                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center mt-2 pt-2 border-t border-dashed">
+                            <MetricCell label="Copertura" value={formatNumber(ad.reach)} />
+                            <MetricCell label="Frequenza" value={ad.frequency?.toFixed(2) || "—"} highlight={(ad.frequency || 0) > 4} />
+                            <MetricCell label="ROAS" value={ad.roas ? `${ad.roas.toFixed(2)}x` : "—"} />
+                            <MetricCell label="CPL" value={ad.cpl ? formatCurrency(ad.cpl) : "—"} />
+                            <MetricCell label="Clic Link" value={formatNumber(ad.linkClicks || 0)} />
+                            <MetricCell label="Budget/g" value={ad.dailyBudget ? formatCurrency(ad.dailyBudget) : "—"} />
+                          </div>
+                          {ad.dailyBudget && ad.dailyBudget > 0 && (
+                            <div className="mt-2">
+                              <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
+                                <span>Utilizzo budget</span>
+                                <span>{Math.min(100, ((ad.spend / ad.dailyBudget) * 100)).toFixed(0)}%</span>
+                              </div>
+                              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${
+                                    (ad.spend / ad.dailyBudget) > 1 ? "bg-red-500" :
+                                    (ad.spend / ad.dailyBudget) > 0.8 ? "bg-amber-500" : "bg-green-500"
+                                  }`}
+                                  style={{ width: `${Math.min(100, (ad.spend / ad.dailyBudget) * 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-col gap-1.5 flex-shrink-0">
@@ -484,7 +889,17 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                       <p className="text-sm font-medium truncate">{post.title || post.hook || "Post senza titolo"}</p>
                       <p className="text-xs text-muted-foreground">{post.platform} - {post.status}</p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 flex-shrink-0"
+                      onClick={() => {
+                        toast({ title: "Associa da inserzione", description: "Vai alla scheda di un'inserzione e clicca 'Associa' per collegare questo post" });
+                      }}
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                      Info
+                    </Button>
                   </div>
                 ))}
                 {unlinkedPosts.length > 10 && (
@@ -513,12 +928,30 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
             </div>
           ) : detailData?.ad ? (
             <div className="space-y-6">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h3 className="font-bold text-lg">{detailData.ad.adName}</h3>
-                  <p className="text-sm text-muted-foreground">{detailData.ad.campaignName}</p>
+              <div className="flex items-start gap-4">
+                {detailData.ad.creativeThumbnailUrl && (
+                  <img
+                    src={detailData.ad.creativeThumbnailUrl}
+                    alt={detailData.ad.adName}
+                    className="w-20 h-20 rounded-lg object-cover border"
+                  />
+                )}
+                <div className="flex-1">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <h3 className="font-bold text-lg">{detailData.ad.adName}</h3>
+                      <p className="text-sm text-muted-foreground">{detailData.ad.campaignName}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(detailData.ad.adStatus)}
+                      {(detailData.ad.frequency || 0) > 4 && (
+                        <Badge className="bg-red-500/10 text-red-600 border-red-300 gap-1">
+                          <AlertTriangle className="h-3 w-3" />Ad Fatigue
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                {getStatusBadge(detailData.ad.adStatus)}
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -527,9 +960,13 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                 <MiniKpi label="CTR" value={formatPercent(detailData.ad.ctr || 0)} />
                 <MiniKpi label="ROAS" value={detailData.ad.roas ? `${detailData.ad.roas.toFixed(2)}x` : "N/D"} />
                 <MiniKpi label="Impressions" value={formatNumber(detailData.ad.impressions)} />
-                <MiniKpi label="Click" value={formatNumber(detailData.ad.clicks)} />
+                <MiniKpi label="Copertura" value={formatNumber(detailData.ad.reach)} />
+                <MiniKpi label="Frequenza" value={detailData.ad.frequency?.toFixed(2) || "N/D"} highlight={(detailData.ad.frequency || 0) > 4} />
                 <MiniKpi label="Lead" value={formatNumber(detailData.ad.leads)} />
                 <MiniKpi label="CPL" value={detailData.ad.cpl ? formatCurrency(detailData.ad.cpl) : "N/D"} />
+                <MiniKpi label="Clic Link" value={formatNumber(detailData.ad.linkClicks || 0)} />
+                <MiniKpi label="CPC Link" value={detailData.ad.cpcLink ? formatCurrency(detailData.ad.cpcLink) : "N/D"} />
+                <MiniKpi label="CTR Link" value={detailData.ad.ctrLink ? formatPercent(detailData.ad.ctrLink) : "N/D"} />
               </div>
 
               {detailData.linkedPost && (
@@ -556,6 +993,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                       <SelectItem value="7">7 giorni</SelectItem>
                       <SelectItem value="14">14 giorni</SelectItem>
                       <SelectItem value="30">30 giorni</SelectItem>
+                      <SelectItem value="90">90 giorni</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -571,6 +1009,8 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                       <Line yAxisId="left" type="monotone" dataKey="spend" stroke="#ef4444" name="Spesa" strokeWidth={2} dot={false} />
                       <Line yAxisId="right" type="monotone" dataKey="ctr" stroke="#22c55e" name="CTR %" strokeWidth={2} dot={false} />
                       <Line yAxisId="left" type="monotone" dataKey="cpc" stroke="#3b82f6" name="CPC" strokeWidth={2} dot={false} />
+                      <Line yAxisId="right" type="monotone" dataKey="roas" stroke="#f59e0b" name="ROAS" strokeWidth={2} dot={false} />
+                      <Line yAxisId="left" type="monotone" dataKey="leads" stroke="#8b5cf6" name="Lead" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
@@ -586,7 +1026,7 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!linkDialogAd} onOpenChange={(open) => { if (!open) setLinkDialogAd(null); }}>
+      <Dialog open={!!linkDialogAd} onOpenChange={(open) => { if (!open) { setLinkDialogAd(null); setLinkSearchQuery(""); } }}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -594,13 +1034,28 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
               Associa Post a "{linkDialogAd?.adName}"
             </DialogTitle>
           </DialogHeader>
+          <div className="relative mb-3">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Cerca post..."
+              value={linkSearchQuery}
+              onChange={e => setLinkSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
           {unlinkedPosts.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               Nessun post disponibile da associare.
             </p>
           ) : (
             <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-              {unlinkedPosts.map((post) => (
+              {unlinkedPosts
+                .filter(p => {
+                  if (!linkSearchQuery.trim()) return true;
+                  const q = linkSearchQuery.toLowerCase();
+                  return (p.title || "").toLowerCase().includes(q) || (p.hook || "").toLowerCase().includes(q);
+                })
+                .map((post) => (
                 <button
                   key={post.id}
                   onClick={() => {
@@ -660,12 +1115,13 @@ function KpiCard({ label, value, icon, color }: { label: string; value: string; 
     green: "from-green-100 to-green-50 dark:from-green-950/30 dark:to-green-950/10 text-green-600",
     purple: "from-purple-100 to-purple-50 dark:from-purple-950/30 dark:to-purple-950/10 text-purple-600",
     amber: "from-amber-100 to-amber-50 dark:from-amber-950/30 dark:to-amber-950/10 text-amber-600",
+    indigo: "from-indigo-100 to-indigo-50 dark:from-indigo-950/30 dark:to-indigo-950/10 text-indigo-600",
   };
   return (
     <Card className="border-0 shadow-sm">
       <CardContent className="p-3 sm:p-4">
         <div className="flex items-center gap-2 mb-1">
-          <div className={`p-1.5 rounded-lg bg-gradient-to-br ${colorMap[color]}`}>{icon}</div>
+          <div className={`p-1.5 rounded-lg bg-gradient-to-br ${colorMap[color] || colorMap.blue}`}>{icon}</div>
           <span className="text-xs text-muted-foreground">{label}</span>
         </div>
         <p className="text-lg sm:text-xl font-bold">{value}</p>
@@ -674,20 +1130,20 @@ function KpiCard({ label, value, icon, color }: { label: string; value: string; 
   );
 }
 
-function MetricCell({ label, value }: { label: string; value: string }) {
+function MetricCell({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-semibold">{value}</p>
+      <p className={`text-sm font-semibold ${highlight ? "text-red-600" : ""}`}>{value}</p>
     </div>
   );
 }
 
-function MiniKpi({ label, value }: { label: string; value: string }) {
+function MiniKpi({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="p-2.5 rounded-lg bg-muted/50">
+    <div className={`p-2.5 rounded-lg ${highlight ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800" : "bg-muted/50"}`}>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-bold">{value}</p>
+      <p className={`text-sm font-bold ${highlight ? "text-red-600" : ""}`}>{value}</p>
     </div>
   );
 }

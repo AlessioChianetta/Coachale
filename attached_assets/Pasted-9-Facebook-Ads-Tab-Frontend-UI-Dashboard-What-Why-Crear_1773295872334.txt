@@ -1,0 +1,37 @@
+9 - Facebook Ads — Tab Frontend & UI Dashboard
+What & Why
+Creare il tab "Facebook Ads" nel Content Studio con una dashboard completa per visualizzare, associare e monitorare le inserzioni Meta collegate ai post. L'utente deve poter vedere a colpo d'occhio come performano le sue ads, quali post non hanno ancora una campagna associata, e gestire le associazioni.
+
+Done looks like
+Nuovo tab "Facebook Ads" nella barra di navigazione del Content Studio (accanto a Generatore Idee, Gestione Post, AdVisage, Funnel Builder)
+Pagina di connessione account Meta Ads (bottone OAuth, stato connessione, nome Business Manager collegato)
+Dashboard con KPI principali in alto: spesa totale, CPC medio, CTR medio, lead totali, ROAS medio
+Lista inserzioni sincronizzate con metriche real-time in cards/tabella: nome campagna, nome inserzione, stato (attiva/in pausa/terminata), budget giornaliero, spesa, impressions, click, CTR, CPC, CPL, ROAS
+Sezione "Post senza campagna" che mostra i post del Content Studio non ancora associati a un'inserzione Facebook, con possibilità di associarli selezionando l'inserzione corrispondente da un dropdown
+Dettaglio singola inserzione con grafico trend storico (spesa, CPC, CTR nel tempo) usando i dati degli snapshot giornalieri
+Badge nell'elenco post di Gestione Post che indica se un post ha un'inserzione Facebook associata
+Filtri per stato inserzione (attiva, in pausa, tutte) e ordinamento per performance
+Route /consultant/content-studio/facebook-ads in App.tsx
+Voce nel sidebar sotto CONTENT STUDIO
+Out of scope
+Modifica/creazione inserzioni via API (solo visualizzazione)
+Agente AI che analizza le ads (task separato)
+Grafici complessi con librerie esterne pesanti (usare componenti semplici con div/svg o recharts se già presente)
+Tasks
+Route e navigazione — Aggiungere la route /consultant/content-studio/facebook-ads in App.tsx, aggiungere il tab nella barra di navigazione del Content Studio in ideas.tsx (5° tab con icona e gradiente), aggiungere voce "Facebook Ads" nel sidebar sotto CONTENT STUDIO.
+
+Pagina principale Facebook Ads — Nuovo file client/src/pages/content-studio/facebook-ads.tsx con: stato connessione account (pulsante "Collega Account Meta" o info account collegato), KPI cards in alto (spesa totale, CPC medio, CTR, lead, ROAS), lista inserzioni sincronizzate in formato card con metriche, filtri per stato e ordinamento.
+
+Sezione associazione post ↔ inserzione — Nella stessa pagina, sezione che mostra i post del Content Studio che non hanno meta_ad_id associato. Per ogni post mostrare titolo, piattaforma, hook. Dropdown/dialog per selezionare l'inserzione da associare. Una volta associata, mostrare il badge nel post.
+
+Vista dettaglio inserzione — Dialog o vista espansa che mostra i dati completi di una singola inserzione con grafico trend storico dei KPI giornalieri (ultimi 7/14/30 giorni).
+
+Badge inserzione in Gestione Post — Nella lista post di posts.tsx, aggiungere un piccolo badge/indicatore che mostra se il post ha un'inserzione Facebook collegata e un mini-riassunto delle metriche principali (CPC, CTR).
+
+Relevant files
+client/src/pages/content-studio/ideas.tsx:2346-2383 (tab navigation)
+client/src/pages/content-studio/posts.tsx
+client/src/components/sidebar.tsx:172-181 (CONTENT STUDIO section)
+client/src/App.tsx:793 (content studio routes)
+client/src/pages/content-studio/campaigns.tsx (pattern esistente campagne)
+

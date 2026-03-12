@@ -23,22 +23,31 @@ router.get("/config", authenticateToken, requireRole("consultant"), async (req: 
       )
       .limit(1);
 
+    if (!config) {
+      return res.json({ success: true, config: null });
+    }
+
+    const tokenExpiresAt = config.tokenExpiresAt ? config.tokenExpiresAt.toISOString() : null;
+    const tokenDaysLeft = config.tokenExpiresAt
+      ? Math.round((config.tokenExpiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : null;
+
     return res.json({
       success: true,
-      config: config
-        ? {
-            id: config.id,
-            adAccountId: config.adAccountId,
-            adAccountName: config.adAccountName,
-            businessId: config.businessId,
-            businessName: config.businessName,
-            isConnected: config.isConnected,
-            connectedAt: config.connectedAt,
-            syncEnabled: config.syncEnabled,
-            lastSyncedAt: config.lastSyncedAt,
-            syncError: config.syncError,
-          }
-        : null,
+      config: {
+        id: config.id,
+        adAccountId: config.adAccountId,
+        adAccountName: config.adAccountName,
+        businessId: config.businessId,
+        businessName: config.businessName,
+        isConnected: config.isConnected,
+        connectedAt: config.connectedAt,
+        syncEnabled: config.syncEnabled,
+        lastSyncedAt: config.lastSyncedAt,
+        syncError: config.syncError,
+        tokenExpiresAt,
+        tokenDaysLeft,
+      },
     });
   } catch (error) {
     console.error("[META-ADS] Error getting config:", error);
@@ -71,15 +80,28 @@ router.get("/ads", authenticateToken, requireRole("consultant"), async (req: Aut
       filteredAds.sort((a, b) => (b.ctr || 0) - (a.ctr || 0));
     } else if (sort === "spend") {
       filteredAds.sort((a, b) => (b.spend || 0) - (a.spend || 0));
+    } else if (sort === "roas") {
+      filteredAds.sort((a, b) => (b.roas || 0) - (a.roas || 0));
+    } else if (sort === "frequency") {
+      filteredAds.sort((a, b) => (b.frequency || 0) - (a.frequency || 0));
+    } else if (sort === "leads") {
+      filteredAds.sort((a, b) => (b.leads || 0) - (a.leads || 0));
+    } else if (sort === "cpl") {
+      filteredAds.sort((a, b) => (a.cpl || 999) - (b.cpl || 999));
     }
 
     const totalSpend = filteredAds.reduce((sum, a) => sum + (a.spend || 0), 0);
     const totalImpressions = filteredAds.reduce((sum, a) => sum + (a.impressions || 0), 0);
     const totalClicks = filteredAds.reduce((sum, a) => sum + (a.clicks || 0), 0);
     const totalLeads = filteredAds.reduce((sum, a) => sum + (a.leads || 0), 0);
+    const totalReach = filteredAds.reduce((sum, a) => sum + (a.reach || 0), 0);
+    const totalLinkClicks = filteredAds.reduce((sum, a) => sum + (a.linkClicks || 0), 0);
     const avgCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
     const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
     const avgCpl = totalLeads > 0 ? totalSpend / totalLeads : 0;
+
+    const roasAds = filteredAds.filter(a => a.roas && a.roas > 0);
+    const avgRoas = roasAds.length > 0 ? roasAds.reduce((s, a) => s + (a.roas || 0), 0) / roasAds.length : 0;
 
     const campaigns = [...new Set(filteredAds.map((a) => a.campaignName).filter(Boolean))];
 
@@ -93,9 +115,12 @@ router.get("/ads", authenticateToken, requireRole("consultant"), async (req: Aut
         totalImpressions,
         totalClicks,
         totalLeads,
+        totalReach,
+        totalLinkClicks,
         avgCpc,
         avgCtr,
         avgCpl,
+        avgRoas,
       },
       campaigns,
     });
@@ -110,7 +135,7 @@ router.get("/ads/:metaAdId", authenticateToken, requireRole("consultant"), async
     const consultantId = req.user!.id;
     const { metaAdId } = req.params;
     const { days } = req.query;
-    const daysCount = parseInt(String(days || "30"));
+    const daysCount = Math.min(365, Math.max(1, parseInt(String(days || "30")) || 30));
 
     const [ad] = await db
       .select()
@@ -169,6 +194,137 @@ router.get("/ads/:metaAdId", authenticateToken, requireRole("consultant"), async
   } catch (error) {
     console.error("[META-ADS] Error getting ad detail:", error);
     return res.status(500).json({ success: false, error: "Failed to get ad detail" });
+  }
+});
+
+router.get("/data-export", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const allAds = await db
+      .select()
+      .from(schema.metaAdInsights)
+      .where(eq(schema.metaAdInsights.consultantId, consultantId))
+      .orderBy(desc(schema.metaAdInsights.spend));
+
+    const cutoff90 = new Date();
+    cutoff90.setDate(cutoff90.getDate() - 90);
+    const cutoff90Str = cutoff90.toISOString().split("T")[0];
+
+    const allDaily = await db
+      .select()
+      .from(schema.metaAdInsightsDaily)
+      .where(
+        and(
+          eq(schema.metaAdInsightsDaily.consultantId, consultantId),
+          sql`${schema.metaAdInsightsDaily.snapshotDate} >= ${cutoff90Str}`
+        )
+      )
+      .orderBy(schema.metaAdInsightsDaily.snapshotDate);
+
+    const linkedPosts = await db
+      .select({
+        id: schema.contentPosts.id,
+        title: schema.contentPosts.title,
+        hook: schema.contentPosts.hook,
+        platform: schema.contentPosts.platform,
+        status: schema.contentPosts.status,
+        metaAdId: schema.contentPosts.metaAdId,
+      })
+      .from(schema.contentPosts)
+      .where(
+        and(
+          eq(schema.contentPosts.consultantId, consultantId),
+          isNotNull(schema.contentPosts.metaAdId)
+        )
+      );
+
+    const dailyByAd: Record<string, typeof allDaily> = {};
+    for (const d of allDaily) {
+      if (!dailyByAd[d.metaAdId]) dailyByAd[d.metaAdId] = [];
+      dailyByAd[d.metaAdId].push(d);
+    }
+
+    const postByAd: Record<string, typeof linkedPosts[0]> = {};
+    for (const p of linkedPosts) {
+      if (p.metaAdId) postByAd[p.metaAdId] = p;
+    }
+
+    const adsExport = allAds.map(ad => ({
+      ...ad,
+      daily: dailyByAd[ad.metaAdId] || [],
+      linkedPost: postByAd[ad.metaAdId] || null,
+    }));
+
+    const campaignMap: Record<string, {
+      name: string;
+      adsCount: number;
+      totalSpend: number;
+      totalImpressions: number;
+      totalClicks: number;
+      totalLeads: number;
+      totalReach: number;
+      avgCpc: number;
+      avgCtr: number;
+      avgCpl: number;
+      avgRoas: number;
+    }> = {};
+
+    for (const ad of allAds) {
+      const cName = ad.campaignName || "Sconosciuta";
+      if (!campaignMap[cName]) {
+        campaignMap[cName] = { name: cName, adsCount: 0, totalSpend: 0, totalImpressions: 0, totalClicks: 0, totalLeads: 0, totalReach: 0, avgCpc: 0, avgCtr: 0, avgCpl: 0, avgRoas: 0 };
+      }
+      const c = campaignMap[cName];
+      c.adsCount++;
+      c.totalSpend += ad.spend || 0;
+      c.totalImpressions += ad.impressions || 0;
+      c.totalClicks += ad.clicks || 0;
+      c.totalLeads += ad.leads || 0;
+      c.totalReach += ad.reach || 0;
+    }
+
+    const campaigns = Object.values(campaignMap).map(c => ({
+      ...c,
+      avgCpc: c.totalClicks > 0 ? c.totalSpend / c.totalClicks : 0,
+      avgCtr: c.totalImpressions > 0 ? (c.totalClicks / c.totalImpressions) * 100 : 0,
+      avgCpl: c.totalLeads > 0 ? c.totalSpend / c.totalLeads : 0,
+    }));
+
+    const totalSpend = allAds.reduce((s, a) => s + (a.spend || 0), 0);
+    const totalClicks = allAds.reduce((s, a) => s + (a.clicks || 0), 0);
+    const totalImpressions = allAds.reduce((s, a) => s + (a.impressions || 0), 0);
+    const totalLeads = allAds.reduce((s, a) => s + (a.leads || 0), 0);
+
+    const topByRoas = [...allAds].filter(a => a.roas && a.roas > 0).sort((a, b) => (b.roas || 0) - (a.roas || 0)).slice(0, 5);
+    const topByCpl = [...allAds].filter(a => a.cpl && a.cpl > 0).sort((a, b) => (a.cpl || 999) - (b.cpl || 999)).slice(0, 5);
+    const topByCtr = [...allAds].filter(a => a.ctr && a.ctr > 0).sort((a, b) => (b.ctr || 0) - (a.ctr || 0)).slice(0, 5);
+
+    return res.json({
+      success: true,
+      exportedAt: new Date().toISOString(),
+      ads: adsExport,
+      campaigns,
+      summary: {
+        totalAds: allAds.length,
+        activeAds: allAds.filter(a => a.adStatus === "ACTIVE").length,
+        totalSpend,
+        totalImpressions,
+        totalClicks,
+        totalLeads,
+        avgCpc: totalClicks > 0 ? totalSpend / totalClicks : 0,
+        avgCtr: totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0,
+        avgCpl: totalLeads > 0 ? totalSpend / totalLeads : 0,
+      },
+      topPerformers: {
+        byRoas: topByRoas.map(a => ({ adName: a.adName, roas: a.roas })),
+        byCpl: topByCpl.map(a => ({ adName: a.adName, cpl: a.cpl })),
+        byCtr: topByCtr.map(a => ({ adName: a.adName, ctr: a.ctr })),
+      },
+    });
+  } catch (error) {
+    console.error("[META-ADS] Error exporting data:", error);
+    return res.status(500).json({ success: false, error: "Failed to export data" });
   }
 });
 

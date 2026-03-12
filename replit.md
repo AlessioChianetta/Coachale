@@ -114,3 +114,10 @@ The Academy system (`/consultant/academy`) has 16 modules total:
 - Academy page has 3 tabs: Accademia (modules/lessons), Delivery AI (delivery agent chat), Assistente Setup (onboarding chat with activation status)
 - `getOnboardingStatusForAI(consultantId)` exported from `server/routes/onboarding.ts` — returns activation step statuses for AI prompts
 - Delivery Agent system prompt includes real-time "STATO CENTRO DI ATTIVAZIONE" block via `getDeliveryAgentSystemPrompt()` in `server/prompts/delivery-agent-prompt.ts`
+
+## Meta Ads Integration
+- **Sync Service** (`server/services/meta-ads-sync-service.ts`): Fetches all ad statuses (10+ effective_status values) with pagination (200/page, max 10 pages). Includes token auto-refresh (checks expiry, blocks if expired, auto-renews if <10 days left). Collects new metrics: linkClicks, cpcLink, ctrLink, resultType. Daily snapshot saved to `meta_ad_insights_daily`.
+- **API Router** (`server/routes/meta-ads-router.ts`): Endpoints: `/config` (with tokenExpiresAt/tokenDaysLeft), `/ads` (filter/sort by spend/cpc/ctr/roas/frequency/leads/cpl), `/ads/:metaAdId` (detail + daily trend + linked post), `/data-export` (complete JSON for AI analyst with 90-day daily snapshots, campaign aggregations, top performers), `/ads/:metaAdId/link-post`, `/ads/:metaAdId/unlink-post`, `/unlinked-posts`, `/sync`, `/summary`, `/disconnect`.
+- **Dashboard** (`client/src/pages/content-studio/facebook-ads.tsx`): Cards/Table toggle, 4 column presets (Performance/Delivery/Engagement/Complete), campaign grouping with expand/collapse, 6 KPI cards (Spesa/CPC/CTR/Lead/ROAS/CPL), 9 status badges with colors, ad fatigue badge (frequency>4), creative thumbnails, budget utilization bar, token expiry banner (yellow <=10 days, red expired), CSV export, post linking with search dialog, OAuth success toast, trend chart in detail dialog.
+- **Schema** (`shared/schema.ts`): `meta_ad_insights` and `meta_ad_insights_daily` tables expanded with `link_clicks`, `cpc_link`, `ctr_link`, `result_type` columns (added via direct SQL ALTER TABLE).
+- **Post Badge** (`posts.tsx`): "Ad" badge with tooltip on posts linked to Meta Ads.
