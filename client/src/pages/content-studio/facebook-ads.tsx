@@ -525,14 +525,24 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                 <p className="text-sm text-muted-foreground mt-1">
                   {config.tokenDaysLeft <= 0
                     ? "La sincronizzazione e' stata interrotta. Ricollegati per ripristinare il servizio."
-                    : "Il rinnovo automatico verra' tentato alla prossima sincronizzazione."
+                    : "Clicca 'Rinnova ora' per tentare il rinnovo automatico del token."
                   }
                 </p>
               </div>
-              {config.tokenDaysLeft <= 0 && (
-                <Button size="sm" onClick={handleConnect} className="gap-1.5 bg-red-600 hover:bg-red-700 text-white">
+              {config.tokenDaysLeft <= 0 ? (
+                <Button size="sm" onClick={handleConnect} className="gap-1.5 bg-red-600 hover:bg-red-700 text-white flex-shrink-0">
                   <Plug className="h-4 w-4" />
                   Ricollegati
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={() => syncMutation.mutate()}
+                  disabled={syncMutation.isPending}
+                  className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white flex-shrink-0"
+                >
+                  {syncMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Rinnova ora
                 </Button>
               )}
             </div>

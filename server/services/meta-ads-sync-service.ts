@@ -295,6 +295,13 @@ export async function syncMetaAdsForConsultant(consultantId: string): Promise<{
         const renewResult = await renewMetaAdsToken(consultantId);
         if (!renewResult.success) {
           console.warn(`[META-ADS SYNC] Token renewal failed: ${renewResult.error}`);
+          await db
+            .update(consultantMetaAdsConfig)
+            .set({
+              syncError: `Rinnovo token fallito: ${renewResult.error || "errore sconosciuto"}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(consultantMetaAdsConfig.id, config.id));
         } else {
           const [refreshedConfig] = await db
             .select()
