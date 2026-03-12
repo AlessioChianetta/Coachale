@@ -560,6 +560,14 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         const newConcepts = result.concepts.filter(c => !existingIds.has(c.id));
         return { ...p, concepts: [...p.concepts, ...newConcepts] };
       }));
+      setCustomPrompts(prev => {
+        const updated = { ...prev };
+        result.concepts.forEach(c => {
+          if (c.promptWithText) updated[`${c.id}_text`] = c.promptWithText;
+          if (c.promptClean) updated[`${c.id}_clean`] = c.promptClean;
+        });
+        return updated;
+      });
       setProductionConceptTypes([]);
       setShowProductionTypePicker(false);
       toast({ title: "Concetti aggiunti", description: `${result.concepts.length} nuovi concept aggiunti al post` });
@@ -589,7 +597,12 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       const userFormat = mergedSettings.imageFormat || '1:1';
       const aspectRatio = ratioMap[userFormat] || ratioMap[concept.recommendedFormat] || '1:1';
       const originalText = getOriginalTextForConcept(concept.id);
-      const url = await generateImageConcept(customPrompts[`${concept.id}_${variant}`], aspectRatio, mergedSettings, variant, concept.textContent, concept.styleType, concept.promptVisual, concept.description, originalText);
+      const prompt = customPrompts[`${concept.id}_${variant}`]
+        || (variant === 'text' ? concept.promptWithText : concept.promptClean)
+        || concept.promptWithText
+        || concept.promptClean;
+      if (!prompt) throw new Error("Prompt non disponibile per questo concept");
+      const url = await generateImageConcept(prompt, aspectRatio, mergedSettings, variant, concept.textContent, concept.styleType, concept.promptVisual, concept.description, originalText);
       setGeneratedImages(prev => [{ conceptId: concept.id, imageUrl: url, variant, timestamp: Date.now() }, ...prev]);
       setSelectedHistoryImage(prev => ({ ...prev, [concept.id]: 0 }));
       
