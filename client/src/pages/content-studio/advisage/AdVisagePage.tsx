@@ -169,6 +169,8 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   const [showSessionHistory, setShowSessionHistory] = useState(false);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const [productionConceptTypes, setProductionConceptTypes] = useState<string[]>([]);
+  const [productionRegenTypes, setProductionRegenTypes] = useState<string[]>([]);
+  const [productionManualText, setProductionManualText] = useState('');
   const [showProductionTypePicker, setShowProductionTypePicker] = useState(false);
   const [queueExpanded, setQueueExpanded] = useState(false);
   const [isAddingProductionConcepts, setIsAddingProductionConcepts] = useState(false);
@@ -550,10 +552,13 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   };
 
   const handleAddProductionConcepts = async () => {
-    if (!activePost || productionConceptTypes.length === 0) return;
+    const allTypes = [...productionConceptTypes, ...productionRegenTypes];
+    const hasManual = productionManualText.trim().length > 0;
+    if (!activePost || (allTypes.length === 0 && !hasManual)) return;
     setIsAddingProductionConcepts(true);
     try {
-      const result = await analyzeAdText(activePost.originalText, activePost.socialNetwork, settings, productionConceptTypes, stylesMode);
+      const typesToSend = hasManual ? [...allTypes, `manual:${productionManualText.trim()}`] : allTypes;
+      const result = await analyzeAdText(activePost.originalText, activePost.socialNetwork, settings, typesToSend, stylesMode);
       setBatchResults(prev => prev.map(p => {
         if (p.id !== activePost.id) return p;
         const existingIds = new Set(p.concepts.map(c => c.id));
@@ -569,6 +574,8 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         return updated;
       });
       setProductionConceptTypes([]);
+      setProductionRegenTypes([]);
+      setProductionManualText('');
       setShowProductionTypePicker(false);
       toast({ title: "Concetti aggiunti", description: `${result.concepts.length} nuovi concept aggiunti al post` });
     } catch (err: any) {
@@ -1475,63 +1482,181 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                   </div>
 
                   {/* Production concept type picker */}
-                  {showProductionTypePicker && (
-                    <div className={`rounded-xl border p-4 space-y-3 ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold">Aggiungi Tipologie al Post Attivo</span>
-                        <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => { setShowProductionTypePicker(false); setProductionConceptTypes([]); }}>✕ Chiudi</button>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {CONCEPT_TYPES.map((ct) => {
-                          const isSelected = productionConceptTypes.includes(ct.id);
-                          const alreadyUsed = activePost?.concepts.some(c => c.title?.toLowerCase().includes(ct.label.toLowerCase()));
-                          return (
-                            <button
-                              key={ct.id}
-                              type="button"
-                              onClick={() => {
-                                setProductionConceptTypes(prev =>
-                                  prev.includes(ct.id) ? prev.filter(id => id !== ct.id) : [...prev, ct.id]
+                  {showProductionTypePicker && (() => {
+                    const availableTypes = CONCEPT_TYPES.filter(ct => 
+                      !activePost?.concepts.some(c => c.title?.toLowerCase().includes(ct.label.toLowerCase()))
+                    );
+                    const usedTypes = CONCEPT_TYPES.filter(ct => 
+                      activePost?.concepts.some(c => c.title?.toLowerCase().includes(ct.label.toLowerCase()))
+                    );
+                    const totalSelected = productionConceptTypes.length + productionRegenTypes.length + (productionManualText.trim() ? 1 : 0);
+                    return (
+                      <div className={`rounded-xl border p-5 space-y-5 ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-sm font-semibold">Aggiungi Concept al Post Attivo</span>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Seleziona nuove tipologie, rigenera varianti o descrivi un concept personalizzato
+                            </p>
+                          </div>
+                          <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => { setShowProductionTypePicker(false); setProductionConceptTypes([]); setProductionRegenTypes([]); setProductionManualText(''); }}>
+                            <X className="w-3.5 h-3.5" />Chiudi
+                          </button>
+                        </div>
+
+                        {availableTypes.length > 0 && (
+                          <div className="space-y-2.5">
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                              <span className="text-xs font-semibold">Nuove Tipologie</span>
+                              <span className="text-[10px] text-muted-foreground">({availableTypes.length} disponibili)</span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                              {availableTypes.map((ct) => {
+                                const isSelected = productionConceptTypes.includes(ct.id);
+                                return (
+                                  <button
+                                    key={ct.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setProductionConceptTypes(prev =>
+                                        prev.includes(ct.id) ? prev.filter(id => id !== ct.id) : [...prev, ct.id]
+                                      );
+                                    }}
+                                    className={`relative flex flex-col items-start gap-1.5 p-3 rounded-lg border-2 text-left transition-all cursor-pointer ${
+                                      isSelected 
+                                        ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500/30' 
+                                        : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50'
+                                    }`}
+                                  >
+                                    {ct.referenceImage && (
+                                      <img 
+                                        src={ct.referenceImage} 
+                                        alt={ct.label}
+                                        className="w-full h-16 object-cover rounded-md mb-0.5"
+                                      />
+                                    )}
+                                    <span className={`text-xs font-semibold leading-tight ${isSelected ? 'text-indigo-400' : ''}`}>
+                                      {ct.label}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground leading-tight line-clamp-2">
+                                      {ct.description}
+                                    </span>
+                                    {isSelected && (
+                                      <div className="absolute top-1.5 right-1.5">
+                                        <div className="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
+                                          <Check className="w-2.5 h-2.5 text-white" />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </button>
                                 );
-                              }}
-                              className={`relative flex flex-col items-start gap-1 p-2.5 rounded-lg border-2 text-left transition-all cursor-pointer ${
-                                isSelected 
-                                  ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500/30' 
-                                  : alreadyUsed
-                                  ? 'border-emerald-500/40 bg-emerald-500/5 opacity-60'
-                                  : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50'
-                              }`}
-                            >
-                              <span className={`text-xs font-semibold leading-tight ${isSelected ? 'text-indigo-400' : ''}`}>{ct.label}</span>
-                              {alreadyUsed && <span className="text-[9px] text-emerald-500">✓ già presente</span>}
-                              {isSelected && (
-                                <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
-                                  <Check className="w-2.5 h-2.5 text-white" />
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        {productionConceptTypes.length > 0 && (
-                          <span className="text-[10px] text-muted-foreground">{productionConceptTypes.length} selezionate</span>
+                              })}
+                            </div>
+                          </div>
                         )}
-                        <Button
-                          size="sm"
-                          className="ml-auto bg-indigo-600 hover:bg-indigo-700 text-xs h-8"
-                          onClick={handleAddProductionConcepts}
-                          disabled={productionConceptTypes.length === 0 || isAddingProductionConcepts}
-                        >
-                          {isAddingProductionConcepts ? (
-                            <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Analisi...</>
-                          ) : (
-                            <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Aggiungi Concetti</>
-                          )}
-                        </Button>
+
+                        {usedTypes.length > 0 && (
+                          <div className="space-y-2.5">
+                            <div className={`h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                            <div className="flex items-center gap-2">
+                              <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
+                              <span className="text-xs font-semibold">Rigenera Variante</span>
+                              <span className="text-[10px] text-muted-foreground">(nuova versione di tipologie già presenti)</span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                              {usedTypes.map((ct) => {
+                                const isSelected = productionRegenTypes.includes(ct.id);
+                                return (
+                                  <button
+                                    key={`regen-${ct.id}`}
+                                    type="button"
+                                    onClick={() => {
+                                      setProductionRegenTypes(prev =>
+                                        prev.includes(ct.id) ? prev.filter(id => id !== ct.id) : [...prev, ct.id]
+                                      );
+                                    }}
+                                    className={`relative flex flex-col items-start gap-1.5 p-3 rounded-lg border-2 text-left transition-all cursor-pointer ${
+                                      isSelected 
+                                        ? 'border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/30' 
+                                        : 'border-border hover:border-muted-foreground/40 hover:bg-muted/50'
+                                    }`}
+                                  >
+                                    {ct.referenceImage && (
+                                      <img 
+                                        src={ct.referenceImage} 
+                                        alt={ct.label}
+                                        className="w-full h-16 object-cover rounded-md mb-0.5 opacity-70"
+                                      />
+                                    )}
+                                    <span className={`text-xs font-semibold leading-tight ${isSelected ? 'text-amber-400' : ''}`}>
+                                      {ct.label}
+                                    </span>
+                                    <span className="text-[10px] text-emerald-500 leading-tight">
+                                      ✓ già presente — genera variante nuova
+                                    </span>
+                                    {isSelected && (
+                                      <div className="absolute top-1.5 right-1.5">
+                                        <div className="w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center">
+                                          <RefreshCw className="w-2.5 h-2.5 text-white" />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-2.5">
+                          <div className={`h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-3.5 h-3.5 text-violet-500" />
+                            <span className="text-xs font-semibold">Imposta Manualmente</span>
+                            <span className="text-[10px] text-muted-foreground">(descrivi un concept personalizzato)</span>
+                          </div>
+                          <Textarea
+                            placeholder="Es: Immagine split prima/dopo con il prodotto al centro, sfondo gradiente scuro con accenti neon..."
+                            value={productionManualText}
+                            onChange={(e) => setProductionManualText(e.target.value)}
+                            className={`text-xs min-h-[60px] resize-none ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
+                          />
+                        </div>
+
+                        <div className={`flex items-center justify-between pt-2 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                          <div className="flex items-center gap-3">
+                            {totalSelected > 0 && (
+                              <>
+                                <span className="text-xs text-muted-foreground">
+                                  Genera <span className="font-semibold text-indigo-400">{totalSelected}</span> {totalSelected === 1 ? 'nuovo concept' : 'nuovi concept'}
+                                  {productionRegenTypes.length > 0 && <span className="text-amber-400"> ({productionRegenTypes.length} varianti)</span>}
+                                </span>
+                                <button 
+                                  className="text-[10px] text-indigo-400 hover:text-indigo-300 underline"
+                                  onClick={() => { setProductionConceptTypes([]); setProductionRegenTypes([]); setProductionManualText(''); }}
+                                >
+                                  Reset
+                                </button>
+                              </>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-xs h-8"
+                            onClick={handleAddProductionConcepts}
+                            disabled={totalSelected === 0 || isAddingProductionConcepts}
+                          >
+                            {isAddingProductionConcepts ? (
+                              <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Analisi...</>
+                            ) : (
+                              <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Genera {totalSelected || ''} Concept</>
+                            )}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   <div className="space-y-8">
                     {activePost && (

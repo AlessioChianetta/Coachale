@@ -109,23 +109,42 @@ ${Object.entries(CONCEPT_TYPE_PROMPTS).map(([_, v]) => `- "${v.label}"`).join('\
 Specifica nel campo styleType la tipologia scelta (in italiano).`;
   }
 
-  const selectedTypes = conceptTypes
+  const manualEntries = conceptTypes.filter(id => id.startsWith('manual:'));
+  const standardIds = conceptTypes.filter(id => !id.startsWith('manual:'));
+
+  const selectedTypes = standardIds
     .map(id => CONCEPT_TYPE_PROMPTS[id])
     .filter(Boolean);
 
-  if (selectedTypes.length === 0) {
+  const manualDescriptions = manualEntries.map(e => e.replace('manual:', '').trim()).filter(Boolean);
+
+  if (selectedTypes.length === 0 && manualDescriptions.length === 0) {
     return buildConceptTypeInstructions(undefined);
   }
 
-  return `═══════════════════════════════════════════════════
+  let instructions = `═══════════════════════════════════════════════════
 TIPOLOGIE CONCEPT RICHIESTE (genera ESATTAMENTE queste):
 ═══════════════════════════════════════════════════
-L'utente ha selezionato queste tipologie specifiche. Genera UN concept per ciascuna tipologia richiesta:
-${selectedTypes.map(t => `
-- "${t.label}": ${t.layoutInstructions}`).join('\n')}
+L'utente ha selezionato queste tipologie specifiche. Genera UN concept per ciascuna tipologia richiesta:\n`;
 
-Specifica nel campo styleType ESATTAMENTE il nome della tipologia (in italiano).
-Se le tipologie selezionate sono meno di 3, completa con altre tipologie a tua scelta fino a 3 concept totali.`;
+  if (selectedTypes.length > 0) {
+    instructions += selectedTypes.map(t => `
+- "${t.label}": ${t.layoutInstructions}`).join('\n');
+  }
+
+  if (manualDescriptions.length > 0) {
+    instructions += `\n\n═══ TIPOLOGIE PERSONALIZZATE ═══
+L'utente ha descritto manualmente queste tipologie aggiuntive. Genera UN concept per ciascuna, interpretando la descrizione come direzione creativa:`;
+    manualDescriptions.forEach(desc => {
+      instructions += `\n- TIPOLOGIA CUSTOM: "${desc}" — Interpreta questa descrizione e crea un concept visivo unico e coerente con il testo dell'inserzione. Assegna un titolo descrittivo nel campo title e usa "Custom" come styleType.`;
+    });
+  }
+
+  const totalRequested = selectedTypes.length + manualDescriptions.length;
+  instructions += `\n\nSpecifica nel campo styleType ESATTAMENTE il nome della tipologia (in italiano).
+Genera ESATTAMENTE ${totalRequested} concept, uno per ciascuna tipologia richiesta. NON aggiungere tipologie extra.`;
+
+  return instructions;
 }
 
 export interface PromptVisual {
