@@ -57,7 +57,9 @@ import {
   Plug,
   PlugZap,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
+  Eye,
   X,
   Download,
   Search,
@@ -163,6 +165,8 @@ interface UnlinkedPost {
   status: string;
   imageUrl: string | null;
   createdAt: string;
+  body: string | null;
+  cta: string | null;
 }
 
 interface DailySnapshot {
@@ -477,6 +481,8 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
   const [linkSearchQuery, setLinkSearchQuery] = useState("");
   const [linkPostTarget, setLinkPostTarget] = useState<UnlinkedPost | null>(null);
   const [linkPostSearch, setLinkPostSearch] = useState("");
+  const [unlinkedPage, setUnlinkedPage] = useState(1);
+  const [previewPost, setPreviewPost] = useState<UnlinkedPost | null>(null);
   const [customColumns, setCustomColumns] = useState<string[]>(["name", "pubblicazione", "spend", "impressions", "clicks", "ctr", "cpc", "leads"]);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -1436,43 +1442,117 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
             )}
           </Card>
 
-          {unlinkedPosts.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-amber-500" />
-                  Post senza Inserzione ({unlinkedPosts.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {unlinkedPosts.slice(0, 10).map((post) => (
-                  <div key={post.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{post.title || post.hook || "Post senza titolo"}</p>
-                      <p className="text-xs text-muted-foreground">{post.platform} - {post.status}</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 flex-shrink-0"
-                      onClick={() => {
-                        setLinkPostTarget(post);
-                        setLinkPostSearch("");
-                      }}
+          {unlinkedPosts.length > 0 && (() => {
+            const perPage = 10;
+            const totalPages = Math.ceil(unlinkedPosts.length / perPage);
+            const safePage = Math.min(unlinkedPage, totalPages);
+            const startIdx = (safePage - 1) * perPage;
+            const pageItems = unlinkedPosts.slice(startIdx, startIdx + perPage);
+            return (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Megaphone className="h-4 w-4 text-amber-500" />
+                    Post Ad senza Inserzione ({unlinkedPosts.length})
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">Post contrassegnati come Ad ma non ancora collegati a un'inserzione Meta</p>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {pageItems.map((post) => (
+                    <div
+                      key={post.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => setPreviewPost(post)}
                     >
-                      <Link2 className="h-3.5 w-3.5" />
-                      Associa
-                    </Button>
-                  </div>
-                ))}
-                {unlinkedPosts.length > 10 && (
-                  <p className="text-xs text-muted-foreground text-center pt-2">
-                    e altri {unlinkedPosts.length - 10} post...
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                      {post.imageUrl ? (
+                        <img
+                          src={post.imageUrl}
+                          alt=""
+                          className="w-12 h-12 rounded-lg object-cover border flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                          <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{post.title || post.hook || "Post senza titolo"}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-muted-foreground">{post.platform}</span>
+                          <span className="text-xs text-muted-foreground">·</span>
+                          <Badge variant="outline" className="text-[10px] h-4 px-1.5">{post.status}</Badge>
+                          <span className="text-xs text-muted-foreground">·</span>
+                          <span className="text-xs text-muted-foreground">{new Date(post.createdAt).toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => { e.stopPropagation(); setPreviewPost(post); }}
+                          title="Anteprima"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLinkPostTarget(post);
+                            setLinkPostSearch("");
+                          }}
+                        >
+                          <Link2 className="h-3.5 w-3.5" />
+                          Associa
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-3 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        {startIdx + 1}-{Math.min(startIdx + perPage, unlinkedPosts.length)} di {unlinkedPosts.length}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          disabled={safePage <= 1}
+                          onClick={() => setUnlinkedPage(safePage - 1)}
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(pg => (
+                          <Button
+                            key={pg}
+                            variant={pg === safePage ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 w-7 p-0 text-xs"
+                            onClick={() => setUnlinkedPage(pg)}
+                          >
+                            {pg}
+                          </Button>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          disabled={safePage >= totalPages}
+                          onClick={() => setUnlinkedPage(safePage + 1)}
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
         </>
       )}
 
@@ -1692,6 +1772,75 @@ export default function FacebookAdsPage({ embedded = false }: { embedded?: boole
                   {linkMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4 text-muted-foreground" />}
                 </button>
               ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!previewPost} onOpenChange={(open) => { if (!open) setPreviewPost(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Anteprima Post Ad
+            </DialogTitle>
+          </DialogHeader>
+          {previewPost && (
+            <div className="space-y-4">
+              {previewPost.imageUrl && (
+                <div className="rounded-xl overflow-hidden border">
+                  <img
+                    src={previewPost.imageUrl}
+                    alt={previewPost.title || "Post image"}
+                    className="w-full max-h-[400px] object-contain bg-muted"
+                  />
+                </div>
+              )}
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-bold text-lg">{previewPost.title || "Post senza titolo"}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline">{previewPost.platform}</Badge>
+                    <Badge variant="secondary">{previewPost.status}</Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(previewPost.createdAt).toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" })}
+                    </span>
+                  </div>
+                </div>
+                {previewPost.hook && (
+                  <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/30">
+                    <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Hook</p>
+                    <p className="text-sm text-amber-900 dark:text-amber-200">{previewPost.hook}</p>
+                  </div>
+                )}
+                {previewPost.body && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Corpo del post</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{previewPost.body}</p>
+                  </div>
+                )}
+                {previewPost.cta && (
+                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-500/30">
+                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Call to Action</p>
+                    <p className="text-sm text-blue-900 dark:text-blue-200">{previewPost.cta}</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setLinkPostTarget(previewPost);
+                    setLinkPostSearch("");
+                    setPreviewPost(null);
+                  }}
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  Associa a Inserzione
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

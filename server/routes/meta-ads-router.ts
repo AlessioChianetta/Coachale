@@ -507,16 +507,19 @@ router.get("/unlinked-posts", authenticateToken, requireRole("consultant"), asyn
         imageUrl: schema.contentPosts.imageUrl,
         createdAt: schema.contentPosts.createdAt,
         metaAdId: schema.contentPosts.metaAdId,
+        body: schema.contentPosts.body,
+        cta: schema.contentPosts.cta,
       })
       .from(schema.contentPosts)
       .where(
         and(
           eq(schema.contentPosts.consultantId, consultantId),
-          isNull(schema.contentPosts.metaAdId)
+          isNull(schema.contentPosts.metaAdId),
+          eq(schema.contentPosts.isAd, true)
         )
       )
       .orderBy(desc(schema.contentPosts.createdAt))
-      .limit(50);
+      .limit(100);
 
     return res.json({ success: true, posts });
   } catch (error) {
