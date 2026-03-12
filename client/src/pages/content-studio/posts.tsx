@@ -102,6 +102,7 @@ import {
   Shield,
   CheckCircle,
   MessageSquarePlus,
+  Download,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -484,13 +485,39 @@ function LeadFormTab({ post, onUpdate }: { post: Post; onUpdate: (updatedPost: P
       {/* INTRO/BENVENUTO */}
       <div className="rounded-xl overflow-hidden border">
         {leadForm.intro.backgroundImage && (
-          <div className="relative h-40 overflow-hidden">
+          <div className="relative h-40 overflow-hidden group">
             <img
               src={leadForm.intro.backgroundImage}
               alt="Sfondo intro modulo"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="secondary"
+                size="icon"
+                className="h-8 w-8 bg-white/90 hover:bg-white shadow-md"
+                onClick={async () => {
+                  try {
+                    const response = await fetch(leadForm.intro.backgroundImage!);
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `lead-form-background.${blob.type.includes("png") ? "png" : "jpg"}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    toast({ title: "Download avviato", description: "Immagine di sfondo scaricata" });
+                  } catch {
+                    toast({ title: "Errore", description: "Impossibile scaricare l'immagine", variant: "destructive" });
+                  }
+                }}
+              >
+                <Download className="h-4 w-4 text-slate-700" />
+              </Button>
+            </div>
             <div className="absolute bottom-0 left-0 right-0 p-4">
               <p className="text-white text-lg font-bold leading-tight">{leadForm.intro.headline}</p>
             </div>
