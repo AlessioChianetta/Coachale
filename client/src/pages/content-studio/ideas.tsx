@@ -98,6 +98,7 @@ import {
   Plus,
   X,
   GitBranch,
+  Facebook,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -119,6 +120,7 @@ import { cn } from "@/lib/utils";
 import { type MarketResearchData, EMPTY_MARKET_RESEARCH } from "@shared/schema";
 import ContentStudioPosts from "./posts";
 import AdVisagePage from "./advisage/AdVisagePage";
+import FacebookAdsPage from "./facebook-ads";
 import FunnelBuilderTab, { type FunnelBuilderHandle } from "@/components/funnel-builder/FunnelBuilderTab";
 
 interface Idea {
@@ -497,20 +499,21 @@ function getScoreProgressColor(score: number): string {
 export default function ContentStudioIdeas() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"ideas" | "posts" | "advisage" | "funnel">("ideas");
+  type ContentTab = "ideas" | "posts" | "advisage" | "funnel" | "facebook-ads";
+  const [activeTab, setActiveTab] = useState<ContentTab>("ideas");
   const [funnelDirty, setFunnelDirty] = useState(false);
   const funnelRef = useRef<FunnelBuilderHandle>(null);
-  const [pendingTab, setPendingTab] = useState<"ideas" | "posts" | "advisage" | "funnel" | null>(null);
+  const [pendingTab, setPendingTab] = useState<ContentTab | null>(null);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const funnelDirtyRef = useRef(false);
   funnelDirtyRef.current = funnelDirty;
   const blockerBypassRef = useRef(false);
   const [savingBeforeExit, setSavingBeforeExit] = useState(false);
-  const pendingTabRef = useRef<"ideas" | "posts" | "advisage" | "funnel" | null>(null);
+  const pendingTabRef = useRef<ContentTab | null>(null);
   const pendingUrlRef = useRef<string | null>(null);
 
-  const setPendingTabTracked = useCallback((tab: "ideas" | "posts" | "advisage" | "funnel" | null) => {
+  const setPendingTabTracked = useCallback((tab: ContentTab | null) => {
     pendingTabRef.current = tab;
     setPendingTab(tab);
   }, []);
@@ -520,7 +523,7 @@ export default function ContentStudioIdeas() {
     setPendingUrl(url);
   }, []);
 
-  const handleTabChange = useCallback((tab: "ideas" | "posts" | "advisage" | "funnel") => {
+  const handleTabChange = useCallback((tab: ContentTab) => {
     if (tab === activeTab) return;
     if (activeTab === "funnel" && funnelDirty) {
       setPendingTabTracked(tab);
@@ -2350,6 +2353,7 @@ export default function ContentStudioIdeas() {
                 { key: "posts" as const, label: "Gestione Post", icon: <Send className="w-4 h-4" />, gradient: "from-indigo-500 to-blue-600" },
                 { key: "advisage" as const, label: "AdVisage", icon: <Eye className="w-4 h-4" />, gradient: "from-violet-500 to-purple-600" },
                 { key: "funnel" as const, label: "Funnel Builder", icon: <GitBranch className="w-4 h-4" />, gradient: "from-cyan-500 to-teal-600" },
+                { key: "facebook-ads" as const, label: "Facebook Ads", icon: <Facebook className="w-4 h-4" />, gradient: "from-blue-500 to-indigo-600" },
               ] as const).map(tab => (
                 <button
                   key={tab.key}
@@ -2379,6 +2383,10 @@ export default function ContentStudioIdeas() {
           ) : activeTab === "funnel" ? (
             <div className="flex-1 overflow-hidden flex flex-col">
               <FunnelBuilderTab onDirtyChange={setFunnelDirty} funnelRef={funnelRef} />
+            </div>
+          ) : activeTab === "facebook-ads" ? (
+            <div className="flex-1 overflow-y-auto">
+              <FacebookAdsPage embedded={true} />
             </div>
           ) : (
           <>

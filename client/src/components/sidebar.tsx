@@ -177,6 +177,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "Idee", href: "/consultant/content-studio/ideas", icon: Lightbulb, color: "yellow" },
       { name: "Calendario", href: "/consultant/content-studio/calendar", icon: Calendar, color: "emerald" },
       { name: "Brand Assets", href: "/consultant/content-studio/brand", icon: Palette, color: "pink" },
+      { name: "Facebook Ads", href: "/consultant/content-studio/facebook-ads", icon: Target, color: "blue" },
     ]
   },
   {

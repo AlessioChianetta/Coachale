@@ -211,6 +211,7 @@ interface Post {
   publerPostId?: string;
   publerError?: string;
   publerMediaIds?: Array<string | { id: string; path?: string; thumbnail?: string }>;
+  metaAdId?: string | null;
 }
 
 interface ContentFolder {
@@ -4096,8 +4097,14 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                           </div>
                         </div>
                         
-                        <div className="text-sm">
+                        <div className="text-sm flex items-center gap-1.5">
                           {renderPublerStatus() || getSimpleStatusText(post.status)}
+                          {post.metaAdId && (
+                            <Badge className="bg-blue-500/10 text-blue-600 border-blue-300 text-[10px] px-1.5 py-0 h-5 gap-0.5">
+                              <Facebook className="h-2.5 w-2.5" />
+                              Ad
+                            </Badge>
+                          )}
                         </div>
                         
                         <div className="flex flex-col">
@@ -4228,6 +4235,12 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-semibold capitalize">{post.platform}</span>
                                 {getStatusBadge(post.status)}
+                                {post.metaAdId && (
+                                  <Badge className="bg-blue-500/10 text-blue-600 border-blue-300 text-[10px] px-1.5 py-0 h-5 gap-0.5">
+                                    <Facebook className="h-2.5 w-2.5" />
+                                    Ad
+                                  </Badge>
+                                )}
                               </div>
                               <span className="text-xs text-muted-foreground">
                                 {(post.scheduledAt || post.scheduledDate) 
