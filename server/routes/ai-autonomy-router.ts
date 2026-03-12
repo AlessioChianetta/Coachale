@@ -5400,7 +5400,13 @@ In chat: fai domande SCOMODE, chiedi aggiornamenti su quello che avevi suggerito
 
 Ma sei anche un COACH intelligente: DIALOGA, ascolta le risposte, fai follow-up, adatta i consigli. Non fare monologhi — fai conversazione. Chiedi "e poi?", "quanto hai fatto?", "perché no?". Provoca, ma poi ascolta.
 
-Il tuo obiettivo: portare questa attività ai massimi livelli, a numeri mai visti. Se il consulente sta nella comfort zone, scuotilo.`,
+Il tuo obiettivo: portare questa attività ai massimi livelli, a numeri mai visti. Se il consulente sta nella comfort zone, scuotilo.
+
+REGOLA CRITICA PER LA CHAT:
+- Rispondi SEMPRE come un umano su WhatsApp: messaggi brevi, diretti, naturali.
+- NON usare MAI formati strutturati come { "overall_reasoning": ... }, JSON, o blocchi 📊/⚠️/💡/🎯 nelle risposte in chat.
+- NON fare report o analisi formali — quelli sono per il sistema autonomo, NON per la chat diretta.
+- In chat sei un INTERLOCUTORE, non un analista. Parla, non scrivere report.`,
   simone: `Sei SIMONE, Media Buyer & Ads Strategist AI specializzato in Meta Ads (Facebook e Instagram).
 Non sei un generico assistente — sei un MEDIA BUYER ESPERTO che analizza inserzioni reali con dati reali.
 
@@ -6889,19 +6895,36 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
         ORDER BY created_at DESC
       `);
     } else {
-      historyQuery = db.execute(sql`
-        SELECT sender, message, created_at FROM (
+      const ownerChatIdResult = await db.execute(sql`
+        SELECT telegram_chat_id FROM telegram_chat_links
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_owner = true AND active = true
+        LIMIT 1
+      `);
+      const ownerTgChatId = (ownerChatIdResult.rows as any[])[0]?.telegram_chat_id;
+      
+      if (ownerTgChatId) {
+        historyQuery = db.execute(sql`
+          SELECT sender, message, created_at FROM (
+            SELECT sender, message, created_at
+            FROM agent_chat_messages
+            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+            UNION ALL
+            SELECT CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
+              message, created_at
+            FROM telegram_open_mode_messages
+            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+              AND telegram_chat_id = ${ownerTgChatId}
+          ) combined
+          ORDER BY created_at DESC
+        `);
+      } else {
+        historyQuery = db.execute(sql`
           SELECT sender, message, created_at
           FROM agent_chat_messages
           WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-          UNION ALL
-          SELECT CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender,
-            message, created_at
-          FROM telegram_open_mode_messages
-          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-        ) combined
-        ORDER BY created_at DESC
-      `);
+          ORDER BY created_at DESC
+        `);
+      }
     }
   }
 

@@ -2075,7 +2075,7 @@ export async function notifyTaskViaTelegram(
       const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId, notification_type: event, task_id: data.taskId });
       await db.execute(sql`
         INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
-        VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'assistant', ${plainMessage}, ${telegramMetadata}::jsonb)
+        VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'agent', ${plainMessage}, ${telegramMetadata}::jsonb)
       `);
       console.log(`[TELEGRAM-NOTIFY] Saved ${event} notification to agent_chat_messages for role ${roleId}`);
     } catch (saveErr: any) {

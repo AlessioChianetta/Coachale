@@ -3828,7 +3828,20 @@ REGOLE:
       if (responseText && telegramSpontaneousEnabled && !dryRun) {
         const tgMsgMatch = responseText.match(/\[TELEGRAM_MESSAGE\]([\s\S]*?)\[\/TELEGRAM_MESSAGE\]/i);
         if (tgMsgMatch && tgMsgMatch[1]?.trim()) {
-          const spontaneousMsg = tgMsgMatch[1].trim();
+          let spontaneousMsg = tgMsgMatch[1].trim();
+          if (spontaneousMsg.includes('"overall_reasoning"') || spontaneousMsg.startsWith('{')) {
+            const jsonCleanMatch = spontaneousMsg.match(/[^"}\]]\s*([A-ZÀ-ÿa-z🔥📊⚠️💡🎯✅❌🚀].{20,})/);
+            if (jsonCleanMatch) {
+              spontaneousMsg = jsonCleanMatch[1].trim();
+            } else {
+              console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Spontaneous message contains raw JSON — skipping to avoid leaking internal data`);
+              spontaneousMsg = '';
+            }
+          }
+          spontaneousMsg = spontaneousMsg.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\\r/g, '\n');
+          if (!spontaneousMsg) {
+            console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Spontaneous message empty after sanitization — skipping`);
+          } else {
           console.log(`📱 [AUTONOMOUS-GEN] [${role.name}] Spontaneous Telegram message detected: "${spontaneousMsg.substring(0, 100)}"`);
           try {
             const tgLinkResult = await db.execute(sql`
@@ -3851,6 +3864,7 @@ REGOLE:
             }
           } catch (tgSendErr: any) {
             console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Failed to send spontaneous Telegram message: ${tgSendErr.message}`);
+          }
           }
         }
       }
