@@ -38,8 +38,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import {
-  Sun,
-  Moon,
   Settings,
   Plus,
   Trash2,
@@ -116,11 +114,6 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   const [postInputs, setPostInputs] = useState<PostInput[]>(() => {
     const saved = localStorage.getItem('advisage_infinite_v3');
     return saved ? JSON.parse(saved) : [{ id: 'init-1', text: '', platform: 'instagram' }];
-  });
-
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    const saved = localStorage.getItem('advisage_theme');
-    return (saved as 'dark' | 'light') || 'dark';
   });
 
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -420,9 +413,8 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   useEffect(() => {
     localStorage.setItem('advisage_infinite_v3', JSON.stringify(postInputs));
     localStorage.setItem('advisage_settings_v3', JSON.stringify(settings));
-    localStorage.setItem('advisage_theme', theme);
     localStorage.setItem('advisage_styles_mode', stylesMode);
-  }, [postInputs, settings, theme, stylesMode]);
+  }, [postInputs, settings, stylesMode]);
 
   useEffect(() => {
     if (!lightboxImage) return;
@@ -432,8 +424,6 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [lightboxImage]);
-
-  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
   const addPostInput = () => setPostInputs([...postInputs, { id: Math.random().toString(36).substr(2, 9), text: '', platform: 'instagram' }]);
   
@@ -957,7 +947,6 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   };
 
   const activePost = useMemo(() => batchResults.find(p => p.id === activePostId), [batchResults, activePostId]);
-  const isDark = theme === 'dark';
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
@@ -977,7 +966,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         {!embedded && <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
         
         <div className="flex-1 overflow-y-auto">
-          <div className={`min-h-full ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+          <div className="min-h-full bg-background text-foreground">
             <div className="border-b sticky top-0 z-40 backdrop-blur-xl bg-background/80">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1009,9 +998,6 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                     <Button variant="outline" size="icon" onClick={() => setShowSettings(true)}>
                       <Settings className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="icon" onClick={toggleTheme}>
-                      {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    </Button>
                   </div>
                 </div>
               </div>
@@ -1021,15 +1007,15 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
               {!batchResults.length ? (
                 <div className="flex flex-col lg:flex-row gap-8">
                   <aside className="lg:w-80 shrink-0 space-y-6">
-                    <Card className={`border-2 ${isDark ? 'border-indigo-500/50 bg-gradient-to-b from-indigo-950/40 to-slate-900/50' : 'border-indigo-400/60 bg-gradient-to-b from-indigo-50 to-white'}`}>
+                    <Card className="border-2 border-indigo-400/60 dark:border-indigo-500/50 bg-gradient-to-b from-indigo-50 to-white dark:from-indigo-950/40 dark:to-card">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-bold flex items-center gap-2">
-                          <div className={`p-1.5 rounded-lg ${isDark ? 'bg-indigo-500/20' : 'bg-indigo-100'}`}>
+                          <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-500/20">
                             <FileText className="w-4 h-4 text-indigo-500" />
                           </div>
                           Importa Contenuti
                         </CardTitle>
-                        <p className={`text-[11px] leading-snug ${isDark ? 'text-indigo-300/70' : 'text-indigo-600/70'}`}>
+                        <p className="text-[11px] leading-snug text-indigo-600/70 dark:text-indigo-300/70">
                           Importa i tuoi post per generare inserzioni visive
                         </p>
                       </CardHeader>
@@ -1045,7 +1031,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                         
                         <Button
                           variant="outline"
-                          className={`w-full justify-start h-10 text-xs font-medium ${isDark ? 'border-indigo-500/30 hover:bg-indigo-500/10' : 'border-indigo-300 hover:bg-indigo-50'}`}
+                          className="w-full justify-start h-10 text-xs font-medium border-indigo-300 dark:border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
                           onClick={fetchFromExternalSource}
                           disabled={isFetchingFromSource}
                         >
@@ -1059,7 +1045,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                       </CardContent>
                     </Card>
 
-                    <Card className={isDark ? 'bg-slate-900/50 border-slate-800' : ''}>
+                    <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-semibold flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-indigo-500" />
@@ -1070,7 +1056,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                         <div className={`flex items-center gap-2 p-2.5 rounded-lg border ${
                           stylesMode === 'auto' 
                             ? 'bg-indigo-500/10 border-indigo-500/30' 
-                            : isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
+                            : 'bg-muted border-border'
                         }`}>
                           <button
                             onClick={() => {
@@ -1082,7 +1068,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                             }}
                             className={`flex-1 text-[11px] font-semibold py-1.5 rounded-md transition-all ${
                               stylesMode === 'manual' 
-                                ? isDark ? 'bg-slate-700 text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm'
+                                ? 'bg-background text-foreground shadow-sm'
                                 : 'text-muted-foreground hover:text-foreground'
                             }`}
                           >
@@ -1319,7 +1305,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                       };
                       
                       return (
-                        <Card key={post.id} className={`relative group ${isDark ? 'bg-slate-900/50 border-slate-800' : ''} ${post.sourcePostId ? 'ring-2 ring-emerald-500/50' : ''}`}>
+                        <Card key={post.id} className={`relative group ${post.sourcePostId ? 'ring-2 ring-emerald-500/50' : ''}`}>
                           {post.sourcePostId && (
                             <div className="absolute top-0 left-0 right-0 bg-emerald-500/10 border-b border-emerald-200 dark:border-emerald-800 px-4 py-2">
                               <div className="flex items-center justify-between">
@@ -1489,7 +1475,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                 </div>
               ) : (
                 <div className="flex flex-col gap-6">
-                  <div className={`sticky top-[72px] z-20 rounded-xl border backdrop-blur-md ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
+                  <div className="sticky top-[72px] z-20 rounded-xl border backdrop-blur-md bg-background/80 border-border">
                     {/* Header row */}
                     <div className="flex items-center gap-3 px-4 py-3">
                       {/* Expand toggle + summary */}
@@ -1497,13 +1483,13 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                         onClick={() => setQueueExpanded(q => !q)}
                         className={`flex items-center gap-2 shrink-0 rounded-lg px-2.5 py-1.5 border transition-all ${
                           queueExpanded
-                            ? isDark ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-600'
-                            : isDark ? 'border-slate-700 hover:bg-slate-800 text-muted-foreground' : 'border-slate-200 hover:bg-slate-50 text-muted-foreground'
+                            ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-200 dark:border-indigo-500/40 text-indigo-600 dark:text-indigo-400'
+                            : 'border-border hover:bg-muted text-muted-foreground'
                         }`}
                       >
                         {queueExpanded ? <ChevronUp className="w-3.5 h-3.5 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0" />}
                         <span className="text-xs font-semibold whitespace-nowrap">Coda</span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
                           {batchResults.length}
                         </span>
                       </button>
@@ -1516,7 +1502,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                         const folderType = srcPost?.folder?.folderType;
                         return (
                           <div className="flex-1 min-w-0 flex items-center gap-2">
-                            <span className={`text-[10px] font-bold shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            <span className="text-[10px] font-bold shrink-0 text-muted-foreground">
                               #{activeIdx + 1}
                             </span>
                             {getPlatformIcon(activePost.socialNetwork)}
@@ -1524,7 +1510,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                               <span className={`flex items-center gap-1 text-[10px] font-semibold shrink-0 ${folderType === 'project' ? 'text-indigo-500' : 'text-slate-400'}`}>
                                 {folderType === 'project' ? <FolderOpen className="w-3 h-3" /> : <FolderIcon className="w-3 h-3" />}
                                 <span className="max-w-[80px] truncate">{folderName}</span>
-                                <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>/</span>
+                                <span className="text-muted-foreground/50">/</span>
                               </span>
                             )}
                             <span className="text-xs font-semibold truncate">
@@ -1584,7 +1570,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
 
                     {/* Expandable vertical queue panel */}
                     {queueExpanded && (
-                      <div className={`border-t px-4 py-3 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                      <div className="border-t px-4 py-3 border-border">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                           {batchResults.map((p, qIdx) => {
                             const hasImage = generatedImages.some(img => p.concepts.some(c => c.id === img.conceptId));
@@ -1603,7 +1589,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all text-left w-full ${
                                   isActive
                                     ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/20'
-                                    : isDark ? 'bg-slate-800/60 border-slate-700 hover:bg-slate-700 hover:border-slate-500' : 'bg-slate-50 border-slate-200 hover:bg-indigo-50 hover:border-indigo-200'
+                                    : 'bg-muted/50 border-border hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:border-indigo-200 dark:hover:border-indigo-500/30'
                                 }`}
                               >
                                 {/* Number */}
@@ -1661,7 +1647,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                     );
                     const totalSelected = productionConceptTypes.length + productionRegenTypes.length + (productionManualText.trim() ? 1 : 0);
                     return (
-                      <div className={`rounded-xl border p-5 space-y-5 ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+                      <div className="rounded-xl border p-5 space-y-5 bg-card border-border">
                         <div className="flex items-center justify-between">
                           <div>
                             <span className="text-sm font-semibold">Aggiungi Concept al Post Attivo</span>
@@ -1728,7 +1714,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
 
                         {usedTypes.length > 0 && (
                           <div className="space-y-2.5">
-                            <div className={`h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                            <div className="h-px bg-border" />
                             <div className="flex items-center gap-2">
                               <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
                               <span className="text-xs font-semibold">Rigenera Variante</span>
@@ -1780,7 +1766,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                         )}
 
                         <div className="space-y-2.5">
-                          <div className={`h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                          <div className="h-px bg-border" />
                           <div className="flex items-center gap-2">
                             <FileText className="w-3.5 h-3.5 text-violet-500" />
                             <span className="text-xs font-semibold">Imposta Manualmente</span>
@@ -1790,11 +1776,11 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                             placeholder="Es: Immagine split prima/dopo con il prodotto al centro, sfondo gradiente scuro con accenti neon..."
                             value={productionManualText}
                             onChange={(e) => setProductionManualText(e.target.value)}
-                            className={`text-xs min-h-[60px] resize-none ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
+                            className="text-xs min-h-[60px] resize-none"
                           />
                         </div>
 
-                        <div className={`flex items-center justify-between pt-2 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                        <div className="flex items-center justify-between pt-2 border-t border-border">
                           <div className="flex items-center gap-3">
                             {totalSelected > 0 && (
                               <>
@@ -1831,20 +1817,20 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                   <div className="space-y-8">
                     {activePost && (
                       <>
-                        <Card className={isDark ? 'bg-slate-900/50 border-slate-800' : ''}>
+                        <Card>
                           <CardContent className="p-8">
                             <h2 className="text-2xl font-bold mb-6">Brand Strategy <span className="text-indigo-500">Report</span></h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                              <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                              <div className="p-4 rounded-xl bg-muted">
                                 <p className="text-xs font-medium text-muted-foreground mb-1">Obiettivo Campagna</p>
                                 <p className="font-semibold">{activePost.objective}</p>
                               </div>
-                              <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                              <div className="p-4 rounded-xl bg-muted">
                                 <p className="text-xs font-medium text-muted-foreground mb-1">Assetto Emotivo</p>
                                 <p className="font-semibold text-indigo-500">{activePost.emotion}</p>
                               </div>
                             </div>
-                            <div className={`p-6 rounded-xl ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-50 border border-indigo-100'}`}>
+                            <div className="p-6 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20">
                               <p className="text-xs font-semibold text-indigo-500 mb-2">Competitive Edge</p>
                               <p className="text-sm italic opacity-80">"{activePost.competitiveEdge}"</p>
                             </div>
@@ -1863,9 +1849,9 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                           const hasOverrides = !!conceptOverrides[concept.id] && Object.keys(conceptOverrides[concept.id]).length > 0;
                           
                           return (
-                            <Card key={concept.id} className={`overflow-hidden ${isDark ? 'bg-slate-900/50 border-slate-800' : ''}`}>
+                            <Card key={concept.id} className="overflow-hidden">
                               <div className="flex flex-col lg:flex-row">
-                                <div className={`lg:w-[400px] shrink-0 relative flex flex-col ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                                <div className="lg:w-[400px] shrink-0 relative flex flex-col bg-muted">
                                   <div className={`relative flex items-center justify-center flex-1 ${
                                     (mergedS.imageFormat === '9:16') ? 'aspect-[9/16]' :
                                     (mergedS.imageFormat === '4:5') ? 'aspect-[4/5]' :
@@ -1977,7 +1963,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                     })()}
                                   </div>
                                   {conceptHistory.length > 0 && (
-                                    <div className={`p-2 border-t ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-white/80'}`}>
+                                    <div className="p-2 border-t border-border bg-background/80">
                                       <div className="flex items-center gap-1.5 mb-1.5">
                                         <History className="w-3 h-3 text-muted-foreground" />
                                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -1994,7 +1980,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                               className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
                                                 selectedIdx === idx
                                                   ? 'border-indigo-500 ring-1 ring-indigo-500/50'
-                                                  : isDark ? 'border-slate-600 hover:border-slate-400' : 'border-slate-300 hover:border-slate-500'
+                                                  : 'border-border hover:border-muted-foreground'
                                               }`}
                                               title={`${img.variant === 'text' ? 'Con Testo' : 'Solo Visual'} — ${new Date(img.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}${img.savedToSession === 'saved' ? ' ✅ Salvata' : img.savedToSession === 'failed' ? ' ❌ Non salvata' : img.savedToSession === 'pending' ? ' ⏳ Salvataggio...' : ''}`}
                                             >
@@ -2060,7 +2046,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                     const hasSourcePost = !!activePost?.sourcePostId;
                                     if (conceptHistory.length === 0) return null;
                                     return (
-                                      <div className={`flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg text-xs ${isDark ? 'bg-slate-800/60 border border-slate-700/50' : 'bg-slate-50 border border-slate-200'}`}>
+                                      <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg text-xs bg-muted/50 border border-border">
                                         <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Stato Immagini:</span>
                                         <span className="flex items-center gap-1">
                                           <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
@@ -2105,7 +2091,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                   })()}
 
                                   {activePost?.originalText && (
-                                    <div className={`p-4 rounded-xl border ${isDark ? 'border-blue-500/30 bg-blue-950/20' : 'border-blue-200 bg-blue-50'}`}>
+                                    <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-950/20">
                                       <div className="flex items-center gap-2 mb-2">
                                         <FileText className="w-3.5 h-3.5 text-blue-500" />
                                         <span className="text-blue-600 text-xs font-bold uppercase tracking-wider">Testo Inserzione Originale</span>
@@ -2119,14 +2105,14 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                           {originalTextExpanded[concept.id] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                         </Button>
                                       </div>
-                                      <p className={`text-xs leading-relaxed whitespace-pre-wrap ${isDark ? 'text-blue-300' : 'text-blue-800'} ${originalTextExpanded[concept.id] ? '' : 'line-clamp-3'}`}>
+                                      <p className={`text-xs leading-relaxed whitespace-pre-wrap text-blue-800 dark:text-blue-300 ${originalTextExpanded[concept.id] ? '' : 'line-clamp-3'}`}>
                                         {activePost.originalText}
                                       </p>
                                     </div>
                                   )}
 
                                   {concept.textContent && (
-                                    <div className={`relative p-4 rounded-xl border-2 ${isDark ? 'border-amber-500/40 bg-amber-950/20' : 'border-amber-400/60 bg-gradient-to-r from-amber-50 to-orange-50'}`}>
+                                    <div className="relative p-4 rounded-xl border-2 border-amber-400/60 dark:border-amber-500/40 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-amber-950/10">
                                       <div className="flex items-center gap-2 mb-2">
                                         <span className="text-amber-600 text-xs font-bold uppercase tracking-wider">Testo Hook</span>
                                         <div className="flex-1 h-px bg-amber-300/40" />
@@ -2142,7 +2128,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                           <Copy className="w-3.5 h-3.5" />
                                         </Button>
                                       </div>
-                                      <p className={`text-base font-semibold leading-relaxed ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>
+                                      <p className="text-base font-semibold leading-relaxed text-amber-900 dark:text-amber-200">
                                         "{concept.textContent}"
                                       </p>
                                     </div>
@@ -2150,12 +2136,12 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
 
                                   <div>
                                     <p className="text-xs font-medium text-muted-foreground mb-1.5">Descrizione Visiva</p>
-                                    <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    <p className="text-sm leading-relaxed text-muted-foreground">
                                       {concept.description}
                                     </p>
                                   </div>
                                   
-                                  <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                                  <div className="p-4 rounded-xl bg-muted">
                                     <p className="text-xs font-semibold text-muted-foreground mb-1.5">Perché converte</p>
                                     <p className="text-xs leading-relaxed opacity-80">{concept.reasoning}</p>
                                   </div>
@@ -2167,11 +2153,11 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                     </TabsList>
                                   </Tabs>
 
-                                  <div className={`rounded-xl border ${isDark ? 'border-slate-700/60' : 'border-slate-200'}`}>
+                                  <div className="rounded-xl border border-border">
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className={`w-full justify-between text-xs rounded-b-none ${conceptControlsOpen[concept.id] ? 'rounded-t-xl' : 'rounded-xl'} ${isDark ? 'text-slate-300 hover:text-slate-100 hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+                                      className={`w-full justify-between text-xs rounded-b-none ${conceptControlsOpen[concept.id] ? 'rounded-t-xl' : 'rounded-xl'} text-muted-foreground hover:text-foreground hover:bg-muted`}
                                       onClick={() => setConceptControlsOpen({...conceptControlsOpen, [concept.id]: !conceptControlsOpen[concept.id]})}
                                     >
                                       <span className="flex items-center gap-2">
@@ -2186,7 +2172,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                       {conceptControlsOpen[concept.id] ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                     </Button>
                                     {conceptControlsOpen[concept.id] && (
-                                      <div className={`p-4 border-t space-y-3 ${isDark ? 'border-slate-700/60 bg-slate-800/30' : 'border-slate-200 bg-slate-50/50'}`}>
+                                      <div className="p-4 border-t space-y-3 border-border bg-muted/30">
                                         {hasOverrides && (
                                           <Button
                                             variant="ghost"
@@ -2346,7 +2332,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className={`w-full justify-between text-xs ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                                      className="w-full justify-between text-xs text-muted-foreground hover:text-foreground"
                                       onClick={() => setPromptPreviewOpen({...promptPreviewOpen, [concept.id]: !promptPreviewOpen[concept.id]})}
                                     >
                                       <span className="flex items-center gap-2">
@@ -2361,9 +2347,9 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                       const previewRatio = ratioMap[userFormat] || ratioMap[concept.recommendedFormat] || '1:1';
                                       const previewPrompt = buildPromptPreview(concept, mergedS, variant, previewRatio, activePost?.originalText);
                                       return (
-                                        <div className={`mt-3 rounded-xl border ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                                        <div className="mt-3 rounded-xl border border-border bg-muted/50">
                                           <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200/20">
-                                            <span className={`text-[10px] font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            <span className="text-[10px] font-mono text-muted-foreground">
                                               {previewPrompt.length} caratteri
                                             </span>
                                             <Button
@@ -2380,7 +2366,7 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                                             </Button>
                                           </div>
                                           <div className="max-h-[400px] overflow-y-auto">
-                                            <pre className={`p-4 text-[11px] leading-relaxed whitespace-pre-wrap font-mono ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                            <pre className="p-4 text-[11px] leading-relaxed whitespace-pre-wrap font-mono text-foreground/80">
                                               {previewPrompt}
                                             </pre>
                                           </div>
@@ -2624,9 +2610,9 @@ const AdVisagePage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                       <div className={`flex items-center gap-2 px-1 py-1.5 rounded-lg ${
                         folder
                           ? folder.folderType === 'project'
-                            ? isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-50 border border-indigo-100'
-                            : isDark ? 'bg-slate-800/60 border border-slate-700/40' : 'bg-slate-100 border border-slate-200'
-                          : isDark ? 'bg-slate-800/30 border border-slate-700/20' : 'bg-gray-50 border border-gray-100'
+                            ? 'bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20'
+                            : 'bg-muted border border-border'
+                          : 'bg-muted/50 border border-border/50'
                       }`}>
                         {folder ? (
                           folder.folderType === 'project' ? (
