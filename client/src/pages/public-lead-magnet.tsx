@@ -346,12 +346,32 @@ function ChatSection({ session, onReportReady }: { session: SessionData; onRepor
   );
 }
 
-function ReportSection({ report, leadName }: { report: any; leadName: string }) {
+function ReportSection({ report, leadName, publicToken }: { report: any; leadName: string; publicToken: string }) {
   const lettera = report.lettera_personale || '';
   const diagnosi = report.diagnosi || {};
   const pacchetti = report.pacchetti_consigliati || [];
   const roadmap = report.roadmap || [];
   const quickWins = report.quick_wins || [];
+  const [funnelNodes, setFunnelNodes] = useState<any[] | null>(null);
+
+  useEffect(() => {
+    if (!publicToken || funnelNodes) return;
+    let cancelled = false;
+    const fetchFunnel = async () => {
+      try {
+        const res = await fetch(`/api/public/lead-magnet/${publicToken}/funnel`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data?.nodes && !cancelled) {
+            setFunnelNodes(data.data.nodes);
+          }
+        }
+      } catch {}
+    };
+    fetchFunnel();
+    const interval = setInterval(fetchFunnel, 10000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [publicToken, funnelNodes]);
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f172a', color: '#f8fafc' }}>
@@ -456,6 +476,82 @@ function ReportSection({ report, leadName }: { report: any; leadName: string }) 
           </section>
         )}
 
+        {funnelNodes && funnelNodes.length > 0 && (
+          <section style={{ marginBottom: '40px' }}>
+            <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '8px', color: '#f8fafc' }}>
+              Il Tuo Percorso Strategico
+            </h2>
+            <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 20px' }}>
+              Ecco il funnel personalizzato che abbiamo progettato per la tua attività
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {funnelNodes
+                .filter((n: any) => n.data?.label)
+                .sort((a: any, b: any) => (a.position?.y || 0) - (b.position?.y || 0))
+                .map((node: any, idx: number, arr: any[]) => {
+                  const phase = node.data?.phase || '';
+                  const phaseColors: Record<string, string> = {
+                    awareness: '#3b82f6',
+                    interesse: '#06b6d4',
+                    considerazione: '#f59e0b',
+                    conversione: '#10b981',
+                    fidelizzazione: '#8b5cf6',
+                  };
+                  const borderColor = phaseColors[phase] || '#475569';
+                  return (
+                    <div key={node.id}>
+                      <div style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderLeft: `4px solid ${borderColor}`,
+                        borderRadius: '12px',
+                        padding: '16px',
+                        display: 'flex',
+                        gap: '12px',
+                        alignItems: 'flex-start',
+                      }}>
+                        <div style={{
+                          width: '28px', height: '28px', borderRadius: '50%',
+                          background: 'rgba(255,255,255,0.08)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '12px', fontWeight: 700, color: '#94a3b8', flexShrink: 0,
+                        }}>
+                          {idx + 1}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#f8fafc' }}>{node.data.label}</span>
+                            {phase && (
+                              <span style={{
+                                fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em',
+                                padding: '2px 6px', borderRadius: '4px',
+                                background: 'rgba(255,255,255,0.06)', color: '#64748b',
+                              }}>
+                                {phase}
+                              </span>
+                            )}
+                          </div>
+                          {node.data.description && (
+                            <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, color: '#94a3b8' }}>
+                              {node.data.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {idx < arr.length - 1 && (
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 5v14M19 12l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </section>
+        )}
+
         <section style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(6,182,212,0.15))', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '16px', padding: '32px', textAlign: 'center' }}>
           <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>
             Vuoi Implementare Queste Soluzioni?
@@ -518,7 +614,7 @@ export default function PublicLeadMagnet() {
   }
 
   if (phase === 'report' && report && session) {
-    return <ReportSection report={report} leadName={session.leadName} />;
+    return <ReportSection report={report} leadName={session.leadName} publicToken={session.token} />;
   }
 
   return <LandingSection onStart={handleStart} />;

@@ -733,10 +733,12 @@ router.get('/:token/funnel', async (req: Request, res: Response) => {
     if (sessionRes.rows.length === 0) return res.status(404).json({ success: false, error: 'Sessione non trovata' });
     const session = sessionRes.rows[0] as any;
 
+    const funnelConsultantId = session.consultant_id || FALLBACK_CONSULTANT_ID;
     const funnelRes = await db.execute(sql`
       SELECT id, name, description, nodes_data, edges_data, theme, lead_name, created_at
       FROM consultant_funnels
-      WHERE delivery_session_id = ${session.id} AND consultant_id = ${session.consultant_id}
+      WHERE delivery_session_id = ${session.id} AND consultant_id = ${funnelConsultantId}
+      ORDER BY created_at DESC
       LIMIT 1
     `);
 
