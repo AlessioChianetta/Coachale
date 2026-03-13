@@ -1544,10 +1544,10 @@ router.post('/onboarding-status/clients', authenticateToken, requireRole('consul
         s.id, s.lead_user_id, s.status,
         CASE WHEN r.id IS NOT NULL THEN true ELSE false END AS has_report,
         CASE WHEN f.id IS NOT NULL THEN true ELSE false END AS has_funnel,
-        (SELECT COUNT(*)::int FROM delivery_agent_messages m WHERE m.session_id = s.id) AS message_count
+        (SELECT COUNT(*)::int FROM delivery_agent_messages m WHERE m.session_id = s.id::text) AS message_count
       FROM delivery_agent_sessions s
-      LEFT JOIN delivery_agent_reports r ON r.session_id = s.id
-      LEFT JOIN consultant_funnels f ON f.delivery_session_id = s.id
+      LEFT JOIN delivery_agent_reports r ON r.session_id = s.id::text
+      LEFT JOIN consultant_funnels f ON f.delivery_session_id = s.id::text
       WHERE s.lead_user_id IN (${sql.join(authorizedIds.map(id => sql`${id}`), sql`,`)})
         AND (s.mode = 'onboarding' OR s.is_public = true)
       ORDER BY s.lead_user_id, s.updated_at DESC
@@ -1582,10 +1582,10 @@ router.post('/onboarding-status/clients', authenticateToken, requireRole('consul
             s.id, s.lead_email, s.status,
             CASE WHEN r.id IS NOT NULL THEN true ELSE false END AS has_report,
             CASE WHEN f.id IS NOT NULL THEN true ELSE false END AS has_funnel,
-            (SELECT COUNT(*)::int FROM delivery_agent_messages m WHERE m.session_id = s.id) AS message_count
+            (SELECT COUNT(*)::int FROM delivery_agent_messages m WHERE m.session_id = s.id::text) AS message_count
           FROM delivery_agent_sessions s
-          LEFT JOIN delivery_agent_reports r ON r.session_id = s.id
-          LEFT JOIN consultant_funnels f ON f.delivery_session_id = s.id
+          LEFT JOIN delivery_agent_reports r ON r.session_id = s.id::text
+          LEFT JOIN consultant_funnels f ON f.delivery_session_id = s.id::text
           WHERE s.lead_user_id IS NULL
             AND s.consultant_id = ${consultantId}
             AND LOWER(TRIM(s.lead_email)) IN (${sql.join(emails.map(e => sql`${e}`), sql`,`)})
