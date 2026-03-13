@@ -3275,7 +3275,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
     }
     if (statusFilter && statusFilter !== 'all') {
       if (statusFilter === 'active') {
-        conditions.push(sql`status IN ('scheduled', 'in_progress', 'approved')`);
+        conditions.push(sql`status IN ('scheduled', 'in_progress', 'approved', 'waiting_approval')`);
       } else if (statusFilter === 'paused') {
         conditions.push(sql`status IN ('paused', 'draft', 'waiting_input')`);
       } else if (statusFilter === 'cancelled') {
@@ -3288,7 +3288,11 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
       conditions.push(sql`task_category = ${categoryFilter}`);
     }
     if (originFilter && originFilter !== 'all') {
-      conditions.push(sql`origin_type = ${originFilter}`);
+      if (originFilter === 'autonomous') {
+        conditions.push(sql`origin_type IN ('autonomous', 'chat_supervisor')`);
+      } else {
+        conditions.push(sql`origin_type = ${originFilter}`);
+      }
     }
     if (roleFilter && roleFilter !== 'all') {
       if (roleFilter === '__manual__') {

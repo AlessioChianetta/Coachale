@@ -307,12 +307,12 @@ async function executeAction(
               INSERT INTO ai_scheduled_tasks (
                 consultant_id, ai_role, ai_instruction, task_category,
                 contact_name, contact_phone, status, priority, task_type,
-                scheduled_at, created_at, updated_at
+                scheduled_at, origin_type, created_at, updated_at
               ) VALUES (
                 ${consultantId}::uuid, ${roleId}, ${task.instruction},
                 ${category}, ${task.contactName || ''},
                 ${task.contactPhone || ''}, 'waiting_approval', ${priorityInt}, 'ai_task',
-                ${scheduledAt}, NOW(), NOW()
+                ${scheduledAt}, 'chat_supervisor', NOW(), NOW()
               )
             `);
             created.push(task.instruction);
