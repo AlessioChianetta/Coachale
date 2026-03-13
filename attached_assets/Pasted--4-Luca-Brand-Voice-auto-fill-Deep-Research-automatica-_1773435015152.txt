@@ -1,0 +1,32 @@
+#4 - Luca: Brand Voice auto-fill + Deep Research automatica
+What & Why
+Dopo che Luca completa l'onboarding e genera il report, i dati raccolti (nome business, settore, USP, servizi, credenziali, target, ecc.) devono automaticamente popolare il Brand Voice del consulente e lanciare la Deep Research di mercato. Oggi questi dati restano "chiusi" nel report e il consulente deve riscriverli manualmente nei vari moduli. L'obiettivo e' creare un flusso end-to-end: onboarding → Brand Voice → Deep Research, tutto automatico.
+
+Inoltre, aggiungere "Importa da Luca" come opzione nei moduli che usano il Brand Voice (accanto a "Importa da Agente"), cosi' che il consulente possa in qualsiasi momento re-importare i dati dall'onboarding.
+
+Done looks like
+Quando il report di Luca viene generato con successo, il sistema automaticamente:
+Mappa i dati dal client_profile_json e report_json nei campi del Brand Voice (nome business, descrizione, bio, USP, chi aiutiamo, servizi, credenziali, ecc.)
+Salva il Brand Voice nel content_studio_config per il consulente
+Lancia la Deep Research con AI usando come contesto il settore/nicchia/target del profilo cliente
+Salva i risultati della ricerca di mercato nel content_studio_config
+Nei moduli che mostrano il Brand Voice (Content Studio, Email Hub, Sales Agents, Nurturing), appare un pulsante "Importa da Luca" accanto a "Importa da Agente" che permette di ri-popolare il Brand Voice dai dati dell'onboarding
+Il pulsante "Importa da Luca" e' visibile solo se esiste un report di Luca completato per il consulente
+Out of scope
+Modifiche al flusso di discovery/conversazione di Luca (le 8 fasi restano identiche)
+Modifiche alla struttura del report JSON
+Creazione di nuovi componenti UI per il Brand Voice (si riusa BrandVoiceSection esistente)
+Tasks
+Mapping function Luca → Brand Voice — Creare una funzione server-side che dato un client_profile_json e un report_json, estrae e mappa i campi rilevanti nella struttura BrandVoiceData (nome, descrizione, USP, servizi, credenziali, valori, chi aiutiamo, ecc.).
+Auto-save Brand Voice dopo report — Nel flusso di generazione report in delivery-agent.ts (e lead-magnet.ts), dopo il salvataggio del report con successo, chiamare la mapping function e salvare il Brand Voice nel content_studio_config.
+Auto-lancio Deep Research — Dopo il salvataggio del Brand Voice, lanciare automaticamente la deep research di mercato usando settore/nicchia/target dal profilo cliente come parametri, e salvare i risultati in content_studio_config.market_research_data.
+Endpoint "Importa da Luca" — Creare un endpoint API che dato un consultantId recupera il report piu' recente di Luca e restituisce i dati mappati come BrandVoiceData.
+Pulsante "Importa da Luca" nel frontend — Aggiungere l'opzione "Importa da Luca" nel componente BrandVoiceSection (accanto a "Importa da Agente"), con dialog di conferma e logica di import che chiama il nuovo endpoint. Visibile solo se esiste un report completato.
+Relevant files
+server/routes/delivery-agent.ts:772-776
+server/routes/public/lead-magnet.ts:665-669
+server/prompts/delivery-agent-prompt.ts:521-694
+client/src/components/brand-voice/BrandVoiceSection.tsx:33-61,362-384
+client/src/components/brand-voice/MarketResearchSection.tsx:173-190
+server/routes/content-studio.ts:135-178,1939-2506
+shared/schema.ts:4183-4205,9677-9704

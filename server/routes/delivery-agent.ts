@@ -786,6 +786,40 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
       }
     })();
 
+    if (session.mode === 'onboarding' && !session.is_public) {
+      (async () => {
+        try {
+          const sessionForBV = await db.execute(sql`
+            SELECT client_profile_json FROM delivery_agent_sessions WHERE id = ${sessionId}::uuid
+          `);
+          const clientProfile = (sessionForBV.rows[0] as any)?.client_profile_json || {};
+          const { autoPopulateBrandVoiceFromLuca, extractDeepResearchParams } = await import('../services/luca-brand-voice-mapper');
+          await autoPopulateBrandVoiceFromLuca(consultantId, clientProfile, reportJson);
+
+          const drParams = extractDeepResearchParams(clientProfile, reportJson);
+          if (drParams && drParams.niche && drParams.targetAudience) {
+            console.log(`[DeliveryAgent] Saving Deep Research params for auto-trigger: niche="${drParams.niche}", target="${drParams.targetAudience}"`);
+            await db.execute(sql`
+              UPDATE content_studio_config
+              SET market_research_data = COALESCE(market_research_data, '{}'::jsonb) || ${JSON.stringify({
+                _autoParams: {
+                  niche: drParams.niche,
+                  targetAudience: drParams.targetAudience,
+                  source: 'luca_onboarding',
+                  savedAt: new Date().toISOString()
+                }
+              })}::jsonb,
+              updated_at = NOW()
+              WHERE consultant_id = ${consultantId}
+            `);
+            console.log(`[DeliveryAgent] Deep Research params saved for consultant ${consultantId}`);
+          }
+        } catch (bvErr: any) {
+          console.warn(`[DeliveryAgent] Auto Brand Voice population failed (non-blocking): ${bvErr.message}`);
+        }
+      })();
+    }
+
     res.json({ success: true, data: { report: reportJson, status: 'assistant' } });
   } catch (err: any) {
     console.error('[DeliveryAgent] Report generation error:', err);

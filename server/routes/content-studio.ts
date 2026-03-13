@@ -177,6 +177,63 @@ router.post("/brand-voice", authenticateToken, requireRole("consultant"), async 
   }
 });
 
+router.get("/brand-voice/from-luca", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { getLatestLucaReport, mapLucaReportToBrandVoice, extractDeepResearchParams } = await import("../services/luca-brand-voice-mapper");
+
+    const report = await getLatestLucaReport(consultantId);
+    if (!report) {
+      return res.json({ success: true, available: false, data: null });
+    }
+
+    const brandVoice = mapLucaReportToBrandVoice(report.clientProfileJson, report.reportJson);
+    const deepResearchParams = extractDeepResearchParams(report.clientProfileJson, report.reportJson);
+
+    res.json({
+      success: true,
+      available: true,
+      data: brandVoice,
+      deepResearchParams,
+      sessionId: report.sessionId,
+    });
+  } catch (error: any) {
+    console.error("[CONTENT-STUDIO] Error fetching Luca brand voice:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/brand-voice/import-from-luca", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { getLatestLucaReport, autoPopulateBrandVoiceFromLuca } = await import("../services/luca-brand-voice-mapper");
+
+    const report = await getLatestLucaReport(consultantId);
+    if (!report) {
+      return res.status(404).json({ success: false, error: "Nessun report di Luca trovato" });
+    }
+
+    const brandVoice = await autoPopulateBrandVoiceFromLuca(consultantId, report.clientProfileJson, report.reportJson);
+    const { extractDeepResearchParams } = await import("../services/luca-brand-voice-mapper");
+    const deepResearchParams = extractDeepResearchParams(report.clientProfileJson, report.reportJson);
+
+    const [updated] = await db.select()
+      .from(schema.contentStudioConfig)
+      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+      .limit(1);
+
+    res.json({
+      success: true,
+      brandVoice: updated?.brandVoiceData || brandVoice,
+      enabled: updated?.brandVoiceEnabled ?? true,
+      deepResearchParams,
+    });
+  } catch (error: any) {
+    console.error("[CONTENT-STUDIO] Error importing Luca brand voice:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ============================================================
 // CONTENT IDEAS
 // ============================================================

@@ -71,6 +71,7 @@ export interface BrandVoiceSectionProps {
   compact?: boolean;
   showSaveButton?: boolean;
   externalMarketResearchData?: MarketResearchData | null;
+  showImportFromLuca?: boolean;
 }
 
 export function BrandVoiceSection({
@@ -83,7 +84,8 @@ export function BrandVoiceSection({
   onImportClick,
   compact = false,
   showSaveButton = true,
-  externalMarketResearchData = null
+  externalMarketResearchData = null,
+  showImportFromLuca = true
 }: BrandVoiceSectionProps) {
   const { toast } = useToast();
   const [businessInfoOpen, setBusinessInfoOpen] = useState(!compact);
@@ -94,6 +96,9 @@ export function BrandVoiceSection({
   const [marketResearchOpen, setMarketResearchOpen] = useState(false);
   const [valueInput, setValueInput] = useState("");
   const [phraseInput, setPhraseInput] = useState("");
+  const [lucaAvailable, setLucaAvailable] = useState(false);
+  const [isImportingFromLuca, setIsImportingFromLuca] = useState(false);
+  const [showLucaConfirmDialog, setShowLucaConfirmDialog] = useState(false);
 
   const [marketResearchData, setMarketResearchData] = useState<MarketResearchData>({ ...EMPTY_MARKET_RESEARCH });
   const [isLoadingMR, setIsLoadingMR] = useState(false);
@@ -114,6 +119,8 @@ export function BrandVoiceSection({
   const [pendingPhaseGen, setPendingPhaseGen] = useState<{ phase: string; mode: 'add' | 'overwrite' | null }>({ phase: '', mode: null });
   const mrSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const autoTriggerRef = useRef(false);
+
   useEffect(() => {
     if (!marketResearchOpen || isLoadingMR) return;
     setIsLoadingMR(true);
@@ -122,6 +129,15 @@ export function BrandVoiceSection({
       .then(result => {
         if (result.success && result.data) {
           setMarketResearchData(result.data);
+          const autoParams = result.data?._autoParams;
+          const hasRealData = result.data?.currentState || result.data?.idealState || result.data?.avatar?.name;
+          if (autoParams?.source === 'luca_onboarding' && !hasRealData && !autoTriggerRef.current) {
+            autoTriggerRef.current = true;
+            toast({
+              title: "Parametri Deep Research disponibili",
+              description: `Nicchia: "${autoParams.niche}" — Clicca "Deep Research con AI" per generare l'analisi completa.`,
+            });
+          }
         }
       })
       .catch(() => {})
@@ -144,6 +160,49 @@ export function BrandVoiceSection({
       saveMarketResearchGlobal(externalMarketResearchData);
     }
   }, [externalMarketResearchData, saveMarketResearchGlobal]);
+
+  useEffect(() => {
+    if (!showImportFromLuca) return;
+    fetch("/api/content/brand-voice/from-luca", { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success && result.available) {
+          setLucaAvailable(true);
+        }
+      })
+      .catch(() => {});
+  }, [showImportFromLuca]);
+
+  const handleImportFromLuca = useCallback(async () => {
+    setIsImportingFromLuca(true);
+    try {
+      const response = await fetch("/api/content/brand-voice/import-from-luca", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      const result = await response.json();
+      if (result.success && result.brandVoice) {
+        onDataChange(result.brandVoice);
+        const hasDeepResearchParams = result.deepResearchParams?.niche && result.deepResearchParams?.targetAudience;
+        if (hasDeepResearchParams) {
+          toast({
+            title: "Brand Voice importato da Luca",
+            description: "Dati importati. Apri 'Ricerca di Mercato' per lanciare il Deep Research con i parametri precompilati.",
+          });
+          setMarketResearchOpen(true);
+        } else {
+          toast({ title: "Brand Voice importato da Luca", description: "I dati dell'onboarding sono stati importati nel Brand Voice" });
+        }
+      } else {
+        toast({ title: "Errore", description: result.error || "Importazione fallita", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Impossibile importare i dati da Luca", variant: "destructive" });
+    } finally {
+      setIsImportingFromLuca(false);
+      setShowLucaConfirmDialog(false);
+    }
+  }, [onDataChange, toast]);
 
   const handleGenerateMarketResearch = useCallback(async (phase?: string, mergeMode?: 'add' | 'overwrite') => {
     const niche = data.businessDescription || data.whoWeHelp || '';
@@ -371,17 +430,59 @@ export function BrandVoiceSection({
             Definisci l'identità del tuo brand per email personalizzate (tutti i campi sono opzionali)
           </p>
         </div>
-        {showImportButton && onImportClick && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={onImportClick}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Importa da Agente
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {showImportFromLuca && lucaAvailable && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowLucaConfirmDialog(true)}
+              disabled={isImportingFromLuca}
+              className="border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-600 dark:text-violet-300 dark:hover:bg-violet-950/50"
+            >
+              {isImportingFromLuca ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <MessageSquare className="h-4 w-4 mr-2" />
+              )}
+              Importa da Luca
+            </Button>
+          )}
+          {showImportButton && onImportClick && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={onImportClick}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Importa da Agente
+            </Button>
+          )}
+        </div>
       </div>
+
+      <Dialog open={showLucaConfirmDialog} onOpenChange={setShowLucaConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Importa Brand Voice da Luca</DialogTitle>
+            <DialogDescription>
+              I dati raccolti durante l'onboarding con Luca (nome business, settore, USP, servizi, target, ecc.) verranno importati nel tuo Brand Voice. I campi già compilati non verranno sovrascritti.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLucaConfirmDialog(false)}>
+              Annulla
+            </Button>
+            <Button onClick={handleImportFromLuca} disabled={isImportingFromLuca}>
+              {isImportingFromLuca ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Importa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Collapsible open={businessInfoOpen} onOpenChange={setBusinessInfoOpen}>
         <Card className="border-2 border-primary/20 shadow-lg">
