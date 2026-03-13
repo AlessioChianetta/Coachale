@@ -637,7 +637,7 @@ export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessio
             { mode: "catalogo", icon: Layers, label: "Cat." },
           ];
           if (showBrandVoiceTab) {
-            tabItems.push({ mode: "brandvoice", icon: Palette, label: "Brand" });
+            tabItems.push({ mode: "brandvoice", icon: Palette, label: "Brand Voice" });
           }
 
           const viewTabs = (

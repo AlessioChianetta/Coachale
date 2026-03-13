@@ -794,7 +794,7 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
             SELECT client_profile_json FROM delivery_agent_sessions WHERE id = ${sessionId}::uuid
           `);
           const clientProfile = (sessionForBV.rows[0] as any)?.client_profile_json || {};
-          const { autoPopulateBrandVoiceFromLuca, mapLucaReportToBrandVoice, extractDeepResearchParams } = await import('../services/luca-brand-voice-mapper');
+          const { mapLucaReportToBrandVoice } = await import('../services/luca-brand-voice-mapper');
 
           const sessionBrandVoice = mapLucaReportToBrandVoice(clientProfile, reportJson);
           await db.execute(sql`
@@ -803,27 +803,6 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
             WHERE id = ${sessionId}::uuid
           `);
           console.log(`[DeliveryAgent] Brand Voice saved to session ${sessionId} (${Object.keys(sessionBrandVoice).length} fields)`);
-
-          await autoPopulateBrandVoiceFromLuca(consultantId, clientProfile, reportJson);
-
-          const drParams = extractDeepResearchParams(clientProfile, reportJson);
-          if (drParams && drParams.niche && drParams.targetAudience) {
-            console.log(`[DeliveryAgent] Saving Deep Research params for auto-trigger: niche="${drParams.niche}", target="${drParams.targetAudience}"`);
-            await db.execute(sql`
-              UPDATE content_studio_config
-              SET market_research_data = COALESCE(market_research_data, '{}'::jsonb) || ${JSON.stringify({
-                _autoParams: {
-                  niche: drParams.niche,
-                  targetAudience: drParams.targetAudience,
-                  source: 'luca_onboarding',
-                  savedAt: new Date().toISOString()
-                }
-              })}::jsonb,
-              updated_at = NOW()
-              WHERE consultant_id = ${consultantId}
-            `);
-            console.log(`[DeliveryAgent] Deep Research params saved for consultant ${consultantId}`);
-          }
         } catch (bvErr: any) {
           console.warn(`[DeliveryAgent] Auto Brand Voice population failed (non-blocking): ${bvErr.message}`);
         }

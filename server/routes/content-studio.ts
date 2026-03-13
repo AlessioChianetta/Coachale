@@ -220,7 +220,7 @@ router.get("/brand-voice/from-luca", authenticateToken, requireRole("consultant"
 router.post("/brand-voice/import-from-luca", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const { getLatestLucaSessionBrandVoice, saveBrandVoiceForConsultant, getLatestLucaReport, autoPopulateBrandVoiceFromLuca, extractDeepResearchParams } = await import("../services/luca-brand-voice-mapper");
+    const { getLatestLucaSessionBrandVoice, getLatestLucaReport, autoPopulateBrandVoiceFromLuca, extractDeepResearchParams } = await import("../services/luca-brand-voice-mapper");
 
     const sessionBV = await getLatestLucaSessionBrandVoice(consultantId);
     let brandVoice: any;
@@ -228,7 +228,27 @@ router.post("/brand-voice/import-from-luca", authenticateToken, requireRole("con
 
     if (sessionBV) {
       brandVoice = sessionBV.brandVoiceData;
-      await saveBrandVoiceForConsultant(consultantId, brandVoice);
+
+      const [existing] = await db.select()
+        .from(schema.contentStudioConfig)
+        .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+        .limit(1);
+
+      if (existing) {
+        await db.update(schema.contentStudioConfig)
+          .set({
+            brandVoiceData: brandVoice,
+            brandVoiceEnabled: true,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.contentStudioConfig.consultantId, consultantId));
+      } else {
+        await db.insert(schema.contentStudioConfig).values({
+          consultantId,
+          brandVoiceData: brandVoice,
+          brandVoiceEnabled: true,
+        });
+      }
 
       if (sessionBV.clientProfileJson && sessionBV.reportJson) {
         deepResearchParams = extractDeepResearchParams(sessionBV.clientProfileJson, sessionBV.reportJson);
