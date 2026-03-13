@@ -222,9 +222,9 @@ export default function ConsultantDashboard() {
     hasFunnel: boolean;
     recentMessages: Array<{ role: string; content: string; createdAt: string }>;
   }>({
-    queryKey: ["/api/delivery-agent/onboarding-status"],
+    queryKey: ["/api/consultant/delivery-agent/onboarding-status"],
     queryFn: async () => {
-      const res = await fetch("/api/delivery-agent/onboarding-status", { headers: getAuthHeaders() });
+      const res = await fetch("/api/consultant/delivery-agent/onboarding-status", { headers: getAuthHeaders() });
       if (!res.ok) return { hasSession: false, status: null, hasChat: false, hasReport: false, hasFunnel: false, recentMessages: [] };
       const json = await res.json();
       return json.data;

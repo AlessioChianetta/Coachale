@@ -485,10 +485,10 @@ export default function ConsultantClientsPage() {
 
   const clientIds = useMemo(() => clients.map((c: any) => c.id), [clients]);
   const { data: onboardingStatusMap = {} } = useQuery<Record<string, any>>({
-    queryKey: ["/api/delivery-agent/onboarding-status/clients", clientIds],
+    queryKey: ["/api/consultant/delivery-agent/onboarding-status/clients", clientIds],
     queryFn: async () => {
       if (clientIds.length === 0) return {};
-      const res = await fetch("/api/delivery-agent/onboarding-status/clients", {
+      const res = await fetch("/api/consultant/delivery-agent/onboarding-status/clients", {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ clientIds }),
