@@ -4,6 +4,9 @@ import { sql } from "drizzle-orm";
 
 const MAX_BULK_TASKS = 3;
 const MAX_CREATE_TASKS = 2;
+const SUPERVISOR_TIMEOUT_MS = 8000;
+const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
+const VALID_CATEGORIES = ['reminder', 'follow_up', 'outreach', 'content', 'admin', 'meeting', 'call', 'email', 'social', 'other'];
 
 export interface SupervisorParams {
   consultantId: string;
@@ -25,6 +28,11 @@ export interface SupervisorParams {
 export interface SupervisorResult {
   confirmation: string | null;
   actionsExecuted: number;
+}
+
+function isValidDate(dateStr: string): boolean {
+  const d = new Date(dateStr);
+  return !isNaN(d.getTime()) && d.getFullYear() > 2020 && d.getFullYear() < 2040;
 }
 
 function buildSupervisorPrompt(params: SupervisorParams): string {
@@ -59,6 +67,9 @@ REGOLE IMPORTANTI:
 6. Conferme generiche ("sì", "ok", "vai") sono valide SOLO se il dipendente ha ESPLICITAMENTE proposto un'azione specifica nel messaggio precedente
 7. Frasi come "l'ho fatta", "fatto", "ci ho pensato io" significano completamento — identifica il task dal contesto
 8. Se hai dubbi, usa "no_action" — meglio non agire che agire sbagliato
+9. Per scheduledAt usa SEMPRE formato ISO 8601 (es: "2026-03-15T10:00:00+01:00")
+10. Per priority usa SOLO: low, medium, high, urgent
+11. Per category usa SOLO: reminder, follow_up, outreach, content, admin, meeting, call, email, social, other
 
 Rispondi SOLO con un JSON valido.`;
 }
@@ -134,6 +145,22 @@ function validateAction(parsed: any, activeTasks: SupervisorParams['activeTasks'
     if (!validIds.has(parsed.taskId)) return false;
   }
 
+  if (parsed.action === 'schedule_task' && parsed.scheduledAt) {
+    if (!isValidDate(parsed.scheduledAt)) return false;
+  }
+
+  if (parsed.action === 'modify_task' && parsed.changes) {
+    if (parsed.changes.scheduledAt && !isValidDate(parsed.changes.scheduledAt)) return false;
+    if (parsed.changes.priority && !VALID_PRIORITIES.includes(parsed.changes.priority)) return false;
+  }
+
+  if (parsed.action === 'create_task' && parsed.tasks) {
+    for (const t of parsed.tasks) {
+      if (t.category && !VALID_CATEGORIES.includes(t.category)) t.category = 'reminder';
+      if (t.scheduledAt && !isValidDate(t.scheduledAt)) delete t.scheduledAt;
+    }
+  }
+
   return true;
 }
 
@@ -148,6 +175,9 @@ async function executeAction(
         return null;
 
       case 'needs_clarification':
+        if (action.question && typeof action.question === 'string' && action.question.length > 0) {
+          return `\n\n${action.question}`;
+        }
         return null;
 
       case 'approve_task': {
@@ -267,6 +297,7 @@ async function executeAction(
         const created: string[] = [];
         for (const task of tasksToCreate) {
           if (!task.instruction) continue;
+          const category = (task.category && VALID_CATEGORIES.includes(task.category)) ? task.category : 'reminder';
           try {
             await db.execute(sql`
               INSERT INTO ai_scheduled_tasks (
@@ -274,7 +305,7 @@ async function executeAction(
                 contact_name, status, priority, task_type, created_at, updated_at
               ) VALUES (
                 ${consultantId}::uuid, ${roleId}, ${task.instruction},
-                ${task.category || 'reminder'}, ${task.contactName || null},
+                ${category}, ${task.contactName || null},
                 'waiting_approval', 'medium', 'ai_task', NOW(), NOW()
               )
             `);
@@ -309,14 +340,14 @@ async function executeAction(
           `);
           updates.push('istruzione aggiornata');
         }
-        if (action.changes.priority) {
+        if (action.changes.priority && VALID_PRIORITIES.includes(action.changes.priority)) {
           await db.execute(sql`
             UPDATE ai_scheduled_tasks SET priority = ${action.changes.priority}, updated_at = NOW()
             WHERE id = ${taskId} AND consultant_id = ${consultantId}
           `);
           updates.push(`priorità: ${action.changes.priority}`);
         }
-        if (action.changes.scheduledAt) {
+        if (action.changes.scheduledAt && isValidDate(action.changes.scheduledAt)) {
           await db.execute(sql`
             UPDATE ai_scheduled_tasks SET scheduled_at = ${new Date(action.changes.scheduledAt)}, updated_at = NOW()
             WHERE id = ${taskId} AND consultant_id = ${consultantId}
@@ -331,7 +362,7 @@ async function executeAction(
 
       case 'schedule_task': {
         const taskId = action.taskId;
-        if (!taskId || !action.scheduledAt) return null;
+        if (!taskId || !action.scheduledAt || !isValidDate(action.scheduledAt)) return null;
         const check = await db.execute(sql`
           SELECT id, ai_instruction FROM ai_scheduled_tasks
           WHERE id = ${taskId} AND consultant_id = ${consultantId}
@@ -358,6 +389,19 @@ async function executeAction(
   }
 }
 
+function extractResponseText(response: any): string {
+  try {
+    if (typeof response.text === 'function') return response.text() || '';
+    if (typeof response.text === 'string') return response.text;
+  } catch {}
+  try {
+    if (response.candidates?.[0]?.content?.parts?.[0]?.text) {
+      return response.candidates[0].content.parts[0].text;
+    }
+  } catch {}
+  return '';
+}
+
 export async function runTaskSupervisor(params: SupervisorParams): Promise<SupervisorResult> {
   try {
     const { getGeminiApiKeyForClassifier } = await import("../ai/provider-factory");
@@ -372,18 +416,27 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
 
     console.log(`🔍 [SUPERVISOR] Running for ${params.roleId}, user: "${params.userMessage.substring(0, 80)}..."`);
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-lite',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: SUPERVISOR_SCHEMA,
-        temperature: 0.1,
-        maxOutputTokens: 500,
-      },
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SUPERVISOR_TIMEOUT_MS);
 
-    const responseText = response.text?.() || response.text || '';
+    let response: any;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-2.0-flash-lite',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: SUPERVISOR_SCHEMA,
+          temperature: 0.1,
+          maxOutputTokens: 500,
+          abortSignal: controller.signal,
+        },
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const responseText = extractResponseText(response);
     if (!responseText) {
       console.warn('[SUPERVISOR] Empty response');
       return { confirmation: null, actionsExecuted: 0 };
@@ -395,7 +448,12 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
     } catch {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
+        try {
+          parsed = JSON.parse(jsonMatch[0]);
+        } catch {
+          console.warn('[SUPERVISOR] Failed to parse extracted JSON:', jsonMatch[0].substring(0, 200));
+          return { confirmation: null, actionsExecuted: 0 };
+        }
       } else {
         console.warn('[SUPERVISOR] Failed to parse response:', responseText.substring(0, 200));
         return { confirmation: null, actionsExecuted: 0 };
@@ -415,6 +473,10 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
       actionsExecuted: confirmation ? 1 : 0,
     };
   } catch (err: any) {
+    if (err.name === 'AbortError') {
+      console.warn(`⏱️ [SUPERVISOR] Timeout after ${SUPERVISOR_TIMEOUT_MS}ms — skipping`);
+      return { confirmation: null, actionsExecuted: 0 };
+    }
     console.error(`❌ [SUPERVISOR] Error:`, err.message);
     return { confirmation: null, actionsExecuted: 0 };
   }
