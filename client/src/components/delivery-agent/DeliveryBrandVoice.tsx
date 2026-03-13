@@ -90,9 +90,10 @@ export function DeliveryBrandVoice({ sessionId }: DeliveryBrandVoiceProps) {
         saveSuccess={saveSuccess}
         showImportButton={false}
         showImportFromLuca={false}
-        showMarketResearch={false}
+        showMarketResearch={true}
         showSaveButton={true}
         compact={false}
+        autoTriggerDeepResearch={true}
       />
     </div>
   );

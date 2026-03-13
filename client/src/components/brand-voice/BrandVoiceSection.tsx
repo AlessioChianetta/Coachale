@@ -73,6 +73,7 @@ export interface BrandVoiceSectionProps {
   externalMarketResearchData?: MarketResearchData | null;
   showImportFromLuca?: boolean;
   showMarketResearch?: boolean;
+  autoTriggerDeepResearch?: boolean;
 }
 
 export function BrandVoiceSection({
@@ -87,7 +88,8 @@ export function BrandVoiceSection({
   showSaveButton = true,
   externalMarketResearchData = null,
   showImportFromLuca = true,
-  showMarketResearch = true
+  showMarketResearch = true,
+  autoTriggerDeepResearch = false,
 }: BrandVoiceSectionProps) {
   const { toast } = useToast();
   const [businessInfoOpen, setBusinessInfoOpen] = useState(!compact);
@@ -123,8 +125,11 @@ export function BrandVoiceSection({
 
   const autoTriggerRef = useRef(false);
 
+  const pendingAutoTriggerRef = useRef(false);
+
   useEffect(() => {
-    if (!marketResearchOpen || isLoadingMR) return;
+    const shouldFetch = marketResearchOpen || (autoTriggerDeepResearch && showMarketResearch);
+    if (!shouldFetch || isLoadingMR) return;
     setIsLoadingMR(true);
     fetch("/api/content/market-research", { headers: getAuthHeaders() })
       .then(res => res.json())
@@ -132,19 +137,26 @@ export function BrandVoiceSection({
         if (result.success && result.data) {
           setMarketResearchData(result.data);
           const autoParams = result.data?._autoParams;
-          const hasRealData = result.data?.currentState || result.data?.idealState || result.data?.avatar?.name;
+          const hasRealData = result.data?.currentState?.some((s: string) => s?.trim()) ||
+            result.data?.idealState?.some((s: string) => s?.trim()) ||
+            (result.data?.avatar && Object.values(result.data.avatar).some((v: any) => typeof v === 'string' && v.trim()));
           if (autoParams?.source === 'luca_onboarding' && !hasRealData && !autoTriggerRef.current) {
             autoTriggerRef.current = true;
-            toast({
-              title: "Parametri Deep Research disponibili",
-              description: `Nicchia: "${autoParams.niche}" — Clicca "Deep Research con AI" per generare l'analisi completa.`,
-            });
+            if (autoTriggerDeepResearch) {
+              pendingAutoTriggerRef.current = true;
+              setMarketResearchOpen(true);
+            } else {
+              toast({
+                title: "Parametri Deep Research disponibili",
+                description: `Nicchia: "${autoParams.niche}" — Clicca "Deep Research con AI" per generare l'analisi completa.`,
+              });
+            }
           }
         }
       })
       .catch(() => {})
       .finally(() => setIsLoadingMR(false));
-  }, [marketResearchOpen]);
+  }, [marketResearchOpen, autoTriggerDeepResearch, showMarketResearch]);
 
   const saveMarketResearchGlobal = useCallback(async (mrData: MarketResearchData) => {
     try {
@@ -206,9 +218,69 @@ export function BrandVoiceSection({
     }
   }, [onDataChange, toast]);
 
+  useEffect(() => {
+    if (pendingAutoTriggerRef.current && !isLoadingMR && marketResearchOpen && !isGeneratingMR) {
+      pendingAutoTriggerRef.current = false;
+      const autoParams = (marketResearchData as any)?._autoParams;
+      if (autoParams?.niche) {
+        const niche = autoParams.niche;
+        const target = autoParams.targetAudience || '';
+        (async () => {
+          setIsGeneratingMR(true);
+          setShowResearchDialog(true);
+          setResearchProgress(null);
+          try {
+            const response = await fetch("/api/content/ai/generate-market-research", {
+              method: "POST",
+              headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+              body: JSON.stringify({ niche, targetAudience: target, brandVoiceData: data }),
+            });
+            const respData = await response.json();
+            if (respData.success && respData.jobId) {
+              const pollInterval = setInterval(async () => {
+                try {
+                  const statusRes = await fetch(`/api/content/ai/market-research-status/${respData.jobId}`, { headers: getAuthHeaders() });
+                  const statusData = await statusRes.json();
+                  if (!statusData.success) return;
+                  setResearchProgress({
+                    status: statusData.status,
+                    currentStep: statusData.currentStep,
+                    totalSteps: statusData.totalSteps,
+                    stepLabel: statusData.stepLabel,
+                    stepDetails: statusData.stepDetails,
+                    steps: statusData.steps,
+                    error: statusData.error,
+                    tokenUsage: statusData.tokenUsage,
+                  });
+                  if (statusData.status === 'completed' && statusData.result) {
+                    clearInterval(pollInterval);
+                    const finalData = statusData.result.data;
+                    setMarketResearchData(finalData);
+                    setIsGeneratingMR(false);
+                    toast({ title: "Deep Research completata!", description: "Tutte le 7 fasi compilate con dati reali dal mercato." });
+                    saveMarketResearchGlobal(finalData);
+                  } else if (statusData.status === 'error') {
+                    clearInterval(pollInterval);
+                    setIsGeneratingMR(false);
+                    toast({ title: "Errore nella ricerca", description: statusData.error || "Generazione fallita", variant: "destructive" });
+                  }
+                } catch {}
+              }, 2000);
+            }
+          } catch (error: any) {
+            toast({ title: "Errore nella ricerca", description: error.message, variant: "destructive" });
+            setIsGeneratingMR(false);
+            setShowResearchDialog(false);
+          }
+        })();
+      }
+    }
+  }, [isLoadingMR, marketResearchOpen, isGeneratingMR, marketResearchData, data, toast, saveMarketResearchGlobal]);
+
   const handleGenerateMarketResearch = useCallback(async (phase?: string, mergeMode?: 'add' | 'overwrite') => {
-    const niche = data.businessDescription || data.whoWeHelp || '';
-    const target = data.whoWeHelp || '';
+    const autoParams = (marketResearchData as any)?._autoParams;
+    const niche = autoParams?.niche || data.businessDescription || data.whoWeHelp || '';
+    const target = autoParams?.targetAudience || data.whoWeHelp || '';
     if (!niche.trim() && !target.trim()) {
       toast({ title: "Compila almeno la Descrizione Business o Chi Aiutiamo nella sezione Brand Voice", variant: "destructive" });
       return;

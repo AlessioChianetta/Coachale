@@ -1,11 +1,12 @@
 import { Router, Response } from 'express';
 import { authenticateToken, requireRole, type AuthRequest } from '../middleware/auth';
 import { db } from '../db';
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import { getAIProvider, getModelWithThinking, GEMINI_3_MODEL } from '../ai/provider-factory';
 import { searchGoogleMaps, scrapeWebsiteWithFirecrawl } from '../services/lead-scraper-service';
 import { decrypt } from '../encryption';
 import { superadminLeadScraperConfig } from '../../shared/schema';
+import * as schema from '../../shared/schema';
 import { getOnboardingStatusForAI } from './onboarding';
 import { fileSearchService } from '../ai/file-search-service';
 
@@ -796,6 +797,7 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
           const clientProfile = (sessionForBV.rows[0] as any)?.client_profile_json || {};
           const { mapLucaReportToBrandVoice } = await import('../services/luca-brand-voice-mapper');
 
+          const { extractDeepResearchParams } = await import('../services/luca-brand-voice-mapper');
           const sessionBrandVoice = mapLucaReportToBrandVoice(clientProfile, reportJson);
           await db.execute(sql`
             UPDATE delivery_agent_sessions
@@ -803,6 +805,41 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
             WHERE id = ${sessionId}::uuid
           `);
           console.log(`[DeliveryAgent] Brand Voice saved to session ${sessionId} (${Object.keys(sessionBrandVoice).length} fields)`);
+
+          const drParams = extractDeepResearchParams(clientProfile, reportJson);
+          if (drParams && drParams.niche) {
+            const autoParamsPayload = {
+              _autoParams: {
+                niche: drParams.niche,
+                targetAudience: drParams.targetAudience,
+                whatYouSell: drParams.whatYouSell,
+                promisedResult: drParams.promisedResult,
+                source: 'luca_onboarding',
+                savedAt: new Date().toISOString(),
+              }
+            };
+            const [existingConfig] = await db.select()
+              .from(schema.contentStudioConfig)
+              .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+              .limit(1);
+            if (existingConfig) {
+              const existingMR = (existingConfig.marketResearchData as any) || {};
+              await db.update(schema.contentStudioConfig)
+                .set({
+                  marketResearchData: { ...existingMR, ...autoParamsPayload },
+                  updatedAt: new Date(),
+                })
+                .where(eq(schema.contentStudioConfig.consultantId, consultantId));
+            } else {
+              await db.insert(schema.contentStudioConfig).values({
+                consultantId,
+                marketResearchData: autoParamsPayload,
+                brandVoiceData: sessionBrandVoice,
+                brandVoiceEnabled: true,
+              });
+            }
+            console.log(`[DeliveryAgent] Deep Research _autoParams saved for consultant ${consultantId} (niche: "${drParams.niche}")`);
+          }
         } catch (bvErr: any) {
           console.warn(`[DeliveryAgent] Auto Brand Voice population failed (non-blocking): ${bvErr.message}`);
         }
