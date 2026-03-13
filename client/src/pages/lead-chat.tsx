@@ -4,7 +4,6 @@ import { getAuthHeaders, getAuthUser, removeToken, removeAuthUser } from "@/lib/
 import { DeliveryChat } from "@/components/delivery-agent/DeliveryChat";
 import { DeliveryReport } from "@/components/delivery-agent/DeliveryReport";
 import { DeliveryCatalogo } from "@/components/delivery-agent/DeliveryCatalogo";
-import { DeliveryFunnel } from "@/components/delivery-agent/DeliveryFunnel";
 import { cn } from "@/lib/utils";
 import {
   Search,
@@ -138,22 +137,29 @@ export default function LeadChat() {
 
   useEffect(() => {
     if (!session?.sessionId) return;
-    if (!isConsultant) return;
     const fetchFunnelId = async () => {
       try {
-        const res = await fetch(`/api/funnels/by-session/${session.sessionId}`, {
-          headers: getAuthHeaders(),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.id) setSessionFunnelId(data.id);
+        if (isConsultant) {
+          const res = await fetch(`/api/funnels/by-session/${session.sessionId}`, {
+            headers: getAuthHeaders(),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.id) setSessionFunnelId(data.id);
+          }
+        } else if (session.publicToken) {
+          const res = await fetch(`/api/public/lead-magnet/${session.publicToken}/funnel`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.data?.id) setSessionFunnelId(data.data.id);
+          }
         }
       } catch {}
     };
     fetchFunnelId();
     const interval = setInterval(fetchFunnelId, 10000);
     return () => clearInterval(interval);
-  }, [session?.sessionId, isConsultant]);
+  }, [session?.sessionId, session?.publicToken, isConsultant]);
 
   const handleLogout = () => {
     removeToken();
@@ -293,23 +299,16 @@ export default function LeadChat() {
             publicToken={session.publicToken}
           />
         ) : viewMode === "funnel" ? (
-          isConsultant ? (
-            <Suspense fallback={
-              <div className="flex-1 flex items-center justify-center h-full">
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Caricamento Funnel Builder...</p>
-                </div>
+          <Suspense fallback={
+            <div className="flex-1 flex items-center justify-center h-full">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Caricamento Funnel Builder...</p>
               </div>
-            }>
-              <FunnelBuilderTab initialFunnelId={sessionFunnelId} />
-            </Suspense>
-          ) : (
-            <DeliveryFunnel
-              sessionId={session.sessionId}
-              publicToken={session.publicToken}
-            />
-          )
+            </div>
+          }>
+            <FunnelBuilderTab initialFunnelId={sessionFunnelId} />
+          </Suspense>
         ) : viewMode === "catalogo" ? (
           <DeliveryCatalogo
             sessionId={session.sessionId}

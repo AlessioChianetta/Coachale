@@ -285,6 +285,12 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
     loadFunnelList();
   }, []);
 
+  useEffect(() => {
+    if (initialFunnelId && !activeFunnelId && !loading) {
+      loadFunnel(initialFunnelId);
+    }
+  }, [initialFunnelId]);
+
   const loadFunnelList = async () => {
     try {
       setLoading(true);
@@ -304,30 +310,47 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
               loadFunnel(list[0].id);
             }
           }
+        } else if (list.length === 0 && initialFunnelId && !activeFunnelId) {
+          loadFunnel(initialFunnelId);
         }
+      } else if (initialFunnelId && !activeFunnelId) {
+        loadFunnel(initialFunnelId);
       }
     } catch (err) {
       console.error("Error loading funnels:", err);
+      if (initialFunnelId && !activeFunnelId) {
+        loadFunnel(initialFunnelId);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const applyFunnelData = (funnel: any) => {
+    setActiveFunnelId(funnel.id);
+    setFunnelName(funnel.name);
+    setFunnelDescription(funnel.description || "");
+    setFunnelSource(funnel.source || null);
+    setShowRationale(false);
+    setNodes(funnel.nodes_data || []);
+    setEdges(funnel.edges_data || []);
+    setThemeId((funnel.theme as FunnelThemeId) || "classico");
+    setSelectedNodeId(null);
+    markClean();
   };
 
   const loadFunnel = async (id: string) => {
     try {
       const res = await fetch(`/api/funnels/${id}`, { headers: getAuthHeaders() });
       if (res.ok) {
-        const funnel = await res.json();
-        setActiveFunnelId(funnel.id);
-        setFunnelName(funnel.name);
-        setFunnelDescription(funnel.description || "");
-        setFunnelSource(funnel.source || null);
-        setShowRationale(false);
-        setNodes(funnel.nodes_data || []);
-        setEdges(funnel.edges_data || []);
-        setThemeId((funnel.theme as FunnelThemeId) || "classico");
-        setSelectedNodeId(null);
-        markClean();
+        applyFunnelData(await res.json());
+        return;
+      }
+    } catch {}
+    try {
+      const pubRes = await fetch(`/api/public/lead-magnet/funnel/${id}`);
+      if (pubRes.ok) {
+        applyFunnelData(await pubRes.json());
       }
     } catch (err) {
       console.error("Error loading funnel:", err);

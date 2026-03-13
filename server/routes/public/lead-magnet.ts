@@ -800,4 +800,39 @@ router.get('/:token/funnel', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/funnel/:funnelId', async (req: Request, res: Response) => {
+  try {
+    const { funnelId } = req.params;
+    if (!funnelId) return res.status(400).json({ success: false, error: 'Funnel ID richiesto' });
+
+    const result = await db.execute(sql`
+      SELECT id, name, description, nodes_data, edges_data, theme, source, lead_name, created_at, updated_at
+      FROM consultant_funnels
+      WHERE id = ${funnelId}
+      LIMIT 1
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Funnel non trovato' });
+    }
+
+    const funnel = result.rows[0] as any;
+    res.json({
+      id: funnel.id,
+      name: funnel.name,
+      description: funnel.description,
+      nodes_data: funnel.nodes_data,
+      edges_data: funnel.edges_data,
+      theme: funnel.theme,
+      source: funnel.source,
+      lead_name: funnel.lead_name,
+      created_at: funnel.created_at,
+      updated_at: funnel.updated_at,
+    });
+  } catch (err: any) {
+    console.error('[LeadMagnet] Public funnel read error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default router;
