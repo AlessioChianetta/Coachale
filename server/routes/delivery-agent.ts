@@ -816,17 +816,101 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
               source: 'luca_onboarding',
               savedAt: new Date().toISOString(),
             };
+            const autoParamsPayload = { _autoParams: autoParamsObj };
             await db.execute(sql`
               UPDATE delivery_agent_sessions
               SET brand_voice_data = jsonb_set(
                 COALESCE(brand_voice_data, '{}'::jsonb),
                 '{_marketResearch}',
-                ${JSON.stringify({ _autoParams: autoParamsObj })}::jsonb
+                ${JSON.stringify(autoParamsPayload)}::jsonb
               ),
               updated_at = NOW()
               WHERE id = ${sessionId}::uuid
             `);
-            console.log(`[DeliveryAgent] Deep Research _autoParams saved to session ${sessionId} (niche: "${drParams.niche}")`);
+            const [existingConfig] = await db.select()
+              .from(schema.contentStudioConfig)
+              .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+              .limit(1);
+            if (existingConfig) {
+              const existingMR = (existingConfig.marketResearchData as any) || {};
+              await db.update(schema.contentStudioConfig)
+                .set({
+                  marketResearchData: { ...existingMR, ...autoParamsPayload },
+                  updatedAt: new Date(),
+                })
+                .where(eq(schema.contentStudioConfig.consultantId, consultantId));
+            } else {
+              await db.insert(schema.contentStudioConfig).values({
+                consultantId,
+                marketResearchData: autoParamsPayload,
+                brandVoiceData: sessionBrandVoice,
+                brandVoiceEnabled: true,
+              });
+            }
+            console.log(`[DeliveryAgent] Deep Research _autoParams saved to session ${sessionId} + global (niche: "${drParams.niche}")`);
+
+            try {
+              const authHeader = req.headers.authorization || '';
+              const port = process.env.PORT || '5000';
+              const mrResponse = await fetch(`http://localhost:${port}/api/content/ai/generate-market-research`, {
+                method: 'POST',
+                headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  niche: drParams.niche,
+                  targetAudience: drParams.targetAudience || '',
+                  whatYouSell: drParams.whatYouSell || '',
+                  promisedResult: drParams.promisedResult || '',
+                  brandVoiceData: sessionBrandVoice,
+                }),
+              });
+              const mrResult = await mrResponse.json() as any;
+              if (mrResult.success && mrResult.jobId) {
+                console.log(`[DeliveryAgent] Deep Research job started: ${mrResult.jobId}`);
+                const pollForCompletion = async () => {
+                  const maxPolls = 120;
+                  for (let i = 0; i < maxPolls; i++) {
+                    await new Promise(r => setTimeout(r, 3000));
+                    try {
+                      const statusRes = await fetch(`http://localhost:${port}/api/content/ai/market-research-status/${mrResult.jobId}`, {
+                        headers: { 'Authorization': authHeader },
+                      });
+                      const statusData = await statusRes.json() as any;
+                      if (statusData.status === 'completed' && statusData.result) {
+                        const finalMR = statusData.result.data;
+                        await db.execute(sql`
+                          UPDATE delivery_agent_sessions
+                          SET brand_voice_data = jsonb_set(
+                            COALESCE(brand_voice_data, '{}'::jsonb),
+                            '{_marketResearch}',
+                            ${JSON.stringify(finalMR)}::jsonb
+                          ),
+                          updated_at = NOW()
+                          WHERE id = ${sessionId}::uuid
+                        `);
+                        const [cfgRow] = await db.select()
+                          .from(schema.contentStudioConfig)
+                          .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+                          .limit(1);
+                        if (cfgRow) {
+                          await db.update(schema.contentStudioConfig)
+                            .set({ marketResearchData: finalMR, updatedAt: new Date() })
+                            .where(eq(schema.contentStudioConfig.consultantId, consultantId));
+                        }
+                        console.log(`[DeliveryAgent] Deep Research completed and saved to session ${sessionId} + global`);
+                        return;
+                      } else if (statusData.status === 'error') {
+                        console.warn(`[DeliveryAgent] Deep Research job ${mrResult.jobId} failed: ${statusData.error}`);
+                        return;
+                      }
+                    } catch {}
+                  }
+                  console.warn(`[DeliveryAgent] Deep Research polling timed out for job ${mrResult.jobId}`);
+                };
+                pollForCompletion().catch(e => console.warn(`[DeliveryAgent] Deep Research polling error: ${e.message}`));
+              }
+            } catch (mrErr: any) {
+              console.warn(`[DeliveryAgent] Deep Research auto-launch failed (non-blocking): ${mrErr.message}`);
+            }
           }
         } catch (bvErr: any) {
           console.warn(`[DeliveryAgent] Auto Brand Voice population failed (non-blocking): ${bvErr.message}`);

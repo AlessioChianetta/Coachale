@@ -185,7 +185,7 @@ export function MarketResearchSection({
               ) : (
                 <Search className="h-4 w-4" />
               )}
-              {isGenerating ? "Ricerca in corso..." : "Deep Research con AI"}
+              {isGenerating ? "Ricerca in corso..." : "Genera Ricerca di Mercato"}
             </Button>
           )}
         </div>
