@@ -32,7 +32,7 @@ function PhaseIndicator({ status }: { status: string }) {
   const currentIndex = PHASE_STEPS.findIndex((s) => s.key === status);
 
   return (
-    <div className="flex items-center justify-center gap-1 py-3 px-4">
+    <div className="flex items-center justify-center gap-0.5 sm:gap-1 py-2 sm:py-3 px-2 sm:px-4">
       {PHASE_STEPS.map((step, idx) => {
         const isCompleted = idx < currentIndex;
         const isActive = idx === currentIndex;
@@ -42,7 +42,7 @@ function PhaseIndicator({ status }: { status: string }) {
           <div key={step.key} className="flex items-center">
             <div
               className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all",
+                "flex items-center gap-1 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-all",
                 isCompleted &&
                   "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400",
                 isActive &&
@@ -53,23 +53,23 @@ function PhaseIndicator({ status }: { status: string }) {
               )}
             >
               {isCompleted ? (
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               ) : isActive ? (
                 <Icon
                   className={cn(
-                    "w-3.5 h-3.5",
+                    "w-3 h-3 sm:w-3.5 sm:h-3.5",
                     step.key === "elaborating" && "animate-spin"
                   )}
                 />
               ) : (
-                <Circle className="w-3.5 h-3.5" />
+                <Circle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               )}
               <span className="hidden sm:inline">{step.label}</span>
             </div>
             {idx < PHASE_STEPS.length - 1 && (
               <div
                 className={cn(
-                  "w-6 h-px mx-1",
+                  "w-3 sm:w-6 h-px mx-0.5 sm:mx-1",
                   idx < currentIndex
                     ? "bg-emerald-400"
                     : "bg-border"
@@ -201,27 +201,29 @@ export default function LeadChat() {
 
   if (!session) return null;
 
+  const showExtraTabs = status === "completed" || status === "assistant";
+
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
+    <div className="h-[100dvh] flex flex-col bg-background">
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shrink-0">
+        <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white font-bold text-[10px] sm:text-sm shrink-0"
                  style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)" }}>
               SO
             </div>
-            <div>
-              <h1 className="text-sm font-semibold">La tua Analisi Gratuita</h1>
+            <div className="min-w-0">
+              <h1 className="text-xs sm:text-sm font-semibold truncate">La tua Analisi Gratuita</h1>
               {user && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                   {user.firstName} {user.lastName}
                 </p>
               )}
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-1.5 text-xs">
-            <LogOut className="w-3.5 h-3.5" />
-            Esci
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-1 sm:gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 shrink-0">
+            <LogOut className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden sm:inline">Esci</span>
           </Button>
         </div>
 
@@ -231,52 +233,53 @@ export default function LeadChat() {
           <button
             onClick={() => setViewMode("chat")}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors border-b-2",
+              "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
               viewMode === "chat"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
-            <MessageSquare className="w-4 h-4" />
+            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             Chat
           </button>
           <button
             onClick={() => setViewMode("report")}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors border-b-2",
+              "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
               viewMode === "report"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             Report
           </button>
-          {(status === "completed" || status === "assistant") && (
+          {showExtraTabs && (
             <>
               <button
                 onClick={() => setViewMode("funnel")}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors border-b-2",
+                  "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
                   viewMode === "funnel"
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                <GitBranch className="w-4 h-4" />
+                <GitBranch className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 Funnel
               </button>
               <button
                 onClick={() => setViewMode("catalogo")}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors border-b-2",
+                  "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
                   viewMode === "catalogo"
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Layers className="w-4 h-4" />
-                Catalogo
+                <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Catalogo</span>
+                <span className="xs:hidden">Cat.</span>
               </button>
             </>
           )}

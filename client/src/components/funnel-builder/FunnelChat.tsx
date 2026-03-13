@@ -347,7 +347,7 @@ export function FunnelChat({ open, onClose, onApplyFunnel, currentFunnelContext 
   if (!open) return null;
 
   return (
-    <div className="w-[380px] border-l border-border/60 bg-card flex flex-col h-full flex-shrink-0">
+    <div className="absolute sm:relative inset-0 sm:inset-auto w-full sm:w-[380px] border-l border-border/60 bg-card flex flex-col h-full flex-shrink-0 z-20 sm:z-auto">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-sm">

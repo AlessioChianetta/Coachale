@@ -314,16 +314,16 @@ function SectionDivider({ label }: { label: string }) {
 
 function SectionTitle({ number, title, subtitle }: { number?: string; title: string; subtitle?: string }) {
   return (
-    <div className="mb-8 pb-5 border-b border-border/40">
-      <div className="flex items-baseline gap-3">
+    <div className="mb-5 sm:mb-8 pb-4 sm:pb-5 border-b border-border/40">
+      <div className="flex items-baseline gap-2 sm:gap-3">
         {number && (
-          <span className="text-4xl font-thin text-muted-foreground/20 leading-none tracking-tight select-none">
+          <span className="text-2xl sm:text-4xl font-thin text-muted-foreground/20 leading-none tracking-tight select-none shrink-0">
             {number}
           </span>
         )}
-        <div>
-          <h2 className="text-[22px] font-bold text-foreground tracking-tight leading-tight">{title}</h2>
-          {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-[22px] font-bold text-foreground tracking-tight leading-tight">{title}</h2>
+          {subtitle && <p className="text-xs sm:text-sm text-muted-foreground mt-1">{subtitle}</p>}
         </div>
       </div>
     </div>
@@ -332,8 +332,8 @@ function SectionTitle({ number, title, subtitle }: { number?: string; title: str
 
 function FieldRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-border/30 last:border-0">
-      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider w-28 flex-shrink-0 pt-0.5">{label}</span>
+    <div className="flex flex-col sm:flex-row sm:items-start gap-0.5 sm:gap-3 py-2 sm:py-2.5 border-b border-border/30 last:border-0">
+      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider sm:w-28 flex-shrink-0 pt-0.5">{label}</span>
       <span className="text-sm text-foreground leading-relaxed">{value}</span>
     </div>
   );
@@ -761,7 +761,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
             animate={{ width: 220, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex-shrink-0 border-r border-border/50 bg-card overflow-hidden print:hidden"
+            className="hidden sm:block flex-shrink-0 border-r border-border/50 bg-card overflow-hidden print:hidden"
           >
             <div className="p-4 border-b border-border/40">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Indice</p>
@@ -806,47 +806,47 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
       <div className="flex-1 min-w-0 flex flex-col">
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-card flex-shrink-0 print:hidden">
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={onBackToChat} className="gap-1.5 text-xs">
-              <ArrowLeft className="w-3.5 h-3.5" /> Chat
+        <div className="flex items-center justify-between px-2 sm:px-4 py-2 border-b border-border/40 bg-card flex-shrink-0 print:hidden gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+            <Button variant="ghost" size="sm" onClick={onBackToChat} className="gap-1 sm:gap-1.5 text-xs h-7 sm:h-8 px-1.5 sm:px-3">
+              <ArrowLeft className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Chat</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(v => !v)} className="gap-1.5 text-xs">
+            <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(v => !v)} className="gap-1 sm:gap-1.5 text-xs h-7 sm:h-8 px-1.5 sm:px-3 hidden sm:flex">
               <BookOpen className="w-3.5 h-3.5" />
               {sidebarOpen ? "Nascondi indice" : "Indice"}
             </Button>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
             {funnelId ? (
               !isPublic ? (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5 text-xs border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+                  className="gap-1 sm:gap-1.5 text-xs h-7 sm:h-8 px-2 sm:px-3 border-indigo-300 text-indigo-600 hover:bg-indigo-50 shrink-0"
                   onClick={() => window.location.href = `/consultant/funnel-builder?funnel=${funnelId}`}
                 >
-                  <Layers className="w-3.5 h-3.5" /> Vedi Funnel
+                  <Layers className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Vedi Funnel</span>
                 </Button>
               ) : null
             ) : (
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 text-xs"
+                className="gap-1 sm:gap-1.5 text-xs h-7 sm:h-8 px-2 sm:px-3 shrink-0"
                 onClick={handleGenerateFunnel}
                 disabled={funnelLoading}
               >
                 {funnelLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />}
-                {funnelLoading ? "Generando..." : "Genera Funnel"}
+                <span className="hidden sm:inline">{funnelLoading ? "Generando..." : "Genera Funnel"}</span>
               </Button>
             )}
             {!isPublic && (
               <>
-                <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5 text-xs">
-                  <Share2 className="w-3.5 h-3.5" /> Condividi
+                <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1 text-xs h-7 sm:h-8 px-1.5 sm:px-3 shrink-0">
+                  <Share2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Condividi</span>
                 </Button>
-                <Button size="sm" onClick={handleDownloadPdf} className="gap-1.5 text-xs bg-foreground text-background hover:bg-foreground/90">
-                  <Download className="w-3.5 h-3.5" /> Scarica PDF
+                <Button size="sm" onClick={handleDownloadPdf} className="gap-1 text-xs h-7 sm:h-8 px-2 sm:px-3 bg-foreground text-background hover:bg-foreground/90 shrink-0">
+                  <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Scarica PDF</span>
                 </Button>
               </>
             )}
@@ -854,13 +854,13 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
         </div>
 
         <ScrollArea className="flex-1" ref={contentRef}>
-          <div className="max-w-[720px] mx-auto px-8 py-10 print:max-w-none print:px-12">
+          <div className="max-w-[720px] mx-auto px-4 sm:px-8 py-6 sm:py-10 print:max-w-none print:px-12">
 
             {/* ── Cover ── */}
-            <div className="pt-8 pb-14 print:py-20 print:break-after-page">
-              <div className="space-y-1 mb-10">
+            <div className="pt-4 sm:pt-8 pb-8 sm:pb-14 print:py-20 print:break-after-page">
+              <div className="space-y-1 mb-6 sm:mb-10">
                 <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground/60">Piano Strategico Personalizzato</p>
-                <h1 className="text-4xl font-bold text-foreground tracking-tight leading-tight">
+                <h1 className="text-2xl sm:text-4xl font-bold text-foreground tracking-tight leading-tight">
                   {report.client_profile?.name
                     ? <>Il piano di<br />{report.client_profile.name}</>
                     : "Il tuo piano operativo"
@@ -882,7 +882,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
 
             {/* ── Lettera personale ── */}
             {report.personal_letter && (
-              <section id="lettera" ref={setChapterRef("lettera")} className="mb-14 print:break-before-page">
+              <section id="lettera" ref={setChapterRef("lettera")} className="mb-10 sm:mb-14 print:break-before-page">
                 <div className="space-y-4 border-l-2 border-border/40 pl-5">
                   {report.personal_letter.split('\n\n').map((para, i) => (
                     <p key={i} className="text-[15px] leading-8 text-foreground/80">
@@ -895,7 +895,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
 
             {/* ── 01 Profilo ── */}
             {report.client_profile && (
-              <section id="profilo" ref={setChapterRef("profilo")} className="mb-14 print:break-before-page">
+              <section id="profilo" ref={setChapterRef("profilo")} className="mb-10 sm:mb-14 print:break-before-page">
                 <SectionTitle number="01" title="Il tuo profilo" subtitle="Come ti vedo — lo specchio del tuo business" />
                 <div className="divide-y divide-border/30">
                   {report.client_profile.business_type && <FieldRow label="Attività" value={report.client_profile.business_type} />}
@@ -913,8 +913,8 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                   )}
                   {report.client_profile.budget && <FieldRow label="Budget" value={report.client_profile.budget} />}
                   {report.client_profile.website && (
-                    <div className="flex items-start gap-3 py-2.5 border-b border-border/30">
-                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider w-28 flex-shrink-0 pt-0.5">Sito web</span>
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-0.5 sm:gap-3 py-2 sm:py-2.5 border-b border-border/30">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider sm:w-28 flex-shrink-0 pt-0.5">Sito web</span>
                       <a href={report.client_profile.website} target="_blank" rel="noopener noreferrer"
                         className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                         <Globe className="w-3 h-3" />{report.client_profile.website.replace(/^https?:\/\//, '')}
@@ -946,7 +946,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
 
             {/* ── 02 Diagnosi ── */}
             {report.diagnosis && (
-              <section id="diagnosi" ref={setChapterRef("diagnosi")} className="mb-14 print:break-before-page">
+              <section id="diagnosi" ref={setChapterRef("diagnosi")} className="mb-10 sm:mb-14 print:break-before-page">
                 <SectionTitle number="02" title="La diagnosi" subtitle="Dove sei ora — dove puoi arrivare — cosa ti separa" />
                 <div className="space-y-8">
 
@@ -983,8 +983,8 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                   {report.diagnosis.diagnostic_table && report.diagnosis.diagnostic_table.length > 0 && (
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3">Stato per area</p>
-                      <div className="overflow-hidden rounded-lg border border-border/50">
-                        <table className="w-full text-sm">
+                      <div className="overflow-x-auto rounded-lg border border-border/50">
+                        <table className="w-full text-sm min-w-[400px]">
                           <thead>
                             <tr className="border-b border-border/50 bg-muted/30">
                               <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Area</th>
@@ -1050,15 +1050,15 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
 
             {/* ── Pacchetti consigliati ── */}
             {report.recommended_packages && report.recommended_packages.map((pkg, i) => (
-              <section key={i} id={`pkg-${i}`} ref={setChapterRef(`pkg-${i}`)} className="mb-14 print:break-before-page">
-                <div className="mb-8 pb-5 border-b border-border/40">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-4xl font-thin text-muted-foreground/20 leading-none tracking-tight select-none">
+              <section key={i} id={`pkg-${i}`} ref={setChapterRef(`pkg-${i}`)} className="mb-10 sm:mb-14 print:break-before-page">
+                <div className="mb-5 sm:mb-8 pb-4 sm:pb-5 border-b border-border/40">
+                  <div className="flex items-baseline justify-between gap-2 sm:gap-3">
+                    <div className="flex items-baseline gap-2 sm:gap-3 min-w-0">
+                      <span className="text-2xl sm:text-4xl font-thin text-muted-foreground/20 leading-none tracking-tight select-none shrink-0">
                         {String(i + 3).padStart(2, '0')}
                       </span>
-                      <div>
-                        <h2 className="text-[22px] font-bold text-foreground tracking-tight leading-tight">{pkg.package_name}</h2>
+                      <div className="min-w-0">
+                        <h2 className="text-lg sm:text-[22px] font-bold text-foreground tracking-tight leading-tight">{pkg.package_name}</h2>
                         {pkg.subtitle && <p className="text-sm text-muted-foreground mt-0.5">{pkg.subtitle}</p>}
                       </div>
                     </div>
@@ -1188,7 +1188,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
 
             {/* ── Roadmap ── */}
             {roadmapPhases.length > 0 && (
-              <section id="roadmap" ref={setChapterRef("roadmap")} className="mb-14 print:break-before-page">
+              <section id="roadmap" ref={setChapterRef("roadmap")} className="mb-10 sm:mb-14 print:break-before-page">
                 <SectionTitle
                   number={chapters.find(c => c.id === 'roadmap')?.number}
                   title="Roadmap operativa"
@@ -1204,7 +1204,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
 
             {/* ── Flusso completo del sistema ── */}
             {report.flow_description && (
-              <section id="flusso" ref={setChapterRef("flusso")} className="mb-14 print:break-before-page">
+              <section id="flusso" ref={setChapterRef("flusso")} className="mb-10 sm:mb-14 print:break-before-page">
                 <SectionTitle
                   number={chapters.find(c => c.id === 'flusso')?.number}
                   title="Come gira il sistema"
@@ -1222,7 +1222,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
 
             {/* ── Quick Wins ── */}
             {report.quick_wins && report.quick_wins.length > 0 && (
-              <section id="quickwins" ref={setChapterRef("quickwins")} className="mb-14 print:break-before-page">
+              <section id="quickwins" ref={setChapterRef("quickwins")} className="mb-10 sm:mb-14 print:break-before-page">
                 <SectionTitle
                   number={chapters.find(c => c.id === 'quickwins')?.number}
                   title="Quick Wins"
@@ -1285,7 +1285,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
 
             {/* ── Segnali di successo ── */}
             {(report.success_signals?.length || report.success_metrics?.length) && (
-              <section id="segnali" ref={setChapterRef("segnali")} className="mb-14 print:break-before-page">
+              <section id="segnali" ref={setChapterRef("segnali")} className="mb-10 sm:mb-14 print:break-before-page">
                 <SectionTitle
                   number={chapters.find(c => c.id === 'segnali')?.number}
                   title="Come sai che funziona"
@@ -1349,7 +1349,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
 
             {/* ── Avvertimento onesto + azioni immediate ── */}
             {(report.honest_warning || report.priority_actions?.length) && (
-              <section id="avvertimento" ref={setChapterRef("avvertimento")} className="mb-14 print:break-before-page">
+              <section id="avvertimento" ref={setChapterRef("avvertimento")} className="mb-10 sm:mb-14 print:break-before-page">
                 <SectionTitle
                   number={chapters.find(c => c.id === 'avvertimento')?.number}
                   title="Quello che devi sapere"
@@ -1396,7 +1396,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
 
             {/* ── Chiusura ── */}
             {report.closing_message && (
-              <section id="chiusura" ref={setChapterRef("chiusura")} className="mb-14 print:break-before-page">
+              <section id="chiusura" ref={setChapterRef("chiusura")} className="mb-10 sm:mb-14 print:break-before-page">
                 <div className="border-t border-border/40 pt-10 max-w-lg">
                   <div className="space-y-4">
                     {report.closing_message.split('\n\n').map((para, i) => (
@@ -1410,7 +1410,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
             )}
 
             {!isPublic && funnelId && (
-              <section id="funnel" ref={setChapterRef("funnel")} className="mb-14 print:hidden">
+              <section id="funnel" ref={setChapterRef("funnel")} className="mb-10 sm:mb-14 print:hidden">
                 <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/30 dark:to-violet-950/30 p-6">
                   <div className="flex items-start gap-4">
                     <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0">
@@ -1435,8 +1435,8 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
             )}
 
             {isPublic && !publicFunnelData && !funnelId && (
-              <section className="mb-14">
-                <div className="rounded-xl border border-indigo-200/30 bg-indigo-50/30 dark:bg-indigo-950/10 p-6 text-center">
+              <section className="mb-10 sm:mb-14">
+                <div className="rounded-xl border border-indigo-200/30 bg-indigo-50/30 dark:bg-indigo-950/10 p-4 sm:p-6 text-center">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mx-auto mb-4">
                     <Layers className="w-6 h-6 text-white" />
                   </div>
@@ -1457,7 +1457,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
             )}
 
             {isPublic && publicFunnelData && publicFunnelData.nodes && (
-              <section id="funnel" ref={setChapterRef("funnel")} className="mb-14 print:break-before-page">
+              <section id="funnel" ref={setChapterRef("funnel")} className="mb-10 sm:mb-14 print:break-before-page">
                 <div className="mb-6">
                   <h2 className="text-lg font-bold text-foreground mb-1">Il Tuo Percorso Strategico</h2>
                   <p className="text-xs text-muted-foreground">Ecco il funnel personalizzato creato per te basato sulla nostra analisi</p>

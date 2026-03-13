@@ -229,7 +229,7 @@ export function DeliveryCatalogo({ sessionId, onBackToChat, publicToken }: Deliv
             animate={{ width: 240, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex-shrink-0 border-r border-border/50 bg-card overflow-hidden"
+            className="hidden sm:block flex-shrink-0 border-r border-border/50 bg-card overflow-hidden"
           >
             <div className="p-4 border-b border-border/40">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -301,45 +301,45 @@ export function DeliveryCatalogo({ sessionId, onBackToChat, publicToken }: Deliv
       </AnimatePresence>
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-card flex-shrink-0">
-          <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between px-2 sm:px-4 py-2 border-b border-border/40 bg-card flex-shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             <Button
               variant="ghost"
               size="sm"
               onClick={onBackToChat}
-              className="gap-1.5 text-xs"
+              className="gap-1 sm:gap-1.5 text-xs h-7 sm:h-8 px-1.5 sm:px-3"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Chat
+              <ArrowLeft className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Chat</span>
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSidebarOpen((v) => !v)}
-              className="gap-1.5 text-xs"
+              className="gap-1 sm:gap-1.5 text-xs h-7 sm:h-8 px-1.5 sm:px-3 hidden sm:flex"
             >
               <BookOpen className="w-3.5 h-3.5" />
               {sidebarOpen ? "Nascondi indice" : "Indice"}
             </Button>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleShare}
-              className="gap-1.5 text-xs"
+              className="gap-1 text-xs h-7 sm:h-8 px-1.5 sm:px-3"
             >
-              <Share2 className="w-3.5 h-3.5" /> Condividi
+              <Share2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Condividi</span>
             </Button>
           </div>
         </div>
 
         <ScrollArea className="flex-1">
-          <div className="max-w-[720px] mx-auto px-8 py-10">
-            <div className="pt-4 pb-10">
+          <div className="max-w-[720px] mx-auto px-4 sm:px-8 py-6 sm:py-10">
+            <div className="pt-2 sm:pt-4 pb-6 sm:pb-10">
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground/60">
                 Catalogo Completo
               </p>
-              <h1 className="text-3xl font-bold text-foreground tracking-tight leading-tight mt-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight leading-tight mt-1">
                 Tutti i Pacchetti Servizio
               </h1>
               <p className="text-sm text-muted-foreground mt-2">
@@ -356,14 +356,14 @@ export function DeliveryCatalogo({ sessionId, onBackToChat, publicToken }: Deliv
                   ref={setChapterRefWithObserver(chId)}
                   className="mb-16"
                 >
-                  <div className="mb-8 pb-5 border-b border-border/40">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <div className="flex items-baseline gap-3">
-                        <span className="text-4xl font-thin text-muted-foreground/20 leading-none tracking-tight select-none">
+                  <div className="mb-6 sm:mb-8 pb-4 sm:pb-5 border-b border-border/40">
+                    <div className="flex items-baseline justify-between gap-2 sm:gap-3">
+                      <div className="flex items-baseline gap-2 sm:gap-3 min-w-0">
+                        <span className="text-2xl sm:text-4xl font-thin text-muted-foreground/20 leading-none tracking-tight select-none shrink-0">
                           {String(i + 1).padStart(2, "0")}
                         </span>
-                        <div>
-                          <h2 className="text-[22px] font-bold text-foreground tracking-tight leading-tight">
+                        <div className="min-w-0">
+                          <h2 className="text-lg sm:text-[22px] font-bold text-foreground tracking-tight leading-tight">
                             {pkg.package_name}
                           </h2>
                           {pkg.subtitle && (

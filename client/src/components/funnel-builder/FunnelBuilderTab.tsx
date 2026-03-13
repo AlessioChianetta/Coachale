@@ -721,12 +721,12 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
     <UndoContext.Provider value={undoContextValue}>
     <ThemeContext.Provider value={currentTheme}>
     <div className="flex-1 flex flex-col overflow-hidden h-full">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 border-b border-border/60 bg-card/50 flex-shrink-0 overflow-x-auto">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
               <FolderOpen className="w-3.5 h-3.5" />
-              I Miei Funnel
+              <span className="hidden sm:inline">I Miei Funnel</span>
               <ChevronDown className="w-3 h-3" />
             </Button>
           </DropdownMenuTrigger>
@@ -755,14 +755,14 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="flex-1 flex items-center gap-2">
+        <div className="flex-1 flex items-center gap-2 min-w-0">
           <Input
             value={funnelName}
             onChange={(e) => { setFunnelName(e.target.value); markDirty(); }}
-            className="h-8 text-sm font-medium max-w-[280px] border-transparent hover:border-border focus:border-border bg-transparent"
+            className="h-8 text-xs sm:text-sm font-medium max-w-[140px] sm:max-w-[280px] border-transparent hover:border-border focus:border-border bg-transparent"
           />
           {activeFunnelId && (
-            <Badge variant={isDirty ? "outline" : "secondary"} className={cn("text-[10px] shrink-0", isDirty && "border-amber-400 text-amber-600 dark:text-amber-400")}>
+            <Badge variant={isDirty ? "outline" : "secondary"} className={cn("text-[10px] shrink-0 hidden sm:inline-flex", isDirty && "border-amber-400 text-amber-600 dark:text-amber-400")}>
               {isDirty ? "Non salvato" : "Salvato"}
             </Badge>
           )}
@@ -813,7 +813,8 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
           }}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          {chatOpen ? "Chiudi Chat AI" : "Genera con AI"}
+          <span className="hidden sm:inline">{chatOpen ? "Chiudi Chat AI" : "Genera con AI"}</span>
+          <span className="sm:hidden">AI</span>
         </Button>
 
         {activeFunnelId && (
@@ -824,7 +825,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
             onClick={() => { setShowHistory(true); loadVersions(); }}
           >
             <History className="w-3.5 h-3.5" />
-            Cronologia
+            <span className="hidden sm:inline">Cronologia</span>
           </Button>
         )}
 
@@ -840,7 +841,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
           ) : (
             <Save className="w-3.5 h-3.5" />
           )}
-          Salva
+          <span className="hidden sm:inline">Salva</span>
         </Button>
 
         {activeFunnelId && (
@@ -876,7 +877,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
       </div>
 
       <div className="flex-1 flex overflow-hidden min-h-0">
-        <div className="w-60 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
+        <div className="hidden sm:flex w-60 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-col overflow-hidden">
           <FunnelPalette className="flex-1 min-h-0 border-r-0" />
 
           <div className="border-t border-gray-200 dark:border-gray-700 shrink-0 max-h-[40%] overflow-y-auto">
@@ -946,8 +947,9 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
                   <h3 className="text-lg font-semibold text-foreground">
                     Crea il tuo Funnel
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                    Trascina i componenti dalla palette a sinistra oppure genera un funnel con l'AI
+                  <p className="text-sm text-muted-foreground mt-1 max-w-sm px-4">
+                    <span className="hidden sm:inline">Trascina i componenti dalla palette a sinistra oppure genera un funnel con l'AI</span>
+                    <span className="sm:hidden">Genera un funnel con l'AI usando il pulsante qui sopra</span>
                   </p>
                 </div>
                 <div className="flex gap-2 justify-center">
@@ -987,7 +989,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
               showInteractive={false}
             />
             <MiniMap
-              className="!bg-white dark:!bg-gray-900 !border-gray-200 dark:!border-gray-700"
+              className="!bg-white dark:!bg-gray-900 !border-gray-200 dark:!border-gray-700 !hidden sm:!block"
               maskColor="rgba(0,0,0,0.08)"
               nodeColor={(node) => {
                 const data = node.data as any;
@@ -1006,19 +1008,21 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
         </div>
 
         {selectedNode && !chatOpen && (
-          <NodeConfigPanel
-            nodeId={selectedNode.id}
-            data={selectedNode.data as unknown as FunnelNodeData}
-            onUpdate={updateNodeData}
-            onDelete={(id) => {
-              pushHistory();
-              markDirty();
-              setNodes((nds) => nds.filter((n) => n.id !== id));
-              setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
-              setSelectedNodeId(null);
-            }}
-            onClose={() => setSelectedNodeId(null)}
-          />
+          <div className="absolute sm:relative right-0 top-0 bottom-0 z-20 sm:z-auto w-full sm:w-auto max-w-sm sm:max-w-none">
+            <NodeConfigPanel
+              nodeId={selectedNode.id}
+              data={selectedNode.data as unknown as FunnelNodeData}
+              onUpdate={updateNodeData}
+              onDelete={(id) => {
+                pushHistory();
+                markDirty();
+                setNodes((nds) => nds.filter((n) => n.id !== id));
+                setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
+                setSelectedNodeId(null);
+              }}
+              onClose={() => setSelectedNodeId(null)}
+            />
+          </div>
         )}
 
         <FunnelChat
