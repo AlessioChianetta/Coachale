@@ -626,6 +626,11 @@ export default function ConsultantAcademy() {
       const stepParam = params.get("step");
       if (stepParam && lessonById[stepParam] && activeId !== stepParam) {
         setActiveId(stepParam);
+        const lesson = lessonById[stepParam];
+        if (lesson) {
+          const belongsToCorsi = corsiModules.some(m => m.id === lesson.module_id);
+          setSidebarTab(belongsToCorsi ? "corsi" : "setup");
+        }
         return;
       }
       if (!activeId) {
