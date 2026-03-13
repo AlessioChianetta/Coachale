@@ -1,8 +1,8 @@
-import React, { memo, useContext } from "react";
+import React, { memo, useContext, useState, useRef } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Zap, GraduationCap } from "lucide-react";
+import { Clock, Zap, GraduationCap, BookOpen, ExternalLink } from "lucide-react";
 import {
   type FunnelNodeData,
   type EntityType,
@@ -135,15 +135,7 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
         ))}
 
         {(nodeData.academyLessons || []).length > 0 && (
-          <div className="mt-1.5 flex items-center gap-1">
-            <Badge
-              variant="outline"
-              className="text-[10px] px-1.5 py-0 gap-0.5 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30"
-            >
-              <GraduationCap className="w-2.5 h-2.5" />
-              {nodeData.academyLessons!.length} {nodeData.academyLessons!.length === 1 ? "lezione" : "lezioni"}
-            </Badge>
-          </div>
+          <AcademyBadge lessons={nodeData.academyLessons!} />
         )}
       </div>
 
@@ -354,6 +346,74 @@ function StatusDotInline({ active }: { active?: boolean }) {
         active ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
       )}
     />
+  );
+}
+
+function AcademyBadge({ lessons }: { lessons: import("./funnel-node-types").AcademyLink[] }) {
+  const [showPopover, setShowPopover] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div className="mt-1.5 relative" ref={containerRef}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowPopover(!showPopover);
+        }}
+        className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors cursor-pointer"
+      >
+        <GraduationCap className="w-2.5 h-2.5" />
+        {lessons.length} {lessons.length === 1 ? "lezione" : "lezioni"}
+      </button>
+
+      {showPopover && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={(e) => { e.stopPropagation(); setShowPopover(false); }}
+          />
+          <div
+            className="absolute left-0 top-full mt-1 z-50 w-56 bg-white dark:bg-gray-900 rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-2.5 py-1.5 bg-indigo-50/80 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-800">
+              <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1">
+                <GraduationCap className="w-3 h-3" />
+                Lezioni Accademia
+              </span>
+            </div>
+            <div className="max-h-40 overflow-y-auto">
+              {lessons.map((al) => (
+                <div key={al.lessonId} className="px-2.5 py-1.5 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+                  <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">{al.title}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[9px] text-gray-400">{al.moduleEmoji} {al.moduleTitle}</span>
+                  </div>
+                  <div className="flex gap-1 mt-1">
+                    <a
+                      href={`/consultant/academy?step=${al.lessonId}`}
+                      className="text-[9px] text-indigo-500 hover:text-indigo-700 flex items-center gap-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <BookOpen className="w-2.5 h-2.5" />
+                      Lezione
+                    </a>
+                    <a
+                      href={al.configLink}
+                      className="text-[9px] text-gray-500 hover:text-gray-700 flex items-center gap-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ExternalLink className="w-2.5 h-2.5" />
+                      Config
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

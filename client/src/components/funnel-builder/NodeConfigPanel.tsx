@@ -719,8 +719,11 @@ export function NodeConfigPanel({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{al.title}</p>
-                            <div className="flex items-center gap-1 mt-0.5">
+                            <div className="flex items-center gap-1.5 mt-0.5">
                               <span className="text-[10px] text-gray-500">{al.moduleEmoji} {al.moduleTitle}</span>
+                              {al.videoCount > 0 && (
+                                <Badge variant="secondary" className="text-[8px] px-1 py-0 shrink-0">{al.videoCount} video</Badge>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -729,20 +732,28 @@ export function NodeConfigPanel({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="flex-1 h-7 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                          onClick={() => navigate(`/consultant/academy?lesson=${al.lessonId}`)}
+                          className="h-7 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-2"
+                          onClick={() => navigate(`/consultant/academy?step=${al.lessonId}`)}
                         >
                           <BookOpen className="w-3 h-3 mr-1" />
-                          Vai alla lezione
+                          Lezione
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="flex-1 h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                          className="h-7 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 px-2"
+                          onClick={() => navigate(al.configLink)}
+                        >
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          Config
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 px-2"
                           onClick={() => handleUnlinkAcademy(al.lessonId)}
                         >
-                          <Unlink className="w-3 h-3 mr-1" />
-                          Scollega
+                          <Unlink className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>
@@ -796,7 +807,12 @@ export function NodeConfigPanel({
                                 <span className="text-sm shrink-0">{al.moduleEmoji}</span>
                                 <div className="flex-1 min-w-0 overflow-hidden">
                                   <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{al.title}</p>
-                                  <p className="text-[10px] text-gray-400 truncate">{al.moduleTitle}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-[10px] text-gray-400 truncate">{al.moduleTitle}</p>
+                                    {al.videoCount > 0 && (
+                                      <Badge variant="secondary" className="text-[8px] px-1 py-0 shrink-0">{al.videoCount} video</Badge>
+                                    )}
+                                  </div>
                                 </div>
                               </button>
                             ))}
@@ -818,7 +834,12 @@ export function NodeConfigPanel({
                                 <span className="text-sm shrink-0">{al.moduleEmoji}</span>
                                 <div className="flex-1 min-w-0 overflow-hidden">
                                   <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{al.title}</p>
-                                  <p className="text-[10px] text-gray-400 truncate">{al.moduleTitle}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-[10px] text-gray-400 truncate">{al.moduleTitle}</p>
+                                    {al.videoCount > 0 && (
+                                      <Badge variant="secondary" className="text-[8px] px-1 py-0 shrink-0">{al.videoCount} video</Badge>
+                                    )}
+                                  </div>
                                 </div>
                               </button>
                             ))}
