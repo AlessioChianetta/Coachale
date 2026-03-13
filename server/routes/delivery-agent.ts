@@ -1799,6 +1799,46 @@ router.post('/onboarding-status/clients', authenticateToken, requireRole('consul
   }
 });
 
+router.post('/sessions/:sessionId/brand-voice/generate', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { sessionId } = req.params;
+    const result = await db.execute(sql`
+      SELECT client_profile_json, brand_voice_data FROM delivery_agent_sessions
+      WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId}
+    `);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    const row = result.rows[0] as any;
+    const clientProfile = row.client_profile_json || {};
+    const reportResult = await db.execute(sql`
+      SELECT report_json FROM delivery_agent_reports
+      WHERE session_id = ${sessionId} AND consultant_id = ${consultantId}
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    const reportJson = (reportResult.rows[0] as any)?.report_json || {};
+    const { mapLucaReportToBrandVoice } = await import('../services/luca-brand-voice-mapper');
+    const brandVoice = mapLucaReportToBrandVoice(clientProfile, reportJson);
+    const existingBv = row.brand_voice_data || {};
+    const merged = { ...brandVoice };
+    if (existingBv._marketResearch) {
+      merged._marketResearch = existingBv._marketResearch;
+    }
+    await db.execute(sql`
+      UPDATE delivery_agent_sessions
+      SET brand_voice_data = ${JSON.stringify(merged)}::jsonb, updated_at = NOW()
+      WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId}
+    `);
+    const cleanBv = { ...merged };
+    delete cleanBv._marketResearch;
+    res.json({ success: true, data: cleanBv });
+  } catch (err: any) {
+    console.error('[DeliveryAgent] POST brand-voice/generate error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.get('/sessions/:sessionId/brand-voice', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;

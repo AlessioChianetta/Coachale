@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { BrandVoiceSection, type BrandVoiceData } from "@/components/brand-voice/BrandVoiceSection";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Wand2 } from "lucide-react";
 import type { MarketResearchData } from "@shared/schema";
 
 interface DeliveryBrandVoiceProps {
@@ -15,6 +16,7 @@ export function DeliveryBrandVoice({ sessionId }: DeliveryBrandVoiceProps) {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -90,6 +92,31 @@ export function DeliveryBrandVoice({ sessionId }: DeliveryBrandVoiceProps) {
     }
   }, [sessionId]);
 
+  const handleGenerateFromLuca = useCallback(async () => {
+    setIsGenerating(true);
+    try {
+      const res = await fetch(`/api/consultant/delivery-agent/sessions/${sessionId}/brand-voice/generate`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          setData(result.data);
+          toast({ title: "Brand Voice compilato da Luca", description: "I campi sono stati compilati con i dati dell'onboarding" });
+        } else {
+          toast({ title: "Errore", description: result.error || "Nessun dato disponibile", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Errore nella generazione", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Errore nella generazione", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [sessionId, toast]);
+
   const saveSessionMR = useCallback(async (mrData: MarketResearchData): Promise<void> => {
     try {
       const res = await fetch(`/api/consultant/delivery-agent/sessions/${sessionId}/market-research`, {
@@ -117,6 +144,26 @@ export function DeliveryBrandVoice({ sessionId }: DeliveryBrandVoiceProps) {
 
   return (
     <div className="h-full overflow-y-auto p-4">
+      <div className="mb-4 p-4 rounded-lg bg-gradient-to-r from-violet-50/80 to-purple-50/80 dark:from-violet-950/20 dark:to-purple-950/20 border border-violet-200/50 dark:border-violet-800/50">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-violet-800 dark:text-violet-200">Compila automaticamente</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Luca estrae i dati dal tuo onboarding e compila il Brand Voice</p>
+          </div>
+          <Button
+            onClick={handleGenerateFromLuca}
+            disabled={isGenerating}
+            className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white gap-2 flex-shrink-0"
+          >
+            {isGenerating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Wand2 className="h-4 w-4" />
+            )}
+            {isGenerating ? "Compilazione..." : "Compila con Luca"}
+          </Button>
+        </div>
+      </div>
       <BrandVoiceSection
         data={data}
         onDataChange={setData}
