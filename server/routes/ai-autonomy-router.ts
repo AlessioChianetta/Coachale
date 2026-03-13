@@ -6196,6 +6196,12 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
       try {
         const { fileSearchService } = await import('../services/file-search-service');
         const { storeNames } = await fileSearchService.getStoreBreakdownForGeneration(consultantId, 'consultant');
+        const { FileSearchSyncService } = await import('../services/file-search-sync-service');
+        const agentStore = await FileSearchSyncService.getAutonomousAgentStore('robert', consultantId);
+        if (agentStore?.storeName && !storeNames.includes(agentStore.storeName)) {
+          storeNames.push(agentStore.storeName);
+          console.log(`🔍 [ROBERT-CHAT] Added autonomous agent store: ${agentStore.storeName}`);
+        }
         if (storeNames.length > 0) fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
       } catch {}
 
@@ -6514,6 +6520,12 @@ router.post("/agent-chat/:roleId/send-media", authenticateToken, requireAnyRole(
       try {
         const { fileSearchService } = await import('../services/file-search-service');
         const { storeNames } = await fileSearchService.getStoreBreakdownForGeneration(consultantId, 'consultant');
+        const { FileSearchSyncService } = await import('../services/file-search-sync-service');
+        const agentStore2 = await FileSearchSyncService.getAutonomousAgentStore('robert', consultantId);
+        if (agentStore2?.storeName && !storeNames.includes(agentStore2.storeName)) {
+          storeNames.push(agentStore2.storeName);
+          console.log(`🔍 [ROBERT-MEDIA-CHAT] Added autonomous agent store: ${agentStore2.storeName}`);
+        }
         if (storeNames.length > 0) fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
       } catch {}
 
@@ -7449,10 +7461,11 @@ REGOLE ANTI-ALLUCINAZIONE:
     const chatMaxTokens = roleId === 'architetto' ? 8192 : 2048;
 
     let fileSearchTool: any = null;
-    if (roleId === 'marco' && !isOpenMode) {
+    if (!isOpenMode) {
       try {
         const { FileSearchService } = await import("../ai/file-search-service");
         const fileSearchService = new FileSearchService();
+        const { FileSearchSyncService } = await import("../services/file-search-sync-service");
         
         const consultantUserResult = await db.execute(sql`
           SELECT consultant_id FROM users WHERE id = ${consultantId} LIMIT 1
@@ -7464,22 +7477,36 @@ REGOLE ANTI-ALLUCINAZIONE:
           'consultant',
           parentConsultantId
         );
+
+        const agentStore = await FileSearchSyncService.getAutonomousAgentStore(roleId, consultantId);
+        if (agentStore?.storeName && !storeNames.includes(agentStore.storeName)) {
+          storeNames.push(agentStore.storeName);
+          breakdown.push({
+            storeName: agentStore.storeName,
+            storeDisplayName: agentStore.displayName || `Agent: ${roleId}`,
+            ownerType: 'autonomous_agent',
+            categories: {},
+            totalDocs: 0,
+          } as any);
+          console.log(`🔍 [${roleId.toUpperCase()}-CHAT] Added autonomous agent store: ${agentStore.storeName}`);
+        }
+
         const totalDocs = breakdown.reduce((sum: number, s: any) => sum + s.totalDocs, 0);
 
-        console.log(`🔍 [MARCO-CHAT] File Search: ${breakdown.length} store trovati (${totalDocs} doc totali)`);
+        console.log(`🔍 [${roleId.toUpperCase()}-CHAT] File Search: ${breakdown.length} store trovati (${totalDocs} doc totali)`);
         for (const s of breakdown) {
-          console.log(`🔍 [MARCO-CHAT]   - [${(s as any).ownerType}] ${s.storeDisplayName}: ${s.totalDocs} doc`);
+          console.log(`🔍 [${roleId.toUpperCase()}-CHAT]   - [${(s as any).ownerType}] ${s.storeDisplayName}: ${s.totalDocs} doc`);
         }
-        if (totalDocs === 0) {
-          console.log(`⚠️ [MARCO-CHAT] Nessun documento indicizzato — File Search disabilitato`);
+        if (totalDocs === 0 && !agentStore) {
+          console.log(`⚠️ [${roleId.toUpperCase()}-CHAT] Nessun documento indicizzato — File Search disabilitato`);
         }
 
-        if (storeNames.length > 0 && totalDocs > 0) {
+        if (storeNames.length > 0) {
           fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
-          console.log(`✅ [MARCO-CHAT] File Search attivo con ${storeNames.length} store`);
+          console.log(`✅ [${roleId.toUpperCase()}-CHAT] File Search attivo con ${storeNames.length} store`);
         }
       } catch (fsErr: any) {
-        console.warn(`[MARCO-CHAT] File Search setup failed:`, fsErr.message);
+        console.warn(`[${roleId.toUpperCase()}-CHAT] File Search setup failed:`, fsErr.message);
       }
     }
 

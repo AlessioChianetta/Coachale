@@ -26,7 +26,7 @@ import {
   ChevronLeft, ChevronRight,
   ArrowRight, Cog, ChevronDown, ChevronUp, BookOpen, ExternalLink,
   Eye, Sparkles, Timer, User, Lightbulb, Target, RefreshCw, AlertCircle,
-  Plus, Trash2, FileText, Calendar, Flag, Database, Search, GripVertical, Thermometer, MapPin
+  Plus, Trash2, FileText, Calendar, Flag, Database, Search, GripVertical, Thermometer, MapPin, Download
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,8 @@ import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS,
 import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./utils";
 import TelegramConfig from "./TelegramConfig";
 import TelegramChats from "./TelegramChats";
+import { BrandVoiceSection, type BrandVoiceData } from "@/components/brand-voice";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import type { AgentContext, AgentFocusItem } from "@shared/schema";
 
@@ -96,6 +98,212 @@ const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: s
     { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati"] },
   ],
 };
+
+function AgentBrandVoice() {
+  const { toast } = useToast();
+  const [brandVoiceData, setBrandVoiceData] = useState<BrandVoiceData>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [availableAgents, setAvailableAgents] = useState<any[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/content/brand-voice", { headers: getAuthHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          setBrandVoiceData(data.brandVoice || {});
+        }
+      } catch {}
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setSaveSuccess(false);
+    try {
+      const res = await fetch("/api/content/brand-voice", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ brandVoice: brandVoiceData, enabled: true }),
+      });
+      if (res.ok) {
+        setSaveSuccess(true);
+        toast({ title: "Salvato", description: "Brand Voice salvato con successo" });
+        setTimeout(() => setSaveSuccess(false), 2000);
+      } else {
+        throw new Error("Errore nel salvataggio");
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const loadAgents = async () => {
+    setSelectedAgentId("");
+    try {
+      const res = await fetch("/api/whatsapp/agent-chat/agents", { headers: getAuthHeaders() });
+      if (res.ok) {
+        const response = await res.json();
+        setAvailableAgents(response.data || []);
+      }
+    } catch {}
+  };
+
+  const handleImportFromAgent = async () => {
+    if (!selectedAgentId) return;
+    setIsImporting(true);
+    try {
+      const res = await fetch(`/api/whatsapp/agents/${selectedAgentId}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore caricamento agente");
+      const agent = await res.json();
+      if (agent) {
+        setBrandVoiceData({
+          consultantDisplayName: agent.consultantDisplayName,
+          businessName: agent.businessName,
+          businessDescription: agent.businessDescription,
+          consultantBio: agent.consultantBio,
+          vision: agent.vision,
+          mission: agent.mission,
+          values: agent.values,
+          usp: agent.usp,
+          whoWeHelp: agent.whoWeHelp,
+          whoWeDontHelp: agent.whoWeDontHelp,
+          audienceSegments: agent.audienceSegments,
+          whatWeDo: agent.whatWeDo,
+          howWeDoIt: agent.howWeDoIt,
+          yearsExperience: agent.yearsExperience,
+          clientsHelped: agent.clientsHelped,
+          resultsGenerated: agent.resultsGenerated,
+          softwareCreated: agent.softwareCreated,
+          booksPublished: agent.booksPublished,
+          caseStudies: agent.caseStudies,
+          servicesOffered: agent.servicesOffered,
+          guarantees: agent.guarantees,
+          personalTone: agent.personalTone,
+          contentPersonality: agent.contentPersonality,
+          audienceLanguage: agent.audienceLanguage,
+          avoidPatterns: agent.avoidPatterns,
+          writingExamples: agent.writingExamples,
+          signaturePhrases: agent.signaturePhrases,
+        });
+        toast({ title: "Dati importati", description: "Brand Voice importato dall'agente. Ricorda di salvare!" });
+        setShowImportDialog(false);
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5">
+        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <BrandVoiceSection
+        data={brandVoiceData}
+        onDataChange={setBrandVoiceData}
+        onSave={handleSave}
+        isSaving={isSaving}
+        saveSuccess={saveSuccess}
+        showImportButton={true}
+        onImportClick={() => {
+          loadAgents();
+          setShowImportDialog(true);
+        }}
+        compact={true}
+        showSaveButton={true}
+      />
+
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Importa Brand Voice da Agente
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Seleziona un agente WhatsApp per importare i dati del Brand Voice
+          </p>
+          <div className="space-y-4 py-4">
+            {availableAgents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">Nessun agente WhatsApp configurato.</p>
+                <p className="text-xs mt-2">Configura prima un agente nella sezione WhatsApp.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {availableAgents.map((agent: any) => (
+                  <div
+                    key={agent.id}
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      selectedAgentId === agent.id
+                        ? "border-primary bg-primary/5"
+                        : "hover:border-muted-foreground/50"
+                    }`}
+                    onClick={() => setSelectedAgentId(agent.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        checked={selectedAgentId === agent.id}
+                        onChange={() => setSelectedAgentId(agent.id)}
+                        className="h-4 w-4 text-primary"
+                      />
+                      <div>
+                        <p className="font-medium text-sm">{agent.agentName || agent.businessName || "Agente senza nome"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {agent.businessName || agent.agentType || "Nessuna descrizione"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowImportDialog(false)}>
+                Annulla
+              </Button>
+              <Button
+                onClick={handleImportFromAgent}
+                disabled={!selectedAgentId || isImporting}
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Importazione...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Importa
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
 
 function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string; roleName: string; kbDocuments: KbDocument[] }) {
   const { toast } = useToast();
@@ -3055,6 +3263,7 @@ function SettingsTab({
                                       </div>
                                     </div>
                                   )}
+                                  <AgentBrandVoice />
                                   <AgentContextEditor roleId={role.id} roleName={role.name} kbDocuments={kbDocuments} />
                                   <TelegramConfig roleId={role.id} roleName={role.name} />
                                 </TabsContent>

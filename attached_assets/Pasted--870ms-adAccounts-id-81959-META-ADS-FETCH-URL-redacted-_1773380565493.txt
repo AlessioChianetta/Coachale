@@ -1,0 +1,53 @@
+ 870ms :: {"adAccounts":[{"id":"81959…
+[META-ADS FETCH] URL (redacted token): https://graph.facebook.com/v19.0/act_1028420172776890/ads?fields=id,name,status,effective_status,campaign{id,name,status,daily_budget,lifetime_budget},adset{id,name,status},creative{id,thumbnail_url,body,title}&effective_status=%5B%22ACTIVE%22%2C%22PAUSED%22%2C%22ARCHIVED%22%2C%22CAMPAIGN_PAUSED%22%2C%22ADSET_PAUSED%22%2C%22DISAPPROVED%22%2C%22PENDING_REVIEW%22%2C%22PREAPPROVED%22%2C%22PENDING_BILLING_INFO%22%2C%22WITH_ISSUES%22%5D&limit=200&access_token=REDACTED
+[META-ADS SYNC] Found 22 total ads for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+[META-ADS SYNC] Insights fetch failed for ad 120232848791240369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120232830672540369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120232039337410369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120232038820690369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120232047358820369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120232047358810369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120232039337400369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120230240478910369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120230009899980369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120230240478880369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120229614804970369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120232047358800369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120230240040650369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120230009589920369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120230010017700369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120230009963870369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120230009855470369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120229670883700369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120229660923660369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120229673790260369: HTTP 400
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+[META-ADS SYNC] Insights fetch failed for ad 120229659852280369: HTTP 400
+[META-ADS SYNC] Insights fetch failed for ad 120229863898760369: HTTP 400
+[META-ADS SYNC] ✅ Synced 0/22 ads for 0c73bbe5-51e1-4108-866b-6be7a52fce3b in 5820ms
+[META-ADS SYNC] Daily snapshot saved for 0c73bbe5-51e1-4108-866b-6be7a52fce3b (22 ads)
+📊 [MetaAdsFileSearch] Starting sync for consultant 0c73bbe5...
+📊 [MetaAdsDoc] Starting for consultant 0c73bbe5...
+📊 [MetaAdsDoc] Document generated: 3217 chars, 2 campaigns, 2 ads, 0 anomalies
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🔍 [FileSearch] Client type: object, has fileSearchStores: true
+🔍 [FileSearch] Removing old version from store 67d6e373 before re-upload: dynamic_context/meta_ads
+📤 [FileSearch] Uploading "Report Performance Meta Ads (Auto-generato)" (hash: b469eab18462fe5e) to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping... (rowCount=0, rows=0, keys=command,rowCount,oid,rows,fields,_parsers,_types,RowCtor,rowAsArray,_prebuiltEmptyResultObject)
+✅ [FileSearch] Document uploaded: report-performance-meta-ads-jmthrkgpzg7p (hash: b469eab18462fe5e)
+📊 [MetaAdsFileSearch] Consultant store sync: ✅
+✅ [FileSync] Found existing autonomous agent store for simone (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🔍 [FileSearch] Client type: object, has fileSearchStores: true
+🔍 [FileSearch] Removing old version from store 1bdfdf62 before re-upload: dynamic_context/meta_ads
+📤 [FileSearch] Uploading "Report Performance Meta Ads (Auto-generato)" (hash: b469eab18462fe5e) to store fileSearchStores/autonomous-agent-simone-jic1vptkle1f
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+✅ [FileSearch] Document uploaded: report-performance-meta-ads-h807y4uj9rgu (hash: b469eab18462fe5e)
+📊 [MetaAdsFileSearch] Simone agent store sync: ✅
+[META-ADS] File Search synced after manual sync for 0c73bbe5
+5:42:07 AM [express] POST /api/meta-ads/sync 200 in 37710ms :: {"success":true,"adsCount":0,"error":…
+5:42:08 AM [express] GET /api/meta-ads/config 200 in 385ms :: {"success":true,"config":{"id":"84bfbd…
+5:42:08 AM [express] GET /api/meta-ads/ads 304 in 518ms :: {"success":true,"ads":[{"id":"6269c439-33…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS
