@@ -1,0 +1,84 @@
+  [DeliveryAgent] Loaded MANUALE-COMPLETO-LIGHT.md (197666 chars)
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: none)...
+📋 Client preferred AI provider: vertex_admin
+⚠️ TIER 0: Skipped (no consultantId provided)
+⚠️ TIER 0.5: Skipped (no consultantId provided)
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+⚠️ TIER 1: Client Vertex AI setting expired or invalid, continuing to TIER 2
+⚠️ TIER 2: Skipped (no consultantId provided)
+⚠️ TIER 3: No Vertex AI available, falling back to Google AI Studio (user: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+🔑 [AI] Using SuperAdmin Gemini key (1/1)
+✅ Created Google AI Studio client for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b [source: superadmin]
+[DeliveryAgent] Report generation START — session: 16feb1bc-a381-41a6-a158-6beee707b51a, messages: 21, conversation length: 16253 chars
+[DeliveryAgent] STEP 1: Analisi della conversazione...
+🔒 [Semaphore] Acquired slot (1/3 in use)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+📊 [TokenTracker] Buffered: delivery-agent-report | gemini-3-flash-preview | 71008 tokens | $0.0412 | consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b client=self role=consultant
+🔓 [Semaphore] Released slot (0/3 in use)
+[DeliveryAgent] STEP 1 DONE — Analysis: 4775 chars
+[DeliveryAgent] STEP 2: Generazione draft report...
+🔒 [Semaphore] Acquired slot (1/3 in use)
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping... (rowCount=0, rows=0, keys=command,rowCount,oid,rows,fields,_parsers,_types,RowCtor,rowAsArray,_prebuiltEmptyResultObject)
+✅ [TokenTracker] Flushed 1 entries to DB
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔒 [CronLock] Acquired lock for "ai-task-scheduler" (instance: 0058d60c)
+🤖 [AI-SCHEDULER] ══════ STEP 1: Starting task processing cycle ══════
+🤖 [AI-SCHEDULER] STEP 1: No approved tasks to move
+🤖 [AI-SCHEDULER] STEP 2: No tasks to process
+🔓 [CronLock] Released lock for "ai-task-scheduler"
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+📊 [TokenTracker] Buffered: delivery-agent-report | gemini-3-flash-preview | 87358 tokens | $0.0866 | consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b client=self role=consultant
+🔓 [Semaphore] Released slot (0/3 in use)
+[DeliveryAgent] STEP 2 DONE — Draft: 55859 chars
+[DeliveryAgent] STEP 3: Revisione critica del report...
+🔒 [Semaphore] Acquired slot (1/3 in use)
+✅ [TokenTracker] Flushed 1 entries to DB
+🔒 [CronLock] Acquired lock for "ai-task-scheduler" (instance: 0058d60c)
+🤖 [AI-SCHEDULER] ══════ STEP 1: Starting task processing cycle ══════
+🤖 [AI-SCHEDULER] STEP 1: No approved tasks to move
+🤖 [AI-SCHEDULER] STEP 2: No tasks to process
+🔓 [CronLock] Released lock for "ai-task-scheduler"
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+1:43:24 PM [express] POST /api/activity/session/heartbeat 200 in 482ms :: {"success":true,"lastActiv…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping... (rowCount=0, rows=0, keys=command,rowCount,oid,rows,fields,_parsers,_types,RowCtor,rowAsArray,_prebuiltEmptyResultObject)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+[PUBLER POLLING] Running scheduled post status sync...
+[PUBLER SYNC] Synced 2 consultants, updated 0 posts
+[PUBLER POLLING] Sync complete: 2 consultants, 0 posts updated
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+📊 [TokenTracker] Buffered: delivery-agent-report | gemini-3-flash-preview | 103862 tokens | $0.0705 | consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b client=self role=consultant
+🔓 [Semaphore] Released slot (0/3 in use)
+[DeliveryAgent] STEP 3 DONE — Review: 60770 chars
+[DeliveryAgent] Report generation COMPLETE — final report has 10 packages
+[DeliveryAgent] Auto-triggering funnel generation for session 16feb1bc-a381-41a6-a158-6beee707b51a...
+1:44:36 PM [express] POST /api/consultant/delivery-agent/generate-report/16feb1bc-a381-41a6-a158-6be…
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: none)...
+1:44:37 PM [express] GET /api/funnels/by-session/16feb1bc-a381-41a6-a158-6beee707b51a 404 in 521ms :…
+📋 Client preferred AI provider: vertex_admin
+⚠️ TIER 0: Skipped (no consultantId provided)
+⚠️ TIER 0.5: Skipped (no consultantId provided)
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+📋 Found client-managed Vertex AI setting
+⚠️ TIER 1: Client Vertex AI setting expired or invalid, continuing to TIER 2
+⚠️ TIER 2: Skipped (no consultantId provided)
+⚠️ TIER 3: No Vertex AI available, falling back to Google AI Studio (user: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)
+1:44:38 PM [express] GET /api/consultant/delivery-agent/reports/16feb1bc-a381-41a6-a158-6beee707b51a…
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+🔑 [AI] Using SuperAdmin Gemini key (1/1)
+✅ Created Google AI Studio client for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b [source: superadmin]
+[Funnel] Generating funnel from report — session: 16feb1bc-a381-41a6-a158-6beee707b51a, lead: Valente Leadership (Valente Consulting S.r.l.), catalog: 10 services
+🔒 [Semaphore] Acquired slot (1/3 in use)
+✅ [TokenTracker] Flushed 1 entries to DB
+1:44:47 PM [express] GET /api/funnels/by-session/16feb1bc-a381-41a6-a158-6beee707b51a 404 in 478ms :…
