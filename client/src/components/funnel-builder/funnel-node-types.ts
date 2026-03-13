@@ -28,6 +28,7 @@ import {
   Puzzle,
   Flame,
   Route,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -64,7 +65,8 @@ export type EntityType =
   | "campaigns"
   | "nurturing_config"
   | "email_journey_config"
-  | "academy_lessons";
+  | "academy_lessons"
+  | "academy_courses";
 
 export interface FunnelNodeType {
   type: string;
@@ -187,6 +189,8 @@ export const NODE_TYPES: FunnelNodeType[] = [
   { type: "nurturing_lead365", label: "Nurturing Lead 365", category: "comunicazione", icon: Flame, description: "Sequenza nurturing 365 giorni per lead proattivi" },
   { type: "email_journey", label: "Email Journey", category: "comunicazione", icon: Route, description: "Percorso email mensile per clienti attivi" },
 
+  { type: "academy_courses", label: "Formazione & Corsi", category: "delivery", icon: GraduationCap, description: "Percorso formativo dall'Accademia" },
+
   { type: "custom_step", label: "Step Custom", category: "custom", icon: Puzzle, description: "Step personalizzato" },
 ];
 
@@ -219,6 +223,7 @@ const ENTITY_MAP: Record<string, EntityType> = {
   followup: "campaigns",
   nurturing_lead365: "nurturing_config",
   email_journey: "email_journey_config",
+  academy_courses: "academy_courses",
 };
 
 export function getEntityTypeForNode(nodeType: string): EntityType | null {
@@ -250,6 +255,7 @@ const EDIT_LINKS: Record<EntityType, string> = {
   nurturing_config: "/consultant/ai-config",
   email_journey_config: "/consultant/ai-config",
   academy_lessons: "/consultant/academy",
+  academy_courses: "/consultant/academy",
 };
 
 export function getEditLinkForEntity(entityType: EntityType): string {
@@ -272,6 +278,7 @@ const ENTITY_LABELS: Record<EntityType, string> = {
   nurturing_config: "Nurturing Lead 365",
   email_journey_config: "Email Journey",
   academy_lessons: "Lezione Accademia",
+  academy_courses: "Corso Formativo",
 };
 
 export function getEntityLabel(entityType: EntityType): string {

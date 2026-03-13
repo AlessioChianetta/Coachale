@@ -38,6 +38,7 @@ import {
   Sparkles,
   Loader2,
   ChevronDown,
+  ChevronUp,
   Trash2,
   FolderOpen,
   GitBranch,
@@ -46,6 +47,7 @@ import {
   Link2,
   Palette,
   Check,
+  Brain,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -168,6 +170,8 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
   const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
   const [themeId, setThemeId] = useState<FunnelThemeId>("classico");
   const [isDirty, setIsDirty] = useState(false);
+  const [funnelDescription, setFunnelDescription] = useState<string | null>(null);
+  const [showRationale, setShowRationale] = useState(false);
   const currentTheme = useMemo(() => getTheme(themeId), [themeId]);
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -306,6 +310,8 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
         const funnel = await res.json();
         setActiveFunnelId(funnel.id);
         setFunnelName(funnel.name);
+        setFunnelDescription(funnel.source === "delivery_report" ? (funnel.description || null) : null);
+        setShowRationale(false);
         setNodes(funnel.nodes_data || []);
         setEdges(funnel.edges_data || []);
         setThemeId((funnel.theme as FunnelThemeId) || "classico");
@@ -379,6 +385,8 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
   const createNewFunnel = () => {
     setActiveFunnelId(null);
     setFunnelName("Nuovo Funnel");
+    setFunnelDescription(null);
+    setShowRationale(false);
     setNodes([]);
     setEdges([]);
     setThemeId("classico");
@@ -830,6 +838,28 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
           </AlertDialog>
         )}
       </div>
+
+      {funnelDescription && (
+        <div className="border-b border-border/60 bg-gradient-to-r from-indigo-50/50 to-violet-50/50 dark:from-indigo-950/20 dark:to-violet-950/20">
+          <button
+            onClick={() => setShowRationale(!showRationale)}
+            className="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/20 transition-colors"
+          >
+            <Brain className="w-3.5 h-3.5" />
+            <span>Strategia di Leonardo</span>
+            <Badge variant="secondary" className="text-[8px] px-1 py-0 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">AI</Badge>
+            <span className="flex-1" />
+            {showRationale ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+          {showRationale && (
+            <div className="px-4 pb-3 max-h-[200px] overflow-y-auto">
+              <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                {funnelDescription}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 flex overflow-hidden">
         <FunnelPalette />

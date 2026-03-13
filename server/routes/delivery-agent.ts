@@ -628,7 +628,8 @@ Ragiona in modo strutturato e critico. Questa analisi servirà come base per il 
             role: 'user',
             parts: [{
               text: `Perfetto. Ora basandoti sulla tua analisi, genera il report JSON strutturato completo. Segui esattamente il template nel system prompt. Ricorda:
-- Includi SOLO i pacchetti che servono davvero nei pacchetti_consigliati (tipicamente 4-7, non tutti e 10)
+- Includi TUTTI E 10 i pacchetti nei pacchetti_consigliati — ogni pacchetto deve avere un'analisi completa con punteggio, perche_per_te, cosa_va_bene, cosa_non_funziona, e moduli_inclusi dettagliati
+- Ogni pacchetto deve avere ALMENO 2 moduli analizzati in profondità nei moduli_inclusi, ognuno con "primo_passo" e "come_misuri" — l'obiettivo è avere circa 20+ punti di analisi dettagliati in totale tra tutti i pacchetti
 - Ogni "perche_per_te" deve citare cose specifiche dette dal consulente durante la conversazione
 - La roadmap deve rispettare le dipendenze — ogni fase deve avere "vita_dopo" che descrive come cambia la vita lavorativa
 - I quick_wins devono essere azioni concrete sotto i 30 minuti — includi "testo_da_copiare" quando l'azione prevede un messaggio o template
@@ -636,7 +637,6 @@ Ragiona in modo strutturato e critico. Questa analisi servirà come base per il 
 - Includi "flusso_completo" — un paragrafo narrativo su come i moduli si parlano nel caso specifico
 - Includi "avvertimento_onesto" — dove farai fatica e perché vale la pena
 - Includi "segnali_successo" — almeno 3 segnali con timeframe diversificati e "dove_guardare" nella piattaforma
-- Ogni modulo nei pacchetti_consigliati deve avere "primo_passo" e "come_misuri"
 - Il catalogo_completo deve includere TUTTI E 10 i pacchetti con analisi APPROFONDITA per ciascuno: punteggio (1-10), cosa_va_bene, cosa_non_funziona, diagnosi_critica (opzionale), come_correggere (2-4 azioni con →), descrizione_personalizzata, esempi_concreti (2-3). Stessa profondità dei pacchetti_consigliati — non descrizioni superficiali.
 
 Rispondi SOLO con il JSON nel formato richiesto.`,
@@ -644,7 +644,7 @@ Rispondi SOLO con il JSON nel formato richiesto.`,
           },
         ],
         generationConfig: {
-          maxOutputTokens: 32768,
+          maxOutputTokens: 65536,
           temperature: 0.4,
           ...thinkingConfig,
         },
@@ -698,7 +698,7 @@ COMPITO DI REVISIONE CRITICA: Rileggi il report e valuta:
 
 1. **Coerenza con la conversazione**: I "perche_per_te" citano davvero cose dette dal consulente o sono generici? Se sono generici, riscrivili con riferimenti specifici.
 
-2. **Pacchetti mancanti o superflui**: C'è un pacchetto che dovrebbe esserci ma manca? C'è un pacchetto consigliato che non serve davvero?
+2. **Completezza pacchetti**: Ci sono tutti e 10 i pacchetti nei pacchetti_consigliati? Ognuno ha almeno 2 moduli con primo_passo e come_misuri?
 
 3. **Roadmap realistica**: L'ordine delle settimane rispetta le dipendenze? Le azioni sono concrete e fattibili nei tempi indicati?
 
@@ -713,12 +713,13 @@ COMPITO DI REVISIONE CRITICA: Rileggi il report e valuta:
 8. **Nuovi campi**: C'è il flusso_completo (paragrafo narrativo)? L'avvertimento_onesto è genuinamente onesto? I segnali_successo hanno almeno 3 entry con timeframe diversificati? Le quick_wins hanno testo_da_copiare dove serve? I moduli hanno primo_passo e come_misuri? La roadmap ha vita_dopo per ogni fase?
 
 Se trovi problemi, genera il report JSON CORRETTO e COMPLETO (incluso catalogo_completo con TUTTI i 10 pacchetti e analisi approfondita). Se il report è già buono, restituiscilo invariato.
+Verifica anche che pacchetti_consigliati contenga TUTTI E 10 i pacchetti, ciascuno con almeno 2 moduli dettagliati (primo_passo + come_misuri).
 Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
             }],
           },
         ],
         generationConfig: {
-          maxOutputTokens: 32768,
+          maxOutputTokens: 65536,
           temperature: 0.3,
           ...thinkingConfig,
         },

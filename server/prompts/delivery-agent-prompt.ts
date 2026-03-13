@@ -696,7 +696,7 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 
 ### Regole per la Generazione del Report:
 
-1. I pacchetti consigliati devono essere **personalizzati** — non suggerire tutti i 10 pacchetti, suggerisci solo quelli che servono (tipicamente 4-7)
+1. I pacchetti consigliati devono includere **TUTTI E 10 i pacchetti** — ognuno con analisi completa, punteggio, perche_per_te, cosa_va_bene, cosa_non_funziona, e almeno 2 moduli_inclusi con primo_passo e come_misuri. L'obiettivo è avere circa 20+ punti di analisi dettagliati tra tutti i pacchetti
 2. Ogni "perché per te" e ogni "cosa_va_bene"/"cosa_non_funziona" deve fare riferimento a informazioni SPECIFICHE emerse dalla discovery — cita le parole del consulente quando possibile
 3. La roadmap deve rispettare le **dipendenze tra pacchetti** (Infrastruttura → Lavoro Quotidiano → Pacchetti scelti)
 4. I Quick Wins devono essere **azioni concrete che si possono fare in meno di 30 minuti ciascuna**
@@ -704,7 +704,7 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 6. La "connessione_altri_pacchetti" deve suggerire il PROSSIMO pacchetto logico nella sequenza
 7. Il report deve essere in **italiano**
 8. Rispondi SOLO con il JSON, racchiuso in un blocco \`\`\`json ... \`\`\`
-9. I moduli_inclusi di ogni pacchetto devono contenere SOLO i moduli effettivamente utili per quel consulente — puoi escludere moduli di un pacchetto se non servono
+9. I moduli_inclusi di ogni pacchetto devono contenere TUTTI i moduli del pacchetto — per ognuno spiega come si applica a questo consulente specifico (primo_passo e come_misuri)
 10. La timeline_setup deve essere realistica per il profilo del consulente (chi ha poco tempo avrà timeline più lunghe)
 11. I **punteggi** devono essere onesti e variati — non dare 7/10 a tutto. Se un'area è un disastro dai 2/10, se è eccellente dai 9/10
 12. La **tabella_diagnostica** deve avere almeno 6 righe coprendo tutte le aree chiave del business (non solo quelle dei pacchetti)
@@ -717,9 +717,9 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 16. Il **catalogo_completo** deve contenere TUTTI E 10 i pacchetti servizio — nessuna eccezione
 17. Per ogni pacchetto, la descrizione_personalizzata deve essere scritta per QUESTO consulente specifico, basandosi sulla discovery
 18. Gli **esempi_concreti** devono essere 2-3 per pacchetto, tangibili e realistici — usa dettagli specifici del business del consulente (nome attività, settore, numeri emersi dalla discovery). Esempio buono: "Quando un paziente ti scrive alle 22 per spostare un appuntamento, Stella risponde e aggiorna il calendario". Esempio cattivo: "L'AI gestisce le comunicazioni automatiche".
-19. Per i pacchetti già inclusi nei pacchetti_consigliati, imposta "gia_consigliato": true
-20. Per i pacchetti NON consigliati, spiega comunque il valore potenziale — perché potrebbe diventare utile in futuro
-21. I moduli devono elencare TUTTI i moduli del pacchetto (a differenza dei pacchetti_consigliati dove filtri solo quelli utili)
+19. Tutti i 10 pacchetti sono inclusi nei pacchetti_consigliati, quindi nel catalogo_completo imposta "gia_consigliato": true per tutti
+20. Per i pacchetti con punteggio basso (2-4), spiega perché sono meno prioritari ma evidenzia il valore potenziale futuro
+21. Sia nei pacchetti_consigliati che nel catalogo_completo, i moduli devono elencare TUTTI i moduli del pacchetto con analisi approfondita
 22. Le icone devono essere: "setter", "dipendenti", "hunter", "email", "quotidiano", "formazione", "content", "voce", "pagamenti", "team"
 23. Ogni pacchetto nel catalogo deve avere un **punteggio** (1-10) onesto e variato — non dare 6/10 a tutto. Pacchetti dove il consulente eccelle: 8-9. Pacchetti irrilevanti: 2-3.
 24. Il **cosa_va_bene** e **cosa_non_funziona** devono essere scritti con la stessa profondità dei pacchetti_consigliati — riferimenti specifici alla discovery, non frasi generiche

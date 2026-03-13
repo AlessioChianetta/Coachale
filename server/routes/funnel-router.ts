@@ -90,7 +90,7 @@ CATTURA: landing_page, form_modulo, lead_magnet, webhook
 GESTIONE LEAD: import_excel, crm_hunter, setter_ai
 COMUNICAZIONE: whatsapp, email, voice_call, sms, instagram_dm, nurturing_lead365, email_journey
 CONVERSIONE: appuntamento, prima_call, seconda_call, chiusura, pagamento
-DELIVERY: onboarding, servizio, followup
+DELIVERY: onboarding, servizio, followup, academy_courses
 CUSTOM: custom_step
 
 MAPPATURE ENTITÀ — ogni tipo di nodo si collega a risorse reali della piattaforma:
@@ -109,6 +109,7 @@ MAPPATURE ENTITÀ — ogni tipo di nodo si collega a risorse reali della piattaf
 - followup → Campagne Marketing (follow-up automatici)
 - nurturing_lead365 → Config Nurturing Lead 365 (sequenza email automatica 365 giorni per lead proattivi, riscaldamento graduale)
 - email_journey → Config Email Journey (percorso email mensile 31 giorni per clienti attivi, contenuti AI personalizzati)
+- academy_courses → Corsi e lezioni dell'Accademia (percorso formativo, esercizi, video tutorial)
 - landing_page/webhook/sms/instagram_dm/import_excel/prima_call/seconda_call/chiusura/custom_step → Configurazione manuale
 
 ACADEMY LESSONS — ogni tipo di nodo ha lezioni formative associate dall'Accademia:
@@ -138,6 +139,7 @@ ACADEMY LESSONS — ogni tipo di nodo ha lezioni formative associate dall'Accade
 - onboarding → Primo Corso, Formazione
 - servizio → Modello di business, Gestire licenze
 - followup → Email Riassuntiva, Prima Campagna Marketing
+- academy_courses → Tutti i corsi e video dell'Accademia
 `;
 
 const SUBTITLE_SUGGESTIONS = `
@@ -170,6 +172,7 @@ SOTTOTITOLI CONSIGLIATI per ogni tipo di nodo (usa questi o simili in italiano):
 - followup → "Follow-up post-vendita"
 - nurturing_lead365 → "Sequenza nurturing 365 giorni"
 - email_journey → "Percorso email mensile clienti"
+- academy_courses → "Percorso formativo Accademia"
 - custom_step → "Step personalizzato"
 `;
 
@@ -202,6 +205,7 @@ const NODE_TYPE_ACADEMY_MAP: Record<string, string[]> = {
   onboarding: ["first_course", "pkg_form_corso"],
   servizio: ["pkg_pay_modello", "pkg_team_licenze"],
   followup: ["summary_email", "first_campaign", "pkg_email_sequenza"],
+  academy_courses: ["first_course", "pkg_form_corso", "pkg_form_esercizi"],
   custom_step: [],
 };
 
@@ -420,10 +424,10 @@ ${SUBTITLE_SUGGESTIONS}
 FONTI DATI:
 
 === 1. CONVERSAZIONE DISCOVERY (tra Luca e il cliente) ===
-${conversationText.slice(0, 12000)}
+${conversationText.slice(0, 15000)}
 
 === 2. REPORT STRATEGICO GENERATO ===
-${reportSummary.slice(0, 15000)}
+${reportSummary.slice(0, 30000)}
 
 === 3. CATALOGO SERVIZI DEL CONSULENTE ===
 ${catalogText}
@@ -433,27 +437,35 @@ ${JSON.stringify(clientProfile, null, 2)}
 
 ISTRUZIONI PER LA GENERAZIONE DEL FUNNEL:
 
-1. Analizza il report: guarda i "pacchetti_consigliati" e la "roadmap" per capire quale percorso è stato progettato per questo cliente
-2. Mappa i pacchetti ai nodi del funnel:
-   - Se c'è un pacchetto Hunter/Setter → aggiungi nodi crm_hunter e/o setter_ai
-   - Se c'è un pacchetto Content/Social → aggiungi nodi organici e/o ads
-   - Se c'è un pacchetto Voice/Email → aggiungi nodi comunicazione appropriati
-   - Se c'è un pacchetto Booking/Payment → aggiungi nodi conversione
+1. Analizza il report: guarda i "pacchetti_consigliati", il "catalogo_completo" e la "roadmap" per capire quale percorso è stato progettato per questo cliente
+2. Mappa OGNI pacchetto e modulo consigliato ad almeno un nodo del funnel:
+   - Pacchetto Hunter/Setter → nodi crm_hunter e/o setter_ai
+   - Pacchetto Content/Social → nodi organic, facebook_ads, instagram_ads, etc.
+   - Pacchetto Voice/Email → nodi voice_call, email, whatsapp, sms, etc.
+   - Pacchetto Booking/Payment → nodi appuntamento, pagamento, etc.
+   - Pacchetto Formazione/Academy → nodi academy_courses (percorsi formativi specifici)
+   - Pacchetto Nurturing/Email Journey → nodi nurturing_lead365 e/o email_journey
+   - Pacchetto Dipendenti AI → nodi setter_ai, whatsapp con AI
+   - Pacchetto Quotidiano/CRM → nodi import_excel, crm_hunter
+   - Pacchetto Team/Licenze → nodi servizio, pagamento
 3. Il funnel deve seguire la struttura standard: SORGENTI → CATTURA → GESTIONE → COMUNICAZIONE → CONVERSIONE → DELIVERY
 4. Personalizza i label e subtitle usando il nome del cliente ("${leadName}") e dettagli specifici emersi dalla discovery
-5. Includi SOLO i nodi che hanno senso per questo cliente (non tutti i tipi disponibili)
+5. NON limitare il numero di nodi — crea TUTTI i nodi necessari per rappresentare completamente la strategia. Se servono 10 nodi, crea 10. Se servono 50 nodi, crea 50. Ogni modulo consigliato nel report dovrebbe avere il suo nodo nel funnel.
 6. Il primo nodo "onboarding" è il Lead Magnet AI (la discovery con Luca che è appena avvenuta)
 7. Se nel catalogo servizi del consulente ci sono servizi specifici, mappa i nodi di delivery/pagamento a quelli
+8. Per ogni pacchetto con moduli formativi, aggiungi un nodo academy_courses con label specifico (es. "Formazione Setter AI", "Corso WhatsApp Business", etc.)
+9. Crea rami paralleli quando il cliente ha percorsi simultanei (es. formazione + operatività, lead generation + nurturing)
 
 REGOLE POSIZIONAMENTO:
 - Primo nodo a y=0, ogni livello successivo ~180px più in basso
 - Rami paralleli sulla stessa Y con X diversi (distanza ~300px)
-- Tipicamente 8-15 nodi per un funnel completo
+- Per funnel grandi (20+ nodi), usa gruppi tematici con rami paralleli per ogni area (acquisizione, gestione, comunicazione, formazione, etc.)
 
 FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
 {
   "name": "Funnel Personalizzato per ${leadName}",
   "description": "Percorso strategico generato dalla discovery con Luca",
+  "rationale": "Spiegazione dettagliata (3-5 paragrafi) di COME e PERCHÉ questo funnel è stato progettato così. Spiega: quali pacchetti del report hai mappato e perché, come si collegano i diversi rami, qual è la logica dietro l'ordine dei nodi, e come il funnel risolve i problemi specifici emersi dalla discovery con ${leadName}. Scrivi in prima persona come Leonardo.",
   "nodes": [
     { "id": "node_1", "type": "lead_magnet", "position": { "x": 0, "y": 0 }, "data": { "label": "Discovery Gratuita", "subtitle": "Onboarding con Luca AI", "category": "cattura" } }
   ],
@@ -477,7 +489,7 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
     ],
     generationConfig: {
       temperature: 0.5,
-      maxOutputTokens: 8192,
+      maxOutputTokens: 32768,
     }
   });
 
@@ -568,7 +580,8 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
   }));
 
   const funnelName = parsed.name || `Funnel per ${leadName}`;
-  const funnelDesc = parsed.description || `Percorso strategico personalizzato generato dalla discovery con Luca`;
+  const funnelRationale = parsed.rationale || null;
+  const funnelDesc = funnelRationale || parsed.description || `Percorso strategico personalizzato generato dalla discovery con Luca`;
 
   const insertResult = await db.execute(sql`
     INSERT INTO consultant_funnels (consultant_id, name, description, nodes_data, edges_data, theme, delivery_session_id, source, lead_name)
@@ -584,7 +597,15 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
       ${leadName}
     )
     ON CONFLICT (consultant_id, delivery_session_id) WHERE delivery_session_id IS NOT NULL
-    DO UPDATE SET updated_at = NOW()
+    DO UPDATE SET
+      name = EXCLUDED.name,
+      description = EXCLUDED.description,
+      nodes_data = EXCLUDED.nodes_data,
+      edges_data = EXCLUDED.edges_data,
+      theme = EXCLUDED.theme,
+      source = EXCLUDED.source,
+      lead_name = EXCLUDED.lead_name,
+      updated_at = NOW()
     RETURNING id
   `);
 
@@ -664,6 +685,25 @@ router.get("/entities/academy-lessons", authenticateToken, requireAnyRole(["cons
   } catch (error: any) {
     console.error("[Funnel] Entities/academy-lessons error:", error);
     res.json({ lessons: [], nodeTypeMap: {} });
+  }
+});
+
+router.get("/entities/academy-courses", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await db.execute(sql`
+      SELECT
+        am.id,
+        am.title as name,
+        am.emoji,
+        am.sort_order as "sortOrder",
+        (SELECT COUNT(*)::int FROM academy_lessons al WHERE al.module_id = am.id) as "lessonCount"
+      FROM academy_modules am
+      ORDER BY am.sort_order
+    `);
+    res.json(result.rows);
+  } catch (error: any) {
+    console.error("[Funnel] Entities/academy-courses error:", error);
+    res.json([]);
   }
 });
 
@@ -1235,6 +1275,7 @@ function getCategoryForType(type: string): string {
     appuntamento: "conversione", prima_call: "conversione", seconda_call: "conversione",
     chiusura: "conversione", pagamento: "conversione",
     onboarding: "delivery", servizio: "delivery", followup: "delivery",
+    academy_courses: "delivery",
     custom_step: "custom",
   };
   return categoryMap[type] || "custom";
