@@ -67,9 +67,10 @@ REGOLE IMPORTANTI:
 6. Conferme generiche ("sì", "ok", "vai") sono valide SOLO se il dipendente ha ESPLICITAMENTE proposto un'azione specifica nel messaggio precedente
 7. Frasi come "l'ho fatta", "fatto", "ci ho pensato io" significano completamento — identifica il task dal contesto
 8. Se hai dubbi, usa "no_action" — meglio non agire che agire sbagliato
-9. Per scheduledAt usa SEMPRE formato ISO 8601 (es: "2026-03-15T10:00:00+01:00")
-10. Per priority usa SOLO: low, medium, high, urgent
-11. Per category usa SOLO: reminder, follow_up, outreach, content, admin, meeting, call, email, social, other
+9. OBBLIGATORIO: nel campo "reason" spiega SEMPRE in 1 frase perché hai scelto quell'azione (es: "L'utente ha detto 'approva' riferendosi al task di Mario" oppure "Conversazione generica, nessun riferimento a task")
+10. Per scheduledAt usa SEMPRE formato ISO 8601 (es: "2026-03-15T10:00:00+01:00")
+11. Per priority usa SOLO: low, medium, high, urgent
+12. Per category usa SOLO: reminder, follow_up, outreach, content, admin, meeting, call, email, social, other
 
 Rispondi SOLO con un JSON valido.`;
 }
@@ -425,8 +426,7 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
     console.log(`________________________________________`);
     console.log(`📨 Messaggio utente: "${params.userMessage.substring(0, 120)}"`);
     console.log(`🤖 Risposta AI: "${params.aiResponse.substring(0, 120)}..."`);
-    console.log(`💬 Chat analizzata: ${chatMsgCount} msg (${userMsgs} utente + ${aiMsgs} dipendente)`);
-    console.log(`📋 Task attivi: ${taskCount}${taskCount > 0 ? ` → ${params.activeTasks.map(t => `"${t.ai_instruction?.substring(0, 40)}..." [${t.status}]`).join(', ')}` : ''}`);
+    console.log(`💬 Chat analizzata: ${chatMsgCount} msg (${userMsgs} utente + ${aiMsgs} dipendente) | 📋 ${taskCount} task attivi`);
     console.log(`________________________________________`);
 
     const controller = new AbortController();
@@ -493,11 +493,11 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
     };
     const emoji = actionEmoji[parsed.action] || '🔍';
     console.log(`${emoji} Risultato: ${parsed.action} (${elapsed}ms)`);
-    if (parsed.taskIds) console.log(`   Task IDs: ${parsed.taskIds.join(', ')}`);
-    if (parsed.taskId) console.log(`   Task ID: ${parsed.taskId}`);
-    if (parsed.question) console.log(`   Domanda: "${parsed.question}"`);
-    if (parsed.reason) console.log(`   Motivo: "${parsed.reason}"`);
-    if (parsed.tasks) console.log(`   Nuovi task: ${parsed.tasks.map((t: any) => `"${t.instruction?.substring(0, 50)}"`).join(', ')}`);
+    if (parsed.reason) console.log(`💭 Ragionamento: "${parsed.reason}"`);
+    if (parsed.taskIds) console.log(`   📌 Task IDs: ${parsed.taskIds.join(', ')}`);
+    if (parsed.taskId) console.log(`   📌 Task ID: ${parsed.taskId}`);
+    if (parsed.question) console.log(`   ❓ Domanda: "${parsed.question}"`);
+    if (parsed.tasks) console.log(`   📝 Nuovi task: ${parsed.tasks.map((t: any) => `"${t.instruction?.substring(0, 50)}"`).join(', ')}`);
     console.log(`________________________________________\n`);
 
     const confirmation = await executeAction(parsed, params.consultantId, params.roleId);
