@@ -805,9 +805,9 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
       {/* ── Main content ── */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
-        {/* Toolbar */}
-        <div className="flex items-center justify-end sm:justify-between px-2 sm:px-4 py-1.5 sm:py-2 border-b border-border/40 bg-card flex-shrink-0 print:hidden gap-1">
-          <div className="hidden sm:flex items-center gap-0.5 sm:gap-1 shrink-0">
+        {/* Toolbar — hidden on mobile */}
+        <div className="hidden sm:flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 border-b border-border/40 bg-card flex-shrink-0 print:hidden gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             <Button variant="ghost" size="sm" onClick={onBackToChat} className="gap-1 sm:gap-1.5 text-xs h-7 sm:h-8 px-1.5 sm:px-3">
               <ArrowLeft className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Chat</span>
             </Button>
