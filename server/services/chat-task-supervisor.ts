@@ -38,12 +38,12 @@ function isValidDate(dateStr: string): boolean {
 function buildSupervisorPrompt(params: SupervisorParams): string {
   const taskList = params.activeTasks.length > 0
     ? params.activeTasks.map(t =>
-      `- ID: ${t.id} | "${t.ai_instruction?.substring(0, 100)}" | stato: ${t.status}${t.contact_name ? ` | contatto: ${t.contact_name}` : ''}${t.scheduled_at ? ` | schedulato: ${new Date(t.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}` : ''}`
+      `- ID: ${t.id} | "${t.ai_instruction}" | stato: ${t.status}${t.contact_name ? ` | contatto: ${t.contact_name}` : ''}${t.scheduled_at ? ` | schedulato: ${new Date(t.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}` : ''}`
     ).join('\n')
     : 'Nessun task attivo.';
 
   const recentChat = params.recentMessages.slice(-20).map(m =>
-    `${m.sender === 'consultant' ? 'UTENTE' : 'DIPENDENTE'}: ${m.message.substring(0, 300)}`
+    `${m.sender === 'consultant' ? 'UTENTE' : 'DIPENDENTE'}: ${m.message}`
   ).join('\n');
 
   return `Sei un supervisor che analizza conversazioni tra un consulente (UTENTE) e il suo dipendente AI (DIPENDENTE).
@@ -56,7 +56,7 @@ CONVERSAZIONE RECENTE:
 ${recentChat}
 
 ULTIMO MESSAGGIO UTENTE: ${params.userMessage}
-RISPOSTA DIPENDENTE: ${params.aiResponse.substring(0, 500)}
+RISPOSTA DIPENDENTE: ${params.aiResponse}
 
 REGOLE IMPORTANTI:
 1. Se l'utente NON sta chiaramente parlando di task o azioni sui task, rispondi SEMPRE con {"action":"no_action"}
@@ -435,7 +435,7 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
     let response: any;
     try {
       response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash-lite',
+        model: 'gemini-2.0-flash-lite-001',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: 'application/json',
@@ -461,7 +461,7 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
       await tokenTracker.track({
         consultantId: params.consultantId,
         clientId: 'self',
-        model: 'gemini-2.0-flash-lite',
+        model: 'gemini-2.0-flash-lite-001',
         feature: `chat-supervisor:${params.roleId}`,
         requestType: 'generate',
         inputTokens,
