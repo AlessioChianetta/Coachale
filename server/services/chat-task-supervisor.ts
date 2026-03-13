@@ -414,7 +414,20 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
     const ai = new GoogleGenAI({ apiKey });
     const prompt = buildSupervisorPrompt(params);
 
-    console.log(`🔍 [SUPERVISOR] Running for ${params.roleId}, user: "${params.userMessage.substring(0, 80)}..."`);
+    const chatMsgCount = params.recentMessages.length;
+    const userMsgs = params.recentMessages.filter(m => m.sender === 'consultant').length;
+    const aiMsgs = params.recentMessages.filter(m => m.sender !== 'consultant').length;
+    const taskCount = params.activeTasks.length;
+    const startTime = Date.now();
+
+    console.log(`\n________________________________________`);
+    console.log(`🔍 SUPERVISOR — ${params.roleId.toUpperCase()}`);
+    console.log(`________________________________________`);
+    console.log(`📨 Messaggio utente: "${params.userMessage.substring(0, 120)}"`);
+    console.log(`🤖 Risposta AI: "${params.aiResponse.substring(0, 120)}..."`);
+    console.log(`💬 Chat analizzata: ${chatMsgCount} msg (${userMsgs} utente + ${aiMsgs} dipendente)`);
+    console.log(`📋 Task attivi: ${taskCount}${taskCount > 0 ? ` → ${params.activeTasks.map(t => `"${t.ai_instruction?.substring(0, 40)}..." [${t.status}]`).join(', ')}` : ''}`);
+    console.log(`________________________________________`);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), SUPERVISOR_TIMEOUT_MS);
@@ -436,9 +449,11 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
       clearTimeout(timeout);
     }
 
+    const elapsed = Date.now() - startTime;
     const responseText = extractResponseText(response);
     if (!responseText) {
-      console.warn('[SUPERVISOR] Empty response');
+      console.log(`⚠️  Risultato: risposta vuota (${elapsed}ms)`);
+      console.log(`________________________________________\n`);
       return { confirmation: null, actionsExecuted: 0 };
     }
 
@@ -451,21 +466,39 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
         try {
           parsed = JSON.parse(jsonMatch[0]);
         } catch {
-          console.warn('[SUPERVISOR] Failed to parse extracted JSON:', jsonMatch[0].substring(0, 200));
+          console.log(`❌ Risultato: JSON non valido (${elapsed}ms)`);
+          console.log(`   Raw: ${jsonMatch[0].substring(0, 150)}`);
+          console.log(`________________________________________\n`);
           return { confirmation: null, actionsExecuted: 0 };
         }
       } else {
-        console.warn('[SUPERVISOR] Failed to parse response:', responseText.substring(0, 200));
+        console.log(`❌ Risultato: risposta non parsabile (${elapsed}ms)`);
+        console.log(`   Raw: ${responseText.substring(0, 150)}`);
+        console.log(`________________________________________\n`);
         return { confirmation: null, actionsExecuted: 0 };
       }
     }
 
     if (!validateAction(parsed, params.activeTasks)) {
-      console.log(`🔍 [SUPERVISOR] Decision: ${parsed?.action || 'invalid'} — validation failed, skipping`);
+      console.log(`⛔ Risultato: ${parsed?.action || 'invalid'} — validazione fallita (${elapsed}ms)`);
+      console.log(`   Raw: ${JSON.stringify(parsed).substring(0, 200)}`);
+      console.log(`________________________________________\n`);
       return { confirmation: null, actionsExecuted: 0 };
     }
 
-    console.log(`🔍 [SUPERVISOR] Decision: ${parsed.action}${parsed.taskIds ? ` (${parsed.taskIds.length} tasks)` : ''}`);
+    const actionEmoji: Record<string, string> = {
+      no_action: '😴', approve_task: '✅', reject_task: '❌', complete_task: '☑️',
+      execute_now: '🚀', create_task: '📝', modify_task: '✏️', schedule_task: '📅',
+      needs_clarification: '❓',
+    };
+    const emoji = actionEmoji[parsed.action] || '🔍';
+    console.log(`${emoji} Risultato: ${parsed.action} (${elapsed}ms)`);
+    if (parsed.taskIds) console.log(`   Task IDs: ${parsed.taskIds.join(', ')}`);
+    if (parsed.taskId) console.log(`   Task ID: ${parsed.taskId}`);
+    if (parsed.question) console.log(`   Domanda: "${parsed.question}"`);
+    if (parsed.reason) console.log(`   Motivo: "${parsed.reason}"`);
+    if (parsed.tasks) console.log(`   Nuovi task: ${parsed.tasks.map((t: any) => `"${t.instruction?.substring(0, 50)}"`).join(', ')}`);
+    console.log(`________________________________________\n`);
 
     const confirmation = await executeAction(parsed, params.consultantId, params.roleId);
     return {
@@ -474,10 +507,14 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
     };
   } catch (err: any) {
     if (err.name === 'AbortError') {
-      console.warn(`⏱️ [SUPERVISOR] Timeout after ${SUPERVISOR_TIMEOUT_MS}ms — skipping`);
+      console.log(`\n________________________________________`);
+      console.log(`⏱️  SUPERVISOR TIMEOUT (>${SUPERVISOR_TIMEOUT_MS}ms) — saltato`);
+      console.log(`________________________________________\n`);
       return { confirmation: null, actionsExecuted: 0 };
     }
-    console.error(`❌ [SUPERVISOR] Error:`, err.message);
+    console.log(`\n________________________________________`);
+    console.log(`❌ SUPERVISOR ERROR: ${err.message}`);
+    console.log(`________________________________________\n`);
     return { confirmation: null, actionsExecuted: 0 };
   }
 }
