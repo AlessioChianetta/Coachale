@@ -2,7 +2,7 @@ import React, { memo, useContext } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Zap } from "lucide-react";
+import { Clock, Zap, GraduationCap } from "lucide-react";
 import {
   type FunnelNodeData,
   type EntityType,
@@ -133,6 +133,18 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
             extra={le.extra || {}}
           />
         ))}
+
+        {(nodeData.academyLessons || []).length > 0 && (
+          <div className="mt-1.5 flex items-center gap-1">
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 gap-0.5 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30"
+            >
+              <GraduationCap className="w-2.5 h-2.5" />
+              {nodeData.academyLessons!.length} {nodeData.academyLessons!.length === 1 ? "lezione" : "lezioni"}
+            </Badge>
+          </div>
+        )}
       </div>
 
       <Handle

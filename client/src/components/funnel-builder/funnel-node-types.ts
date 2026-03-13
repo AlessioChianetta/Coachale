@@ -31,6 +31,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+export interface AcademyLink {
+  lessonId: string;
+  title: string;
+  moduleTitle: string;
+  moduleEmoji: string;
+  configLink: string;
+  videoCount: number;
+}
+
 export type NodeCategory =
   | "sorgenti"
   | "cattura"
@@ -88,6 +97,7 @@ export interface FunnelNodeData {
   delayMinutes?: number;
   conditionLabel?: string;
   priority?: "low" | "medium" | "high";
+  academyLessons?: AcademyLink[];
 }
 
 export function getLinkedEntities(data: FunnelNodeData): LinkedEntity[] {
@@ -250,3 +260,35 @@ const ENTITY_LABELS: Record<EntityType, string> = {
 export function getEntityLabel(entityType: EntityType): string {
   return ENTITY_LABELS[entityType] || "Entità";
 }
+
+export const NODE_TYPE_ACADEMY_MAP: Record<string, string[]> = {
+  facebook_ads: ["pkg_cs_advisage", "pkg_cs_ideas"],
+  google_ads: ["pkg_cs_advisage"],
+  instagram_ads: ["pkg_cs_advisage", "instagram", "pkg_cs_ideas"],
+  tiktok_ads: ["pkg_cs_advisage"],
+  offline_referral: ["pkg_pay_vendere"],
+  organic: ["pkg_cs_ideas", "pkg_cs_publer"],
+  landing_page: ["agent_public_link"],
+  form_modulo: ["lead_import"],
+  lead_magnet: ["knowledge_base"],
+  webhook: ["lead_import"],
+  import_excel: ["lead_import"],
+  crm_hunter: ["pkg_hunter_come_funziona", "pkg_hunter_ricerca", "pkg_hunter_contatto"],
+  setter_ai: ["pkg_setter_come_funziona", "pkg_setter_primo_agente", "pkg_setter_qualifica"],
+  whatsapp: ["agent_inbound", "whatsapp_template", "whatsapp_ai"],
+  email: ["smtp", "email_hub", "pkg_email_hub"],
+  voice_call: ["voice_calls", "pkg_voce_alessia", "pkg_voce_centralino"],
+  sms: ["twilio"],
+  instagram_dm: ["instagram"],
+  nurturing_lead365: ["nurturing_emails", "pkg_email_nurturing"],
+  email_journey: ["email_journey", "pkg_email_sequenza"],
+  appuntamento: ["google_calendar", "google_calendar_agents", "pkg_lq_appuntamenti"],
+  prima_call: ["agent_consultative", "pkg_lq_appuntamenti"],
+  seconda_call: ["agent_consultative"],
+  chiusura: ["stripe_connect", "pkg_pay_stripe"],
+  pagamento: ["stripe_connect", "pkg_pay_stripe", "pkg_pay_vendere"],
+  onboarding: ["first_course", "pkg_form_corso"],
+  servizio: ["pkg_pay_modello", "pkg_team_licenze"],
+  followup: ["summary_email", "first_campaign", "pkg_email_sequenza"],
+  custom_step: [],
+};

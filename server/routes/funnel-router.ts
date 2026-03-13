@@ -98,6 +98,34 @@ MAPPATURE ENTITÀ — ogni tipo di nodo si collega a risorse reali della piattaf
 - nurturing_lead365 → Config Nurturing Lead 365 (sequenza email automatica 365 giorni per lead proattivi, riscaldamento graduale)
 - email_journey → Config Email Journey (percorso email mensile 31 giorni per clienti attivi, contenuti AI personalizzati)
 - landing_page/webhook/sms/instagram_dm/import_excel/prima_call/seconda_call/chiusura/custom_step → Configurazione manuale
+
+ACADEMY LESSONS — ogni tipo di nodo ha lezioni formative associate dall'Accademia:
+- facebook_ads → AdVisage AI, Ideas Generator
+- google_ads → AdVisage AI
+- instagram_ads → AdVisage AI, Instagram DM, Ideas Generator
+- tiktok_ads → AdVisage AI
+- offline_referral → Vendere licenze ai clienti
+- organic → Ideas Generator, Pubblicare con Publer
+- landing_page → Link Pubblico Agente
+- form_modulo → Import Lead da API Esterne
+- lead_magnet → Base di Conoscenza
+- webhook → Import Lead da API Esterne
+- import_excel → Import Lead da API Esterne
+- crm_hunter → Lead Scraper (3 lezioni)
+- setter_ai → Setter AI (3 lezioni)
+- whatsapp → Agente Inbound, Template WhatsApp, WhatsApp AI
+- email → Email SMTP, Email Hub
+- voice_call → Chiamate Voice, Voce AI (3 lezioni)
+- sms → Twilio + WhatsApp Business
+- instagram_dm → Instagram Direct Messaging
+- nurturing_lead365 → Email Nurturing 365
+- email_journey → Email Journey
+- appuntamento → Google Calendar, Calendario Agenti AI
+- prima_call/seconda_call → Agente Consulenziale
+- chiusura/pagamento → Stripe — Pagamenti
+- onboarding → Primo Corso, Formazione
+- servizio → Modello di business, Gestire licenze
+- followup → Email Riassuntiva, Prima Campagna Marketing
 `;
 
 const SUBTITLE_SUGGESTIONS = `
@@ -132,6 +160,38 @@ SOTTOTITOLI CONSIGLIATI per ogni tipo di nodo (usa questi o simili in italiano):
 - email_journey → "Percorso email mensile clienti"
 - custom_step → "Step personalizzato"
 `;
+
+const NODE_TYPE_ACADEMY_MAP: Record<string, string[]> = {
+  facebook_ads: ["pkg_cs_advisage", "pkg_cs_ideas"],
+  google_ads: ["pkg_cs_advisage"],
+  instagram_ads: ["pkg_cs_advisage", "instagram", "pkg_cs_ideas"],
+  tiktok_ads: ["pkg_cs_advisage"],
+  offline_referral: ["pkg_pay_vendere"],
+  organic: ["pkg_cs_ideas", "pkg_cs_publer"],
+  landing_page: ["agent_public_link"],
+  form_modulo: ["lead_import"],
+  lead_magnet: ["knowledge_base"],
+  webhook: ["lead_import"],
+  import_excel: ["lead_import"],
+  crm_hunter: ["pkg_hunter_come_funziona", "pkg_hunter_ricerca", "pkg_hunter_contatto"],
+  setter_ai: ["pkg_setter_come_funziona", "pkg_setter_primo_agente", "pkg_setter_qualifica"],
+  whatsapp: ["agent_inbound", "whatsapp_template", "whatsapp_ai"],
+  email: ["smtp", "email_hub", "pkg_email_hub"],
+  voice_call: ["voice_calls", "pkg_voce_alessia", "pkg_voce_centralino"],
+  sms: ["twilio"],
+  instagram_dm: ["instagram"],
+  nurturing_lead365: ["nurturing_emails", "pkg_email_nurturing"],
+  email_journey: ["email_journey", "pkg_email_sequenza"],
+  appuntamento: ["google_calendar", "google_calendar_agents", "pkg_lq_appuntamenti"],
+  prima_call: ["agent_consultative", "pkg_lq_appuntamenti"],
+  seconda_call: ["agent_consultative"],
+  chiusura: ["stripe_connect", "pkg_pay_stripe"],
+  pagamento: ["stripe_connect", "pkg_pay_stripe", "pkg_pay_vendere"],
+  onboarding: ["first_course", "pkg_form_corso"],
+  servizio: ["pkg_pay_modello", "pkg_team_licenze"],
+  followup: ["summary_email", "first_campaign", "pkg_email_sequenza"],
+  custom_step: [],
+};
 
 router.post("/generate", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
@@ -211,12 +271,46 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
       return res.status(500).json({ error: "Formato non valido: mancano i nodi" });
     }
 
+    let academyLessonsByLessonId: Record<string, any> = {};
+    try {
+      const academyResult = await db.execute(sql`
+        SELECT
+          al.lesson_id as "lessonId",
+          al.title,
+          am.title as "moduleTitle",
+          am.emoji as "moduleEmoji",
+          al.config_link as "configLink",
+          (SELECT COUNT(*)::int FROM academy_lesson_videos alv WHERE alv.lesson_id = al.id) as "videoCount"
+        FROM academy_lessons al
+        JOIN academy_modules am ON al.module_id = am.id
+      `);
+      for (const row of academyResult.rows as any[]) {
+        academyLessonsByLessonId[row.lessonId] = row;
+      }
+    } catch (e) {
+      console.error("[Funnel] Academy lessons fetch for auto-linking:", e);
+    }
+
     const validCategories = ["sorgenti", "cattura", "gestione", "comunicazione", "conversione", "delivery", "custom"];
 
     const nodes = parsed.nodes.map((n: any) => {
       const nodeType = n.type || "custom_step";
       const rawCategory = n.data?.category;
       const category = validCategories.includes(rawCategory) ? rawCategory : getCategoryForType(nodeType);
+
+      const mappedLessonIds = NODE_TYPE_ACADEMY_MAP[nodeType] || [];
+      const academyLessons = mappedLessonIds
+        .map((lid: string) => academyLessonsByLessonId[lid])
+        .filter(Boolean)
+        .map((l: any) => ({
+          lessonId: l.lessonId,
+          title: l.title,
+          moduleTitle: l.moduleTitle,
+          moduleEmoji: l.moduleEmoji,
+          configLink: l.configLink,
+          videoCount: l.videoCount || 0,
+        }));
+
       return {
       id: n.id || `node_${Math.random().toString(36).substr(2, 9)}`,
       type: "funnelNode",
@@ -231,6 +325,7 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
         conversionRate: n.data?.conversionRate || null,
         linkedEntity: null,
         linkedEntities: [],
+        academyLessons: academyLessons.length > 0 ? academyLessons : undefined,
       },
     };
     });
@@ -254,6 +349,29 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
   }
 });
 
+
+router.get("/entities/academy-lessons", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await db.execute(sql`
+      SELECT
+        al.id,
+        al.lesson_id as "lessonId",
+        al.title,
+        am.title as "moduleTitle",
+        am.emoji as "moduleEmoji",
+        al.config_link as "configLink",
+        (SELECT COUNT(*)::int FROM academy_lesson_videos alv WHERE alv.lesson_id = al.id) as "videoCount"
+      FROM academy_lessons al
+      JOIN academy_modules am ON al.module_id = am.id
+      ORDER BY am.sort_order, al.sort_order
+    `);
+
+    res.json({ lessons: result.rows, nodeTypeMap: NODE_TYPE_ACADEMY_MAP });
+  } catch (error: any) {
+    console.error("[Funnel] Entities/academy-lessons error:", error);
+    res.json({ lessons: [], nodeTypeMap: {} });
+  }
+});
 
 router.get("/entities/posts", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {

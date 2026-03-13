@@ -12,12 +12,14 @@ import {
   Users, Bot, Target, Megaphone, Globe, Magnet,
   ChevronDown, ChevronRight, Clock, Zap,
   Palette, AlertTriangle, Flag, Plus, Trash2,
+  GraduationCap, BookOpen,
 } from "lucide-react";
 import {
   type FunnelNodeData,
   type LinkedEntity,
   type EntityType,
   type NodeStatus,
+  type AcademyLink,
   CATEGORY_COLORS,
   CATEGORY_LABELS,
   NODE_STATUS_CONFIG,
@@ -27,6 +29,7 @@ import {
   getEntityLabel,
   getPlatformFilterForNode,
   getLinkedEntities,
+  NODE_TYPE_ACADEMY_MAP,
 } from "./funnel-node-types";
 
 interface NodeConfigPanelProps {
@@ -127,6 +130,11 @@ export function NodeConfigPanel({
   const [entitySearch, setEntitySearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState<string>("");
   const [newTag, setNewTag] = useState("");
+  const [academyLessons, setAcademyLessons] = useState<AcademyLink[]>([]);
+  const [academyNodeTypeMap, setAcademyNodeTypeMap] = useState<Record<string, string[]>>({});
+  const [loadingAcademy, setLoadingAcademy] = useState(false);
+  const [showAcademyPicker, setShowAcademyPicker] = useState(false);
+  const [academySearch, setAcademySearch] = useState("");
 
   const typeDef = getNodeTypeDefinition(data.type);
   const colors = CATEGORY_COLORS[data.category] || CATEGORY_COLORS.custom;
@@ -218,6 +226,55 @@ export function NodeConfigPanel({
 
   const handleRemoveTag = (tag: string) => {
     onUpdate(nodeId, { tags: (data.tags || []).filter((t) => t !== tag) });
+  };
+
+  const fetchAcademyLessons = useCallback(async () => {
+    setLoadingAcademy(true);
+    try {
+      const res = await fetch("/api/funnels/entities/academy-lessons", { headers: getAuthHeaders() });
+      if (res.ok) {
+        const result = await res.json();
+        setAcademyLessons(Array.isArray(result.lessons) ? result.lessons : []);
+        if (result.nodeTypeMap) setAcademyNodeTypeMap(result.nodeTypeMap);
+      }
+    } catch (err) {
+      console.error("Error fetching academy lessons:", err);
+    } finally {
+      setLoadingAcademy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showAcademyPicker) {
+      fetchAcademyLessons();
+    }
+  }, [showAcademyPicker, fetchAcademyLessons]);
+
+  const currentAcademyLessons = data.academyLessons || [];
+  const linkedAcademyIds = new Set(currentAcademyLessons.map((al) => al.lessonId));
+  const serverSuggestedIds = academyNodeTypeMap[data.type] || [];
+  const suggestedLessonIds = serverSuggestedIds.length > 0 ? serverSuggestedIds : (NODE_TYPE_ACADEMY_MAP[data.type] || []);
+
+  const filteredAcademyLessons = academyLessons.filter((al) =>
+    !linkedAcademyIds.has(al.lessonId) &&
+    (!academySearch.trim() ||
+      al.title.toLowerCase().includes(academySearch.toLowerCase()) ||
+      al.moduleTitle.toLowerCase().includes(academySearch.toLowerCase()))
+  );
+
+  const suggestedAcademyLessons = filteredAcademyLessons.filter((al) => suggestedLessonIds.includes(al.lessonId));
+  const otherAcademyLessons = filteredAcademyLessons.filter((al) => !suggestedLessonIds.includes(al.lessonId));
+
+  const handleLinkAcademy = (lesson: AcademyLink) => {
+    if (currentAcademyLessons.some((al) => al.lessonId === lesson.lessonId)) return;
+    const updated = [...currentAcademyLessons, lesson];
+    onUpdate(nodeId, { academyLessons: updated });
+    setShowAcademyPicker(false);
+  };
+
+  const handleUnlinkAcademy = (lessonId: string) => {
+    const updated = currentAcademyLessons.filter((al) => al.lessonId !== lessonId);
+    onUpdate(nodeId, { academyLessons: updated });
   };
 
   const Icon = typeDef?.icon;
@@ -640,6 +697,153 @@ export function NodeConfigPanel({
                 )}
               </>
             )}
+          </Section>
+
+          <Section title="Accademia" icon={GraduationCap} defaultOpen={currentAcademyLessons.length > 0}>
+            <div className="space-y-1.5 overflow-hidden">
+              <div className="flex items-center justify-between">
+                <FieldLabel>Lezioni Collegate</FieldLabel>
+                {currentAcademyLessons.length > 0 && (
+                  <span className="text-[10px] text-gray-400">{currentAcademyLessons.length} {currentAcademyLessons.length === 1 ? "lezione" : "lezioni"}</span>
+                )}
+              </div>
+
+              {currentAcademyLessons.length > 0 && (
+                <div className="space-y-1.5 overflow-hidden">
+                  {currentAcademyLessons.map((al) => (
+                    <div key={al.lessonId} className="rounded-lg border border-indigo-200 dark:border-indigo-800 overflow-hidden">
+                      <div className="p-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-md bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                            <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{al.title}</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-[10px] text-gray-500">{al.moduleEmoji} {al.moduleTitle}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 p-1.5 bg-gray-50 dark:bg-gray-800/50 border-t border-indigo-200 dark:border-indigo-800">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 h-7 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                          onClick={() => navigate(`/consultant/academy?lesson=${al.lessonId}`)}
+                        >
+                          <BookOpen className="w-3 h-3 mr-1" />
+                          Vai alla lezione
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                          onClick={() => handleUnlinkAcademy(al.lessonId)}
+                        >
+                          <Unlink className="w-3 h-3 mr-1" />
+                          Scollega
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-9 text-xs gap-1.5 border-dashed hover:border-solid transition-all border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400"
+                onClick={() => setShowAcademyPicker(true)}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {currentAcademyLessons.length > 0 ? "Aggiungi lezione" : "Collega lezione Accademia"}
+              </Button>
+
+              {showAcademyPicker && (
+                <div className="border border-indigo-200 dark:border-indigo-700 rounded-lg overflow-hidden max-w-full">
+                  <div className="p-2 border-b border-indigo-200 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-900/20">
+                    <Input
+                      placeholder="Cerca lezione..."
+                      value={academySearch}
+                      onChange={(e) => setAcademySearch(e.target.value)}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto overflow-x-hidden">
+                    {loadingAcademy ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                      </div>
+                    ) : filteredAcademyLessons.length === 0 ? (
+                      <div className="text-center py-4 px-3">
+                        <p className="text-xs text-gray-400">Nessuna lezione trovata</p>
+                      </div>
+                    ) : (
+                      <>
+                        {suggestedAcademyLessons.length > 0 && (
+                          <>
+                            <div className="px-2 py-1 bg-indigo-50/80 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-800">
+                              <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Suggerite per questo nodo</span>
+                            </div>
+                            {suggestedAcademyLessons.map((al) => (
+                              <button
+                                key={al.lessonId}
+                                onClick={() => handleLinkAcademy(al)}
+                                className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors text-left border-b border-gray-100 dark:border-gray-800 last:border-b-0"
+                              >
+                                <span className="text-sm shrink-0">{al.moduleEmoji}</span>
+                                <div className="flex-1 min-w-0 overflow-hidden">
+                                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{al.title}</p>
+                                  <p className="text-[10px] text-gray-400 truncate">{al.moduleTitle}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </>
+                        )}
+                        {otherAcademyLessons.length > 0 && (
+                          <>
+                            {suggestedAcademyLessons.length > 0 && (
+                              <div className="px-2 py-1 bg-gray-50/80 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800">
+                                <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Altre lezioni</span>
+                              </div>
+                            )}
+                            {otherAcademyLessons.map((al) => (
+                              <button
+                                key={al.lessonId}
+                                onClick={() => handleLinkAcademy(al)}
+                                className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-left border-b border-gray-100 dark:border-gray-800 last:border-b-0"
+                              >
+                                <span className="text-sm shrink-0">{al.moduleEmoji}</span>
+                                <div className="flex-1 min-w-0 overflow-hidden">
+                                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{al.title}</p>
+                                  <p className="text-[10px] text-gray-400 truncate">{al.moduleTitle}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  <div className="p-1.5 border-t border-indigo-200 dark:border-indigo-700">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-6 text-[10px]"
+                      onClick={() => {
+                        setShowAcademyPicker(false);
+                        setAcademySearch("");
+                      }}
+                    >
+                      Chiudi
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </Section>
         </div>
       </ScrollArea>
