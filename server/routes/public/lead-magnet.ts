@@ -720,6 +720,40 @@ Ragiona in modo strutturato e critico.`,
   }
 });
 
+const funnelGenTimestamps = new Map<string, number>();
+
+router.post('/:token/generate-funnel', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    if (!token || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+      return res.status(400).json({ success: false, error: 'Token non valido' });
+    }
+
+    const now = Date.now();
+    const lastGen = funnelGenTimestamps.get(token) || 0;
+    if (now - lastGen < 30000) {
+      return res.status(429).json({ success: false, error: 'Richiesta troppo frequente, riprova tra qualche secondo' });
+    }
+    funnelGenTimestamps.set(token, now);
+
+    const sessionRes = await db.execute(sql`
+      SELECT id, consultant_id FROM delivery_agent_sessions
+      WHERE public_token = ${token} AND is_public = true
+      LIMIT 1
+    `);
+    if (sessionRes.rows.length === 0) return res.status(404).json({ success: false, error: 'Sessione non trovata' });
+    const session = sessionRes.rows[0] as any;
+    const consultantId = session.consultant_id || FALLBACK_CONSULTANT_ID;
+
+    const { generateFunnelFromReport } = await import('../funnel-router');
+    const result = await generateFunnelFromReport(consultantId, session.id);
+    res.json({ success: true, data: { funnelId: result.funnelId } });
+  } catch (err: any) {
+    console.error('[LeadMagnet] Funnel generation error:', err);
+    res.status(500).json({ success: false, error: 'Errore nella generazione del funnel' });
+  }
+});
+
 router.get('/:token/funnel', async (req: Request, res: Response) => {
   try {
     const { token } = req.params;

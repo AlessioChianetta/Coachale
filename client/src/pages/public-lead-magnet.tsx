@@ -353,6 +353,46 @@ function ReportSection({ report, leadName, publicToken }: { report: any; leadNam
   const roadmap = report.roadmap || [];
   const quickWins = report.quick_wins || [];
   const [funnelNodes, setFunnelNodes] = useState<any[] | null>(null);
+  const [funnelGenerating, setFunnelGenerating] = useState(false);
+  const [funnelError, setFunnelError] = useState<string | null>(null);
+
+  const handleGeneratePublicFunnel = async () => {
+    setFunnelGenerating(true);
+    setFunnelError(null);
+    try {
+      const res = await fetch(`/api/public/lead-magnet/${publicToken}/generate-funnel`, { method: 'POST' });
+      if (res.ok) {
+        const pollFunnel = async (retries = 0): Promise<void> => {
+          if (retries > 10) {
+            setFunnelGenerating(false);
+            setFunnelError('La generazione sta richiedendo più tempo del previsto. Ricarica la pagina tra qualche istante.');
+            return;
+          }
+          await new Promise(r => setTimeout(r, 3000));
+          try {
+            const fr = await fetch(`/api/public/lead-magnet/${publicToken}/funnel`);
+            if (fr.ok) {
+              const d = await fr.json();
+              if (d.data?.nodes) {
+                setFunnelNodes(d.data.nodes);
+                setFunnelGenerating(false);
+                return;
+              }
+            }
+          } catch {}
+          return pollFunnel(retries + 1);
+        };
+        pollFunnel();
+      } else {
+        const errData = await res.json().catch(() => null);
+        setFunnelError(errData?.error || 'Errore nella generazione del funnel');
+        setFunnelGenerating(false);
+      }
+    } catch {
+      setFunnelError('Errore di connessione. Riprova tra qualche istante.');
+      setFunnelGenerating(false);
+    }
+  };
 
   useEffect(() => {
     if (!publicToken || funnelNodes) return;
@@ -549,6 +589,79 @@ function ReportSection({ report, leadName, publicToken }: { report: any; leadNam
                   );
                 })}
             </div>
+          </section>
+        )}
+
+        {!funnelNodes && !funnelGenerating && (
+          <section style={{ marginBottom: '40px' }}>
+            <div style={{
+              background: 'rgba(99,102,241,0.08)',
+              border: '1px solid rgba(99,102,241,0.25)',
+              borderRadius: '16px',
+              padding: '28px',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                width: '48px', height: '48px', borderRadius: '12px',
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+                </svg>
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#f8fafc', margin: '0 0 8px' }}>
+                Genera il Tuo Percorso Strategico
+              </h3>
+              <p style={{ fontSize: '14px', color: '#94a3b8', margin: '0 0 20px', lineHeight: 1.6 }}>
+                Crea un funnel personalizzato basato sulla tua analisi per visualizzare il percorso passo dopo passo
+              </p>
+              {funnelError && (
+                <p style={{ fontSize: '13px', color: '#f87171', margin: '0 0 16px', lineHeight: 1.5 }}>
+                  {funnelError}
+                </p>
+              )}
+              <button
+                onClick={handleGeneratePublicFunnel}
+                style={{
+                  padding: '12px 32px', borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  color: '#fff', fontSize: '14px', fontWeight: 600,
+                  border: 'none', cursor: 'pointer',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                {funnelError ? 'Riprova' : 'Genera Funnel Personalizzato'}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {funnelGenerating && !funnelNodes && (
+          <section style={{ marginBottom: '40px', textAlign: 'center' }}>
+            <div style={{
+              background: 'rgba(99,102,241,0.08)',
+              border: '1px solid rgba(99,102,241,0.2)',
+              borderRadius: '16px',
+              padding: '32px',
+            }}>
+              <div style={{
+                width: '40px', height: '40px',
+                border: '3px solid rgba(99,102,241,0.3)',
+                borderTopColor: '#6366f1',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 16px',
+              }} />
+              <p style={{ fontSize: '15px', fontWeight: 600, color: '#c7d2fe', margin: '0 0 4px' }}>
+                Generazione in corso...
+              </p>
+              <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+                Leonardo sta creando il tuo percorso personalizzato
+              </p>
+            </div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </section>
         )}
 

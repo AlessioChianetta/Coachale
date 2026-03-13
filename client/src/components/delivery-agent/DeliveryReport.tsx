@@ -572,9 +572,8 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
   }, [sessionId]);
 
   useEffect(() => {
-    if (funnelId) return;
     if (isPublic) {
-      if (!publicToken) return;
+      if (!publicToken || publicFunnelData) return;
       const checkPublicFunnel = async () => {
         try {
           const res = await fetch(`/api/public/lead-magnet/${publicToken}/funnel`);
@@ -591,6 +590,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
       const interval = setInterval(checkPublicFunnel, 10000);
       return () => clearInterval(interval);
     } else {
+      if (funnelId) return;
       const checkFunnel = async () => {
         try {
           const res = await fetch(`/api/funnels/by-session/${sessionId}`, { headers: getAuthHeaders() });
@@ -604,20 +604,33 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
       const interval = setInterval(checkFunnel, 10000);
       return () => clearInterval(interval);
     }
-  }, [sessionId, isPublic, funnelId, publicToken]);
+  }, [sessionId, isPublic, funnelId, publicFunnelData, publicToken]);
 
   const handleGenerateFunnel = async () => {
     setFunnelLoading(true);
     try {
-      const res = await fetch('/api/funnels/generate-from-report', {
-        method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId }),
-      });
+      let res;
+      if (isPublic && publicToken) {
+        res = await fetch(`/api/public/lead-magnet/${publicToken}/generate-funnel`, { method: 'POST' });
+      } else {
+        res = await fetch('/api/funnels/generate-from-report', {
+          method: 'POST',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId }),
+        });
+      }
       if (res.ok) {
         const data = await res.json();
-        if (data.funnelId) {
-          setFunnelId(data.funnelId);
+        const newFunnelId = data.funnelId || data.data?.funnelId;
+        if (newFunnelId) {
+          setFunnelId(newFunnelId);
+          if (isPublic && publicToken) {
+            const fr = await fetch(`/api/public/lead-magnet/${publicToken}/funnel`);
+            if (fr.ok) {
+              const fd = await fr.json();
+              if (fd.data) setPublicFunnelData(fd.data);
+            }
+          }
           toast({ title: "Funnel generato!", description: "Il funnel personalizzato è stato creato" });
         }
       } else {
@@ -803,9 +816,9 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
               {sidebarOpen ? "Nascondi indice" : "Indice"}
             </Button>
           </div>
-          {!isPublic && (
-            <div className="flex items-center gap-2">
-              {funnelId ? (
+          <div className="flex items-center gap-2">
+            {funnelId ? (
+              !isPublic ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -814,26 +827,30 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                 >
                   <Layers className="w-3.5 h-3.5" /> Vedi Funnel
                 </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs"
-                  onClick={handleGenerateFunnel}
-                  disabled={funnelLoading}
-                >
-                  {funnelLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />}
-                  {funnelLoading ? "Generando..." : "Genera Funnel"}
+              ) : null
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={handleGenerateFunnel}
+                disabled={funnelLoading}
+              >
+                {funnelLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />}
+                {funnelLoading ? "Generando..." : "Genera Funnel"}
+              </Button>
+            )}
+            {!isPublic && (
+              <>
+                <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5 text-xs">
+                  <Share2 className="w-3.5 h-3.5" /> Condividi
                 </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5 text-xs">
-                <Share2 className="w-3.5 h-3.5" /> Condividi
-              </Button>
-              <Button size="sm" onClick={handleDownloadPdf} className="gap-1.5 text-xs bg-foreground text-background hover:bg-foreground/90">
-                <Download className="w-3.5 h-3.5" /> Scarica PDF
-              </Button>
-            </div>
-          )}
+                <Button size="sm" onClick={handleDownloadPdf} className="gap-1.5 text-xs bg-foreground text-background hover:bg-foreground/90">
+                  <Download className="w-3.5 h-3.5" /> Scarica PDF
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         <ScrollArea className="flex-1" ref={contentRef}>
@@ -1413,6 +1430,28 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                       </Button>
                     </div>
                   </div>
+                </div>
+              </section>
+            )}
+
+            {isPublic && !publicFunnelData && !funnelId && (
+              <section className="mb-14">
+                <div className="rounded-xl border border-indigo-200/30 bg-indigo-50/30 dark:bg-indigo-950/10 p-6 text-center">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mx-auto mb-4">
+                    <Layers className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="text-base font-bold text-foreground mb-2">Genera il Tuo Percorso Strategico</h3>
+                  <p className="text-xs text-muted-foreground mb-4 max-w-md mx-auto leading-relaxed">
+                    Crea un funnel personalizzato basato sulla tua analisi per visualizzare il percorso passo dopo passo
+                  </p>
+                  <Button
+                    onClick={handleGenerateFunnel}
+                    disabled={funnelLoading}
+                    className="gap-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600"
+                  >
+                    {funnelLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Layers className="w-4 h-4" />}
+                    {funnelLoading ? "Generazione in corso..." : "Genera Funnel Personalizzato"}
+                  </Button>
                 </div>
               </section>
             )}
