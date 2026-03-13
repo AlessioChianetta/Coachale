@@ -824,7 +824,7 @@ export default function ConsultantAcademy() {
 
           {activeTab === "delivery" ? (
             <div className="flex-1 min-h-0 overflow-hidden">
-              <DeliveryAgentPanel initialSessionId={urlSessionId} />
+              <DeliveryAgentPanel initialSessionId={urlSessionId} onBack={() => setActiveTab("academy")} />
             </div>
           ) : activeTab === "setup-wizard" ? (
             <div className="flex-1 min-h-0 overflow-hidden">

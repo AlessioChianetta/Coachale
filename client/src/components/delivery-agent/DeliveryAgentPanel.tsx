@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -37,11 +37,14 @@ import {
   Sparkles,
   User,
   ChevronDown,
+  GitBranch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DeliveryChat } from "./DeliveryChat";
 import { DeliveryReport } from "./DeliveryReport";
 import { DeliveryCatalogo } from "./DeliveryCatalogo";
+
+const FunnelBuilderTab = lazy(() => import("@/components/funnel-builder/FunnelBuilderTab"));
 
 interface DeliverySession {
   id: string;
@@ -252,7 +255,7 @@ function SessionItem({
   );
 }
 
-export function DeliveryAgentPanel({ initialSessionId }: { initialSessionId?: string | null } = {}) {
+export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessionId?: string | null; onBack?: () => void } = {}) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [sessions, setSessions] = useState<DeliverySession[]>([]);
@@ -262,10 +265,11 @@ export function DeliveryAgentPanel({ initialSessionId }: { initialSessionId?: st
   const [simulatorStep, setSimulatorStep] = useState<"niche" | "attitude" | null>(null);
   const [selectedNiche, setSelectedNiche] = useState<typeof SIMULATOR_NICHES[number] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showSidebar, setShowSidebar] = useState(!isMobile);
-  const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo">("chat");
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo" | "funnel">("chat");
   const [initialSessionLoaded, setInitialSessionLoaded] = useState(false);
   const [showLeadMagnet, setShowLeadMagnet] = useState<boolean | null>(null);
+  const [sessionFunnelId, setSessionFunnelId] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -295,6 +299,27 @@ export function DeliveryAgentPanel({ initialSessionId }: { initialSessionId?: st
       loadSession(initialSessionId);
     }
   }, [initialSessionId, loading, initialSessionLoaded, sessions]);
+
+  useEffect(() => {
+    if (!activeSessionId) { setSessionFunnelId(null); return; }
+    const fetchFunnelId = async () => {
+      try {
+        const res = await fetch(`/api/funnels/by-session/${activeSessionId}`, {
+          headers: getAuthHeaders(),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.id) setSessionFunnelId(data.id);
+          else setSessionFunnelId(null);
+        } else {
+          setSessionFunnelId(null);
+        }
+      } catch {
+        setSessionFunnelId(null);
+      }
+    };
+    fetchFunnelId();
+  }, [activeSessionId]);
 
   const loadSession = useCallback(
     async (sessionId: string) => {
@@ -583,56 +608,92 @@ export function DeliveryAgentPanel({ initialSessionId }: { initialSessionId?: st
       )}
 
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
-        <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSidebar(!showSidebar)}
-              className="h-8 w-8 p-0"
-            >
-              {showSidebar ? (
-                <ChevronLeft className="w-4 h-4" />
-              ) : (
-                <Menu className="w-4 h-4" />
+        <div className="border-b border-border/60">
+          <div className="flex items-center justify-between px-3 py-1.5">
+            <div className="flex items-center gap-2">
+              {onBack && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onBack}
+                  className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Academy
+                </Button>
               )}
-            </Button>
-            {activeSession && (
-              <PhaseIndicator status={activeSession.status} />
-            )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSidebar(!showSidebar)}
+                className="h-8 w-8 p-0"
+              >
+                {showSidebar ? (
+                  <ChevronLeft className="w-4 h-4" />
+                ) : (
+                  <Menu className="w-4 h-4" />
+                )}
+              </Button>
+              {activeSession && (
+                <PhaseIndicator status={activeSession.status} />
+              )}
+            </div>
           </div>
+
           {activeSession &&
             activeSession.mode !== "sales_coach" &&
             (activeSession.status === "completed" ||
               activeSession.status === "assistant") && (
-              <div className="flex items-center gap-1">
-                <Button
-                  variant={viewMode === "chat" ? "default" : "ghost"}
-                  size="sm"
+              <div className="flex">
+                <button
                   onClick={() => setViewMode("chat")}
-                  className="h-7 text-xs gap-1"
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
+                    viewMode === "chat"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <MessageSquare className="w-3.5 h-3.5" />
+                  <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Chat
-                </Button>
-                <Button
-                  variant={viewMode === "report" ? "default" : "ghost"}
-                  size="sm"
+                </button>
+                <button
                   onClick={() => setViewMode("report")}
-                  className="h-7 text-xs gap-1"
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
+                    viewMode === "report"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <FileText className="w-3.5 h-3.5" />
+                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Report
-                </Button>
-                <Button
-                  variant={viewMode === "catalogo" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("catalogo")}
-                  className="h-7 text-xs gap-1"
+                </button>
+                <button
+                  onClick={() => setViewMode("funnel")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
+                    viewMode === "funnel"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <Layers className="w-3.5 h-3.5" />
-                  Catalogo
-                </Button>
+                  <GitBranch className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  Funnel
+                </button>
+                <button
+                  onClick={() => setViewMode("catalogo")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
+                    viewMode === "catalogo"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Catalogo</span>
+                  <span className="xs:hidden">Cat.</span>
+                </button>
               </div>
             )}
         </div>
@@ -718,6 +779,17 @@ export function DeliveryAgentPanel({ initialSessionId }: { initialSessionId?: st
               sessionId={activeSession.id}
               onBackToChat={() => setViewMode("chat")}
             />
+          ) : viewMode === "funnel" ? (
+            <Suspense fallback={
+              <div className="flex-1 flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Caricamento Funnel Builder...</p>
+                </div>
+              </div>
+            }>
+              <FunnelBuilderTab initialFunnelId={sessionFunnelId} />
+            </Suspense>
           ) : viewMode === "catalogo" ? (
             <DeliveryCatalogo
               sessionId={activeSession.id}
