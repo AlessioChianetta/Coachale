@@ -7130,13 +7130,15 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
 ${chatModeDescription} Questa è una CONVERSAZIONE — non un report. Rispondi come in una chat WhatsApp: naturale, diretto, e soprattutto INTERATTIVO.
 
 COME COMPORTARTI IN CHAT:
-- Fai domande di follow-up — non limitarti a dare ordini o report
-- Se ti dicono qualcosa, rispondi a QUELLO specificamente
-- Chiedi chiarimenti se non hai abbastanza contesto
+- Rispondi a QUELLO che ti hanno scritto — non ripetere punti già discussi
+- Se l'utente ha già risposto su un argomento, VAI AVANTI — non tornare indietro
+- Max 3-4 paragrafi BREVI per messaggio — mai muri di testo
+- UNA domanda alla fine del messaggio, non 3-4 domande insieme
+- NON fare elenchi numerati di "cose da fare" — parla in modo fluido e naturale
+- Se vuoi menzionare un task, fallo nel discorso, non come lista puntata
+- Concentrati su UN concetto per messaggio, non 4 concetti compressi
 - Proponi azioni ma CHIEDI conferma ("vuoi che proceda?" / "ti torna?")
-- Se hai task attivi o completati, menzionali naturalmente nella conversazione
-- Usa paragrafi separati per ogni concetto (NON fare muri di testo)
-- Usa **grassetto** per i punti chiave e le cifre importanti
+- Usa **grassetto** solo per 1-2 parole chiave, non per intere frasi
 ${isTelegram && isGroupChat ? '- Nel gruppo sii conciso (max 3-4 righe se possibile)\n- Ricorda chi è ogni persona e adatta le risposte alla persona specifica' : ''}
 
 ${!isOpenMode && focusPriorities.length > 0 ? `\nLE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: any, i: number) => `${i + 1}. ${typeof p === 'string' ? p : p.text || p.name || JSON.stringify(p)}`).join('\n')}` : ''}
@@ -7196,7 +7198,14 @@ ${!isOpenMode && customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructi
     }
     systemPrompt += `\nStai parlando con un UTENTE ESTERNO che ti ha contattato via Telegram in modalità aperta.
 NON hai accesso ai dati privati del consulente. NON menzionare task, clienti, o informazioni riservate.
-Rispondi in modo utile e professionale basandoti sulla conversazione con questa persona.${openModeProfileSection}\n`;
+
+STILE OPEN MODE — REGOLE ASSOLUTE:
+- Rispondi CORTO: max 2-3 paragrafi brevi, come una chat reale
+- UNA cosa alla volta — non bombardare con 4 concetti
+- UNA domanda alla fine, mai di più
+- ZERO elenchi numerati o puntati — parla in modo fluido
+- Reagisci a quello che ti hanno scritto, poi chiudi con una domanda che fa pensare
+- Mantieni il TUO tono di personalità — non diventare un generico assistente educato${openModeProfileSection}\n`;
   }
 
   if (!isOpenMode && existingSummary) {
@@ -7229,18 +7238,17 @@ Rispondi in modo utile e professionale basandoti sulla conversazione con questa 
   let tasksTokenCount = 0;
 
   if (!isOpenMode && activeTasks.length > 0) {
-    systemPrompt += `\nI TUOI TASK ATTIVI — TOTALE: ${activeTasks.length} task:\n`;
+    systemPrompt += `\nI TUOI TASK ATTIVI (${activeTasks.length}):\n`;
     for (let idx = 0; idx < activeTasks.length; idx++) {
       const t = activeTasks[idx];
-      const statusLabels: Record<string, string> = {
-        scheduled: '📅 Programmato', waiting_approval: '⏳ In attesa approvazione',
-        in_progress: '⚡ In esecuzione', approved: '✅ Approvato', draft: '📝 Bozza', paused: '⏸️ In pausa',
+      const statusShort: Record<string, string> = {
+        scheduled: 'programmato', waiting_approval: 'da approvare',
+        in_progress: 'in corso', approved: 'approvato', draft: 'bozza', paused: 'pausa',
       };
-      const scheduledStr = t.scheduled_at ? ` [${new Date(t.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}]` : '';
-      const line = `${idx + 1}. [${statusLabels[t.status] || t.status}]${scheduledStr} ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 150)}\n`;
+      const line = `- ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 120)} [${statusShort[t.status] || t.status}]\n`;
       tasksTokenCount += estimateTokens(line);
       if (tasksTokenCount > MAX_TASKS_TOKENS) {
-        systemPrompt += `... e altri ${activeTasks.length - idx} task attivi (troncati per spazio)\n`;
+        systemPrompt += `... e altri ${activeTasks.length - idx} task\n`;
         break;
       }
       systemPrompt += line;
@@ -7248,21 +7256,14 @@ Rispondi in modo utile e professionale basandoti sulla conversazione con questa 
   }
 
   if (!isOpenMode && completedTasks.length > 0) {
-    systemPrompt += `\nTASK COMPLETATI — TOTALE: ${completedTasks.length} task:\n`;
+    systemPrompt += `\nTASK COMPLETATI RECENTI (${completedTasks.length}):\n`;
     for (let idx = 0; idx < completedTasks.length; idx++) {
       const t = completedTasks[idx];
-      const dateStr = t.completed_at ? new Date(t.completed_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' }) : 'N/A';
-      let line: string;
-      if (idx < 10) {
-        line = `${idx + 1}. [${dateStr}] ${t.ai_instruction?.substring(0, 200) || 'N/A'}`;
-        if (t.result_summary) line += ` → ${t.result_summary.substring(0, 200)}`;
-        line += '\n';
-      } else {
-        line = `${idx + 1}. [${dateStr}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.task_category || ''} — ${t.ai_instruction?.substring(0, 80) || 'N/A'}\n`;
-      }
+      const dateStr = t.completed_at ? new Date(t.completed_at).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome' }) : '';
+      const line = `- ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 100) || 'N/A'}${t.result_summary ? ` → ${t.result_summary.substring(0, 80)}` : ''} [${dateStr}]\n`;
       tasksTokenCount += estimateTokens(line);
       if (tasksTokenCount > MAX_TASKS_TOKENS) {
-        systemPrompt += `... e altri ${completedTasks.length - idx} task completati (troncati per spazio)\n`;
+        systemPrompt += `... e altri ${completedTasks.length - idx} completati\n`;
         break;
       }
       systemPrompt += line;
@@ -7425,52 +7426,41 @@ Rispondi in modo utile e professionale basandoti sulla conversazione con questa 
 7. NON inventare dati
 8. Usa grassetto SOLO per 1-2 parole chiave, non per intere frasi
 9. Se devi dire più cose, spezzale in messaggi separati mentalmente (usa paragrafi brevi)
-10. Reagisci al messaggio come farebbe la TUA personalità su Telegram${marcoTelegramExtra}${groupExtra}
+10. Reagisci al messaggio come farebbe la TUA personalità su Telegram${marcoTelegramExtra}${groupExtra}`;
+  } else if (isTelegram) {
+    systemPrompt += `\nSTAI RISPONDENDO SU TELEGRAM — REGOLE CHAT:
+1. Rispondi SEMPRE in italiano
+2. Scrivi CORTO — max 3-4 righe per messaggio, come su WhatsApp
+3. Vai dritto al punto, niente preamboli o riassunti
+4. NON fare elenchi numerati o puntati — parla in modo fluido
+5. UNA domanda alla volta alla fine del messaggio
+6. Mantieni il TUO tono di personalità
+7. NON inventare dati — basati solo sulle informazioni che hai
+8. Usa grassetto SOLO per 1-2 parole chiave
 
-AZIONI SUI TASK DA TELEGRAM:
-Se il consulente dice che ha già fatto un task ("l'ho fatta", "fatto", "ci ho pensato io", "già fatto"), puoi marcarlo come completato.
-- Identifica il task dal contesto, chiedi conferma se non è chiaro
-- Per completare: [[COMPLETATO:ID_DEL_TASK]]
-- Per approvare: [[APPROVA:ID_DEL_TASK]]
-- Per avviare: [[ESEGUI:ID_DEL_TASK]]
-- Chiedi SEMPRE conferma prima di agire, a meno che il consulente sia già esplicito`;
+${roleId !== 'simone' ? `FILE SEARCH (DOCUMENTI E KNOWLEDGE BASE):
+Hai accesso automatico ai documenti caricati dal consulente: note consulenze, progressi clienti, documenti KB, e qualsiasi altro file caricato.
+REGOLE ANTI-ALLUCINAZIONE:
+- Cita SEMPRE la fonte quando riporti informazioni da un documento
+- NON mescolare dati di clienti diversi senza distinguerli chiaramente
+- Se non trovi informazioni su qualcosa, dillo esplicitamente invece di inventare` : ''}`;
   } else {
     systemPrompt += `\nREGOLE:
 1. Rispondi SEMPRE in italiano
 2. Usa paragrafi separati (lascia una riga vuota tra concetti diversi)
-3. Sii CONCISO ma COMPLETO — max 3-4 paragrafi brevi
-4. DIALOGA: fai domande, chiedi feedback, proponi e chiedi conferma
-5. Se il consulente ti aggiorna, riconosci, commenta e suggerisci prossimi passi
-6. Se hai task in attesa di approvazione, chiedi se vuole approvarli
+3. Sii CONCISO — max 3-4 paragrafi brevi, NON fare muri di testo
+4. DIALOGA: fai UNA domanda alla fine, non 3-4 domande insieme
+5. Se il consulente ti aggiorna, riconosci e suggerisci il prossimo passo — UNO, non quattro
+6. NON ripetere cose già dette nei messaggi precedenti — se ne avete già parlato, vai avanti
 7. NON inventare dati — basati solo sulle informazioni che hai
-8. Usa **grassetto** per cifre e concetti chiave
+8. Usa **grassetto** solo per 1-2 parole chiave, non per intere frasi
 
-AZIONI SUI TASK:
-Puoi proporre di approvare, avviare o completare task. Il flusso è:
-1. PRIMA proponi l'azione e descrivi cosa farà il task, poi chiedi conferma esplicita
-2. SOLO DOPO che il consulente conferma (dice "sì", "ok", "vai", "procedi", "fallo", "approvalo"), includi il comando nella tua risposta
-3. Per approvare un task: scrivi [[APPROVA:ID_DEL_TASK]] nel tuo messaggio
-4. Per avviare l'esecuzione: scrivi [[ESEGUI:ID_DEL_TASK]] nel tuo messaggio
-5. Per marcare un task come "già fatto dal consulente": scrivi [[COMPLETATO:ID_DEL_TASK]] nel tuo messaggio
-6. NON eseguire mai azioni senza conferma esplicita del consulente
-7. Dopo aver incluso il comando, conferma al consulente cosa hai fatto
-
-TASK GIÀ COMPLETATI DAL CONSULENTE:
-Quando il consulente dice frasi come "l'ho già fatta", "ci ho pensato io", "è fatta", "l'ho fatta io", "già fatto", "me ne sono occupato io", "ho già provveduto", "fatto", devi:
-1. Capire a QUALE task si riferisce — dal contesto della conversazione o chiedendo chiarimento
-2. Se il task è chiaro e identificabile, chiedi conferma: "Perfetto, marco come completata la task [descrizione]?"
-3. SOLO dopo che conferma, includi [[COMPLETATO:ID_DEL_TASK]] nella risposta
-4. Se ci sono più task possibili, chiedi quale intende specificatamente
-5. Se il consulente è esplicito e sicuro (es. "quella su Mario Rossi l'ho fatta"), puoi marcarla direttamente senza doppia conferma
-
-${roleId !== 'simone' ? `FILE SEARCH (STORE GLOBALE CONSULENZE CLIENTI):
-Hai accesso automatico allo Store Globale Consulenze Clienti che contiene le Note Consulenze e i Progressi Email Journey di TUTTI i clienti attivi.
+${roleId !== 'simone' ? `FILE SEARCH (DOCUMENTI E KNOWLEDGE BASE):
+Hai accesso automatico ai documenti caricati dal consulente: note consulenze, progressi clienti, documenti KB, e qualsiasi altro file caricato.
 REGOLE ANTI-ALLUCINAZIONE:
-- Ogni documento ha il nome del cliente nel titolo (es. "[CLIENTE: Mario Rossi] - Consulenza - 15/02/2026")
-- Cita SEMPRE il nome del cliente quando riporti informazioni da un documento
-- NON mescolare MAI dati di clienti diversi nella stessa risposta senza distinguerli chiaramente
-- Se non trovi informazioni su un cliente specifico, dillo esplicitamente invece di inventare
-- Quando cerchi informazioni su un cliente, usa il suo nome completo come query di ricerca` : ''}`;
+- Cita SEMPRE la fonte quando riporti informazioni da un documento
+- NON mescolare dati di clienti diversi senza distinguerli chiaramente
+- Se non trovi informazioni su qualcosa, dillo esplicitamente invece di inventare` : ''}`;
   }
 
   if (roleId === 'simone') {
@@ -7631,158 +7621,42 @@ REGOLE ANTI-ALLUCINAZIONE:
     aiResponse = `Mi dispiace, c'è stato un problema tecnico. Riprova tra poco.`;
   }
 
+  // Clean up any legacy tag remnants the AI might still generate
+  aiResponse = aiResponse
+    .replace(/\[\[APPROVA:[^\]]+\]\]/gi, '')
+    .replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '')
+    .replace(/\[\[COMPLETATO:[^\]]+\]\]/gi, '')
+    .replace(/\[ACTIONS\][\s\S]*?\[\/ACTIONS\]/gi, '')
+    .trim();
+
+  // ── SUPERVISOR: LLM-based task management ──────────────────────────────────
   if (!isOpenMode) {
-    const approveMatches = aiResponse.match(/\[\[APPROVA:[^\]]+\]\]/gi) || [];
-    const executeMatches = aiResponse.match(/\[\[ESEGUI:[^\]]+\]\]/gi) || [];
-    const completedMatches = aiResponse.match(/\[\[COMPLETATO:[^\]]+\]\]/gi) || [];
-
-    if (approveMatches.length > 0 || executeMatches.length > 0 || completedMatches.length > 0) {
-      console.log(`📋 [AGENT-CHAT-INTERNAL] Action markers found for ${roleId}: APPROVA=${approveMatches.length}, ESEGUI=${executeMatches.length}, COMPLETATO=${completedMatches.length}`);
-    }
-
-    for (const match of approveMatches) {
-      const taskId = match.replace(/\[\[APPROVA:/i, '').replace(']]', '').trim();
-      try {
-        const taskCheck = await db.execute(sql`
-          SELECT id, status FROM ai_scheduled_tasks
-          WHERE id = ${taskId} AND consultant_id = ${consultantId}
-            AND status IN ('waiting_approval', 'scheduled', 'draft', 'paused')
-          LIMIT 1
-        `);
-        if ((taskCheck.rows[0] as any)?.id) {
-          await db.execute(sql`
-            UPDATE ai_scheduled_tasks
-            SET status = 'scheduled', scheduled_at = NOW(), updated_at = NOW(),
-                result_data = COALESCE(result_data, '{}'::jsonb) || '{"chat_approved": true, "skip_guardrails": true}'::jsonb
-            WHERE id = ${taskId} AND consultant_id = ${consultantId}
-          `);
-          console.log(`🚀 [AGENT-CHAT-INTERNAL] Task ${taskId} approved+scheduled via chat by ${roleId}`);
-        }
-      } catch (actionErr: any) {
-        console.error(`❌ [AGENT-CHAT-INTERNAL] Error approving task ${taskId}:`, actionErr.message);
-      }
-    }
-
-    for (const match of executeMatches) {
-      const taskId = match.replace(/\[\[ESEGUI:/i, '').replace(']]', '').trim();
-      try {
-        const taskCheck = await db.execute(sql`
-          SELECT id, status FROM ai_scheduled_tasks
-          WHERE id = ${taskId} AND consultant_id = ${consultantId}
-            AND status IN ('approved', 'waiting_approval', 'scheduled', 'draft', 'paused')
-          LIMIT 1
-        `);
-        if ((taskCheck.rows[0] as any)?.id) {
-          await db.execute(sql`
-            UPDATE ai_scheduled_tasks
-            SET status = 'scheduled', scheduled_at = NOW(), updated_at = NOW(),
-                result_data = COALESCE(result_data, '{}'::jsonb) || '{"chat_approved": true, "skip_guardrails": true}'::jsonb
-            WHERE id = ${taskId} AND consultant_id = ${consultantId}
-          `);
-          console.log(`🚀 [AGENT-CHAT-INTERNAL] Task ${taskId} executed via chat by ${roleId}`);
-        }
-      } catch (actionErr: any) {
-        console.error(`❌ [AGENT-CHAT-INTERNAL] Error executing task ${taskId}:`, actionErr.message);
-      }
-    }
-
-    for (const match of completedMatches) {
-      const taskId = match.replace(/\[\[COMPLETATO:/i, '').replace(']]', '').trim();
-      try {
-        const taskCheck = await db.execute(sql`
-          SELECT id, status FROM ai_scheduled_tasks
-          WHERE id = ${taskId} AND consultant_id = ${consultantId}
-            AND status IN ('scheduled', 'draft', 'waiting_approval', 'paused', 'approved')
-          LIMIT 1
-        `);
-        if ((taskCheck.rows[0] as any)?.id) {
-          await db.execute(sql`
-            UPDATE ai_scheduled_tasks
-            SET status = 'completed',
-                completed_at = NOW(),
-                updated_at = NOW(),
-                result_summary = COALESCE(result_summary, '') || E'\n[Completato manualmente dal consulente via chat]'
-            WHERE id = ${taskId} AND consultant_id = ${consultantId}
-          `);
-          console.log(`✅ [AGENT-CHAT-INTERNAL] Task ${taskId} marked as done by consultant via chat (${roleId})`);
-        }
-      } catch (actionErr: any) {
-        console.error(`❌ [AGENT-CHAT-INTERNAL] Error marking task ${taskId} as done:`, actionErr.message);
-      }
-    }
-  }
-
-  aiResponse = aiResponse.replace(/\[\[APPROVA:[^\]]+\]\]/gi, '').replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '').replace(/\[\[COMPLETATO:[^\]]+\]\]/gi, '').trim();
-
-  // ── CREATE TASK: server-side execution (works on ALL channels) ──────────────
-  // On Telegram (source='telegram' or isOpenMode), auto-execute create_task actions.
-  // On web, the [ACTIONS] block is left intact for client-side button rendering.
-  const isTelegramContext = options?.source === 'telegram' || isOpenMode;
-  const actionsBlockMatch = aiResponse.match(/\[ACTIONS\]([\s\S]*?)\[\/ACTIONS\]/i);
-  if (actionsBlockMatch) {
     try {
-      const rawJson = actionsBlockMatch[1].trim();
-      const actions: any[] = JSON.parse(rawJson);
-      const createTaskActions = actions.filter((a: any) => a.type === 'create_task');
-
-      if (createTaskActions.length > 0) {
-        const createdTitles: string[] = [];
-        const failedTitles: string[] = [];
-
-        for (const action of createTaskActions) {
-          const { clientId: taskClientId, title, description, priority, category, dueDate } = action.data || {};
-          if (!title) continue;
-          try {
-            if (taskClientId) {
-              // Client task: find or create a consultation, then insert
-              const consultResult = await db.execute(sql`
-                SELECT id FROM consultations
-                WHERE client_id = ${taskClientId} AND consultant_id = ${consultantId}
-                ORDER BY scheduled_at DESC LIMIT 1
-              `);
-              let consultationId = (consultResult.rows[0] as any)?.id;
-              if (!consultationId) {
-                const newConsult = await db.execute(sql`
-                  INSERT INTO consultations (client_id, consultant_id, scheduled_at, duration, status, notes)
-                  VALUES (${taskClientId}, ${consultantId}, NOW(), 0, 'completed', 'Consulenza generale per gestione task')
-                  RETURNING id
-                `);
-                consultationId = (newConsult.rows[0] as any)?.id;
-              }
-              await db.execute(sql`
-                INSERT INTO consultation_tasks (consultation_id, client_id, title, description, due_date, priority, category, source)
-                VALUES (${consultationId}, ${taskClientId}, ${title}, ${description || null}, ${dueDate ? new Date(dueDate) : null}, ${priority || 'medium'}, ${category || 'reminder'}, 'manual')
-              `);
-              console.log(`✅ [CREATE-TASK] Client task created: "${title}" for client ${taskClientId}`);
-            } else {
-              // Personal consultant task
-              await db.execute(sql`
-                INSERT INTO consultant_personal_tasks (consultant_id, title, description, due_date, priority, category)
-                VALUES (${consultantId}, ${title}, ${description || null}, ${dueDate ? new Date(dueDate) : null}, ${priority || 'medium'}, ${category || 'other'})
-              `);
-              console.log(`✅ [CREATE-TASK] Personal task created: "${title}" for consultant ${consultantId}`);
-            }
-            createdTitles.push(title);
-          } catch (taskErr: any) {
-            console.error(`❌ [CREATE-TASK] Error creating task "${title}":`, taskErr.message);
-            failedTitles.push(title);
-          }
-        }
-
-        if (isTelegramContext) {
-          // On Telegram: strip [ACTIONS] block and append text confirmation
-          aiResponse = aiResponse.replace(/\[ACTIONS\][\s\S]*?\[\/ACTIONS\]/i, '').trim();
-          if (createdTitles.length > 0) {
-            aiResponse += `\n\n✅ Task creati:\n${createdTitles.map(t => `• ${t}`).join('\n')}`;
-          }
-          if (failedTitles.length > 0) {
-            aiResponse += `\n\n❌ Errore nella creazione di:\n${failedTitles.map(t => `• ${t}`).join('\n')}`;
-          }
-        }
-        // On web: [ACTIONS] block is left intact → client renders buttons
+      const { runTaskSupervisor } = await import("../services/chat-task-supervisor");
+      const supervisorResult = await runTaskSupervisor({
+        consultantId,
+        roleId,
+        userMessage: message,
+        aiResponse,
+        recentMessages: fittingMessages.map((m: any) => ({
+          sender: m.sender || m.role || 'consultant',
+          message: m.message || m.content || '',
+        })),
+        activeTasks: activeTasks.map((t: any) => ({
+          id: t.id,
+          ai_instruction: t.ai_instruction,
+          status: t.status,
+          contact_name: t.contact_name,
+          task_category: t.task_category,
+          scheduled_at: t.scheduled_at,
+          priority: t.priority,
+        })),
+      });
+      if (supervisorResult.confirmation) {
+        aiResponse += supervisorResult.confirmation;
       }
-    } catch (parseErr: any) {
-      console.warn('[CREATE-TASK] Failed to parse [ACTIONS] block:', parseErr.message);
+    } catch (supervisorErr: any) {
+      console.warn(`[SUPERVISOR] Error running task supervisor:`, supervisorErr.message);
     }
   }
   // ────────────────────────────────────────────────────────────────────────────
