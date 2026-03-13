@@ -435,7 +435,7 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
     let response: any;
     try {
       response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-3.1-flash-lite-preview',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: 'application/json',
@@ -461,7 +461,7 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
       await tokenTracker.track({
         consultantId: params.consultantId,
         clientId: 'self',
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-3.1-flash-lite-preview',
         feature: `chat-supervisor:${params.roleId}`,
         requestType: 'generate',
         inputTokens,
