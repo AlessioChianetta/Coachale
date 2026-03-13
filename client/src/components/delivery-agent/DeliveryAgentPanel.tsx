@@ -608,97 +608,94 @@ export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessio
       )}
 
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
-        <div className="border-b border-border/60">
-          <div className="flex items-center justify-between px-2 sm:px-3 py-1 sm:py-1.5">
-            <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-              {onBack && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onBack}
-                  className="hidden sm:flex h-8 px-3 gap-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0"
+        {(() => {
+          const showTabs = activeSession &&
+            activeSession.mode !== "sales_coach" &&
+            (activeSession.status === "completed" || activeSession.status === "assistant");
+
+          const renderMenuBtn = (extraClass?: string) => (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSidebar(!showSidebar)}
+              className={cn("h-7 sm:h-8 w-7 sm:w-8 p-0 shrink-0", extraClass)}
+            >
+              {showSidebar ? <ChevronLeft className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </Button>
+          );
+
+          const viewTabs = (
+            <>
+              {([
+                { mode: "chat" as const, icon: MessageSquare, label: "Chat" },
+                { mode: "report" as const, icon: FileText, label: "Report" },
+                { mode: "funnel" as const, icon: GitBranch, label: "Funnel" },
+                { mode: "catalogo" as const, icon: Layers, label: "Cat." },
+              ] as const).map(t => (
+                <button
+                  key={t.mode}
+                  onClick={() => setViewMode(t.mode)}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
+                    viewMode === t.mode
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  Academy
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSidebar(!showSidebar)}
-                className="h-7 sm:h-8 w-7 sm:w-8 p-0 shrink-0"
-              >
-                {showSidebar ? (
-                  <ChevronLeft className="w-4 h-4" />
-                ) : (
-                  <Menu className="w-4 h-4" />
-                )}
-              </Button>
-              {activeSession && (
-                <div className="min-w-0 overflow-x-auto scrollbar-none">
-                  <PhaseIndicator status={activeSession.status} />
+                  <t.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  {t.label}
+                </button>
+              ))}
+            </>
+          );
+
+          return (
+            <div className="border-b border-border/60">
+              <div className="flex sm:hidden items-center">
+                <div className="shrink-0 px-1 py-1">
+                  {renderMenuBtn()}
+                </div>
+                {showTabs ? (
+                  <div className="flex flex-1 min-w-0">
+                    {viewTabs}
+                  </div>
+                ) : activeSession ? (
+                  <div className="min-w-0 overflow-x-auto scrollbar-none">
+                    <PhaseIndicator status={activeSession.status} />
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="hidden sm:flex items-center justify-between px-3 py-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  {onBack && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onBack}
+                      className="h-8 px-3 gap-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      Academy
+                    </Button>
+                  )}
+                  {renderMenuBtn()}
+                  {activeSession && (
+                    <div className="min-w-0 overflow-x-auto scrollbar-none">
+                      <PhaseIndicator status={activeSession.status} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {showTabs && (
+                <div className="hidden sm:flex">
+                  {viewTabs}
                 </div>
               )}
             </div>
-          </div>
-
-          {activeSession &&
-            activeSession.mode !== "sales_coach" &&
-            (activeSession.status === "completed" ||
-              activeSession.status === "assistant") && (
-              <div className="flex">
-                <button
-                  onClick={() => setViewMode("chat")}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
-                    viewMode === "chat"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  Chat
-                </button>
-                <button
-                  onClick={() => setViewMode("report")}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
-                    viewMode === "report"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  Report
-                </button>
-                <button
-                  onClick={() => setViewMode("funnel")}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
-                    viewMode === "funnel"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <GitBranch className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  Funnel
-                </button>
-                <button
-                  onClick={() => setViewMode("catalogo")}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-medium transition-colors border-b-2",
-                    viewMode === "catalogo"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="hidden xs:inline">Catalogo</span>
-                  <span className="xs:hidden">Cat.</span>
-                </button>
-              </div>
-            )}
-        </div>
+          );
+        })()}
 
         <div className="flex-1 overflow-hidden min-h-0">
           {!activeSession ? (
