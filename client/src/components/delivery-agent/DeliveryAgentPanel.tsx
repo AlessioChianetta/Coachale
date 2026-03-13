@@ -38,11 +38,13 @@ import {
   User,
   ChevronDown,
   GitBranch,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DeliveryChat } from "./DeliveryChat";
 import { DeliveryReport } from "./DeliveryReport";
 import { DeliveryCatalogo } from "./DeliveryCatalogo";
+import { DeliveryBrandVoice } from "./DeliveryBrandVoice";
 
 const FunnelBuilderTab = lazy(() => import("@/components/funnel-builder/FunnelBuilderTab"));
 
@@ -266,7 +268,7 @@ export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessio
   const [selectedNiche, setSelectedNiche] = useState<typeof SIMULATOR_NICHES[number] | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
-  const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo" | "funnel">("chat");
+  const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo" | "funnel" | "brandvoice">("chat");
   const [initialSessionLoaded, setInitialSessionLoaded] = useState(false);
   const [showLeadMagnet, setShowLeadMagnet] = useState<boolean | null>(null);
   const [sessionFunnelId, setSessionFunnelId] = useState<string | null>(null);
@@ -624,14 +626,23 @@ export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessio
             </Button>
           );
 
+          const showBrandVoiceTab = activeSession &&
+            activeSession.mode === "onboarding" &&
+            activeSession.status === "assistant";
+
+          const tabItems: { mode: "chat" | "report" | "funnel" | "catalogo" | "brandvoice"; icon: any; label: string }[] = [
+            { mode: "chat", icon: MessageSquare, label: "Chat" },
+            { mode: "report", icon: FileText, label: "Report" },
+            { mode: "funnel", icon: GitBranch, label: "Funnel" },
+            { mode: "catalogo", icon: Layers, label: "Cat." },
+          ];
+          if (showBrandVoiceTab) {
+            tabItems.push({ mode: "brandvoice", icon: Palette, label: "Brand" });
+          }
+
           const viewTabs = (
             <>
-              {([
-                { mode: "chat" as const, icon: MessageSquare, label: "Chat" },
-                { mode: "report" as const, icon: FileText, label: "Report" },
-                { mode: "funnel" as const, icon: GitBranch, label: "Funnel" },
-                { mode: "catalogo" as const, icon: Layers, label: "Cat." },
-              ] as const).map(t => (
+              {tabItems.map(t => (
                 <button
                   key={t.mode}
                   onClick={() => setViewMode(t.mode)}
@@ -794,6 +805,8 @@ export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessio
               sessionId={activeSession.id}
               onBackToChat={() => setViewMode("chat")}
             />
+          ) : viewMode === "brandvoice" ? (
+            <DeliveryBrandVoice sessionId={activeSession.id} />
           ) : (
             <DeliveryChat
               session={activeSession}

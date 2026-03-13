@@ -180,7 +180,21 @@ router.post("/brand-voice", authenticateToken, requireRole("consultant"), async 
 router.get("/brand-voice/from-luca", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const { getLatestLucaReport, mapLucaReportToBrandVoice, extractDeepResearchParams } = await import("../services/luca-brand-voice-mapper");
+    const { getLatestLucaSessionBrandVoice, getLatestLucaReport, mapLucaReportToBrandVoice, extractDeepResearchParams } = await import("../services/luca-brand-voice-mapper");
+
+    const sessionBV = await getLatestLucaSessionBrandVoice(consultantId);
+    if (sessionBV) {
+      const deepResearchParams = sessionBV.clientProfileJson && sessionBV.reportJson
+        ? extractDeepResearchParams(sessionBV.clientProfileJson, sessionBV.reportJson)
+        : null;
+      return res.json({
+        success: true,
+        available: true,
+        data: sessionBV.brandVoiceData,
+        deepResearchParams,
+        sessionId: sessionBV.sessionId,
+      });
+    }
 
     const report = await getLatestLucaReport(consultantId);
     if (!report) {
@@ -206,16 +220,27 @@ router.get("/brand-voice/from-luca", authenticateToken, requireRole("consultant"
 router.post("/brand-voice/import-from-luca", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const { getLatestLucaReport, autoPopulateBrandVoiceFromLuca } = await import("../services/luca-brand-voice-mapper");
+    const { getLatestLucaSessionBrandVoice, saveBrandVoiceForConsultant, getLatestLucaReport, autoPopulateBrandVoiceFromLuca, extractDeepResearchParams } = await import("../services/luca-brand-voice-mapper");
 
-    const report = await getLatestLucaReport(consultantId);
-    if (!report) {
-      return res.status(404).json({ success: false, error: "Nessun report di Luca trovato" });
+    const sessionBV = await getLatestLucaSessionBrandVoice(consultantId);
+    let brandVoice: any;
+    let deepResearchParams: any = null;
+
+    if (sessionBV) {
+      brandVoice = sessionBV.brandVoiceData;
+      await saveBrandVoiceForConsultant(consultantId, brandVoice);
+
+      if (sessionBV.clientProfileJson && sessionBV.reportJson) {
+        deepResearchParams = extractDeepResearchParams(sessionBV.clientProfileJson, sessionBV.reportJson);
+      }
+    } else {
+      const report = await getLatestLucaReport(consultantId);
+      if (!report) {
+        return res.status(404).json({ success: false, error: "Nessun report di Luca trovato" });
+      }
+      brandVoice = await autoPopulateBrandVoiceFromLuca(consultantId, report.clientProfileJson, report.reportJson);
+      deepResearchParams = extractDeepResearchParams(report.clientProfileJson, report.reportJson);
     }
-
-    const brandVoice = await autoPopulateBrandVoiceFromLuca(consultantId, report.clientProfileJson, report.reportJson);
-    const { extractDeepResearchParams } = await import("../services/luca-brand-voice-mapper");
-    const deepResearchParams = extractDeepResearchParams(report.clientProfileJson, report.reportJson);
 
     const [updated] = await db.select()
       .from(schema.contentStudioConfig)

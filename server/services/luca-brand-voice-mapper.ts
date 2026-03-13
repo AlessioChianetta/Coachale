@@ -228,6 +228,39 @@ export async function saveBrandVoiceForConsultant(
   }
 }
 
+export async function getLatestLucaSessionBrandVoice(consultantId: string): Promise<{
+  brandVoiceData: BrandVoiceData;
+  sessionId: string;
+  clientProfileJson: any;
+  reportJson: any;
+} | null> {
+  const result = await db.execute(sql`
+    SELECT s.id as session_id, s.brand_voice_data, s.client_profile_json, r.report_json
+    FROM delivery_agent_sessions s
+    LEFT JOIN delivery_agent_reports r ON r.session_id = s.id::text
+    WHERE s.consultant_id = ${consultantId}
+      AND s.mode = 'onboarding'
+      AND COALESCE(s.is_public, false) = false
+      AND (s.lead_user_id IS NULL OR s.lead_user_id::text = s.consultant_id::text)
+      AND s.status IN ('completed', 'assistant')
+      AND s.brand_voice_data IS NOT NULL
+    ORDER BY s.updated_at DESC
+    LIMIT 1
+  `);
+
+  if (result.rows.length === 0) return null;
+
+  const row = result.rows[0] as any;
+  if (!row.brand_voice_data || Object.keys(row.brand_voice_data).length === 0) return null;
+
+  return {
+    brandVoiceData: row.brand_voice_data,
+    sessionId: row.session_id,
+    clientProfileJson: row.client_profile_json,
+    reportJson: row.report_json,
+  };
+}
+
 export async function autoPopulateBrandVoiceFromLuca(
   consultantId: string,
   clientProfileJson: any,

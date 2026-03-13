@@ -72,6 +72,7 @@ export interface BrandVoiceSectionProps {
   showSaveButton?: boolean;
   externalMarketResearchData?: MarketResearchData | null;
   showImportFromLuca?: boolean;
+  showMarketResearch?: boolean;
 }
 
 export function BrandVoiceSection({
@@ -85,7 +86,8 @@ export function BrandVoiceSection({
   compact = false,
   showSaveButton = true,
   externalMarketResearchData = null,
-  showImportFromLuca = true
+  showImportFromLuca = true,
+  showMarketResearch = true
 }: BrandVoiceSectionProps) {
   const { toast } = useToast();
   const [businessInfoOpen, setBusinessInfoOpen] = useState(!compact);
@@ -1160,7 +1162,7 @@ export function BrandVoiceSection({
           </CollapsibleContent>
         </Card>
       </Collapsible>
-      <Collapsible open={marketResearchOpen} onOpenChange={setMarketResearchOpen}>
+      {showMarketResearch && <Collapsible open={marketResearchOpen} onOpenChange={setMarketResearchOpen}>
         <Card className="border-2 border-amber-500/20 shadow-lg">
           <CollapsibleTrigger className="w-full">
             <CardHeader className="bg-gradient-to-r from-amber-500/5 to-orange-500/10 cursor-pointer hover:from-amber-500/10 hover:to-orange-500/15 transition-colors">
@@ -1242,7 +1244,7 @@ export function BrandVoiceSection({
             </CardContent>
           </CollapsibleContent>
         </Card>
-      </Collapsible>
+      </Collapsible>}
 
       <Dialog open={showPhaseConfirmDialog} onOpenChange={setShowPhaseConfirmDialog}>
         <DialogContent>

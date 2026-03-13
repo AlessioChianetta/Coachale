@@ -111,6 +111,7 @@ async function ensureTables() {
     sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS lead_phone VARCHAR`,
     sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false`,
     sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE`,
+    sql`ALTER TABLE delivery_agent_sessions ADD COLUMN IF NOT EXISTS brand_voice_data JSONB`,
   ];
   for (const stmt of alterStatements) {
     try { await db.execute(stmt); } catch (e: any) {
@@ -793,7 +794,16 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
             SELECT client_profile_json FROM delivery_agent_sessions WHERE id = ${sessionId}::uuid
           `);
           const clientProfile = (sessionForBV.rows[0] as any)?.client_profile_json || {};
-          const { autoPopulateBrandVoiceFromLuca, extractDeepResearchParams } = await import('../services/luca-brand-voice-mapper');
+          const { autoPopulateBrandVoiceFromLuca, mapLucaReportToBrandVoice, extractDeepResearchParams } = await import('../services/luca-brand-voice-mapper');
+
+          const sessionBrandVoice = mapLucaReportToBrandVoice(clientProfile, reportJson);
+          await db.execute(sql`
+            UPDATE delivery_agent_sessions
+            SET brand_voice_data = ${JSON.stringify(sessionBrandVoice)}::jsonb, updated_at = NOW()
+            WHERE id = ${sessionId}::uuid
+          `);
+          console.log(`[DeliveryAgent] Brand Voice saved to session ${sessionId} (${Object.keys(sessionBrandVoice).length} fields)`);
+
           await autoPopulateBrandVoiceFromLuca(consultantId, clientProfile, reportJson);
 
           const drParams = extractDeepResearchParams(clientProfile, reportJson);
@@ -1687,6 +1697,46 @@ router.post('/onboarding-status/clients', authenticateToken, requireRole('consul
     res.json({ success: true, data: statusMap });
   } catch (err: any) {
     console.error('[DeliveryAgent] POST onboarding-status/clients error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/sessions/:sessionId/brand-voice', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { sessionId } = req.params;
+    const result = await db.execute(sql`
+      SELECT brand_voice_data FROM delivery_agent_sessions
+      WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId}
+    `);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    const row = result.rows[0] as any;
+    res.json({ success: true, data: row.brand_voice_data || {} });
+  } catch (err: any) {
+    console.error('[DeliveryAgent] GET brand-voice error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.put('/sessions/:sessionId/brand-voice', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { sessionId } = req.params;
+    const brandVoiceData = req.body;
+    const result = await db.execute(sql`
+      UPDATE delivery_agent_sessions
+      SET brand_voice_data = ${JSON.stringify(brandVoiceData)}::jsonb, updated_at = NOW()
+      WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId}
+      RETURNING id
+    `);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('[DeliveryAgent] PUT brand-voice error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
