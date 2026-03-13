@@ -866,6 +866,16 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
               const mrResult = await mrResponse.json() as any;
               if (mrResult.success && mrResult.jobId) {
                 console.log(`[DeliveryAgent] Deep Research job started: ${mrResult.jobId}`);
+                await db.execute(sql`
+                  UPDATE delivery_agent_sessions
+                  SET brand_voice_data = jsonb_set(
+                    COALESCE(brand_voice_data, '{}'::jsonb),
+                    '{_marketResearch,_jobId}',
+                    ${JSON.stringify(mrResult.jobId)}::jsonb
+                  ),
+                  updated_at = NOW()
+                  WHERE id = ${sessionId}::uuid
+                `);
                 const pollForCompletion = async () => {
                   const maxPolls = 120;
                   for (let i = 0; i < maxPolls; i++) {

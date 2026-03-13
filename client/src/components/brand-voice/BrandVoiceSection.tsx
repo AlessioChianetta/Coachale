@@ -143,10 +143,11 @@ export function BrandVoiceSection({
         if (result.success && result.data) {
           setMarketResearchData(result.data);
           const autoParams = result.data?._autoParams;
+          const existingJobId = result.data?._jobId;
           const hasRealData = result.data?.currentState?.some((s: string) => s?.trim()) ||
             result.data?.idealState?.some((s: string) => s?.trim()) ||
             (result.data?.avatar && Object.values(result.data.avatar).some((v: any) => typeof v === 'string' && v.trim()));
-          if (autoParams?.source === 'luca_onboarding' && !hasRealData && !autoTriggerRef.current) {
+          if (autoParams?.source === 'luca_onboarding' && !hasRealData && !autoTriggerRef.current && !existingJobId) {
             autoTriggerRef.current = true;
             if (autoTriggerDeepResearch) {
               pendingAutoTriggerRef.current = true;
@@ -154,7 +155,7 @@ export function BrandVoiceSection({
             } else {
               toast({
                 title: "Parametri Deep Research disponibili",
-                description: `Nicchia: "${autoParams.niche}" — Clicca "Deep Research con AI" per generare l'analisi completa.`,
+                description: `Nicchia: "${autoParams.niche}" — Clicca "Genera Ricerca di Mercato" per generare l'analisi completa.`,
               });
             }
           }
