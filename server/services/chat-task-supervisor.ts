@@ -301,15 +301,18 @@ async function executeAction(
           if (!task.instruction) continue;
           const category = (task.category && VALID_CATEGORIES.includes(task.category)) ? task.category : 'reminder';
           const priorityInt = PRIORITY_MAP['medium'];
+          const scheduledAt = (task.scheduledAt && isValidDate(task.scheduledAt)) ? new Date(task.scheduledAt) : new Date();
           try {
             await db.execute(sql`
               INSERT INTO ai_scheduled_tasks (
                 consultant_id, ai_role, ai_instruction, task_category,
-                contact_name, status, priority, task_type, created_at, updated_at
+                contact_name, contact_phone, status, priority, task_type,
+                scheduled_at, created_at, updated_at
               ) VALUES (
                 ${consultantId}::uuid, ${roleId}, ${task.instruction},
-                ${category}, ${task.contactName || null},
-                'waiting_approval', ${priorityInt}, 'ai_task', NOW(), NOW()
+                ${category}, ${task.contactName || ''},
+                ${task.contactPhone || ''}, 'waiting_approval', ${priorityInt}, 'ai_task',
+                ${scheduledAt}, NOW(), NOW()
               )
             `);
             created.push(task.instruction.substring(0, 60));
