@@ -592,8 +592,13 @@ export default function ConsultantAcademy() {
     return params.get("sessionId") || null;
   }, []);
 
+  const urlTab = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("tab") || null;
+  }, []);
+
   const [activeTab, setActiveTab] = useState<"academy" | "delivery" | "setup-assistant" | "setup-wizard">(
-    urlSessionId ? "delivery" : "academy"
+    urlTab === "delivery" ? "delivery" : urlSessionId ? "delivery" : "academy"
   );
   const [setupChatStarted, setSetupChatStarted] = useState(false);
   const [setupAutoMessage, setSetupAutoMessage] = useState<string | null>(null);

@@ -666,7 +666,7 @@ export default function ConsultantDashboard() {
                 </div>
                 {onboardingStatus.status !== 'completed' && (
                   <Button
-                    onClick={() => setLocation(`/onboarding-gratuito/${(user as any)?.slug || user?.id || ''}`)}
+                    onClick={() => setLocation('/consultant/academy?tab=delivery')}
                     className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white gap-2 rounded-xl h-11"
                   >
                     <PlayCircle className="h-4 w-4" />
@@ -686,7 +686,7 @@ export default function ConsultantDashboard() {
                   </p>
                 </div>
                 <Button
-                  onClick={() => setLocation(`/onboarding-gratuito/${(user as any)?.slug || user?.id || ''}`)}
+                  onClick={() => setLocation('/consultant/academy?tab=delivery')}
                   className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white gap-2 rounded-xl h-11 px-6"
                 >
                   <PlayCircle className="h-4 w-4" />
