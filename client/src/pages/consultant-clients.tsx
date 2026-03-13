@@ -50,7 +50,9 @@ import {
   Building2,
   FolderTree,
   Palette,
-  Trash2 as TrashIcon
+  Trash2 as TrashIcon,
+  Magnet,
+  Shield
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -849,64 +851,139 @@ export default function ConsultantClientsPage() {
             ]}
           />
 
-          {/* Compact Header */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl flex-shrink-0">
-                  <Users className="w-5 h-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">Gestione Clienti</h1>
-                  <p className="text-xs text-muted-foreground hidden sm:block">Gestisci clienti, dipendenti e contatti</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                <div className="hidden sm:flex items-center gap-3">
-                  <div className="text-center px-3">
-                    <div className="text-lg font-bold text-foreground">{clients.length}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Totali</div>
-                  </div>
-                  <div className="w-px h-8 bg-border" />
-                  <div className="text-center px-3">
-                    <div className="text-lg font-bold text-emerald-600">{activeClientsCount}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Attivi</div>
-                  </div>
-                  <div className="w-px h-8 bg-border" />
-                  <div className="text-center px-3">
-                    <div className="text-lg font-bold text-blue-600">{newClientsCount}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Nuovi</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* Compact Header - AI Autonoma Style */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-4 sm:p-5 text-white shadow-2xl mb-4">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent" />
+            <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl" />
 
-            {/* Tab Switcher */}
-            <div className="flex gap-1.5 p-1 bg-muted/50 rounded-xl border border-border/50">
-              <button
-                onClick={() => setActiveTab('clienti')}
-                className={cn(
-                  "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                  activeTab === 'clienti'
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Users className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Clienti</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('monitoraggio')}
-                className={cn(
-                  "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                  activeTab === 'monitoraggio'
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <BarChart3 className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Monitoraggio</span>
-              </button>
+            <div className="relative z-10 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg shadow-cyan-500/30">
+                    <Users className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg sm:text-xl lg:text-2xl font-bold tracking-tight">Gestione Clienti</h1>
+                    <p className="text-blue-200/70 text-xs mt-0.5 hidden sm:block">Gestisci clienti, dipendenti e contatti CRM</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs font-medium text-emerald-300">{activeClientsCount} attivi</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
+                    <Shield className="h-3 w-3 text-cyan-400" />
+                    <span className="text-xs font-medium text-cyan-300">{licenseData.employeeTotal - licenseData.employeeUsed}/{licenseData.employeeTotal} licenze</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  onClick={() => { setTypeFilter('clients'); setActiveTab('clienti'); setCurrentPage(1); }}
+                  className={cn(
+                    "rounded-xl p-2.5 sm:p-3 text-left transition-all border",
+                    typeFilter === 'clients' && activeTab === 'clienti'
+                      ? "bg-cyan-500/25 border-cyan-400/40 shadow-lg shadow-cyan-500/10"
+                      : "bg-white/10 backdrop-blur-sm border-white/10 hover:bg-white/15"
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="p-1 rounded-lg bg-cyan-500/20">
+                      <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-cyan-400" />
+                    </div>
+                    <span className="text-[10px] sm:text-xs font-medium text-cyan-200/80">Clienti Attivi</span>
+                  </div>
+                  <p className="text-lg sm:text-xl font-bold text-white">{activeClientsCount}</p>
+                  <p className="text-[10px] text-blue-200/50 mt-0.5">con switch attivo</p>
+                </button>
+
+                <button
+                  onClick={() => { setTypeFilter('crm'); setActiveTab('clienti'); setCurrentPage(1); }}
+                  className={cn(
+                    "rounded-xl p-2.5 sm:p-3 text-left transition-all border",
+                    typeFilter === 'crm' && activeTab === 'clienti'
+                      ? "bg-amber-500/25 border-amber-400/40 shadow-lg shadow-amber-500/10"
+                      : "bg-white/10 backdrop-blur-sm border-white/10 hover:bg-white/15"
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="p-1 rounded-lg bg-amber-500/20">
+                      <Target className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-400" />
+                    </div>
+                    <span className="text-[10px] sm:text-xs font-medium text-amber-200/80">Lead CRM</span>
+                  </div>
+                  <p className="text-lg sm:text-xl font-bold text-white">{crmCount}</p>
+                  <p className="text-[10px] text-blue-200/50 mt-0.5">senza credenziali</p>
+                </button>
+
+                <button
+                  onClick={() => { setTypeFilter('employees'); setActiveTab('clienti'); setCurrentPage(1); }}
+                  className={cn(
+                    "rounded-xl p-2.5 sm:p-3 text-left transition-all border",
+                    typeFilter === 'employees' && activeTab === 'clienti'
+                      ? "bg-violet-500/25 border-violet-400/40 shadow-lg shadow-violet-500/10"
+                      : "bg-white/10 backdrop-blur-sm border-white/10 hover:bg-white/15"
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="p-1 rounded-lg bg-violet-500/20">
+                      <Briefcase className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-violet-400" />
+                    </div>
+                    <span className="text-[10px] sm:text-xs font-medium text-violet-200/80">Dipendenti</span>
+                  </div>
+                  <p className="text-lg sm:text-xl font-bold text-white">{employeesCount}</p>
+                  <p className="text-[10px] text-blue-200/50 mt-0.5">nel team</p>
+                </button>
+
+                <button
+                  onClick={() => { setTypeFilter('lead_magnet'); setActiveTab('clienti'); setCurrentPage(1); }}
+                  className={cn(
+                    "rounded-xl p-2.5 sm:p-3 text-left transition-all border",
+                    typeFilter === 'lead_magnet' && activeTab === 'clienti'
+                      ? "bg-lime-500/25 border-lime-400/40 shadow-lg shadow-lime-500/10"
+                      : "bg-white/10 backdrop-blur-sm border-white/10 hover:bg-white/15"
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="p-1 rounded-lg bg-lime-500/20">
+                      <Magnet className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-lime-400" />
+                    </div>
+                    <span className="text-[10px] sm:text-xs font-medium text-lime-200/80">Lead Magnet</span>
+                  </div>
+                  <p className="text-lg sm:text-xl font-bold text-white">{leadMagnetCount}</p>
+                  <p className="text-[10px] text-blue-200/50 mt-0.5">da funnel</p>
+                </button>
+              </div>
+
+              <div className="flex gap-1.5 p-1 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10">
+                <button
+                  onClick={() => setActiveTab('clienti')}
+                  className={cn(
+                    "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                    activeTab === 'clienti'
+                      ? 'bg-white/15 text-white shadow-sm border border-white/20'
+                      : 'text-blue-200/60 hover:text-white hover:bg-white/5'
+                  )}
+                >
+                  <Users className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Elenco Clienti</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('monitoraggio')}
+                  className={cn(
+                    "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                    activeTab === 'monitoraggio'
+                      ? 'bg-white/15 text-white shadow-sm border border-white/20'
+                      : 'text-blue-200/60 hover:text-white hover:bg-white/5'
+                  )}
+                >
+                  <BarChart3 className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Monitoraggio</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -915,7 +992,7 @@ export default function ConsultantClientsPage() {
               <CardHeader className="pb-2 px-3 sm:px-4 pt-3 sm:pt-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="p-1.5 bg-indigo-100 rounded-lg flex-shrink-0">
+                    <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex-shrink-0">
                       <Building2 className="w-4 h-4 text-indigo-600" />
                     </div>
                     <div className="min-w-0">
@@ -938,17 +1015,17 @@ export default function ConsultantClientsPage() {
                 </div>
               </CardHeader>
               <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
-                <div className="flex gap-2.5 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-3 sm:overflow-visible">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
                   {departments.map((dept: any) => {
                     const deptEmployees = clients.filter((c: any) => c.isEmployee && c.departmentId === dept.id);
                     return (
                       <div
                         key={dept.id}
-                        className="rounded-xl border border-border bg-card overflow-hidden min-w-[200px] sm:min-w-0 flex-shrink-0"
+                        className="rounded-xl border border-border bg-card overflow-hidden"
                         style={{ borderLeftWidth: '3px', borderLeftColor: dept.color }}
                       >
-                        <div className="p-2.5">
-                          <div className="flex items-center justify-between mb-1.5">
+                        <div className="p-3">
+                          <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <span
                                 className="w-2.5 h-2.5 rounded-full flex-shrink-0"
@@ -957,16 +1034,16 @@ export default function ConsultantClientsPage() {
                               <span className="font-semibold text-xs text-foreground truncate">{dept.name}</span>
                             </div>
                             <div className="flex items-center gap-0.5 flex-shrink-0">
-                              <Badge variant="secondary" className="text-[9px] px-1 py-0">
+                              <Badge variant="secondary" className="text-[9px] px-1.5 py-0.5">
                                 {dept.employee_count || deptEmployees.length}
                               </Badge>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleEditDepartment(dept)}
-                                className="h-5 w-5 p-0 hover:bg-muted"
+                                className="h-6 w-6 p-0 hover:bg-muted"
                               >
-                                <Edit className="w-2.5 h-2.5" />
+                                <Edit className="w-3 h-3" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -976,24 +1053,27 @@ export default function ConsultantClientsPage() {
                                     deleteDepartmentMutation.mutate(dept.id);
                                   }
                                 }}
-                                className="h-5 w-5 p-0 hover:bg-red-50 text-red-400 hover:text-red-600"
+                                className="h-6 w-6 p-0 hover:bg-red-50 text-red-400 hover:text-red-600"
                               >
-                                <TrashIcon className="w-2.5 h-2.5" />
+                                <TrashIcon className="w-3 h-3" />
                               </Button>
                             </div>
                           </div>
                           {deptEmployees.length > 0 && (
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                               {deptEmployees.slice(0, 3).map((emp: any) => (
-                                <div key={emp.id} className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                                  <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                                  {emp.firstName} {emp.lastName}
+                                <div key={emp.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: dept.color, opacity: 0.4 }} />
+                                  <span className="truncate">{emp.firstName} {emp.lastName}</span>
                                 </div>
                               ))}
                               {deptEmployees.length > 3 && (
-                                <span className="text-[10px] text-muted-foreground/60">+{deptEmployees.length - 3} altri</span>
+                                <span className="text-[10px] text-muted-foreground/60 pl-3">+{deptEmployees.length - 3} altri</span>
                               )}
                             </div>
+                          )}
+                          {deptEmployees.length === 0 && (
+                            <p className="text-[10px] text-muted-foreground/50 italic">Nessun dipendente</p>
                           )}
                         </div>
                       </div>
@@ -1003,26 +1083,26 @@ export default function ConsultantClientsPage() {
                     const unassigned = clients.filter((c: any) => c.isEmployee && !c.departmentId);
                     if (unassigned.length === 0) return null;
                     return (
-                      <div className="rounded-xl border border-dashed border-border bg-muted/30 overflow-hidden min-w-[200px] sm:min-w-0 flex-shrink-0" style={{ borderLeftWidth: '3px', borderLeftColor: '#94a3b8' }}>
-                        <div className="p-2.5">
-                          <div className="flex items-center justify-between mb-1.5">
+                      <div className="rounded-xl border border-dashed border-border bg-muted/30 overflow-hidden" style={{ borderLeftWidth: '3px', borderLeftColor: '#94a3b8' }}>
+                        <div className="p-3">
+                          <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-1.5">
                               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-muted-foreground/40" />
                               <span className="font-semibold text-xs text-muted-foreground">Non assegnati</span>
                             </div>
-                            <Badge variant="secondary" className="text-[9px] px-1 py-0">
+                            <Badge variant="secondary" className="text-[9px] px-1.5 py-0.5">
                               {unassigned.length}
                             </Badge>
                           </div>
-                          <div className="space-y-0.5">
+                          <div className="space-y-1">
                             {unassigned.slice(0, 3).map((emp: any) => (
-                              <div key={emp.id} className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                                <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                                {emp.firstName} {emp.lastName}
+                              <div key={emp.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 flex-shrink-0" />
+                                <span className="truncate">{emp.firstName} {emp.lastName}</span>
                               </div>
                             ))}
                             {unassigned.length > 3 && (
-                              <span className="text-[10px] text-muted-foreground/60">+{unassigned.length - 3} altri</span>
+                              <span className="text-[10px] text-muted-foreground/60 pl-3">+{unassigned.length - 3} altri</span>
                             )}
                           </div>
                         </div>
@@ -1074,50 +1154,42 @@ export default function ConsultantClientsPage() {
 
               return (
                 <div className="space-y-4">
-                  {/* Summary Header */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <Card className="border border-border shadow-sm bg-card">
-                      <CardContent className="p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center">
-                          <Users className="w-5 h-5 text-cyan-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Clienti monitorati</p>
-                          <p className="text-xl font-bold text-foreground">{totalMonitored}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card className="border border-border shadow-sm bg-card">
-                      <CardContent className="p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">
-                          <BarChart3 className="w-5 h-5 text-teal-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Utilizzo medio</p>
-                          <p className="text-xl font-bold text-foreground">{avgUsage}%</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card className="border border-border shadow-sm bg-card">
-                      <CardContent className="p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                          <AlertTriangle className="w-5 h-5 text-red-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Clienti a rischio</p>
-                          <p className="text-xl font-bold text-foreground">{atRiskCount}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div className="rounded-xl border border-border bg-card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-cyan-100 dark:bg-cyan-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Users className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Monitorati</p>
+                        <p className="text-base sm:text-xl font-bold text-foreground">{totalMonitored}</p>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-border bg-card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-teal-100 dark:bg-teal-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Utilizzo</p>
+                        <p className="text-base sm:text-xl font-bold text-foreground">{avgUsage}%</p>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-border bg-card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground truncate">A rischio</p>
+                        <p className="text-base sm:text-xl font-bold text-foreground">{atRiskCount}</p>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Monitoring Table */}
-                  <Card className="border border-border shadow-sm bg-card">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg font-bold text-foreground">
-                        Monitoraggio Pacchetti Consulenze
+                  <Card className="border border-border/50 shadow-sm bg-card">
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-5">
+                      <CardTitle className="text-sm sm:text-lg font-bold text-foreground">
+                        Monitoraggio Consulenze
                       </CardTitle>
-                      <p className="text-sm text-muted-foreground">Utilizzo mensile dei pacchetti consulenze limitate</p>
+                      <p className="text-[10px] sm:text-sm text-muted-foreground">Utilizzo mensile dei pacchetti consulenze</p>
                     </CardHeader>
                     <CardContent className="p-0">
                       {monitoringLoading ? (
@@ -1134,19 +1206,19 @@ export default function ConsultantClientsPage() {
                           <p className="text-sm text-muted-foreground">Nessun cliente ha un limite di consulenze mensile configurato</p>
                         </div>
                       ) : (
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
+                        <div className="overflow-x-auto -mx-0 sm:mx-0">
+                          <table className="w-full min-w-[700px]">
                             <thead className="bg-muted/40 border-b border-border">
                               <tr>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Telefono</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pacchetto</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Utilizzate</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Programmate</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Prossima</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rimanenti</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stato</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Azioni</th>
+                                <th className="px-3 sm:px-4 py-2.5 text-left text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</th>
+                                <th className="px-3 sm:px-4 py-2.5 text-left text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Telefono</th>
+                                <th className="px-3 sm:px-4 py-2.5 text-center text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pacch.</th>
+                                <th className="px-3 sm:px-4 py-2.5 text-center text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Usate</th>
+                                <th className="px-3 sm:px-4 py-2.5 text-center text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Progr.</th>
+                                <th className="px-3 sm:px-4 py-2.5 text-center text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Prossima</th>
+                                <th className="px-3 sm:px-4 py-2.5 text-center text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rim.</th>
+                                <th className="px-3 sm:px-4 py-2.5 text-center text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stato</th>
+                                <th className="px-3 sm:px-4 py-2.5 text-center text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Azioni</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border/60">
@@ -1616,71 +1688,86 @@ export default function ConsultantClientsPage() {
             })()
           ) : (
           /* Existing Client List Content */
-          <Card className="border-0 shadow-xl bg-card">
-            <CardHeader className="pb-4 px-4 sm:px-6 pt-4 sm:pt-5">
-              <div className="hidden sm:block mb-3">
-                <CardTitle className="text-xl font-bold text-foreground mb-0.5">Elenco Clienti</CardTitle>
-                <p className="text-sm text-muted-foreground">Gestisci e monitora tutti i tuoi clienti</p>
-              </div>
+          <Card className="border border-border/50 shadow-sm bg-card">
+            <CardHeader className="pb-3 px-3 sm:px-5 pt-3 sm:pt-4">
               <div className="flex flex-col gap-2.5">
-                {/* Row 1: Search + Nuovo (always together) */}
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
-                      placeholder="Cerca clienti..."
+                      placeholder="Cerca per nome, email, username..."
                       value={searchTerm}
                       onChange={(e) => handleSearchChange(e.target.value)}
-                      className="pl-9 bg-card border-border focus:border-cyan-400 focus:ring-cyan-400 h-10"
+                      className="pl-9 bg-card border-border focus:border-cyan-400 focus:ring-cyan-400 h-9"
                     />
                   </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => handleStatusFilterChange(e.target.value as any)}
+                    className="px-2.5 py-1.5 text-xs border border-border rounded-lg bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-cyan-400 hidden sm:block"
+                  >
+                    <option value="all">Tutti gli stati</option>
+                    <option value="active">Solo attivi</option>
+                    <option value="inactive">Solo inattivi</option>
+                  </select>
                   <Button
                     onClick={() => setIsNewClientDialogOpen(true)}
-                    className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white flex-shrink-0 h-10 px-3"
+                    className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white flex-shrink-0 h-9 px-3"
                     size="sm"
                   >
-                    <UserPlus className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Nuovo</span>
-                  </Button>
-                  <Button variant="outline" size="sm" className="border-border hover:bg-muted/40 hidden sm:flex h-10">
-                    <Download className="w-4 h-4 mr-2" />
-                    Esporta
+                    <UserPlus className="w-4 h-4 sm:mr-1.5" />
+                    <span className="hidden sm:inline text-xs">Nuovo</span>
                   </Button>
                 </div>
-                {/* Row 2: Type filter + Status filter */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="inline-flex rounded-lg border border-border bg-card p-0.5 overflow-x-auto">
+                <div className="flex items-center justify-between gap-2 sm:hidden">
+                  <div className="inline-flex rounded-lg border border-border bg-card p-0.5 overflow-x-auto flex-1">
                     {([
-                      { value: 'all', label: 'Tutti', count: clients.length, activeColor: 'bg-foreground text-background' },
-                      { value: 'clients', label: 'Clienti', count: realClientsCount, activeColor: 'bg-cyan-600 text-white' },
-                      { value: 'lead_magnet', label: 'Lead', count: leadMagnetCount, activeColor: 'bg-lime-600 text-white' },
-                      { value: 'crm', label: 'CRM', count: crmCount, activeColor: 'bg-amber-600 text-white' },
-                      { value: 'employees', label: 'Dip.', count: employeesCount, activeColor: 'bg-violet-600 text-white' },
+                      { value: 'all', label: 'Tutti', activeColor: 'bg-foreground text-background' },
+                      { value: 'clients', label: 'Clienti', activeColor: 'bg-cyan-600 text-white' },
+                      { value: 'lead_magnet', label: 'Lead', activeColor: 'bg-lime-600 text-white' },
+                      { value: 'crm', label: 'CRM', activeColor: 'bg-amber-600 text-white' },
+                      { value: 'employees', label: 'Dip.', activeColor: 'bg-violet-600 text-white' },
                     ] as const).map(opt => (
                       <button
                         key={opt.value}
                         onClick={() => { setTypeFilter(opt.value as any); setCurrentPage(1); }}
                         className={cn(
-                          "px-2 sm:px-2.5 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap",
+                          "flex-1 px-2 py-1.5 text-[10px] font-medium rounded-md transition-all whitespace-nowrap",
                           typeFilter === opt.value
                             ? `${opt.activeColor} shadow-sm`
                             : 'text-muted-foreground hover:bg-muted'
                         )}
                       >
-                        {opt.label} ({opt.count})
+                        {opt.label}
                       </button>
                     ))}
                   </div>
                   <select
                     value={statusFilter}
                     onChange={(e) => handleStatusFilterChange(e.target.value as any)}
-                    className="px-2.5 py-1.5 text-xs border border-border rounded-md bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                    className="px-2 py-1.5 text-[10px] border border-border rounded-md bg-card"
                   >
                     <option value="all">Tutti</option>
                     <option value="active">Attivi</option>
                     <option value="inactive">Inattivi</option>
                   </select>
                 </div>
+                {typeFilter !== 'all' && (
+                  <div className="hidden sm:flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Filtro attivo:</span>
+                    <Badge className={cn(
+                      "text-xs px-2 py-0.5 cursor-pointer",
+                      typeFilter === 'clients' ? "bg-cyan-100 text-cyan-700 border-cyan-200" :
+                      typeFilter === 'crm' ? "bg-amber-100 text-amber-700 border-amber-200" :
+                      typeFilter === 'employees' ? "bg-violet-100 text-violet-700 border-violet-200" :
+                      "bg-lime-100 text-lime-700 border-lime-200"
+                    )}>
+                      {typeFilter === 'clients' ? 'Clienti Attivi' : typeFilter === 'crm' ? 'Lead CRM' : typeFilter === 'employees' ? 'Dipendenti' : 'Lead Magnet'}
+                      <X className="w-3 h-3 ml-1 inline cursor-pointer" onClick={() => { setTypeFilter('all'); setCurrentPage(1); }} />
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{filteredClients.length} risultati</span>
+                  </div>
+                )}
               </div>
             </CardHeader>
             
