@@ -8,7 +8,7 @@ import {
   Calendar, Zap, BarChart3, Loader2, CheckCircle2, Clock,
   Target, TrendingUp, ExternalLink, ChevronDown, ChevronUp,
   Layers, ArrowRight, AlertTriangle, Globe, MapPin, FileText,
-  Lightbulb, BookOpen, Play, CheckSquare, AlertCircle,
+  Lightbulb, BookOpen, Play, CheckSquare, AlertCircle, ArrowDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -563,26 +563,48 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
     loadReport();
   }, [sessionId, toast, isPublic, publicToken]);
 
+  const [publicFunnelData, setPublicFunnelData] = useState<any>(null);
+
   useEffect(() => {
     setFunnelId(null);
     setFunnelLoading(false);
+    setPublicFunnelData(null);
   }, [sessionId]);
 
   useEffect(() => {
-    if (isPublic || funnelId) return;
-    const checkFunnel = async () => {
-      try {
-        const res = await fetch(`/api/funnels/by-session/${sessionId}`, { headers: getAuthHeaders() });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.id) setFunnelId(data.id);
-        }
-      } catch {}
-    };
-    checkFunnel();
-    const interval = setInterval(checkFunnel, 10000);
-    return () => clearInterval(interval);
-  }, [sessionId, isPublic, funnelId]);
+    if (funnelId) return;
+    if (isPublic) {
+      if (!publicToken) return;
+      const checkPublicFunnel = async () => {
+        try {
+          const res = await fetch(`/api/public/lead-magnet/${publicToken}/funnel`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.data) {
+              setFunnelId(data.data.id);
+              setPublicFunnelData(data.data);
+            }
+          }
+        } catch {}
+      };
+      checkPublicFunnel();
+      const interval = setInterval(checkPublicFunnel, 10000);
+      return () => clearInterval(interval);
+    } else {
+      const checkFunnel = async () => {
+        try {
+          const res = await fetch(`/api/funnels/by-session/${sessionId}`, { headers: getAuthHeaders() });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.id) setFunnelId(data.id);
+          }
+        } catch {}
+      };
+      checkFunnel();
+      const interval = setInterval(checkFunnel, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [sessionId, isPublic, funnelId, publicToken]);
 
   const handleGenerateFunnel = async () => {
     setFunnelLoading(true);
@@ -625,6 +647,9 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
     if (report.success_signals?.length || report.success_metrics?.length) { chapters.push({ id: "segnali", number: String(n).padStart(2, '0'), title: "Come sai che funziona", subtitle: "Segnali concreti" }); n++; }
     if (report.honest_warning || report.priority_actions?.length) { chapters.push({ id: "avvertimento", number: String(n).padStart(2, '0'), title: "Cosa devi sapere", subtitle: "Avvertimento onesto" }); n++; }
     if (report.closing_message) chapters.push({ id: "chiusura", title: "Chiusura" });
+    if ((isPublic && publicFunnelData?.nodes) || (!isPublic && funnelId)) {
+      chapters.push({ id: "funnel", number: String(n).padStart(2, '0'), title: "Il Tuo Funnel", subtitle: "Percorso strategico" });
+    }
   }
 
   const setChapterRef = useCallback((id: string) => (el: HTMLDivElement | null) => {
@@ -1368,7 +1393,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
             )}
 
             {!isPublic && funnelId && (
-              <section className="mb-14 print:hidden">
+              <section id="funnel" ref={setChapterRef("funnel")} className="mb-14 print:hidden">
                 <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/30 dark:to-violet-950/30 p-6">
                   <div className="flex items-start gap-4">
                     <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0">
@@ -1388,6 +1413,65 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                       </Button>
                     </div>
                   </div>
+                </div>
+              </section>
+            )}
+
+            {isPublic && publicFunnelData && publicFunnelData.nodes && (
+              <section id="funnel" ref={setChapterRef("funnel")} className="mb-14 print:break-before-page">
+                <div className="mb-6">
+                  <h2 className="text-lg font-bold text-foreground mb-1">Il Tuo Percorso Strategico</h2>
+                  <p className="text-xs text-muted-foreground">Ecco il funnel personalizzato creato per te basato sulla nostra analisi</p>
+                </div>
+                <div className="space-y-3">
+                  {(publicFunnelData.nodes as any[])
+                    .filter((n: any) => n.data?.label)
+                    .sort((a: any, b: any) => (a.position?.y || 0) - (b.position?.y || 0))
+                    .map((node: any, idx: number, arr: any[]) => {
+                      const isLast = idx === arr.length - 1;
+                      const nodeType = node.data?.nodeType || node.type || "";
+                      const phaseColors: Record<string, string> = {
+                        awareness: "border-l-blue-400 bg-blue-50/50 dark:bg-blue-950/20",
+                        interesse: "border-l-cyan-400 bg-cyan-50/50 dark:bg-cyan-950/20",
+                        considerazione: "border-l-amber-400 bg-amber-50/50 dark:bg-amber-950/20",
+                        conversione: "border-l-green-400 bg-green-50/50 dark:bg-green-950/20",
+                        fidelizzazione: "border-l-violet-400 bg-violet-50/50 dark:bg-violet-950/20",
+                      };
+                      const phase = node.data?.phase || "";
+                      const colorClass = phaseColors[phase] || "border-l-gray-300 bg-gray-50/50 dark:bg-gray-800/20";
+                      return (
+                        <div key={node.id}>
+                          <div className={cn("rounded-lg border border-border/50 border-l-4 p-4", colorClass)}>
+                            <div className="flex items-start gap-3">
+                              <div className="w-7 h-7 rounded-full bg-foreground/10 flex items-center justify-center shrink-0 text-xs font-bold text-foreground/60">
+                                {idx + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="text-sm font-semibold text-foreground">{node.data.label}</h3>
+                                  {phase && (
+                                    <span className="text-[9px] uppercase tracking-wider font-medium text-muted-foreground/60 bg-foreground/5 px-1.5 py-0.5 rounded">
+                                      {phase}
+                                    </span>
+                                  )}
+                                </div>
+                                {node.data.description && (
+                                  <p className="text-xs text-muted-foreground leading-relaxed">{node.data.description}</p>
+                                )}
+                                {nodeType && (
+                                  <span className="inline-block mt-1.5 text-[10px] text-muted-foreground/50 capitalize">{nodeType.replace(/_/g, ' ')}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {!isLast && (
+                            <div className="flex justify-center py-1">
+                              <ArrowDown className="w-4 h-4 text-muted-foreground/30" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               </section>
             )}
