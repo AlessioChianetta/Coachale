@@ -32,7 +32,7 @@ function PhaseIndicator({ status }: { status: string }) {
   const currentIndex = PHASE_STEPS.findIndex((s) => s.key === status);
 
   return (
-    <div className="flex items-center justify-center gap-0.5 sm:gap-1 py-1 sm:py-3 px-2 sm:px-4">
+    <div className="flex items-center gap-0 sm:gap-0.5 sm:py-1 sm:px-4">
       {PHASE_STEPS.map((step, idx) => {
         const isCompleted = idx < currentIndex;
         const isActive = idx === currentIndex;
@@ -42,34 +42,34 @@ function PhaseIndicator({ status }: { status: string }) {
           <div key={step.key} className="flex items-center">
             <div
               className={cn(
-                "flex items-center gap-1 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-all",
+                "flex items-center p-0.5 sm:px-2.5 sm:py-1.5 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-medium transition-all",
                 isCompleted &&
-                  "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400",
+                  "text-emerald-600 dark:text-emerald-400",
                 isActive &&
-                  "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-700",
+                  "text-indigo-600 dark:text-indigo-300 sm:bg-indigo-50 sm:dark:bg-indigo-900/30 sm:ring-1 sm:ring-indigo-200 sm:dark:ring-indigo-700",
                 !isCompleted &&
                   !isActive &&
-                  "text-muted-foreground/50"
+                  "text-muted-foreground/40"
               )}
             >
               {isCompleted ? (
-                <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <CheckCircle2 className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
               ) : isActive ? (
                 <Icon
                   className={cn(
-                    "w-3 h-3 sm:w-3.5 sm:h-3.5",
+                    "w-2.5 h-2.5 sm:w-3.5 sm:h-3.5",
                     step.key === "elaborating" && "animate-spin"
                   )}
                 />
               ) : (
-                <Circle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <Circle className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
               )}
-              <span className="hidden sm:inline">{step.label}</span>
+              <span className="hidden sm:inline sm:ml-1">{step.label}</span>
             </div>
             {idx < PHASE_STEPS.length - 1 && (
               <div
                 className={cn(
-                  "w-3 sm:w-6 h-px mx-0.5 sm:mx-1",
+                  "w-1.5 sm:w-6 h-px mx-px sm:mx-1",
                   idx < currentIndex
                     ? "bg-emerald-400"
                     : "bg-border"
@@ -206,37 +206,29 @@ export default function LeadChat() {
   return (
     <div className="h-[100dvh] flex flex-col bg-background">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shrink-0">
-        <div className="flex items-center justify-between px-3 sm:px-4 py-1.5 sm:py-3">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white font-bold text-[9px] sm:text-sm shrink-0"
+        <div className="flex items-center justify-between px-3 sm:px-4 py-1 sm:py-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+            <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white font-bold text-[8px] sm:text-sm shrink-0"
                  style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)" }}>
               SO
             </div>
-            <div className="min-w-0">
-              <h1 className="text-[11px] sm:text-sm font-semibold truncate">La tua Analisi Gratuita</h1>
-              {user && (
-                <p className="text-[9px] sm:text-xs text-muted-foreground truncate hidden sm:block">
-                  {user.firstName} {user.lastName}
-                </p>
-              )}
-            </div>
+            <h1 className="text-[11px] sm:text-sm font-semibold truncate">La tua Analisi Gratuita</h1>
+            {user && (
+              <p className="text-[9px] sm:text-xs text-muted-foreground truncate hidden sm:block">
+                {user.firstName} {user.lastName}
+              </p>
+            )}
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <div className="hidden sm:block">
-              <PhaseIndicator status={status} />
-            </div>
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-1 sm:gap-1.5 text-[10px] sm:text-xs h-6 sm:h-8 px-1.5 sm:px-3 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
+            <PhaseIndicator status={status} />
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-[10px] sm:text-xs h-5 sm:h-8 w-5 sm:w-auto px-0 sm:px-3 shrink-0">
               <LogOut className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">Esci</span>
+              <span className="hidden sm:inline ml-1">Esci</span>
             </Button>
           </div>
         </div>
 
-        <div className="sm:hidden">
-          <PhaseIndicator status={status} />
-        </div>
-
-        <div className="flex border-t">
+        <div className="flex">
           <button
             onClick={() => setViewMode("chat")}
             className={cn(
