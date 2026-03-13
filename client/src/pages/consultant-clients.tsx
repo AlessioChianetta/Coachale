@@ -61,7 +61,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { NavigationTabs } from "@/components/ui/navigation-tabs";
+import { Link, useLocation } from "wouter";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders, getAuthUser } from "@/lib/auth";
@@ -76,6 +76,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 export default function ConsultantClientsPage() {
   const authUser = getAuthUser();
   const isMobile = useIsMobile();
+  const [location] = useLocation();
   const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<any>(null);
@@ -841,22 +842,42 @@ export default function ConsultantClientsPage() {
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
         <div className={cn("flex-1 p-4 sm:p-5 md:p-6", isMobile ? "overflow-y-auto" : "overflow-y-auto")}>
-          {/* Navigation Tabs */}
-          <NavigationTabs
-            tabs={[
-              { label: "Clienti", href: "/consultant/clients", icon: Users },
-              { label: "Stato Cliente", href: "/consultant/client-state", icon: Target },
-              { label: "Feedback", href: "/consultant/client-daily", icon: CheckSquare },
-              { label: "Monitoraggio", href: "/consultant/clients/monitoring", icon: BarChart3 },
-            ]}
-          />
-
-          {/* Compact Header - AI Autonoma Style */}
+          {/* Compact Header - AI Autonoma Style with integrated navigation */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-4 sm:p-5 text-white shadow-2xl mb-4">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent" />
             <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl" />
 
             <div className="relative z-10 space-y-3">
+              {(() => {
+                const navTabs = [
+                  { label: "Clienti", href: "/consultant/clients", icon: Users },
+                  { label: "Stato Cliente", href: "/consultant/client-state", icon: Target },
+                  { label: "Feedback", href: "/consultant/client-daily", icon: CheckSquare },
+                  { label: "Monitoraggio", href: "/consultant/clients/monitoring", icon: BarChart3 },
+                ];
+                return (
+                  <div className="flex items-center gap-1.5 p-1 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 mb-1 overflow-x-auto">
+                    {navTabs.map((tab) => {
+                      const isNavActive = location === tab.href;
+                      const NavIcon = tab.icon;
+                      return (
+                        <Link key={tab.href} href={tab.href}>
+                          <button className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap",
+                            isNavActive
+                              ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-md shadow-cyan-500/20"
+                              : "text-blue-200/60 hover:text-white hover:bg-white/10"
+                          )}>
+                            <NavIcon className="h-3.5 w-3.5" />
+                            {tab.label}
+                          </button>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg shadow-cyan-500/30">
