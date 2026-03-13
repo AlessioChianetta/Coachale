@@ -283,7 +283,7 @@ export default function LeadChat() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden min-h-0">
         {viewMode === "chat" ? (
           <DeliveryChat
             session={{

@@ -720,7 +720,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
   return (
     <UndoContext.Provider value={undoContextValue}>
     <ThemeContext.Provider value={currentTheme}>
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden h-full">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -875,11 +875,11 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
         )}
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-60 h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        <div className="w-60 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
           <FunnelPalette className="flex-1 min-h-0 border-r-0" />
 
-          <div className="border-t border-gray-200 dark:border-gray-700">
+          <div className="border-t border-gray-200 dark:border-gray-700 shrink-0 max-h-[40%] overflow-y-auto">
             {funnelSource === "delivery_report" && funnelDescription && (
               <div className="border-b border-border/60 bg-gradient-to-r from-indigo-50/50 to-violet-50/50 dark:from-indigo-950/20 dark:to-violet-950/20">
                 <button
