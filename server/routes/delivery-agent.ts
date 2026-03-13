@@ -1479,18 +1479,24 @@ router.get('/onboarding-status', authenticateToken, async (req: AuthRequest, res
     const userId = req.user!.id;
     const session = await db.execute(sql`
       SELECT id, status, mode FROM delivery_agent_sessions
-      WHERE (lead_user_id = ${userId} OR consultant_id = ${userId})
-        AND (mode = 'onboarding' OR is_public = true)
+      WHERE consultant_id = ${userId}
+        AND mode = 'onboarding'
+        AND (lead_user_id IS NULL OR lead_user_id = ${userId})
       ORDER BY updated_at DESC LIMIT 1
     `);
     if (session.rows.length === 0) {
-      return res.json({ success: true, data: { hasSession: false, status: null, hasChat: false, hasReport: false, hasFunnel: false } });
+      return res.json({ success: true, data: { hasSession: false, status: null, hasChat: false, hasReport: false, hasFunnel: false, recentMessages: [] } });
     }
     const s = session.rows[0] as any;
     const sessionId = s.id;
     const report = await db.execute(sql`SELECT id FROM delivery_agent_reports WHERE session_id = ${sessionId} LIMIT 1`);
     const funnel = await db.execute(sql`SELECT id FROM consultant_funnels WHERE delivery_session_id = ${sessionId} LIMIT 1`);
     const messages = await db.execute(sql`SELECT id FROM delivery_agent_messages WHERE session_id = ${sessionId} LIMIT 1`);
+    const recentMsgs = await db.execute(sql`
+      SELECT role, content, created_at FROM delivery_agent_messages
+      WHERE session_id = ${sessionId}
+      ORDER BY created_at DESC LIMIT 3
+    `);
     res.json({
       success: true,
       data: {
@@ -1500,6 +1506,11 @@ router.get('/onboarding-status', authenticateToken, async (req: AuthRequest, res
         hasChat: messages.rows.length > 0,
         hasReport: report.rows.length > 0,
         hasFunnel: funnel.rows.length > 0,
+        recentMessages: (recentMsgs.rows as any[]).reverse().map((m: any) => ({
+          role: m.role,
+          content: typeof m.content === 'string' ? m.content.substring(0, 150) : '',
+          createdAt: m.created_at,
+        })),
       },
     });
   } catch (err: any) {

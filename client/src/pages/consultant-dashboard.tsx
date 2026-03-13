@@ -220,11 +220,12 @@ export default function ConsultantDashboard() {
     hasChat: boolean;
     hasReport: boolean;
     hasFunnel: boolean;
+    recentMessages: Array<{ role: string; content: string; createdAt: string }>;
   }>({
     queryKey: ["/api/delivery-agent/onboarding-status"],
     queryFn: async () => {
       const res = await fetch("/api/delivery-agent/onboarding-status", { headers: getAuthHeaders() });
-      if (!res.ok) return { hasSession: false, status: null, hasChat: false, hasReport: false, hasFunnel: false };
+      if (!res.ok) return { hasSession: false, status: null, hasChat: false, hasReport: false, hasFunnel: false, recentMessages: [] };
       const json = await res.json();
       return json.data;
     },
@@ -622,13 +623,18 @@ export default function ConsultantDashboard() {
               </div>
             ) : onboardingStatus?.hasSession ? (
               <div className="space-y-4">
-                <p className="text-sm text-foreground/75 leading-relaxed">
-                  {onboardingStatus.status === 'completed'
-                    ? "Ottimo! Hai completato l'onboarding con Luca. Ecco i tuoi risultati:"
-                    : onboardingStatus.status === 'elaborating'
+                {onboardingStatus.status === 'completed' ? (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
+                    <p className="text-sm font-semibold text-emerald-700">Onboarding completato!</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-foreground/75 leading-relaxed">
+                    {onboardingStatus.status === 'elaborating'
                       ? "Luca sta elaborando i tuoi risultati..."
                       : "Stai completando l'onboarding con Luca. Continua da dove hai lasciato!"}
-                </p>
+                  </p>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { label: "Chat Discovery", done: onboardingStatus.hasChat, icon: MessageSquare },
@@ -664,6 +670,20 @@ export default function ConsultantDashboard() {
                     );
                   })}
                 </div>
+                {onboardingStatus.recentMessages && onboardingStatus.recentMessages.length > 0 && (
+                  <div className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/30">
+                    <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-wider mb-2">Ultimi messaggi</p>
+                    {onboardingStatus.recentMessages.map((msg, i) => (
+                      <div key={i} className={cn(
+                        "flex gap-2 text-xs",
+                        msg.role === 'assistant' ? "text-foreground/70" : "text-blue-600"
+                      )}>
+                        <span className="font-bold shrink-0">{msg.role === 'assistant' ? 'Luca:' : 'Tu:'}</span>
+                        <span className="truncate">{msg.content}{msg.content.length >= 150 ? '...' : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <Button
                   onClick={() => setLocation(
                     onboardingStatus.sessionId
