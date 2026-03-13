@@ -250,7 +250,7 @@ export function DeliveryFunnel({ sessionId, publicToken, onBackToChat }: Deliver
                   variant="outline"
                   size="sm"
                   className="gap-1.5 text-xs h-8"
-                  onClick={() => window.open(`/consultant/funnel-builder?funnel=${funnel.id}`, "_blank")}
+                  onClick={() => window.open(`/consultant/content-studio/ideas?tab=funnel&funnel=${funnel.id}`, "_blank")}
                 >
                   <ExternalLink className="w-3 h-3" />
                   Apri Builder

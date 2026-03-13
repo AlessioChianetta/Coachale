@@ -506,6 +506,10 @@ export default function ContentStudioIdeas() {
     if (t === "funnel" || t === "ideas" || t === "posts" || t === "advisage" || t === "facebook-ads") return t as ContentTab;
     return "ideas" as ContentTab;
   })();
+  const initialFunnelId = (() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("funnel") || undefined;
+  })();
   const [activeTab, setActiveTab] = useState<ContentTab>(initialTab);
   const [funnelDirty, setFunnelDirty] = useState(false);
   const funnelRef = useRef<FunnelBuilderHandle>(null);
@@ -2388,7 +2392,7 @@ export default function ContentStudioIdeas() {
             </div>
           ) : activeTab === "funnel" ? (
             <div className="flex-1 overflow-hidden flex flex-col">
-              <FunnelBuilderTab onDirtyChange={setFunnelDirty} funnelRef={funnelRef} />
+              <FunnelBuilderTab onDirtyChange={setFunnelDirty} funnelRef={funnelRef} initialFunnelId={initialFunnelId} />
             </div>
           ) : activeTab === "facebook-ads" ? (
             <div className="flex-1 overflow-y-auto">
