@@ -74,6 +74,8 @@ export interface BrandVoiceSectionProps {
   showImportFromLuca?: boolean;
   showMarketResearch?: boolean;
   autoTriggerDeepResearch?: boolean;
+  fetchMarketResearch?: () => Promise<MarketResearchData | null>;
+  saveMarketResearch?: (data: MarketResearchData) => Promise<void>;
 }
 
 export function BrandVoiceSection({
@@ -90,6 +92,8 @@ export function BrandVoiceSection({
   showImportFromLuca = true,
   showMarketResearch = true,
   autoTriggerDeepResearch = false,
+  fetchMarketResearch,
+  saveMarketResearch,
 }: BrandVoiceSectionProps) {
   const { toast } = useToast();
   const [businessInfoOpen, setBusinessInfoOpen] = useState(!compact);
@@ -131,9 +135,11 @@ export function BrandVoiceSection({
     const shouldFetch = marketResearchOpen || (autoTriggerDeepResearch && showMarketResearch);
     if (!shouldFetch || isLoadingMR) return;
     setIsLoadingMR(true);
-    fetch("/api/content/market-research", { headers: getAuthHeaders() })
-      .then(res => res.json())
-      .then(result => {
+    const doFetch = fetchMarketResearch
+      ? fetchMarketResearch().then(data => ({ success: true, data }))
+      : fetch("/api/content/market-research", { headers: getAuthHeaders() }).then(res => res.json());
+    doFetch
+      .then((result: any) => {
         if (result.success && result.data) {
           setMarketResearchData(result.data);
           const autoParams = result.data?._autoParams;
@@ -156,17 +162,21 @@ export function BrandVoiceSection({
       })
       .catch(() => {})
       .finally(() => setIsLoadingMR(false));
-  }, [marketResearchOpen, autoTriggerDeepResearch, showMarketResearch]);
+  }, [marketResearchOpen, autoTriggerDeepResearch, showMarketResearch, fetchMarketResearch]);
 
   const saveMarketResearchGlobal = useCallback(async (mrData: MarketResearchData) => {
     try {
-      await fetch("/api/content/market-research", {
-        method: "POST",
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ data: mrData }),
-      });
+      if (saveMarketResearch) {
+        await saveMarketResearch(mrData);
+      } else {
+        await fetch("/api/content/market-research", {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ data: mrData }),
+        });
+      }
     } catch {}
-  }, []);
+  }, [saveMarketResearch]);
 
   useEffect(() => {
     if (externalMarketResearchData) {

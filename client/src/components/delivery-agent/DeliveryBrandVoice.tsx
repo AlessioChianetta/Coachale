@@ -3,6 +3,7 @@ import { BrandVoiceSection, type BrandVoiceData } from "@/components/brand-voice
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import type { MarketResearchData } from "@shared/schema";
 
 interface DeliveryBrandVoiceProps {
   sessionId: string;
@@ -72,6 +73,22 @@ export function DeliveryBrandVoice({ sessionId }: DeliveryBrandVoiceProps) {
     }
   }, [sessionId, data, toast]);
 
+  const fetchSessionMR = useCallback(async (): Promise<MarketResearchData | null> => {
+    const res = await fetch(`/api/consultant/delivery-agent/sessions/${sessionId}/market-research`, {
+      headers: getAuthHeaders(),
+    });
+    const result = await res.json();
+    return result.success ? result.data : null;
+  }, [sessionId]);
+
+  const saveSessionMR = useCallback(async (mrData: MarketResearchData): Promise<void> => {
+    await fetch(`/api/consultant/delivery-agent/sessions/${sessionId}/market-research`, {
+      method: "POST",
+      headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ data: mrData }),
+    });
+  }, [sessionId]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -94,6 +111,8 @@ export function DeliveryBrandVoice({ sessionId }: DeliveryBrandVoiceProps) {
         showSaveButton={true}
         compact={false}
         autoTriggerDeepResearch={true}
+        fetchMarketResearch={fetchSessionMR}
+        saveMarketResearch={saveSessionMR}
       />
     </div>
   );

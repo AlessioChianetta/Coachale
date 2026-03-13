@@ -808,37 +808,25 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
 
           const drParams = extractDeepResearchParams(clientProfile, reportJson);
           if (drParams && drParams.niche) {
-            const autoParamsPayload = {
-              _autoParams: {
-                niche: drParams.niche,
-                targetAudience: drParams.targetAudience,
-                whatYouSell: drParams.whatYouSell,
-                promisedResult: drParams.promisedResult,
-                source: 'luca_onboarding',
-                savedAt: new Date().toISOString(),
-              }
+            const autoParamsObj = {
+              niche: drParams.niche,
+              targetAudience: drParams.targetAudience,
+              whatYouSell: drParams.whatYouSell,
+              promisedResult: drParams.promisedResult,
+              source: 'luca_onboarding',
+              savedAt: new Date().toISOString(),
             };
-            const [existingConfig] = await db.select()
-              .from(schema.contentStudioConfig)
-              .where(eq(schema.contentStudioConfig.consultantId, consultantId))
-              .limit(1);
-            if (existingConfig) {
-              const existingMR = (existingConfig.marketResearchData as any) || {};
-              await db.update(schema.contentStudioConfig)
-                .set({
-                  marketResearchData: { ...existingMR, ...autoParamsPayload },
-                  updatedAt: new Date(),
-                })
-                .where(eq(schema.contentStudioConfig.consultantId, consultantId));
-            } else {
-              await db.insert(schema.contentStudioConfig).values({
-                consultantId,
-                marketResearchData: autoParamsPayload,
-                brandVoiceData: sessionBrandVoice,
-                brandVoiceEnabled: true,
-              });
-            }
-            console.log(`[DeliveryAgent] Deep Research _autoParams saved for consultant ${consultantId} (niche: "${drParams.niche}")`);
+            await db.execute(sql`
+              UPDATE delivery_agent_sessions
+              SET brand_voice_data = jsonb_set(
+                COALESCE(brand_voice_data, '{}'::jsonb),
+                '{_marketResearch}',
+                ${JSON.stringify({ _autoParams: autoParamsObj })}::jsonb
+              ),
+              updated_at = NOW()
+              WHERE id = ${sessionId}::uuid
+            `);
+            console.log(`[DeliveryAgent] Deep Research _autoParams saved to session ${sessionId} (niche: "${drParams.niche}")`);
           }
         } catch (bvErr: any) {
           console.warn(`[DeliveryAgent] Auto Brand Voice population failed (non-blocking): ${bvErr.message}`);
@@ -1729,7 +1717,9 @@ router.get('/sessions/:sessionId/brand-voice', authenticateToken, requireRole('c
       return res.status(404).json({ success: false, error: 'Session not found' });
     }
     const row = result.rows[0] as any;
-    res.json({ success: true, data: row.brand_voice_data || {} });
+    const bvData = { ...(row.brand_voice_data || {}) };
+    delete bvData._marketResearch;
+    res.json({ success: true, data: bvData });
   } catch (err: any) {
     console.error('[DeliveryAgent] GET brand-voice error:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -1741,18 +1731,72 @@ router.put('/sessions/:sessionId/brand-voice', authenticateToken, requireRole('c
     const consultantId = req.user!.id;
     const { sessionId } = req.params;
     const brandVoiceData = req.body;
-    const result = await db.execute(sql`
-      UPDATE delivery_agent_sessions
-      SET brand_voice_data = ${JSON.stringify(brandVoiceData)}::jsonb, updated_at = NOW()
+    const existing = await db.execute(sql`
+      SELECT brand_voice_data FROM delivery_agent_sessions
       WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId}
-      RETURNING id
+    `);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    const existingBv = (existing.rows[0] as any).brand_voice_data || {};
+    const merged = { ...brandVoiceData };
+    if (existingBv._marketResearch) {
+      merged._marketResearch = existingBv._marketResearch;
+    }
+    await db.execute(sql`
+      UPDATE delivery_agent_sessions
+      SET brand_voice_data = ${JSON.stringify(merged)}::jsonb, updated_at = NOW()
+      WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId}
+    `);
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('[DeliveryAgent] PUT brand-voice error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/sessions/:sessionId/market-research', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { sessionId } = req.params;
+    const result = await db.execute(sql`
+      SELECT brand_voice_data FROM delivery_agent_sessions
+      WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId}
     `);
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Session not found' });
     }
+    const row = result.rows[0] as any;
+    const bvData = row.brand_voice_data || {};
+    res.json({ success: true, data: bvData._marketResearch || null });
+  } catch (err: any) {
+    console.error('[DeliveryAgent] GET session market-research error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/sessions/:sessionId/market-research', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { sessionId } = req.params;
+    const mrData = req.body.data;
+    const existing = await db.execute(sql`
+      SELECT brand_voice_data FROM delivery_agent_sessions
+      WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId}
+    `);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    const bvData = (existing.rows[0] as any).brand_voice_data || {};
+    bvData._marketResearch = mrData;
+    await db.execute(sql`
+      UPDATE delivery_agent_sessions
+      SET brand_voice_data = ${JSON.stringify(bvData)}::jsonb, updated_at = NOW()
+      WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId}
+    `);
     res.json({ success: true });
   } catch (err: any) {
-    console.error('[DeliveryAgent] PUT brand-voice error:', err);
+    console.error('[DeliveryAgent] POST session market-research error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
