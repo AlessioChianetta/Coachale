@@ -123,7 +123,7 @@ function FunnelNodeComponent({ data, selected }: NodeProps) {
           </div>
         )}
 
-        {getLinkedEntities(nodeData).map((le, idx) => (
+        {getLinkedEntities(nodeData).filter(le => le.entityType !== "academy_lessons").map((le, idx) => (
           <EntityPreview
             key={le.entityId || idx}
             entityType={le.entityType}

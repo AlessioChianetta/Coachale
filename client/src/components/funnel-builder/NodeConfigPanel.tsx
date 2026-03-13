@@ -173,7 +173,8 @@ export function NodeConfigPanel({
     }
   }, [showEntityPicker, entityType, fetchEntities]);
 
-  const currentLinked = getLinkedEntities(data);
+  const currentLinkedAll = getLinkedEntities(data);
+  const currentLinked = currentLinkedAll.filter(le => le.entityType !== "academy_lessons");
   const linkedIds = new Set(currentLinked.map((le) => le.entityId));
 
   const filteredEntities = entities.filter((e) =>

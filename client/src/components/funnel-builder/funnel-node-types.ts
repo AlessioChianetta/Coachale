@@ -63,7 +63,8 @@ export type EntityType =
   | "services"
   | "campaigns"
   | "nurturing_config"
-  | "email_journey_config";
+  | "email_journey_config"
+  | "academy_lessons";
 
 export interface FunnelNodeType {
   type: string;
@@ -101,9 +102,23 @@ export interface FunnelNodeData {
 }
 
 export function getLinkedEntities(data: FunnelNodeData): LinkedEntity[] {
-  if (data.linkedEntities && data.linkedEntities.length > 0) return data.linkedEntities;
-  if (data.linkedEntity) return [data.linkedEntity];
-  return [];
+  const entities: LinkedEntity[] = [];
+  if (data.linkedEntities && data.linkedEntities.length > 0) {
+    entities.push(...data.linkedEntities);
+  } else if (data.linkedEntity) {
+    entities.push(data.linkedEntity);
+  }
+  if (data.academyLessons && data.academyLessons.length > 0) {
+    for (const al of data.academyLessons) {
+      entities.push({
+        entityType: "academy_lessons",
+        entityId: al.lessonId,
+        name: al.title,
+        extra: { moduleTitle: al.moduleTitle, moduleEmoji: al.moduleEmoji, configLink: al.configLink, videoCount: al.videoCount },
+      });
+    }
+  }
+  return entities;
 }
 
 export interface LinkedEntity {
@@ -234,6 +249,7 @@ const EDIT_LINKS: Record<EntityType, string> = {
   campaigns: "/consultant/ai-autonomy",
   nurturing_config: "/consultant/ai-config",
   email_journey_config: "/consultant/ai-config",
+  academy_lessons: "/consultant/academy",
 };
 
 export function getEditLinkForEntity(entityType: EntityType): string {
@@ -255,6 +271,7 @@ const ENTITY_LABELS: Record<EntityType, string> = {
   campaigns: "Campagna Marketing",
   nurturing_config: "Nurturing Lead 365",
   email_journey_config: "Email Journey",
+  academy_lessons: "Lezione Accademia",
 };
 
 export function getEntityLabel(entityType: EntityType): string {

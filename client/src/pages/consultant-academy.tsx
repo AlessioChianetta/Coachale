@@ -621,10 +621,18 @@ export default function ConsultantAcademy() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!activeId && lessonsFlat.length > 0) {
-      setActiveId(lessonsFlat[0].lesson_id);
+    if (lessonsFlat.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const stepParam = params.get("step");
+      if (stepParam && lessonById[stepParam] && activeId !== stepParam) {
+        setActiveId(stepParam);
+        return;
+      }
+      if (!activeId) {
+        setActiveId(lessonsFlat[0].lesson_id);
+      }
     }
-  }, [activeId, lessonsFlat]);
+  }, [lessonsFlat.length, Object.keys(lessonById).length]);
 
   const activeLesson = lessonById[activeId] ?? lessonsFlat[0];
   const activeModule = activeLesson ? modules.find(m => m.id === activeLesson.module_id) : undefined;
