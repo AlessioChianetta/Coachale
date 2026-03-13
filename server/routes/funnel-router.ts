@@ -2,7 +2,7 @@ import { Router, Response } from "express";
 import { authenticateToken, requireAnyRole, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
-import { getAIProvider, trackedGenerateContent } from "../ai/provider-factory";
+import { getAIProvider, GEMINI_3_MODEL } from "../ai/provider-factory";
 
 const router = Router();
 
@@ -249,22 +249,19 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
   ]
 }`;
 
-    const result = await trackedGenerateContent(provider.client, {
-      model: "gemini-2.5-flash",
+    provider.setFeature?.("funnel_generation");
+    const result = await provider.client.generateContent({
+      model: GEMINI_3_MODEL,
       contents: [
         { role: "user", parts: [{ text: systemPrompt + "\n\nDescrizione del funnel dell'utente:\n" + prompt }] }
       ],
-      config: {
+      generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 4096,
       }
-    }, {
-      consultantId,
-      feature: "funnel_generation",
-      keySource: provider.keySource,
     });
 
-    const text = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const text = result?.response?.text?.() || "";
     const jsonMatch = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
 
     let parsed;
@@ -472,22 +469,19 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
 
   console.log(`[Funnel] Generating funnel from report — session: ${sessionId}, lead: ${leadName}, catalog: ${serviceCatalog.length} services`);
 
-  const result = await trackedGenerateContent(provider.client, {
-    model: "gemini-2.5-flash",
+  provider.setFeature?.("funnel_from_report");
+  const result = await provider.client.generateContent({
+    model: GEMINI_3_MODEL,
     contents: [
       { role: "user", parts: [{ text: reportFunnelPrompt }] }
     ],
-    config: {
+    generationConfig: {
       temperature: 0.5,
       maxOutputTokens: 8192,
     }
-  }, {
-    consultantId,
-    feature: "funnel_from_report",
-    keySource: provider.keySource,
   });
 
-  const text = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  const text = result?.response?.text?.() || "";
   const jsonMatch = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
 
   let parsed;
