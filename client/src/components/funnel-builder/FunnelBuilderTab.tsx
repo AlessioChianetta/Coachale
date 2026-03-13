@@ -82,6 +82,9 @@ interface FunnelRecord {
   edges_data: Edge[];
   theme?: string;
   is_active: boolean;
+  source?: string;
+  lead_name?: string;
+  delivery_session_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -280,7 +283,13 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
         const list = await res.json();
         setFunnels(list);
         if (list.length > 0 && !activeFunnelId) {
-          loadFunnel(list[0].id);
+          const params = new URLSearchParams(window.location.search);
+          const urlFunnelId = params.get("funnel");
+          if (urlFunnelId && list.some((f: any) => f.id === urlFunnelId)) {
+            loadFunnel(urlFunnelId);
+          } else {
+            loadFunnel(list[0].id);
+          }
         }
       }
     } catch (err) {
@@ -688,7 +697,10 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
                 )}
               >
                 <GitBranch className="w-3.5 h-3.5 mr-2" />
-                {f.name}
+                <span className="truncate flex-1">{f.name}</span>
+                {f.source === "delivery_report" && (
+                  <Badge variant="secondary" className="text-[8px] px-1 py-0 ml-1 shrink-0 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">AI</Badge>
+                )}
               </DropdownMenuItem>
             ))}
             {funnels.length > 0 && <DropdownMenuSeparator />}

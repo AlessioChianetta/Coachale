@@ -49,6 +49,18 @@ const router = Router();
   }
 })();
 
+(async () => {
+  try {
+    await db.execute(sql`ALTER TABLE consultant_funnels ADD COLUMN IF NOT EXISTS delivery_session_id VARCHAR`);
+    await db.execute(sql`ALTER TABLE consultant_funnels ADD COLUMN IF NOT EXISTS source VARCHAR DEFAULT 'manual'`);
+    await db.execute(sql`ALTER TABLE consultant_funnels ADD COLUMN IF NOT EXISTS lead_name VARCHAR`);
+    await db.execute(sql`DROP INDEX IF EXISTS idx_funnels_delivery_session`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_funnels_delivery_session ON consultant_funnels(consultant_id, delivery_session_id) WHERE delivery_session_id IS NOT NULL`);
+  } catch (e) {
+    console.error("[Funnel] Error adding delivery columns:", e);
+  }
+})();
+
 function getConsultantId(req: AuthRequest): string | null {
   const user = req.user;
   if (!user) return null;
@@ -349,6 +361,281 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
   }
 });
 
+
+export async function generateFunnelFromReport(consultantId: string, sessionId: string): Promise<{ funnelId: string; name: string; nodes: any[]; edges: any[] }> {
+  const existingFunnel = await db.execute(sql`
+    SELECT id FROM consultant_funnels
+    WHERE delivery_session_id = ${sessionId} AND consultant_id = ${consultantId}
+    LIMIT 1
+  `);
+  if (existingFunnel.rows.length > 0) {
+    const existing = existingFunnel.rows[0] as any;
+    return { funnelId: existing.id, name: "existing", nodes: [], edges: [] };
+  }
+
+  const sessionRes = await db.execute(sql`
+    SELECT * FROM delivery_agent_sessions
+    WHERE id = ${sessionId}::uuid AND consultant_id = ${consultantId}
+  `);
+  if (sessionRes.rows.length === 0) throw new Error("Session non trovata");
+  const session = sessionRes.rows[0] as any;
+
+  const messagesRes = await db.execute(sql`
+    SELECT role, content FROM delivery_agent_messages
+    WHERE session_id = ${sessionId}
+    ORDER BY created_at ASC
+  `);
+  const conversationText = (messagesRes.rows as any[])
+    .map(m => `${m.role === 'assistant' ? 'Luca' : 'Cliente'}: ${m.content}`)
+    .join('\n\n');
+
+  const reportRes = await db.execute(sql`
+    SELECT report_json FROM delivery_agent_reports
+    WHERE session_id = ${sessionId}
+    ORDER BY created_at DESC LIMIT 1
+  `);
+  if (reportRes.rows.length === 0) throw new Error("Report non trovato per questa sessione");
+  const reportJson = (reportRes.rows[0] as any).report_json;
+
+  const catalogRes = await db.execute(sql`
+    SELECT id, name, description, price_cents, billing_type, is_active
+    FROM service_catalog_items
+    WHERE consultant_id = ${consultantId} AND is_active = true
+    ORDER BY created_at DESC
+  `);
+  const serviceCatalog = catalogRes.rows;
+
+  const clientProfile = session.client_profile_json || {};
+  const leadName = clientProfile.nome_attivita || clientProfile.nome || session.lead_name || "Cliente";
+
+  const reportSummary = typeof reportJson === 'string' ? reportJson : JSON.stringify(reportJson, null, 2);
+
+  const catalogText = serviceCatalog.length > 0
+    ? serviceCatalog.map((s: any) => `- ${s.name}: ${s.description || ''} (${s.price_cents ? (s.price_cents / 100).toFixed(2) + '€' : 'prezzo da definire'}, ${s.billing_type || 'una tantum'})`).join('\n')
+    : 'Catalogo non ancora configurato';
+
+  const reportFunnelPrompt = `Sei Leonardo, l'architetto dei funnel di Orbitale. Devi generare un funnel di vendita PERSONALIZZATO per un cliente specifico basandoti su tre fonti di dati.
+
+${NODE_TYPES_SCHEMA}
+
+${SUBTITLE_SUGGESTIONS}
+
+FONTI DATI:
+
+=== 1. CONVERSAZIONE DISCOVERY (tra Luca e il cliente) ===
+${conversationText.slice(0, 12000)}
+
+=== 2. REPORT STRATEGICO GENERATO ===
+${reportSummary.slice(0, 15000)}
+
+=== 3. CATALOGO SERVIZI DEL CONSULENTE ===
+${catalogText}
+
+=== PROFILO CLIENTE ===
+${JSON.stringify(clientProfile, null, 2)}
+
+ISTRUZIONI PER LA GENERAZIONE DEL FUNNEL:
+
+1. Analizza il report: guarda i "pacchetti_consigliati" e la "roadmap" per capire quale percorso è stato progettato per questo cliente
+2. Mappa i pacchetti ai nodi del funnel:
+   - Se c'è un pacchetto Hunter/Setter → aggiungi nodi crm_hunter e/o setter_ai
+   - Se c'è un pacchetto Content/Social → aggiungi nodi organici e/o ads
+   - Se c'è un pacchetto Voice/Email → aggiungi nodi comunicazione appropriati
+   - Se c'è un pacchetto Booking/Payment → aggiungi nodi conversione
+3. Il funnel deve seguire la struttura standard: SORGENTI → CATTURA → GESTIONE → COMUNICAZIONE → CONVERSIONE → DELIVERY
+4. Personalizza i label e subtitle usando il nome del cliente ("${leadName}") e dettagli specifici emersi dalla discovery
+5. Includi SOLO i nodi che hanno senso per questo cliente (non tutti i tipi disponibili)
+6. Il primo nodo "onboarding" è il Lead Magnet AI (la discovery con Luca che è appena avvenuta)
+7. Se nel catalogo servizi del consulente ci sono servizi specifici, mappa i nodi di delivery/pagamento a quelli
+
+REGOLE POSIZIONAMENTO:
+- Primo nodo a y=0, ogni livello successivo ~180px più in basso
+- Rami paralleli sulla stessa Y con X diversi (distanza ~300px)
+- Tipicamente 8-15 nodi per un funnel completo
+
+FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
+{
+  "name": "Funnel Personalizzato per ${leadName}",
+  "description": "Percorso strategico generato dalla discovery con Luca",
+  "nodes": [
+    { "id": "node_1", "type": "lead_magnet", "position": { "x": 0, "y": 0 }, "data": { "label": "Discovery Gratuita", "subtitle": "Onboarding con Luca AI", "category": "cattura" } }
+  ],
+  "edges": [
+    { "id": "edge_1_2", "source": "node_1", "target": "node_2" }
+  ]
+}`;
+
+  const provider = await getAIProvider(consultantId);
+  if (!provider?.client) {
+    throw new Error("Provider AI non disponibile");
+  }
+
+  console.log(`[Funnel] Generating funnel from report — session: ${sessionId}, lead: ${leadName}, catalog: ${serviceCatalog.length} services`);
+
+  const result = await trackedGenerateContent(provider.client, {
+    model: "gemini-2.5-flash",
+    contents: [
+      { role: "user", parts: [{ text: reportFunnelPrompt }] }
+    ],
+    config: {
+      temperature: 0.5,
+      maxOutputTokens: 8192,
+    }
+  }, {
+    consultantId,
+    feature: "funnel_from_report",
+    keySource: provider.keySource,
+  });
+
+  const text = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  const jsonMatch = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonMatch);
+  } catch {
+    const extractMatch = jsonMatch.match(/\{[\s\S]*\}/);
+    if (extractMatch) {
+      parsed = JSON.parse(extractMatch[0]);
+    } else {
+      throw new Error("L'AI non ha generato un JSON valido");
+    }
+  }
+
+  if (!parsed.nodes || !Array.isArray(parsed.nodes)) {
+    throw new Error("Formato non valido: mancano i nodi");
+  }
+
+  let academyLessonsByLessonId: Record<string, any> = {};
+  try {
+    const academyResult = await db.execute(sql`
+      SELECT
+        al.lesson_id as "lessonId",
+        al.title,
+        am.title as "moduleTitle",
+        am.emoji as "moduleEmoji",
+        al.config_link as "configLink",
+        (SELECT COUNT(*)::int FROM academy_lesson_videos alv WHERE alv.lesson_id = al.id) as "videoCount"
+      FROM academy_lessons al
+      JOIN academy_modules am ON al.module_id = am.id
+    `);
+    for (const row of academyResult.rows as any[]) {
+      academyLessonsByLessonId[row.lessonId] = row;
+    }
+  } catch (e) {
+    console.error("[Funnel] Academy lessons fetch for report auto-linking:", e);
+  }
+
+  const validCategories = ["sorgenti", "cattura", "gestione", "comunicazione", "conversione", "delivery", "custom"];
+
+  const nodes = parsed.nodes.map((n: any) => {
+    const nodeType = n.type || "custom_step";
+    const rawCategory = n.data?.category;
+    const category = validCategories.includes(rawCategory) ? rawCategory : getCategoryForType(nodeType);
+
+    const mappedLessonIds = NODE_TYPE_ACADEMY_MAP[nodeType] || [];
+    const academyLessons = mappedLessonIds
+      .map((lid: string) => academyLessonsByLessonId[lid])
+      .filter(Boolean)
+      .map((l: any) => ({
+        lessonId: l.lessonId,
+        title: l.title,
+        moduleTitle: l.moduleTitle,
+        moduleEmoji: l.moduleEmoji,
+        configLink: l.configLink,
+        videoCount: l.videoCount || 0,
+      }));
+
+    return {
+      id: n.id || `node_${Math.random().toString(36).substr(2, 9)}`,
+      type: "funnelNode",
+      position: n.position || { x: 0, y: 0 },
+      data: {
+        nodeType,
+        type: nodeType,
+        category,
+        label: n.data?.label || n.label || "Step",
+        subtitle: n.data?.subtitle || n.subtitle || "",
+        notes: n.data?.notes || "",
+        conversionRate: n.data?.conversionRate || null,
+        linkedEntity: null,
+        linkedEntities: [],
+        academyLessons: academyLessons.length > 0 ? academyLessons : undefined,
+      },
+    };
+  });
+
+  const edges = (parsed.edges || []).map((e: any) => ({
+    id: e.id || `edge_${Math.random().toString(36).substr(2, 9)}`,
+    source: e.source,
+    target: e.target,
+    type: "funnelEdge",
+    data: { label: e.label || e.data?.label || "" },
+  }));
+
+  const funnelName = parsed.name || `Funnel per ${leadName}`;
+  const funnelDesc = parsed.description || `Percorso strategico personalizzato generato dalla discovery con Luca`;
+
+  const insertResult = await db.execute(sql`
+    INSERT INTO consultant_funnels (consultant_id, name, description, nodes_data, edges_data, theme, delivery_session_id, source, lead_name)
+    VALUES (
+      ${consultantId},
+      ${funnelName},
+      ${funnelDesc},
+      ${JSON.stringify(nodes)}::jsonb,
+      ${JSON.stringify(edges)}::jsonb,
+      ${"orbitale"},
+      ${sessionId},
+      ${"delivery_report"},
+      ${leadName}
+    )
+    ON CONFLICT (consultant_id, delivery_session_id) WHERE delivery_session_id IS NOT NULL
+    DO UPDATE SET updated_at = NOW()
+    RETURNING id
+  `);
+
+  const funnelId = (insertResult.rows[0] as any).id;
+  console.log(`[Funnel] Generated funnel from report — id: ${funnelId}, nodes: ${nodes.length}, edges: ${edges.length}, lead: ${leadName}`);
+
+  return { funnelId, name: funnelName, nodes, edges };
+}
+
+router.post("/generate-from-report", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = getConsultantId(req);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    const { sessionId } = req.body;
+    if (!sessionId) return res.status(400).json({ error: "Session ID richiesto" });
+
+    const result = await generateFunnelFromReport(consultantId, sessionId);
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error("[Funnel] Generate from report error:", error);
+    res.status(500).json({ error: error.message || "Errore nella generazione del funnel dal report" });
+  }
+});
+
+router.get("/by-session/:sessionId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = getConsultantId(req);
+    if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
+
+    const result = await db.execute(sql`
+      SELECT id, name, description, source, lead_name, created_at
+      FROM consultant_funnels
+      WHERE delivery_session_id = ${req.params.sessionId} AND consultant_id = ${consultantId}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `);
+
+    if (result.rows.length === 0) return res.status(404).json({ error: "Nessun funnel trovato per questa sessione" });
+    res.json(result.rows[0]);
+  } catch (error: any) {
+    console.error("[Funnel] By-session error:", error);
+    res.status(500).json({ error: "Errore" });
+  }
+});
 
 router.get("/entities/academy-lessons", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
@@ -707,7 +994,7 @@ router.get("/", authenticateToken, requireAnyRole(["consultant", "super_admin"])
     if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
 
     const result = await db.execute(sql`
-      SELECT id, name, description, is_active, created_at, updated_at
+      SELECT id, name, description, is_active, source, lead_name, delivery_session_id, created_at, updated_at
       FROM consultant_funnels
       WHERE consultant_id = ${consultantId}
       ORDER BY updated_at DESC

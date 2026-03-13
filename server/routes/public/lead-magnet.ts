@@ -701,9 +701,65 @@ Ragiona in modo strutturato e critico.`,
       console.warn(`[LeadMagnet] Lead enrichment failed (non-blocking):`, enrichErr.message);
     }
 
+    (async () => {
+      try {
+        const consultantIdForFunnel = session.consultant_id || FALLBACK_CONSULTANT_ID;
+        console.log(`[LeadMagnet] Auto-triggering funnel generation for session ${session.id}...`);
+        const { generateFunnelFromReport } = await import('../funnel-router');
+        await generateFunnelFromReport(consultantIdForFunnel, session.id);
+        console.log(`[LeadMagnet] Funnel auto-generated for session ${session.id}`);
+      } catch (funnelErr: any) {
+        console.warn(`[LeadMagnet] Auto funnel generation failed (non-blocking): ${funnelErr.message}`);
+      }
+    })();
+
     res.json({ success: true, data: { report: reportJson, status: 'assistant' } });
   } catch (err: any) {
     console.error('[LeadMagnet] Report generation error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/:token/funnel', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    if (!token) return res.status(400).json({ success: false, error: 'Token richiesto' });
+
+    const sessionRes = await db.execute(sql`
+      SELECT id, consultant_id FROM delivery_agent_sessions
+      WHERE public_token = ${token} AND is_public = true
+      LIMIT 1
+    `);
+    if (sessionRes.rows.length === 0) return res.status(404).json({ success: false, error: 'Sessione non trovata' });
+    const session = sessionRes.rows[0] as any;
+
+    const funnelRes = await db.execute(sql`
+      SELECT id, name, description, nodes_data, edges_data, theme, lead_name, created_at
+      FROM consultant_funnels
+      WHERE delivery_session_id = ${session.id} AND consultant_id = ${session.consultant_id}
+      LIMIT 1
+    `);
+
+    if (funnelRes.rows.length === 0) {
+      return res.json({ success: true, data: null, message: 'Funnel non ancora generato' });
+    }
+
+    const funnel = funnelRes.rows[0] as any;
+    res.json({
+      success: true,
+      data: {
+        id: funnel.id,
+        name: funnel.name,
+        description: funnel.description,
+        nodes: funnel.nodes_data,
+        edges: funnel.edges_data,
+        theme: funnel.theme,
+        leadName: funnel.lead_name,
+        createdAt: funnel.created_at,
+      }
+    });
+  } catch (err: any) {
+    console.error('[LeadMagnet] Funnel fetch error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

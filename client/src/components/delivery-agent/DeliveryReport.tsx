@@ -529,6 +529,8 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const contentRef = useRef<HTMLDivElement>(null);
   const chapterRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [funnelId, setFunnelId] = useState<string | null>(null);
+  const [funnelLoading, setFunnelLoading] = useState(false);
 
   useEffect(() => {
     const loadReport = async () => {
@@ -560,6 +562,51 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
     };
     loadReport();
   }, [sessionId, toast, isPublic, publicToken]);
+
+  useEffect(() => {
+    setFunnelId(null);
+    setFunnelLoading(false);
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (isPublic || funnelId) return;
+    const checkFunnel = async () => {
+      try {
+        const res = await fetch(`/api/funnels/by-session/${sessionId}`, { headers: getAuthHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.id) setFunnelId(data.id);
+        }
+      } catch {}
+    };
+    checkFunnel();
+    const interval = setInterval(checkFunnel, 10000);
+    return () => clearInterval(interval);
+  }, [sessionId, isPublic, funnelId]);
+
+  const handleGenerateFunnel = async () => {
+    setFunnelLoading(true);
+    try {
+      const res = await fetch('/api/funnels/generate-from-report', {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.funnelId) {
+          setFunnelId(data.funnelId);
+          toast({ title: "Funnel generato!", description: "Il funnel personalizzato è stato creato" });
+        }
+      } else {
+        toast({ title: "Errore", description: "Impossibile generare il funnel", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+    } finally {
+      setFunnelLoading(false);
+    }
+  };
 
   const chapters: Chapter[] = [];
   if (report) {
@@ -733,6 +780,27 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
           </div>
           {!isPublic && (
             <div className="flex items-center gap-2">
+              {funnelId ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+                  onClick={() => window.location.href = `/consultant/funnel-builder?funnel=${funnelId}`}
+                >
+                  <Layers className="w-3.5 h-3.5" /> Vedi Funnel
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={handleGenerateFunnel}
+                  disabled={funnelLoading}
+                >
+                  {funnelLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />}
+                  {funnelLoading ? "Generando..." : "Genera Funnel"}
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1.5 text-xs">
                 <Share2 className="w-3.5 h-3.5" /> Condividi
               </Button>
@@ -1294,6 +1362,31 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                         <RichText text={para} />
                       </p>
                     ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {!isPublic && funnelId && (
+              <section className="mb-14 print:hidden">
+                <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/30 dark:to-violet-950/30 p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0">
+                      <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-foreground mb-1">Funnel Personalizzato Generato</h3>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Leonardo ha creato un funnel di vendita personalizzato basato su questo report. Visualizzalo nel Funnel Builder per personalizzarlo ulteriormente.
+                      </p>
+                      <Button
+                        size="sm"
+                        className="gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+                        onClick={() => window.location.href = `/consultant/funnel-builder?funnel=${funnelId}`}
+                      >
+                        <Layers className="w-3.5 h-3.5" /> Apri nel Funnel Builder
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </section>

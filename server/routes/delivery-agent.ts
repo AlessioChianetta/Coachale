@@ -762,6 +762,17 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
       WHERE id = ${sessionId}::uuid
     `);
 
+    (async () => {
+      try {
+        console.log(`[DeliveryAgent] Auto-triggering funnel generation for session ${sessionId}...`);
+        const { generateFunnelFromReport } = await import('./funnel-router');
+        await generateFunnelFromReport(consultantId, sessionId);
+        console.log(`[DeliveryAgent] Funnel auto-generated for session ${sessionId}`);
+      } catch (funnelErr: any) {
+        console.warn(`[DeliveryAgent] Auto funnel generation failed (non-blocking): ${funnelErr.message}`);
+      }
+    })();
+
     res.json({ success: true, data: { report: reportJson, status: 'assistant' } });
   } catch (err: any) {
     console.error('[DeliveryAgent] Report generation error:', err);
