@@ -269,6 +269,7 @@ router.post("/brand-voice/import-from-luca", authenticateToken, requireRole("con
       brandVoice: updated?.brandVoiceData || brandVoice,
       enabled: updated?.brandVoiceEnabled ?? true,
       deepResearchParams,
+      marketResearch: updated?.marketResearchData || null,
     });
   } catch (error: any) {
     console.error("[CONTENT-STUDIO] Error importing Luca brand voice:", error);

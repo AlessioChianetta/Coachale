@@ -253,7 +253,26 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
           onChange(field, val);
         }
       }
-      toast({ title: "Brand Voice compilato da Luca", description: "I campi sono stati compilati con i dati dell'onboarding" });
+      let mrImported = false;
+      if (result.marketResearch) {
+        const mr = result.marketResearch;
+        const hasRealData =
+          (Array.isArray(mr.currentState) && mr.currentState.some((s: string) => s?.trim())) ||
+          (Array.isArray(mr.idealState) && mr.idealState.some((s: string) => s?.trim())) ||
+          (Array.isArray(mr.emotionalDrivers) && mr.emotionalDrivers.length > 0) ||
+          (mr.avatar && Object.values(mr.avatar).some((v: any) => typeof v === 'string' && v.trim()));
+        if (hasRealData) {
+          setMarketResearchData(mr);
+          mrImported = true;
+        }
+      }
+
+      toast({
+        title: "Brand Voice compilato da Luca",
+        description: mrImported
+          ? "Brand Voice e Ricerca di Mercato importati dall'onboarding"
+          : "I campi sono stati compilati con i dati dell'onboarding",
+      });
     } catch {
       toast({ title: "Errore nella compilazione", variant: "destructive" });
     } finally {
@@ -970,7 +989,7 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
             </div>
             <div>
               <p className="font-semibold text-violet-900">Compila con Luca</p>
-              <p className="text-sm text-violet-700">Copia il Brand Voice già generato da Luca — se non è ancora stato generato, lo crea e poi lo copia</p>
+              <p className="text-sm text-violet-700">Copia Brand Voice e Ricerca di Mercato da Luca — se il Brand Voice non è ancora stato generato, lo crea prima</p>
             </div>
           </div>
           <Button
