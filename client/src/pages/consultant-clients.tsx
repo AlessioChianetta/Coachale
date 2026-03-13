@@ -79,7 +79,7 @@ export default function ConsultantClientsPage() {
   const [editingClient, setEditingClient] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
-  const [typeFilter, setTypeFilter] = useState<"all" | "clients" | "employees" | "crm">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "clients" | "employees" | "crm" | "lead_magnet">("all");
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
   const [newClientForm, setNewClientForm] = useState({
     firstName: '',
@@ -616,9 +616,10 @@ export default function ConsultantClientsPage() {
 
     const matchesType =
       typeFilter === "all" ? true :
-      typeFilter === "crm" ? !!client.isCrmOnly :
+      typeFilter === "crm" ? (!!client.isCrmOnly && !client.isLeadMagnet) :
       typeFilter === "employees" ? (!!client.isEmployee && !client.isCrmOnly) :
-      (!client.isEmployee && !client.isCrmOnly);
+      typeFilter === "lead_magnet" ? !!client.isLeadMagnet :
+      (!client.isEmployee && !client.isCrmOnly && !client.isLeadMagnet);
     
     return matchesSearch && matchesStatus && matchesType;
   });
@@ -825,10 +826,11 @@ export default function ConsultantClientsPage() {
     return createdDate >= lastMonth;
   }).length;
 
-  const activeClientsCount = clients.filter((c: any) => {
-    const clientAssignments = assignments.filter((a: any) => a.clientId === c.id);
-    return clientAssignments.some((a: any) => a.status === 'in_progress' || a.status === 'completed');
-  }).length;
+  const activeClientsCount = clients.filter((c: any) => c.isActive !== false && !c.isCrmOnly && !c.isEmployee && !c.isLeadMagnet).length;
+  const realClientsCount = clients.filter((c: any) => !c.isEmployee && !c.isCrmOnly && !c.isLeadMagnet).length;
+  const crmCount = clients.filter((c: any) => c.isCrmOnly && !c.isLeadMagnet).length;
+  const employeesCount = clients.filter((c: any) => c.isEmployee && !c.isCrmOnly).length;
+  const leadMagnetCount = clients.filter((c: any) => c.isLeadMagnet).length;
 
   return (
     <div className={cn("min-h-screen flex flex-col bg-background", !isMobile && "h-screen")}>
@@ -847,142 +849,78 @@ export default function ConsultantClientsPage() {
             ]}
           />
 
-          {/* Premium Header */}
-          <div className="mb-4 sm:mb-6 md:mb-8">
-            <div className="bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl relative overflow-hidden">
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400"></div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-1 sm:space-y-2">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="p-2 sm:p-3 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl sm:rounded-2xl">
-                      <Users className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
-                    </div>
-                    <div>
-                      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">Gestione Clienti</h1>
-                      <p className="text-white/60 text-xs sm:text-sm md:text-base lg:text-lg hidden sm:block">Dashboard completa per la gestione dei tuoi clienti</p>
-                    </div>
-                  </div>
+          {/* Compact Header */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl flex-shrink-0">
+                  <Users className="w-5 h-5 text-white" />
                 </div>
-                <div className="hidden lg:flex items-center space-x-4">
-                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/10">
-                    <div className="text-3xl font-bold">{clients.length}</div>
-                    <div className="text-sm text-white/60">Clienti Totali</div>
+                <div className="min-w-0">
+                  <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">Gestione Clienti</h1>
+                  <p className="text-xs text-muted-foreground hidden sm:block">Gestisci clienti, dipendenti e contatti</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <div className="hidden sm:flex items-center gap-3">
+                  <div className="text-center px-3">
+                    <div className="text-lg font-bold text-foreground">{clients.length}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Totali</div>
                   </div>
-                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/10">
-                    <div className="text-3xl font-bold">{activeClientsCount}</div>
-                    <div className="text-sm text-white/60">Attivi</div>
+                  <div className="w-px h-8 bg-border" />
+                  <div className="text-center px-3">
+                    <div className="text-lg font-bold text-emerald-600">{activeClientsCount}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Attivi</div>
+                  </div>
+                  <div className="w-px h-8 bg-border" />
+                  <div className="text-center px-3">
+                    <div className="text-lg font-bold text-blue-600">{newClientsCount}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Nuovi</div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Enhanced Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
-            <Card className="border border-border shadow-sm bg-card">
-              <CardContent className="p-3 sm:p-4 md:p-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5 sm:space-y-1">
-                    <p className="text-xs sm:text-sm font-medium text-cyan-700">Clienti Totali</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">{clients.length}</p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Tutti i clienti registrati</p>
-                  </div>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
-                    <Users className="text-white" size={16} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-border shadow-sm bg-card">
-              <CardContent className="p-3 sm:p-4 md:p-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5 sm:space-y-1">
-                    <p className="text-xs sm:text-sm font-medium text-emerald-700">Nuovi Clienti</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">{newClientsCount}</p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Ultimo mese</p>
-                  </div>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
-                    <UserPlus className="text-white" size={16} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-border shadow-sm bg-card">
-              <CardContent className="p-3 sm:p-4 md:p-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5 sm:space-y-1">
-                    <p className="text-xs sm:text-sm font-medium text-amber-700">Clienti Attivi</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">{activeClientsCount}</p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Con esercizi in corso</p>
-                  </div>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
-                    <Zap className="text-white" size={16} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-border shadow-sm bg-card">
-              <CardContent className="p-3 sm:p-4 md:p-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5 sm:space-y-1">
-                    <p className="text-xs sm:text-sm font-medium text-teal-700">Progresso Medio</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
-                      {assignments.length > 0 ? 
-                        Math.round((assignments.filter((a: any) => a.status === 'completed').length / assignments.length) * 100) 
-                        : 0}%
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Esercizi completati</p>
-                  </div>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
-                    <Target className="text-white" size={16} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* In-page Tab Switcher */}
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={() => setActiveTab('clienti')}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
-                activeTab === 'clienti'
-                  ? 'bg-cyan-600 text-white shadow-sm'
-                  : 'bg-card text-muted-foreground hover:bg-muted border border-border'
-              }`}
-            >
-              <Users className="w-4 h-4 flex-shrink-0" />
-              <span className="sm:hidden">Clienti</span>
-              <span className="hidden sm:inline">Elenco Clienti</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('monitoraggio')}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
-                activeTab === 'monitoraggio'
-                  ? 'bg-cyan-600 text-white shadow-sm'
-                  : 'bg-card text-muted-foreground hover:bg-muted border border-border'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4 flex-shrink-0" />
-              <span className="sm:hidden">Monitoraggio</span>
-              <span className="hidden sm:inline">Monitoraggio Consulenze</span>
-            </button>
+            {/* Tab Switcher */}
+            <div className="flex gap-1.5 p-1 bg-muted/50 rounded-xl border border-border/50">
+              <button
+                onClick={() => setActiveTab('clienti')}
+                className={cn(
+                  "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                  activeTab === 'clienti'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Users className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Clienti</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('monitoraggio')}
+                className={cn(
+                  "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                  activeTab === 'monitoraggio'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <BarChart3 className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Monitoraggio</span>
+              </button>
+            </div>
           </div>
 
           {activeTab === 'clienti' && departments.length > 0 && (
-            <Card className="border-0 shadow-xl bg-card mb-4">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl">
-                      <Building2 className="w-5 h-5 text-white" />
+            <Card className="border border-border/50 shadow-sm bg-card mb-4">
+              <CardHeader className="pb-2 px-3 sm:px-4 pt-3 sm:pt-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="p-1.5 bg-indigo-100 rounded-lg flex-shrink-0">
+                      <Building2 className="w-4 h-4 text-indigo-600" />
                     </div>
-                    <div>
-                      <CardTitle className="text-lg font-bold text-foreground">Struttura Aziendale</CardTitle>
-                      <p className="text-xs text-muted-foreground">Organizza i dipendenti per reparto</p>
+                    <div className="min-w-0">
+                      <CardTitle className="text-sm font-bold text-foreground">Struttura Aziendale</CardTitle>
+                      <p className="text-[10px] text-muted-foreground hidden sm:block">Organizza i dipendenti per reparto</p>
                     </div>
                   </div>
                   <Button
@@ -992,43 +930,43 @@ export default function ConsultantClientsPage() {
                       setIsDepartmentDialogOpen(true);
                     }}
                     size="sm"
-                    className="bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs px-2.5"
                   >
-                    <PlusIcon className="w-4 h-4 mr-1" />
-                    Nuovo Reparto
+                    <PlusIcon className="w-3.5 h-3.5 sm:mr-1" />
+                    <span className="hidden sm:inline">Nuovo Reparto</span>
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+                <div className="flex gap-2.5 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-3 sm:overflow-visible">
                   {departments.map((dept: any) => {
                     const deptEmployees = clients.filter((c: any) => c.isEmployee && c.departmentId === dept.id);
                     return (
                       <div
                         key={dept.id}
-                        className="rounded-xl border border-border bg-card overflow-hidden"
-                        style={{ borderLeftWidth: '4px', borderLeftColor: dept.color }}
+                        className="rounded-xl border border-border bg-card overflow-hidden min-w-[200px] sm:min-w-0 flex-shrink-0"
+                        style={{ borderLeftWidth: '3px', borderLeftColor: dept.color }}
                       >
-                        <div className="p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
+                        <div className="p-2.5">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
                               <span
-                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                                 style={{ backgroundColor: dept.color }}
                               />
-                              <span className="font-semibold text-sm text-foreground">{dept.name}</span>
+                              <span className="font-semibold text-xs text-foreground truncate">{dept.name}</span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                                {dept.employee_count || deptEmployees.length} dipendenti
+                            <div className="flex items-center gap-0.5 flex-shrink-0">
+                              <Badge variant="secondary" className="text-[9px] px-1 py-0">
+                                {dept.employee_count || deptEmployees.length}
                               </Badge>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleEditDepartment(dept)}
-                                className="h-6 w-6 p-0 hover:bg-muted"
+                                className="h-5 w-5 p-0 hover:bg-muted"
                               >
-                                <Edit className="w-3 h-3" />
+                                <Edit className="w-2.5 h-2.5" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1038,25 +976,22 @@ export default function ConsultantClientsPage() {
                                     deleteDepartmentMutation.mutate(dept.id);
                                   }
                                 }}
-                                className="h-6 w-6 p-0 hover:bg-red-50 text-red-400 hover:text-red-600"
+                                className="h-5 w-5 p-0 hover:bg-red-50 text-red-400 hover:text-red-600"
                               >
-                                <TrashIcon className="w-3 h-3" />
+                                <TrashIcon className="w-2.5 h-2.5" />
                               </Button>
                             </div>
                           </div>
-                          {dept.description && (
-                            <p className="text-[11px] text-muted-foreground mb-2">{dept.description}</p>
-                          )}
                           {deptEmployees.length > 0 && (
-                            <div className="space-y-1">
-                              {deptEmployees.slice(0, 5).map((emp: any) => (
-                                <div key={emp.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+                            <div className="space-y-0.5">
+                              {deptEmployees.slice(0, 3).map((emp: any) => (
+                                <div key={emp.id} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                  <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                                   {emp.firstName} {emp.lastName}
                                 </div>
                               ))}
-                              {deptEmployees.length > 5 && (
-                                <span className="text-[10px] text-muted-foreground">+{deptEmployees.length - 5} altri</span>
+                              {deptEmployees.length > 3 && (
+                                <span className="text-[10px] text-muted-foreground/60">+{deptEmployees.length - 3} altri</span>
                               )}
                             </div>
                           )}
@@ -1068,26 +1003,26 @@ export default function ConsultantClientsPage() {
                     const unassigned = clients.filter((c: any) => c.isEmployee && !c.departmentId);
                     if (unassigned.length === 0) return null;
                     return (
-                      <div className="rounded-xl border border-dashed border-border bg-muted/40 overflow-hidden" style={{ borderLeftWidth: '4px', borderLeftColor: '#94a3b8' }}>
-                        <div className="p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="w-3 h-3 rounded-full flex-shrink-0 bg-muted-foreground/60" />
-                              <span className="font-semibold text-sm text-muted-foreground">Non assegnati</span>
+                      <div className="rounded-xl border border-dashed border-border bg-muted/30 overflow-hidden min-w-[200px] sm:min-w-0 flex-shrink-0" style={{ borderLeftWidth: '3px', borderLeftColor: '#94a3b8' }}>
+                        <div className="p-2.5">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-muted-foreground/40" />
+                              <span className="font-semibold text-xs text-muted-foreground">Non assegnati</span>
                             </div>
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                              {unassigned.length} dipendenti
+                            <Badge variant="secondary" className="text-[9px] px-1 py-0">
+                              {unassigned.length}
                             </Badge>
                           </div>
-                          <div className="space-y-1">
-                            {unassigned.slice(0, 5).map((emp: any) => (
-                              <div key={emp.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+                          <div className="space-y-0.5">
+                            {unassigned.slice(0, 3).map((emp: any) => (
+                              <div key={emp.id} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                                 {emp.firstName} {emp.lastName}
                               </div>
                             ))}
-                            {unassigned.length > 5 && (
-                              <span className="text-[10px] text-muted-foreground">+{unassigned.length - 5} altri</span>
+                            {unassigned.length > 3 && (
+                              <span className="text-[10px] text-muted-foreground/60">+{unassigned.length - 3} altri</span>
                             )}
                           </div>
                         </div>
@@ -1100,31 +1035,29 @@ export default function ConsultantClientsPage() {
           )}
 
           {activeTab === 'clienti' && departments.length === 0 && (
-            <Card className="border border-dashed border-indigo-200 bg-indigo-50/30 mb-4">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-100 rounded-xl">
-                    <Building2 className="w-5 h-5 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Organizza il tuo team con i Reparti</p>
-                    <p className="text-xs text-muted-foreground">Crea reparti per raggruppare i dipendenti e gestire i documenti AI in modo mirato</p>
-                  </div>
+            <div className="border border-dashed border-indigo-200 bg-indigo-50/30 rounded-xl p-3 sm:p-4 mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-1.5 bg-indigo-100 rounded-lg flex-shrink-0">
+                  <Building2 className="w-4 h-4 text-indigo-600" />
                 </div>
-                <Button
-                  onClick={() => {
-                    setEditingDepartment(null);
-                    setDepartmentForm({ name: '', color: '#6366f1', description: '' });
-                    setIsDepartmentDialogOpen(true);
-                  }}
-                  size="sm"
-                  className="bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white shrink-0"
-                >
-                  <PlusIcon className="w-4 h-4 mr-1" />
-                  Crea Primo Reparto
-                </Button>
-              </CardContent>
-            </Card>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Organizza il tuo team</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Crea reparti per raggruppare i dipendenti</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => {
+                  setEditingDepartment(null);
+                  setDepartmentForm({ name: '', color: '#6366f1', description: '' });
+                  setIsDepartmentDialogOpen(true);
+                }}
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 h-8 text-xs"
+              >
+                <PlusIcon className="w-3.5 h-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">Crea Reparto</span>
+              </Button>
+            </div>
           )}
 
           {activeTab === 'monitoraggio' ? (
@@ -1716,27 +1649,23 @@ export default function ConsultantClientsPage() {
                 </div>
                 {/* Row 2: Type filter + Status filter */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
+                  <div className="inline-flex rounded-lg border border-border bg-card p-0.5 overflow-x-auto">
                     {([
-                      { value: 'all', label: 'Tutti', count: clients.length },
-                      { value: 'clients', label: 'Clienti', count: clients.filter((c: any) => !c.isEmployee && !c.isCrmOnly).length },
-                      { value: 'crm', label: 'CRM', count: clients.filter((c: any) => c.isCrmOnly).length },
-                      { value: 'employees', label: 'Dip.', count: clients.filter((c: any) => c.isEmployee && !c.isCrmOnly).length },
+                      { value: 'all', label: 'Tutti', count: clients.length, activeColor: 'bg-foreground text-background' },
+                      { value: 'clients', label: 'Clienti', count: realClientsCount, activeColor: 'bg-cyan-600 text-white' },
+                      { value: 'lead_magnet', label: 'Lead', count: leadMagnetCount, activeColor: 'bg-lime-600 text-white' },
+                      { value: 'crm', label: 'CRM', count: crmCount, activeColor: 'bg-amber-600 text-white' },
+                      { value: 'employees', label: 'Dip.', count: employeesCount, activeColor: 'bg-violet-600 text-white' },
                     ] as const).map(opt => (
                       <button
                         key={opt.value}
                         onClick={() => { setTypeFilter(opt.value as any); setCurrentPage(1); }}
-                        className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        className={cn(
+                          "px-2 sm:px-2.5 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap",
                           typeFilter === opt.value
-                            ? opt.value === 'employees'
-                              ? 'bg-violet-600 text-white shadow-sm'
-                              : opt.value === 'crm'
-                                ? 'bg-amber-600 text-white shadow-sm'
-                                : opt.value === 'clients'
-                                  ? 'bg-cyan-600 text-white shadow-sm'
-                                  : 'bg-foreground text-background shadow-sm'
+                            ? `${opt.activeColor} shadow-sm`
                             : 'text-muted-foreground hover:bg-muted'
-                        }`}
+                        )}
                       >
                         {opt.label} ({opt.count})
                       </button>
@@ -1745,7 +1674,7 @@ export default function ConsultantClientsPage() {
                   <select
                     value={statusFilter}
                     onChange={(e) => handleStatusFilterChange(e.target.value as any)}
-                    className="px-3 py-1.5 text-sm border border-border rounded-md bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                    className="px-2.5 py-1.5 text-xs border border-border rounded-md bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   >
                     <option value="all">Tutti</option>
                     <option value="active">Attivi</option>
@@ -1788,7 +1717,7 @@ export default function ConsultantClientsPage() {
                         <div className={`w-2 h-2 rounded-full flex-shrink-0 ${client.isActive !== false ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
                         <Avatar className="w-9 h-9 flex-shrink-0">
                           <AvatarImage src={client.avatar} />
-                          <AvatarFallback className={`${client.isCrmOnly ? 'bg-gradient-to-br from-amber-400 to-orange-500' : client.isEmployee ? 'bg-gradient-to-br from-violet-400 to-purple-500' : 'bg-gradient-to-br from-cyan-400 to-teal-500'} text-white font-medium text-[10px]`}>
+                          <AvatarFallback className={`${client.isLeadMagnet ? 'bg-gradient-to-br from-lime-400 to-green-500' : client.isCrmOnly ? 'bg-gradient-to-br from-amber-400 to-orange-500' : client.isEmployee ? 'bg-gradient-to-br from-violet-400 to-purple-500' : 'bg-gradient-to-br from-cyan-400 to-teal-500'} text-white font-medium text-[10px]`}>
                             {client.firstName?.[0]}{client.lastName?.[0]}
                           </AvatarFallback>
                         </Avatar>
@@ -1797,7 +1726,11 @@ export default function ConsultantClientsPage() {
                             <span className="font-semibold text-sm text-foreground truncate">
                               {client.firstName} {client.lastName}
                             </span>
-                            {client.isCrmOnly ? (
+                            {client.isLeadMagnet ? (
+                              <Badge className="text-[9px] px-1.5 py-0 bg-lime-100 text-lime-700 border-lime-200 flex-shrink-0">
+                                Lead
+                              </Badge>
+                            ) : client.isCrmOnly ? (
                               <Badge className="text-[9px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200 flex-shrink-0">
                                 CRM
                               </Badge>
@@ -1967,7 +1900,7 @@ export default function ConsultantClientsPage() {
                         {sortedAndPaginatedClients.map((client: any) => (
                           <tr 
                             key={client.id}
-                            className={`transition-colors group ${client.isCrmOnly ? 'hover:bg-amber-50/50 border-l-2 border-l-amber-300' : client.isEmployee ? 'hover:bg-violet-50/50 border-l-2 border-l-violet-300' : 'hover:bg-cyan-50/50 border-l-2 border-l-cyan-300'}`}
+                            className={`transition-colors group ${client.isLeadMagnet ? 'hover:bg-lime-50/50 border-l-2 border-l-lime-400' : client.isCrmOnly ? 'hover:bg-amber-50/50 border-l-2 border-l-amber-300' : client.isEmployee ? 'hover:bg-violet-50/50 border-l-2 border-l-violet-300' : 'hover:bg-cyan-50/50 border-l-2 border-l-cyan-300'}`}
                           >
                             <td className="px-3 py-2.5">
                               <Checkbox 
@@ -1984,7 +1917,7 @@ export default function ConsultantClientsPage() {
                               <div className="flex items-center gap-2">
                                 <Avatar className="w-7 h-7 flex-shrink-0">
                                   <AvatarImage src={client.avatar} />
-                                  <AvatarFallback className={`${client.isCrmOnly ? 'bg-gradient-to-br from-amber-400 to-orange-500' : client.isEmployee ? 'bg-gradient-to-br from-violet-400 to-purple-500' : 'bg-gradient-to-br from-cyan-400 to-teal-500'} text-white font-medium text-[10px]`}>
+                                  <AvatarFallback className={`${client.isLeadMagnet ? 'bg-gradient-to-br from-lime-400 to-green-500' : client.isCrmOnly ? 'bg-gradient-to-br from-amber-400 to-orange-500' : client.isEmployee ? 'bg-gradient-to-br from-violet-400 to-purple-500' : 'bg-gradient-to-br from-cyan-400 to-teal-500'} text-white font-medium text-[10px]`}>
                                     {client.firstName?.[0]}{client.lastName?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
@@ -1993,7 +1926,11 @@ export default function ConsultantClientsPage() {
                                     <span className="font-medium text-sm text-foreground truncate">
                                       {client.firstName} {client.lastName}
                                     </span>
-                                    {client.isCrmOnly ? (
+                                    {client.isLeadMagnet ? (
+                                      <Badge className="text-[9px] px-1.5 py-0 bg-lime-100 text-lime-700 border-lime-200 flex-shrink-0">
+                                        Lead
+                                      </Badge>
+                                    ) : client.isCrmOnly ? (
                                       <Badge className="text-[9px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200 flex-shrink-0">
                                         <Target className="w-2.5 h-2.5 mr-0.5" />
                                         CRM
@@ -2986,7 +2923,9 @@ export default function ConsultantClientsPage() {
                 <div>
                   <p className="text-base font-bold">{detailClient.firstName} {detailClient.lastName}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    {detailClient.isCrmOnly ? (
+                    {detailClient.isLeadMagnet ? (
+                      <Badge className="text-[9px] px-1.5 py-0 bg-lime-100 text-lime-700 border-lime-200">Lead Magnet</Badge>
+                    ) : detailClient.isCrmOnly ? (
                       <Badge className="text-[9px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">CRM</Badge>
                     ) : detailClient.isEmployee ? (
                       <Badge className="text-[9px] px-1.5 py-0 bg-violet-100 text-violet-700 border-violet-200">Dipendente</Badge>

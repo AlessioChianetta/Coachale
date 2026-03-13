@@ -3481,7 +3481,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const activeOnly = req.query.activeOnly === 'true';
       const clients = await storage.getClientsByConsultant(req.user!.id, activeOnly);
-      res.json(clients);
+
+      const leadMagnetRes = await db.execute(sql`
+        SELECT id, is_lead_magnet FROM users WHERE consultant_id = ${req.user!.id}
+      `);
+      const leadMagnetMap = new Map((leadMagnetRes.rows as any[]).map(r => [r.id, r.is_lead_magnet === true]));
+
+      const enriched = clients.map(c => ({
+        ...c,
+        isLeadMagnet: leadMagnetMap.get(c.id) || false,
+      }));
+
+      res.json(enriched);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
