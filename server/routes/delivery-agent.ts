@@ -1462,4 +1462,87 @@ router.delete('/sessions/:id', authenticateToken, requireRole('consultant'), asy
   }
 });
 
+router.get('/onboarding-status', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const session = await db.execute(sql`
+      SELECT id, status, mode FROM delivery_agent_sessions
+      WHERE (lead_user_id = ${userId} OR consultant_id = ${userId})
+        AND (mode = 'onboarding' OR is_public = true)
+      ORDER BY updated_at DESC LIMIT 1
+    `);
+    if (session.rows.length === 0) {
+      return res.json({ success: true, data: { hasSession: false, status: null, hasChat: false, hasReport: false, hasFunnel: false } });
+    }
+    const s = session.rows[0] as any;
+    const sessionId = s.id;
+    const report = await db.execute(sql`SELECT id FROM delivery_agent_reports WHERE session_id = ${sessionId} LIMIT 1`);
+    const funnel = await db.execute(sql`SELECT id FROM consultant_funnels WHERE delivery_session_id = ${sessionId} LIMIT 1`);
+    const messages = await db.execute(sql`SELECT id FROM delivery_agent_messages WHERE session_id = ${sessionId} LIMIT 1`);
+    res.json({
+      success: true,
+      data: {
+        hasSession: true,
+        sessionId,
+        status: s.status,
+        hasChat: messages.rows.length > 0,
+        hasReport: report.rows.length > 0,
+        hasFunnel: funnel.rows.length > 0,
+      },
+    });
+  } catch (err: any) {
+    console.error('[DeliveryAgent] GET onboarding-status error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/onboarding-status/clients', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { clientIds } = req.body;
+    if (!Array.isArray(clientIds) || clientIds.length === 0) {
+      return res.json({ success: true, data: {} });
+    }
+    const safeIds = clientIds.filter((id: string) => typeof id === 'string' && id.length > 0).slice(0, 200);
+    if (safeIds.length === 0) return res.json({ success: true, data: {} });
+
+    const ownedCheck = await db.execute(sql`
+      SELECT id FROM users
+      WHERE id = ANY(${safeIds}::text[])
+        AND consultant_id = ${consultantId}
+    `);
+    const ownedIds = new Set((ownedCheck.rows as any[]).map(r => r.id));
+    const authorizedIds = safeIds.filter(id => ownedIds.has(id));
+    if (authorizedIds.length === 0) return res.json({ success: true, data: {} });
+
+    const sessionsResult = await db.execute(sql`
+      SELECT DISTINCT ON (s.lead_user_id)
+        s.id, s.lead_user_id, s.status,
+        CASE WHEN r.id IS NOT NULL THEN true ELSE false END AS has_report,
+        CASE WHEN f.id IS NOT NULL THEN true ELSE false END AS has_funnel
+      FROM delivery_agent_sessions s
+      LEFT JOIN delivery_agent_reports r ON r.session_id = s.id
+      LEFT JOIN consultant_funnels f ON f.delivery_session_id = s.id
+      WHERE s.lead_user_id = ANY(${authorizedIds}::text[])
+        AND (s.mode = 'onboarding' OR s.is_public = true)
+      ORDER BY s.lead_user_id, s.updated_at DESC
+    `);
+
+    const statusMap: Record<string, any> = {};
+    for (const row of sessionsResult.rows as any[]) {
+      statusMap[row.lead_user_id] = {
+        hasSession: true,
+        status: row.status,
+        hasReport: row.has_report,
+        hasFunnel: row.has_funnel,
+      };
+    }
+
+    res.json({ success: true, data: statusMap });
+  } catch (err: any) {
+    console.error('[DeliveryAgent] POST onboarding-status/clients error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default router;

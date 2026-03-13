@@ -213,20 +213,22 @@ export default function ConsultantDashboard() {
   });
   const activePurchases = purchasesData || [];
 
-  const { data: aiInsights, isLoading: loadingInsights, refetch: refetchInsights } = useQuery<{
-    summary: string;
-    highlights: string[];
-    priorities: Array<{ title: string; reason: string; type: string }>;
-    generatedAt: string;
+  const { data: onboardingStatus, isLoading: loadingOnboarding } = useQuery<{
+    hasSession: boolean;
+    sessionId?: string;
+    status: string | null;
+    hasChat: boolean;
+    hasReport: boolean;
+    hasFunnel: boolean;
   }>({
-    queryKey: ["/api/dashboard/insights"],
+    queryKey: ["/api/delivery-agent/onboarding-status"],
     queryFn: async () => {
-      const res = await fetch("/api/dashboard/insights", { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
+      const res = await fetch("/api/delivery-agent/onboarding-status", { headers: getAuthHeaders() });
+      if (!res.ok) return { hasSession: false, status: null, hasChat: false, hasReport: false, hasFunnel: false };
+      const json = await res.json();
+      return json.data;
     },
-    staleTime: 1000 * 60 * 30,
-    retry: 1,
+    staleTime: 1000 * 60 * 5,
   });
 
   const getGreeting = () => {
@@ -589,115 +591,110 @@ export default function ConsultantDashboard() {
         })}
       </div>
 
-      {/* ── AI BRIEFING ──────────────────────────────────── */}
+      {/* ── ONBOARDING CON LUCA ─────────────────────────── */}
       <div className="afu-2">
         <div className="rounded-2xl overflow-hidden border border-border/40 shadow-lg bg-card">
-          {/* Header */}
           <div
             className="relative flex items-center justify-between px-5 py-4 shimmer-fx"
-            style={{ background: "linear-gradient(135deg, #4c1d95 0%, #6C5CE7 50%, #9b8cf5 100%)" }}
+            style={{ background: "linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)" }}
           >
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-white/15 backdrop-blur-sm">
-                <Sparkles className="h-4 w-4 text-white" />
+                <GraduationCap className="h-4 w-4 text-white" />
               </div>
               <div>
-                <h2 className="text-base font-black text-white leading-none">Briefing AI Giornaliero</h2>
-                {aiInsights?.generatedAt && (
-                  <p className="text-white/50 text-[11px] mt-0.5">
-                    Aggiornato alle {format(new Date(aiInsights.generatedAt), "HH:mm", { locale: it })}
-                  </p>
-                )}
+                <h2 className="text-base font-black text-white leading-none">Onboarding con Luca</h2>
+                <p className="text-white/60 text-[11px] mt-0.5">Il tuo percorso di analisi personalizzata</p>
               </div>
             </div>
-            <Button
-              size="sm"
-              onClick={() => refetchInsights()}
-              disabled={loadingInsights}
-              className="h-8 text-xs bg-white/15 hover:bg-white/25 text-white border-0 gap-1.5 rounded-xl"
-            >
-              <RotateCcw className={cn("h-3 w-3", loadingInsights && "animate-spin")} />
-              <span>Aggiorna</span>
-            </Button>
           </div>
 
-          {/* Body */}
           <div className="px-5 py-5">
-            {loadingInsights ? (
+            {loadingOnboarding ? (
               <div className="space-y-3">
                 <div className="h-4 bg-muted animate-pulse rounded-full w-5/6" />
                 <div className="h-3.5 bg-muted animate-pulse rounded-full w-4/6" />
-                <div className="h-3.5 bg-muted animate-pulse rounded-full w-3/6" />
-                <div className="grid grid-cols-3 gap-3 mt-4">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="h-16 bg-muted animate-pulse rounded-xl" />
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-12 bg-muted animate-pulse rounded-xl" />
                   ))}
                 </div>
               </div>
-            ) : aiInsights?.summary ? (
-              <div className="space-y-5">
-                <p className="text-base text-foreground/85 leading-relaxed font-medium">{aiInsights.summary}</p>
-
-                {aiInsights.highlights?.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {aiInsights.highlights.map((h, i) => (
-                      <div key={i} className="flex items-start gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/10">
-                        <Star className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-                        <p className="text-sm text-foreground/75 leading-snug">{h}</p>
+            ) : onboardingStatus?.hasSession ? (
+              <div className="space-y-4">
+                <p className="text-sm text-foreground/75 leading-relaxed">
+                  {onboardingStatus.status === 'completed'
+                    ? "Ottimo! Hai completato l'onboarding con Luca. Ecco i tuoi risultati:"
+                    : onboardingStatus.status === 'elaborating'
+                      ? "Luca sta elaborando i tuoi risultati..."
+                      : "Stai completando l'onboarding con Luca. Continua da dove hai lasciato!"}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "Chat Discovery", done: onboardingStatus.hasChat, icon: MessageSquare },
+                    { label: "Report Analisi", done: onboardingStatus.hasReport, icon: FileText },
+                    { label: "Funnel Strategico", done: onboardingStatus.hasFunnel, icon: Target },
+                    { label: "Catalogo Servizi", done: onboardingStatus.hasReport, icon: ShoppingBag },
+                  ].map((item, i) => {
+                    const ItemIcon = item.icon;
+                    return (
+                      <div key={i} className={cn(
+                        "flex items-center gap-2.5 p-3 rounded-xl border transition-colors",
+                        item.done
+                          ? "bg-emerald-500/8 border-emerald-500/20"
+                          : "bg-muted/30 border-border/30"
+                      )}>
+                        <div className={cn(
+                          "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                          item.done ? "bg-emerald-500/15" : "bg-muted/50"
+                        )}>
+                          {item.done ? (
+                            <CheckCircle className="h-4 w-4 text-emerald-500" />
+                          ) : (
+                            <ItemIcon className="h-3.5 w-3.5 text-muted-foreground/50" />
+                          )}
+                        </div>
+                        <span className={cn(
+                          "text-sm font-medium",
+                          item.done ? "text-emerald-700" : "text-muted-foreground/60"
+                        )}>
+                          {item.label}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
+                </div>
+                {onboardingStatus.status !== 'completed' && (
+                  <Button
+                    onClick={() => setLocation("/onboarding-gratuito")}
+                    className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white gap-2 rounded-xl h-11"
+                  >
+                    <PlayCircle className="h-4 w-4" />
+                    Continua Onboarding
+                  </Button>
                 )}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
-                <div className="p-4 rounded-2xl bg-primary/8">
-                  <Sparkles className="h-8 w-8 text-primary/50" />
+              <div className="flex flex-col items-center justify-center py-6 text-center gap-4">
+                <div className="p-4 rounded-2xl bg-emerald-500/8">
+                  <GraduationCap className="h-8 w-8 text-emerald-500/60" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground/70">Briefing AI pronto</p>
-                  <p className="text-xs text-muted-foreground/60 mt-0.5">Clicca "Aggiorna" per il tuo briefing personalizzato di oggi</p>
+                  <p className="text-sm font-semibold text-foreground/70">Inizia il tuo onboarding</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1 max-w-[280px]">
+                    Luca ti guiderà in un'analisi personalizzata del tuo business e creerà report, funnel e catalogo su misura
+                  </p>
                 </div>
+                <Button
+                  onClick={() => setLocation("/onboarding-gratuito")}
+                  className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white gap-2 rounded-xl h-11 px-6"
+                >
+                  <PlayCircle className="h-4 w-4" />
+                  Inizia con Luca
+                </Button>
               </div>
             )}
           </div>
-
-          {/* Priorities */}
-          {aiInsights?.priorities && aiInsights.priorities.length > 0 && (
-            <div className="px-5 pb-5 border-t border-border/40">
-              <p className="text-[10px] font-black text-muted-foreground/50 uppercase tracking-[0.15em] mb-3 pt-4">
-                Priorità del giorno
-              </p>
-              <div className="space-y-2">
-                {aiInsights.priorities.map((p, i) => {
-                  const colors = [
-                    { num: "bg-red-500", ring: "ring-red-400/30", text: "text-red-500" },
-                    { num: "bg-amber-500", ring: "ring-amber-400/30", text: "text-amber-500" },
-                    { num: "bg-primary", ring: "ring-primary/30", text: "text-primary" },
-                  ];
-                  const c = colors[i] || colors[2];
-                  return (
-                    <div key={i} className={cn(
-                      "flex items-start gap-3 p-4 rounded-xl border transition-colors",
-                      "bg-muted/30 hover:bg-muted/50 border-border/30"
-                    )}>
-                      <div className={cn(
-                        "w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black text-white shrink-0 ring-2",
-                        c.num, c.ring
-                      )}>
-                        {i + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={cn("text-sm font-bold leading-snug", c.text)}>{p.title}</p>
-                        <p className="text-xs text-muted-foreground/65 mt-0.5 leading-snug">{p.reason}</p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground/30 mt-0.5 shrink-0" />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

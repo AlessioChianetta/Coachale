@@ -38,6 +38,9 @@ import {
   BarChart3,
   AlertTriangle,
   Info,
+  Eye,
+  ExternalLink,
+  GraduationCap,
   CheckCircle,
   Clock,
   CalendarPlus,
@@ -475,6 +478,26 @@ export default function ConsultantClientsPage() {
       return response.json();
     },
   });
+
+  const clientIds = useMemo(() => clients.map((c: any) => c.id), [clients]);
+  const { data: onboardingStatusMap = {} } = useQuery<Record<string, any>>({
+    queryKey: ["/api/delivery-agent/onboarding-status/clients", clientIds],
+    queryFn: async () => {
+      if (clientIds.length === 0) return {};
+      const res = await fetch("/api/delivery-agent/onboarding-status/clients", {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientIds }),
+      });
+      if (!res.ok) return {};
+      const json = await res.json();
+      return json.data || {};
+    },
+    enabled: clientIds.length > 0,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const [detailClient, setDetailClient] = useState<any>(null);
 
   const handleEditClient = (client: any) => {
     setEditingClient(client);
@@ -1931,7 +1954,10 @@ export default function ConsultantClientsPage() {
                           <th className="px-3 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                             Limite/mese
                           </th>
-                          <th className="w-24 px-3 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          <th className="px-3 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Onboarding
+                          </th>
+                          <th className="px-3 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                             Azioni
                           </th>
                         </tr>
@@ -2030,8 +2056,60 @@ export default function ConsultantClientsPage() {
                                 {client.monthlyConsultationLimit ? `${client.monthlyConsultationLimit}/mese` : 'Illimitato'}
                               </span>
                             </td>
+                            <td className="px-3 py-2.5 text-center">
+                              {(() => {
+                                const obs = onboardingStatusMap[client.id];
+                                if (!obs) return (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/50">
+                                    <span className="w-2 h-2 rounded-full bg-muted-foreground/20" />
+                                    No
+                                  </span>
+                                );
+                                const isComplete = obs.status === 'completed';
+                                return (
+                                  <span className={cn(
+                                    "inline-flex items-center gap-1 text-[10px] font-medium",
+                                    isComplete ? "text-emerald-600" : "text-amber-500"
+                                  )}>
+                                    {isComplete ? (
+                                      <CheckCircle className="w-3 h-3" />
+                                    ) : (
+                                      <Clock className="w-3 h-3" />
+                                    )}
+                                    {isComplete ? "Fatto" : "In corso"}
+                                  </span>
+                                );
+                              })()}
+                            </td>
                             <td className="px-3 py-2.5">
-                              <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex items-center justify-end gap-0.5">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  title="Dettagli"
+                                  onClick={() => setDetailClient(client)}
+                                  className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </Button>
+                                {client.phoneNumber && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    title="WhatsApp"
+                                    onClick={() => {
+                                      const phone = client.phoneNumber.replace(/[^0-9]/g, '');
+                                      const onboardingUrl = `${window.location.origin}/onboarding-gratuito`;
+                                      const msg = encodeURIComponent(
+                                        `Ciao ${client.firstName}! Ti invio il link per completare il tuo onboarding gratuito con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un report personalizzato per te.\n\n${onboardingUrl}`
+                                      );
+                                      window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+                                    }}
+                                    className="h-7 w-7 p-0 hover:bg-green-100 hover:text-green-600"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
                                 <Switch
                                   checked={client.isActive !== false}
                                   onCheckedChange={async (checked) => {
@@ -2879,6 +2957,133 @@ export default function ConsultantClientsPage() {
                 </>
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Client Detail Dialog */}
+      <Dialog open={!!detailClient} onOpenChange={() => setDetailClient(null)}>
+        <DialogContent className="max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <User className="h-5 w-5 text-blue-600" />
+              </div>
+              Dettagli Cliente
+            </DialogTitle>
+          </DialogHeader>
+          {detailClient && (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-12 h-12">
+                  <AvatarImage src={detailClient.avatar} />
+                  <AvatarFallback className="bg-gradient-to-br from-cyan-400 to-teal-500 text-white font-bold">
+                    {detailClient.firstName?.[0]}{detailClient.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-base font-bold">{detailClient.firstName} {detailClient.lastName}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {detailClient.isCrmOnly ? (
+                      <Badge className="text-[9px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">CRM</Badge>
+                    ) : detailClient.isEmployee ? (
+                      <Badge className="text-[9px] px-1.5 py-0 bg-violet-100 text-violet-700 border-violet-200">Dipendente</Badge>
+                    ) : (
+                      <Badge className="text-[9px] px-1.5 py-0 bg-cyan-50 text-cyan-700 border-cyan-200">Cliente</Badge>
+                    )}
+                    {detailClient.role === 'consultant' && (
+                      <Badge className="text-[9px] px-1.5 py-0 bg-purple-100 text-purple-700 border-purple-200">Consulente</Badge>
+                    )}
+                    <Badge className={cn(
+                      "text-[9px] px-1.5 py-0",
+                      detailClient.isActive !== false
+                        ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                        : "bg-gray-100 text-gray-500 border-gray-200"
+                    )}>
+                      {detailClient.isActive !== false ? "Attivo" : "Inattivo"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 rounded-xl border border-border/50 p-3">
+                <div className="flex items-center gap-2.5">
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                  <span className="text-sm text-foreground truncate">{detailClient.email || '—'}</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                  <span className="text-sm text-foreground">{detailClient.phoneNumber || '—'}</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <User className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                  <span className="text-sm text-foreground">{detailClient.username || '—'}</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                  <span className="text-sm text-foreground">
+                    Registrato il {detailClient.createdAt ? new Date(detailClient.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/50 p-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Onboarding con Luca</p>
+                {(() => {
+                  const obs = onboardingStatusMap[detailClient.id];
+                  if (!obs) return (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground/60">
+                      <span className="w-2 h-2 rounded-full bg-muted-foreground/20" />
+                      Non iniziato
+                    </div>
+                  );
+                  return (
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        { label: "Chat", done: obs.hasSession },
+                        { label: "Report", done: obs.hasReport },
+                        { label: "Funnel", done: obs.hasFunnel },
+                        { label: "Completato", done: obs.status === 'completed' },
+                      ].map((item, i) => (
+                        <div key={i} className={cn(
+                          "flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg",
+                          item.done ? "bg-emerald-50 text-emerald-700" : "bg-muted/40 text-muted-foreground/50"
+                        )}>
+                          {item.done ? <CheckCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                          {item.label}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {detailClient.phoneNumber && (
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700 text-white gap-2"
+                  onClick={() => {
+                    const phone = detailClient.phoneNumber.replace(/[^0-9]/g, '');
+                    const onboardingUrl = `${window.location.origin}/onboarding-gratuito`;
+                    const msg = encodeURIComponent(
+                      `Ciao ${detailClient.firstName}! Ti invio il link per completare il tuo onboarding gratuito con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un report personalizzato per te.\n\n${onboardingUrl}`
+                    );
+                    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+                  }}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Invita su WhatsApp
+                </Button>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailClient(null)}>Chiudi</Button>
+            {detailClient && (
+              <Button onClick={() => { handleEditClient(detailClient); setDetailClient(null); }} className="bg-cyan-600 hover:bg-cyan-700 text-white gap-1.5">
+                <Edit className="h-3.5 w-3.5" />
+                Modifica
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
