@@ -62,7 +62,7 @@ import {
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
-import { getAuthHeaders } from "@/lib/auth";
+import { getAuthHeaders, getAuthUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRoleSwitch } from "@/hooks/use-role-switch";
@@ -72,6 +72,7 @@ import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, Chevro
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ConsultantClientsPage() {
+  const authUser = getAuthUser();
   const isMobile = useIsMobile();
   const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -2099,7 +2100,8 @@ export default function ConsultantClientsPage() {
                                     title="WhatsApp"
                                     onClick={() => {
                                       const phone = client.phoneNumber.replace(/[^0-9]/g, '');
-                                      const onboardingUrl = `${window.location.origin}/onboarding-gratuito`;
+                                      const consultantIdentifier = (authUser as any)?.slug || authUser?.id || '';
+                                      const onboardingUrl = `${window.location.origin}/onboarding-gratuito/${consultantIdentifier}`;
                                       const msg = encodeURIComponent(
                                         `Ciao ${client.firstName}! Ti invio il link per completare il tuo onboarding gratuito con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un report personalizzato per te.\n\n${onboardingUrl}`
                                       );
@@ -3063,7 +3065,8 @@ export default function ConsultantClientsPage() {
                   className="w-full bg-green-600 hover:bg-green-700 text-white gap-2"
                   onClick={() => {
                     const phone = detailClient.phoneNumber.replace(/[^0-9]/g, '');
-                    const onboardingUrl = `${window.location.origin}/onboarding-gratuito`;
+                    const consultantIdentifier = (authUser as any)?.slug || authUser?.id || '';
+                    const onboardingUrl = `${window.location.origin}/onboarding-gratuito/${consultantIdentifier}`;
                     const msg = encodeURIComponent(
                       `Ciao ${detailClient.firstName}! Ti invio il link per completare il tuo onboarding gratuito con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un report personalizzato per te.\n\n${onboardingUrl}`
                     );
