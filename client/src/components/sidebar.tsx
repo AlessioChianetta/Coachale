@@ -547,6 +547,12 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
     };
   }, [isMobile]);
 
+  useEffect(() => {
+    if (!isMobile && location.startsWith('/consultant/academy')) {
+      setIsCollapsed(true);
+    }
+  }, [location, isMobile]);
+
   // Tour: auto-expand/collapse menu items
   useEffect(() => {
     const handleTourExpandMenu = (e: CustomEvent) => {

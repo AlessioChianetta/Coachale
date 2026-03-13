@@ -265,7 +265,7 @@ export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessio
   const [simulatorStep, setSimulatorStep] = useState<"niche" | "attitude" | null>(null);
   const [selectedNiche, setSelectedNiche] = useState<typeof SIMULATOR_NICHES[number] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showSidebar, setShowSidebar] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo" | "funnel">("chat");
   const [initialSessionLoaded, setInitialSessionLoaded] = useState(false);
   const [showLeadMagnet, setShowLeadMagnet] = useState<boolean | null>(null);
