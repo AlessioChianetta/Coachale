@@ -652,7 +652,7 @@ router.get("/by-session/:sessionId", authenticateToken, requireAnyRole(["consult
     if (!consultantId) return res.status(400).json({ error: "Consultant ID non trovato" });
 
     const result = await db.execute(sql`
-      SELECT id, name, description, source, lead_name, created_at
+      SELECT id, name, description, nodes_data, edges_data, theme, source, lead_name, created_at
       FROM consultant_funnels
       WHERE delivery_session_id = ${req.params.sessionId} AND consultant_id = ${consultantId}
       ORDER BY created_at DESC

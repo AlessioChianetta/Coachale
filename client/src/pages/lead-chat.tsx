@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useLocation } from "wouter";
 import { getAuthHeaders, getAuthUser, removeToken, removeAuthUser } from "@/lib/auth";
 import { DeliveryChat } from "@/components/delivery-agent/DeliveryChat";
 import { DeliveryReport } from "@/components/delivery-agent/DeliveryReport";
 import { DeliveryCatalogo } from "@/components/delivery-agent/DeliveryCatalogo";
+import { DeliveryFunnel } from "@/components/delivery-agent/DeliveryFunnel";
 import { cn } from "@/lib/utils";
 import {
   Search,
@@ -15,8 +16,11 @@ import {
   MessageSquare,
   LogOut,
   Layers,
+  GitBranch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+const FunnelBuilderTab = lazy(() => import("@/components/funnel-builder/FunnelBuilderTab"));
 
 const PHASE_STEPS = [
   { key: "discovery", label: "Discovery", icon: Search },
@@ -92,8 +96,12 @@ export default function LeadChat() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [viewMode, setViewMode] = useState<"chat" | "report" | "catalogo">("chat");
+  const [viewMode, setViewMode] = useState<"chat" | "report" | "funnel" | "catalogo">("chat");
   const [status, setStatus] = useState("discovery");
+  const [sessionFunnelId, setSessionFunnelId] = useState<string | null>(null);
+
+  const user = getAuthUser();
+  const isConsultant = user?.role === "consultant" || user?.role === "super_admin";
 
   useEffect(() => {
     const loadSession = async () => {
@@ -127,6 +135,25 @@ export default function LeadChat() {
     };
     loadSession();
   }, [setLocation]);
+
+  useEffect(() => {
+    if (!session?.sessionId) return;
+    if (!isConsultant) return;
+    const fetchFunnelId = async () => {
+      try {
+        const res = await fetch(`/api/funnels/by-session/${session.sessionId}`, {
+          headers: getAuthHeaders(),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.id) setSessionFunnelId(data.id);
+        }
+      } catch {}
+    };
+    fetchFunnelId();
+    const interval = setInterval(fetchFunnelId, 10000);
+    return () => clearInterval(interval);
+  }, [session?.sessionId, isConsultant]);
 
   const handleLogout = () => {
     removeToken();
@@ -167,8 +194,6 @@ export default function LeadChat() {
   }
 
   if (!session) return null;
-
-  const user = getAuthUser();
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -222,18 +247,32 @@ export default function LeadChat() {
             Report
           </button>
           {(status === "completed" || status === "assistant") && (
-            <button
-              onClick={() => setViewMode("catalogo")}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors border-b-2",
-                viewMode === "catalogo"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Layers className="w-4 h-4" />
-              Catalogo
-            </button>
+            <>
+              <button
+                onClick={() => setViewMode("funnel")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors border-b-2",
+                  viewMode === "funnel"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <GitBranch className="w-4 h-4" />
+                Funnel
+              </button>
+              <button
+                onClick={() => setViewMode("catalogo")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors border-b-2",
+                  viewMode === "catalogo"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Layers className="w-4 h-4" />
+                Catalogo
+              </button>
+            </>
           )}
         </div>
       </header>
@@ -253,6 +292,24 @@ export default function LeadChat() {
             onViewReport={handleViewReport}
             publicToken={session.publicToken}
           />
+        ) : viewMode === "funnel" ? (
+          isConsultant ? (
+            <Suspense fallback={
+              <div className="flex-1 flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Caricamento Funnel Builder...</p>
+                </div>
+              </div>
+            }>
+              <FunnelBuilderTab initialFunnelId={sessionFunnelId} />
+            </Suspense>
+          ) : (
+            <DeliveryFunnel
+              sessionId={session.sessionId}
+              publicToken={session.publicToken}
+            />
+          )
         ) : viewMode === "catalogo" ? (
           <DeliveryCatalogo
             sessionId={session.sessionId}

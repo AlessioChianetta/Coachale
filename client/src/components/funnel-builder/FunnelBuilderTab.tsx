@@ -153,9 +153,10 @@ export interface FunnelBuilderHandle {
 
 interface FunnelBuilderInnerProps {
   onDirtyChange?: (dirty: boolean) => void;
+  initialFunnelId?: string | null;
 }
 
-const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerProps>(function FunnelBuilderInner({ onDirtyChange }, ref) {
+const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerProps>(function FunnelBuilderInner({ onDirtyChange, initialFunnelId }, ref) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [funnels, setFunnels] = useState<FunnelRecord[]>([]);
@@ -292,12 +293,16 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
         const list = await res.json();
         setFunnels(list);
         if (list.length > 0 && !activeFunnelId) {
-          const params = new URLSearchParams(window.location.search);
-          const urlFunnelId = params.get("funnel");
-          if (urlFunnelId && list.some((f: any) => f.id === urlFunnelId)) {
-            loadFunnel(urlFunnelId);
+          if (initialFunnelId && list.some((f: any) => f.id === initialFunnelId)) {
+            loadFunnel(initialFunnelId);
           } else {
-            loadFunnel(list[0].id);
+            const params = new URLSearchParams(window.location.search);
+            const urlFunnelId = params.get("funnel");
+            if (urlFunnelId && list.some((f: any) => f.id === urlFunnelId)) {
+              loadFunnel(urlFunnelId);
+            } else {
+              loadFunnel(list[0].id);
+            }
           }
         }
       }
@@ -1086,12 +1091,13 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
 export interface FunnelBuilderTabProps {
   onDirtyChange?: (dirty: boolean) => void;
   funnelRef?: React.Ref<FunnelBuilderHandle>;
+  initialFunnelId?: string | null;
 }
 
-export default function FunnelBuilderTab({ onDirtyChange, funnelRef }: FunnelBuilderTabProps = {}) {
+export default function FunnelBuilderTab({ onDirtyChange, funnelRef, initialFunnelId }: FunnelBuilderTabProps = {}) {
   return (
     <ReactFlowProvider>
-      <FunnelBuilderInner ref={funnelRef} onDirtyChange={onDirtyChange} />
+      <FunnelBuilderInner ref={funnelRef} onDirtyChange={onDirtyChange} initialFunnelId={initialFunnelId} />
     </ReactFlowProvider>
   );
 }
