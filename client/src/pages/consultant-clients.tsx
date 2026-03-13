@@ -1701,15 +1701,6 @@ export default function ConsultantClientsPage() {
                       className="pl-9 bg-card border-border focus:border-cyan-400 focus:ring-cyan-400 h-9"
                     />
                   </div>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => handleStatusFilterChange(e.target.value as any)}
-                    className="px-2.5 py-1.5 text-xs border border-border rounded-lg bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-cyan-400 hidden sm:block"
-                  >
-                    <option value="all">Tutti gli stati</option>
-                    <option value="active">Solo attivi</option>
-                    <option value="inactive">Solo inattivi</option>
-                  </select>
                   <Button
                     onClick={() => setIsNewClientDialogOpen(true)}
                     className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white flex-shrink-0 h-9 px-3"
@@ -1719,55 +1710,39 @@ export default function ConsultantClientsPage() {
                     <span className="hidden sm:inline text-xs">Nuovo</span>
                   </Button>
                 </div>
-                <div className="flex items-center justify-between gap-2 sm:hidden">
-                  <div className="inline-flex rounded-lg border border-border bg-card p-0.5 overflow-x-auto flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="inline-flex rounded-lg border border-border bg-card p-0.5 overflow-x-auto flex-1 sm:flex-none">
                     {([
-                      { value: 'all', label: 'Tutti', activeColor: 'bg-foreground text-background' },
-                      { value: 'clients', label: 'Clienti', activeColor: 'bg-cyan-600 text-white' },
-                      { value: 'lead_magnet', label: 'Lead', activeColor: 'bg-lime-600 text-white' },
-                      { value: 'crm', label: 'CRM', activeColor: 'bg-amber-600 text-white' },
-                      { value: 'employees', label: 'Dip.', activeColor: 'bg-violet-600 text-white' },
+                      { value: 'all', label: 'Tutti', count: clients.length, activeColor: 'bg-foreground text-background' },
+                      { value: 'clients', label: 'Clienti', count: activeClientsCount, activeColor: 'bg-cyan-600 text-white' },
+                      { value: 'lead_magnet', label: 'Lead', count: leadMagnetCount, activeColor: 'bg-lime-600 text-white' },
+                      { value: 'crm', label: 'CRM', count: crmCount, activeColor: 'bg-amber-600 text-white' },
+                      { value: 'employees', label: 'Dip.', count: employeesCount, activeColor: 'bg-violet-600 text-white' },
                     ] as const).map(opt => (
                       <button
                         key={opt.value}
                         onClick={() => { setTypeFilter(opt.value as any); setCurrentPage(1); }}
                         className={cn(
-                          "flex-1 px-2 py-1.5 text-[10px] font-medium rounded-md transition-all whitespace-nowrap",
+                          "px-2 sm:px-2.5 py-1.5 text-[10px] sm:text-xs font-medium rounded-md transition-all whitespace-nowrap",
                           typeFilter === opt.value
                             ? `${opt.activeColor} shadow-sm`
                             : 'text-muted-foreground hover:bg-muted'
                         )}
                       >
-                        {opt.label}
+                        {opt.label} <span className="hidden sm:inline">({opt.count})</span>
                       </button>
                     ))}
                   </div>
                   <select
                     value={statusFilter}
                     onChange={(e) => handleStatusFilterChange(e.target.value as any)}
-                    className="px-2 py-1.5 text-[10px] border border-border rounded-md bg-card"
+                    className="px-2 sm:px-2.5 py-1.5 text-[10px] sm:text-xs border border-border rounded-md bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   >
                     <option value="all">Tutti</option>
                     <option value="active">Attivi</option>
                     <option value="inactive">Inattivi</option>
                   </select>
                 </div>
-                {typeFilter !== 'all' && (
-                  <div className="hidden sm:flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Filtro attivo:</span>
-                    <Badge className={cn(
-                      "text-xs px-2 py-0.5 cursor-pointer",
-                      typeFilter === 'clients' ? "bg-cyan-100 text-cyan-700 border-cyan-200" :
-                      typeFilter === 'crm' ? "bg-amber-100 text-amber-700 border-amber-200" :
-                      typeFilter === 'employees' ? "bg-violet-100 text-violet-700 border-violet-200" :
-                      "bg-lime-100 text-lime-700 border-lime-200"
-                    )}>
-                      {typeFilter === 'clients' ? 'Clienti Attivi' : typeFilter === 'crm' ? 'Lead CRM' : typeFilter === 'employees' ? 'Dipendenti' : 'Lead Magnet'}
-                      <X className="w-3 h-3 ml-1 inline cursor-pointer" onClick={() => { setTypeFilter('all'); setCurrentPage(1); }} />
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">{filteredClients.length} risultati</span>
-                  </div>
-                )}
               </div>
             </CardHeader>
             
