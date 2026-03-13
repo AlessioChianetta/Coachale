@@ -1531,7 +1531,7 @@ router.post('/onboarding-status/clients', authenticateToken, requireRole('consul
 
     const ownedCheck = await db.execute(sql`
       SELECT id FROM users
-      WHERE id = ANY(${safeIds}::text[])
+      WHERE id IN (${sql.join(safeIds.map(id => sql`${id}`), sql`,`)})
         AND consultant_id = ${consultantId}
     `);
     const ownedIds = new Set((ownedCheck.rows as any[]).map(r => r.id));
@@ -1546,7 +1546,7 @@ router.post('/onboarding-status/clients', authenticateToken, requireRole('consul
       FROM delivery_agent_sessions s
       LEFT JOIN delivery_agent_reports r ON r.session_id = s.id
       LEFT JOIN consultant_funnels f ON f.delivery_session_id = s.id
-      WHERE s.lead_user_id = ANY(${authorizedIds}::text[])
+      WHERE s.lead_user_id IN (${sql.join(authorizedIds.map(id => sql`${id}`), sql`,`)})
         AND (s.mode = 'onboarding' OR s.is_public = true)
       ORDER BY s.lead_user_id, s.updated_at DESC
     `);
