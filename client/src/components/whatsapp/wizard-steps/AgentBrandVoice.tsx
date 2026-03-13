@@ -970,7 +970,7 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
             </div>
             <div>
               <p className="font-semibold text-violet-900">Compila con Luca</p>
-              <p className="text-sm text-violet-700">Usa i dati del tuo onboarding per compilare automaticamente il Brand Voice con AI</p>
+              <p className="text-sm text-violet-700">Copia il Brand Voice già generato da Luca — se non è ancora stato generato, lo crea e poi lo copia</p>
             </div>
           </div>
           <Button
