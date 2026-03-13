@@ -200,7 +200,7 @@ async function executeAction(
                   result_data = COALESCE(result_data, '{}'::jsonb) || '{"chat_approved": true, "skip_guardrails": true}'::jsonb
               WHERE id = ${taskId} AND consultant_id = ${consultantId}
             `);
-            const instr = (check.rows[0] as any).ai_instruction?.substring(0, 60) || taskId;
+            const instr = (check.rows[0] as any).ai_instruction || taskId;
             approved.push(instr);
             console.log(`🚀 [SUPERVISOR] Task ${taskId} approved via chat by ${roleId}`);
           }
@@ -230,7 +230,7 @@ async function executeAction(
                   result_summary = COALESCE(result_summary, '') || E'\n[Rifiutato via chat]'
               WHERE id = ${taskId} AND consultant_id = ${consultantId}
             `);
-            const instr = (check.rows[0] as any).ai_instruction?.substring(0, 60) || taskId;
+            const instr = (check.rows[0] as any).ai_instruction || taskId;
             rejected.push(instr);
             console.log(`❌ [SUPERVISOR] Task ${taskId} rejected via chat by ${roleId}`);
           }
@@ -257,7 +257,7 @@ async function executeAction(
                   result_summary = COALESCE(result_summary, '') || E'\n[Completato manualmente dal consulente via chat]'
               WHERE id = ${taskId} AND consultant_id = ${consultantId}
             `);
-            const instr = (check.rows[0] as any).ai_instruction?.substring(0, 60) || taskId;
+            const instr = (check.rows[0] as any).ai_instruction || taskId;
             completed.push(instr);
             console.log(`✅ [SUPERVISOR] Task ${taskId} completed via chat by ${roleId}`);
           }
@@ -284,7 +284,7 @@ async function executeAction(
                   result_data = COALESCE(result_data, '{}'::jsonb) || '{"chat_approved": true, "skip_guardrails": true}'::jsonb
               WHERE id = ${taskId} AND consultant_id = ${consultantId}
             `);
-            const instr = (check.rows[0] as any).ai_instruction?.substring(0, 60) || taskId;
+            const instr = (check.rows[0] as any).ai_instruction || taskId;
             executed.push(instr);
             console.log(`🚀 [SUPERVISOR] Task ${taskId} executed now via chat by ${roleId}`);
           }
@@ -315,7 +315,7 @@ async function executeAction(
                 ${scheduledAt}, NOW(), NOW()
               )
             `);
-            created.push(task.instruction.substring(0, 60));
+            created.push(task.instruction);
             console.log(`📝 [SUPERVISOR] Task created via chat: "${task.instruction.substring(0, 60)}" by ${roleId}`);
           } catch (err: any) {
             console.error(`❌ [SUPERVISOR] Error creating task:`, err.message);
@@ -362,7 +362,7 @@ async function executeAction(
           updates.push('data aggiornata');
         }
         if (updates.length === 0) return null;
-        const instr = (check.rows[0] as any).ai_instruction?.substring(0, 60) || taskId;
+        const instr = (check.rows[0] as any).ai_instruction || taskId;
         console.log(`✏️ [SUPERVISOR] Task ${taskId} modified via chat: ${updates.join(', ')}`);
         return `\n\n---\n✏️ Task "${instr}" modificato: ${updates.join(', ')}`;
       }
@@ -381,7 +381,7 @@ async function executeAction(
           SET scheduled_at = ${new Date(action.scheduledAt)}, status = 'scheduled', updated_at = NOW()
           WHERE id = ${taskId} AND consultant_id = ${consultantId}
         `);
-        const instr = (check.rows[0] as any).ai_instruction?.substring(0, 60) || taskId;
+        const instr = (check.rows[0] as any).ai_instruction || taskId;
         const dateStr = new Date(action.scheduledAt).toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
         console.log(`📅 [SUPERVISOR] Task ${taskId} scheduled to ${dateStr} via chat by ${roleId}`);
         return `\n\n---\n📅 Task "${instr}" schedulato per ${dateStr}`;
