@@ -500,7 +500,13 @@ export default function ContentStudioIdeas() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   type ContentTab = "ideas" | "posts" | "advisage" | "funnel" | "facebook-ads";
-  const [activeTab, setActiveTab] = useState<ContentTab>("ideas");
+  const initialTab = (() => {
+    const p = new URLSearchParams(window.location.search);
+    const t = p.get("tab");
+    if (t === "funnel" || t === "ideas" || t === "posts" || t === "advisage" || t === "facebook-ads") return t as ContentTab;
+    return "ideas" as ContentTab;
+  })();
+  const [activeTab, setActiveTab] = useState<ContentTab>(initialTab);
   const [funnelDirty, setFunnelDirty] = useState(false);
   const funnelRef = useRef<FunnelBuilderHandle>(null);
   const [pendingTab, setPendingTab] = useState<ContentTab | null>(null);

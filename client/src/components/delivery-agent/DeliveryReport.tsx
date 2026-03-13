@@ -823,7 +823,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                   variant="outline"
                   size="sm"
                   className="gap-1.5 text-xs border-indigo-300 text-indigo-600 hover:bg-indigo-50"
-                  onClick={() => window.location.href = `/consultant/funnel-builder?funnel=${funnelId}`}
+                  onClick={() => window.location.href = `/consultant/content-studio/ideas?tab=funnel&funnel=${funnelId}`}
                 >
                   <Layers className="w-3.5 h-3.5" /> Vedi Funnel
                 </Button>
@@ -1424,7 +1424,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                       <Button
                         size="sm"
                         className="gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
-                        onClick={() => window.location.href = `/consultant/funnel-builder?funnel=${funnelId}`}
+                        onClick={() => window.location.href = `/consultant/content-studio/ideas?tab=funnel&funnel=${funnelId}`}
                       >
                         <Layers className="w-3.5 h-3.5" /> Apri nel Funnel Builder
                       </Button>
