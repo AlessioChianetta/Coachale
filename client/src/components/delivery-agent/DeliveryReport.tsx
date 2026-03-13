@@ -803,7 +803,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
       </AnimatePresence>
 
       {/* ── Main content ── */}
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
         {/* Toolbar */}
         <div className="flex items-center justify-between px-2 sm:px-4 py-2 border-b border-border/40 bg-card flex-shrink-0 print:hidden gap-1">
@@ -854,7 +854,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
         </div>
 
         <ScrollArea className="flex-1" ref={contentRef}>
-          <div className="max-w-[720px] mx-auto px-4 sm:px-8 py-6 sm:py-10 print:max-w-none print:px-12">
+          <div className="max-w-[720px] mx-auto px-4 sm:px-8 py-6 sm:py-10 print:max-w-none print:px-12 overflow-x-hidden">
 
             {/* ── Cover ── */}
             <div className="pt-4 sm:pt-8 pb-8 sm:pb-14 print:py-20 print:break-after-page">
@@ -883,9 +883,9 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
             {/* ── Lettera personale ── */}
             {report.personal_letter && (
               <section id="lettera" ref={setChapterRef("lettera")} className="mb-10 sm:mb-14 print:break-before-page">
-                <div className="space-y-4 border-l-2 border-border/40 pl-5">
+                <div className="space-y-4 border-l-2 border-border/40 pl-3 sm:pl-5">
                   {report.personal_letter.split('\n\n').map((para, i) => (
-                    <p key={i} className="text-[15px] leading-8 text-foreground/80">
+                    <p key={i} className="text-sm sm:text-[15px] leading-7 sm:leading-8 text-foreground/80 break-words">
                       <RichText text={para} />
                     </p>
                   ))}
@@ -1085,7 +1085,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3">Perché è rilevante per te</p>
                       <div className="space-y-4">
                         {pkg.reason.split('\n\n').map((para, j) => (
-                          <p key={j} className="text-[15px] leading-8 text-foreground/85">
+                          <p key={j} className="text-sm sm:text-[15px] leading-7 sm:leading-8 text-foreground/85 break-words">
                             <RichText text={para} />
                           </p>
                         ))}
@@ -1212,7 +1212,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                 />
                 <div className="space-y-4">
                   {report.flow_description.split('\n\n').map((para, i) => (
-                    <p key={i} className="text-[15px] leading-8 text-foreground/80">
+                    <p key={i} className="text-sm sm:text-[15px] leading-7 sm:leading-8 text-foreground/80 break-words">
                       <RichText text={para} />
                     </p>
                   ))}
@@ -1244,7 +1244,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                       </div>
 
                       {qw.steps.length > 0 && (
-                        <div className="mb-4 space-y-2.5 pl-9">
+                        <div className="mb-4 space-y-2.5 pl-4 sm:pl-9">
                           {qw.steps.map((step, j) => (
                             <div key={j} className="flex items-start gap-2.5">
                               <span className="text-[10px] font-bold text-muted-foreground/40 mt-0.5 w-3 flex-shrink-0">{j + 1}.</span>
@@ -1255,7 +1255,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                       )}
 
                       {qw.copy_paste && (
-                        <div className="ml-9 mb-4">
+                        <div className="ml-4 sm:ml-9 mb-4">
                           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">Testo da copiare</p>
                           <div className="bg-muted/40 border border-border/50 rounded-lg px-4 py-3">
                             <p className="text-sm text-foreground/80 italic leading-relaxed whitespace-pre-wrap">{qw.copy_paste}</p>
@@ -1264,14 +1264,14 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                       )}
 
                       {qw.impact && (
-                        <div className="ml-9 flex items-start gap-2">
+                        <div className="ml-4 sm:ml-9 flex items-start gap-2">
                           <TrendingUp className="w-3.5 h-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
                           <p className="text-sm text-foreground/70">{qw.impact}</p>
                         </div>
                       )}
 
                       {qw.link && (
-                        <div className="ml-9 mt-2">
+                        <div className="ml-4 sm:ml-9 mt-2">
                           <a href={qw.link} className="text-xs text-blue-500 hover:underline flex items-center gap-1">
                             Vai alla configurazione <ExternalLink className="w-3 h-3" />
                           </a>
@@ -1295,7 +1295,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                 {report.success_signals && report.success_signals.length > 0 && (
                   <div className="space-y-4 mb-8">
                     {report.success_signals.map((sig, i) => (
-                      <div key={i} className="grid grid-cols-[120px_1fr] gap-4 py-4 border-b border-border/30 last:border-0 print:break-inside-avoid">
+                      <div key={i} className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-2 sm:gap-4 py-4 border-b border-border/30 last:border-0 print:break-inside-avoid">
                         <div>
                           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">Entro</p>
                           <p className="text-sm font-semibold text-foreground">{sig.timeframe}</p>
@@ -1361,7 +1361,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3">Avvertimento onesto</p>
                     <div className="space-y-3">
                       {report.honest_warning.split('\n\n').map((para, i) => (
-                        <p key={i} className="text-[15px] leading-8 text-foreground/80">
+                        <p key={i} className="text-sm sm:text-[15px] leading-7 sm:leading-8 text-foreground/80 break-words">
                           <RichText text={para} />
                         </p>
                       ))}
@@ -1400,7 +1400,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                 <div className="border-t border-border/40 pt-10 max-w-lg">
                   <div className="space-y-4">
                     {report.closing_message.split('\n\n').map((para, i) => (
-                      <p key={i} className="text-[15px] leading-8 text-foreground/70 italic">
+                      <p key={i} className="text-sm sm:text-[15px] leading-7 sm:leading-8 text-foreground/70 italic break-words">
                         <RichText text={para} />
                       </p>
                     ))}

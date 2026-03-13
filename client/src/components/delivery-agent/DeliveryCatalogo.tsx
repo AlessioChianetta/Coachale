@@ -300,7 +300,7 @@ export function DeliveryCatalogo({ sessionId, onBackToChat, publicToken }: Deliv
         )}
       </AnimatePresence>
 
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-2 sm:px-4 py-2 border-b border-border/40 bg-card flex-shrink-0">
           <div className="flex items-center gap-0.5 sm:gap-1">
             <Button
@@ -334,7 +334,7 @@ export function DeliveryCatalogo({ sessionId, onBackToChat, publicToken }: Deliv
         </div>
 
         <ScrollArea className="flex-1">
-          <div className="max-w-[720px] mx-auto px-4 sm:px-8 py-6 sm:py-10">
+          <div className="max-w-[720px] mx-auto px-4 sm:px-8 py-6 sm:py-10 overflow-x-hidden">
             <div className="pt-2 sm:pt-4 pb-6 sm:pb-10">
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground/60">
                 Catalogo Completo
@@ -491,7 +491,7 @@ export function DeliveryCatalogo({ sessionId, onBackToChat, publicToken }: Deliv
                           {pkg.description.split("\n\n").map((p, j) => (
                             <p
                               key={j}
-                              className="text-[15px] leading-8 text-foreground/80"
+                              className="text-sm sm:text-[15px] leading-7 sm:leading-8 text-foreground/80 break-words"
                             >
                               <RichText text={p} />
                             </p>
