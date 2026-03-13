@@ -623,7 +623,7 @@ export default function ConsultantDashboard() {
               </div>
             ) : onboardingStatus?.hasSession ? (
               <div className="space-y-4">
-                {onboardingStatus.status === 'completed' ? (
+                {onboardingStatus.status === 'completed' || onboardingStatus.status === 'assistant' ? (
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                     <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
                     <p className="text-sm font-semibold text-emerald-700">Onboarding completato!</p>
@@ -692,13 +692,13 @@ export default function ConsultantDashboard() {
                   )}
                   className={cn(
                     "w-full gap-2 rounded-xl h-11 text-white",
-                    onboardingStatus.status === 'completed'
+                    onboardingStatus.status === 'completed' || onboardingStatus.status === 'assistant'
                       ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                       : "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
                   )}
                 >
                   <PlayCircle className="h-4 w-4" />
-                  {onboardingStatus.status === 'completed' ? 'Vai alla sessione con Luca' : 'Continua con Luca'}
+                  {onboardingStatus.status === 'completed' || onboardingStatus.status === 'assistant' ? 'Vai alla sessione con Luca' : 'Continua con Luca'}
                 </Button>
               </div>
             ) : (

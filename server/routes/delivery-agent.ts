@@ -1530,11 +1530,12 @@ router.post('/onboarding-status/clients', authenticateToken, requireRole('consul
     if (safeIds.length === 0) return res.json({ success: true, data: {} });
 
     const ownedCheck = await db.execute(sql`
-      SELECT id FROM users
+      SELECT id, LOWER(TRIM(email)) as email FROM users
       WHERE id IN (${sql.join(safeIds.map(id => sql`${id}`), sql`,`)})
         AND consultant_id = ${consultantId}
     `);
-    const ownedIds = new Set((ownedCheck.rows as any[]).map(r => r.id));
+    const ownedRows = ownedCheck.rows as any[];
+    const ownedIds = new Set(ownedRows.map(r => r.id));
     const authorizedIds = safeIds.filter(id => ownedIds.has(id));
     if (authorizedIds.length === 0) return res.json({ success: true, data: {} });
 
@@ -1563,6 +1564,59 @@ router.post('/onboarding-status/clients', authenticateToken, requireRole('consul
         hasReport: row.has_report,
         hasFunnel: row.has_funnel,
       };
+    }
+
+    const missingIds = authorizedIds.filter(id => !statusMap[id]);
+    if (missingIds.length > 0) {
+      const emailMap = new Map<string, string>();
+      for (const row of ownedRows) {
+        if (row.email && missingIds.includes(row.id)) {
+          emailMap.set(row.email, row.id);
+        }
+      }
+      const emails = Array.from(emailMap.keys());
+
+      if (emails.length > 0) {
+        const emailSessions = await db.execute(sql`
+          SELECT DISTINCT ON (LOWER(TRIM(s.lead_email)))
+            s.id, s.lead_email, s.status,
+            CASE WHEN r.id IS NOT NULL THEN true ELSE false END AS has_report,
+            CASE WHEN f.id IS NOT NULL THEN true ELSE false END AS has_funnel,
+            (SELECT COUNT(*)::int FROM delivery_agent_messages m WHERE m.session_id = s.id) AS message_count
+          FROM delivery_agent_sessions s
+          LEFT JOIN delivery_agent_reports r ON r.session_id = s.id
+          LEFT JOIN consultant_funnels f ON f.delivery_session_id = s.id
+          WHERE s.lead_user_id IS NULL
+            AND s.consultant_id = ${consultantId}
+            AND LOWER(TRIM(s.lead_email)) IN (${sql.join(emails.map(e => sql`${e}`), sql`,`)})
+            AND (s.mode = 'onboarding' OR s.is_public = true)
+          ORDER BY LOWER(TRIM(s.lead_email)), s.updated_at DESC
+        `);
+
+        for (const row of emailSessions.rows as any[]) {
+          const normalizedEmail = (row.lead_email || '').trim().toLowerCase();
+          const userId = emailMap.get(normalizedEmail);
+          if (userId && !statusMap[userId]) {
+            statusMap[userId] = {
+              hasSession: true,
+              sessionId: row.id,
+              status: row.status,
+              hasChat: (row.message_count || 0) > 0,
+              messageCount: row.message_count || 0,
+              hasReport: row.has_report,
+              hasFunnel: row.has_funnel,
+            };
+            try {
+              await db.execute(sql`
+                UPDATE delivery_agent_sessions SET lead_user_id = ${userId} WHERE id = ${row.id}::uuid AND lead_user_id IS NULL
+              `);
+              console.log(`[DeliveryAgent] Fixed missing lead_user_id: session=${row.id} user=${userId}`);
+            } catch (fixErr) {
+              console.error(`[DeliveryAgent] Failed to fix lead_user_id:`, fixErr);
+            }
+          }
+        }
+      }
     }
 
     res.json({ success: true, data: statusMap });
