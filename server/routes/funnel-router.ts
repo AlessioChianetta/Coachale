@@ -595,6 +595,19 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
   `);
 
   const funnelId = (insertResult.rows[0] as any).id;
+
+  try {
+    await db.execute(sql`
+      INSERT INTO consultant_funnel_versions
+        (funnel_id, consultant_id, version_number, label, source, nodes_data, edges_data, funnel_name)
+      VALUES
+        (${funnelId}, ${consultantId}, 1, ${'Generato da report'}, ${'auto_generate'},
+         ${JSON.stringify(nodes)}::jsonb, ${JSON.stringify(edges)}::jsonb, ${funnelName})
+    `);
+  } catch (vErr) {
+    console.warn("[Funnel] Could not save initial version snapshot:", vErr);
+  }
+
   console.log(`[Funnel] Generated funnel from report — id: ${funnelId}, nodes: ${nodes.length}, edges: ${edges.length}, lead: ${leadName}`);
 
   return { funnelId, name: funnelName, nodes, edges };
