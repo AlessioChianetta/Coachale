@@ -329,7 +329,7 @@ function LessonDetail({
   const gradientClass = module ? (COLOR_GRADIENTS[module.color] ?? "from-slate-500 to-slate-700") : "from-slate-500 to-slate-700";
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {(() => {
         const allVids: Array<{ url: string; type: string; title: string }> = [];
         if (lesson.video_url) {
@@ -366,7 +366,7 @@ function LessonDetail({
 
       <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
         <div className={cn("h-1.5 bg-gradient-to-r", gradientClass)} />
-        <div className="p-5 md:p-6 space-y-5">
+        <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-5">
           <div className="flex flex-wrap items-start gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -382,7 +382,7 @@ function LessonDetail({
                   Lezione {lessonIndex + 1}/{totalLessons}
                 </span>
               </div>
-              <h1 className="text-xl md:text-2xl font-bold text-foreground leading-tight">
+              <h1 className="text-base sm:text-xl md:text-2xl font-bold text-foreground leading-tight">
                 {lesson.title}
               </h1>
             </div>
@@ -772,7 +772,7 @@ export default function ConsultantAcademy() {
   );
 
   return (
-    <div className="flex flex-col bg-background h-screen max-h-screen">
+    <div className="flex flex-col bg-background h-[100dvh] max-h-[100dvh]">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
 
       <div className="flex flex-1 overflow-hidden min-h-0">
@@ -783,49 +783,51 @@ export default function ConsultantAcademy() {
         />
 
         <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          <div className="flex items-center gap-3 px-4 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
-            <Link href="/consultant">
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="w-3.5 h-3.5" />
-                Dashboard
-              </Button>
-            </Link>
-            <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
-              {([
-                { key: "academy" as const, label: "Accademia", icon: <GraduationCap className="w-4 h-4" />, gradient: "from-indigo-500 to-blue-600" },
-                { key: "delivery" as const, label: "Delivery AI", icon: <Rocket className="w-4 h-4" />, gradient: "from-violet-500 to-purple-600" },
-                { key: "setup-assistant" as const, label: "Assistente Setup", icon: <Sparkles className="w-4 h-4" />, gradient: "from-emerald-500 to-teal-600" },
-                { key: "setup-wizard" as const, label: "Setup Wizard", icon: <Wrench className="w-4 h-4" />, gradient: "from-amber-500 to-orange-600" },
-              ] as const).map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                    activeTab === tab.key
-                      ? `bg-gradient-to-r ${tab.gradient} text-white shadow-md`
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                >
-                  {tab.icon}
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+          <div className="border-b border-border/60 bg-card/50 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 px-2 sm:px-4 py-1.5 sm:py-2">
+              <Link href="/consultant">
+                <Button variant="ghost" size="sm" className="h-7 sm:h-8 w-7 sm:w-auto p-0 sm:px-3 sm:gap-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0">
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </Button>
+              </Link>
+              <div className="flex items-center bg-muted/50 rounded-xl p-0.5 sm:p-1 gap-0.5 sm:gap-1 flex-1 min-w-0">
+                {([
+                  { key: "academy" as const, label: "Accademia", shortLabel: "Academy", icon: <GraduationCap className="w-4 h-4" />, gradient: "from-indigo-500 to-blue-600" },
+                  { key: "delivery" as const, label: "Delivery AI", shortLabel: "Delivery", icon: <Rocket className="w-4 h-4" />, gradient: "from-violet-500 to-purple-600" },
+                  { key: "setup-assistant" as const, label: "Assistente Setup", shortLabel: "Setup", icon: <Sparkles className="w-4 h-4" />, gradient: "from-emerald-500 to-teal-600" },
+                  { key: "setup-wizard" as const, label: "Setup Wizard", shortLabel: "Wizard", icon: <Wrench className="w-4 h-4" />, gradient: "from-amber-500 to-orange-600" },
+                ] as const).map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={cn(
+                      "flex items-center justify-center sm:gap-1.5 md:gap-2 px-2.5 py-2 sm:px-3 sm:py-2 md:px-4 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all flex-1 min-w-0",
+                      activeTab === tab.key
+                        ? `bg-gradient-to-r ${tab.gradient} text-white shadow-md`
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                    title={tab.label}
+                  >
+                    {tab.icon}
+                    <span className="hidden sm:inline md:hidden">{tab.shortLabel}</span>
+                    <span className="hidden md:inline">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
 
-            {activeTab === "academy" && (
-              <div className="ml-auto flex items-center gap-3">
-                <div className="hidden sm:flex items-center gap-2">
-                  <div className="w-32 h-2 rounded-full bg-muted overflow-hidden">
+              {activeTab === "academy" && (
+                <div className="hidden sm:flex items-center gap-2 shrink-0">
+                  <div className="w-24 lg:w-32 h-2 rounded-full bg-muted overflow-hidden">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-500"
                       style={{ width: `${progressPct}%` }}
                     />
                   </div>
-                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
+                  <span className="text-xs sm:text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {activeTab === "delivery" ? (
@@ -897,20 +899,20 @@ export default function ConsultantAcademy() {
           ) : (
           <div className="flex flex-col h-full">
             {isMobile && (
-              <div className="flex-shrink-0 px-4 sm:px-6 pt-4">
+              <div className="flex-shrink-0 px-2.5 sm:px-4 pt-2 sm:pt-4">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full gap-2 justify-between"
+                  className="w-full gap-1.5 sm:gap-2 justify-between h-9 sm:h-10"
                   onClick={() => setMobileSidebarOpen(p => !p)}
                 >
-                  <span className="flex items-center gap-2">
-                    <span>{activeModule?.emoji}</span>
-                    <span className="text-sm font-medium truncate">{activeLesson?.title}</span>
+                  <span className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <span className="shrink-0">{activeModule?.emoji}</span>
+                    <span className="text-[11px] sm:text-sm font-medium truncate">{activeLesson?.title}</span>
                   </span>
-                  <span className="flex items-center gap-2 flex-shrink-0">
-                    <Badge variant="secondary" className="text-xs">{totalCompleted}/{totalLessons}</Badge>
-                    {mobileSidebarOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  <span className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                    <Badge variant="secondary" className="text-[10px] sm:text-xs">{totalCompleted}/{totalLessons}</Badge>
+                    {mobileSidebarOpen ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                   </span>
                 </Button>
 
@@ -940,7 +942,7 @@ export default function ConsultantAcademy() {
               )}
 
               <div id="academy-content-panel" className="flex-1 min-w-0 overflow-y-auto">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+                <div className="max-w-4xl mx-auto px-3 sm:px-6 py-3 sm:py-6">
                   {activeLesson ? (
                     <AnimatePresence mode="wait">
                       <motion.div

@@ -103,7 +103,7 @@ function PhaseIndicator({ status }: { status: string }) {
   const currentIndex = PHASE_STEPS.findIndex((s) => s.key === status);
 
   return (
-    <div className="flex items-center justify-center gap-1 py-3 px-4">
+    <div className="flex items-center justify-center gap-0.5 sm:gap-1 py-1.5 sm:py-3 px-1 sm:px-4">
       {PHASE_STEPS.map((step, idx) => {
         const isCompleted = idx < currentIndex;
         const isActive = idx === currentIndex;
@@ -113,7 +113,7 @@ function PhaseIndicator({ status }: { status: string }) {
           <div key={step.key} className="flex items-center">
             <div
               className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all",
+                "flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-all",
                 isCompleted &&
                   "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400",
                 isActive &&
@@ -124,23 +124,23 @@ function PhaseIndicator({ status }: { status: string }) {
               )}
             >
               {isCompleted ? (
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               ) : isActive ? (
                 <Icon
                   className={cn(
-                    "w-3.5 h-3.5",
+                    "w-3 h-3 sm:w-3.5 sm:h-3.5",
                     step.key === "elaborating" && "animate-spin"
                   )}
                 />
               ) : (
-                <Circle className="w-3.5 h-3.5" />
+                <Circle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               )}
               <span className="hidden sm:inline">{step.label}</span>
             </div>
             {idx < PHASE_STEPS.length - 1 && (
               <div
                 className={cn(
-                  "w-6 h-px mx-1",
+                  "w-3 sm:w-6 h-px mx-0.5 sm:mx-1",
                   idx < currentIndex
                     ? "bg-emerald-400"
                     : "bg-border"
@@ -609,14 +609,14 @@ export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessio
 
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <div className="border-b border-border/60">
-          <div className="flex items-center justify-between px-3 py-1.5">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between px-2 sm:px-3 py-1 sm:py-1.5">
+            <div className="flex items-center gap-1 sm:gap-2 min-w-0">
               {onBack && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={onBack}
-                  className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  className="hidden sm:flex h-8 px-3 gap-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   Academy
@@ -626,7 +626,7 @@ export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessio
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowSidebar(!showSidebar)}
-                className="h-8 w-8 p-0"
+                className="h-7 sm:h-8 w-7 sm:w-8 p-0 shrink-0"
               >
                 {showSidebar ? (
                   <ChevronLeft className="w-4 h-4" />
@@ -635,7 +635,9 @@ export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessio
                 )}
               </Button>
               {activeSession && (
-                <PhaseIndicator status={activeSession.status} />
+                <div className="min-w-0 overflow-x-auto scrollbar-none">
+                  <PhaseIndicator status={activeSession.status} />
+                </div>
               )}
             </div>
           </div>
@@ -709,57 +711,57 @@ export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessio
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="text-center max-w-lg px-6 relative z-10"
+                className="text-center max-w-lg px-4 sm:px-6 relative z-10"
               >
-                <div className="relative mx-auto mb-6 w-20 h-20">
+                <div className="relative mx-auto mb-4 sm:mb-6 w-14 h-14 sm:w-20 sm:h-20">
                   <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl rotate-6 opacity-20" />
-                  <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 flex items-center justify-center shadow-xl shadow-violet-500/25">
-                    <Rocket className="w-9 h-9 text-white drop-shadow-sm" />
+                  <div className="relative w-14 h-14 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 flex items-center justify-center shadow-xl shadow-violet-500/25">
+                    <Rocket className="w-6 h-6 sm:w-9 sm:h-9 text-white drop-shadow-sm" />
                   </div>
                 </div>
 
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-700 via-violet-700 to-purple-700 dark:from-indigo-300 dark:via-violet-300 dark:to-purple-300 bg-clip-text text-transparent mb-3">
+                <h2 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-indigo-700 via-violet-700 to-purple-700 dark:from-indigo-300 dark:via-violet-300 dark:to-purple-300 bg-clip-text text-transparent mb-2 sm:mb-3">
                   Delivery AI Agent
                 </h2>
-                <p className="text-sm text-muted-foreground mb-2 leading-relaxed max-w-sm mx-auto">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-2 leading-relaxed max-w-sm mx-auto">
                   Il tuo assistente AI per l'onboarding e la discovery dei clienti.
                 </p>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 max-w-2xl mx-auto">
-                  <div className="group flex flex-col items-center gap-2.5 p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-indigo-200/60 dark:border-indigo-700/30 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md hover:shadow-indigo-500/5 transition-all duration-200">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-                      <Search className="w-5 h-5 text-white" />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6 sm:mb-8 max-w-2xl mx-auto">
+                  <div className="group flex flex-col items-center gap-1.5 sm:gap-2.5 p-2.5 sm:p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-indigo-200/60 dark:border-indigo-700/30 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md hover:shadow-indigo-500/5 transition-all duration-200">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
+                      <Search className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                     </div>
                     <div className="text-center">
-                      <span className="text-xs font-bold text-foreground block">Discovery</span>
-                      <span className="text-[10px] text-muted-foreground/70 leading-tight block mt-0.5">9 fasi di analisi del cliente</span>
+                      <span className="text-[10px] sm:text-xs font-bold text-foreground block">Discovery</span>
+                      <span className="text-[9px] sm:text-[10px] text-muted-foreground/70 leading-tight block mt-0.5 hidden sm:block">9 fasi di analisi del cliente</span>
                     </div>
                   </div>
-                  <div className="group flex flex-col items-center gap-2.5 p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-violet-200/60 dark:border-violet-700/30 hover:border-violet-300 dark:hover:border-violet-600 hover:shadow-md hover:shadow-violet-500/5 transition-all duration-200">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md shadow-violet-500/20 group-hover:scale-105 transition-transform duration-200">
-                      <FileText className="w-5 h-5 text-white" />
+                  <div className="group flex flex-col items-center gap-1.5 sm:gap-2.5 p-2.5 sm:p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-violet-200/60 dark:border-violet-700/30 hover:border-violet-300 dark:hover:border-violet-600 hover:shadow-md hover:shadow-violet-500/5 transition-all duration-200">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md shadow-violet-500/20 group-hover:scale-105 transition-transform duration-200">
+                      <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                     </div>
                     <div className="text-center">
-                      <span className="text-xs font-bold text-foreground block">Report</span>
-                      <span className="text-[10px] text-muted-foreground/70 leading-tight block mt-0.5">Piano personalizzato completo</span>
+                      <span className="text-[10px] sm:text-xs font-bold text-foreground block">Report</span>
+                      <span className="text-[9px] sm:text-[10px] text-muted-foreground/70 leading-tight block mt-0.5 hidden sm:block">Piano personalizzato completo</span>
                     </div>
                   </div>
-                  <div className="group flex flex-col items-center gap-2.5 p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-purple-200/60 dark:border-purple-700/30 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md hover:shadow-purple-500/5 transition-all duration-200">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform duration-200">
-                      <Bot className="w-5 h-5 text-white" />
+                  <div className="group flex flex-col items-center gap-1.5 sm:gap-2.5 p-2.5 sm:p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-purple-200/60 dark:border-purple-700/30 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md hover:shadow-purple-500/5 transition-all duration-200">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform duration-200">
+                      <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                     </div>
                     <div className="text-center">
-                      <span className="text-xs font-bold text-foreground block">Assistente</span>
-                      <span className="text-[10px] text-muted-foreground/70 leading-tight block mt-0.5">Supporto permanente post-report</span>
+                      <span className="text-[10px] sm:text-xs font-bold text-foreground block">Assistente</span>
+                      <span className="text-[9px] sm:text-[10px] text-muted-foreground/70 leading-tight block mt-0.5 hidden sm:block">Supporto permanente post-report</span>
                     </div>
                   </div>
-                  <div className="group flex flex-col items-center gap-2.5 p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-amber-200/60 dark:border-amber-700/30 hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-md hover:shadow-amber-500/5 transition-all duration-200">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform duration-200">
-                      <TrendingUp className="w-5 h-5 text-white" />
+                  <div className="group flex flex-col items-center gap-1.5 sm:gap-2.5 p-2.5 sm:p-4 rounded-xl bg-white/70 dark:bg-white/5 border border-amber-200/60 dark:border-amber-700/30 hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-md hover:shadow-amber-500/5 transition-all duration-200">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform duration-200">
+                      <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                     </div>
                     <div className="text-center">
-                      <span className="text-xs font-bold text-foreground block">Sales Coach</span>
-                      <span className="text-[10px] text-muted-foreground/70 leading-tight block mt-0.5">Marco ti insegna a vendere</span>
+                      <span className="text-[10px] sm:text-xs font-bold text-foreground block">Sales Coach</span>
+                      <span className="text-[9px] sm:text-[10px] text-muted-foreground/70 leading-tight block mt-0.5 hidden sm:block">Marco ti insegna a vendere</span>
                     </div>
                   </div>
                 </div>
@@ -767,7 +769,7 @@ export function DeliveryAgentPanel({ initialSessionId, onBack }: { initialSessio
                 <Button
                   onClick={() => setShowModeDialog(true)}
                   size="lg"
-                  className="gap-2.5 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-700 hover:via-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25 hover:shadow-xl hover:shadow-violet-500/35 transition-all duration-300 px-8"
+                  className="gap-2 sm:gap-2.5 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-700 hover:via-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25 hover:shadow-xl hover:shadow-violet-500/35 transition-all duration-300 px-5 sm:px-8 text-sm sm:text-base h-10 sm:h-11"
                 >
                   <Plus className="w-4 h-4" />
                   Inizia una Sessione

@@ -2144,10 +2144,10 @@ export default function ConsultantClientsPage() {
                                       let msg: string;
                                       if (isActiveClient) {
                                         url = `${window.location.origin}/login?redirect=${encodeURIComponent('/consultant/academy?tab=delivery')}`;
-                                        msg = `Ciao ${client.firstName}! Accedi alla piattaforma per iniziare la tua sessione con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un piano personalizzato per te.\n\n${url}`;
+                                        msg = `Ciao ${client.firstName}! Ho preparato per te una sessione con *Luca*, il nostro consulente AI dedicato.\n\n*Cosa farai:*\n1. Clicca il link e accedi alla piattaforma\n2. Vai nella sezione *"Delivery AI"*\n3. Clicca sul pulsante *"Onboarding"* per iniziare\n4. Luca ti farà alcune domande sul tuo business (circa 10 minuti)\n5. Al termine riceverai il tuo report personalizzato\n\n*Cosa otterrai:*\n- Un'analisi completa della tua situazione attuale\n- Un piano strategico su misura per la tua attività\n- Un funnel personalizzato pronto all'uso\n- Un catalogo servizi dedicato\n\nDopo l'onboarding, Luca resterà disponibile come tuo assistente AI permanente per qualsiasi domanda.\n\n${url}`;
                                       } else {
                                         url = `${window.location.origin}/onboarding-gratuito/${consultantIdentifier}`;
-                                        msg = `Ciao ${client.firstName}! Ti invio il link per completare il tuo onboarding gratuito con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un report personalizzato per te.\n\n${url}`;
+                                        msg = `Ciao ${client.firstName}! Ho qualcosa di speciale per te.\n\nHo attivato una sessione gratuita con *Luca*, il nostro consulente AI.\n\n*Cosa farai:*\n1. Clicca il link qui sotto\n2. Inserisci i tuoi dati (nome, email, telefono)\n3. Clicca su *"Inizia Onboarding"*\n4. Luca ti farà alcune domande sulla tua attività (circa 10 minuti)\n5. Riceverai subito il tuo report personalizzato\n\n*Cosa otterrai gratuitamente:*\n- Un'analisi dettagliata del tuo business\n- Un piano d'azione strategico personalizzato\n- Consigli pratici da implementare subito\n\nÈ completamente gratuito e senza impegno. Luca è disponibile 24/7, puoi farlo quando preferisci!\n\n${url}`;
                                       }
                                       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                                     }}
@@ -3117,10 +3117,10 @@ export default function ConsultantClientsPage() {
                     let msg: string;
                     if (isActiveClient) {
                       url = `${window.location.origin}/login?redirect=${encodeURIComponent('/consultant/academy?tab=delivery')}`;
-                      msg = `Ciao ${detailClient.firstName}! Accedi alla piattaforma per iniziare la tua sessione con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un piano personalizzato per te.\n\n${url}`;
+                      msg = `Ciao ${detailClient.firstName}! Ho preparato per te una sessione con *Luca*, il nostro consulente AI dedicato.\n\n*Cosa farai:*\n1. Clicca il link e accedi alla piattaforma\n2. Vai nella sezione *"Delivery AI"*\n3. Clicca sul pulsante *"Onboarding"* per iniziare\n4. Luca ti farà alcune domande sul tuo business (circa 10 minuti)\n5. Al termine riceverai il tuo report personalizzato\n\n*Cosa otterrai:*\n- Un'analisi completa della tua situazione attuale\n- Un piano strategico su misura per la tua attività\n- Un funnel personalizzato pronto all'uso\n- Un catalogo servizi dedicato\n\nDopo l'onboarding, Luca resterà disponibile come tuo assistente AI permanente per qualsiasi domanda.\n\n${url}`;
                     } else {
                       url = `${window.location.origin}/onboarding-gratuito/${consultantIdentifier}`;
-                      msg = `Ciao ${detailClient.firstName}! Ti invio il link per completare il tuo onboarding gratuito con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un report personalizzato per te.\n\n${url}`;
+                      msg = `Ciao ${detailClient.firstName}! Ho qualcosa di speciale per te.\n\nHo attivato una sessione gratuita con *Luca*, il nostro consulente AI.\n\n*Cosa farai:*\n1. Clicca il link qui sotto\n2. Inserisci i tuoi dati (nome, email, telefono)\n3. Clicca su *"Inizia Onboarding"*\n4. Luca ti farà alcune domande sulla tua attività (circa 10 minuti)\n5. Riceverai subito il tuo report personalizzato\n\n*Cosa otterrai gratuitamente:*\n- Un'analisi dettagliata del tuo business\n- Un piano d'azione strategico personalizzato\n- Consigli pratici da implementare subito\n\nÈ completamente gratuito e senza impegno. Luca è disponibile 24/7, puoi farlo quando preferisci!\n\n${url}`;
                     }
                     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                   }}
