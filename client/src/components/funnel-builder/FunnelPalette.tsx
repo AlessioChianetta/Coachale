@@ -72,7 +72,7 @@ export function FunnelPalette({ className }: FunnelPaletteProps) {
   return (
     <div
       className={cn(
-        "w-60 h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-col overflow-hidden",
+        "h-full bg-white dark:bg-gray-900 flex flex-col overflow-hidden",
         className
       )}
     >

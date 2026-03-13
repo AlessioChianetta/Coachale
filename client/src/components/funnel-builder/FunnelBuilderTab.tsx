@@ -48,6 +48,7 @@ import {
   Palette,
   Check,
   Brain,
+  FileText,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -170,8 +171,10 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
   const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
   const [themeId, setThemeId] = useState<FunnelThemeId>("classico");
   const [isDirty, setIsDirty] = useState(false);
-  const [funnelDescription, setFunnelDescription] = useState<string | null>(null);
+  const [funnelDescription, setFunnelDescription] = useState<string>("");
+  const [funnelSource, setFunnelSource] = useState<string | null>(null);
   const [showRationale, setShowRationale] = useState(false);
+  const [showNotes, setShowNotes] = useState(true);
   const currentTheme = useMemo(() => getTheme(themeId), [themeId]);
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -216,8 +219,10 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
   const futureRef = useRef<HistorySnapshot[]>([]);
   const nodesRef = useRef<Node[]>(nodes);
   const edgesRef = useRef<Edge[]>(edges);
+  const descriptionRef = useRef<string>(funnelDescription);
   nodesRef.current = nodes;
   edgesRef.current = edges;
+  descriptionRef.current = funnelDescription;
 
   const pushHistory = useCallback(() => {
     const snapshot: HistorySnapshot = {
@@ -310,7 +315,8 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
         const funnel = await res.json();
         setActiveFunnelId(funnel.id);
         setFunnelName(funnel.name);
-        setFunnelDescription(funnel.source === "delivery_report" ? (funnel.description || null) : null);
+        setFunnelDescription(funnel.description || "");
+        setFunnelSource(funnel.source || null);
         setShowRationale(false);
         setNodes(funnel.nodes_data || []);
         setEdges(funnel.edges_data || []);
@@ -334,6 +340,7 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
       try {
         const body = {
           name: funnelName,
+          description: descriptionRef.current || "",
           nodes_data: nodes,
           edges_data: edges,
           theme: overrideTheme || themeIdRef.current,
@@ -385,7 +392,8 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
   const createNewFunnel = () => {
     setActiveFunnelId(null);
     setFunnelName("Nuovo Funnel");
-    setFunnelDescription(null);
+    setFunnelDescription("");
+    setFunnelSource(null);
     setShowRationale(false);
     setNodes([]);
     setEdges([]);
@@ -839,30 +847,60 @@ const FunnelBuilderInner = forwardRef<FunnelBuilderHandle, FunnelBuilderInnerPro
         )}
       </div>
 
-      {funnelDescription && (
-        <div className="border-b border-border/60 bg-gradient-to-r from-indigo-50/50 to-violet-50/50 dark:from-indigo-950/20 dark:to-violet-950/20">
-          <button
-            onClick={() => setShowRationale(!showRationale)}
-            className="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/20 transition-colors"
-          >
-            <Brain className="w-3.5 h-3.5" />
-            <span>Strategia di Leonardo</span>
-            <Badge variant="secondary" className="text-[8px] px-1 py-0 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">AI</Badge>
-            <span className="flex-1" />
-            {showRationale ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
-          {showRationale && (
-            <div className="px-4 pb-3 max-h-[200px] overflow-y-auto">
-              <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {funnelDescription}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="flex-1 flex overflow-hidden">
-        <FunnelPalette />
+        <div className="w-60 h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
+          <FunnelPalette className="flex-1 min-h-0 border-r-0" />
+
+          <div className="border-t border-gray-200 dark:border-gray-700">
+            {funnelSource === "delivery_report" && funnelDescription && (
+              <div className="border-b border-border/60 bg-gradient-to-r from-indigo-50/50 to-violet-50/50 dark:from-indigo-950/20 dark:to-violet-950/20">
+                <button
+                  onClick={() => setShowRationale(!showRationale)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/20 transition-colors"
+                >
+                  <Brain className="w-3.5 h-3.5" />
+                  <span>Strategia di Leonardo</span>
+                  <Badge variant="secondary" className="text-[8px] px-1 py-0 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">AI</Badge>
+                  <span className="flex-1" />
+                  {showRationale ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+                {showRationale && (
+                  <div className="px-3 pb-2 max-h-[150px] overflow-y-auto">
+                    <div className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {funnelDescription}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowNotes(!showNotes)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Note & Strategia</span>
+              {funnelDescription && funnelDescription.trim().length > 0 && funnelSource !== "delivery_report" && (
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              )}
+              <span className="flex-1" />
+              {showNotes ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+            {showNotes && (
+              <div className="px-2 pb-2">
+                <textarea
+                  value={funnelDescription}
+                  onChange={(e) => {
+                    setFunnelDescription(e.target.value);
+                    markDirty();
+                  }}
+                  placeholder="Scrivi come e perché è stato pensato questo schema..."
+                  className="w-full h-28 text-[11px] leading-relaxed p-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400"
+                />
+              </div>
+            )}
+          </div>
+        </div>
 
         <div
           ref={reactFlowWrapper}

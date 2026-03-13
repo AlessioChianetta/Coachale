@@ -314,5 +314,6 @@ export const NODE_TYPE_ACADEMY_MAP: Record<string, string[]> = {
   onboarding: ["first_course", "pkg_form_corso"],
   servizio: ["pkg_pay_modello", "pkg_team_licenze"],
   followup: ["summary_email", "first_campaign", "pkg_email_sequenza"],
+  academy_courses: ["first_course", "pkg_form_corso", "pkg_form_esercizi"],
   custom_step: [],
 };
