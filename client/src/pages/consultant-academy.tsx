@@ -784,6 +784,12 @@ export default function ConsultantAcademy() {
 
         <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <div className="flex items-center gap-3 px-4 py-2 border-b border-border/60 bg-card/50 flex-shrink-0">
+            <Link href="/consultant">
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Dashboard
+              </Button>
+            </Link>
             <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
               {([
                 { key: "academy" as const, label: "Accademia", icon: <GraduationCap className="w-4 h-4" />, gradient: "from-indigo-500 to-blue-600" },

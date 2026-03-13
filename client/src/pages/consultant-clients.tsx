@@ -2143,7 +2143,7 @@ export default function ConsultantClientsPage() {
                                       let url: string;
                                       let msg: string;
                                       if (isActiveClient) {
-                                        url = `${window.location.origin}/login?redirect=/lead/chat`;
+                                        url = `${window.location.origin}/login?redirect=${encodeURIComponent('/consultant/academy?tab=delivery')}`;
                                         msg = `Ciao ${client.firstName}! Accedi alla piattaforma per iniziare la tua sessione con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un piano personalizzato per te.\n\n${url}`;
                                       } else {
                                         url = `${window.location.origin}/onboarding-gratuito/${consultantIdentifier}`;
@@ -3116,7 +3116,7 @@ export default function ConsultantClientsPage() {
                     let url: string;
                     let msg: string;
                     if (isActiveClient) {
-                      url = `${window.location.origin}/login?redirect=/lead/chat`;
+                      url = `${window.location.origin}/login?redirect=${encodeURIComponent('/consultant/academy?tab=delivery')}`;
                       msg = `Ciao ${detailClient.firstName}! Accedi alla piattaforma per iniziare la tua sessione con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un piano personalizzato per te.\n\n${url}`;
                     } else {
                       url = `${window.location.origin}/onboarding-gratuito/${consultantIdentifier}`;
