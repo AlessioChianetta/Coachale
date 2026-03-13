@@ -7138,7 +7138,7 @@ COME COMPORTARTI IN CHAT:
 - Se vuoi menzionare un task, fallo nel discorso, non come lista puntata
 - Concentrati su UN concetto per messaggio, non 4 concetti compressi
 - Proponi azioni ma CHIEDI conferma ("vuoi che proceda?" / "ti torna?")
-- Usa **grassetto** solo per 1-2 parole chiave, non per intere frasi
+- Usa **grassetto** generosamente: evidenzia concetti chiave, nomi, numeri importanti, e parole d'azione — rende il messaggio più leggibile e scannerizzabile
 ${isTelegram && isGroupChat ? '- Nel gruppo sii conciso (max 3-4 righe se possibile)\n- Ricorda chi è ogni persona e adatta le risposte alla persona specifica' : ''}
 
 ${!isOpenMode && focusPriorities.length > 0 ? `\nLE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: any, i: number) => `${i + 1}. ${typeof p === 'string' ? p : p.text || p.name || JSON.stringify(p)}`).join('\n')}` : ''}
@@ -7424,7 +7424,7 @@ STILE OPEN MODE — REGOLE ASSOLUTE:
 5. DIALOGA: fai UNA domanda alla volta, non bombardare
 6. Mantieni il TUO tono di personalità — non diventare generico o educato
 7. NON inventare dati
-8. Usa grassetto SOLO per 1-2 parole chiave, non per intere frasi
+8. Usa **grassetto** generosamente: evidenzia concetti chiave, nomi, numeri importanti, e parole d'azione — rende il messaggio scannerizzabile
 9. Se devi dire più cose, spezzale in messaggi separati mentalmente (usa paragrafi brevi)
 10. Reagisci al messaggio come farebbe la TUA personalità su Telegram${marcoTelegramExtra}${groupExtra}`;
   } else if (isTelegram) {
@@ -7436,7 +7436,7 @@ STILE OPEN MODE — REGOLE ASSOLUTE:
 5. UNA domanda alla volta alla fine del messaggio
 6. Mantieni il TUO tono di personalità
 7. NON inventare dati — basati solo sulle informazioni che hai
-8. Usa grassetto SOLO per 1-2 parole chiave
+8. Usa **grassetto** generosamente: evidenzia concetti chiave, nomi, numeri, parole d'azione
 
 ${roleId !== 'simone' ? `FILE SEARCH (DOCUMENTI E KNOWLEDGE BASE):
 Hai accesso automatico ai documenti caricati dal consulente: note consulenze, progressi clienti, documenti KB, e qualsiasi altro file caricato.
@@ -7453,7 +7453,7 @@ REGOLE ANTI-ALLUCINAZIONE:
 5. Se il consulente ti aggiorna, riconosci e suggerisci il prossimo passo — UNO, non quattro
 6. NON ripetere cose già dette nei messaggi precedenti — se ne avete già parlato, vai avanti
 7. NON inventare dati — basati solo sulle informazioni che hai
-8. Usa **grassetto** solo per 1-2 parole chiave, non per intere frasi
+8. Usa **grassetto** generosamente: evidenzia concetti chiave, nomi, numeri, parole d'azione
 
 ${roleId !== 'simone' ? `FILE SEARCH (DOCUMENTI E KNOWLEDGE BASE):
 Hai accesso automatico ai documenti caricati dal consulente: note consulenze, progressi clienti, documenti KB, e qualsiasi altro file caricato.
