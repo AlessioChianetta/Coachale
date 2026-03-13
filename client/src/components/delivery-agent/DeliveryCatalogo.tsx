@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft, Share2, Loader2, BookOpen,
   CheckCircle2, AlertTriangle,
@@ -333,8 +332,8 @@ export function DeliveryCatalogo({ sessionId, onBackToChat, publicToken }: Deliv
           </div>
         </div>
 
-        <ScrollArea className="flex-1">
-          <div className="max-w-[720px] mx-auto px-4 sm:px-8 py-6 sm:py-10 overflow-x-hidden">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="w-full max-w-[720px] mx-auto px-5 sm:px-8 py-6 sm:py-10" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
             <div className="pt-2 sm:pt-4 pb-6 sm:pb-10">
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground/60">
                 Catalogo Completo
@@ -552,7 +551,7 @@ export function DeliveryCatalogo({ sessionId, onBackToChat, publicToken }: Deliv
             </div>
             <div className="h-8" />
           </div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );

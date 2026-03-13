@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import {
   ArrowLeft, Download, Share2, User, Stethoscope, Package,
   Calendar, Zap, BarChart3, Loader2, CheckCircle2, Clock,
@@ -751,7 +751,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
   }
 
   return (
-    <div className="flex h-full print:block bg-background">
+    <div className="flex h-full print:block bg-background overflow-hidden">
 
       {/* ── Sidebar indice ── */}
       <AnimatePresence>
@@ -853,8 +853,8 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
           </div>
         </div>
 
-        <ScrollArea className="flex-1" ref={contentRef}>
-          <div className="max-w-[720px] mx-auto px-5 sm:px-8 py-6 sm:py-10 print:max-w-none print:px-12 overflow-x-hidden">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden" ref={contentRef}>
+          <div className="w-full max-w-[720px] mx-auto px-5 sm:px-8 py-6 sm:py-10 print:max-w-none print:px-12" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
 
             {/* ── Cover ── */}
             <div className="pt-4 sm:pt-8 pb-8 sm:pb-14 print:py-20 print:break-after-page">
@@ -1521,7 +1521,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
             </div>
             <div className="h-8 print:hidden" />
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
       <style>{`
