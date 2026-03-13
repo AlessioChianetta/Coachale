@@ -222,6 +222,7 @@ Analizza tutti i dati disponibili e genera il Brand Voice completo seguendo le i
       generationConfig: {
         maxOutputTokens: 4096,
         temperature: 0.4,
+        thinkingConfig: { thinkingBudget: 0 },
       },
       systemInstruction: { role: 'system', parts: [{ text: BRAND_VOICE_AI_SYSTEM_PROMPT }] },
     });
