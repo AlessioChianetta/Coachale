@@ -1619,6 +1619,37 @@ router.post('/onboarding-status/clients', authenticateToken, requireRole('consul
       }
     }
 
+    const stillMissing = authorizedIds.filter(id => !statusMap[id]);
+    if (stillMissing.length > 0) {
+      const selfSessions = await db.execute(sql`
+        SELECT DISTINCT ON (s.consultant_id)
+          s.id, s.consultant_id, s.status,
+          CASE WHEN r.id IS NOT NULL THEN true ELSE false END AS has_report,
+          CASE WHEN f.id IS NOT NULL THEN true ELSE false END AS has_funnel,
+          (SELECT COUNT(*)::int FROM delivery_agent_messages m WHERE m.session_id = s.id::text) AS message_count
+        FROM delivery_agent_sessions s
+        LEFT JOIN delivery_agent_reports r ON r.session_id = s.id::text
+        LEFT JOIN consultant_funnels f ON f.delivery_session_id = s.id::text
+        WHERE s.consultant_id IN (${sql.join(stillMissing.map(id => sql`${id}`), sql`,`)})
+          AND s.lead_user_id IS NULL
+          AND (s.mode = 'onboarding' OR s.is_public = true)
+        ORDER BY s.consultant_id, s.updated_at DESC
+      `);
+      for (const row of selfSessions.rows as any[]) {
+        if (!statusMap[row.consultant_id]) {
+          statusMap[row.consultant_id] = {
+            hasSession: true,
+            sessionId: row.id,
+            status: row.status,
+            hasChat: (row.message_count || 0) > 0,
+            messageCount: row.message_count || 0,
+            hasReport: row.has_report,
+            hasFunnel: row.has_funnel,
+          };
+        }
+      }
+    }
+
     res.json({ success: true, data: statusMap });
   } catch (err: any) {
     console.error('[DeliveryAgent] POST onboarding-status/clients error:', err);
