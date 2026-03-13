@@ -17,6 +17,10 @@ export function DeliveryBrandVoice({ sessionId }: DeliveryBrandVoiceProps) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = 2000;
+
     const fetchBrandVoice = async () => {
       try {
         const res = await fetch(`/api/consultant/delivery-agent/sessions/${sessionId}/brand-voice`, {
@@ -26,11 +30,18 @@ export function DeliveryBrandVoice({ sessionId }: DeliveryBrandVoiceProps) {
           const result = await res.json();
           if (result.success && result.data && Object.keys(result.data).length > 0) {
             setData(result.data);
+            setLoading(false);
+          } else if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(fetchBrandVoice, retryDelay);
+          } else {
+            setLoading(false);
           }
+        } else {
+          setLoading(false);
         }
       } catch (err) {
         console.error("Failed to fetch session brand voice:", err);
-      } finally {
         setLoading(false);
       }
     };
