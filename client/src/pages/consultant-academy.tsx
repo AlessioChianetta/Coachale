@@ -632,7 +632,7 @@ export default function ConsultantAcademy() {
         setActiveId(lessonsFlat[0].lesson_id);
       }
     }
-  }, [lessonsFlat.length, Object.keys(lessonById).length]);
+  }, [lessonsFlat.length, Object.keys(lessonById).length, location]);
 
   const activeLesson = lessonById[activeId] ?? lessonsFlat[0];
   const activeModule = activeLesson ? modules.find(m => m.id === activeLesson.module_id) : undefined;
