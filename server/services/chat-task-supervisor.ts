@@ -5,7 +5,8 @@ import { sql } from "drizzle-orm";
 const MAX_BULK_TASKS = 3;
 const MAX_CREATE_TASKS = 2;
 const SUPERVISOR_TIMEOUT_MS = 8000;
-const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
+const PRIORITY_MAP: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
+const VALID_PRIORITIES = Object.keys(PRIORITY_MAP);
 const VALID_CATEGORIES = ['reminder', 'follow_up', 'outreach', 'content', 'admin', 'meeting', 'call', 'email', 'social', 'other'];
 
 export interface SupervisorParams {
@@ -299,6 +300,7 @@ async function executeAction(
         for (const task of tasksToCreate) {
           if (!task.instruction) continue;
           const category = (task.category && VALID_CATEGORIES.includes(task.category)) ? task.category : 'reminder';
+          const priorityInt = PRIORITY_MAP['medium'];
           try {
             await db.execute(sql`
               INSERT INTO ai_scheduled_tasks (
@@ -307,7 +309,7 @@ async function executeAction(
               ) VALUES (
                 ${consultantId}::uuid, ${roleId}, ${task.instruction},
                 ${category}, ${task.contactName || null},
-                'waiting_approval', 'medium', 'ai_task', NOW(), NOW()
+                'waiting_approval', ${priorityInt}, 'ai_task', NOW(), NOW()
               )
             `);
             created.push(task.instruction.substring(0, 60));
@@ -342,8 +344,9 @@ async function executeAction(
           updates.push('istruzione aggiornata');
         }
         if (action.changes.priority && VALID_PRIORITIES.includes(action.changes.priority)) {
+          const pInt = PRIORITY_MAP[action.changes.priority] || 2;
           await db.execute(sql`
-            UPDATE ai_scheduled_tasks SET priority = ${action.changes.priority}, updated_at = NOW()
+            UPDATE ai_scheduled_tasks SET priority = ${pInt}, updated_at = NOW()
             WHERE id = ${taskId} AND consultant_id = ${consultantId}
           `);
           updates.push(`priorità: ${action.changes.priority}`);

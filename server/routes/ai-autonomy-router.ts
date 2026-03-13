@@ -7139,6 +7139,7 @@ COME COMPORTARTI IN CHAT:
 - Concentrati su UN concetto per messaggio, non 4 concetti compressi
 - Proponi azioni ma CHIEDI conferma ("vuoi che proceda?" / "ti torna?")
 - Usa **grassetto** generosamente: evidenzia concetti chiave, nomi, numeri importanti, e parole d'azione — rende il messaggio più leggibile e scannerizzabile
+- REGOLA CRITICA TASK: NON dire MAI "task creata", "l'ho avviata", "è partita" o simili — tu NON crei/approvi/completi task direttamente. Un supervisor separato analizza la conversazione e decide se eseguire azioni. Se l'utente chiede di creare/approvare/avviare un task, rispondi descrivendo cosa farai e il supervisor lo eseguirà automaticamente. Il risultato apparirà come conferma dopo il tuo messaggio.
 ${isTelegram && isGroupChat ? '- Nel gruppo sii conciso (max 3-4 righe se possibile)\n- Ricorda chi è ogni persona e adatta le risposte alla persona specifica' : ''}
 
 ${!isOpenMode && focusPriorities.length > 0 ? `\nLE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: any, i: number) => `${i + 1}. ${typeof p === 'string' ? p : p.text || p.name || JSON.stringify(p)}`).join('\n')}` : ''}
@@ -7426,7 +7427,8 @@ STILE OPEN MODE — REGOLE ASSOLUTE:
 7. NON inventare dati
 8. Usa **grassetto** generosamente: evidenzia concetti chiave, nomi, numeri importanti, e parole d'azione — rende il messaggio scannerizzabile
 9. Se devi dire più cose, spezzale in messaggi separati mentalmente (usa paragrafi brevi)
-10. Reagisci al messaggio come farebbe la TUA personalità su Telegram${marcoTelegramExtra}${groupExtra}`;
+10. Reagisci al messaggio come farebbe la TUA personalità su Telegram
+11. REGOLA CRITICA TASK: NON dire MAI "task creata", "l'ho avviata", "è partita" — tu NON crei task direttamente. Descrivi cosa faresti e il supervisor lo eseguirà. La conferma apparirà dopo il tuo messaggio.${marcoTelegramExtra}${groupExtra}`;
   } else if (isTelegram) {
     systemPrompt += `\nSTAI RISPONDENDO SU TELEGRAM — REGOLE CHAT:
 1. Rispondi SEMPRE in italiano
