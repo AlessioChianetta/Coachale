@@ -664,15 +664,22 @@ export default function ConsultantDashboard() {
                     );
                   })}
                 </div>
-                {onboardingStatus.status !== 'completed' && (
-                  <Button
-                    onClick={() => setLocation('/consultant/academy?tab=delivery')}
-                    className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white gap-2 rounded-xl h-11"
-                  >
-                    <PlayCircle className="h-4 w-4" />
-                    Continua Onboarding
-                  </Button>
-                )}
+                <Button
+                  onClick={() => setLocation(
+                    onboardingStatus.sessionId
+                      ? `/consultant/academy?tab=delivery&sessionId=${onboardingStatus.sessionId}`
+                      : '/consultant/academy?tab=delivery'
+                  )}
+                  className={cn(
+                    "w-full gap-2 rounded-xl h-11 text-white",
+                    onboardingStatus.status === 'completed'
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      : "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
+                  )}
+                >
+                  <PlayCircle className="h-4 w-4" />
+                  {onboardingStatus.status === 'completed' ? 'Vai alla sessione con Luca' : 'Continua con Luca'}
+                </Button>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-6 text-center gap-4">

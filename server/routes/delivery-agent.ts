@@ -147,6 +147,18 @@ router.post('/sessions', authenticateToken, requireRole('consultant'), async (re
       return res.json({ success: true, data: result.rows[0] });
     }
 
+    if (mode === 'onboarding') {
+      const existing = await db.execute(sql`
+        SELECT * FROM delivery_agent_sessions
+        WHERE consultant_id = ${consultantId} AND mode = 'onboarding'
+          AND (lead_user_id IS NULL OR lead_user_id = ${consultantId})
+        ORDER BY updated_at DESC LIMIT 1
+      `);
+      if (existing.rows.length > 0) {
+        return res.json({ success: true, data: existing.rows[0] });
+      }
+    }
+
     let initialProfile = null;
     if (mode === 'simulator') {
       if (!simulatorConfig || !simulatorConfig.niche || !simulatorConfig.attitude) {
