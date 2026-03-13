@@ -1542,7 +1542,8 @@ router.post('/onboarding-status/clients', authenticateToken, requireRole('consul
       SELECT DISTINCT ON (s.lead_user_id)
         s.id, s.lead_user_id, s.status,
         CASE WHEN r.id IS NOT NULL THEN true ELSE false END AS has_report,
-        CASE WHEN f.id IS NOT NULL THEN true ELSE false END AS has_funnel
+        CASE WHEN f.id IS NOT NULL THEN true ELSE false END AS has_funnel,
+        (SELECT COUNT(*)::int FROM delivery_agent_messages m WHERE m.session_id = s.id) AS message_count
       FROM delivery_agent_sessions s
       LEFT JOIN delivery_agent_reports r ON r.session_id = s.id
       LEFT JOIN consultant_funnels f ON f.delivery_session_id = s.id
@@ -1555,7 +1556,10 @@ router.post('/onboarding-status/clients', authenticateToken, requireRole('consul
     for (const row of sessionsResult.rows as any[]) {
       statusMap[row.lead_user_id] = {
         hasSession: true,
+        sessionId: row.id,
         status: row.status,
+        hasChat: (row.message_count || 0) > 0,
+        messageCount: row.message_count || 0,
         hasReport: row.has_report,
         hasFunnel: row.has_funnel,
       };

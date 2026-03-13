@@ -42,7 +42,9 @@ export default function Login() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated()) {
-      setLocation("/");
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get('redirect');
+      setLocation(redirectTo && redirectTo.startsWith('/') ? redirectTo : "/");
     }
   }, [setLocation]);
 
@@ -67,8 +69,16 @@ export default function Login() {
       return;
     }
     
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirectTo = urlParams.get('redirect');
+    
     // Small delay before redirect to ensure login flag is processed
     setTimeout(() => {
+      if (redirectTo && redirectTo.startsWith('/')) {
+        setLocation(redirectTo);
+        return;
+      }
+      
       // Redirect based on user role and tier
       if (data.user.tier === "lead_magnet") {
         setLocation("/lead/chat");

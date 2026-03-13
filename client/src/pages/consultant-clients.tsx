@@ -2086,18 +2086,36 @@ export default function ConsultantClientsPage() {
                                     No
                                   </span>
                                 );
-                                const isComplete = obs.status === 'completed';
-                                return (
-                                  <span className={cn(
-                                    "inline-flex items-center gap-1 text-[10px] font-medium",
-                                    isComplete ? "text-emerald-600" : "text-amber-500"
-                                  )}>
-                                    {isComplete ? (
+                                const st = obs.status;
+                                const hasChat = obs.hasChat;
+                                if (st === 'completed' || st === 'assistant') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600">
                                       <CheckCircle className="w-3 h-3" />
-                                    ) : (
-                                      <Clock className="w-3 h-3" />
-                                    )}
-                                    {isComplete ? "Fatto" : "In corso"}
+                                      Completato
+                                    </span>
+                                  );
+                                }
+                                if (st === 'elaborating') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-500">
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                      Elaborazione
+                                    </span>
+                                  );
+                                }
+                                if (hasChat) {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-500">
+                                      <MessageCircle className="w-3 h-3" />
+                                      In chat
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-500">
+                                    <Eye className="w-3 h-3" />
+                                    Aperto
                                   </span>
                                 );
                               })()}
@@ -2121,11 +2139,17 @@ export default function ConsultantClientsPage() {
                                     onClick={() => {
                                       const phone = client.phoneNumber.replace(/[^0-9]/g, '');
                                       const consultantIdentifier = (authUser as any)?.slug || authUser?.id || '';
-                                      const onboardingUrl = `${window.location.origin}/onboarding-gratuito/${consultantIdentifier}`;
-                                      const msg = encodeURIComponent(
-                                        `Ciao ${client.firstName}! Ti invio il link per completare il tuo onboarding gratuito con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un report personalizzato per te.\n\n${onboardingUrl}`
-                                      );
-                                      window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+                                      const isActiveClient = !client.isCrmOnly && !client.isLeadMagnet && !client.isEmployee;
+                                      let url: string;
+                                      let msg: string;
+                                      if (isActiveClient) {
+                                        url = `${window.location.origin}/login?redirect=/lead/chat`;
+                                        msg = `Ciao ${client.firstName}! Accedi alla piattaforma per iniziare la tua sessione con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un piano personalizzato per te.\n\n${url}`;
+                                      } else {
+                                        url = `${window.location.origin}/onboarding-gratuito/${consultantIdentifier}`;
+                                        msg = `Ciao ${client.firstName}! Ti invio il link per completare il tuo onboarding gratuito con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un report personalizzato per te.\n\n${url}`;
+                                      }
+                                      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                                     }}
                                     className="h-7 w-7 p-0 hover:bg-green-100 hover:text-green-600"
                                   >
@@ -3064,10 +3088,10 @@ export default function ConsultantClientsPage() {
                   return (
                     <div className="grid grid-cols-2 gap-1.5">
                       {[
-                        { label: "Chat", done: obs.hasSession },
+                        { label: "Aperto", done: obs.hasSession },
+                        { label: "In chat", done: obs.hasChat },
                         { label: "Report", done: obs.hasReport },
-                        { label: "Funnel", done: obs.hasFunnel },
-                        { label: "Completato", done: obs.status === 'completed' },
+                        { label: "Completato", done: obs.status === 'completed' || obs.status === 'assistant' },
                       ].map((item, i) => (
                         <div key={i} className={cn(
                           "flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg",
@@ -3088,11 +3112,17 @@ export default function ConsultantClientsPage() {
                   onClick={() => {
                     const phone = detailClient.phoneNumber.replace(/[^0-9]/g, '');
                     const consultantIdentifier = (authUser as any)?.slug || authUser?.id || '';
-                    const onboardingUrl = `${window.location.origin}/onboarding-gratuito/${consultantIdentifier}`;
-                    const msg = encodeURIComponent(
-                      `Ciao ${detailClient.firstName}! Ti invio il link per completare il tuo onboarding gratuito con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un report personalizzato per te.\n\n${onboardingUrl}`
-                    );
-                    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+                    const isActiveClient = !detailClient.isCrmOnly && !detailClient.isLeadMagnet && !detailClient.isEmployee;
+                    let url: string;
+                    let msg: string;
+                    if (isActiveClient) {
+                      url = `${window.location.origin}/login?redirect=/lead/chat`;
+                      msg = `Ciao ${detailClient.firstName}! Accedi alla piattaforma per iniziare la tua sessione con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un piano personalizzato per te.\n\n${url}`;
+                    } else {
+                      url = `${window.location.origin}/onboarding-gratuito/${consultantIdentifier}`;
+                      msg = `Ciao ${detailClient.firstName}! Ti invio il link per completare il tuo onboarding gratuito con Luca, il nostro consulente AI. Analizzerà il tuo business e creerà un report personalizzato per te.\n\n${url}`;
+                    }
+                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                   }}
                 >
                   <MessageCircle className="h-4 w-4" />

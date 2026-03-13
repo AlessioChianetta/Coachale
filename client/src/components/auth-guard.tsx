@@ -21,7 +21,9 @@ export default function AuthGuard({ children, requiredRole, fallback, blockTiers
       if (fallback) {
         setShouldRender("fallback");
       } else {
-        setLocation("/login");
+        const currentPath = window.location.pathname + window.location.search;
+        const redirectParam = currentPath && currentPath !== '/' && currentPath !== '/login' ? `?redirect=${encodeURIComponent(currentPath)}` : '';
+        setLocation(`/login${redirectParam}`);
         setShouldRender("redirect");
       }
       setIsChecking(false);
