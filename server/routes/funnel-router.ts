@@ -241,12 +241,13 @@ REGOLE:
 8. Il campo data.subtitle è un breve testo descrittivo del ruolo del nodo nel funnel (usa i sottotitoli suggeriti come riferimento)
 9. Il campo data.category deve essere una delle seguenti: sorgenti, cattura, gestione, comunicazione, conversione, delivery, custom
 10. Per funnel con percorsi paralleli, distribuisci i nodi simmetricamente (es. 2 nodi paralleli a x=-150 e x=150, 3 nodi a x=-300, x=0, x=300)
+11. Per OGNI nodo, compila il campo "notes" con una spiegazione interna (2-3 frasi) che spiega perché questo nodo esiste, cosa fa per il cliente, e la logica strategica dietro la sua posizione nel funnel.
 
 FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
 {
   "name": "Nome del funnel",
   "nodes": [
-    { "id": "node_1", "type": "facebook_ads", "position": { "x": -150, "y": 0 }, "data": { "label": "Facebook Ads", "subtitle": "Campagna Meta Ads", "category": "sorgenti" } }
+    { "id": "node_1", "type": "facebook_ads", "position": { "x": -150, "y": 0 }, "data": { "label": "Facebook Ads", "subtitle": "Campagna Meta Ads", "category": "sorgenti", "notes": "Facebook Ads è la sorgente principale di traffico freddo. Puntiamo su campagne lookalike basate sui clienti esistenti per massimizzare la qualità dei lead in ingresso." } }
   ],
   "edges": [
     { "id": "edge_1_3", "source": "node_1", "target": "node_3" }
@@ -261,7 +262,7 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
       ],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 16384,
       }
     });
 
@@ -455,6 +456,7 @@ ISTRUZIONI PER LA GENERAZIONE DEL FUNNEL:
 7. Se nel catalogo servizi del consulente ci sono servizi specifici, mappa i nodi di delivery/pagamento a quelli
 8. Per ogni pacchetto con moduli formativi, aggiungi un nodo academy_courses con label specifico (es. "Formazione Setter AI", "Corso WhatsApp Business", etc.)
 9. Crea rami paralleli quando il cliente ha percorsi simultanei (es. formazione + operatività, lead generation + nurturing)
+10. Per OGNI nodo, compila il campo "notes" con una spiegazione interna dettagliata (2-4 frasi) che spiega: perché questo nodo esiste nel funnel, cosa fa concretamente per il cliente, come si collega al report/discovery, e qual è il ragionamento strategico dietro la sua posizione. Scrivi le note come se stessi spiegando al consulente la logica dietro ogni pezzo del funnel.
 
 REGOLE POSIZIONAMENTO:
 - Primo nodo a y=0, ogni livello successivo ~180px più in basso
@@ -467,7 +469,7 @@ FORMATO OUTPUT — rispondi SOLO con JSON valido, senza markdown:
   "description": "Percorso strategico generato dalla discovery con Luca",
   "rationale": "Spiegazione dettagliata (3-5 paragrafi) di COME e PERCHÉ questo funnel è stato progettato così. Spiega: quali pacchetti del report hai mappato e perché, come si collegano i diversi rami, qual è la logica dietro l'ordine dei nodi, e come il funnel risolve i problemi specifici emersi dalla discovery con ${leadName}. Scrivi in prima persona come Leonardo.",
   "nodes": [
-    { "id": "node_1", "type": "lead_magnet", "position": { "x": 0, "y": 0 }, "data": { "label": "Discovery Gratuita", "subtitle": "Onboarding con Luca AI", "category": "cattura" } }
+    { "id": "node_1", "type": "lead_magnet", "position": { "x": 0, "y": 0 }, "data": { "label": "Discovery Gratuita", "subtitle": "Onboarding con Luca AI", "category": "cattura", "notes": "Questo nodo rappresenta il primo punto di contatto: il lead compila il questionario gratuito con Luca AI, che raccoglie dati sul business e genera un report personalizzato. L'ho messo come punto d'ingresso perché dalla discovery emergono i dati per personalizzare tutto il funnel successivo." } }
   ],
   "edges": [
     { "id": "edge_1_2", "source": "node_1", "target": "node_2" }
