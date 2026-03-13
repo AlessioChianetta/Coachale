@@ -36,6 +36,7 @@ import {
   ClipboardPaste,
   MessageSquare,
   Search,
+  Wand2,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDropzone } from "react-dropzone";
@@ -109,6 +110,7 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   const [pasteTitle, setPasteTitle] = useState('');
   const [pasteContent, setPasteContent] = useState('');
   const [isPasting, setIsPasting] = useState(false);
+  const [isGeneratingFromLuca, setIsGeneratingFromLuca] = useState(false);
 
   const marketResearchData: MarketResearchData = formData.marketResearchData && Object.keys(formData.marketResearchData).length > 0
     ? formData.marketResearchData
@@ -215,6 +217,47 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
       setIsGeneratingMR(false);
       setGeneratingPhaseMR(null);
       setShowResearchDialog(false);
+    }
+  };
+
+  const handleGenerateFromLuca = async () => {
+    setIsGeneratingFromLuca(true);
+    try {
+      const res = await fetch("/api/content/brand-voice/import-from-luca", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "Errore", description: err.error || "Impossibile compilare da Luca", variant: "destructive" });
+        return;
+      }
+      const result = await res.json();
+      const bv = result.brandVoice || result.data;
+      if (!bv) {
+        toast({ title: "Nessun dato disponibile", description: "Completa prima l'onboarding con Luca", variant: "destructive" });
+        return;
+      }
+      const fields: string[] = [
+        "consultantDisplayName", "businessName", "businessDescription", "consultantBio",
+        "vision", "mission", "values", "usp", "whoWeHelp", "whoWeDontHelp",
+        "whatWeDo", "howWeDoIt", "yearsExperience", "clientsHelped", "resultsGenerated",
+        "servicesOffered", "guarantees", "personalTone", "contentPersonality",
+        "audienceLanguage", "avoidPatterns", "caseStudies", "softwareCreated",
+        "booksPublished", "signaturePhrases", "writingExamples",
+      ];
+      for (const field of fields) {
+        const val = bv[field];
+        if (val !== undefined && val !== null && val !== "") {
+          if (Array.isArray(val) && val.length === 0) continue;
+          onChange(field, val);
+        }
+      }
+      toast({ title: "Brand Voice compilato da Luca", description: "I campi sono stati compilati con i dati dell'onboarding" });
+    } catch {
+      toast({ title: "Errore nella compilazione", variant: "destructive" });
+    } finally {
+      setIsGeneratingFromLuca(false);
     }
   };
 
@@ -917,6 +960,37 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
         <p className="text-muted-foreground">
           Definisci l'identità del tuo brand e costruisci autorità (tutti i campi sono opzionali)
         </p>
+      </div>
+
+      <div className="rounded-xl border border-violet-200/60 bg-gradient-to-r from-violet-50/80 to-purple-50/80 p-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-500 shadow-sm">
+              <Wand2 className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-violet-900">Compila con Luca</p>
+              <p className="text-sm text-violet-700">Usa i dati del tuo onboarding per compilare automaticamente il Brand Voice con AI</p>
+            </div>
+          </div>
+          <Button
+            onClick={handleGenerateFromLuca}
+            disabled={isGeneratingFromLuca}
+            className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white shadow-sm shrink-0"
+          >
+            {isGeneratingFromLuca ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Generando...
+              </>
+            ) : (
+              <>
+                <Wand2 className="h-4 w-4 mr-2" />
+                Compila con Luca
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <Collapsible open={businessInfoOpen} onOpenChange={setBusinessInfoOpen}>

@@ -220,14 +220,16 @@ router.get("/brand-voice/from-luca", authenticateToken, requireRole("consultant"
 router.post("/brand-voice/import-from-luca", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const { getLatestLucaSessionBrandVoice, getLatestLucaReport, autoPopulateBrandVoiceFromLuca, extractDeepResearchParams } = await import("../services/luca-brand-voice-mapper");
+    const { getLatestLucaSessionBrandVoice, getLatestLucaReport, generateBrandVoiceWithAI, saveBrandVoiceForConsultant, extractDeepResearchParams } = await import("../services/luca-brand-voice-mapper");
 
     const sessionBV = await getLatestLucaSessionBrandVoice(consultantId);
     let brandVoice: any;
     let deepResearchParams: any = null;
 
-    if (sessionBV) {
-      brandVoice = sessionBV.brandVoiceData;
+    if (sessionBV && sessionBV.clientProfileJson && sessionBV.reportJson) {
+      console.log(`[CONTENT-STUDIO] Regenerating brand voice with AI for consultant ${consultantId} from session ${sessionBV.sessionId}...`);
+      brandVoice = await generateBrandVoiceWithAI(consultantId, sessionBV.clientProfileJson, sessionBV.reportJson);
+      await saveBrandVoiceForConsultant(consultantId, brandVoice);
 
       const [existing] = await db.select()
         .from(schema.contentStudioConfig)
@@ -236,11 +238,7 @@ router.post("/brand-voice/import-from-luca", authenticateToken, requireRole("con
 
       if (existing) {
         await db.update(schema.contentStudioConfig)
-          .set({
-            brandVoiceData: brandVoice,
-            brandVoiceEnabled: true,
-            updatedAt: new Date(),
-          })
+          .set({ brandVoiceData: brandVoice, brandVoiceEnabled: true, updatedAt: new Date() })
           .where(eq(schema.contentStudioConfig.consultantId, consultantId));
       } else {
         await db.insert(schema.contentStudioConfig).values({
@@ -250,16 +248,44 @@ router.post("/brand-voice/import-from-luca", authenticateToken, requireRole("con
         });
       }
 
-      if (sessionBV.clientProfileJson && sessionBV.reportJson) {
-        deepResearchParams = extractDeepResearchParams(sessionBV.clientProfileJson, sessionBV.reportJson);
+      deepResearchParams = extractDeepResearchParams(sessionBV.clientProfileJson, sessionBV.reportJson);
+    } else if (sessionBV) {
+      brandVoice = sessionBV.brandVoiceData;
+
+      const [existing] = await db.select()
+        .from(schema.contentStudioConfig)
+        .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+        .limit(1);
+
+      if (existing) {
+        await db.update(schema.contentStudioConfig)
+          .set({ brandVoiceData: brandVoice, brandVoiceEnabled: true, updatedAt: new Date() })
+          .where(eq(schema.contentStudioConfig.consultantId, consultantId));
+      } else {
+        await db.insert(schema.contentStudioConfig).values({ consultantId, brandVoiceData: brandVoice, brandVoiceEnabled: true });
       }
     } else {
       const report = await getLatestLucaReport(consultantId);
       if (!report) {
         return res.status(404).json({ success: false, error: "Nessun report di Luca trovato" });
       }
-      brandVoice = await autoPopulateBrandVoiceFromLuca(consultantId, report.clientProfileJson, report.reportJson);
+      console.log(`[CONTENT-STUDIO] Generating brand voice with AI for consultant ${consultantId} from latest report...`);
+      brandVoice = await generateBrandVoiceWithAI(consultantId, report.clientProfileJson, report.reportJson);
+      await saveBrandVoiceForConsultant(consultantId, brandVoice);
       deepResearchParams = extractDeepResearchParams(report.clientProfileJson, report.reportJson);
+
+      const [existingConfig] = await db.select()
+        .from(schema.contentStudioConfig)
+        .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+        .limit(1);
+
+      if (existingConfig) {
+        await db.update(schema.contentStudioConfig)
+          .set({ brandVoiceData: brandVoice, brandVoiceEnabled: true, updatedAt: new Date() })
+          .where(eq(schema.contentStudioConfig.consultantId, consultantId));
+      } else {
+        await db.insert(schema.contentStudioConfig).values({ consultantId, brandVoiceData: brandVoice, brandVoiceEnabled: true });
+      }
     }
 
     const [updated] = await db.select()
