@@ -1818,8 +1818,8 @@ router.post('/sessions/:sessionId/brand-voice/generate', authenticateToken, requ
       ORDER BY created_at DESC LIMIT 1
     `);
     const reportJson = (reportResult.rows[0] as any)?.report_json || {};
-    const { mapLucaReportToBrandVoice } = await import('../services/luca-brand-voice-mapper');
-    const brandVoice = mapLucaReportToBrandVoice(clientProfile, reportJson);
+    const { generateBrandVoiceWithAI } = await import('../services/luca-brand-voice-mapper');
+    const brandVoice = await generateBrandVoiceWithAI(consultantId, clientProfile, reportJson);
     const existingBv = row.brand_voice_data || {};
     const merged = { ...brandVoice };
     if (existingBv._marketResearch) {

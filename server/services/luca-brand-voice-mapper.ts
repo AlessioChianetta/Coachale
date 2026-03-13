@@ -2,6 +2,7 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
 import * as schema from '@shared/schema';
+import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
 
 export interface BrandVoiceData {
   consultantDisplayName?: string;
@@ -139,6 +140,127 @@ export function mapLucaReportToBrandVoice(
   });
 
   return brandVoice;
+}
+
+const BRAND_VOICE_AI_SYSTEM_PROMPT = `Sei un copywriter strategico esperto in brand positioning e comunicazione aziendale italiana.
+
+Il tuo compito è analizzare i dati di onboarding di un consulente/imprenditore e generare un Brand Voice completo, professionale e coerente. Il Brand Voice verrà usato da un sistema AI per generare contenuti (post social, email, ads) che suonino autentici e allineati all'identità del brand.
+
+REGOLE FONDAMENTALI:
+- Scrivi SEMPRE in italiano
+- NON inventare dati che non esistono nei documenti forniti. Se un campo non ha dati sufficienti, OMETTILO dal JSON (non includerlo affatto)
+- Usa un tono professionale ma accessibile
+- Ogni campo deve contenere testo ELABORATO e UTILE, non semplici copia-incolla dei dati grezzi
+- I campi narrativi devono essere frasi complete e coerenti, non liste puntate di keyword
+
+STRUTTURA JSON DA RESTITUIRE (includi SOLO i campi per cui hai dati sufficienti):
+
+{
+  "consultantDisplayName": "Il nome completo della persona o il nome con cui si presenta professionalmente",
+  "businessName": "Il nome dell'attività/azienda/brand",
+  "businessDescription": "Un paragrafo narrativo (3-5 frasi) che descrive cosa fa il business, in che settore opera, qual è la sua specializzazione e cosa lo rende unico. Deve suonare come la descrizione 'chi siamo' di un sito web professionale.",
+  "consultantBio": "Una bio professionale in terza persona (3-5 frasi) che racconta il percorso, l'esperienza e le competenze chiave del consulente/imprenditore.",
+  "vision": "Una frase ispirazionale che descrive il futuro che il business vuole contribuire a creare. Deve essere ambiziosa ma credibile.",
+  "mission": "Una frase concreta che descrive COME il business persegue la sua vision — quali azioni, metodi o servizi usa per creare valore.",
+  "values": ["Array di 3-6 valori aziendali VERI (es. 'Trasparenza', 'Risultati misurabili', 'Innovazione pragmatica'). NON inserire nomi di software o strumenti."],
+  "usp": "La Unique Selling Proposition — una frase chiara e persuasiva che spiega perché un cliente dovrebbe scegliere questo business rispetto alla concorrenza.",
+  "whoWeHelp": "Descrizione specifica del target ideale: chi sono, che problemi hanno, cosa cercano. Deve essere sufficientemente dettagliata da guidare la creazione di contenuti.",
+  "whoWeDontHelp": "Chi NON è il cliente ideale — quali profili non sono adatti ai servizi offerti.",
+  "audienceSegments": [{"name": "Nome segmento", "description": "Descrizione del segmento"}],
+  "whatWeDo": "Descrizione chiara dei servizi/prodotti principali, scritta in modo che un potenziale cliente capisca immediatamente il valore offerto.",
+  "howWeDoIt": "Il metodo o processo distintivo con cui il business lavora — il 'come' che lo differenzia.",
+  "yearsExperience": 0,
+  "clientsHelped": 0,
+  "resultsGenerated": "Una frase che riassume i risultati principali ottenuti per i clienti.",
+  "servicesOffered": [{"name": "Nome servizio", "price": "Prezzo se disponibile", "description": "Breve descrizione del servizio"}],
+  "guarantees": "Le garanzie offerte ai clienti, se menzionate.",
+  "personalTone": "Descrizione dello stile comunicativo personale (es. 'Diretto e pratico, usa metafore sportive, evita il gergo tecnico inutile, parla come un mentore esperto che vuole il meglio per i suoi clienti').",
+  "contentPersonality": "La personalità che emerge nei contenuti (es. 'Autorevole ma accessibile, usa esempi concreti dal proprio lavoro, alterna momenti di ispirazione a consigli pratici e actionable').",
+  "audienceLanguage": "Il linguaggio che il target usa e comprende — registri, termini specifici del settore, livello di formalità.",
+  "avoidPatterns": "Cosa NON fare nella comunicazione — stili, parole o approcci da evitare.",
+  "caseStudies": [{"client": "Nome/tipo cliente", "result": "Risultato ottenuto"}],
+  "softwareCreated": [{"emoji": "🔧", "name": "Nome software", "description": "Descrizione"}],
+  "booksPublished": [{"title": "Titolo", "year": "Anno"}],
+  "writingExamples": [],
+  "signaturePhrases": ["Frasi o espressioni ricorrenti tipiche del brand, se emergono dai dati."]
+}
+
+Rispondi con SOLO il JSON valido racchiuso tra i tag <json></json>. Nessun testo prima o dopo i tag.`;
+
+export async function generateBrandVoiceWithAI(
+  consultantId: string,
+  clientProfileJson: any,
+  reportJson: any
+): Promise<BrandVoiceData> {
+  try {
+    console.log(`[Luca→BrandVoice AI] Starting AI generation for consultant ${consultantId}...`);
+
+    const provider = await getAIProvider(consultantId);
+    if (provider.setFeature) {
+      provider.setFeature('brand-voice-generator', 'consultant');
+    }
+    const { model } = getModelWithThinking(provider.metadata?.providerName);
+
+    const userPrompt = `Ecco i dati completi dell'onboarding e del report di analisi del consulente/imprenditore.
+
+=== PROFILO CLIENTE (dati raccolti durante l'onboarding) ===
+${JSON.stringify(clientProfileJson || {}, null, 2)}
+
+=== REPORT DI ANALISI (generato da Luca dopo l'onboarding) ===
+${JSON.stringify(reportJson || {}, null, 2)}
+
+Analizza tutti i dati disponibili e genera il Brand Voice completo seguendo le istruzioni nel system prompt. Ricorda: includi SOLO i campi per cui hai dati sufficienti, NON inventare nulla.`;
+
+    const result = await provider.client.generateContent({
+      model,
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userPrompt }],
+        },
+      ],
+      generationConfig: {
+        maxOutputTokens: 4096,
+        temperature: 0.4,
+      },
+      systemInstruction: { role: 'system', parts: [{ text: BRAND_VOICE_AI_SYSTEM_PROMPT }] },
+    });
+
+    const responseText = result.response.text();
+    console.log(`[Luca→BrandVoice AI] Response received: ${responseText.length} chars`);
+
+    const jsonMatch = responseText.match(/<json>([\s\S]*?)<\/json>/);
+    let jsonStr = jsonMatch ? jsonMatch[1].trim() : responseText.trim();
+
+    jsonStr = jsonStr.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
+    const parsed = JSON.parse(jsonStr) as BrandVoiceData;
+
+    const cleaned: BrandVoiceData = {};
+    const validKeys: (keyof BrandVoiceData)[] = [
+      'consultantDisplayName', 'businessName', 'businessDescription', 'consultantBio',
+      'vision', 'mission', 'values', 'usp', 'whoWeHelp', 'whoWeDontHelp',
+      'audienceSegments', 'whatWeDo', 'howWeDoIt', 'yearsExperience', 'clientsHelped',
+      'resultsGenerated', 'softwareCreated', 'booksPublished', 'caseStudies',
+      'servicesOffered', 'guarantees', 'personalTone', 'contentPersonality',
+      'audienceLanguage', 'avoidPatterns', 'writingExamples', 'signaturePhrases',
+    ];
+
+    for (const key of validKeys) {
+      const val = (parsed as any)[key];
+      if (val !== undefined && val !== null && val !== '') {
+        if (Array.isArray(val) && val.length === 0) continue;
+        (cleaned as any)[key] = val;
+      }
+    }
+
+    const fieldCount = Object.keys(cleaned).length;
+    console.log(`[Luca→BrandVoice AI] Successfully generated ${fieldCount} fields with AI`);
+    return cleaned;
+  } catch (err: any) {
+    console.warn(`[Luca→BrandVoice AI] AI generation failed, falling back to static mapper: ${err.message}`);
+    return mapLucaReportToBrandVoice(clientProfileJson, reportJson);
+  }
 }
 
 export function extractDeepResearchParams(clientProfileJson: any, reportJson: any): {
