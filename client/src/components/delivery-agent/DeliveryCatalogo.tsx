@@ -301,8 +301,8 @@ export function DeliveryCatalogo({ sessionId, onBackToChat, publicToken }: Deliv
       </AnimatePresence>
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-2 sm:px-4 py-2 border-b border-border/40 bg-card flex-shrink-0">
-          <div className="flex items-center gap-0.5 sm:gap-1">
+        <div className="flex items-center justify-end sm:justify-between px-2 sm:px-4 py-1.5 sm:py-2 border-b border-border/40 bg-card flex-shrink-0">
+          <div className="hidden sm:flex items-center gap-0.5 sm:gap-1">
             <Button
               variant="ghost"
               size="sm"
@@ -315,7 +315,7 @@ export function DeliveryCatalogo({ sessionId, onBackToChat, publicToken }: Deliv
               variant="ghost"
               size="sm"
               onClick={() => setSidebarOpen((v) => !v)}
-              className="gap-1 sm:gap-1.5 text-xs h-7 sm:h-8 px-1.5 sm:px-3 hidden sm:flex"
+              className="gap-1 sm:gap-1.5 text-xs h-7 sm:h-8 px-1.5 sm:px-3"
             >
               <BookOpen className="w-3.5 h-3.5" />
               {sidebarOpen ? "Nascondi indice" : "Indice"}
