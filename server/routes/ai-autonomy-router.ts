@@ -6188,6 +6188,9 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
         systemPromptText = 'You are Robert, a Sales Coach. Help the consultant sell platform packages.';
       }
 
+      const robertBrandVoice = await buildBrandVoicePromptSection(consultantId);
+      if (robertBrandVoice) systemPromptText += robertBrandVoice;
+
       const { getAIProvider } = await import('../ai/provider-factory');
       const provider = await getAIProvider(consultantId);
       if (provider.setFeature) provider.setFeature('delivery-agent', 'consultant');
@@ -6511,6 +6514,9 @@ router.post("/agent-chat/:roleId/send-media", authenticateToken, requireAnyRole(
       } catch {
         systemPromptText = 'You are Robert, a Sales Coach.';
       }
+
+      const robertMediaBrandVoice = await buildBrandVoicePromptSection(consultantId);
+      if (robertMediaBrandVoice) systemPromptText += robertMediaBrandVoice;
 
       const { getAIProvider, getModelWithThinking } = await import('../ai/provider-factory');
       const provider = await getAIProvider(consultantId);
@@ -6876,6 +6882,63 @@ router.delete("/agent-chat/:roleId/clear", authenticateToken, requireAnyRole(["c
   return res.status(403).json({ error: "La cancellazione dei messaggi è stata disabilitata" });
 });
 
+async function buildBrandVoicePromptSection(consultantId: string): Promise<string> {
+  try {
+    const bvResult = await db.execute(sql`
+      SELECT brand_voice_data, brand_voice_enabled FROM content_studio_config
+      WHERE consultant_id = ${consultantId}::uuid LIMIT 1
+    `);
+    const row = bvResult.rows[0] as any;
+    if (row?.brand_voice_enabled === false) return '';
+    const bv = row?.brand_voice_data;
+    if (!bv || typeof bv !== 'object' || Object.keys(bv).length === 0) return '';
+
+    const parts: string[] = [];
+    if (bv.businessName) parts.push(`Nome Business: ${bv.businessName}`);
+    if (bv.whatWeDo) parts.push(`Cosa facciamo: ${bv.whatWeDo}`);
+    if (bv.whoWeHelp) parts.push(`Chi aiutiamo: ${bv.whoWeHelp}`);
+    if (bv.whoWeDontHelp) parts.push(`Chi NON aiutiamo: ${bv.whoWeDontHelp}`);
+    if (bv.usp) parts.push(`Proposta Unica di Valore (USP): ${bv.usp}`);
+    if (bv.vision) parts.push(`Vision: ${bv.vision}`);
+    if (bv.mission) parts.push(`Mission: ${bv.mission}`);
+    if (bv.values) parts.push(`Valori: ${bv.values}`);
+    if (bv.consultantDisplayName) parts.push(`Nome consulente: ${bv.consultantDisplayName}`);
+    if (Array.isArray(bv.servicesOffered) && bv.servicesOffered.length > 0) {
+      const svcList = bv.servicesOffered
+        .filter((s: any) => s.name)
+        .map((s: any) => `- ${s.name}${s.description ? `: ${s.description}` : ''}${s.price ? ` (${s.price})` : ''}`)
+        .join('\n');
+      if (svcList) parts.push(`Servizi offerti:\n${svcList}`);
+    }
+    if (Array.isArray(bv.caseStudies) && bv.caseStudies.length > 0) {
+      const csList = bv.caseStudies
+        .filter((c: any) => c.client || c.clientName)
+        .map((c: any) => `- ${c.client || c.clientName}${c.result ? `: ${c.result}` : ''}`)
+        .join('\n');
+      if (csList) parts.push(`Casi studio:\n${csList}`);
+    }
+    if (bv.personalTone) parts.push(`Tono personale: ${bv.personalTone}`);
+    if (bv.contentPersonality) parts.push(`Personalità contenuti: ${bv.contentPersonality}`);
+    if (bv.audienceLanguage) parts.push(`Linguaggio del pubblico: ${bv.audienceLanguage}`);
+    if (bv.avoidPatterns) parts.push(`Pattern da evitare: ${bv.avoidPatterns}`);
+    if (Array.isArray(bv.signaturePhrases) && bv.signaturePhrases.length > 0) {
+      parts.push(`Frasi firma: ${bv.signaturePhrases.join(', ')}`);
+    }
+    if (Array.isArray(bv.audienceSegments) && bv.audienceSegments.length > 0) {
+      const segList = bv.audienceSegments
+        .filter((s: any) => s.name)
+        .map((s: any) => `- ${s.name}${s.description ? `: ${s.description}` : ''}`)
+        .join('\n');
+      if (segList) parts.push(`Segmenti di pubblico:\n${segList}`);
+    }
+    if (parts.length === 0) return '';
+    return `\nBRAND VOICE & IDENTITÀ DEL CONSULENTE:\nQueste informazioni descrivono il brand, il posizionamento e lo stile del tuo consulente. Usale come contesto per personalizzare le tue risposte e allinearle al suo business.\n${parts.join('\n')}\n`;
+  } catch (err: any) {
+    console.warn('[BRAND-VOICE] Failed to load brand voice for prompt:', err.message);
+    return '';
+  }
+}
+
 export async function processAgentChatInternal(consultantId: string, roleId: string, message: string, options?: { skipUserMessageInsert?: boolean; metadata?: Record<string, any>; source?: string; telegramContext?: string; isOpenMode?: boolean; telegramChatId?: number; signal?: AbortSignal; streamCallback?: (chunk: string) => void }): Promise<string> {
   if (!AI_ROLES[roleId]) {
     throw new Error(`Invalid role ID: ${roleId}`);
@@ -6975,7 +7038,7 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
     }
   }
 
-  const [historyResult, contextResult, recentActivityResult, activeTasksResult, completedTasksResult] = await Promise.all([
+  const [historyResult, contextResult, recentActivityResult, activeTasksResult, completedTasksResult, brandVoiceSection] = await Promise.all([
     historyQuery,
     db.execute(sql`
       SELECT agent_contexts, custom_instructions, chat_summaries FROM ai_autonomy_settings
@@ -7002,6 +7065,7 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
       ORDER BY completed_at DESC
       LIMIT 200
     `),
+    buildBrandVoicePromptSection(consultantId),
   ]);
 
   const chatHistory = (historyResult.rows as any[]).reverse();
@@ -7081,6 +7145,10 @@ ${!isOpenMode && customContext ? `\nCONTESTO PERSONALIZZATO:\n${customContext}` 
 
 ${!isOpenMode && customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
 `;
+
+  if (brandVoiceSection) {
+    systemPrompt += brandVoiceSection;
+  }
 
   if (isOpenMode) {
     let openModeProfileSection = '';
