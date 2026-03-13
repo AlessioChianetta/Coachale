@@ -450,6 +450,27 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
     }
 
     const elapsed = Date.now() - startTime;
+
+    const usage = response?.usageMetadata || response?.usage_metadata;
+    const inputTokens = usage?.promptTokenCount || usage?.prompt_token_count || 0;
+    const outputTokens = usage?.candidatesTokenCount || usage?.candidates_token_count || 0;
+    const totalTokens = inputTokens + outputTokens;
+
+    try {
+      const { tokenTracker } = await import("../ai/token-tracker");
+      await tokenTracker.track({
+        consultantId: params.consultantId,
+        clientId: 'self',
+        model: 'gemini-2.0-flash-lite',
+        feature: `chat-supervisor:${params.roleId}`,
+        requestType: 'generate',
+        inputTokens,
+        outputTokens,
+        totalTokens,
+        durationMs: elapsed,
+      });
+    } catch {}
+
     const responseText = extractResponseText(response);
     if (!responseText) {
       console.log(`⚠️  Risultato: risposta vuota (${elapsed}ms)`);
@@ -492,7 +513,7 @@ export async function runTaskSupervisor(params: SupervisorParams): Promise<Super
       needs_clarification: '❓',
     };
     const emoji = actionEmoji[parsed.action] || '🔍';
-    console.log(`${emoji} Risultato: ${parsed.action} (${elapsed}ms)`);
+    console.log(`${emoji} Risultato: ${parsed.action} (${elapsed}ms) | 🔢 ${totalTokens} token (${inputTokens} in + ${outputTokens} out)`);
     if (parsed.reason) console.log(`💭 Ragionamento: "${parsed.reason}"`);
     if (parsed.taskIds) console.log(`   📌 Task IDs: ${parsed.taskIds.join(', ')}`);
     if (parsed.taskId) console.log(`   📌 Task ID: ${parsed.taskId}`);
