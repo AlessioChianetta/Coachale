@@ -300,6 +300,7 @@ interface SocialPreviewProps {
   soluzione?: string;
   riprovaSociale?: string;
   imageUrl?: string;
+  bodyOnly?: boolean;
 }
 
 function formatTextWithHashtags(text: string) {
@@ -733,8 +734,7 @@ function LeadFormTab({ post, onUpdate }: { post: Post; onUpdate: (updatedPost: P
   );
 }
 
-function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, errore, soluzione, riprovaSociale, imageUrl }: SocialPreviewProps) {
-  // Build body content based on copy type
+function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, errore, soluzione, riprovaSociale, imageUrl, bodyOnly }: SocialPreviewProps) {
   let displayBody = body;
   if (copyType === "long" && !body) {
     const longCopyParts = [
@@ -747,8 +747,11 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
       displayBody = longCopyParts.join("\n\n");
     }
   }
+
+  const displayHook = bodyOnly ? "" : hook;
+  const displayCta = bodyOnly ? "" : cta;
   
-  const fullText = [hook, displayBody, cta].filter(Boolean).join("\n\n");
+  const fullText = [displayHook, displayBody, displayCta].filter(Boolean).join("\n\n");
   const charCount = fullText.length;
   const twitterLimit = 280;
 
@@ -792,11 +795,11 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
           <div className="text-sm space-y-1">
             <p className="whitespace-pre-wrap">
               <span className="font-semibold">il_tuo_brand</span>{" "}
-              {hook && <span className="font-bold">{hook}</span>}
-              {hook && displayBody && "\n"}
+              {displayHook && <span className="font-bold">{displayHook}</span>}
+              {displayHook && displayBody && "\n"}
               {formatTextWithHashtags(displayBody)}
-              {(hook || displayBody) && cta && "\n"}
-              {cta && <span className="font-medium">{cta}</span>}
+              {(displayHook || displayBody) && displayCta && "\n"}
+              {displayCta && <span className="font-medium">{displayCta}</span>}
             </p>
           </div>
           <p className="text-xs text-muted-foreground">2 ore fa</p>
@@ -826,9 +829,9 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
             <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="mt-3 text-sm space-y-2">
-            {hook && <p className="font-semibold">{hook}</p>}
+            {displayHook && <p className="font-semibold">{displayHook}</p>}
             {displayBody && <p className="whitespace-pre-wrap">{formatTextWithHashtags(displayBody)}</p>}
-            {cta && <p className="font-medium text-blue-600">{cta}</p>}
+            {displayCta && <p className="font-medium text-blue-600">{displayCta}</p>}
           </div>
         </div>
         <ImageOrPlaceholder imageUrl={imageUrl} aspectClass="aspect-video" />
@@ -892,9 +895,9 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
             <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="mt-4 text-sm space-y-3">
-            {hook && <p className="font-semibold text-base">{hook}</p>}
+            {displayHook && <p className="font-semibold text-base">{displayHook}</p>}
             {displayBody && <p className="whitespace-pre-wrap leading-relaxed">{formatTextWithHashtags(displayBody)}</p>}
-            {cta && <p className="font-medium text-blue-600">{cta}</p>}
+            {displayCta && <p className="font-medium text-blue-600">{displayCta}</p>}
           </div>
         </div>
         <ImageOrPlaceholder imageUrl={imageUrl} aspectClass="aspect-video" />
@@ -955,9 +958,9 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
                 <p className="text-sm text-muted-foreground">@iltuobrand · 2h</p>
               </div>
               <div className="mt-2 text-sm space-y-2">
-                {hook && <p className="font-medium">{hook}</p>}
+                {displayHook && <p className="font-medium">{displayHook}</p>}
                 {displayBody && <p className="whitespace-pre-wrap">{formatTextWithHashtags(displayBody)}</p>}
-                {cta && <p className="text-sky-500">{cta}</p>}
+                {displayCta && <p className="text-sky-500">{displayCta}</p>}
               </div>
               {imageUrl ? (
                 <div className="mt-4 aspect-video rounded-xl overflow-hidden">
@@ -1036,7 +1039,7 @@ function SocialPreview({ platform, hook, body, cta, copyType, chiCosaCome, error
           <div className="absolute bottom-4 left-3 right-16 text-white">
             <p className="font-semibold text-sm">@iltuobrand</p>
             <p className="text-xs mt-1 line-clamp-3">
-              {hook && <span className="font-bold">{hook} </span>}
+              {displayHook && <span className="font-bold">{displayHook} </span>}
               {displayBody && formatTextWithHashtags(displayBody)}
             </p>
           </div>
@@ -4824,18 +4827,30 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                     </div>
 
                     {/* Flat preview */}
-                    <SocialPreview
-                      platform={viewingPost.platform || "instagram"}
-                      hook={hookText}
-                      body={bodyText}
-                      cta={ctaText}
-                      copyType={viewCopyType as "short" | "long"}
-                      chiCosaCome={viewStructured.chiCosaCome || viewingPost.chiCosaCome}
-                      errore={viewStructured.errore || viewingPost.errore}
-                      soluzione={viewStructured.soluzione || viewingPost.soluzione}
-                      riprovaSociale={viewStructured.riprovaSociale || viewingPost.riprovaSociale}
-                      imageUrl={viewingPost.imageUrl}
-                    />
+                    {(() => {
+                      const allV = [
+                        { angle: "originale", body: bodyText || "", hook: hookText || "", cta: ctaText || "" },
+                        ...(viewingPost.copyVariants || []),
+                      ];
+                      const sIdx = Math.min(activeVariantIdx, allV.length - 1);
+                      const curV = allV[sIdx];
+                      const isVariant = sIdx > 0;
+                      return (
+                        <SocialPreview
+                          platform={viewingPost.platform || "instagram"}
+                          hook={isVariant ? "" : (curV?.hook || "")}
+                          body={curV?.body || bodyText}
+                          cta={isVariant ? "" : (curV?.cta || "")}
+                          copyType={viewCopyType as "short" | "long"}
+                          chiCosaCome={viewStructured.chiCosaCome || viewingPost.chiCosaCome}
+                          errore={viewStructured.errore || viewingPost.errore}
+                          soluzione={viewStructured.soluzione || viewingPost.soluzione}
+                          riprovaSociale={viewStructured.riprovaSociale || viewingPost.riprovaSociale}
+                          imageUrl={viewingPost.imageUrl}
+                          bodyOnly={isVariant}
+                        />
+                      );
+                    })()}
                   </div>
                 </div>
 
