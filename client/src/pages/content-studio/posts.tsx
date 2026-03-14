@@ -3405,6 +3405,12 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                       </div>
                     ) : (
                       <>
+                        {editVariants.length > 0 && (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-zinc-800 border">
+                            <span className="text-sm font-semibold">① Originale</span>
+                            <span className="text-xs text-muted-foreground">— Copy principale del post</span>
+                          </div>
+                        )}
                         <div className="space-y-2">
                           <Label htmlFor="title">Titolo</Label>
                           <Input
@@ -3536,7 +3542,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                             </div>
                             <div className="flex gap-1.5 flex-wrap">
                               {editVariants.map((v, idx) => {
-                                const labels: Record<string, string> = { problema: "🔥 Problema", desiderio: "✨ Desiderio", riprova_sociale: "👥 Sociale", urgenza: "⚡ Urgenza" };
+                                const labels: Record<string, string> = { problema: "② Problema", desiderio: "③ Desiderio", riprova_sociale: "④ Sociale", urgenza: "⑤ Urgenza" };
                                 return (
                                   <button
                                     key={idx}
@@ -4927,12 +4933,12 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                       {/* Copy Tab */}
                       <TabsContent value="copy" className="flex-1 p-6 space-y-4 m-0">
                         {(() => {
-                          const ANGLE_LABELS: Record<string, { label: string; emoji: string; color: string; bg: string }> = {
-                            originale: { label: "Originale", emoji: "📝", color: "text-slate-700 dark:text-slate-300", bg: "bg-slate-100 dark:bg-zinc-800" },
-                            problema: { label: "Problema", emoji: "🔥", color: "text-red-700 dark:text-red-300", bg: "bg-red-50 dark:bg-red-950/30" },
-                            desiderio: { label: "Desiderio", emoji: "✨", color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-50 dark:bg-amber-950/30" },
-                            riprova_sociale: { label: "Sociale", emoji: "👥", color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
-                            urgenza: { label: "Urgenza", emoji: "⚡", color: "text-orange-700 dark:text-orange-300", bg: "bg-orange-50 dark:bg-orange-950/30" },
+                          const ANGLE_LABELS: Record<string, { label: string; num: string; color: string; bg: string }> = {
+                            originale: { label: "Originale", num: "①", color: "text-slate-700 dark:text-slate-300", bg: "bg-slate-100 dark:bg-zinc-800" },
+                            problema: { label: "Problema", num: "②", color: "text-red-700 dark:text-red-300", bg: "bg-red-50 dark:bg-red-950/30" },
+                            desiderio: { label: "Desiderio", num: "③", color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-50 dark:bg-amber-950/30" },
+                            riprova_sociale: { label: "Sociale", num: "④", color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
+                            urgenza: { label: "Urgenza", num: "⑤", color: "text-orange-700 dark:text-orange-300", bg: "bg-orange-50 dark:bg-orange-950/30" },
                           };
 
                           const originalVariant = {
@@ -5038,9 +5044,8 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                                             : "border-border hover:border-gray-400 text-muted-foreground hover:text-foreground"
                                         }`}
                                       >
-                                        <span>{meta.emoji}</span>
-                                        <span className="hidden sm:inline">{meta.label}</span>
-                                        <span className="sm:hidden">{idx + 1}</span>
+                                          <span>{meta.num}</span>
+                                        <span>{meta.label}</span>
                                       </button>
                                     );
                                   })}
@@ -5074,7 +5079,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                                   {currentVariant.body && (
                                     <div className="rounded-xl overflow-hidden border">
                                       <div className={`${angleMeta.bg} px-4 py-2 flex items-center justify-between`}>
-                                        <span className={`text-xs font-semibold uppercase tracking-wide ${angleMeta.color}`}>{angleMeta.emoji} Contenuto {hasVariants && safeIdx > 0 ? `(${angleMeta.label})` : ""}</span>
+                                        <span className={`text-xs font-semibold uppercase tracking-wide ${angleMeta.color}`}>{angleMeta.num} Contenuto {hasVariants && safeIdx > 0 ? `(${angleMeta.label})` : ""}</span>
                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
                                           onClick={() => { navigator.clipboard.writeText(currentVariant.body); toast({ title: "Copiato!", description: "Contenuto copiato" }); }}>
                                           <Copy className="h-3 w-3" />
