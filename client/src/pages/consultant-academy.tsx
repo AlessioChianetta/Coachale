@@ -383,70 +383,68 @@ function LessonDetail({
       })()}
 
       <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
-        <div className={cn("h-1.5 bg-gradient-to-r", gradientClass)} />
-        <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-5">
-          <div className="flex flex-wrap items-start gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                {module && (
-                  <span className={cn("text-xs font-semibold px-2.5 py-1 rounded-full", badgeClass)}>
-                    {module.emoji} {module.title}
-                  </span>
-                )}
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {lesson.duration}
+        <div className={cn("h-1 bg-gradient-to-r", gradientClass)} />
+        <div className="px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+              {module && (
+                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0", badgeClass)}>
+                  {module.emoji} {module.title}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  Lezione {lessonIndex + 1}/{totalLessons}
-                </span>
-              </div>
-              <h1 className="text-base sm:text-xl md:text-2xl font-bold text-foreground leading-tight">
+              )}
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
+                <Clock className="w-3 h-3" /> {lesson.duration}
+              </span>
+              <span className="text-[11px] text-muted-foreground shrink-0">
+                Lezione {lessonIndex + 1}/{totalLessons}
+              </span>
+              <h1 className="text-sm sm:text-base font-bold text-foreground leading-tight truncate">
                 {lesson.title}
               </h1>
             </div>
 
-            {isWizardDone && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 flex-shrink-0">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                  Configurato nel Setup
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {isWizardDone && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">Configurato</span>
+                </div>
+              )}
+
+              {lesson.config_link && (
+                <Link href={lesson.config_link}>
+                  <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs">
+                    <Settings className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Configurazione</span>
+                    <ExternalLink className="w-3 h-3 opacity-60" />
+                  </Button>
+                </Link>
+              )}
+
+              {!isWizardDone && (
+                <Button
+                  size="sm"
+                  onClick={onToggleComplete}
+                  disabled={isToggling}
+                  className={cn(
+                    "gap-1.5 h-7 text-xs transition-colors",
+                    isCompleted
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                  )}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {isCompleted ? "Completata ✓" : "Completa"}
+                </Button>
+              )}
+            </div>
           </div>
 
-          <div className="rounded-xl bg-gradient-to-br from-muted/50 to-muted/30 border border-border/40 p-4">
-            <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
+          {lesson.description && (
+            <p className="text-muted-foreground text-xs leading-relaxed mt-1.5 line-clamp-2">
               {lesson.description}
             </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <Link href={lesson.config_link}>
-              <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto">
-                <Settings className="w-4 h-4" />
-                Vai alla configurazione
-                <ExternalLink className="w-3 h-3 opacity-60" />
-              </Button>
-            </Link>
-
-            {!isWizardDone && (
-              <Button
-                size="sm"
-                onClick={onToggleComplete}
-                disabled={isToggling}
-                className={cn(
-                  "gap-2 w-full sm:w-auto transition-colors",
-                  isCompleted
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                    : "bg-indigo-600 hover:bg-indigo-700 text-white"
-                )}
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                {isCompleted ? "Lezione completata ✓" : "Segna come completata"}
-              </Button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
