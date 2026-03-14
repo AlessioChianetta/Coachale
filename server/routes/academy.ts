@@ -2,6 +2,9 @@ import { Router, Response } from 'express';
 import { authenticateToken, requireRole, requireSuperAdmin, type AuthRequest } from '../middleware/auth';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
+import fs from 'fs';
+import path from 'path';
+import { randomUUID } from 'crypto';
 
 const router = Router();
 
@@ -71,6 +74,7 @@ async function ensureTables() {
   ];
   try { await db.execute(sql`ALTER TABLE academy_lessons ADD COLUMN IF NOT EXISTS guide_embed_url TEXT DEFAULT NULL`); } catch {}
   try { await db.execute(sql`ALTER TABLE academy_lessons ADD COLUMN IF NOT EXISTS guide_display_mode VARCHAR DEFAULT 'native'`); } catch {}
+  try { await db.execute(sql`ALTER TABLE academy_lessons ADD COLUMN IF NOT EXISTS guide_local_video_url TEXT DEFAULT NULL`); } catch {}
   for (const stmt of statements) {
     try { await db.execute(stmt); } catch (e: any) {
       if (!e.message?.includes('already exists')) console.warn('[Academy] Table warn:', e.message);
@@ -720,6 +724,119 @@ router.put('/admin/steps/reorder', authenticateToken, requireSuperAdmin, async (
     }
     res.json({ success: true });
   } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+function isValidExternalUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return false;
+    if (hostname.startsWith('10.') || hostname.startsWith('192.168.') || hostname.startsWith('169.254.')) return false;
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return false;
+    if (hostname.endsWith('.internal') || hostname.endsWith('.local')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function downloadFileToLocal(url: string, destDir: string, filenamePrefix: string): Promise<{ localPath: string; filename: string } | null> {
+  try {
+    if (!isValidExternalUrl(url)) {
+      console.error(`[Academy] Blocked download for unsafe URL: ${url}`);
+      return null;
+    }
+
+    const MAX_SIZE = 500 * 1024 * 1024;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const contentLength = parseInt(response.headers.get('content-length') || '0', 10);
+    if (contentLength > MAX_SIZE) throw new Error(`File too large: ${contentLength} bytes`);
+
+    const contentType = response.headers.get('content-type') || '';
+    let ext = '.bin';
+    if (contentType.includes('video/mp4') || url.includes('.mp4')) ext = '.mp4';
+    else if (contentType.includes('video/webm') || url.includes('.webm')) ext = '.webm';
+    else if (contentType.includes('image/png') || url.includes('.png')) ext = '.png';
+    else if (contentType.includes('image/jpeg') || url.includes('.jpg') || url.includes('.jpeg')) ext = '.jpg';
+    else if (contentType.includes('image/webp') || url.includes('.webp')) ext = '.webp';
+    else if (contentType.includes('image/gif') || url.includes('.gif')) ext = '.gif';
+    else if (contentType.includes('image/svg')) ext = '.svg';
+    else if (contentType.includes('video/')) ext = '.mp4';
+    else if (contentType.includes('image/')) ext = '.png';
+
+    const filename = `${filenamePrefix}_${randomUUID().slice(0, 8)}${ext}`;
+    const destPath = path.join(destDir, filename);
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    fs.writeFileSync(destPath, buffer);
+
+    return { localPath: destPath, filename };
+  } catch (err: any) {
+    console.error(`[Academy] Download failed for ${url}:`, err.message);
+    return null;
+  }
+}
+
+router.post('/admin/lessons/:lessonId/download-media', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const { video_url, step_screenshots } = req.body as {
+      video_url?: string;
+      step_screenshots?: Array<{ step_id: string; screenshot_url: string }>;
+    };
+
+    const lessonDir = path.join('uploads', 'academy', lessonId);
+    if (!fs.existsSync(lessonDir)) fs.mkdirSync(lessonDir, { recursive: true });
+
+    const results: {
+      video?: { success: boolean; localUrl?: string; error?: string };
+      screenshots: Array<{ step_id: string; success: boolean; localUrl?: string; error?: string }>;
+    } = { screenshots: [] };
+
+    if (video_url) {
+      const dl = await downloadFileToLocal(video_url, lessonDir, 'video');
+      if (dl) {
+        const localUrl = `/uploads/academy/${lessonId}/${dl.filename}`;
+        await db.execute(sql`UPDATE academy_lessons SET guide_local_video_url = ${localUrl}, updated_at = NOW() WHERE id = ${lessonId}`);
+        results.video = { success: true, localUrl };
+      } else {
+        results.video = { success: false, error: 'Download video fallito' };
+      }
+    }
+
+    if (step_screenshots && Array.isArray(step_screenshots)) {
+      for (const ss of step_screenshots) {
+        if (!ss.screenshot_url || !ss.step_id) {
+          results.screenshots.push({ step_id: ss.step_id || 'unknown', success: false, error: 'Dati mancanti' });
+          continue;
+        }
+        const dl = await downloadFileToLocal(ss.screenshot_url, lessonDir, `step_${ss.step_id.slice(0, 8)}`);
+        if (dl) {
+          const localUrl = `/uploads/academy/${lessonId}/${dl.filename}`;
+          await db.execute(sql`UPDATE academy_lesson_steps SET screenshot_url = ${localUrl} WHERE id = ${ss.step_id}`);
+          results.screenshots.push({ step_id: ss.step_id, success: true, localUrl });
+        } else {
+          results.screenshots.push({ step_id: ss.step_id, success: false, error: 'Download screenshot fallito' });
+        }
+      }
+    }
+
+    res.json({ success: true, data: results });
+  } catch (err: any) {
+    console.error('[Academy] Download media error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

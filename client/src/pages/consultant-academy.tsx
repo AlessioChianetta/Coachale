@@ -62,6 +62,7 @@ interface AcademyLesson {
   videos?: AcademyVideo[];
   steps?: AcademyStep[];
   guide_embed_url?: string | null;
+  guide_local_video_url?: string | null;
   guide_display_mode?: string;
 }
 
@@ -565,10 +566,11 @@ function LessonDetail({
         </div>
       )}
 
-      {((lesson.steps && lesson.steps.length > 0) || lesson.guide_embed_url) && (
+      {((lesson.steps && lesson.steps.length > 0) || lesson.guide_embed_url || lesson.guide_local_video_url) && (
         <StepByStepGuide
           steps={lesson.steps || []}
           guideEmbedUrl={lesson.guide_embed_url}
+          guideLocalVideoUrl={lesson.guide_local_video_url}
           displayMode={lesson.guide_display_mode || "native"}
         />
       )}

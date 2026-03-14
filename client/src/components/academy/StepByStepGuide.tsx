@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight, List, Image, Clock } from "lucide-react";
+import { LocalInteractivePlayer } from "./LocalInteractivePlayer";
 
 interface GuideStep {
   id: string;
@@ -15,10 +16,11 @@ interface GuideStep {
 interface StepByStepGuideProps {
   steps: GuideStep[];
   guideEmbedUrl?: string | null;
+  guideLocalVideoUrl?: string | null;
   displayMode?: string;
 }
 
-export function StepByStepGuide({ steps, guideEmbedUrl, displayMode = "native" }: StepByStepGuideProps) {
+export function StepByStepGuide({ steps, guideEmbedUrl, guideLocalVideoUrl, displayMode = "native" }: StepByStepGuideProps) {
   const [activeStep, setActiveStep] = useState(0);
   const [tocOpen, setTocOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"native" | "embed">(
@@ -60,10 +62,26 @@ export function StepByStepGuide({ steps, guideEmbedUrl, displayMode = "native" }
         </div>
       );
     }
+    if (guideLocalVideoUrl && (displayMode === "embed" || displayMode === "both")) {
+      return (
+        <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-border/40 bg-gradient-to-r from-indigo-500/10 to-blue-500/10">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <List className="w-4 h-4 text-indigo-500" />
+              Guida Interattiva
+            </h3>
+          </div>
+          <div className="p-4">
+            <video src={guideLocalVideoUrl} controls className="w-full rounded-xl" />
+          </div>
+        </div>
+      );
+    }
     return null;
   }
 
-  const showTabs = displayMode === "both" && guideEmbedUrl;
+  const hasLocalInteractive = !!guideLocalVideoUrl && steps.length > 0;
+  const showTabs = displayMode === "both" && (guideEmbedUrl || hasLocalInteractive);
 
   return (
     <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
@@ -106,15 +124,19 @@ export function StepByStepGuide({ steps, guideEmbedUrl, displayMode = "native" }
         </div>
       </div>
 
-      {activeTab === "embed" && guideEmbedUrl ? (
-        <div className="aspect-[7/8] w-full">
-          <iframe
-            src={guideEmbedUrl}
-            className="w-full h-full border-0"
-            allow="clipboard-write"
-            allowFullScreen
-          />
-        </div>
+      {activeTab === "embed" && (hasLocalInteractive || guideEmbedUrl) ? (
+        hasLocalInteractive ? (
+          <LocalInteractivePlayer steps={steps} videoUrl={guideLocalVideoUrl!} />
+        ) : (
+          <div className="aspect-[7/8] w-full">
+            <iframe
+              src={guideEmbedUrl!}
+              className="w-full h-full border-0"
+              allow="clipboard-write"
+              allowFullScreen
+            />
+          </div>
+        )
       ) : (
         <div className="flex flex-col lg:flex-row">
           <div className="lg:hidden border-b border-border/40">
