@@ -1144,6 +1144,81 @@ router.get('/reports/:sessionId/pdf', authenticateToken, requireRole('consultant
         }
         doc.y = ty + 8;
       }
+      const scorecard = diagnosi.scorecard;
+      if (scorecard && Array.isArray(scorecard) && scorecard.length > 0) {
+        doc.addPage();
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(GRAY).text('SCORECARD PER AREA');
+        doc.moveDown(0.4);
+        for (const sc of scorecard) {
+          if (doc.y > 680) doc.addPage();
+          const voto = typeof sc.voto === 'number' ? sc.voto : Number(sc.voto) || 0;
+          const vColor = voto >= 7 ? GREEN : voto >= 4 ? AMBER : RED;
+          const vBg = voto >= 7 ? '#ecfdf5' : voto >= 4 ? '#fffbeb' : '#fef2f2';
+          const sy = doc.y;
+          doc.rect(60, sy, pageW, 22).fillColor(vBg).fill();
+          doc.font('Helvetica-Bold').fontSize(10).fillColor(DARK).text(sc.area || '', 68, sy + 5, { width: pageW - 60 });
+          doc.font('Helvetica-Bold').fontSize(10).fillColor(vColor).text(`${voto}/10`, 60 + pageW - 40, sy + 5, { width: 36, align: 'right' });
+          doc.y = sy + 26;
+          if (sc.punti_forza && Array.isArray(sc.punti_forza) && sc.punti_forza.length > 0) {
+            doc.font('Helvetica-Bold').fontSize(7).fillColor(GREEN).text('PUNTI DI FORZA', 68);
+            doc.moveDown(0.1);
+            for (const pf of sc.punti_forza) {
+              doc.font('Helvetica').fontSize(8).fillColor(DARK).text(`✓ ${pf}`, 74, doc.y, { width: pageW - 24 });
+              doc.moveDown(0.15);
+            }
+            doc.moveDown(0.2);
+          }
+          if (sc.criticita && Array.isArray(sc.criticita) && sc.criticita.length > 0) {
+            doc.font('Helvetica-Bold').fontSize(7).fillColor(RED).text('CRITICITÀ', 68);
+            doc.moveDown(0.1);
+            for (const cr of sc.criticita) {
+              doc.font('Helvetica').fontSize(8).fillColor(DARK).text(`⚠ ${cr}`, 74, doc.y, { width: pageW - 24 });
+              doc.moveDown(0.15);
+            }
+            doc.moveDown(0.2);
+          }
+          if (sc.azione_prioritaria) {
+            doc.font('Helvetica-Bold').fontSize(7).fillColor(AMBER).text('AZIONE PRIORITARIA', 68);
+            doc.moveDown(0.1);
+            doc.font('Helvetica').fontSize(8).fillColor(DARK).text(`⚡ ${sc.azione_prioritaria}`, 74, doc.y, { width: pageW - 24 });
+            doc.moveDown(0.2);
+          }
+          if (sc.consigli_pratici && Array.isArray(sc.consigli_pratici) && sc.consigli_pratici.length > 0) {
+            if (doc.y > 700) doc.addPage();
+            doc.font('Helvetica-Bold').fontSize(7).fillColor('#2563eb').text('CONSIGLI PRATICI', 68);
+            doc.moveDown(0.1);
+            for (const cp of sc.consigli_pratici) {
+              doc.font('Helvetica').fontSize(8).fillColor(DARK).text(`💡 ${cp}`, 74, doc.y, { width: pageW - 24 });
+              doc.moveDown(0.2);
+            }
+            doc.moveDown(0.2);
+          }
+          if (sc.esempi_concreti && Array.isArray(sc.esempi_concreti) && sc.esempi_concreti.length > 0) {
+            if (doc.y > 700) doc.addPage();
+            doc.font('Helvetica-Bold').fontSize(7).fillColor('#7c3aed').text('ESEMPI CONCRETI', 68);
+            doc.moveDown(0.1);
+            for (const ex of sc.esempi_concreti) {
+              const exY = doc.y;
+              doc.rect(68, exY, pageW - 8, 1).fillColor('#e5e7eb').fill();
+              doc.moveDown(0.2);
+              doc.font('Helvetica').fontSize(8).fillColor('#4b5563').text(ex, 74, doc.y, { width: pageW - 24 });
+              doc.moveDown(0.3);
+            }
+          }
+          if (sc.cosa_fare_domani) {
+            if (doc.y > 700) doc.addPage();
+            const cfY = doc.y;
+            doc.rect(68, cfY, pageW - 8, 2).fillColor(GREEN).fill();
+            doc.y = cfY + 4;
+            doc.font('Helvetica-Bold').fontSize(7).fillColor(GREEN).text('🚀 COSA FARE DOMANI', 74);
+            doc.moveDown(0.1);
+            doc.font('Helvetica').fontSize(8).fillColor(DARK).text(sc.cosa_fare_domani, 74, doc.y, { width: pageW - 24 });
+            doc.moveDown(0.3);
+          }
+          doc.moveDown(0.6);
+        }
+      }
+
       const insight = diagnosi.insight_chiave || diagnosi.key_insight;
       if (insight) {
         doc.moveDown(0.5);

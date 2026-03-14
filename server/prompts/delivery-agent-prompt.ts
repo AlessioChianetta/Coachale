@@ -621,7 +621,17 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
         "voto": 5,
         "punti_forza": ["Punto di forza 1 specifico con dato dalla discovery", "Punto di forza 2"],
         "criticita": ["Criticità 1 specifica con dato dalla discovery", "Criticità 2"],
-        "azione_prioritaria": "L'azione più importante da fare subito in quest'area — una frase concreta e pratica"
+        "azione_prioritaria": "L'azione più importante da fare subito in quest'area — una frase concreta e pratica",
+        "consigli_pratici": [
+          "Consiglio operativo 1 — spiegazione di 2-3 frasi su come implementarlo. Esempio: 'Crea un foglio Google condiviso con colonne Nome/Data Contatto/Stato/Prossima Azione. Ogni sera prima di chiudere, aggiornalo con i contatti del giorno. In 5 minuti hai una pipeline visibile.'",
+          "Consiglio operativo 2 — altrettanto specifico e azionabile, con strumenti concreti e passi chiari",
+          "Consiglio operativo 3 — un approccio diverso per la stessa area, adatto al livello digitale del consulente"
+        ],
+        "esempi_concreti": [
+          "Scenario reale basato sulla discovery del consulente. Esempio: 'Oggi quando Maria ti scrive su WhatsApp per chiedere info sul percorso, tu rispondi dopo 4 ore perché sei in sessione. Nel frattempo Maria ha trovato un altro coach su Instagram che le ha risposto in 10 minuti. Con un agente AI, Maria riceve risposta immediata, viene qualificata e le viene proposta una call — tutto mentre tu lavori.'",
+          "Secondo scenario concreto che mostra il prima/dopo nell'area specifica, usando dati e situazioni emerse dalla conversazione di discovery"
+        ],
+        "cosa_fare_domani": "L'azione più semplice che il consulente può fare domani mattina in 15 minuti per migliorare quest'area — ultra-concreta, a zero costo, e con risultato immediato visibile. Esempio: 'Domani mattina apri WhatsApp Business, vai in Impostazioni → Risposte Rapide, e crea 3 risposte per le domande che ricevi più spesso. Tempo: 10 minuti. Risultato: rispondi 3x più veloce da subito.'"
       }
     ],
     "insight_chiave": "L'insight critico più importante — la frase che riassume il vero problema/opportunità. Esempio: 'Il collo di bottiglia principale non è il marketing — è la distribuzione. Stai portando il messaggio a un cliente per volta, e per scalare ti servono moltiplicatori.' Deve essere una frase d'impatto, concreta, non generica."
@@ -814,7 +824,7 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 17. Le **campagne_ads_pronte** devono includere almeno 2-3 inserzioni complete con copy lungo (150-200 parole), target preciso, budget, e brief visivo dettagliato. Le ads devono essere per le piattaforme più rilevanti per il target del consulente
 18. Il campo **dove_sei_ora** nella diagnosi deve essere MOLTO LUNGO — almeno 8-12 frasi che descrivono in dettaglio la situazione attuale con tutti i dati emersi dalla discovery. È la parte più importante del report: deve essere una fotografia precisa del business, non un riassunto
 19. La **tabella_diagnostica** deve avere almeno 8 righe coprendo: Gestione Clienti, Acquisizione Lead, Comunicazione, Presenza Online, Processo Vendita, Formazione, Team/Struttura, Automazione. Per ogni riga, lo stato deve essere specifico con dati dalla discovery (non frasi generiche come "da migliorare")
-20. La **scorecard** nella diagnosi deve avere almeno 8 aree con voto da 1 a 10 (onesto e variato), punti_forza e criticità specifiche dalla discovery, e un'azione prioritaria concreta per ogni area
+20. La **scorecard** nella diagnosi deve avere almeno 8 aree con voto da 1 a 10 (onesto e variato), punti_forza e criticità specifiche dalla discovery, un'azione prioritaria concreta, PLUS per ogni area: **consigli_pratici** (almeno 2-3 suggerimenti operativi con spiegazione di 2-3 frasi ciascuno — strumenti, passi, link concreti), **esempi_concreti** (almeno 2 scenari prima/dopo basati sulla discovery — usa nomi, numeri, situazioni reali emerse dalla conversazione), e **cosa_fare_domani** (1 azione ultra-semplice da fare in 15 minuti a zero costo)
 
 ### Regole per il Catalogo Completo:
 

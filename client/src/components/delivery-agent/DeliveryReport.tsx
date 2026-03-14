@@ -9,7 +9,7 @@ import {
   Target, TrendingUp, ExternalLink, ChevronDown, ChevronUp,
   Layers, ArrowRight, AlertTriangle, Globe, MapPin, FileText,
   Lightbulb, BookOpen, Play, CheckSquare, AlertCircle, ArrowDown,
-  RefreshCw,
+  RefreshCw, MessageSquare, Rocket,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -60,6 +60,9 @@ interface ScorecardItem {
   punti_forza: string[];
   criticita: string[];
   azione_prioritaria: string;
+  consigli_pratici?: string[];
+  esempi_concreti?: string[];
+  cosa_fare_domani?: string;
 }
 
 interface TestiPronti {
@@ -285,6 +288,9 @@ function normalizeReport(raw: any): ReportData {
         punti_forza: Array.isArray(item.punti_forza) ? item.punti_forza : (typeof item.punti_forza === 'string' ? [item.punti_forza] : []),
         criticita: Array.isArray(item.criticita) ? item.criticita : (typeof item.criticita === 'string' ? [item.criticita] : []),
         azione_prioritaria: item.azione_prioritaria || item.azione || '',
+        consigli_pratici: Array.isArray(item.consigli_pratici) ? item.consigli_pratici : (typeof item.consigli_pratici === 'string' ? [item.consigli_pratici] : undefined),
+        esempi_concreti: Array.isArray(item.esempi_concreti) ? item.esempi_concreti : (typeof item.esempi_concreti === 'string' ? [item.esempi_concreti] : undefined),
+        cosa_fare_domani: item.cosa_fare_domani || undefined,
       }));
     }
   }
@@ -524,6 +530,129 @@ function ExpandableModule({ mod, index }: { mod: PackageModule; index: number })
                 <div className="flex items-start gap-2">
                   <CheckSquare className="w-3 h-3 text-emerald-500 mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-muted-foreground">{mod.success_signal}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function ExpandableScorecardCard({ item }: { item: ScorecardItem }) {
+  const [open, setOpen] = useState(false);
+  const hasExtra = !!(
+    (item.consigli_pratici && item.consigli_pratici.length > 0) ||
+    (item.esempi_concreti && item.esempi_concreti.length > 0) ||
+    item.cosa_fare_domani
+  );
+  const votoColor = item.voto >= 7 ? "text-emerald-600 border-emerald-400" : item.voto >= 4 ? "text-amber-600 border-amber-400" : "text-red-600 border-red-400";
+  const bgColor = item.voto >= 7 ? "bg-emerald-50/50 dark:bg-emerald-950/20" : item.voto >= 4 ? "bg-amber-50/50 dark:bg-amber-950/20" : "bg-red-50/50 dark:bg-red-950/20";
+
+  return (
+    <div className={cn("rounded-lg border border-border/50 overflow-hidden", bgColor)}>
+      <div
+        className={cn("p-4", hasExtra && "cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors")}
+        onClick={hasExtra ? () => setOpen(v => !v) : undefined}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <h4 className="font-semibold text-sm text-foreground">{item.area}</h4>
+            {hasExtra && (
+              open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+            )}
+          </div>
+          <div className={cn("w-9 h-9 rounded-full border-2 flex flex-col items-center justify-center flex-shrink-0", votoColor)}>
+            <span className="text-sm font-bold leading-none">{item.voto}</span>
+            <span className="text-[7px] text-muted-foreground">/10</span>
+          </div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-3 mb-3">
+          {item.punti_forza.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70 mb-1.5">Punti di forza</p>
+              <ul className="space-y-1">
+                {item.punti_forza.map((pf, j) => (
+                  <li key={j} className="text-xs text-foreground/75 leading-relaxed flex items-start gap-1.5">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500 mt-0.5 flex-shrink-0" />
+                    <span>{pf}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {item.criticita.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-red-600/70 dark:text-red-400/70 mb-1.5">Criticità</p>
+              <ul className="space-y-1">
+                {item.criticita.map((cr, j) => (
+                  <li key={j} className="text-xs text-foreground/75 leading-relaxed flex items-start gap-1.5">
+                    <AlertTriangle className="w-3 h-3 text-red-500 mt-0.5 flex-shrink-0" />
+                    <span>{cr}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+        {item.azione_prioritaria && (
+          <div className="flex items-start gap-2 pt-2 border-t border-border/30">
+            <Zap className="w-3.5 h-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-foreground/80 leading-relaxed">{item.azione_prioritaria}</p>
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {open && hasExtra && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 space-y-4 border-t border-border/30 pt-4">
+              {item.consigli_pratici && item.consigli_pratici.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600/70 dark:text-blue-400/70 mb-2">Consigli pratici</p>
+                  <div className="space-y-2.5">
+                    {item.consigli_pratici.map((consiglio, j) => (
+                      <div key={j} className="flex items-start gap-2.5">
+                        <Lightbulb className="w-3.5 h-3.5 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-foreground/80 leading-relaxed"><RichText text={consiglio} /></p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {item.esempi_concreti && item.esempi_concreti.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600/70 dark:text-violet-400/70 mb-2">Esempi concreti</p>
+                  <div className="space-y-2.5">
+                    {item.esempi_concreti.map((esempio, j) => (
+                      <div key={j} className="rounded-md bg-background/60 border border-border/30 p-3">
+                        <div className="flex items-start gap-2">
+                          <MessageSquare className="w-3.5 h-3.5 text-violet-500 mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-foreground/75 leading-relaxed"><RichText text={esempio} /></p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {item.cosa_fare_domani && (
+                <div className="rounded-md bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/50 dark:border-emerald-800/30 p-3">
+                  <div className="flex items-start gap-2">
+                    <Rocket className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80 mb-1">Cosa fare domani</p>
+                      <p className="text-xs text-foreground/80 leading-relaxed"><RichText text={item.cosa_fare_domani} /></p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1169,55 +1298,9 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-4">Scorecard per area</p>
                       <div className="grid gap-4">
-                        {report.diagnosis.scorecard.map((item, i) => {
-                          const votoColor = item.voto >= 7 ? "text-emerald-600 border-emerald-400" : item.voto >= 4 ? "text-amber-600 border-amber-400" : "text-red-600 border-red-400";
-                          const bgColor = item.voto >= 7 ? "bg-emerald-50/50 dark:bg-emerald-950/20" : item.voto >= 4 ? "bg-amber-50/50 dark:bg-amber-950/20" : "bg-red-50/50 dark:bg-red-950/20";
-                          return (
-                            <div key={i} className={cn("rounded-lg border border-border/50 p-4", bgColor)}>
-                              <div className="flex items-center justify-between mb-3">
-                                <h4 className="font-semibold text-sm text-foreground">{item.area}</h4>
-                                <div className={cn("w-9 h-9 rounded-full border-2 flex flex-col items-center justify-center flex-shrink-0", votoColor)}>
-                                  <span className="text-sm font-bold leading-none">{item.voto}</span>
-                                  <span className="text-[7px] text-muted-foreground">/10</span>
-                                </div>
-                              </div>
-                              <div className="grid md:grid-cols-2 gap-3 mb-3">
-                                {item.punti_forza.length > 0 && (
-                                  <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70 mb-1.5">Punti di forza</p>
-                                    <ul className="space-y-1">
-                                      {item.punti_forza.map((pf, j) => (
-                                        <li key={j} className="text-xs text-foreground/75 leading-relaxed flex items-start gap-1.5">
-                                          <CheckCircle2 className="w-3 h-3 text-emerald-500 mt-0.5 flex-shrink-0" />
-                                          <span>{pf}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                                {item.criticita.length > 0 && (
-                                  <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-red-600/70 dark:text-red-400/70 mb-1.5">Criticità</p>
-                                    <ul className="space-y-1">
-                                      {item.criticita.map((cr, j) => (
-                                        <li key={j} className="text-xs text-foreground/75 leading-relaxed flex items-start gap-1.5">
-                                          <AlertTriangle className="w-3 h-3 text-red-500 mt-0.5 flex-shrink-0" />
-                                          <span>{cr}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                              </div>
-                              {item.azione_prioritaria && (
-                                <div className="flex items-start gap-2 pt-2 border-t border-border/30">
-                                  <Zap className="w-3.5 h-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
-                                  <p className="text-xs text-foreground/80 leading-relaxed">{item.azione_prioritaria}</p>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                        {report.diagnosis.scorecard.map((item, i) => (
+                          <ExpandableScorecardCard key={i} item={item} />
+                        ))}
                       </div>
                     </div>
                   )}
