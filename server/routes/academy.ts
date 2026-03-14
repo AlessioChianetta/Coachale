@@ -1027,7 +1027,10 @@ router.delete('/admin/lessons/:lessonId/all-steps', authenticateToken, requireSu
 router.delete('/admin/lessons/:lessonId/local-media', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { lessonId } = req.params;
+    if (!/^[0-9a-f-]{36}$/i.test(lessonId)) { return res.status(400).json({ success: false, error: 'ID lezione non valido' }); }
     const lessonDir = path.join(process.cwd(), 'uploads', 'academy', lessonId);
+    const baseDir = path.resolve(path.join(process.cwd(), 'uploads', 'academy'));
+    if (!path.resolve(lessonDir).startsWith(baseDir)) { return res.status(400).json({ success: false, error: 'Percorso non valido' }); }
     if (fs.existsSync(lessonDir)) {
       fs.rmSync(lessonDir, { recursive: true, force: true });
     }
@@ -1045,6 +1048,7 @@ router.delete('/admin/lessons/:lessonId/local-media', authenticateToken, require
 router.delete('/admin/lessons/:lessonId/local-video', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { lessonId } = req.params;
+    if (!/^[0-9a-f-]{36}$/i.test(lessonId)) { return res.status(400).json({ success: false, error: 'ID lezione non valido' }); }
     const lesson = await db.execute(sql`SELECT guide_local_video_url FROM academy_lessons WHERE id = ${lessonId}`);
     const videoUrl = (lesson.rows[0] as any)?.guide_local_video_url;
     if (videoUrl) {
@@ -1061,6 +1065,7 @@ router.delete('/admin/lessons/:lessonId/local-video', authenticateToken, require
 router.delete('/admin/lessons/:lessonId/local-screenshots', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { lessonId } = req.params;
+    if (!/^[0-9a-f-]{36}$/i.test(lessonId)) { return res.status(400).json({ success: false, error: 'ID lezione non valido' }); }
     const steps = await db.execute(sql`SELECT screenshot_url FROM academy_lesson_steps WHERE lesson_id = ${lessonId} AND screenshot_url LIKE '/uploads/%'`);
     for (const step of steps.rows as any[]) {
       if (step.screenshot_url) {
@@ -1112,7 +1117,13 @@ async function downloadFileToLocal(url: string, destDir: string, filenamePrefix:
     const contentLength = parseInt(response.headers.get('content-length') || '0', 10);
     if (contentLength > MAX_SIZE) throw new Error(`File too large: ${contentLength} bytes`);
 
-    const contentType = response.headers.get('content-type') || '';
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+
+    if (filenamePrefix.startsWith('video') && (contentType.includes('text/html') || contentType.includes('text/plain') || contentType.includes('application/json'))) {
+      console.error(`[Academy] Download for ${url}: unexpected content-type "${contentType}" for video`);
+      return null;
+    }
+
     let ext = '.bin';
     if (contentType.includes('video/mp4') || url.includes('.mp4')) ext = '.mp4';
     else if (contentType.includes('video/webm') || url.includes('.webm')) ext = '.webm';
@@ -1128,6 +1139,19 @@ async function downloadFileToLocal(url: string, destDir: string, filenamePrefix:
     const destPath = path.join(destDir, filename);
 
     const buffer = Buffer.from(await response.arrayBuffer());
+
+    if (filenamePrefix.startsWith('video')) {
+      const isHtml = buffer.length < 10000 && buffer.toString('utf8', 0, Math.min(500, buffer.length)).includes('<!doctype html');
+      if (isHtml) {
+        console.error(`[Academy] Download for ${url}: received HTML page instead of video file (${buffer.length} bytes)`);
+        return null;
+      }
+      if (buffer.length < 5000) {
+        console.error(`[Academy] Download for ${url}: file too small to be a real video (${buffer.length} bytes)`);
+        return null;
+      }
+    }
+
     fs.writeFileSync(destPath, buffer);
 
     return { localPath: destPath, filename };

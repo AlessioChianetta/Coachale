@@ -1354,22 +1354,6 @@ export default function AdminAcademy() {
                                         </div>
                                       </div>
 
-                                      {lesson.guide_local_video_url && (
-                                        <div className="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
-                                          <div className="flex items-center gap-2 mb-2">
-                                            <PlayCircle size={13} className="text-blue-500" />
-                                            <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300">Video locale</span>
-                                            <span className="text-[10px] text-emerald-500 font-medium ml-auto">Salvato</span>
-                                          </div>
-                                          <video
-                                            src={lesson.guide_local_video_url}
-                                            controls
-                                            className="w-full max-h-[300px] rounded-md bg-black"
-                                            preload="metadata"
-                                          />
-                                        </div>
-                                      )}
-
                                       {(lesson.steps && lesson.steps.length > 0) && (
                                         <div className="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
                                           <div className="flex items-center gap-2 mb-3">

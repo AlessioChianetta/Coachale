@@ -354,10 +354,10 @@ function LessonDetail({
           lesson.videos.forEach(v => allVids.push({ url: v.video_url, type: v.video_type, title: v.title || lesson.title }));
         }
         if (allVids.length === 0) {
-          return <GuiddePlayer embedUrl={null} videoType="iframe" title={lesson.title} />;
+          return <GuiddePlayer embedUrl={null} localVideoUrl={lesson.guide_local_video_url} videoType="iframe" title={lesson.title} />;
         }
         if (allVids.length === 1) {
-          return <GuiddePlayer embedUrl={allVids[0].url} videoType={allVids[0].type} title={allVids[0].title} />;
+          return <GuiddePlayer embedUrl={allVids[0].url} localVideoUrl={lesson.guide_local_video_url} videoType={allVids[0].type} title={allVids[0].title} />;
         }
         return (
           <div className="space-y-4">

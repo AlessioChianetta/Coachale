@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Play, Pause, Clock, Image, ChevronDown, ChevronRight, List, Volume2, VolumeX, Maximize } from "lucide-react";
+import { Play, Pause, Clock, Image, ChevronDown, ChevronRight, List, Volume2, VolumeX, Maximize, AlertCircle } from "lucide-react";
 
 interface GuideStep {
   id: string;
@@ -41,6 +41,7 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
+  const [videoError, setVideoError] = useState(false);
 
   const seekToStep = useCallback((idx: number) => {
     const video = videoRef.current;
@@ -118,6 +119,28 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
     video.currentTime = fraction * duration;
   };
 
+  if (videoError) {
+    return (
+      <div className="flex flex-col">
+        <div
+          className="relative w-full overflow-hidden rounded-t-xl"
+          style={{
+            paddingTop: "56.25%",
+            background: "linear-gradient(135deg, #1a0000 0%, #4a1c1c 50%, #1a0000 100%)",
+          }}
+        >
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+            <AlertCircle className="w-12 h-12 text-red-400" />
+            <div>
+              <p className="text-white font-semibold text-base mb-1">Errore video</p>
+              <p className="text-red-200 text-sm">Il file video locale non e' riproducibile o e' danneggiato</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col">
       <div className="relative bg-black rounded-t-xl overflow-hidden group">
@@ -128,6 +151,7 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
           playsInline
           preload="metadata"
           onClick={togglePlay}
+          onError={() => setVideoError(true)}
         />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           {!isPlaying && (
