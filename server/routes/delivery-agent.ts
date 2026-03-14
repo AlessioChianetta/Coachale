@@ -767,13 +767,15 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
 
     console.log(`[DeliveryAgent] Report generation COMPLETE — final report has ${reportJson?.pacchetti_consigliati?.length || 0} packages`);
 
-    await db.execute(sql`
+    const deleteResult = await db.execute(sql`
       DELETE FROM delivery_agent_reports WHERE session_id = ${sessionId}
     `);
+    console.log(`[DeliveryAgent] Deleted ${deleteResult.rowCount ?? 0} old report(s) for session ${sessionId}`);
     await db.execute(sql`
       INSERT INTO delivery_agent_reports (session_id, consultant_id, report_json)
       VALUES (${sessionId}, ${consultantId}, ${JSON.stringify(reportJson)}::jsonb)
     `);
+    console.log(`[DeliveryAgent] New report saved for session ${sessionId}`);
 
     await db.execute(sql`
       UPDATE delivery_agent_sessions
