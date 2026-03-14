@@ -1541,10 +1541,30 @@ export default function AdminAcademy() {
                   </div>
 
                   {stepsWithoutScreenshots.length > 0 && stepsWithRemoteScreenshots.length === 0 && stepsWithLocalScreenshots.length === 0 && (
-                    <div className="p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 space-y-2">
                       <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                        Gli step non hanno URL screenshot. Reimporta dall'HTML di Guidde (assicurati che contenga anche i tag {'<img>'}) oppure aggiungi gli URL manualmente da ogni step.
+                        Gli step non hanno URL screenshot. Incolla il sorgente pagina Guidde (Ctrl+U) qui sotto per aggiornare gli screenshot:
                       </p>
+                      <Textarea
+                        value={guiddeHtml}
+                        onChange={e => setGuiddeHtml(e.target.value)}
+                        placeholder="Incolla qui il sorgente pagina Guidde..."
+                        rows={2}
+                        className="text-xs rounded-md"
+                      />
+                      {guiddeHtml.trim() && (
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            if (!downloadModal) return;
+                            await handleParseGuidde(downloadModal.lessonId, "update");
+                            queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
+                          }}
+                          className="h-8 px-3 text-xs rounded-md bg-amber-600 hover:bg-amber-700 text-white"
+                        >
+                          <RefreshCw size={11} className="mr-1.5" /> Aggiorna screenshot dagli step
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
