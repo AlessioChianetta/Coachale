@@ -236,7 +236,7 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
         </div>
 
         <div className="flex flex-col lg:flex-row">
-          <aside className="hidden lg:block w-56 xl:w-64 flex-shrink-0 border-r border-border/40 max-h-[500px] overflow-y-auto scrollbar-thin">
+          <aside className="hidden lg:block w-56 xl:w-64 flex-shrink-0 border-r border-border/40 max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin">
             <div className="px-3 py-3 border-b border-border/40 bg-muted/20">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Passaggi</p>
             </div>
@@ -274,7 +274,7 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
             </div>
           </aside>
 
-          <div ref={stepsContainerRef} className="flex-1 min-w-0 p-4 sm:p-5 space-y-4 max-h-[500px] overflow-y-auto scrollbar-thin">
+          <div ref={stepsContainerRef} className="flex-1 min-w-0 p-4 sm:p-5 space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin">
             {steps.map((step, idx) => (
               <div
                 key={step.id}
