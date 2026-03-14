@@ -52,7 +52,7 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
     if (!isPlaying) {
       video.play().catch(() => {});
     }
-    stepRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    stepRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [steps, isPlaying]);
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
       }
       if (bestIdx !== activeStep) {
         setActiveStep(bestIdx);
-        stepRefs.current[bestIdx]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        stepRefs.current[bestIdx]?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     };
 
