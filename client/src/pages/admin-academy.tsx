@@ -34,6 +34,8 @@ import {
   ListOrdered,
   ClipboardPaste,
   Hash,
+  HelpCircle,
+  Info,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -156,6 +158,7 @@ export default function AdminAcademy() {
   const [guiddeHtml, setGuiddeHtml] = useState("");
   const [stepForm, setStepForm] = useState({ title: "", description: "", timestamp: "", screenshot_url: "" });
   const [showAddStep, setShowAddStep] = useState(false);
+  const [showGuideHelp, setShowGuideHelp] = useState(false);
 
   const { data: modules = [], isLoading } = useQuery<AcademyModule[]>({
     queryKey: ["admin-academy-modules"],
@@ -545,6 +548,134 @@ export default function AdminAcademy() {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="mb-6">
+            <button
+              onClick={() => setShowGuideHelp(!showGuideHelp)}
+              className="w-full flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/30 rounded-xl border border-indigo-200/60 dark:border-indigo-800/40 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/50">
+                  <HelpCircle size={18} className="text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-200">Come usare le Guide Step-by-Step</p>
+                  <p className="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">Guida completa per creare e gestire le guide native nell'Academy</p>
+                </div>
+              </div>
+              {showGuideHelp ? <ChevronDown size={18} className="text-indigo-400" /> : <ChevronRight size={18} className="text-indigo-400" />}
+            </button>
+
+            {showGuideHelp && (
+              <div className="mt-2 bg-white dark:bg-gray-900 rounded-xl border border-indigo-200/60 dark:border-indigo-800/40 shadow-sm overflow-hidden">
+                <div className="p-5 space-y-6">
+
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                      <span className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-xs font-bold flex items-center justify-center">1</span>
+                      Apri il gestore step di una lezione
+                    </h3>
+                    <div className="ml-8 space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                      <p>Espandi un modulo cliccando sulla riga del modulo, poi trova la lezione a cui vuoi aggiungere gli step.</p>
+                      <p>Clicca il bottone <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-medium"><ListOrdered size={11} /> Guide Step</span> nella barra azioni della lezione.</p>
+                      <p>Si apre il pannello di gestione con tre sezioni: importazione Guidde, impostazioni, e lista step.</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 dark:border-gray-800 pt-5">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                      <span className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-xs font-bold flex items-center justify-center">2</span>
+                      Metodo A: Importa da Guidde (automatico)
+                    </h3>
+                    <div className="ml-8 space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                      <p>Se hai gia' una guida su Guidde, vai sulla guida Guidde e copia il codice embed HTML completo.</p>
+                      <p>Incolla il codice nella textarea <strong>"Importa da Guidde"</strong> e clicca <strong>"Importa Step"</strong>.</p>
+                      <p>Il sistema estrarra' automaticamente:</p>
+                      <ul className="list-disc list-inside ml-2 space-y-1">
+                        <li>L'URL embed dell'iframe (per la modalita' embed)</li>
+                        <li>Tutti gli step con timestamp (formato MM:SS) e descrizioni</li>
+                      </ul>
+                      <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900/30">
+                        <p className="text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                          <Info size={14} className="mt-0.5 shrink-0" />
+                          <span>L'importazione <strong>sostituisce</strong> tutti gli step esistenti della lezione. Usa con cautela se hai gia' degli step manuali.</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 dark:border-gray-800 pt-5">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                      <span className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-xs font-bold flex items-center justify-center">3</span>
+                      Metodo B: Aggiungi step manualmente
+                    </h3>
+                    <div className="ml-8 space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                      <p>Clicca <strong>"Aggiungi Step Manualmente"</strong> in fondo al pannello.</p>
+                      <p>Compila i campi:</p>
+                      <ul className="list-disc list-inside ml-2 space-y-1">
+                        <li><strong>Titolo</strong> (obbligatorio): es. "Clicca su Impostazioni" o "Inserisci le API Keys"</li>
+                        <li><strong>Timestamp</strong> (opzionale): es. "00:15" — se hai un video, indica il momento esatto</li>
+                        <li><strong>Screenshot URL</strong> (opzionale): URL di un'immagine che mostra lo step visivamente</li>
+                        <li><strong>Descrizione</strong> (opzionale): spiegazione dettagliata di cosa fare nello step</li>
+                      </ul>
+                      <p>Clicca <strong>"Aggiungi Step"</strong> e ripeti per ogni passaggio della guida.</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 dark:border-gray-800 pt-5">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                      <span className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-xs font-bold flex items-center justify-center">4</span>
+                      Configura la modalita' di visualizzazione
+                    </h3>
+                    <div className="ml-8 space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                      <p>Nel pannello step, trovi le impostazioni di visualizzazione:</p>
+                      <ul className="list-disc list-inside ml-2 space-y-1">
+                        <li><strong>Solo Guida Nativa</strong>: mostra solo gli step creati qui, con indice laterale e step numerati</li>
+                        <li><strong>Solo Embed Guidde</strong>: mostra solo l'iframe interattivo di Guidde (serve l'URL embed)</li>
+                        <li><strong>Entrambi (tab)</strong>: il consulente puo' scegliere tra la guida nativa e quella interattiva Guidde</li>
+                      </ul>
+                      <p>Se hai un URL embed di Guidde, incollalo nel campo <strong>"Embed URL Guidde"</strong>.</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 dark:border-gray-800 pt-5">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                      <span className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-xs font-bold flex items-center justify-center">5</span>
+                      Verifica il risultato lato consulente
+                    </h3>
+                    <div className="ml-8 space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                      <p>Vai su <strong>/consultant/academy</strong> e apri la lezione a cui hai aggiunto gli step.</p>
+                      <p>Sotto la descrizione e i documenti vedrai la sezione <strong>"Guida Passo-Passo"</strong> con:</p>
+                      <ul className="list-disc list-inside ml-2 space-y-1">
+                        <li>Indice navigabile sulla sinistra (desktop) o a fisarmonica (mobile)</li>
+                        <li>Step numerati con cerchi colorati, timestamp e screenshot</li>
+                        <li>Se hai impostato "Entrambi", due tab per scegliere la vista</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 dark:border-gray-800 pt-5">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                      <span className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-white text-xs font-bold flex items-center justify-center">!</span>
+                      Test rapido consigliato
+                    </h3>
+                    <div className="ml-8 p-4 bg-green-50 dark:bg-green-950/20 rounded-xl border border-green-200 dark:border-green-900/30">
+                      <ol className="list-decimal list-inside space-y-2 text-sm text-green-800 dark:text-green-300">
+                        <li>Espandi il modulo <strong>"Setup Base"</strong> qui sotto</li>
+                        <li>Sulla prima lezione, clicca <strong>"Guide Step"</strong></li>
+                        <li>Clicca <strong>"Aggiungi Step Manualmente"</strong></li>
+                        <li>Titolo: <em>"Vai su Google AI Studio"</em>, Timestamp: <em>"00:05"</em>, Descrizione: <em>"Apri il browser e vai su aistudio.google.com"</em></li>
+                        <li>Clicca <strong>"Aggiungi Step"</strong>, poi aggiungi un secondo step: <em>"Crea una API Key"</em></li>
+                        <li>Apri <strong>/consultant/academy</strong> in un'altra tab e vai alla stessa lezione</li>
+                        <li>Vedrai la guida passo-passo apparire sotto il video!</li>
+                      </ol>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
           </div>
 
           {isLoading ? (
