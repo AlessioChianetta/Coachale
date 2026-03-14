@@ -4416,34 +4416,38 @@ Riscrivi l'inserzione DA ZERO in 4 versioni con angolazioni diverse.
 - Se usa emoji → usale anche tu (diverse ma stesso stile).
 - Usa \\n per righe a capo e \\n\\n per paragrafi separati.
 
+⚠️ REGOLA LUNGHEZZA (RIGOROSA):
+L'originale ha ${wordCount} parole. OGNI variante deve avere una lunghezza SIMILE: tra ${Math.round(wordCount * 0.8)} e ${Math.round(wordCount * 1.2)} parole nel body.
+NON fare varianti più corte dell'originale. Il lettore si aspetta un testo completo, non un riassunto.
+
 Le 4 angolazioni con STRUTTURA OBBLIGATORIA:
 
-1. ANGOLO PROBLEMA (80-120 parole nel body):
-   - Riga 1: domanda o affermazione che NOMINA il problema specifico del target
-   - Righe 2-3: amplifica la frustrazione con uno SCENARIO CONCRETO (giorno, ora, situazione specifica)
-   - Righe 4-5: agita la CONSEGUENZA (cosa succede se non risolvi — numeri, perdite, rischi)
-   - Righe 6+: pivot verso la soluzione — presenta l'offerta come via d'uscita
-   - CTA: imperativo diretto
+1. ANGOLO PROBLEMA (${Math.round(wordCount * 0.85)}-${Math.round(wordCount * 1.1)} parole nel body):
+   - Apri con una domanda o affermazione che NOMINA il problema specifico del target
+   - Amplifica la frustrazione con uno SCENARIO CONCRETO (giorno, ora, situazione specifica)
+   - Agita la CONSEGUENZA (cosa succede se non risolvi — numeri, perdite, rischi)
+   - Pivot verso la soluzione — presenta l'offerta come via d'uscita con dettagli specifici
+   - Chiudi con CTA imperativo diretto
 
-2. ANGOLO DESIDERIO (120-180 parole nel body):
-   - Riga 1: dipingi il RISULTATO FINALE — la vita dopo aver risolto il problema
-   - Righe 2-4: descrivi la GIORNATA TIPO del target dopo la trasformazione (dettagli sensoriali)
-   - Righe 5-7: spiega COME ci arrivi — il meccanismo, il processo, i passi
-   - Righe 8+: rendi concreto — numeri, tempi, risultati specifici
-   - CTA: invito al primo passo verso quel risultato
+2. ANGOLO DESIDERIO (${Math.round(wordCount * 0.9)}-${Math.round(wordCount * 1.15)} parole nel body):
+   - Apri dipingendo il RISULTATO FINALE — la vita dopo aver risolto il problema
+   - Descrivi la GIORNATA TIPO del target dopo la trasformazione (dettagli sensoriali)
+   - Spiega COME ci arrivi — il meccanismo, il processo, i passi concreti
+   - Rendi concreto con numeri, tempi, risultati specifici
+   - Chiudi con CTA: invito al primo passo verso quel risultato
 
-3. ANGOLO RIPROVA SOCIALE (150-220 parole nel body):
-   - Riga 1: RISULTATO SPECIFICO con numero (€, %, tempo)
-   - Righe 2-4: racconta la MINI-STORIA — chi era il cliente, da dove partiva, cosa non funzionava
-   - Righe 5-7: cosa è CAMBIATO — il momento di svolta, la decisione
-   - Righe 8+: i RISULTATI DOPO — numeri concreti, confronto prima/dopo
-   - CTA: leva sulla prova ("Vedi come hanno fatto" / "Scarica il caso studio")
+3. ANGOLO RIPROVA SOCIALE (${Math.round(wordCount * 0.95)}-${Math.round(wordCount * 1.2)} parole nel body):
+   - Apri con un RISULTATO SPECIFICO con numero (€, %, tempo)
+   - Racconta la MINI-STORIA — chi era il cliente, da dove partiva, cosa non funzionava
+   - Cosa è CAMBIATO — il momento di svolta, la decisione
+   - I RISULTATI DOPO — numeri concreti, confronto prima/dopo dettagliato
+   - Chiudi con CTA che leva sulla prova ("Vedi come hanno fatto" / "Scarica il caso studio")
 
-4. ANGOLO URGENZA (60-90 parole nel body):
-   - Riga 1: DEADLINE o SCARSITÀ esplicita
-   - Righe 2-3: COSTO DELL'INAZIONE — cosa perdi ogni giorno/settimana che aspetti
-   - Righe 4-5: l'offerta è DISPONIBILE ORA ma non per sempre
-   - CTA: urgenza esplicita con vincolo temporale
+4. ANGOLO URGENZA (${Math.round(wordCount * 0.8)}-${Math.round(wordCount * 1.0)} parole nel body):
+   - Apri con DEADLINE o SCARSITÀ esplicita
+   - COSTO DELL'INAZIONE — cosa perdi ogni giorno/settimana che aspetti, con numeri
+   - L'offerta è DISPONIBILE ORA ma non per sempre — spiega perché con dettagli concreti
+   - Chiudi con CTA con urgenza esplicita e vincolo temporale
 
 Ogni variante deve avere un TITOLO AD proprio (headline con beneficio concreto, max 40 caratteri).
 
@@ -4467,7 +4471,7 @@ RISPONDI SOLO con un JSON valido (nessun testo prima o dopo, nessuna analisi nel
       "angle": "problema",
       "title": "Headline max 40 char",
       "hook": "Hook provocatorio max 125 caratteri",
-      "body": "Testo completo 80-120 parole con \\n per a capo e \\n\\n per paragrafi",
+      "body": "Testo completo ~${wordCount} parole con \\n per a capo e \\n\\n per paragrafi separati",
       "cta": "Call to action diretta",
       "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
     },
@@ -4475,7 +4479,7 @@ RISPONDI SOLO con un JSON valido (nessun testo prima o dopo, nessuna analisi nel
       "angle": "desiderio",
       "title": "...",
       "hook": "...",
-      "body": "Testo completo 120-180 parole...",
+      "body": "Testo completo ~${wordCount} parole...",
       "cta": "...",
       "hashtags": ["..."]
     },
@@ -4483,7 +4487,7 @@ RISPONDI SOLO con un JSON valido (nessun testo prima o dopo, nessuna analisi nel
       "angle": "riprova_sociale",
       "title": "...",
       "hook": "...",
-      "body": "Testo completo 150-220 parole...",
+      "body": "Testo completo ~${wordCount} parole...",
       "cta": "...",
       "hashtags": ["..."]
     },
@@ -4491,7 +4495,7 @@ RISPONDI SOLO con un JSON valido (nessun testo prima o dopo, nessuna analisi nel
       "angle": "urgenza",
       "title": "...",
       "hook": "...",
-      "body": "Testo completo 60-90 parole...",
+      "body": "Testo completo ~${wordCount} parole...",
       "cta": "...",
       "hashtags": ["..."]
     }
@@ -4508,7 +4512,7 @@ RISPONDI SOLO con un JSON valido (nessun testo prima o dopo, nessuna analisi nel
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 12288,
+        maxOutputTokens: 16384,
         ...(useThinking && { thinkingConfig: { thinkingBudget: 8192 } }),
       },
     } as any, { consultantId, feature: 'ad-copy-variants', callerRole: 'consultant' });
