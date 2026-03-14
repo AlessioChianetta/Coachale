@@ -39,6 +39,7 @@ import {
   RefreshCw,
   HardDrive,
 } from "lucide-react";
+import { StepByStepGuide } from "@/components/academy/StepByStepGuide";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { getAuthHeaders } from "@/lib/auth";
