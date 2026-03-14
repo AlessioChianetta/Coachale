@@ -158,6 +158,7 @@ export default function AdminAcademy() {
   const [deleteState, setDeleteState] = useState<DeleteState | null>(null);
   const [showStepManager, setShowStepManager] = useState<string | null>(null);
   const [guiddeHtml, setGuiddeHtml] = useState("");
+  const [guiddeEditorKey, setGuiddeEditorKey] = useState(0);
   const [stepForm, setStepForm] = useState({ title: "", description: "", timestamp: "", screenshot_url: "" });
   const [showAddStep, setShowAddStep] = useState(false);
   const [showGuideHelp, setShowGuideHelp] = useState(false);
@@ -348,7 +349,7 @@ export default function AdminAcademy() {
         const mergeData = await mergeRes.json();
         if (!mergeData.success) throw new Error(mergeData.error);
         queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
-        setGuiddeHtml("");
+        setGuiddeHtml(""); setGuiddeEditorKey(k => k + 1);
         toast({ title: "Step aggiornati!", description: `${mergeData.updatedCount} screenshot aggiornati, ${mergeData.addedCount} nuovi step aggiunti` });
       } else {
         const bulkRes = await fetch(`${API_BASE}/admin/lessons/${lessonId}/steps/bulk`, {
@@ -360,7 +361,7 @@ export default function AdminAcademy() {
         if (!bulkData.success) throw new Error(bulkData.error);
         insertedSteps = bulkData.data || [];
         queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
-        setGuiddeHtml("");
+        setGuiddeHtml(""); setGuiddeEditorKey(k => k + 1);
         const screenshotsCount = steps.filter((s: any) => s.screenshot_url).length;
         const videoProvided = guiddeVideoUrl.trim().startsWith('http');
         toast({
@@ -1093,7 +1094,7 @@ export default function AdminAcademy() {
                                         </div>
                                         <div className="relative mb-2">
                                           <div
-                                            key={guiddeHtml ? "filled" : "empty"}
+                                            key={guiddeEditorKey}
                                             contentEditable
                                             suppressContentEditableWarning
                                             className="min-h-[60px] max-h-[120px] overflow-y-auto p-2 text-sm rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-2 focus:ring-ring text-gray-700 dark:text-gray-200"
@@ -1148,7 +1149,7 @@ export default function AdminAcademy() {
                                             </Button>
                                           )}
                                           {guiddeHtml && (
-                                            <Button size="sm" variant="ghost" onClick={() => { setGuiddeHtml(""); }} className="h-9 px-2 text-xs">
+                                            <Button size="sm" variant="ghost" onClick={() => { setGuiddeHtml(""); setGuiddeEditorKey(k => k + 1); }} className="h-9 px-2 text-xs">
                                               <X size={12} />
                                             </Button>
                                           )}
