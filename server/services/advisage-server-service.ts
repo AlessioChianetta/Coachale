@@ -305,8 +305,6 @@ STRUTTURA TESTI INSERZIONE (socialCaptions):
 - Riprova sociale, scarcity/urgency se pertinente.
 - CTA chiara e diretta. Titolo < 125 caratteri.
 
-${FRANK_MERENDA_CONVERSION_STRATEGIES}
-
 ${conceptTypeInstructions}
 
 ═══════════════════════════════════════════════════
@@ -350,6 +348,13 @@ Struttura promptVisual:
   "colori_brand": "colori predominanti da usare",
   "note_aggiuntive": "qualsiasi dettaglio extra per la resa visiva"
 }
+
+═══════════════════════════════════════════════════
+📚 METODOLOGIA DI RIFERIMENTO — APPLICA MA NON INCLUDERE NELL'OUTPUT JSON
+Usa questi principi per arricchire description, textContent, reasoning e socialCaptions.
+Non citare la metodologia nell'output — incorpora i principi silenziosamente nei contenuti.
+═══════════════════════════════════════════════════
+${FRANK_MERENDA_CONVERSION_STRATEGIES}
 
 ═══════════════════════════════════════════════════
 OUTPUT JSON VALIDO — TUTTO IN ITALIANO:
