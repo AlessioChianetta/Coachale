@@ -3508,6 +3508,31 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                                 <Sparkles className="h-4 w-4 text-indigo-500" />
                                 Varianti Meta Ad ({editVariants.length})
                               </h4>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  disabled={editVariantIdx === 0}
+                                  onClick={() => setEditVariantIdx(editVariantIdx - 1)}
+                                  type="button"
+                                >
+                                  <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <span className="text-xs text-muted-foreground min-w-[3rem] text-center">
+                                  {editVariantIdx + 1} / {editVariants.length}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  disabled={editVariantIdx >= editVariants.length - 1}
+                                  onClick={() => setEditVariantIdx(editVariantIdx + 1)}
+                                  type="button"
+                                >
+                                  <ChevronRight className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                             <div className="flex gap-1.5 flex-wrap">
                               {editVariants.map((v, idx) => {
@@ -5254,6 +5279,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                           const safeIdx = Math.min(activeVariantIdx, variants.length - 1);
                           const activeV = variants[safeIdx];
                           const variantOverlay = activeV && safeIdx > 0 ? {
+                            title: activeV.title,
                             body: activeV.body,
                             hook: activeV.hook,
                             cta: activeV.cta,
