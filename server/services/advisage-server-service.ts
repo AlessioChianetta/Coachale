@@ -3,6 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { db } from "../db";
 import * as schema from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { FRANK_MERENDA_CONVERSION_STRATEGIES } from "../data/marketing-frameworks";
 
 export interface AdvisageSettings {
   mood: 'professional' | 'energetic' | 'luxury' | 'minimalist' | 'playful';
@@ -303,6 +304,8 @@ STRUTTURA TESTI INSERZIONE (socialCaptions):
 - Elenchi puntati per USP. Paragrafi brevi.
 - Riprova sociale, scarcity/urgency se pertinente.
 - CTA chiara e diretta. Titolo < 125 caratteri.
+
+${FRANK_MERENDA_CONVERSION_STRATEGIES}
 
 ${conceptTypeInstructions}
 
