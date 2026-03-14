@@ -3072,19 +3072,19 @@ router.post("/ai/generate-ad-variants", authenticateToken, requireRole("consulta
     }
 
     const structured = (post.structuredContent || {}) as Record<string, any>;
-    const originalBody = post.fullCopy || structured.fullCopy || structured.body || post.body || "";
-    const originalHook = structured.hook || post.hook || "";
-    const originalCta = structured.cta || post.cta || "";
+    const fullCopyText = post.fullCopy || structured.fullCopy || structured.body || post.body || "";
     const originalTitle = post.title || "";
 
     console.log(`🤖 [CONTENT-AI] Generating 4 ad copy variants for post ${postId}`);
+    console.log(`📝 [CONTENT-AI] Titolo: ${originalTitle}`);
+    console.log(`📝 [CONTENT-AI] Copy completo (${fullCopyText.length} chars):\n${fullCopyText}`);
 
     const result = await generateAdCopyVariants({
       consultantId,
       originalTitle,
-      originalBody,
-      originalHook,
-      originalCta,
+      originalBody: fullCopyText,
+      originalHook: "",
+      originalCta: "",
       platform: post.platform || "facebook",
     });
 

@@ -4302,12 +4302,11 @@ ${FRANK_MERENDA_FRAMEWORK}
 ═══════════════════════════════════════════════════════════════
 INSERZIONE ORIGINALE DA CUI PARTIRE:
 ═══════════════════════════════════════════════════════════════
-TITOLO AD: ${originalTitle || "(nessun titolo)"}
-HOOK: ${originalHook || "(nessun hook)"}
+TITOLO: ${originalTitle || "(nessun titolo)"}
 
+COPY COMPLETO:
 ${originalBody || "(nessun corpo)"}
 
-CTA: ${originalCta || "(nessuna CTA)"}
 PIATTAFORMA: ${platform || "facebook"}
 ═══════════════════════════════════════════════════════════════
 
