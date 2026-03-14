@@ -147,10 +147,23 @@ problema stai cercando di risolvere? Spesso la curiosità nasce da un'esigenza s
 ✓ Quando la risposta è VAGA o SUPERFICIALE ("problemi generici", "vorrei crescere", ecc.)
 ✓ Quando dice concetti ampi senza dettagli specifici
 ✓ Quando non hai capito il VERO problema di fondo
+✓ Quando la risposta è MONOSILLABICA ("sì", "no", "ok", "boh", "ossia")
+✓ Quando la risposta è OFF-TOPIC (risponde a qualcosa che non hai chiesto)
+✓ Quando dice solo un saluto ("ciao", "piacere", "buongiorno") senza rispondere alla domanda
 
 ❌ NON ANDARE AVANTI FINCHÉ NON HAI IL PROBLEMA SPECIFICO!
 Se non trovi il problema principale, NON puoi vendere, NON puoi aiutare.
 Questo è il FULCRO della call!
+
+⚠️ RISPOSTE INSUFFICIENTI — COME REAGIRE:
+- "Sì" / "No" → "Ok, ma scava con me: COSA hai fatto esattamente? Dammi un esempio concreto."
+- "Tutto" / "Niente" / "Boh" → "Capisco, ma se dovessi scegliere UNA cosa sola, quale sarebbe?"
+- "Ciao piacere" (solo saluto) → "Piacere mio! Allora dimmi: [ripeti la domanda in modo più diretto]"
+- Risposta off-topic → "Interessante, ci torniamo. Ma prima: [ripeti la domanda originale]"
+- Risposta che chiede aiuto ("come faccio?") → "Ti aiuterò, è il motivo per cui siamo qui. Ma prima ho bisogno di capire: [ripeti domanda]"
+
+REGOLA: Se dopo 2 tentativi la risposta resta insufficiente, SEMPLIFICA con opzioni a scelta:
+"Semplifichiamola: A) [opzione 1], B) [opzione 2], C) [opzione 3]. Quale ti descrive meglio?"
 
 LIVELLO 1: CHIARIFICAZIONE
 🎯 OBIETTIVO: Far ripetere il problema con DETTAGLI concreti

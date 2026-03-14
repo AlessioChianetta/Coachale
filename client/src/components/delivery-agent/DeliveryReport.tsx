@@ -48,6 +48,41 @@ interface DiagnosticTableRow {
   nota: string;
 }
 
+interface ScorecardItem {
+  area: string;
+  voto: number;
+  punti_forza: string[];
+  criticita: string[];
+  azione_prioritaria: string;
+}
+
+interface TestiPronti {
+  messaggio_whatsapp?: string | null;
+  email_template?: string | null;
+  script_chiamata?: string | null;
+}
+
+interface CampagnaAd {
+  nome_campagna: string;
+  formato: string;
+  piattaforma: string;
+  obiettivo_campagna: string;
+  target_pubblico?: {
+    eta?: string;
+    genere?: string;
+    interessi?: string[];
+    comportamenti?: string;
+    localita?: string;
+  };
+  headline: string;
+  copy_completo: string;
+  cta_button: string;
+  budget_giornaliero: string;
+  durata_test: string;
+  brief_visivo: string;
+  kpi_attesi: string;
+}
+
 interface RoadmapPhase {
   titolo: string;
   pacchetti_coinvolti: string[];
@@ -101,6 +136,7 @@ interface ReportData {
     gap_analysis?: string;
     key_challenges?: string[];
     diagnostic_table?: DiagnosticTableRow[];
+    scorecard?: ScorecardItem[];
     key_insight?: string;
   };
   recommended_packages?: RecommendedPackage[];
@@ -126,7 +162,9 @@ interface ReportData {
     descrizione: string;
     tempo: string;
     impatto: string;
+    testi_pronti?: TestiPronti;
   }>;
+  campagne_ads?: CampagnaAd[];
   honest_warning?: string;
   closing_message?: string;
 }
@@ -157,7 +195,40 @@ function normalizeReport(raw: any): ReportData {
       descrizione: a.descrizione || a.description || '',
       tempo: a.tempo || a.time || '',
       impatto: a.impatto || a.impact || '',
+      testi_pronti: a.testi_pronti ? {
+        messaggio_whatsapp: a.testi_pronti.messaggio_whatsapp || null,
+        email_template: a.testi_pronti.email_template || null,
+        script_chiamata: a.testi_pronti.script_chiamata || null,
+      } : undefined,
     }));
+  }
+
+  const ads = raw.campagne_ads_pronte || raw.campagne_ads;
+  if (ads && Array.isArray(ads)) {
+    result.campagne_ads = ads.map((ad: any) => {
+      const tp = ad.target_pubblico;
+      const normalizedTarget = tp && typeof tp === 'object' ? {
+        eta: tp.eta || tp.età || '',
+        genere: tp.genere || '',
+        interessi: Array.isArray(tp.interessi) ? tp.interessi : (typeof tp.interessi === 'string' ? [tp.interessi] : []),
+        comportamenti: tp.comportamenti || '',
+        localita: tp.localita || tp.località || '',
+      } : undefined;
+      return {
+        nome_campagna: ad.nome_campagna || ad.nome || '',
+        formato: ad.formato || '',
+        piattaforma: ad.piattaforma || '',
+        obiettivo_campagna: ad.obiettivo_campagna || ad.obiettivo || '',
+        target_pubblico: normalizedTarget,
+        headline: ad.headline || '',
+        copy_completo: ad.copy_completo || ad.copy || '',
+        cta_button: ad.cta_button || ad.cta || '',
+        budget_giornaliero: ad.budget_giornaliero || ad.budget || '',
+        durata_test: ad.durata_test || '',
+        brief_visivo: ad.brief_visivo || '',
+        kpi_attesi: ad.kpi_attesi || '',
+      };
+    });
   }
 
   if (p) {
@@ -198,6 +269,16 @@ function normalizeReport(raw: any): ReportData {
         stato: row.stato || row.status || '',
         impatto: row.impatto || row.impact || 'medio',
         nota: row.nota || row.note || '',
+      }));
+    }
+    const sc = d.scorecard;
+    if (sc && Array.isArray(sc)) {
+      result.diagnosis.scorecard = sc.map((item: any) => ({
+        area: item.area || '',
+        voto: typeof item.voto === 'number' ? item.voto : (typeof item.score === 'number' ? item.score : Number(item.voto || item.score) || 0),
+        punti_forza: Array.isArray(item.punti_forza) ? item.punti_forza : (typeof item.punti_forza === 'string' ? [item.punti_forza] : []),
+        criticita: Array.isArray(item.criticita) ? item.criticita : (typeof item.criticita === 'string' ? [item.criticita] : []),
+        azione_prioritaria: item.azione_prioritaria || item.azione || '',
       }));
     }
   }
@@ -656,6 +737,7 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
     let n = (report.recommended_packages?.length || 0) + 3;
     if (report.roadmap) { chapters.push({ id: "roadmap", number: String(n).padStart(2, '0'), title: "Roadmap", subtitle: "Fase per fase" }); n++; }
     if (report.flow_description) { chapters.push({ id: "flusso", number: String(n).padStart(2, '0'), title: "Come gira il sistema", subtitle: "Il quadro completo" }); n++; }
+    if (report.campagne_ads?.length) { chapters.push({ id: "campagne", number: String(n).padStart(2, '0'), title: "Campagne Ads Pronte", subtitle: `${report.campagne_ads.length} inserzioni` }); n++; }
     if (report.quick_wins?.length) { chapters.push({ id: "quickwins", number: String(n).padStart(2, '0'), title: "Quick Wins", subtitle: `${report.quick_wins.length} azioni rapide` }); n++; }
     if (report.success_signals?.length || report.success_metrics?.length) { chapters.push({ id: "segnali", number: String(n).padStart(2, '0'), title: "Come sai che funziona", subtitle: "Segnali concreti" }); n++; }
     if (report.honest_warning || report.priority_actions?.length) { chapters.push({ id: "avvertimento", number: String(n).padStart(2, '0'), title: "Cosa devi sapere", subtitle: "Avvertimento onesto" }); n++; }
@@ -1027,6 +1109,63 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                     </div>
                   )}
 
+                  {report.diagnosis.scorecard && report.diagnosis.scorecard.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-4">Scorecard per area</p>
+                      <div className="grid gap-4">
+                        {report.diagnosis.scorecard.map((item, i) => {
+                          const votoColor = item.voto >= 7 ? "text-emerald-600 border-emerald-400" : item.voto >= 4 ? "text-amber-600 border-amber-400" : "text-red-600 border-red-400";
+                          const bgColor = item.voto >= 7 ? "bg-emerald-50/50 dark:bg-emerald-950/20" : item.voto >= 4 ? "bg-amber-50/50 dark:bg-amber-950/20" : "bg-red-50/50 dark:bg-red-950/20";
+                          return (
+                            <div key={i} className={cn("rounded-lg border border-border/50 p-4", bgColor)}>
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-semibold text-sm text-foreground">{item.area}</h4>
+                                <div className={cn("w-9 h-9 rounded-full border-2 flex flex-col items-center justify-center flex-shrink-0", votoColor)}>
+                                  <span className="text-sm font-bold leading-none">{item.voto}</span>
+                                  <span className="text-[7px] text-muted-foreground">/10</span>
+                                </div>
+                              </div>
+                              <div className="grid md:grid-cols-2 gap-3 mb-3">
+                                {item.punti_forza.length > 0 && (
+                                  <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70 mb-1.5">Punti di forza</p>
+                                    <ul className="space-y-1">
+                                      {item.punti_forza.map((pf, j) => (
+                                        <li key={j} className="text-xs text-foreground/75 leading-relaxed flex items-start gap-1.5">
+                                          <CheckCircle2 className="w-3 h-3 text-emerald-500 mt-0.5 flex-shrink-0" />
+                                          <span>{pf}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                {item.criticita.length > 0 && (
+                                  <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-red-600/70 dark:text-red-400/70 mb-1.5">Criticità</p>
+                                    <ul className="space-y-1">
+                                      {item.criticita.map((cr, j) => (
+                                        <li key={j} className="text-xs text-foreground/75 leading-relaxed flex items-start gap-1.5">
+                                          <AlertTriangle className="w-3 h-3 text-red-500 mt-0.5 flex-shrink-0" />
+                                          <span>{cr}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                              {item.azione_prioritaria && (
+                                <div className="flex items-start gap-2 pt-2 border-t border-border/30">
+                                  <Zap className="w-3.5 h-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+                                  <p className="text-xs text-foreground/80 leading-relaxed">{item.azione_prioritaria}</p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {report.diagnosis.key_challenges && report.diagnosis.key_challenges.length > 0 && (
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3">Le sfide concrete</p>
@@ -1220,6 +1359,91 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
               </section>
             )}
 
+            {/* ── Campagne Ads Pronte ── */}
+            {report.campagne_ads && report.campagne_ads.length > 0 && (
+              <section id="campagne" ref={setChapterRef("campagne")} className="mb-10 sm:mb-14 print:break-before-page">
+                <SectionTitle
+                  number={chapters.find(c => c.id === 'campagne')?.number}
+                  title="Campagne Ads Pronte"
+                  subtitle="Inserzioni complete — copia e pubblica"
+                />
+                <div className="space-y-8">
+                  {report.campagne_ads.map((ad, i) => (
+                    <div key={i} className="rounded-lg border border-border/50 overflow-hidden print:break-inside-avoid">
+                      <div className="bg-muted/30 px-5 py-3 border-b border-border/40">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-sm text-foreground">{ad.nome_campagna}</h4>
+                            <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
+                              <span>{ad.piattaforma}</span>
+                              <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                              <span>{ad.formato}</span>
+                              <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                              <span>{ad.obiettivo_campagna}</span>
+                            </div>
+                          </div>
+                          <div className="text-right text-[11px] text-muted-foreground">
+                            <div className="font-semibold text-foreground">{ad.budget_giornaliero}</div>
+                            <div>{ad.durata_test}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-5 space-y-4">
+                        {ad.target_pubblico && (
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">Target</p>
+                            <div className="flex flex-wrap gap-2 text-xs text-foreground/75">
+                              {ad.target_pubblico.eta && <span className="bg-muted/50 px-2 py-1 rounded">Età: {ad.target_pubblico.eta}</span>}
+                              {ad.target_pubblico.genere && <span className="bg-muted/50 px-2 py-1 rounded">{ad.target_pubblico.genere}</span>}
+                              {ad.target_pubblico.localita && <span className="bg-muted/50 px-2 py-1 rounded">{ad.target_pubblico.localita}</span>}
+                              {ad.target_pubblico.interessi?.map((int, j) => (
+                                <span key={j} className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">{int}</span>
+                              ))}
+                            </div>
+                            {ad.target_pubblico.comportamenti && (
+                              <p className="text-xs text-muted-foreground mt-1.5">{ad.target_pubblico.comportamenti}</p>
+                            )}
+                          </div>
+                        )}
+
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">Headline</p>
+                          <p className="text-sm font-semibold text-foreground">{ad.headline}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">Copy completo</p>
+                          <div className="bg-muted/30 border border-border/40 rounded-lg px-4 py-3">
+                            <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">{ad.copy_completo}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">CTA</p>
+                            <span className="inline-block bg-foreground text-background text-xs font-semibold px-3 py-1.5 rounded">{ad.cta_button}</span>
+                          </div>
+                          {ad.kpi_attesi && (
+                            <div className="flex-1">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">KPI attesi</p>
+                              <p className="text-xs text-foreground/75">{ad.kpi_attesi}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {ad.brief_visivo && (
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">Brief visivo</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed italic">{ad.brief_visivo}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* ── Quick Wins ── */}
             {report.quick_wins && report.quick_wins.length > 0 && (
               <section id="quickwins" ref={setChapterRef("quickwins")} className="mb-10 sm:mb-14 print:break-before-page">
@@ -1374,16 +1598,53 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-4">Le 3 azioni di questa settimana</p>
                     <div className="space-y-5">
                       {report.priority_actions.map((action, i) => (
-                        <div key={i} className="flex gap-4 print:break-inside-avoid">
-                          <span className="text-[10px] font-bold text-muted-foreground/30 mt-1 w-4 flex-shrink-0">{i + 1}</span>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-sm text-foreground mb-1">{action.titolo}</h4>
-                            <p className="text-sm text-foreground/75 leading-relaxed mb-2">
-                              <RichText text={action.descrizione} />
-                            </p>
-                            <div className="flex gap-4 text-xs text-muted-foreground">
-                              {action.tempo && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{action.tempo}</span>}
-                              {action.impatto && <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3 text-emerald-500" />{action.impatto}</span>}
+                        <div key={i} className="print:break-inside-avoid">
+                          <div className="flex gap-4">
+                            <span className="text-[10px] font-bold text-muted-foreground/30 mt-1 w-4 flex-shrink-0">{i + 1}</span>
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-sm text-foreground mb-1">{action.titolo}</h4>
+                              <p className="text-sm text-foreground/75 leading-relaxed mb-2">
+                                <RichText text={action.descrizione} />
+                              </p>
+                              <div className="flex gap-4 text-xs text-muted-foreground mb-3">
+                                {action.tempo && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{action.tempo}</span>}
+                                {action.impatto && <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3 text-emerald-500" />{action.impatto}</span>}
+                              </div>
+                              {action.testi_pronti && (action.testi_pronti.messaggio_whatsapp || action.testi_pronti.email_template || action.testi_pronti.script_chiamata) && (
+                                <div className="space-y-3 mt-3 pt-3 border-t border-border/30">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Testi pronti da copiare</p>
+                                  {action.testi_pronti.messaggio_whatsapp && (
+                                    <div>
+                                      <div className="flex items-center gap-1.5 mb-1.5">
+                                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">WhatsApp</span>
+                                      </div>
+                                      <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 rounded-lg px-4 py-3">
+                                        <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">{action.testi_pronti.messaggio_whatsapp}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {action.testi_pronti.email_template && (
+                                    <div>
+                                      <div className="flex items-center gap-1.5 mb-1.5">
+                                        <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">Email</span>
+                                      </div>
+                                      <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/30 rounded-lg px-4 py-3">
+                                        <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">{action.testi_pronti.email_template}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {action.testi_pronti.script_chiamata && (
+                                    <div>
+                                      <div className="flex items-center gap-1.5 mb-1.5">
+                                        <span className="text-[10px] font-semibold text-violet-600 dark:text-violet-400">Script Chiamata</span>
+                                      </div>
+                                      <div className="bg-violet-50/50 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-800/30 rounded-lg px-4 py-3">
+                                        <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">{action.testi_pronti.script_chiamata}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
