@@ -634,13 +634,72 @@ router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (
         const descMatch = block.match(/css-1vyj9vp">([^<]+)<\/h6>/);
         const description = descMatch ? descMatch[1].trim() : '';
 
-        const imgMatch = block.match(/quickguiddeScreenshots_([^"]+?)_doc\.(png|jpg|webp)/);
         let screenshotUrl = '';
-        if (imgMatch) {
-          screenshotUrl = reconstructGuiddeScreenshotUrl(`quickguiddeScreenshots_${imgMatch[1]}_doc.${imgMatch[2]}`);
+        const firebaseImgMatch = block.match(/<img[^>]+src="(https:\/\/firebasestorage\.googleapis\.com[^"]+quickguiddeScreenshots[^"]+)"/i);
+        if (firebaseImgMatch) {
+          screenshotUrl = firebaseImgMatch[1];
+        }
+        if (!screenshotUrl) {
+          const cdnImgMatch = block.match(/<img[^>]+src="(https:\/\/[^"]*guidde[^"]*screenshot[^"]+)"/i);
+          if (cdnImgMatch) screenshotUrl = cdnImgMatch[1];
+        }
+        if (!screenshotUrl) {
+          const savedImgMatch = block.match(/quickguiddeScreenshots_([^"'\s]+?)_doc\.(png|jpg|webp)/);
+          if (savedImgMatch) {
+            screenshotUrl = reconstructGuiddeScreenshotUrl(`quickguiddeScreenshots_${savedImgMatch[1]}_doc.${savedImgMatch[2]}`);
+          }
+        }
+        if (!screenshotUrl) {
+          const encodedImgMatch = block.match(/<img[^>]+src="(https:\/\/[^"]*quickguiddeScreenshots%2F[^"]+)"/i);
+          if (encodedImgMatch) screenshotUrl = encodedImgMatch[1];
+        }
+        if (!screenshotUrl) {
+          const anyImgMatch = block.match(/<img[^>]+src="(https:\/\/[^"]+\.(png|jpg|jpeg|webp)[^"]*)"/i);
+          if (anyImgMatch) screenshotUrl = anyImgMatch[1];
         }
 
         steps.push({ step_number: stepNum, timestamp: '', title, description, screenshot_url: screenshotUrl || undefined });
+      }
+    }
+
+    if (steps.length > 0 && steps.every(s => !s.screenshot_url)) {
+      const allDocImgs: string[] = [];
+      const globalFirebaseRegex = /<img[^>]+src="(https:\/\/firebasestorage\.googleapis\.com[^"]+)"/gi;
+      let gfMatch;
+      while ((gfMatch = globalFirebaseRegex.exec(html)) !== null) {
+        if (gfMatch[1].includes('doc.png') || gfMatch[1].includes('doc.webp') || gfMatch[1].includes('doc.jpg')) {
+          allDocImgs.push(gfMatch[1]);
+        }
+      }
+      if (allDocImgs.length === 0) {
+        const globalSavedRegex = /quickguiddeScreenshots_([^"]+?)_doc\.(png|jpg|webp)/g;
+        let gsMatch;
+        while ((gsMatch = globalSavedRegex.exec(html)) !== null) {
+          const url = reconstructGuiddeScreenshotUrl(`quickguiddeScreenshots_${gsMatch[1]}_doc.${gsMatch[2]}`);
+          if (url) allDocImgs.push(url);
+        }
+      }
+      if (allDocImgs.length === 0) {
+        const globalEncodedRegex = /<img[^>]+src="(https:\/\/[^"]*quickguiddeScreenshots%2F[^"]+doc\.[^"]+)"/gi;
+        let geMatch;
+        while ((geMatch = globalEncodedRegex.exec(html)) !== null) {
+          allDocImgs.push(geMatch[1]);
+        }
+      }
+      if (allDocImgs.length === 0) {
+        const allImgRegex = /<img[^>]+src="(https:\/\/[^"]+\.(png|jpg|jpeg|webp)[^"]*)"/gi;
+        let aiMatch;
+        while ((aiMatch = allImgRegex.exec(html)) !== null) {
+          if (!aiMatch[1].includes('logo') && !aiMatch[1].includes('favicon') && !aiMatch[1].includes('avatar')) {
+            allDocImgs.push(aiMatch[1]);
+          }
+        }
+      }
+      if (allDocImgs.length > 0) {
+        console.log(`[Academy] Fallback: found ${allDocImgs.length} doc images globally, assigning to ${steps.length} steps`);
+        for (let i = 0; i < steps.length && i < allDocImgs.length; i++) {
+          steps[i].screenshot_url = allDocImgs[i];
+        }
       }
     }
 
@@ -682,6 +741,14 @@ router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (
 
     const screenshotsFound = steps.filter(s => s.screenshot_url).length;
     console.log(`[Academy] Parsed Guidde HTML: ${steps.length} steps, ${screenshotsFound} screenshots, embedUrl: ${embedUrl ? 'yes' : 'no'}`);
+    if (steps.length > 0 && screenshotsFound === 0) {
+      const allImgTags = html.match(/<img[^>]+src="([^"]+)"/gi);
+      const allQuickguidde = html.match(/quickguiddeScreenshots/gi);
+      console.log(`[Academy] DEBUG no screenshots: total <img> in html: ${allImgTags?.length || 0}, quickguiddeScreenshots mentions: ${allQuickguidde?.length || 0}`);
+      if (allImgTags && allImgTags.length > 0) {
+        console.log(`[Academy] DEBUG first img:`, allImgTags[0].substring(0, 150));
+      }
+    }
 
     res.json({ success: true, data: { embedUrl, steps, screenshotsFound } });
   } catch (err: any) {
