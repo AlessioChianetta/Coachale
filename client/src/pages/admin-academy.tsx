@@ -37,6 +37,7 @@ import {
   HelpCircle,
   Info,
   RefreshCw,
+  Upload,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -1543,28 +1544,50 @@ export default function AdminAcademy() {
                   {stepsWithoutScreenshots.length > 0 && stepsWithRemoteScreenshots.length === 0 && stepsWithLocalScreenshots.length === 0 && (
                     <div className="p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 space-y-2">
                       <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                        Gli step non hanno URL screenshot. Incolla il sorgente pagina Guidde (Ctrl+U) qui sotto per aggiornare gli screenshot:
+                        Gli step non hanno screenshot. Apri la guida Guidde, salva ogni screenshot (tasto destro → Salva immagine), poi caricali qui in ordine:
                       </p>
-                      <Textarea
-                        value={guiddeHtml}
-                        onChange={e => setGuiddeHtml(e.target.value)}
-                        placeholder="Incolla qui il sorgente pagina Guidde..."
-                        rows={2}
-                        className="text-xs rounded-md"
-                      />
-                      {guiddeHtml.trim() && (
-                        <Button
-                          size="sm"
-                          onClick={async () => {
-                            if (!downloadModal) return;
-                            await handleParseGuidde(downloadModal.lessonId, "update");
-                            queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
-                          }}
-                          className="h-8 px-3 text-xs rounded-md bg-amber-600 hover:bg-amber-700 text-white"
-                        >
-                          <RefreshCw size={11} className="mr-1.5" /> Aggiorna screenshot dagli step
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <label className="flex-1 cursor-pointer">
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            className="hidden"
+                            disabled={downloadProgress.status === "downloading"}
+                            onChange={async (e) => {
+                              const files = e.target.files;
+                              if (!files || files.length === 0 || !downloadModal) return;
+                              const formData = new FormData();
+                              const sortedFiles = Array.from(files).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+                              sortedFiles.forEach(f => formData.append('screenshots', f));
+                              try {
+                                setDownloadProgress(prev => ({ ...prev, status: "downloading" }));
+                                const res = await fetch(`${API_BASE}/admin/lessons/${downloadModal.lessonId}/upload-screenshots`, {
+                                  method: "POST",
+                                  headers: { ...getAuthHeaders() },
+                                  body: formData,
+                                });
+                                const data = await res.json();
+                                if (!data.success) throw new Error(data.error);
+                                queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
+                                setDownloadProgress(prev => ({ ...prev, status: "done", screenshotsDone: data.uploaded, screenshotsTotal: data.totalSteps }));
+                                toast({ title: "Screenshot caricati!", description: `${data.uploaded} screenshot associati a ${data.totalSteps} step` });
+                              } catch (err: any) {
+                                setDownloadProgress(prev => ({ ...prev, status: "error" }));
+                                toast({ title: "Errore upload", description: err.message, variant: "destructive" });
+                              }
+                              e.target.value = '';
+                            }}
+                          />
+                          <div className="flex items-center justify-center gap-2 h-9 px-4 text-xs rounded-md border-2 border-dashed border-amber-300 dark:border-amber-700 hover:border-amber-400 dark:hover:border-amber-600 hover:bg-amber-50/50 dark:hover:bg-amber-900/30 transition-colors">
+                            <Upload size={13} />
+                            <span>Carica screenshot ({stepsWithoutScreenshots.length} immagini)</span>
+                          </div>
+                        </label>
+                      </div>
+                      <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70">
+                        Seleziona le immagini in ordine (step 1, 2, 3...). I file vengono ordinati per nome automaticamente.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1646,13 +1669,13 @@ export default function AdminAcademy() {
             {downloadProgress.status !== "done" && (
               <Button
                 onClick={() => downloadModal && handleDownloadMedia(downloadModal.lessonId)}
-                disabled={downloadProgress.status === "downloading" || (!downloadVideoUrl.trim().startsWith('http') && !(modules.flatMap(m => m.lessons).find(l => l.id === downloadModal?.lessonId)?.steps || []).some(s => s.screenshot_url && s.screenshot_url.startsWith('http')))}
+                disabled={downloadProgress.status === "downloading" || !downloadVideoUrl.trim().startsWith('http')}
                 className="bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white"
               >
                 {downloadProgress.status === "downloading" ? (
                   <><Loader2 size={14} className="mr-1.5 animate-spin" /> Scaricamento...</>
                 ) : (
-                  <><Film size={14} className="mr-1.5" /> Avvia download</>
+                  <><Film size={14} className="mr-1.5" /> Scarica video</>
                 )}
               </Button>
             )}

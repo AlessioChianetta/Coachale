@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import multer from 'multer';
 
 const router = Router();
 
@@ -1044,6 +1045,55 @@ router.post('/admin/lessons/:lessonId/download-media', authenticateToken, requir
     res.json({ success: true, data: results });
   } catch (err: any) {
     console.error('[Academy] Download media error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+const screenshotUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, _file, cb) => {
+      const lessonId = (req as any).params.lessonId;
+      const dir = path.join('uploads', 'academy', lessonId);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname) || '.png';
+      cb(null, `step_${randomUUID().slice(0, 8)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024, files: 50 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Solo immagini consentite'));
+  },
+});
+
+router.post('/admin/lessons/:lessonId/upload-screenshots', authenticateToken, requireSuperAdmin, screenshotUpload.array('screenshots', 50), async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nessun file caricato' });
+    }
+
+    const stepsResult = await db.execute(sql`SELECT * FROM academy_lesson_steps WHERE lesson_id = ${lessonId} ORDER BY sort_order, step_number`);
+    const steps = stepsResult.rows as any[];
+
+    const results: Array<{ step_id: string; step_number: number; filename: string; localUrl: string }> = [];
+
+    for (let i = 0; i < files.length && i < steps.length; i++) {
+      const file = files[i];
+      const step = steps[i];
+      const localUrl = `/uploads/academy/${lessonId}/${file.filename}`;
+      await db.execute(sql`UPDATE academy_lesson_steps SET screenshot_url = ${localUrl} WHERE id = ${step.id}`);
+      results.push({ step_id: step.id, step_number: step.step_number, filename: file.filename, localUrl });
+    }
+
+    console.log(`[Academy] Uploaded ${results.length} screenshots for lesson ${lessonId}`);
+    res.json({ success: true, data: results, uploaded: results.length, totalSteps: steps.length });
+  } catch (err: any) {
+    console.error('[Academy] Upload screenshots error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
