@@ -130,7 +130,7 @@ const MODULE_GRADIENT: Record<string, string> = {
 };
 
 interface DeleteState {
-  type: "module" | "lesson" | "document" | "video";
+  type: "module" | "lesson" | "document" | "video" | "all-steps" | "local-media";
   id: string;
   name: string;
   step: number;
@@ -469,11 +469,13 @@ export default function AdminAcademy() {
       lesson: `${API_BASE}/admin/lessons/${deleteState.id}`,
       document: `${API_BASE}/admin/documents/${deleteState.id}`,
       video: `${API_BASE}/admin/videos/${deleteState.id}`,
+      "all-steps": `${API_BASE}/admin/lessons/${deleteState.id}/all-steps`,
+      "local-media": `${API_BASE}/admin/lessons/${deleteState.id}/local-media`,
     };
     await saveMutation.mutateAsync({ url: urlMap[deleteState.type], method: "DELETE" });
     setDeleteState(null);
-    const labels: Record<string, string> = { module: "Modulo", lesson: "Lezione", document: "Documento", video: "Video" };
-    toast({ title: `${labels[deleteState.type]} eliminato con successo` });
+    const labels: Record<string, string> = { module: "Modulo", lesson: "Lezione", document: "Documento", video: "Video", "all-steps": "Tutti gli step", "local-media": "Media locali" };
+    toast({ title: `${labels[deleteState.type]} eliminat${deleteState.type === "all-steps" || deleteState.type === "local-media" ? "i" : "o"} con successo` });
   };
 
   const handleReorderModules = async (moduleId: string, direction: "up" | "down") => {
@@ -516,14 +518,22 @@ export default function AdminAcademy() {
 
   const getDeleteStepContent = () => {
     if (!deleteState) return null;
-    const typeLabels: Record<string, string> = { module: "il modulo", lesson: "la lezione", document: "il documento", video: "il video" };
+    const typeLabels: Record<string, string> = { module: "il modulo", lesson: "la lezione", document: "il documento", video: "il video", "all-steps": "tutti gli step", "local-media": "i media locali" };
     const label = typeLabels[deleteState.type];
+
+    const extraWarning = deleteState.type === "module"
+      ? " Tutte le lezioni, video e documenti del modulo verranno eliminati permanentemente."
+      : deleteState.type === "all-steps"
+      ? " Tutti gli step della guida verranno rimossi. Dovrai reimportarli da Guidde o aggiungerli manualmente."
+      : deleteState.type === "local-media"
+      ? " Il video e gli screenshot scaricati verranno eliminati dal server. Il player tornera' a usare l'iframe Guidde."
+      : "";
 
     if (deleteState.step === 1) {
       return {
         icon: <AlertTriangle className="h-12 w-12 text-amber-500" />,
         title: "Sei sicuro?",
-        description: `Stai per eliminare ${label} "${deleteState.name}".${deleteState.type === "module" ? " Tutte le lezioni, video e documenti del modulo verranno eliminati permanentemente." : ""}`,
+        description: `Stai per eliminare ${label} "${deleteState.name}".${extraWarning}`,
         buttonLabel: "Continua",
         buttonVariant: "outline" as const,
       };
@@ -532,7 +542,7 @@ export default function AdminAcademy() {
       return {
         icon: <Shield className="h-12 w-12 text-orange-500" />,
         title: "Conferma eliminazione",
-        description: `Questa azione e' irreversibile. ${label} "${deleteState.name}" verra' eliminato definitivamente dal database.${deleteState.type === "module" ? " Include tutte le lezioni associate, i loro video e documenti." : ""}`,
+        description: `Questa azione e' irreversibile. ${label} "${deleteState.name}" ${deleteState.type === "all-steps" || deleteState.type === "local-media" ? "verranno eliminati" : "verra' eliminato"} definitivamente.${deleteState.type === "module" ? " Include tutte le lezioni associate, i loro video e documenti." : ""}`,
         buttonLabel: "Procedi all'eliminazione",
         buttonVariant: "outline" as const,
       };
@@ -1144,7 +1154,28 @@ export default function AdminAcademy() {
 
                                       {lesson.steps && lesson.steps.length > 0 && (
                                         <div className="space-y-1.5 mb-4">
-                                          <span className="text-[11px] text-gray-500 font-medium">{lesson.steps.length} step presenti</span>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[11px] text-gray-500 font-medium">{lesson.steps.length} step presenti</span>
+                                            <div className="flex-1" />
+                                            {lesson.guide_local_video_url && (
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 px-2 text-[10px] gap-1 text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded-md"
+                                                onClick={() => initiateDelete("local-media", lesson.id, lesson.title)}
+                                              >
+                                                <Trash2 size={10} /> Rimuovi media locali
+                                              </Button>
+                                            )}
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 px-2 text-[10px] gap-1 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md"
+                                              onClick={() => initiateDelete("all-steps", lesson.id, lesson.title)}
+                                            >
+                                              <Trash2 size={10} /> Elimina tutti gli step
+                                            </Button>
+                                          </div>
                                           {[...lesson.steps].sort((a: any, b: any) => a.sort_order - b.sort_order).map((step: any) => (
                                             <div key={step.id} className="flex items-center gap-2 p-2 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 group/step">
                                               <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[10px] font-bold flex items-center justify-center">
