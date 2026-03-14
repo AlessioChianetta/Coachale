@@ -705,6 +705,30 @@ router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (
     }
 
     if (steps.length === 0) {
+      const allImgsForFallback: string[] = [];
+      const allImgTagsRegex = /<img[^>]+src="(https?:\/\/[^"]+)"/gi;
+      let allImgMatch;
+      while ((allImgMatch = allImgTagsRegex.exec(html)) !== null) {
+        if (!allImgMatch[1].includes('logo') && !allImgMatch[1].includes('favicon') && !allImgMatch[1].includes('avatar')) {
+          allImgsForFallback.push(allImgMatch[1]);
+        }
+      }
+      const numberedStepRegex = /(?:<[^>]+>)*\s*(\d+)[\.\)]\s*(?:<[^>]+>)*\s*([^<\n]{3,100})(?:<\/[^>]+>)*(?:[\s\S]{0,500}?(?:<p[^>]*>([^<]{5,300})<\/p>))?(?:[\s\S]{0,300}?<img[^>]+src="(https?:\/\/[^"]+)")?/gi;
+      let nMatch;
+      let nStep = 0;
+      while ((nMatch = numberedStepRegex.exec(html)) !== null) {
+        const num = parseInt(nMatch[1], 10);
+        if (num < 1 || num > 200) continue;
+        const title = nMatch[2].replace(/<[^>]+>/g, '').trim();
+        if (!title || title.length < 3) continue;
+        nStep++;
+        const desc = nMatch[3] ? nMatch[3].replace(/<[^>]+>/g, '').trim() : '';
+        const imgUrl = nMatch[4] || allImgsForFallback[nStep - 1] || undefined;
+        steps.push({ step_number: num, timestamp: '', title, description: desc, screenshot_url: imgUrl });
+      }
+    }
+
+    if (steps.length === 0) {
       const pRegex = /<p>(\d{2}:\d{2}):\s*(.*?)<\/p>/gi;
       let match;
       let stepNum = 0;
