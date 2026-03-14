@@ -5,6 +5,7 @@ import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { GuiddePlayer } from "@/components/academy/GuiddePlayer";
+import { StepByStepGuide } from "@/components/academy/StepByStepGuide";
 import { getAuthHeaders } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,16 @@ interface AcademyVideo {
   video_type: string;
 }
 
+interface AcademyStep {
+  id: string;
+  step_number: number;
+  timestamp: string | null;
+  title: string;
+  description: string;
+  screenshot_url: string | null;
+  sort_order: number;
+}
+
 interface AcademyLesson {
   id: string;
   lesson_id: string;
@@ -49,6 +60,9 @@ interface AcademyLesson {
   sort_order: number;
   documents: AcademyDocument[];
   videos?: AcademyVideo[];
+  steps?: AcademyStep[];
+  guide_embed_url?: string | null;
+  guide_display_mode?: string;
 }
 
 interface AcademyModule {
@@ -549,6 +563,14 @@ function LessonDetail({
             ))}
           </div>
         </div>
+      )}
+
+      {((lesson.steps && lesson.steps.length > 0) || lesson.guide_embed_url) && (
+        <StepByStepGuide
+          steps={lesson.steps || []}
+          guideEmbedUrl={lesson.guide_embed_url}
+          displayMode={lesson.guide_display_mode || "native"}
+        />
       )}
 
       <div className="flex items-center justify-between gap-3">

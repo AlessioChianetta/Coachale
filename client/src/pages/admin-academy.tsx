@@ -31,6 +31,9 @@ import {
   PlayCircle,
   Film,
   Settings,
+  ListOrdered,
+  ClipboardPaste,
+  Hash,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -58,6 +61,16 @@ interface AcademyDocument {
   sort_order: number;
 }
 
+interface AcademyStep {
+  id: string;
+  step_number: number;
+  timestamp: string | null;
+  title: string;
+  description: string;
+  screenshot_url: string | null;
+  sort_order: number;
+}
+
 interface AcademyLesson {
   id: string;
   lesson_id: string;
@@ -71,6 +84,9 @@ interface AcademyLesson {
   sort_order: number;
   documents: AcademyDocument[];
   videos: AcademyVideo[];
+  steps?: AcademyStep[];
+  guide_embed_url?: string | null;
+  guide_display_mode?: string;
 }
 
 interface AcademyModule {
@@ -136,6 +152,10 @@ export default function AdminAcademy() {
   const [showNewVideo, setShowNewVideo] = useState<string | null>(null);
   const [videoForm, setVideoForm] = useState({ title: "", video_url: "", video_type: "youtube" });
   const [deleteState, setDeleteState] = useState<DeleteState | null>(null);
+  const [showStepManager, setShowStepManager] = useState<string | null>(null);
+  const [guiddeHtml, setGuiddeHtml] = useState("");
+  const [stepForm, setStepForm] = useState({ title: "", description: "", timestamp: "", screenshot_url: "" });
+  const [showAddStep, setShowAddStep] = useState(false);
 
   const { data: modules = [], isLoading } = useQuery<AcademyModule[]>({
     queryKey: ["admin-academy-modules"],
@@ -272,6 +292,75 @@ export default function AdminAcademy() {
     setShowNewVideo(null);
     setVideoForm({ title: "", video_url: "", video_type: "youtube" });
     toast({ title: "Video aggiunto" });
+  };
+
+  const handleParseGuidde = async (lessonId: string) => {
+    if (!guiddeHtml.trim()) {
+      toast({ title: "Errore", description: "Incolla il codice HTML di Guidde", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/admin/parse-guidde`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ html: guiddeHtml }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      const { embedUrl, steps } = data.data;
+      if (steps.length === 0 && !embedUrl) {
+        toast({ title: "Nessun dato trovato", description: "L'HTML non contiene step o embed URL riconoscibili", variant: "destructive" });
+        return;
+      }
+
+      const bulkRes = await fetch(`${API_BASE}/admin/lessons/${lessonId}/steps/bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ steps, guide_embed_url: embedUrl || undefined }),
+      });
+      const bulkData = await bulkRes.json();
+      if (!bulkData.success) throw new Error(bulkData.error);
+
+      queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
+      setGuiddeHtml("");
+      toast({ title: "Step importati!", description: `${steps.length} step importati${embedUrl ? " + embed URL salvato" : ""}` });
+    } catch (err: any) {
+      toast({ title: "Errore parsing", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleAddStepToLesson = async (lessonId: string) => {
+    if (!stepForm.title.trim()) {
+      toast({ title: "Errore", description: "Titolo step richiesto", variant: "destructive" });
+      return;
+    }
+    await saveMutation.mutateAsync({
+      url: `${API_BASE}/admin/lessons/${lessonId}/steps`,
+      method: "POST",
+      body: stepForm,
+    });
+    setStepForm({ title: "", description: "", timestamp: "", screenshot_url: "" });
+    setShowAddStep(false);
+    toast({ title: "Step aggiunto" });
+  };
+
+  const handleDeleteStepItem = async (stepId: string) => {
+    await saveMutation.mutateAsync({
+      url: `${API_BASE}/admin/steps/${stepId}`,
+      method: "DELETE",
+      body: {},
+    });
+    toast({ title: "Step eliminato" });
+  };
+
+  const handleUpdateGuideSettings = async (lessonId: string, settings: { guide_embed_url?: string; guide_display_mode?: string }) => {
+    await saveMutation.mutateAsync({
+      url: `${API_BASE}/admin/lessons/${lessonId}/guide-settings`,
+      method: "PUT",
+      body: settings,
+    });
+    toast({ title: "Impostazioni guida aggiornate" });
   };
 
   const initiateDelete = (type: DeleteState["type"], id: string, name: string) => {
@@ -690,6 +779,12 @@ export default function AdminAcademy() {
                                     <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-900/40 dark:hover:bg-amber-950/30" onClick={() => { setShowNewDoc(lesson.id); setDocForm({ title: "", file_url: "", file_type: "link" }); }}>
                                       <FileText size={13} /> Aggiungi Documento
                                     </Button>
+                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-900/40 dark:hover:bg-indigo-950/30" onClick={() => setShowStepManager(showStepManager === lesson.id ? null : lesson.id)}>
+                                      <ListOrdered size={13} /> Guide Step
+                                      {lesson.steps && lesson.steps.length > 0 && (
+                                        <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{lesson.steps.length}</Badge>
+                                      )}
+                                    </Button>
                                     <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/40 dark:hover:bg-blue-950/30" onClick={() => startEditLesson(lesson)}>
                                       <Pencil size={13} /> Modifica
                                     </Button>
@@ -749,6 +844,118 @@ export default function AdminAcademy() {
                                       <X size={14} className="mr-1" /> Annulla
                                     </Button>
                                   </div>
+                                </div>
+                              )}
+
+                              {showStepManager === lesson.id && (
+                                <div className="mx-5 mb-4 p-4 bg-gradient-to-r from-indigo-50/80 to-blue-50/50 dark:from-indigo-950/30 dark:to-blue-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
+                                  <h4 className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                                    <ListOrdered size={12} /> Gestione Guide Step-by-Step
+                                  </h4>
+
+                                  <div className="mb-4 p-3 bg-white/60 dark:bg-gray-900/40 rounded-lg border border-indigo-100 dark:border-indigo-900/20">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <ClipboardPaste size={14} className="text-indigo-500" />
+                                      <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">Importa da Guidde (opzionale)</span>
+                                    </div>
+                                    <Textarea
+                                      value={guiddeHtml}
+                                      onChange={e => setGuiddeHtml(e.target.value)}
+                                      placeholder="Incolla qui il codice HTML embed di Guidde..."
+                                      rows={3}
+                                      className="text-xs mb-2"
+                                    />
+                                    <Button size="sm" onClick={() => handleParseGuidde(lesson.id)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs">
+                                      <ClipboardPaste size={12} className="mr-1" /> Importa Step
+                                    </Button>
+                                  </div>
+
+                                  <div className="mb-3 p-3 bg-white/60 dark:bg-gray-900/40 rounded-lg border border-indigo-100 dark:border-indigo-900/20">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                      <div>
+                                        <Label className="text-xs text-indigo-600 dark:text-indigo-400">Embed URL Guidde</Label>
+                                        <Input
+                                          defaultValue={lesson.guide_embed_url || ""}
+                                          onBlur={e => handleUpdateGuideSettings(lesson.id, { guide_embed_url: e.target.value })}
+                                          placeholder="https://app.guidde.com/embed/..."
+                                          className="mt-1 text-xs"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs text-indigo-600 dark:text-indigo-400">Modalita' visualizzazione</Label>
+                                        <Select
+                                          value={lesson.guide_display_mode || "native"}
+                                          onValueChange={v => handleUpdateGuideSettings(lesson.id, { guide_display_mode: v })}
+                                        >
+                                          <SelectTrigger className="mt-1 text-xs"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="native">Solo Guida Nativa</SelectItem>
+                                            <SelectItem value="embed">Solo Embed Guidde</SelectItem>
+                                            <SelectItem value="both">Entrambi (tab)</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {lesson.steps && lesson.steps.length > 0 && (
+                                    <div className="space-y-1.5 mb-3">
+                                      {[...lesson.steps].sort((a: any, b: any) => a.sort_order - b.sort_order).map((step: any) => (
+                                        <div key={step.id} className="flex items-center gap-2 p-2 bg-white/80 dark:bg-gray-900/60 rounded-lg border border-indigo-100/60 dark:border-indigo-900/20">
+                                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                                            {step.step_number}
+                                          </span>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-medium text-foreground truncate">{step.title}</p>
+                                            {step.timestamp && <span className="text-[10px] text-muted-foreground">{step.timestamp}</span>}
+                                          </div>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0 text-red-400 hover:text-red-600"
+                                            onClick={() => handleDeleteStepItem(step.id)}
+                                          >
+                                            <Trash2 size={12} />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {showAddStep ? (
+                                    <div className="p-3 bg-white/60 dark:bg-gray-900/40 rounded-lg border border-indigo-100 dark:border-indigo-900/20">
+                                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                                        <div className="md:col-span-2">
+                                          <Label className="text-xs text-indigo-600">Titolo</Label>
+                                          <Input value={stepForm.title} onChange={e => setStepForm(f => ({ ...f, title: e.target.value }))} className="mt-1 text-xs" placeholder="Es: Clicca su Impostazioni" />
+                                        </div>
+                                        <div>
+                                          <Label className="text-xs text-indigo-600">Timestamp</Label>
+                                          <Input value={stepForm.timestamp} onChange={e => setStepForm(f => ({ ...f, timestamp: e.target.value }))} className="mt-1 text-xs" placeholder="00:15" />
+                                        </div>
+                                        <div>
+                                          <Label className="text-xs text-indigo-600">Screenshot URL</Label>
+                                          <Input value={stepForm.screenshot_url} onChange={e => setStepForm(f => ({ ...f, screenshot_url: e.target.value }))} className="mt-1 text-xs" placeholder="https://..." />
+                                        </div>
+                                        <div className="md:col-span-4">
+                                          <Label className="text-xs text-indigo-600">Descrizione</Label>
+                                          <Textarea value={stepForm.description} onChange={e => setStepForm(f => ({ ...f, description: e.target.value }))} rows={2} className="mt-1 text-xs" placeholder="Descrizione dettagliata dello step..." />
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2 mt-2">
+                                        <Button size="sm" onClick={() => handleAddStepToLesson(lesson.id)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs">
+                                          <Plus size={12} className="mr-1" /> Aggiungi Step
+                                        </Button>
+                                        <Button size="sm" variant="ghost" onClick={() => setShowAddStep(false)} className="text-xs">
+                                          <X size={12} className="mr-1" /> Annulla
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <Button variant="outline" size="sm" onClick={() => { setShowAddStep(true); setStepForm({ title: "", description: "", timestamp: "", screenshot_url: "" }); }} className="text-xs gap-1 text-indigo-600 border-indigo-200">
+                                      <Plus size={12} /> Aggiungi Step Manualmente
+                                    </Button>
+                                  )}
                                 </div>
                               )}
 

@@ -57,7 +57,20 @@ async function ensureTables() {
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW()
     )`,
+    sql`CREATE TABLE IF NOT EXISTS academy_lesson_steps (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      lesson_id VARCHAR NOT NULL REFERENCES academy_lessons(id) ON DELETE CASCADE,
+      step_number INTEGER NOT NULL DEFAULT 0,
+      timestamp VARCHAR DEFAULT NULL,
+      title VARCHAR NOT NULL DEFAULT '',
+      description TEXT DEFAULT '',
+      screenshot_url TEXT DEFAULT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
   ];
+  try { await db.execute(sql`ALTER TABLE academy_lessons ADD COLUMN IF NOT EXISTS guide_embed_url TEXT DEFAULT NULL`); } catch {}
+  try { await db.execute(sql`ALTER TABLE academy_lessons ADD COLUMN IF NOT EXISTS guide_display_mode VARCHAR DEFAULT 'native'`); } catch {}
   for (const stmt of statements) {
     try { await db.execute(stmt); } catch (e: any) {
       if (!e.message?.includes('already exists')) console.warn('[Academy] Table warn:', e.message);
@@ -205,12 +218,18 @@ router.get('/modules', authenticateToken, async (req: AuthRequest, res: Response
       SELECT * FROM academy_lesson_videos ORDER BY sort_order ASC
     `);
 
+    const stepsRes = await db.execute(sql`
+      SELECT * FROM academy_lesson_steps ORDER BY sort_order ASC
+    `);
+
     const docs = docsRes.rows as any[];
     const videos = videosRes.rows as any[];
+    const steps = stepsRes.rows as any[];
     const lessons = (lessonsRes.rows as any[]).map(l => ({
       ...l,
       documents: docs.filter(d => d.lesson_id === l.id),
       videos: videos.filter(v => v.lesson_id === l.id),
+      steps: steps.filter(s => s.lesson_id === l.id),
     }));
 
     const modules = (modulesRes.rows as any[]).map(m => ({
@@ -521,6 +540,183 @@ router.put('/admin/videos/reorder', authenticateToken, requireSuperAdmin, async 
     if (!Array.isArray(order)) return res.status(400).json({ success: false, error: 'order deve essere un array' });
     for (let i = 0; i < order.length; i++) {
       await db.execute(sql`UPDATE academy_lesson_videos SET sort_order = ${i} WHERE id = ${order[i]}`);
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── ADMIN: Guide embed + display mode ───
+
+router.put('/admin/lessons/:id/guide-settings', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { guide_embed_url, guide_display_mode } = req.body;
+    const validModes = ['native', 'embed', 'both'];
+    if (guide_display_mode !== undefined && !validModes.includes(guide_display_mode)) {
+      return res.status(400).json({ success: false, error: `guide_display_mode deve essere: ${validModes.join(', ')}` });
+    }
+
+    const updates: string[] = [];
+    const values: any = {};
+    if (guide_embed_url !== undefined) {
+      if (guide_embed_url && !guide_embed_url.startsWith('https://')) {
+        return res.status(400).json({ success: false, error: 'guide_embed_url deve iniziare con https://' });
+      }
+      updates.push('guide_embed_url');
+      values.guide_embed_url = guide_embed_url || null;
+    }
+    if (guide_display_mode !== undefined) {
+      updates.push('guide_display_mode');
+      values.guide_display_mode = guide_display_mode;
+    }
+
+    let result;
+    if (updates.includes('guide_embed_url') && updates.includes('guide_display_mode')) {
+      result = await db.execute(sql`UPDATE academy_lessons SET guide_embed_url = ${values.guide_embed_url}, guide_display_mode = ${values.guide_display_mode}, updated_at = NOW() WHERE id = ${id} RETURNING *`);
+    } else if (updates.includes('guide_embed_url')) {
+      result = await db.execute(sql`UPDATE academy_lessons SET guide_embed_url = ${values.guide_embed_url}, updated_at = NOW() WHERE id = ${id} RETURNING *`);
+    } else if (updates.includes('guide_display_mode')) {
+      result = await db.execute(sql`UPDATE academy_lessons SET guide_display_mode = ${values.guide_display_mode}, updated_at = NOW() WHERE id = ${id} RETURNING *`);
+    } else {
+      return res.status(400).json({ success: false, error: 'Nessun campo da aggiornare' });
+    }
+
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Lezione non trovata' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── ADMIN: Parse Guidde embed HTML ───
+
+router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { html } = req.body;
+    if (!html) return res.status(400).json({ success: false, error: 'HTML richiesto' });
+
+    let embedUrl = '';
+    const iframeSrcMatch = html.match(/src="([^"]+)"/);
+    if (iframeSrcMatch) embedUrl = iframeSrcMatch[1];
+
+    const steps: Array<{ step_number: number; timestamp: string; title: string; description: string }> = [];
+    const pRegex = /<p>(\d{2}:\d{2}):\s*(.*?)<\/p>/gi;
+    let match;
+    let stepNum = 0;
+    while ((match = pRegex.exec(html)) !== null) {
+      stepNum++;
+      const timestamp = match[1];
+      const text = match[2].trim();
+      const firstSentenceEnd = text.indexOf('. ');
+      const title = firstSentenceEnd > 0 && firstSentenceEnd < 60 ? text.substring(0, firstSentenceEnd) : text.substring(0, 60);
+      const description = firstSentenceEnd > 0 && firstSentenceEnd < 60 ? text.substring(firstSentenceEnd + 2) : text;
+      steps.push({ step_number: stepNum, timestamp, title, description: description || text });
+    }
+
+    res.json({ success: true, data: { embedUrl, steps } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── ADMIN: Step CRUD ───
+
+router.post('/admin/lessons/:lessonId/steps', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const { step_number, timestamp, title, description, screenshot_url } = req.body;
+    if (!title) return res.status(400).json({ success: false, error: 'Titolo richiesto' });
+    const maxOrder = await db.execute(sql`SELECT COALESCE(MAX(sort_order), -1) + 1 as next_order FROM academy_lesson_steps WHERE lesson_id = ${lessonId}`);
+    const nextOrder = Number((maxOrder.rows[0] as any).next_order);
+    const result = await db.execute(sql`
+      INSERT INTO academy_lesson_steps (id, lesson_id, step_number, timestamp, title, description, screenshot_url, sort_order)
+      VALUES (gen_random_uuid(), ${lessonId}, ${step_number || nextOrder + 1}, ${timestamp || null}, ${title}, ${description || ''}, ${screenshot_url || null}, ${nextOrder})
+      RETURNING *
+    `);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/admin/lessons/:lessonId/steps/bulk', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const { steps, guide_embed_url } = req.body;
+    if (!Array.isArray(steps)) return res.status(400).json({ success: false, error: 'steps deve essere un array' });
+
+    await db.execute(sql`BEGIN`);
+    try {
+      await db.execute(sql`DELETE FROM academy_lesson_steps WHERE lesson_id = ${lessonId}`);
+
+      const inserted = [];
+      for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
+        const result = await db.execute(sql`
+          INSERT INTO academy_lesson_steps (id, lesson_id, step_number, timestamp, title, description, screenshot_url, sort_order)
+          VALUES (gen_random_uuid(), ${lessonId}, ${s.step_number || i + 1}, ${s.timestamp || null}, ${s.title || ''}, ${s.description || ''}, ${s.screenshot_url || null}, ${i})
+          RETURNING *
+        `);
+        inserted.push(result.rows[0]);
+      }
+
+      if (guide_embed_url !== undefined) {
+        if (guide_embed_url && !guide_embed_url.startsWith('https://')) {
+          throw new Error('guide_embed_url deve iniziare con https://');
+        }
+        await db.execute(sql`UPDATE academy_lessons SET guide_embed_url = ${guide_embed_url || null}, updated_at = NOW() WHERE id = ${lessonId}`);
+      }
+
+      await db.execute(sql`COMMIT`);
+      res.json({ success: true, data: inserted });
+    } catch (innerErr: any) {
+      await db.execute(sql`ROLLBACK`);
+      throw innerErr;
+    }
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.put('/admin/steps/:id', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { step_number, timestamp, title, description, screenshot_url } = req.body;
+    const result = await db.execute(sql`
+      UPDATE academy_lesson_steps
+      SET step_number = COALESCE(${step_number}, step_number),
+          timestamp = COALESCE(${timestamp}, timestamp),
+          title = COALESCE(${title}, title),
+          description = COALESCE(${description}, description),
+          screenshot_url = COALESCE(${screenshot_url}, screenshot_url)
+      WHERE id = ${id}
+      RETURNING *
+    `);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Step non trovato' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete('/admin/steps/:id', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    await db.execute(sql`DELETE FROM academy_lesson_steps WHERE id = ${id}`);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.put('/admin/steps/reorder', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { order } = req.body;
+    if (!Array.isArray(order)) return res.status(400).json({ success: false, error: 'order deve essere un array' });
+    for (let i = 0; i < order.length; i++) {
+      await db.execute(sql`UPDATE academy_lesson_steps SET sort_order = ${i}, step_number = ${i + 1} WHERE id = ${order[i]}`);
     }
     res.json({ success: true });
   } catch (err: any) {
