@@ -1,0 +1,91 @@
+Invite Colleagues to Edit your Guiddes
+Click here to watch
+Quick guidde
+Easily share your guide with anyone and invite them to edit or view, keeping your team aligned and your content up to date. Let’s see how.
+Go to stg.guidde.com
+1. Share from Homepage
+From your homepage, click the three dots on your guide, then select “Share” from the opened menu.
+Share from Homepage
+2. Share from View Page
+Or share from the video's view page, on the upper right.
+Share from View Page
+3. Share Modal
+In the opened menu, you can add viewers or invite someone to edit your guide.
+Share Modal
+4. Add People with Aceess
+Start typing a members name. If they’re in your workspace, the auto-suggest will show them. Click their name to select.
+Add People with Aceess
+5. Open Permission Settings
+In the permission dropdown on the right, you canset the user’s access level.
+Open Permission Settings
+6. Set Access
+As a viewer or editor
+Set Access
+7. Viewer
+Viewers can watch your guide, unless their workspace role gives them editing rights.
+Viewer
+8. Editor
+Editors can make changes, even if they’re not content-managers on your plan.
+Editor
+9. Add a Message
+You can add a brief message if you like
+Add a Message
+10. Share Invitation
+And click Share once you're ready.
+Share Invitation
+11. Email Notification
+Your collaborator will receive an email invitation
+Email Notification
+12. Click Open Guidde
+And they can simply click the link to access the guide
+Click Open Guidde
+13. Admins can Add External Users
+Admins can also invite collaborators outside of your workspace to view or edit a guide.
+Admins can Add External Users
+14. Add Email and Click Enter
+Once you’ve entered an email, click the input field and press Enter.
+Add Email and Click Enter
+15. Select Access Permission
+A menu will appear where you can set the invite access to viewer or editor.
+Select Access Permission
+16. Add a Message
+Personalize the invitationwith a message if you like!
+Add a Message
+17. Click Share
+And click "Share"
+Click Share
+18. Confirm Sharing Outside Your Workspace
+A popup will ask if you want to share access outside your workspace. Click “Share Anyway” to confirm.
+Confirm Sharing Outside Your Workspace
+19. Invite to Edit - Email
+Your collaborator will receive an email invitation. They can simply click Open guide to access it.
+Invite to Edit - Email
+20. View or Edit the Guidde
+The guide opens in a new tab, where they can watch the video or access the editor.
+View or Edit the Guidde
+21. Edit the Guidde
+In the video editor, they can make the edits they wish.
+Edit the Guidde
+22. Click Done
+And click done when finished, to finalize the guide.
+Click Done
+23. Your guidde is ready
+Your guide will be saved with the changes, along with a step-by-step article below.
+Your guidde is ready
+24. Review People with Access
+You can always see who has access to a guide by clicking share, under People with access.
+Review People with Access
+25. Click for More Info
+Click into any profile image to see each added user's access level
+Click for More Info
+26. Change / Remove Access
+And change or remove it as needed.
+Change / Remove Access
+27. Pro Tip: Use Version History!
+For a detailed view of who edited a guidde, on the enterprise plan, you can click the three dots at the top right in the video editor, and access version history.
+Pro Tip: Use Version History!
+28. version history
+Here, you’ll see a detailed history of your guide, including who published each version and when, making it easy for creators to keep track.
+version history
+That’s it! Inviting others to edit makes it easy to share your guides and collaborate with anyone who needs access, so your content stays accurate, aligned, and up to date. Give it a try!
+Powered by guidde

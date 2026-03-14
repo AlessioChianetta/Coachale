@@ -758,6 +758,38 @@ router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (
       }
     }
 
+    // ── Strategy 5: Plain text numbered format (no HTML tags) ─────────────────
+    if (steps.length === 0) {
+      const isPlainText = !/<[a-z][\s\S]*>/i.test(html.substring(0, 200));
+      const lines = html.split(/\r?\n/).map((l: string) => l.trim()).filter((l: string) => l.length > 0);
+      const numberedLineRx = /^(\d+)\.\s+(.+)$/;
+      const stepLineIndices: Array<{ idx: number; num: number; title: string }> = [];
+      for (let li = 0; li < lines.length; li++) {
+        const m = lines[li].match(numberedLineRx);
+        if (m) {
+          const num = parseInt(m[1], 10);
+          if (num >= 1 && num <= 200) stepLineIndices.push({ idx: li, num, title: m[2].trim() });
+        }
+      }
+      const seqStepLines = stepLineIndices.filter((sl, i) => sl.num === i + 1);
+      if (seqStepLines.length >= 2 || (isPlainText && seqStepLines.length >= 1)) {
+        console.log(`[Academy] Strategy 5 (plain text): found ${seqStepLines.length} numbered steps`);
+        for (let i = 0; i < seqStepLines.length; i++) {
+          const startLine = seqStepLines[i].idx + 1;
+          const endLine = i + 1 < seqStepLines.length ? seqStepLines[i + 1].idx : lines.length;
+          const blockLines = lines.slice(startLine, endLine);
+          const descLines = blockLines.filter(l => {
+            if (l === seqStepLines[i].title) return false;
+            if (/^(Powered by|Click here to watch|Quick guidde|Go to )/i.test(l)) return false;
+            return true;
+          });
+          const description = descLines.join(' ').trim();
+          const imgUrl = screenshotImgs[i]?.url;
+          steps.push({ step_number: seqStepLines[i].num, timestamp: '', title: seqStepLines[i].title, description, screenshot_url: imgUrl });
+        }
+      }
+    }
+
     // ── Last resort: create one step per screenshot ───────────────────────────
     if (steps.length === 0 && screenshotImgs.length > 0) {
       console.log(`[Academy] Last resort: creating ${screenshotImgs.length} steps from screenshots`);
