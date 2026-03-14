@@ -3125,6 +3125,19 @@ router.patch("/posts/:id/variants", authenticateToken, requireRole("consultant")
       return res.status(400).json({ success: false, error: "variants must be an array" });
     }
 
+    const variantSchema = z.object({
+      angle: z.string(),
+      title: z.string(),
+      body: z.string(),
+      hook: z.string(),
+      cta: z.string(),
+      hashtags: z.array(z.string()).optional(),
+    });
+    const parsed = z.array(variantSchema).safeParse(variants);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: "Invalid variant format", details: parsed.error.errors });
+    }
+
     const [existing] = await db.select()
       .from(schema.contentPosts)
       .where(and(
@@ -3139,7 +3152,7 @@ router.patch("/posts/:id/variants", authenticateToken, requireRole("consultant")
 
     const [updated] = await db.update(schema.contentPosts)
       .set({
-        copyVariants: variants,
+        copyVariants: parsed.data,
         updatedAt: new Date(),
       })
       .where(eq(schema.contentPosts.id, postId))
