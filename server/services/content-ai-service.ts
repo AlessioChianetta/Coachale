@@ -4312,32 +4312,47 @@ PIATTAFORMA: ${platform || "facebook"}
 
 IL TUO COMPITO:
 Rileggi attentamente l'inserzione originale qui sopra.
-Ora RISCRIVILA in 4 versioni diverse, ognuna con un'ANGOLAZIONE diversa.
+Ora RISCRIVILA DA ZERO in 4 versioni completamente diverse, ognuna con un'ANGOLAZIONE diversa.
+
+⚠️ REGOLA FONDAMENTALE — RISCRITTURA TOTALE:
+- NON copiare frasi dall'originale. Nemmeno una.
+- NON riformulare le frasi originali cambiando qualche parola. RISCRIVI DA CAPO.
+- Usa parole diverse, metafore diverse, strutture di frase diverse.
+- L'unica cosa che deve restare uguale è: l'OFFERTA (cosa vendi), il TARGET (a chi parli), e il MESSAGGIO DI FONDO.
+- Se nell'originale c'è "sai quanto sia drenante trovare e formare", tu NON puoi scrivere "sai quanto sia drenante trovare e formare" — devi esprimere lo stesso concetto con parole COMPLETAMENTE diverse.
+
+⚠️ REGOLA FORMATTAZIONE — COPIA LO STILE DELL'ORIGINALE:
+- Guarda come è formattato l'originale: paragrafi corti, righe vuote tra i blocchi, elenchi puntati/numerati, emoji se presenti.
+- REPLICA ESATTAMENTE lo stesso stile di spaziatura e formattazione in ogni variante.
+- Se l'originale ha righe vuote tra i paragrafi → mettile anche tu.
+- Se l'originale ha elenchi numerati → usa elenchi numerati anche tu.
+- Se l'originale usa emoji → usale anche tu (diverse ma stesso stile).
+- La LUNGHEZZA del body deve essere simile a quella dell'originale (±20%).
+- Usa \\n per le righe a capo e \\n\\n per i paragrafi separati, ESATTAMENTE come nel testo originale.
 
 COME PROCEDERE:
-- PARTI dal copy originale — stessa offerta, stesso target, stesso messaggio di fondo
 - Applica i principi del Metodo Merenda (marketing a risposta diretta, CTA chiara, beneficio concreto, niente marketing istituzionale)
 - Cambia l'ANGOLAZIONE: cosa metti in primo piano, come apri, quale emozione guida il testo
-- Incorpora le strategie di conversione Merenda pertinenti (headline con beneficio, doppia via di risposta, urgenza, riprova sociale, offerta gratuita, ecc.)
+- Incorpora le strategie di conversione Merenda pertinenti
 
 Le 4 angolazioni di riscrittura:
 
-1. ANGOLO PROBLEMA — Riscrivi mettendo il DOLORE in primo piano. Apri colpendo il punto debole del target. Enfatizza l'errore e la frustrazione. Testo MEDIO-CORTO. CTA che offre la via d'uscita dal dolore.
+1. ANGOLO PROBLEMA — Riscrivi DA ZERO mettendo il DOLORE in primo piano. Apri colpendo il punto debole del target con una frase originale che non esiste nell'inserzione di partenza. Enfatizza l'errore e la frustrazione con parole tue.
 
-2. ANGOLO DESIDERIO — Riscrivi mettendo il RISULTATO DESIDERATO in primo piano. Apri con la trasformazione, il "come sarebbe se...". Testo MEDIO. CTA che invita al primo passo verso il risultato.
+2. ANGOLO DESIDERIO — Riscrivi DA ZERO mettendo il RISULTATO DESIDERATO in primo piano. Apri con la trasformazione, il sogno del target. Usa immagini e metafore diverse dall'originale.
 
-3. ANGOLO RIPROVA SOCIALE — Riscrivi mettendo le PROVE e i RISULTATI in primo piano. Apri con un caso concreto, un numero, un risultato misurabile. Testo MEDIO-LUNGO. CTA che usa la prova sociale come leva.
+3. ANGOLO RIPROVA SOCIALE — Riscrivi DA ZERO mettendo le PROVE e i RISULTATI in primo piano. Apri con un caso concreto, un numero, un risultato misurabile. Racconta una mini-storia di successo.
 
-4. ANGOLO URGENZA — Riscrivi mettendo l'IMMEDIATEZZA in primo piano. Scarsità, deadline, costo dell'inazione. Testo CORTO e diretto. CTA con urgenza esplicita.
+4. ANGOLO URGENZA — Riscrivi DA ZERO mettendo l'IMMEDIATEZZA in primo piano. Scarsità, deadline, costo dell'inazione. Testo diretto e incalzante.
 
 Ogni variante deve avere un TITOLO AD proprio (headline che promette un beneficio concreto, max 40 caratteri, come da strategia Merenda #12).
 
 REGOLE ANTI-ROBOT:
 - NON usare "Inoltre", "Pertanto", "In un mondo dove", "Non è un segreto"
-- Ogni frase su una riga separata per leggibilità social
-- Linguaggio diretto, colloquiale, italiano vero
+- Linguaggio diretto, colloquiale, italiano vero — come parla un imprenditore al bar, non un copywriter AI
 - Niente frasi generiche — sii specifico e concreto
-- Il testo deve sembrare scritto da un umano, non generato
+- Il testo deve sembrare scritto da un umano esperto di marketing, non generato da AI
+- Se una frase ti suona "da ChatGPT", riscrivila più grezza e diretta
 
 RISPONDI SOLO con un JSON valido (nessun testo prima o dopo):
 {
