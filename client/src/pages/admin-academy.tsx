@@ -1091,29 +1091,35 @@ export default function AdminAcademy() {
                                           <ClipboardPaste size={13} className="text-gray-400" />
                                           <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300">Importa da Guidde</span>
                                         </div>
-                                        <div
-                                          contentEditable
-                                          suppressContentEditableWarning
-                                          className="min-h-[60px] max-h-[120px] overflow-y-auto p-2 text-sm mb-2 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-2 focus:ring-ring text-gray-500 dark:text-gray-400"
-                                          onPaste={(e) => {
-                                            e.preventDefault();
-                                            const htmlData = e.clipboardData.getData('text/html');
-                                            const textData = e.clipboardData.getData('text/plain');
-                                            if (htmlData) {
-                                              setGuiddeHtml(htmlData);
-                                              (e.target as HTMLElement).innerText = `HTML incollato (${htmlData.length} caratteri) - ${(htmlData.match(/<img/gi) || []).length} immagini`;
-                                            } else if (textData) {
-                                              setGuiddeHtml(textData);
-                                              (e.target as HTMLElement).innerText = textData.substring(0, 200) + (textData.length > 200 ? '...' : '');
-                                            }
-                                          }}
-                                          onInput={(e) => {
-                                            if (!guiddeHtml) {
-                                              setGuiddeHtml((e.target as HTMLElement).innerText || '');
-                                            }
-                                          }}
-                                        >
-                                          {!guiddeHtml && <span className="pointer-events-none text-gray-400 text-sm">Usa "Copia per Word" su Guidde, poi Ctrl+V qui...</span>}
+                                        <div className="relative mb-2">
+                                          <div
+                                            key={guiddeHtml ? "filled" : "empty"}
+                                            contentEditable
+                                            suppressContentEditableWarning
+                                            className="min-h-[60px] max-h-[120px] overflow-y-auto p-2 text-sm rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-2 focus:ring-ring text-gray-700 dark:text-gray-200"
+                                            onPaste={(e) => {
+                                              e.preventDefault();
+                                              const htmlData = e.clipboardData.getData('text/html');
+                                              const textData = e.clipboardData.getData('text/plain');
+                                              if (htmlData) {
+                                                setGuiddeHtml(htmlData);
+                                                (e.target as HTMLElement).innerText = `HTML incollato (${htmlData.length} caratteri) - ${(htmlData.match(/<img/gi) || []).length} immagini`;
+                                              } else if (textData) {
+                                                setGuiddeHtml(textData);
+                                                (e.target as HTMLElement).innerText = textData.substring(0, 200) + (textData.length > 200 ? '...' : '');
+                                              }
+                                            }}
+                                            onInput={(e) => {
+                                              if (!guiddeHtml) {
+                                                setGuiddeHtml((e.target as HTMLElement).innerText || '');
+                                              }
+                                            }}
+                                          />
+                                          {!guiddeHtml && (
+                                            <span className="absolute top-2 left-2 text-gray-400 dark:text-gray-500 text-sm pointer-events-none select-none">
+                                              Usa "Copia per Word" su Guidde, poi Ctrl+V qui...
+                                            </span>
+                                          )}
                                         </div>
                                         <div className="mb-2">
                                           <Input
