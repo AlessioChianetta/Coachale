@@ -142,8 +142,8 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
   }
 
   return (
-    <div className="flex flex-col">
-      <div className="relative bg-black rounded-t-xl overflow-hidden group">
+    <div className="flex flex-col gap-4">
+      <div className="relative bg-black rounded-xl overflow-hidden group">
         <video
           ref={videoRef}
           src={videoUrl}
@@ -192,7 +192,7 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
         </div>
       </div>
 
-      <div className="border-x border-b border-border/60 rounded-b-xl overflow-hidden bg-card">
+      <div className="border border-border/60 rounded-xl overflow-hidden bg-card">
         <div className="lg:hidden border-b border-border/40">
           <button
             onClick={() => setTocOpen(!tocOpen)}
