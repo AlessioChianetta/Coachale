@@ -4393,6 +4393,10 @@ RISPONDI SOLO con un JSON valido (nessun testo prima o dopo):
     } as any, { consultantId, feature: 'ad-copy-variants', callerRole: 'consultant' });
 
     const responseText = result.response.text();
+    console.log("[CONTENT-AI] === RISPOSTA AI COMPLETA (ad variants) ===");
+    console.log(responseText);
+    console.log("[CONTENT-AI] === FINE RISPOSTA AI ===");
+
     let parsed: any;
     try {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -4411,6 +4415,17 @@ RISPONDI SOLO con un JSON valido (nessun testo prima o dopo):
       cta: v.cta || "",
       hashtags: v.hashtags || [],
     }));
+
+    console.log("[CONTENT-AI] === VARIANTI PARSATE ===");
+    variants.forEach((v, i) => {
+      console.log(`\n--- VARIANTE ${i + 1}: ${v.angle} ---`);
+      console.log(`TITOLO: ${v.title}`);
+      console.log(`HOOK: ${v.hook}`);
+      console.log(`BODY: ${v.body}`);
+      console.log(`CTA: ${v.cta}`);
+      console.log(`HASHTAGS: ${(v.hashtags || []).join(', ')}`);
+    });
+    console.log("[CONTENT-AI] === FINE VARIANTI PARSATE ===");
 
     return {
       variants,
