@@ -1122,13 +1122,24 @@ export default function AdminAcademy() {
                                             </span>
                                           )}
                                         </div>
-                                        <div className="mb-2">
+                                        <div className="mb-2 flex gap-1.5">
                                           <Input
                                             value={guiddeVideoUrl}
                                             onChange={e => setGuiddeVideoUrl(e.target.value)}
                                             placeholder="URL video (tasto destro sul video Guidde → Copia indirizzo video) — opzionale"
-                                            className="h-9 text-xs rounded-md"
+                                            className="h-9 text-xs rounded-md flex-1"
                                           />
+                                          {guiddeVideoUrl.startsWith('http') && (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-9 px-3 text-xs rounded-md shrink-0 gap-1"
+                                              onClick={() => handleDownloadMediaInline(lesson.id, guiddeVideoUrl.trim(), [])}
+                                              disabled={inlineDownload.status === "downloading"}
+                                            >
+                                              <Film size={11} /> Scarica
+                                            </Button>
+                                          )}
                                         </div>
                                         {guiddeHtml && (
                                           <p className="text-[10px] text-green-600 dark:text-green-400 mb-2">
@@ -1162,8 +1173,16 @@ export default function AdminAcademy() {
                                               {inlineDownload.status === "error" && <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />}
                                               <span className="text-gray-600 dark:text-gray-300">
                                                 {inlineDownload.status === "downloading" && "Download in corso..."}
-                                                {inlineDownload.status === "done" && `Salvato in locale: ${inlineDownload.screenshotsDone}/${inlineDownload.screenshotsTotal} screenshot${inlineDownload.videoStatus === "done" ? " + video" : ""}`}
-                                                {inlineDownload.status === "error" && `Completato con errori: ${inlineDownload.screenshotsDone}/${inlineDownload.screenshotsTotal} screenshot`}
+                                                {inlineDownload.status === "done" && (
+                                                  inlineDownload.screenshotsTotal === 0
+                                                    ? `Video salvato in locale${inlineDownload.videoStatus === "error" ? " (con errori)" : ""}`
+                                                    : `Salvato in locale: ${inlineDownload.screenshotsDone}/${inlineDownload.screenshotsTotal} screenshot${inlineDownload.videoStatus === "done" ? " + video" : ""}`
+                                                )}
+                                                {inlineDownload.status === "error" && (
+                                                  inlineDownload.screenshotsTotal === 0
+                                                    ? "Errore download video"
+                                                    : `Completato con errori: ${inlineDownload.screenshotsDone}/${inlineDownload.screenshotsTotal} screenshot`
+                                                )}
                                               </span>
                                             </div>
                                             {inlineDownload.errors.length > 0 && (
