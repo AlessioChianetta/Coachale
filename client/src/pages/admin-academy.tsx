@@ -36,6 +36,7 @@ import {
   Hash,
   HelpCircle,
   Info,
+  RefreshCw,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -318,7 +319,7 @@ export default function AdminAcademy() {
     toast({ title: "Video aggiunto" });
   };
 
-  const handleParseGuidde = async (lessonId: string) => {
+  const handleParseGuidde = async (lessonId: string, mode: "replace" | "update" = "replace") => {
     if (!guiddeHtml.trim()) {
       toast({ title: "Errore", description: "Incolla il codice HTML di Guidde", variant: "destructive" });
       return;
@@ -338,18 +339,32 @@ export default function AdminAcademy() {
         return;
       }
 
-      const bulkRes = await fetch(`${API_BASE}/admin/lessons/${lessonId}/steps/bulk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ steps, guide_embed_url: embedUrl || undefined }),
-      });
-      const bulkData = await bulkRes.json();
-      if (!bulkData.success) throw new Error(bulkData.error);
+      if (mode === "update") {
+        const mergeRes = await fetch(`${API_BASE}/admin/lessons/${lessonId}/steps/update-from-guidde`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+          body: JSON.stringify({ steps, guide_embed_url: embedUrl || undefined }),
+        });
+        const mergeData = await mergeRes.json();
+        if (!mergeData.success) throw new Error(mergeData.error);
 
-      queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
-      setGuiddeHtml("");
-      const screenshotsCount = steps.filter((s: any) => s.screenshot_url).length;
-      toast({ title: "Step importati!", description: `${steps.length} step importati${screenshotsCount > 0 ? `, ${screenshotsCount} screenshot trovati` : ""}${embedUrl ? " + embed URL salvato" : ""}` });
+        queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
+        setGuiddeHtml("");
+        toast({ title: "Step aggiornati!", description: `${mergeData.updatedCount} screenshot aggiornati, ${mergeData.addedCount} nuovi step aggiunti` });
+      } else {
+        const bulkRes = await fetch(`${API_BASE}/admin/lessons/${lessonId}/steps/bulk`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+          body: JSON.stringify({ steps, guide_embed_url: embedUrl || undefined }),
+        });
+        const bulkData = await bulkRes.json();
+        if (!bulkData.success) throw new Error(bulkData.error);
+
+        queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
+        setGuiddeHtml("");
+        const screenshotsCount = steps.filter((s: any) => s.screenshot_url).length;
+        toast({ title: "Step importati!", description: `${steps.length} step importati${screenshotsCount > 0 ? `, ${screenshotsCount} screenshot trovati` : ""}${embedUrl ? " + embed URL salvato" : ""}` });
+      }
     } catch (err: any) {
       toast({ title: "Errore parsing", description: err.message, variant: "destructive" });
     }
@@ -1090,13 +1105,20 @@ export default function AdminAcademy() {
                                         <Textarea
                                           value={guiddeHtml}
                                           onChange={e => setGuiddeHtml(e.target.value)}
-                                          placeholder="Incolla qui il codice HTML embed di Guidde..."
+                                          placeholder="Incolla qui il sorgente pagina (Ctrl+U) di Guidde..."
                                           rows={3}
                                           className="text-sm mb-2 rounded-md"
                                         />
-                                        <Button size="sm" onClick={() => handleParseGuidde(lesson.id)} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
-                                          <ClipboardPaste size={12} className="mr-1.5" /> Importa step
-                                        </Button>
+                                        <div className="flex gap-2">
+                                          <Button size="sm" onClick={() => handleParseGuidde(lesson.id, "replace")} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
+                                            <ClipboardPaste size={12} className="mr-1.5" /> Importa step
+                                          </Button>
+                                          {(lesson.steps?.length ?? 0) > 0 && (
+                                            <Button size="sm" variant="outline" onClick={() => handleParseGuidde(lesson.id, "update")} className="h-9 px-4 text-xs rounded-md">
+                                              <RefreshCw size={12} className="mr-1.5" /> Aggiorna screenshot
+                                            </Button>
+                                          )}
+                                        </div>
                                       </div>
 
                                       <div className="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">

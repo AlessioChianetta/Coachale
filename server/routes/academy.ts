@@ -596,49 +596,94 @@ router.put('/admin/lessons/:id/guide-settings', authenticateToken, requireSuperA
 
 // ─── ADMIN: Parse Guidde embed HTML ───
 
+function reconstructGuiddeScreenshotUrl(filename: string): string {
+  const match = filename.match(/quickguiddeScreenshots_([^_]+)_([^_]+)_([^_]+)_doc\.(png|jpg|webp)/);
+  if (match) {
+    const [, userId, playbookId, stepId, ext] = match;
+    return `https://firebasestorage.googleapis.com/v0/b/guidde-production.appspot.com/o/quickguiddeScreenshots%2F${userId}%2F${playbookId}%2F${stepId}%2Fdoc.${ext}?alt=media`;
+  }
+  return '';
+}
+
 router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { html } = req.body;
     if (!html) return res.status(400).json({ success: false, error: 'HTML richiesto' });
 
     let embedUrl = '';
-    const iframeSrcMatch = html.match(/src="([^"]+)"/);
+    const iframeSrcMatch = html.match(/src="(https:\/\/embed\.app\.guidde\.com[^"]+)"/);
     if (iframeSrcMatch) embedUrl = iframeSrcMatch[1];
-
-    const imgUrls: string[] = [];
-    const imgRegex = /<img[^>]+src="(https?:\/\/[^"]+)"/gi;
-    let imgMatch;
-    while ((imgMatch = imgRegex.exec(html)) !== null) {
-      imgUrls.push(imgMatch[1]);
+    if (!embedUrl) {
+      const guiddeUrlMatch = html.match(/url=\(\d+\)(https:\/\/embed\.app\.guidde\.com[^\s"'>]+)/);
+      if (guiddeUrlMatch) embedUrl = guiddeUrlMatch[1].replace(/\s*-->?\s*$/, '').trim();
     }
 
     const steps: Array<{ step_number: number; timestamp: string; title: string; description: string; screenshot_url?: string }> = [];
-    const pRegex = /<p>(\d{2}:\d{2}):\s*(.*?)<\/p>/gi;
-    let match;
-    let stepNum = 0;
-    while ((match = pRegex.exec(html)) !== null) {
-      stepNum++;
-      const timestamp = match[1];
-      const text = match[2].trim();
-      const firstSentenceEnd = text.indexOf('. ');
-      const title = firstSentenceEnd > 0 && firstSentenceEnd < 60 ? text.substring(0, firstSentenceEnd) : text.substring(0, 60);
-      const description = firstSentenceEnd > 0 && firstSentenceEnd < 60 ? text.substring(firstSentenceEnd + 2) : text;
-      steps.push({
-        step_number: stepNum,
-        timestamp,
-        title,
-        description: description || text,
-        screenshot_url: imgUrls[stepNum - 1] || undefined,
-      });
+
+    const stepBlocks = html.split(/css-o1fo5z">/);
+    if (stepBlocks.length > 1) {
+      for (let i = 1; i < stepBlocks.length; i++) {
+        const block = stepBlocks[i];
+        const numMatch = block.match(/^(\d+)<\/span>/);
+        if (!numMatch) continue;
+        const stepNum = parseInt(numMatch[1], 10);
+
+        const titleMatch = block.match(/css-4fjv0z"><bdi>([^<]+)<\/bdi>/);
+        const title = titleMatch ? titleMatch[1].trim() : `Step ${stepNum}`;
+
+        const descMatch = block.match(/css-1vyj9vp">([^<]+)<\/h6>/);
+        const description = descMatch ? descMatch[1].trim() : '';
+
+        const imgMatch = block.match(/quickguiddeScreenshots_([^"]+?)_doc\.(png|jpg|webp)/);
+        let screenshotUrl = '';
+        if (imgMatch) {
+          screenshotUrl = reconstructGuiddeScreenshotUrl(`quickguiddeScreenshots_${imgMatch[1]}_doc.${imgMatch[2]}`);
+        }
+
+        steps.push({ step_number: stepNum, timestamp: '', title, description, screenshot_url: screenshotUrl || undefined });
+      }
     }
 
-    if (steps.length === 0 && imgUrls.length > 0) {
-      imgUrls.forEach((url, i) => {
-        steps.push({ step_number: i + 1, timestamp: '', title: `Step ${i + 1}`, description: '', screenshot_url: url });
-      });
+    if (steps.length === 0) {
+      const pRegex = /<p>(\d{2}:\d{2}):\s*(.*?)<\/p>/gi;
+      let match;
+      let stepNum = 0;
+      const imgUrls: string[] = [];
+      const imgRegex = /<img[^>]+src="(https?:\/\/[^"]+)"/gi;
+      let imgMatch;
+      while ((imgMatch = imgRegex.exec(html)) !== null) {
+        imgUrls.push(imgMatch[1]);
+      }
+      while ((match = pRegex.exec(html)) !== null) {
+        stepNum++;
+        const timestamp = match[1];
+        const text = match[2].trim();
+        const firstSentenceEnd = text.indexOf('. ');
+        const title = firstSentenceEnd > 0 && firstSentenceEnd < 60 ? text.substring(0, firstSentenceEnd) : text.substring(0, 60);
+        const description = firstSentenceEnd > 0 && firstSentenceEnd < 60 ? text.substring(firstSentenceEnd + 2) : text;
+        steps.push({ step_number: stepNum, timestamp, title, description: description || text, screenshot_url: imgUrls[stepNum - 1] || undefined });
+      }
     }
 
-    res.json({ success: true, data: { embedUrl, steps, screenshotsFound: imgUrls.length } });
+    if (steps.length === 0) {
+      const docImgRegex = /quickguiddeScreenshots_([^"]+?)_doc\.(png|jpg|webp)/g;
+      let dimMatch;
+      const imgFilenames: string[] = [];
+      while ((dimMatch = docImgRegex.exec(html)) !== null) {
+        const url = reconstructGuiddeScreenshotUrl(`quickguiddeScreenshots_${dimMatch[1]}_doc.${dimMatch[2]}`);
+        if (url) imgFilenames.push(url);
+      }
+      if (imgFilenames.length > 0) {
+        imgFilenames.forEach((url, i) => {
+          steps.push({ step_number: i + 1, timestamp: '', title: `Step ${i + 1}`, description: '', screenshot_url: url });
+        });
+      }
+    }
+
+    const screenshotsFound = steps.filter(s => s.screenshot_url).length;
+    console.log(`[Academy] Parsed Guidde HTML: ${steps.length} steps, ${screenshotsFound} screenshots, embedUrl: ${embedUrl ? 'yes' : 'no'}`);
+
+    res.json({ success: true, data: { embedUrl, steps, screenshotsFound } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -698,6 +743,54 @@ router.post('/admin/lessons/:lessonId/steps/bulk', authenticateToken, requireSup
       await db.execute(sql`ROLLBACK`);
       throw innerErr;
     }
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.patch('/admin/lessons/:lessonId/steps/update-from-guidde', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const { steps: parsedSteps, guide_embed_url } = req.body;
+    if (!Array.isArray(parsedSteps)) return res.status(400).json({ success: false, error: 'steps deve essere un array' });
+
+    const existing = await db.execute(sql`SELECT * FROM academy_lesson_steps WHERE lesson_id = ${lessonId} ORDER BY sort_order`);
+    const existingSteps = existing.rows as any[];
+
+    let updatedCount = 0;
+    let addedCount = 0;
+
+    for (const parsed of parsedSteps) {
+      const match = existingSteps.find(e => e.step_number === parsed.step_number);
+      if (match) {
+        if (parsed.screenshot_url && parsed.screenshot_url !== match.screenshot_url) {
+          await db.execute(sql`UPDATE academy_lesson_steps SET screenshot_url = ${parsed.screenshot_url} WHERE id = ${match.id}`);
+          updatedCount++;
+        }
+        if (parsed.title && !match.title) {
+          await db.execute(sql`UPDATE academy_lesson_steps SET title = ${parsed.title} WHERE id = ${match.id}`);
+        }
+        if (parsed.description && !match.description) {
+          await db.execute(sql`UPDATE academy_lesson_steps SET description = ${parsed.description} WHERE id = ${match.id}`);
+        }
+      } else {
+        const maxOrder = await db.execute(sql`SELECT COALESCE(MAX(sort_order), -1) + 1 as next_order FROM academy_lesson_steps WHERE lesson_id = ${lessonId}`);
+        const nextOrder = Number((maxOrder.rows[0] as any).next_order);
+        await db.execute(sql`
+          INSERT INTO academy_lesson_steps (id, lesson_id, step_number, timestamp, title, description, screenshot_url, sort_order)
+          VALUES (gen_random_uuid(), ${lessonId}, ${parsed.step_number}, ${parsed.timestamp || null}, ${parsed.title || ''}, ${parsed.description || ''}, ${parsed.screenshot_url || null}, ${nextOrder})
+        `);
+        addedCount++;
+      }
+    }
+
+    if (guide_embed_url) {
+      if (!guide_embed_url.startsWith('https://')) throw new Error('guide_embed_url deve iniziare con https://');
+      await db.execute(sql`UPDATE academy_lessons SET guide_embed_url = ${guide_embed_url}, updated_at = NOW() WHERE id = ${lessonId}`);
+    }
+
+    const result = await db.execute(sql`SELECT * FROM academy_lesson_steps WHERE lesson_id = ${lessonId} ORDER BY sort_order`);
+    res.json({ success: true, data: result.rows, updatedCount, addedCount });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
