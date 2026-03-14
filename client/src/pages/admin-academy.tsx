@@ -1173,11 +1173,19 @@ export default function AdminAcademy() {
                                               {inlineDownload.status === "error" && <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />}
                                               <span className="text-gray-600 dark:text-gray-300">
                                                 {inlineDownload.status === "downloading" && "Download in corso..."}
-                                                {inlineDownload.status === "done" && (
-                                                  inlineDownload.screenshotsTotal === 0
-                                                    ? `Video salvato in locale${inlineDownload.videoStatus === "error" ? " (con errori)" : ""}`
-                                                    : `Salvato in locale: ${inlineDownload.screenshotsDone}/${inlineDownload.screenshotsTotal} screenshot${inlineDownload.videoStatus === "done" ? " + video" : ""}`
-                                                )}
+                                                {inlineDownload.status === "done" && (() => {
+                                                  const hasLocalVideo = inlineDownload.videoStatus === "done" || !!lesson.guide_local_video_url;
+                                                  const localScreenshots = inlineDownload.screenshotsTotal > 0
+                                                    ? inlineDownload.screenshotsDone
+                                                    : (lesson.steps || []).filter((s: any) => s.screenshot_url && !s.screenshot_url.startsWith('http')).length;
+                                                  const totalScreenshots = inlineDownload.screenshotsTotal > 0
+                                                    ? inlineDownload.screenshotsTotal
+                                                    : (lesson.steps || []).filter((s: any) => s.screenshot_url).length;
+                                                  const parts: string[] = [];
+                                                  if (totalScreenshots > 0) parts.push(`${localScreenshots}/${totalScreenshots} screenshot`);
+                                                  if (hasLocalVideo) parts.push("video");
+                                                  return `Salvato in locale: ${parts.join(" + ")}`;
+                                                })()}
                                                 {inlineDownload.status === "error" && (
                                                   inlineDownload.screenshotsTotal === 0
                                                     ? "Errore download video"
