@@ -43,6 +43,14 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
   const [tocOpen, setTocOpen] = useState(false);
   const [videoError, setVideoError] = useState(false);
 
+  const scrollStepIntoView = useCallback((idx: number) => {
+    const container = stepsContainerRef.current;
+    const el = stepRefs.current[idx];
+    if (!container || !el) return;
+    const elTop = el.offsetTop - container.offsetTop;
+    container.scrollTo({ top: Math.max(0, elTop - 8), behavior: "smooth" });
+  }, []);
+
   const seekToStep = useCallback((idx: number) => {
     const video = videoRef.current;
     if (!video || !steps[idx]) return;
@@ -52,8 +60,8 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
     if (!isPlaying) {
       video.play().catch(() => {});
     }
-    stepRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [steps, isPlaying]);
+    scrollStepIntoView(idx);
+  }, [steps, isPlaying, scrollStepIntoView]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -70,7 +78,7 @@ export function LocalInteractivePlayer({ steps, videoUrl }: LocalInteractivePlay
       }
       if (bestIdx !== activeStep) {
         setActiveStep(bestIdx);
-        stepRefs.current[bestIdx]?.scrollIntoView({ behavior: "smooth", block: "start" });
+        scrollStepIntoView(bestIdx);
       }
     };
 
