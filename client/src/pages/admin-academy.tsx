@@ -348,7 +348,8 @@ export default function AdminAcademy() {
 
       queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
       setGuiddeHtml("");
-      toast({ title: "Step importati!", description: `${steps.length} step importati${embedUrl ? " + embed URL salvato" : ""}` });
+      const screenshotsCount = steps.filter((s: any) => s.screenshot_url).length;
+      toast({ title: "Step importati!", description: `${steps.length} step importati${screenshotsCount > 0 ? `, ${screenshotsCount} screenshot trovati` : ""}${embedUrl ? " + embed URL salvato" : ""}` });
     } catch (err: any) {
       toast({ title: "Errore parsing", description: err.message, variant: "destructive" });
     }
@@ -1476,80 +1477,121 @@ export default function AdminAcademy() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div>
-              <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">URL diretto video (MP4/WebM)</Label>
-              <Input
-                value={downloadVideoUrl}
-                onChange={e => setDownloadVideoUrl(e.target.value)}
-                placeholder="https://... (tasto destro sul video -> Copia indirizzo video)"
-                className="h-10 text-sm rounded-md"
-                disabled={downloadProgress.status === "downloading"}
-              />
-              <p className="text-[10px] text-gray-400 mt-1">Opzionale. Lascia vuoto se vuoi scaricare solo gli screenshot.</p>
-            </div>
+          {(() => {
+            const lesson = downloadModal ? modules.flatMap(m => m.lessons).find(l => l.id === downloadModal.lessonId) : null;
+            const stepsWithRemoteScreenshots = (lesson?.steps || []).filter(s => s.screenshot_url && s.screenshot_url.startsWith('http'));
+            const stepsWithLocalScreenshots = (lesson?.steps || []).filter(s => s.screenshot_url && s.screenshot_url.startsWith('/uploads'));
+            const stepsWithoutScreenshots = (lesson?.steps || []).filter(s => !s.screenshot_url);
+            const totalSteps = lesson?.steps?.length || 0;
+            const hasLocalVideo = !!lesson?.guide_local_video_url;
 
-            <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-lg border border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-600 dark:text-gray-300 mb-1 font-medium">Screenshot degli step</p>
-              <p className="text-[11px] text-gray-400">
-                {(() => {
-                  if (!downloadModal) return "Caricamento...";
-                  const lesson = modules.flatMap(m => m.lessons).find(l => l.id === downloadModal.lessonId);
-                  if (!lesson?.steps) return "Nessuno step presente";
-                  const withScreenshots = lesson.steps.filter(s => s.screenshot_url && s.screenshot_url.startsWith('http'));
-                  const localScreenshots = lesson.steps.filter(s => s.screenshot_url && s.screenshot_url.startsWith('/uploads'));
-                  return `${withScreenshots.length} screenshot da scaricare, ${localScreenshots.length} gia' salvati in locale su ${lesson.steps.length} step totali`;
-                })()}
-              </p>
-            </div>
-
-            {downloadProgress.status !== "idle" && (
-              <div className="space-y-3">
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      downloadProgress.status === "done" ? "bg-green-500" :
-                      downloadProgress.status === "error" ? "bg-amber-500" :
-                      "bg-indigo-500 animate-pulse"
-                    }`}
-                    style={{
-                      width: downloadProgress.status === "downloading" ? "60%" :
-                             downloadProgress.status === "done" || downloadProgress.status === "error" ? "100%" : "0%"
-                    }}
-                  />
-                </div>
-
-                {downloadProgress.videoStatus && (
-                  <div className="flex items-center gap-2 text-xs">
-                    {downloadProgress.videoStatus === "downloading" && <Loader2 size={12} className="animate-spin text-indigo-500" />}
-                    {downloadProgress.videoStatus === "done" && <div className="w-3 h-3 rounded-full bg-green-500" />}
-                    {downloadProgress.videoStatus === "error" && <div className="w-3 h-3 rounded-full bg-red-500" />}
-                    <span className="text-gray-600 dark:text-gray-300">
-                      Video: {downloadProgress.videoStatus === "downloading" ? "Scaricamento..." :
-                              downloadProgress.videoStatus === "done" ? "Completato" :
-                              `Errore: ${downloadProgress.videoError || "sconosciuto"}`}
-                    </span>
+            return (
+              <div className="space-y-4 py-2">
+                <div className="space-y-3">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-2 font-medium">Riepilogo media</p>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <div className={`w-2 h-2 rounded-full ${hasLocalVideo ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                        <span className="text-gray-500 dark:text-gray-400">
+                          Video: {hasLocalVideo ? 'Salvato in locale' : 'Non scaricato'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <div className={`w-2 h-2 rounded-full ${stepsWithRemoteScreenshots.length > 0 ? 'bg-blue-500' : stepsWithLocalScreenshots.length > 0 ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                        <span className="text-gray-500 dark:text-gray-400">
+                          Screenshot: {stepsWithRemoteScreenshots.length > 0
+                            ? `${stepsWithRemoteScreenshots.length} da scaricare`
+                            : stepsWithLocalScreenshots.length > 0
+                            ? `${stepsWithLocalScreenshots.length} gia' in locale`
+                            : `${stepsWithoutScreenshots.length} step senza screenshot`}
+                          {stepsWithLocalScreenshots.length > 0 && stepsWithRemoteScreenshots.length > 0 && ` (${stepsWithLocalScreenshots.length} gia' locali)`}
+                          {totalSteps > 0 && ` su ${totalSteps} step`}
+                        </span>
+                      </div>
+                      {lesson?.guide_embed_url && (
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                          <span className="text-gray-500 dark:text-gray-400 truncate">Embed: {lesson.guide_embed_url.substring(0, 50)}...</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
 
-                <div className="flex items-center gap-2 text-xs">
-                  {downloadProgress.status === "downloading" && <Loader2 size={12} className="animate-spin text-indigo-500" />}
-                  {downloadProgress.status === "done" && <div className="w-3 h-3 rounded-full bg-green-500" />}
-                  {downloadProgress.status === "error" && <div className="w-3 h-3 rounded-full bg-amber-500" />}
-                  <span className="text-gray-600 dark:text-gray-300">
-                    Screenshot: {downloadProgress.screenshotsDone}/{downloadProgress.screenshotsTotal} completati
-                    {downloadProgress.screenshotErrors.length > 0 && ` (${downloadProgress.screenshotErrors.length} errori)`}
-                  </span>
+                  {stepsWithoutScreenshots.length > 0 && stepsWithRemoteScreenshots.length === 0 && stepsWithLocalScreenshots.length === 0 && (
+                    <div className="p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                        Gli step non hanno URL screenshot. Reimporta dall'HTML di Guidde (assicurati che contenga anche i tag {'<img>'}) oppure aggiungi gli URL manualmente da ogni step.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                {downloadProgress.status === "done" && (
-                  <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 text-xs text-green-700 dark:text-green-300">
-                    Download completato! I media sono salvati in locale. Il tab "Interattiva" usera' il player locale.
+                <div>
+                  <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">URL diretto video (MP4/WebM)</Label>
+                  <Input
+                    value={downloadVideoUrl}
+                    onChange={e => setDownloadVideoUrl(e.target.value)}
+                    placeholder="https://... (tasto destro sul video Guidde -> Copia indirizzo video)"
+                    className="h-10 text-sm rounded-md"
+                    disabled={downloadProgress.status === "downloading"}
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    {hasLocalVideo ? "Video gia' scaricato. Inserisci un nuovo URL per sovrascriverlo." : "Opzionale. Apri la guida Guidde, tasto destro sul video, 'Copia indirizzo video'."}
+                  </p>
+                </div>
+
+                {downloadProgress.status !== "idle" && (
+                  <div className="space-y-3">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          downloadProgress.status === "done" ? "bg-green-500" :
+                          downloadProgress.status === "error" ? "bg-amber-500" :
+                          "bg-indigo-500 animate-pulse"
+                        }`}
+                        style={{
+                          width: downloadProgress.status === "downloading" ? "60%" :
+                                 downloadProgress.status === "done" || downloadProgress.status === "error" ? "100%" : "0%"
+                        }}
+                      />
+                    </div>
+
+                    {downloadProgress.videoStatus && (
+                      <div className="flex items-center gap-2 text-xs">
+                        {downloadProgress.videoStatus === "downloading" && <Loader2 size={12} className="animate-spin text-indigo-500" />}
+                        {downloadProgress.videoStatus === "done" && <div className="w-3 h-3 rounded-full bg-green-500" />}
+                        {downloadProgress.videoStatus === "error" && <div className="w-3 h-3 rounded-full bg-red-500" />}
+                        <span className="text-gray-600 dark:text-gray-300">
+                          Video: {downloadProgress.videoStatus === "downloading" ? "Scaricamento..." :
+                                  downloadProgress.videoStatus === "done" ? "Completato" :
+                                  `Errore: ${downloadProgress.videoError || "sconosciuto"}`}
+                        </span>
+                      </div>
+                    )}
+
+                    {downloadProgress.screenshotsTotal > 0 && (
+                      <div className="flex items-center gap-2 text-xs">
+                        {downloadProgress.status === "downloading" && <Loader2 size={12} className="animate-spin text-indigo-500" />}
+                        {downloadProgress.status === "done" && <div className="w-3 h-3 rounded-full bg-green-500" />}
+                        {downloadProgress.status === "error" && <div className="w-3 h-3 rounded-full bg-amber-500" />}
+                        <span className="text-gray-600 dark:text-gray-300">
+                          Screenshot: {downloadProgress.screenshotsDone}/{downloadProgress.screenshotsTotal} completati
+                          {downloadProgress.screenshotErrors.length > 0 && ` (${downloadProgress.screenshotErrors.length} errori)`}
+                        </span>
+                      </div>
+                    )}
+
+                    {downloadProgress.status === "done" && (
+                      <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 text-xs text-green-700 dark:text-green-300">
+                        Download completato! I media sono salvati in locale. Il tab "Interattiva" usera' il player locale.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            );
+          })()}
 
           <DialogFooter className="gap-2 sm:gap-2">
             <Button
@@ -1562,7 +1604,7 @@ export default function AdminAcademy() {
             {downloadProgress.status !== "done" && (
               <Button
                 onClick={() => downloadModal && handleDownloadMedia(downloadModal.lessonId)}
-                disabled={downloadProgress.status === "downloading"}
+                disabled={downloadProgress.status === "downloading" || (!downloadVideoUrl.trim().startsWith('http') && !(modules.flatMap(m => m.lessons).find(l => l.id === downloadModal?.lessonId)?.steps || []).some(s => s.screenshot_url && s.screenshot_url.startsWith('http')))}
                 className="bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white"
               >
                 {downloadProgress.status === "downloading" ? (

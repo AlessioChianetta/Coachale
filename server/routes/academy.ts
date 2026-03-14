@@ -605,7 +605,14 @@ router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (
     const iframeSrcMatch = html.match(/src="([^"]+)"/);
     if (iframeSrcMatch) embedUrl = iframeSrcMatch[1];
 
-    const steps: Array<{ step_number: number; timestamp: string; title: string; description: string }> = [];
+    const imgUrls: string[] = [];
+    const imgRegex = /<img[^>]+src="(https?:\/\/[^"]+)"/gi;
+    let imgMatch;
+    while ((imgMatch = imgRegex.exec(html)) !== null) {
+      imgUrls.push(imgMatch[1]);
+    }
+
+    const steps: Array<{ step_number: number; timestamp: string; title: string; description: string; screenshot_url?: string }> = [];
     const pRegex = /<p>(\d{2}:\d{2}):\s*(.*?)<\/p>/gi;
     let match;
     let stepNum = 0;
@@ -616,10 +623,22 @@ router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (
       const firstSentenceEnd = text.indexOf('. ');
       const title = firstSentenceEnd > 0 && firstSentenceEnd < 60 ? text.substring(0, firstSentenceEnd) : text.substring(0, 60);
       const description = firstSentenceEnd > 0 && firstSentenceEnd < 60 ? text.substring(firstSentenceEnd + 2) : text;
-      steps.push({ step_number: stepNum, timestamp, title, description: description || text });
+      steps.push({
+        step_number: stepNum,
+        timestamp,
+        title,
+        description: description || text,
+        screenshot_url: imgUrls[stepNum - 1] || undefined,
+      });
     }
 
-    res.json({ success: true, data: { embedUrl, steps } });
+    if (steps.length === 0 && imgUrls.length > 0) {
+      imgUrls.forEach((url, i) => {
+        steps.push({ step_number: i + 1, timestamp: '', title: `Step ${i + 1}`, description: '', screenshot_url: url });
+      });
+    }
+
+    res.json({ success: true, data: { embedUrl, steps, screenshotsFound: imgUrls.length } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
