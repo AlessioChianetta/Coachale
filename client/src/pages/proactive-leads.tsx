@@ -98,6 +98,7 @@ import {
   Thermometer,
   MailCheck,
   MailX,
+  type LucideIcon,
 } from "lucide-react";
 
 import Papa from "papaparse";
@@ -297,7 +298,10 @@ const statusLabels = {
   inactive: "Inattivo",
 };
 
-const sourceConfig: Record<string, { color: string; icon: any; label: string }> = {
+type SourceKey = NonNullable<ProactiveLead["source"]>;
+type CategoryKey = NonNullable<ProactiveLead["leadCategory"]>;
+
+const sourceConfig: Record<SourceKey, { color: string; icon: LucideIcon; label: string }> = {
   manual: {
     color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
     icon: Pencil,
@@ -335,7 +339,7 @@ const sourceConfig: Record<string, { color: string; icon: any; label: string }> 
   },
 };
 
-const categoryConfig: Record<string, { color: string; icon: any; label: string }> = {
+const categoryConfig: Record<CategoryKey, { color: string; icon: LucideIcon; label: string }> = {
   freddo: {
     color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
     icon: Snowflake,
@@ -2654,7 +2658,7 @@ export default function ProactiveLeadsPage() {
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <div className="flex items-center gap-1 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                                          <div className="flex items-center gap-1.5 cursor-pointer" onClick={(e) => e.stopPropagation()}>
                                             <Switch
                                               checked={lead.nurturingEnabled || false}
                                               onCheckedChange={(checked) => {
@@ -2663,9 +2667,21 @@ export default function ProactiveLeadsPage() {
                                               disabled={toggleNurturingMutation.isPending}
                                               className="scale-75"
                                             />
-                                            <span className={`text-[10px] font-semibold whitespace-nowrap ${lead.nurturingEnabled ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
-                                              {lead.nurturingEnabled ? `${lead.nurturingEmailsSent || 0}/365` : '365'}
-                                            </span>
+                                            {lead.nurturingEnabled ? (
+                                              <div className="flex flex-col items-start gap-0.5 min-w-[42px]">
+                                                <span className="text-[9px] font-semibold text-green-600 dark:text-green-400 whitespace-nowrap leading-none">
+                                                  {lead.nurturingEmailsSent || 0}/365
+                                                </span>
+                                                <div className="w-full h-1 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                                  <div
+                                                    className="h-full rounded-full bg-green-500 dark:bg-green-400 transition-all"
+                                                    style={{ width: `${Math.min(100, ((lead.nurturingEmailsSent || 0) / 365) * 100)}%` }}
+                                                  />
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <span className="text-[10px] text-gray-400 whitespace-nowrap">365</span>
+                                            )}
                                           </div>
                                         </TooltipTrigger>
                                         <TooltipContent>
