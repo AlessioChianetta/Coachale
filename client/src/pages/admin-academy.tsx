@@ -790,411 +790,450 @@ export default function AdminAcademy() {
                           <p className="text-gray-400 text-sm">Nessuna lezione in questo modulo</p>
                         </div>
                       ) : (
-                        <div>
-                          {mod.lessons.map((lesson, lIdx) => (
-                            <div key={lesson.id} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
-                              <div className="px-5 py-5">
-                                <div className="flex items-center gap-3 mb-3">
-                                  <div className="flex items-center gap-1">
-                                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-md" onClick={() => handleReorderLessons(lesson, "up")} disabled={lIdx === 0}>
-                                      <ArrowUp size={13} />
+                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                          {mod.lessons.map((lesson, lIdx) => {
+                            const videoCount = (lesson.video_url ? 1 : 0) + (lesson.videos?.length || 0);
+                            const docCount = lesson.documents.length;
+                            const stepCount = lesson.steps?.length || 0;
+                            const allVideos: Array<{ id: string; title: string; video_url: string; video_type: string; isLegacy?: boolean }> = [];
+                            if (lesson.video_url) allVideos.push({ id: "legacy", title: "Video principale", video_url: lesson.video_url, video_type: lesson.video_type, isLegacy: true });
+                            if (lesson.videos) lesson.videos.forEach(v => allVideos.push({ ...v }));
+
+                            return (
+                            <div key={lesson.id} className="mx-4 my-3 group/lesson">
+                              <div className={`bg-white dark:bg-gray-900 rounded-lg border border-gray-200/80 dark:border-gray-800 overflow-hidden transition-shadow hover:shadow-md`}>
+                                <div className="flex items-start gap-3 p-4">
+                                  <div className="flex flex-col items-center gap-0.5 pt-0.5">
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover/lesson:opacity-60 hover:!opacity-100 transition-opacity" onClick={() => handleReorderLessons(lesson, "up")} disabled={lIdx === 0}>
+                                      <ArrowUp size={10} />
                                     </Button>
-                                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-md" onClick={() => handleReorderLessons(lesson, "down")} disabled={lIdx === mod.lessons.length - 1}>
-                                      <ArrowDown size={13} />
+                                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${getModuleGradient(mod.color)} flex items-center justify-center text-white text-sm font-semibold shrink-0 shadow-sm`}>
+                                      {lIdx + 1}
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover/lesson:opacity-60 hover:!opacity-100 transition-opacity" onClick={() => handleReorderLessons(lesson, "down")} disabled={lIdx === mod.lessons.length - 1}>
+                                      <ArrowDown size={10} />
                                     </Button>
                                   </div>
-                                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${getModuleGradient(mod.color)} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
-                                    {lIdx + 1}
-                                  </div>
+
                                   <div className="flex-1 min-w-0">
-                                    <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white leading-tight">{lesson.title}</h4>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="text-[11px] font-mono text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{lesson.lesson_id}</span>
-                                      <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white leading-tight">{lesson.title}</h4>
+                                      {(videoCount > 0 || docCount > 0 || stepCount > 0) ? (
+                                        <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" title="Ha contenuti" />
+                                      ) : (
+                                        <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 shrink-0" title="Nessun contenuto" />
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[11px] font-mono">{lesson.lesson_id}</span>
+                                      <span className="inline-flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500">
                                         <Clock size={10} /> {lesson.duration}
                                       </span>
+                                      {lesson.config_link && lesson.config_link !== "/" && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 dark:bg-gray-800/60 text-gray-400 dark:text-gray-500 text-[11px] font-mono">
+                                          <Settings size={9} /> {lesson.config_link}
+                                        </span>
+                                      )}
                                     </div>
-                                  </div>
-                                </div>
 
-                                <div className="ml-[76px]">
-                                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4">{lesson.description}</p>
+                                    <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed mt-2 line-clamp-2">{lesson.description}</p>
 
-                                  {(() => {
-                                    const allVideos: Array<{ id: string; title: string; video_url: string; video_type: string; isLegacy?: boolean }> = [];
-                                    if (lesson.video_url) {
-                                      allVideos.push({ id: "legacy", title: "Video principale", video_url: lesson.video_url, video_type: lesson.video_type, isLegacy: true });
-                                    }
-                                    if (lesson.videos) {
-                                      lesson.videos.forEach(v => allVideos.push({ ...v }));
-                                    }
-                                    if (allVideos.length === 0) return null;
-                                    return (
-                                      <div className="mb-4">
-                                        <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                                          <Film size={13} />
-                                          {allVideos.length} {allVideos.length === 1 ? "Video" : "Video"}
-                                        </p>
-                                        <div className="space-y-2">
-                                          {allVideos.map((vid, vIdx) => (
-                                            <div key={vid.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/30">
-                                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0 text-xs font-bold text-white">
-                                                {vIdx + 1}
-                                              </div>
-                                              <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                                                  {vid.title || `Video ${vIdx + 1}`}
-                                                </p>
-                                                <p className="text-xs text-purple-500 dark:text-purple-400 truncate mt-0.5">{vid.video_url}</p>
-                                              </div>
-                                              <Badge className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border-0 shrink-0 px-2 py-0.5">
-                                                {vid.video_type === "youtube" ? "YouTube" : "Iframe"}
-                                              </Badge>
-                                              {!vid.isLegacy && (
-                                                <Button variant="outline" size="sm" className="h-7 px-2 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/40 dark:hover:bg-red-950/30 shrink-0" onClick={() => initiateDelete("video", vid.id, vid.title || `Video ${vIdx + 1}`)}>
-                                                  <Trash2 size={12} className="mr-1" /> Rimuovi
-                                                </Button>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
+                                    {(videoCount > 0 || docCount > 0 || stepCount > 0) && (
+                                      <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+                                        {videoCount > 0 && (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[11px] font-medium">
+                                            <Film size={10} className="text-gray-400" /> {videoCount} video
+                                          </span>
+                                        )}
+                                        {docCount > 0 && (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[11px] font-medium">
+                                            <FileText size={10} className="text-gray-400" /> {docCount} doc
+                                          </span>
+                                        )}
+                                        {stepCount > 0 && (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[11px] font-medium">
+                                            <ListOrdered size={10} className="text-gray-400" /> {stepCount} step
+                                          </span>
+                                        )}
                                       </div>
-                                    );
-                                  })()}
+                                    )}
+                                    {videoCount === 0 && docCount === 0 && stepCount === 0 && (
+                                      <div className="flex items-center gap-1.5 mt-3">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+                                        <span className="text-[11px] text-gray-400 dark:text-gray-500">Nessun contenuto ancora</span>
+                                      </div>
+                                    )}
 
-                                  {lesson.documents.length > 0 && (
-                                    <div className="mb-4">
-                                      <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                                        <FileText size={13} />
-                                        {lesson.documents.length} {lesson.documents.length === 1 ? "Documento" : "Documenti"}
-                                      </p>
-                                      <div className="space-y-2">
+                                    {allVideos.length > 0 && (
+                                      <div className="mt-3 space-y-1">
+                                        {allVideos.map((vid, vIdx) => (
+                                          <div key={vid.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-50 dark:bg-gray-800/40 group/vid">
+                                            <PlayCircle size={12} className="text-gray-400 shrink-0" />
+                                            <span className="text-[12px] text-gray-700 dark:text-gray-300 font-medium truncate flex-1">{vid.title || `Video ${vIdx + 1}`}</span>
+                                            {vid.video_type === "youtube" ? (
+                                              <a href={vid.video_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-[10px] font-semibold hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors cursor-pointer shrink-0" title={vid.video_url}>
+                                                <PlayCircle size={9} /> YT
+                                              </a>
+                                            ) : (
+                                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-[10px] font-semibold shrink-0">Embed</span>
+                                            )}
+                                            {!vid.isLegacy && (
+                                              <Button variant="ghost" size="sm" className="h-5 w-5 p-0 opacity-100 md:opacity-0 md:group-hover/vid:opacity-100 md:focus:opacity-100 text-red-400 hover:text-red-600 transition-opacity" title="Rimuovi video" onClick={() => initiateDelete("video", vid.id, vid.title || `Video ${vIdx + 1}`)}>
+                                                <Trash2 size={10} />
+                                              </Button>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {lesson.documents.length > 0 && (
+                                      <div className="mt-2 space-y-1">
                                         {lesson.documents.map(doc => (
-                                          <div key={doc.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
-                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
-                                              <FileText size={15} className="text-white" />
-                                            </div>
-                                            <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm font-medium text-gray-800 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 truncate transition-colors">
+                                          <div key={doc.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-50 dark:bg-gray-800/40 group/doc">
+                                            <FileText size={12} className="text-gray-400 shrink-0" />
+                                            <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-[12px] text-gray-700 dark:text-gray-300 font-medium truncate flex-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                               {doc.title}
                                             </a>
-                                            <Badge className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-0 shrink-0 px-2 py-0.5 uppercase">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-200/60 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 text-[10px] font-medium uppercase shrink-0">
                                               {doc.file_type}
-                                            </Badge>
-                                            <Button variant="outline" size="sm" className="h-7 px-2 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/40 dark:hover:bg-red-950/30 shrink-0" onClick={() => initiateDelete("document", doc.id, doc.title)}>
-                                              <Trash2 size={12} className="mr-1" /> Rimuovi
+                                            </span>
+                                            <Button variant="ghost" size="sm" className="h-5 w-5 p-0 opacity-100 md:opacity-0 md:group-hover/doc:opacity-100 md:focus:opacity-100 text-red-400 hover:text-red-600 transition-opacity" title="Rimuovi documento" onClick={() => initiateDelete("document", doc.id, doc.title)}>
+                                              <Trash2 size={10} />
                                             </Button>
                                           </div>
                                         ))}
                                       </div>
-                                    </div>
-                                  )}
+                                    )}
 
-                                  {lesson.config_link && lesson.config_link !== "/" && (
-                                    <div className="mb-4 flex items-center gap-2 text-xs text-gray-400">
-                                      <Settings size={12} />
-                                      <span className="font-mono">{lesson.config_link}</span>
+                                    <div className="flex items-center gap-1 mt-3 pt-2.5 border-t border-dashed border-gray-200 dark:border-gray-800">
+                                      <span className="text-[10px] text-gray-400 dark:text-gray-500 mr-1">Aggiungi</span>
+                                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] gap-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 rounded-md" onClick={() => { setShowNewVideo(lesson.id); setVideoForm({ title: "", video_url: "", video_type: "youtube" }); }}>
+                                        <Video size={11} /> Video
+                                      </Button>
+                                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] gap-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 rounded-md" onClick={() => { setShowNewDoc(lesson.id); setDocForm({ title: "", file_url: "", file_type: "link" }); }}>
+                                        <FileText size={11} /> Doc
+                                      </Button>
+                                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] gap-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 rounded-md" onClick={() => setShowStepManager(showStepManager === lesson.id ? null : lesson.id)}>
+                                        <ListOrdered size={11} /> Step
+                                      </Button>
+                                      <div className="flex-1" />
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 opacity-100 md:opacity-0 md:group-hover/lesson:opacity-100 md:focus:opacity-100 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-md transition-opacity" title="Modifica lezione" onClick={() => startEditLesson(lesson)}>
+                                        <Pencil size={12} />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 opacity-100 md:opacity-0 md:group-hover/lesson:opacity-100 md:focus:opacity-100 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-opacity" title="Elimina lezione" onClick={() => initiateDelete("lesson", lesson.id, lesson.title)}>
+                                        <Trash2 size={12} />
+                                      </Button>
                                     </div>
-                                  )}
-
-                                  <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-100 dark:border-gray-800">
-                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-purple-600 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-900/40 dark:hover:bg-purple-950/30" onClick={() => { setShowNewVideo(lesson.id); setVideoForm({ title: "", video_url: "", video_type: "youtube" }); }}>
-                                      <Video size={13} /> Aggiungi Video
-                                    </Button>
-                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-900/40 dark:hover:bg-amber-950/30" onClick={() => { setShowNewDoc(lesson.id); setDocForm({ title: "", file_url: "", file_type: "link" }); }}>
-                                      <FileText size={13} /> Aggiungi Documento
-                                    </Button>
-                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-900/40 dark:hover:bg-indigo-950/30" onClick={() => setShowStepManager(showStepManager === lesson.id ? null : lesson.id)}>
-                                      <ListOrdered size={13} /> Guide Step
-                                      {lesson.steps && lesson.steps.length > 0 && (
-                                        <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{lesson.steps.length}</Badge>
-                                      )}
-                                    </Button>
-                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/40 dark:hover:bg-blue-950/30" onClick={() => startEditLesson(lesson)}>
-                                      <Pencil size={13} /> Modifica
-                                    </Button>
-                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-red-500 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900/40 dark:hover:bg-red-950/30" onClick={() => initiateDelete("lesson", lesson.id, lesson.title)}>
-                                      <Trash2 size={13} /> Elimina
-                                    </Button>
                                   </div>
                                 </div>
-                              </div>
 
-                              {editingLesson === lesson.id && (
-                                <div className="mx-5 mb-4 p-4 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
-                                  <h4 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                                    <Pencil size={12} /> Modifica Lezione
-                                  </h4>
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <div>
-                                      <Label className="text-xs text-blue-600 dark:text-blue-400">ID lezione</Label>
-                                      <Input value={lessonForm.lesson_id} onChange={e => setLessonForm(f => ({ ...f, lesson_id: e.target.value }))} className="mt-1" />
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs text-blue-600 dark:text-blue-400">Titolo</Label>
-                                      <Input value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} className="mt-1" />
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs text-blue-600 dark:text-blue-400">Durata</Label>
-                                      <Input value={lessonForm.duration} onChange={e => setLessonForm(f => ({ ...f, duration: e.target.value }))} placeholder="5 min" className="mt-1" />
-                                    </div>
-                                    <div className="md:col-span-3">
-                                      <Label className="text-xs text-blue-600 dark:text-blue-400">Descrizione</Label>
-                                      <Textarea value={lessonForm.description} onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))} rows={2} className="mt-1" />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                      <Label className="text-xs text-blue-600 dark:text-blue-400">Video URL principale (legacy)</Label>
-                                      <Input value={lessonForm.video_url} onChange={e => setLessonForm(f => ({ ...f, video_url: e.target.value }))} placeholder="https://..." className="mt-1" />
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs text-blue-600 dark:text-blue-400">Tipo Video</Label>
-                                      <Select value={lessonForm.video_type} onValueChange={v => setLessonForm(f => ({ ...f, video_type: v }))}>
-                                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="youtube">YouTube</SelectItem>
-                                          <SelectItem value="iframe">Iframe (Guidde, ecc.)</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="md:col-span-3">
-                                      <Label className="text-xs text-blue-600 dark:text-blue-400">Link configurazione</Label>
-                                      <Input value={lessonForm.config_link} onChange={e => setLessonForm(f => ({ ...f, config_link: e.target.value }))} placeholder="/consultant/..." className="mt-1" />
-                                    </div>
-                                  </div>
-                                  <div className="flex gap-2 mt-4">
-                                    <Button size="sm" onClick={() => handleSaveLesson(lesson.id)} disabled={saveMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white">
-                                      <Save size={14} className="mr-1.5" /> Salva
-                                    </Button>
-                                    <Button size="sm" variant="ghost" onClick={() => setEditingLesson(null)}>
-                                      <X size={14} className="mr-1" /> Annulla
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {showStepManager === lesson.id && (
-                                <div className="mx-5 mb-4 p-4 bg-gradient-to-r from-indigo-50/80 to-blue-50/50 dark:from-indigo-950/30 dark:to-blue-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
-                                  <h4 className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                                    <ListOrdered size={12} /> Gestione Guide Step-by-Step
-                                  </h4>
-
-                                  <div className="mb-4 p-3 bg-white/60 dark:bg-gray-900/40 rounded-lg border border-indigo-100 dark:border-indigo-900/20">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <ClipboardPaste size={14} className="text-indigo-500" />
-                                      <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">Importa da Guidde (opzionale)</span>
-                                    </div>
-                                    <Textarea
-                                      value={guiddeHtml}
-                                      onChange={e => setGuiddeHtml(e.target.value)}
-                                      placeholder="Incolla qui il codice HTML embed di Guidde..."
-                                      rows={3}
-                                      className="text-xs mb-2"
-                                    />
-                                    <Button size="sm" onClick={() => handleParseGuidde(lesson.id)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs">
-                                      <ClipboardPaste size={12} className="mr-1" /> Importa Step
-                                    </Button>
-                                  </div>
-
-                                  <div className="mb-3 p-3 bg-white/60 dark:bg-gray-900/40 rounded-lg border border-indigo-100 dark:border-indigo-900/20">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                      <div>
-                                        <Label className="text-xs text-indigo-600 dark:text-indigo-400">Embed URL Guidde</Label>
-                                        <Input
-                                          defaultValue={lesson.guide_embed_url || ""}
-                                          onBlur={e => handleUpdateGuideSettings(lesson.id, { guide_embed_url: e.target.value })}
-                                          placeholder="https://app.guidde.com/embed/..."
-                                          className="mt-1 text-xs"
-                                        />
+                                {editingLesson === lesson.id && (
+                                  <div className="border-t border-gray-200 dark:border-gray-800">
+                                    <div className="p-4 bg-gray-50/50 dark:bg-gray-800/20">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-1 h-4 rounded-full bg-blue-500" />
+                                        <h4 className="text-[13px] font-medium text-gray-700 dark:text-gray-300">Modifica lezione</h4>
                                       </div>
-                                      <div>
-                                        <Label className="text-xs text-indigo-600 dark:text-indigo-400">Modalita' visualizzazione</Label>
-                                        <Select
-                                          value={lesson.guide_display_mode || "native"}
-                                          onValueChange={v => handleUpdateGuideSettings(lesson.id, { guide_display_mode: v })}
-                                        >
-                                          <SelectTrigger className="mt-1 text-xs"><SelectValue /></SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="native">Solo Guida Nativa</SelectItem>
-                                            <SelectItem value="embed">Solo Embed Guidde</SelectItem>
-                                            <SelectItem value="both">Entrambi (tab)</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {lesson.steps && lesson.steps.length > 0 && (
-                                    <div className="space-y-1.5 mb-3">
-                                      {[...lesson.steps].sort((a: any, b: any) => a.sort_order - b.sort_order).map((step: any) => (
-                                        <div key={step.id} className="flex items-center gap-2 p-2 bg-white/80 dark:bg-gray-900/60 rounded-lg border border-indigo-100/60 dark:border-indigo-900/20">
-                                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
-                                            {step.step_number}
-                                          </span>
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium text-foreground truncate">{step.title}</p>
-                                            {step.timestamp && <span className="text-[10px] text-muted-foreground">{step.timestamp}</span>}
-                                          </div>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 w-6 p-0 text-red-400 hover:text-red-600"
-                                            onClick={() => handleDeleteStepItem(step.id)}
-                                          >
-                                            <Trash2 size={12} />
-                                          </Button>
+                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div>
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">ID lezione</Label>
+                                          <Input value={lessonForm.lesson_id} onChange={e => setLessonForm(f => ({ ...f, lesson_id: e.target.value }))} className="mt-1 h-10 text-sm rounded-md" />
                                         </div>
-                                      ))}
-                                    </div>
-                                  )}
-
-                                  {showAddStep ? (
-                                    <div className="p-3 bg-white/60 dark:bg-gray-900/40 rounded-lg border border-indigo-100 dark:border-indigo-900/20">
-                                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                                        <div>
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">Titolo</Label>
+                                          <Input value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} className="mt-1 h-10 text-sm rounded-md" />
+                                        </div>
+                                        <div>
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">Durata</Label>
+                                          <Input value={lessonForm.duration} onChange={e => setLessonForm(f => ({ ...f, duration: e.target.value }))} placeholder="5 min" className="mt-1 h-10 text-sm rounded-md" />
+                                        </div>
+                                        <div className="md:col-span-3">
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">Descrizione</Label>
+                                          <Textarea value={lessonForm.description} onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))} rows={2} className="mt-1 text-sm rounded-md" />
+                                        </div>
                                         <div className="md:col-span-2">
-                                          <Label className="text-xs text-indigo-600">Titolo</Label>
-                                          <Input value={stepForm.title} onChange={e => setStepForm(f => ({ ...f, title: e.target.value }))} className="mt-1 text-xs" placeholder="Es: Clicca su Impostazioni" />
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">Video URL principale (legacy)</Label>
+                                          <Input value={lessonForm.video_url} onChange={e => setLessonForm(f => ({ ...f, video_url: e.target.value }))} placeholder="https://..." className="mt-1 h-10 text-sm rounded-md" />
                                         </div>
                                         <div>
-                                          <Label className="text-xs text-indigo-600">Timestamp</Label>
-                                          <Input value={stepForm.timestamp} onChange={e => setStepForm(f => ({ ...f, timestamp: e.target.value }))} className="mt-1 text-xs" placeholder="00:15" />
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">Tipo Video</Label>
+                                          <Select value={lessonForm.video_type} onValueChange={v => setLessonForm(f => ({ ...f, video_type: v }))}>
+                                            <SelectTrigger className="mt-1 h-10 text-sm rounded-md"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="youtube">YouTube</SelectItem>
+                                              <SelectItem value="iframe">Iframe (Guidde, ecc.)</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div className="md:col-span-3">
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">Link configurazione</Label>
+                                          <Input value={lessonForm.config_link} onChange={e => setLessonForm(f => ({ ...f, config_link: e.target.value }))} placeholder="/consultant/..." className="mt-1 h-10 text-sm rounded-md" />
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2 mt-4">
+                                        <Button size="sm" onClick={() => handleSaveLesson(lesson.id)} disabled={saveMutation.isPending} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
+                                          <Save size={13} className="mr-1.5" /> Salva modifiche
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={() => setEditingLesson(null)} className="h-9 px-4 text-xs rounded-md">
+                                          Annulla
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {showStepManager === lesson.id && (
+                                  <div className="border-t border-gray-200 dark:border-gray-800">
+                                    <div className="p-4 bg-gray-50/50 dark:bg-gray-800/20">
+                                      <div className="flex items-center gap-2 mb-4">
+                                        <div className="w-1 h-4 rounded-full bg-blue-500" />
+                                        <h4 className="text-[13px] font-medium text-gray-700 dark:text-gray-300">Gestione guide step-by-step</h4>
+                                        <div className="flex-1" />
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600" onClick={() => setShowStepManager(null)}>
+                                          <X size={14} />
+                                        </Button>
+                                      </div>
+
+                                      <div className="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <ClipboardPaste size={13} className="text-gray-400" />
+                                          <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300">Importa da Guidde</span>
+                                        </div>
+                                        <Textarea
+                                          value={guiddeHtml}
+                                          onChange={e => setGuiddeHtml(e.target.value)}
+                                          placeholder="Incolla qui il codice HTML embed di Guidde..."
+                                          rows={3}
+                                          className="text-sm mb-2 rounded-md"
+                                        />
+                                        <Button size="sm" onClick={() => handleParseGuidde(lesson.id)} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
+                                          <ClipboardPaste size={12} className="mr-1.5" /> Importa step
+                                        </Button>
+                                      </div>
+
+                                      <div className="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Settings size={13} className="text-gray-400" />
+                                          <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300">Impostazioni guida</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                          <div>
+                                            <Label className="text-[11px] text-gray-500 dark:text-gray-400">Embed URL Guidde</Label>
+                                            <Input
+                                              defaultValue={lesson.guide_embed_url || ""}
+                                              onBlur={e => handleUpdateGuideSettings(lesson.id, { guide_embed_url: e.target.value })}
+                                              placeholder="https://app.guidde.com/embed/..."
+                                              className="mt-1 h-10 text-sm rounded-md"
+                                            />
+                                          </div>
+                                          <div>
+                                            <Label className="text-[11px] text-gray-500 dark:text-gray-400">Modalita' visualizzazione</Label>
+                                            <Select
+                                              value={lesson.guide_display_mode || "native"}
+                                              onValueChange={v => handleUpdateGuideSettings(lesson.id, { guide_display_mode: v })}
+                                            >
+                                              <SelectTrigger className="mt-1 h-10 text-sm rounded-md"><SelectValue /></SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="native">Solo guida nativa</SelectItem>
+                                                <SelectItem value="embed">Solo embed Guidde</SelectItem>
+                                                <SelectItem value="both">Entrambi (tab)</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {lesson.steps && lesson.steps.length > 0 && (
+                                        <div className="space-y-1.5 mb-4">
+                                          <span className="text-[11px] text-gray-500 font-medium">{lesson.steps.length} step presenti</span>
+                                          {[...lesson.steps].sort((a: any, b: any) => a.sort_order - b.sort_order).map((step: any) => (
+                                            <div key={step.id} className="flex items-center gap-2 p-2 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 group/step">
+                                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[10px] font-bold flex items-center justify-center">
+                                                {step.step_number}
+                                              </span>
+                                              <div className="flex-1 min-w-0">
+                                                <p className="text-[12px] font-medium text-gray-700 dark:text-gray-200 truncate">{step.title}</p>
+                                                {step.timestamp && <span className="text-[10px] text-gray-400">{step.timestamp}</span>}
+                                              </div>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-5 w-5 p-0 opacity-100 md:opacity-0 md:group-hover/step:opacity-100 md:focus:opacity-100 text-red-400 hover:text-red-600 transition-opacity"
+                                                title="Rimuovi step"
+                                                onClick={() => handleDeleteStepItem(step.id)}
+                                              >
+                                                <Trash2 size={11} />
+                                              </Button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {showAddStep ? (
+                                        <div className="p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
+                                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                            <div className="md:col-span-2">
+                                              <Label className="text-[11px] text-gray-500 dark:text-gray-400">Titolo</Label>
+                                              <Input value={stepForm.title} onChange={e => setStepForm(f => ({ ...f, title: e.target.value }))} className="mt-1 h-10 text-sm rounded-md" placeholder="Es: Clicca su Impostazioni" />
+                                            </div>
+                                            <div>
+                                              <Label className="text-[11px] text-gray-500 dark:text-gray-400">Timestamp</Label>
+                                              <Input value={stepForm.timestamp} onChange={e => setStepForm(f => ({ ...f, timestamp: e.target.value }))} className="mt-1 h-10 text-sm rounded-md" placeholder="00:15" />
+                                            </div>
+                                            <div>
+                                              <Label className="text-[11px] text-gray-500 dark:text-gray-400">Screenshot URL</Label>
+                                              <Input value={stepForm.screenshot_url} onChange={e => setStepForm(f => ({ ...f, screenshot_url: e.target.value }))} className="mt-1 h-10 text-sm rounded-md" placeholder="https://..." />
+                                            </div>
+                                            <div className="md:col-span-4">
+                                              <Label className="text-[11px] text-gray-500 dark:text-gray-400">Descrizione</Label>
+                                              <Textarea value={stepForm.description} onChange={e => setStepForm(f => ({ ...f, description: e.target.value }))} rows={2} className="mt-1 text-sm rounded-md" placeholder="Descrizione dettagliata dello step..." />
+                                            </div>
+                                          </div>
+                                          <div className="flex gap-2 mt-3">
+                                            <Button size="sm" onClick={() => handleAddStepToLesson(lesson.id)} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
+                                              <Plus size={12} className="mr-1.5" /> Aggiungi step
+                                            </Button>
+                                            <Button size="sm" variant="outline" onClick={() => setShowAddStep(false)} className="h-9 px-4 text-xs rounded-md">
+                                              Annulla
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <Button variant="outline" size="sm" onClick={() => { setShowAddStep(true); setStepForm({ title: "", description: "", timestamp: "", screenshot_url: "" }); }} className="h-9 px-4 text-xs rounded-md gap-1.5 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600">
+                                          <Plus size={12} /> Aggiungi step manualmente
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {showNewVideo === lesson.id && (
+                                  <div className="border-t border-gray-200 dark:border-gray-800">
+                                    <div className="p-4 bg-gray-50/50 dark:bg-gray-800/20">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-1 h-4 rounded-full bg-blue-500" />
+                                        <h4 className="text-[13px] font-medium text-gray-700 dark:text-gray-300">Aggiungi video</h4>
+                                        <div className="flex-1" />
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600" onClick={() => setShowNewVideo(null)}>
+                                          <X size={14} />
+                                        </Button>
+                                      </div>
+                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div>
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">Titolo video</Label>
+                                          <Input value={videoForm.title} onChange={e => setVideoForm(f => ({ ...f, title: e.target.value }))} placeholder="Tutorial introduttivo" className="mt-1 h-10 text-sm rounded-md" />
                                         </div>
                                         <div>
-                                          <Label className="text-xs text-indigo-600">Screenshot URL</Label>
-                                          <Input value={stepForm.screenshot_url} onChange={e => setStepForm(f => ({ ...f, screenshot_url: e.target.value }))} className="mt-1 text-xs" placeholder="https://..." />
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">URL Video</Label>
+                                          <Input value={videoForm.video_url} onChange={e => setVideoForm(f => ({ ...f, video_url: e.target.value }))} placeholder="https://www.youtube.com/watch?v=..." className="mt-1 h-10 text-sm rounded-md" />
                                         </div>
-                                        <div className="md:col-span-4">
-                                          <Label className="text-xs text-indigo-600">Descrizione</Label>
-                                          <Textarea value={stepForm.description} onChange={e => setStepForm(f => ({ ...f, description: e.target.value }))} rows={2} className="mt-1 text-xs" placeholder="Descrizione dettagliata dello step..." />
+                                        <div>
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">Tipo</Label>
+                                          <Select value={videoForm.video_type} onValueChange={v => setVideoForm(f => ({ ...f, video_type: v }))}>
+                                            <SelectTrigger className="mt-1 h-10 text-sm rounded-md"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="youtube">YouTube</SelectItem>
+                                              <SelectItem value="iframe">Iframe (Guidde, ecc.)</SelectItem>
+                                            </SelectContent>
+                                          </Select>
                                         </div>
                                       </div>
-                                      <div className="flex gap-2 mt-2">
-                                        <Button size="sm" onClick={() => handleAddStepToLesson(lesson.id)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs">
-                                          <Plus size={12} className="mr-1" /> Aggiungi Step
+                                      <div className="flex gap-2 mt-4">
+                                        <Button size="sm" onClick={() => handleAddVideo(lesson.id)} disabled={saveMutation.isPending} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
+                                          <Plus size={12} className="mr-1.5" /> Aggiungi video
                                         </Button>
-                                        <Button size="sm" variant="ghost" onClick={() => setShowAddStep(false)} className="text-xs">
-                                          <X size={12} className="mr-1" /> Annulla
+                                        <Button size="sm" variant="outline" onClick={() => setShowNewVideo(null)} className="h-9 px-4 text-xs rounded-md">
+                                          Annulla
                                         </Button>
                                       </div>
                                     </div>
-                                  ) : (
-                                    <Button variant="outline" size="sm" onClick={() => { setShowAddStep(true); setStepForm({ title: "", description: "", timestamp: "", screenshot_url: "" }); }} className="text-xs gap-1 text-indigo-600 border-indigo-200">
-                                      <Plus size={12} /> Aggiungi Step Manualmente
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
+                                  </div>
+                                )}
 
-                              {showNewVideo === lesson.id && (
-                                <div className="mx-5 mb-4 p-4 bg-gradient-to-r from-purple-50/80 to-pink-50/50 dark:from-purple-950/30 dark:to-pink-950/20 rounded-xl border border-purple-100 dark:border-purple-900/30">
-                                  <h4 className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                                    <Film size={12} /> Aggiungi Video
-                                  </h4>
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <div>
-                                      <Label className="text-xs text-purple-600 dark:text-purple-400">Titolo video</Label>
-                                      <Input value={videoForm.title} onChange={e => setVideoForm(f => ({ ...f, title: e.target.value }))} placeholder="Tutorial introduttivo" className="mt-1" />
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs text-purple-600 dark:text-purple-400">URL Video</Label>
-                                      <Input value={videoForm.video_url} onChange={e => setVideoForm(f => ({ ...f, video_url: e.target.value }))} placeholder="https://www.youtube.com/watch?v=... o embed URL" className="mt-1" />
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs text-purple-600 dark:text-purple-400">Tipo</Label>
-                                      <Select value={videoForm.video_type} onValueChange={v => setVideoForm(f => ({ ...f, video_type: v }))}>
-                                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="youtube">
-                                            <span className="flex items-center gap-1.5"><PlayCircle size={12} className="text-red-500" /> YouTube</span>
-                                          </SelectItem>
-                                          <SelectItem value="iframe">
-                                            <span className="flex items-center gap-1.5"><ExternalLink size={12} className="text-blue-500" /> Iframe (Guidde, ecc.)</span>
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  </div>
-                                  <div className="flex gap-2 mt-4">
-                                    <Button size="sm" onClick={() => handleAddVideo(lesson.id)} disabled={saveMutation.isPending} className="bg-purple-600 hover:bg-purple-700 text-white">
-                                      <Plus size={14} className="mr-1.5" /> Aggiungi Video
-                                    </Button>
-                                    <Button size="sm" variant="ghost" onClick={() => setShowNewVideo(null)}>
-                                      <X size={14} className="mr-1" /> Annulla
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {showNewDoc === lesson.id && (
-                                <div className="mx-5 mb-4 p-4 bg-gradient-to-r from-amber-50/80 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20 rounded-xl border border-amber-100 dark:border-amber-900/30">
-                                  <h4 className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                                    <FileText size={12} /> Nuovo Documento
-                                  </h4>
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <div>
-                                      <Label className="text-xs text-amber-600 dark:text-amber-400">Titolo</Label>
-                                      <Input value={docForm.title} onChange={e => setDocForm(f => ({ ...f, title: e.target.value }))} placeholder="Guida PDF" className="mt-1" />
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs text-amber-600 dark:text-amber-400">URL</Label>
-                                      <Input value={docForm.file_url} onChange={e => setDocForm(f => ({ ...f, file_url: e.target.value }))} placeholder="https://..." className="mt-1" />
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs text-amber-600 dark:text-amber-400">Tipo</Label>
-                                      <Select value={docForm.file_type} onValueChange={v => setDocForm(f => ({ ...f, file_type: v }))}>
-                                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="link">Link</SelectItem>
-                                          <SelectItem value="pdf">PDF</SelectItem>
-                                          <SelectItem value="doc">Documento</SelectItem>
-                                          <SelectItem value="video">Video</SelectItem>
-                                        </SelectContent>
-                                      </Select>
+                                {showNewDoc === lesson.id && (
+                                  <div className="border-t border-gray-200 dark:border-gray-800">
+                                    <div className="p-4 bg-gray-50/50 dark:bg-gray-800/20">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-1 h-4 rounded-full bg-blue-500" />
+                                        <h4 className="text-[13px] font-medium text-gray-700 dark:text-gray-300">Nuovo documento</h4>
+                                        <div className="flex-1" />
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600" onClick={() => setShowNewDoc(null)}>
+                                          <X size={14} />
+                                        </Button>
+                                      </div>
+                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div>
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">Titolo</Label>
+                                          <Input value={docForm.title} onChange={e => setDocForm(f => ({ ...f, title: e.target.value }))} placeholder="Guida PDF" className="mt-1 h-10 text-sm rounded-md" />
+                                        </div>
+                                        <div>
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">URL</Label>
+                                          <Input value={docForm.file_url} onChange={e => setDocForm(f => ({ ...f, file_url: e.target.value }))} placeholder="https://..." className="mt-1 h-10 text-sm rounded-md" />
+                                        </div>
+                                        <div>
+                                          <Label className="text-[11px] text-gray-500 dark:text-gray-400">Tipo</Label>
+                                          <Select value={docForm.file_type} onValueChange={v => setDocForm(f => ({ ...f, file_type: v }))}>
+                                            <SelectTrigger className="mt-1 h-10 text-sm rounded-md"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="link">Link</SelectItem>
+                                              <SelectItem value="pdf">PDF</SelectItem>
+                                              <SelectItem value="doc">Documento</SelectItem>
+                                              <SelectItem value="video">Video</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2 mt-4">
+                                        <Button size="sm" onClick={() => handleAddDoc(lesson.id)} disabled={saveMutation.isPending} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
+                                          <Plus size={12} className="mr-1.5" /> Aggiungi documento
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={() => setShowNewDoc(null)} className="h-9 px-4 text-xs rounded-md">
+                                          Annulla
+                                        </Button>
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className="flex gap-2 mt-4">
-                                    <Button size="sm" onClick={() => handleAddDoc(lesson.id)} disabled={saveMutation.isPending} className="bg-amber-600 hover:bg-amber-700 text-white">
-                                      <Plus size={14} className="mr-1.5" /> Aggiungi
-                                    </Button>
-                                    <Button size="sm" variant="ghost" onClick={() => setShowNewDoc(null)}>
-                                      <X size={14} className="mr-1" /> Annulla
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                       <div className="px-5 py-3 bg-gray-50/80 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800">
                         {showNewLesson === mod.id ? (
-                          <div className="p-4 bg-white dark:bg-gray-900 rounded-xl border border-green-200 dark:border-green-900/30 shadow-sm">
-                            <h4 className="text-xs font-semibold text-green-700 dark:text-green-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                              <Plus size={12} /> Nuova Lezione
-                            </h4>
+                          <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-1 h-4 rounded-full bg-blue-500" />
+                              <h4 className="text-[13px] font-medium text-gray-700 dark:text-gray-300">Nuova lezione</h4>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                               <div>
-                                <Label className="text-xs text-green-600 dark:text-green-400">ID lezione (univoco)</Label>
-                                <Input value={lessonForm.lesson_id} onChange={e => setLessonForm(f => ({ ...f, lesson_id: e.target.value }))} placeholder="es: new_lesson_1" className="mt-1" />
+                                <Label className="text-[11px] text-gray-500 dark:text-gray-400">ID lezione (univoco)</Label>
+                                <Input value={lessonForm.lesson_id} onChange={e => setLessonForm(f => ({ ...f, lesson_id: e.target.value }))} placeholder="es: new_lesson_1" className="mt-1 h-10 text-sm rounded-md" />
                               </div>
                               <div>
-                                <Label className="text-xs text-green-600 dark:text-green-400">Titolo</Label>
-                                <Input value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} placeholder="Titolo lezione" className="mt-1" />
+                                <Label className="text-[11px] text-gray-500 dark:text-gray-400">Titolo</Label>
+                                <Input value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} placeholder="Titolo lezione" className="mt-1 h-10 text-sm rounded-md" />
                               </div>
                               <div>
-                                <Label className="text-xs text-green-600 dark:text-green-400">Durata</Label>
-                                <Input value={lessonForm.duration} onChange={e => setLessonForm(f => ({ ...f, duration: e.target.value }))} placeholder="5 min" className="mt-1" />
+                                <Label className="text-[11px] text-gray-500 dark:text-gray-400">Durata</Label>
+                                <Input value={lessonForm.duration} onChange={e => setLessonForm(f => ({ ...f, duration: e.target.value }))} placeholder="5 min" className="mt-1 h-10 text-sm rounded-md" />
                               </div>
                               <div className="md:col-span-3">
-                                <Label className="text-xs text-green-600 dark:text-green-400">Descrizione</Label>
-                                <Textarea value={lessonForm.description} onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))} rows={2} className="mt-1" />
+                                <Label className="text-[11px] text-gray-500 dark:text-gray-400">Descrizione</Label>
+                                <Textarea value={lessonForm.description} onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))} rows={2} className="mt-1 text-sm rounded-md" />
                               </div>
                               <div className="md:col-span-2">
-                                <Label className="text-xs text-green-600 dark:text-green-400">Video URL</Label>
-                                <Input value={lessonForm.video_url} onChange={e => setLessonForm(f => ({ ...f, video_url: e.target.value }))} placeholder="https://..." className="mt-1" />
+                                <Label className="text-[11px] text-gray-500 dark:text-gray-400">Video URL</Label>
+                                <Input value={lessonForm.video_url} onChange={e => setLessonForm(f => ({ ...f, video_url: e.target.value }))} placeholder="https://..." className="mt-1 h-10 text-sm rounded-md" />
                               </div>
                               <div>
-                                <Label className="text-xs text-green-600 dark:text-green-400">Tipo Video</Label>
+                                <Label className="text-[11px] text-gray-500 dark:text-gray-400">Tipo Video</Label>
                                 <Select value={lessonForm.video_type} onValueChange={v => setLessonForm(f => ({ ...f, video_type: v }))}>
-                                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="mt-1 h-10 text-sm rounded-md"><SelectValue /></SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="youtube">YouTube</SelectItem>
                                     <SelectItem value="iframe">Iframe (Guidde, ecc.)</SelectItem>
@@ -1202,16 +1241,16 @@ export default function AdminAcademy() {
                                 </Select>
                               </div>
                               <div className="md:col-span-3">
-                                <Label className="text-xs text-green-600 dark:text-green-400">Link configurazione</Label>
-                                <Input value={lessonForm.config_link} onChange={e => setLessonForm(f => ({ ...f, config_link: e.target.value }))} placeholder="/consultant/..." className="mt-1" />
+                                <Label className="text-[11px] text-gray-500 dark:text-gray-400">Link configurazione</Label>
+                                <Input value={lessonForm.config_link} onChange={e => setLessonForm(f => ({ ...f, config_link: e.target.value }))} placeholder="/consultant/..." className="mt-1 h-10 text-sm rounded-md" />
                               </div>
                             </div>
                             <div className="flex gap-2 mt-4">
-                              <Button size="sm" onClick={() => handleCreateLesson(mod.id)} disabled={saveMutation.isPending} className="bg-green-600 hover:bg-green-700 text-white">
-                                <Plus size={14} className="mr-1.5" /> Crea Lezione
+                              <Button size="sm" onClick={() => handleCreateLesson(mod.id)} disabled={saveMutation.isPending} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
+                                <Plus size={12} className="mr-1.5" /> Crea lezione
                               </Button>
-                              <Button size="sm" variant="ghost" onClick={() => setShowNewLesson(null)}>
-                                <X size={14} className="mr-1" /> Annulla
+                              <Button size="sm" variant="outline" onClick={() => setShowNewLesson(null)} className="h-9 px-4 text-xs rounded-md">
+                                Annulla
                               </Button>
                             </div>
                           </div>
@@ -1219,13 +1258,13 @@ export default function AdminAcademy() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                            className="h-8 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 rounded-md gap-1.5"
                             onClick={() => {
                               setShowNewLesson(mod.id);
                               setLessonForm({ lesson_id: "", title: "", description: "", duration: "5 min", video_url: "", video_type: "iframe", config_link: "/" });
                             }}
                           >
-                            <Plus size={14} className="mr-1.5" /> Aggiungi Lezione
+                            <Plus size={12} /> Aggiungi lezione
                           </Button>
                         )}
                       </div>

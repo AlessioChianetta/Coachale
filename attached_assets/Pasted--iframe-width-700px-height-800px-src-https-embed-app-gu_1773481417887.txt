@@ -1,0 +1,31 @@
+<iframe width="700px" height="800px" src="https://embed.app.guidde.com/playbooks/kTfS9B35VmQYf5zmn7gC6K?mode=videoAndDoc" title="Invite Colleagues to Edit your Guiddes" frameborder="0" referrerpolicy="unsafe-url" allowfullscreen="true" allow="clipboard-write" sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts allow-forms allow-same-origin allow-presentation" style="border-radius: 10px"></iframe>
+<div style="display: none">
+ <p>00:00: Easily share your guide with anyone and invite them to edit or view, keeping your team aligned and your content up to date. Let’s see how.</p>
+ <p>00:08: From your homepage, click the three dots on your guide, then select “Share” from the opened menu.</p>
+ <p>00:14: Or share from the video's view page, on the upper right.</p>
+ <p>00:17: In the opened menu, you can add viewers or invite someone to edit your guide.</p>
+ <p>00:22: Start typing a members name. If they’re in your workspace, the auto-suggest will show them. Click their name to select.</p>
+ <p>00:29: In the permission dropdown on the right, you canset the user’s access level.</p>
+ <p>00:34: As a viewer or editor</p>
+ <p>00:36: Viewers can watch your guide, unless their workspace role gives them editing rights.</p>
+ <p>00:41: Editors can make changes, even if they’re not content-managers on your plan.</p>
+ <p>00:46: You can add a brief message if you like</p>
+ <p>00:49: And click Share once you're ready.</p>
+ <p>00:52: Your collaborator will receive an email invitation</p>
+ <p>00:55: And they can simply click the link to access the guide</p>
+ <p>01:04: Once you’ve entered an email, click the input field and press Enter.</p>
+ <p>01:08: A menu will appear where you can set the invite access to viewer or editor.</p>
+ <p>01:13: Personalize the invitationwith a message if you like!</p>
+ <p>01:16: And click "Share"</p>
+ <p>01:18: A popup will ask if you want to share access outside your workspace. Click “Share Anyway” to confirm.</p>
+ <p>01:25: Your collaborator will receive an email invitation. They can simply click Open guide to access it.</p>
+ <p>01:32: The guide opens in a new tab, where they can watch the video or access the editor.</p>
+ <p>01:38: In the video editor, they can make the edits they wish.</p>
+ <p>01:45: Your guide will be saved with the changes, along with a step-by-step article below.</p>
+ <p>01:50: You can always see who has access to a guide by clicking share, under People with access.</p>
+ <p>01:56: Click into any profile image to see each added user's access level</p>
+ <p>02:01: And change or remove it as needed.</p>
+ <p>02:03: For a detailed view of who edited a guidde, on the enterprise plan, you can click the three dots at the top right in the video editor, and access version history.</p>
+ <p>02:13: Here, you’ll see a detailed history of your guide, including who published each version and when, making it easy for creators to keep track.</p>
+ <p>02:19: That’s it! Inviting others to edit makes it easy to share your guides and collaborate with anyone who needs access, so your content stays accurate, aligned, and up to date. Give it a try!</p>
+</div>
