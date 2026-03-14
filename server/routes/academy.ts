@@ -914,6 +914,62 @@ router.patch('/admin/lessons/:lessonId/steps/update-from-guidde', authenticateTo
   }
 });
 
+router.post('/admin/lessons/:lessonId/import-screenshots', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const { html } = req.body;
+    if (!html || typeof html !== 'string') return res.status(400).json({ success: false, error: 'html richiesto' });
+
+    const existing = await db.execute(sql`SELECT * FROM academy_lesson_steps WHERE lesson_id = ${lessonId} ORDER BY sort_order`);
+    const existingSteps = existing.rows as any[];
+    if (existingSteps.length === 0) return res.status(400).json({ success: false, error: 'Nessuno step presente. Importa prima gli step dal codice embed.' });
+
+    const imgSrcRx = /<img[^>]+src="(https?:\/\/[^"]+)"/gi;
+    const allImgUrls: string[] = [];
+    let imgMatch: RegExpExecArray | null;
+    while ((imgMatch = imgSrcRx.exec(html)) !== null) {
+      const url = imgMatch[1];
+      const low = url.toLowerCase();
+      if (low.includes('logo') || low.includes('favicon') || low.includes('avatar')) continue;
+      allImgUrls.push(url);
+    }
+
+    const screenshotUrls: string[] = [];
+    for (const url of allImgUrls) {
+      const low = url.toLowerCase();
+      const isScreenshot = low.includes('quickguiddescreenshots') || low.includes('_doc.png') || low.includes('_doc.webp') || low.includes('_doc.jpg') || low.includes('firebasestorage');
+      const isVideo = low.includes('.mp4') || low.includes('/video/') || low.includes('video_thumbnail') || low.includes('guidde-video');
+      if (isScreenshot || (!isVideo && screenshotUrls.length > 0)) {
+        screenshotUrls.push(url);
+      } else if (!isVideo && !isScreenshot && allImgUrls.indexOf(url) > 0) {
+        screenshotUrls.push(url);
+      }
+    }
+    if (screenshotUrls.length === 0 && allImgUrls.length > 1) {
+      screenshotUrls.push(...allImgUrls.slice(1));
+    } else if (screenshotUrls.length === 0 && allImgUrls.length === 1) {
+      screenshotUrls.push(allImgUrls[0]);
+    }
+
+    if (screenshotUrls.length === 0) return res.status(400).json({ success: false, error: 'Nessuna immagine trovata nell\'HTML. Usa "Copia per Word" su Guidde.' });
+
+    let updatedCount = 0;
+    const stepsSorted = [...existingSteps].sort((a: any, b: any) => a.sort_order - b.sort_order);
+    for (let i = 0; i < stepsSorted.length && i < screenshotUrls.length; i++) {
+      const step = stepsSorted[i];
+      await db.execute(sql`UPDATE academy_lesson_steps SET screenshot_url = ${screenshotUrls[i]} WHERE id = ${step.id}`);
+      updatedCount++;
+    }
+
+    console.log(`[Academy] import-screenshots: ${updatedCount} screenshots assigned to ${existingSteps.length} steps (${screenshotUrls.length} images found)`);
+
+    const result = await db.execute(sql`SELECT * FROM academy_lesson_steps WHERE lesson_id = ${lessonId} ORDER BY sort_order`);
+    res.json({ success: true, data: result.rows, updatedCount, totalImages: screenshotUrls.length });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.put('/admin/steps/:id', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;

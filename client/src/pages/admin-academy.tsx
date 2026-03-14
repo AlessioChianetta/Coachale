@@ -39,7 +39,6 @@ import {
   RefreshCw,
   HardDrive,
 } from "lucide-react";
-import { StepByStepGuide } from "@/components/academy/StepByStepGuide";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -159,8 +158,10 @@ export default function AdminAcademy() {
   const [videoForm, setVideoForm] = useState({ title: "", video_url: "", video_type: "youtube" });
   const [deleteState, setDeleteState] = useState<DeleteState | null>(null);
   const [showStepManager, setShowStepManager] = useState<string | null>(null);
-  const [guiddeHtml, setGuiddeHtml] = useState("");
-  const [guiddeEditorKey, setGuiddeEditorKey] = useState(0);
+  const [guiddeEmbedCode, setGuiddeEmbedCode] = useState("");
+  const [guiddeEmbedKey, setGuiddeEmbedKey] = useState(0);
+  const [guiddeWordHtml, setGuiddeWordHtml] = useState("");
+  const [guiddeWordKey, setGuiddeWordKey] = useState(0);
   const [stepForm, setStepForm] = useState({ title: "", description: "", timestamp: "", screenshot_url: "" });
   const [showAddStep, setShowAddStep] = useState(false);
   const [showGuideHelp, setShowGuideHelp] = useState(false);
@@ -320,66 +321,88 @@ export default function AdminAcademy() {
     toast({ title: "Video aggiunto" });
   };
 
-  const handleParseGuidde = async (lessonId: string, mode: "replace" | "update" = "replace") => {
-    if (!guiddeHtml.trim()) {
-      toast({ title: "Errore", description: "Incolla il codice HTML di Guidde", variant: "destructive" });
+  const handleParseGuidde = async (lessonId: string) => {
+    if (!guiddeEmbedCode.trim()) {
+      toast({ title: "Errore", description: "Incolla il codice embed di Guidde", variant: "destructive" });
       return;
     }
     try {
       const res = await fetch(`${API_BASE}/admin/parse-guidde`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ html: guiddeHtml }),
+        body: JSON.stringify({ html: guiddeEmbedCode }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
       const { embedUrl, steps } = data.data;
       if (steps.length === 0 && !embedUrl) {
-        toast({ title: "Nessun dato trovato", description: "L'HTML non contiene step o embed URL riconoscibili", variant: "destructive" });
+        toast({ title: "Nessun dato trovato", description: "Il codice embed non contiene step riconoscibili", variant: "destructive" });
         return;
       }
 
-      let insertedSteps: any[] = [];
+      const stepsWithoutScreenshots = steps.map((s: any) => ({ ...s, screenshot_url: undefined }));
 
-      if (mode === "update") {
-        const mergeRes = await fetch(`${API_BASE}/admin/lessons/${lessonId}/steps/update-from-guidde`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-          body: JSON.stringify({ steps, guide_embed_url: embedUrl || undefined }),
-        });
-        const mergeData = await mergeRes.json();
-        if (!mergeData.success) throw new Error(mergeData.error);
-        queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
-        setGuiddeHtml(""); setGuiddeEditorKey(k => k + 1);
-        toast({ title: "Step aggiornati!", description: `${mergeData.updatedCount} screenshot aggiornati, ${mergeData.addedCount} nuovi step aggiunti` });
-      } else {
-        const bulkRes = await fetch(`${API_BASE}/admin/lessons/${lessonId}/steps/bulk`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-          body: JSON.stringify({ steps, guide_embed_url: embedUrl || undefined }),
-        });
-        const bulkData = await bulkRes.json();
-        if (!bulkData.success) throw new Error(bulkData.error);
-        insertedSteps = bulkData.data || [];
-        queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
-        setGuiddeHtml(""); setGuiddeEditorKey(k => k + 1);
-        const screenshotsCount = steps.filter((s: any) => s.screenshot_url).length;
-        const videoProvided = guiddeVideoUrl.trim().startsWith('http');
-        toast({
-          title: `${steps.length} step importati!`,
-          description: `${screenshotsCount > 0 ? `${screenshotsCount} screenshot da scaricare` : "Nessuno screenshot trovato"}${videoProvided ? " + video" : ""}${embedUrl ? " + embed URL" : ""}${screenshotsCount === 0 ? " — titoli importati senza immagini" : ""}`
-        });
+      const bulkRes = await fetch(`${API_BASE}/admin/lessons/${lessonId}/steps/bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ steps: stepsWithoutScreenshots, guide_embed_url: embedUrl || undefined }),
+      });
+      const bulkData = await bulkRes.json();
+      if (!bulkData.success) throw new Error(bulkData.error);
+      queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
+      setGuiddeEmbedCode(""); setGuiddeEmbedKey(k => k + 1);
+
+      const videoToDownload = guiddeVideoUrl.trim().startsWith('http') ? guiddeVideoUrl.trim() : (embedUrl || '');
+      if (embedUrl) {
+        setGuiddeVideoUrl(embedUrl);
       }
 
-      const stepsWithScreenshots = insertedSteps.filter((s: any) => s.screenshot_url && s.screenshot_url.startsWith('http'));
-      const hasVideo = guiddeVideoUrl.trim().startsWith('http');
+      toast({
+        title: `${steps.length} step importati!`,
+        description: `${embedUrl ? "Embed URL estratto. " : ""}Ora puoi aggiungere gli screenshot con "Copia per Word".`
+      });
 
-      if (stepsWithScreenshots.length > 0 || hasVideo) {
-        await handleDownloadMediaInline(lessonId, hasVideo ? guiddeVideoUrl.trim() : undefined, stepsWithScreenshots.map((s: any) => ({ step_id: s.id, screenshot_url: s.screenshot_url })));
+      if (videoToDownload.startsWith('http')) {
+        await handleDownloadMediaInline(lessonId, videoToDownload, []);
       }
     } catch (err: any) {
       toast({ title: "Errore parsing", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleImportScreenshots = async (lessonId: string) => {
+    if (!guiddeWordHtml.trim()) {
+      toast({ title: "Errore", description: "Incolla l'HTML da 'Copia per Word' di Guidde", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/admin/lessons/${lessonId}/import-screenshots`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ html: guiddeWordHtml }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
+      setGuiddeWordHtml(""); setGuiddeWordKey(k => k + 1);
+
+      const stepsWithScreenshots = (data.data || [])
+        .filter((s: any) => s.screenshot_url && s.screenshot_url.startsWith('http'))
+        .map((s: any) => ({ step_id: s.id, screenshot_url: s.screenshot_url }));
+
+      toast({
+        title: `${data.updatedCount} screenshot associati!`,
+        description: `${data.totalImages} immagini trovate, ${data.updatedCount} assegnate agli step. Download in corso...`
+      });
+
+      if (stepsWithScreenshots.length > 0) {
+        const videoUrl = guiddeVideoUrl.trim().startsWith('http') ? guiddeVideoUrl.trim() : undefined;
+        await handleDownloadMediaInline(lessonId, videoUrl, stepsWithScreenshots);
+      }
+    } catch (err: any) {
+      toast({ title: "Errore import screenshot", description: err.message, variant: "destructive" });
     }
   };
 
@@ -1107,44 +1130,115 @@ export default function AdminAcademy() {
 
                                       <div className="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
                                         <div className="flex items-center gap-2 mb-2">
-                                          <ClipboardPaste size={13} className="text-gray-400" />
-                                          <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300">Importa da Guidde</span>
+                                          <Hash size={13} className="text-indigo-400" />
+                                          <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300">1. Importa step da codice embed</span>
+                                          <span className="text-[10px] text-gray-400 ml-auto">Guidde → Share → Embed code</span>
                                         </div>
                                         <div className="relative mb-2">
                                           <div
-                                            key={guiddeEditorKey}
+                                            key={guiddeEmbedKey}
                                             contentEditable
                                             suppressContentEditableWarning
-                                            className="min-h-[60px] max-h-[120px] overflow-y-auto p-2 text-sm rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-2 focus:ring-ring text-gray-700 dark:text-gray-200"
+                                            className="min-h-[50px] max-h-[100px] overflow-y-auto p-2 text-sm rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-2 focus:ring-indigo-300 text-gray-700 dark:text-gray-200"
                                             onPaste={(e) => {
                                               e.preventDefault();
                                               const htmlData = e.clipboardData.getData('text/html');
                                               const textData = e.clipboardData.getData('text/plain');
-                                              if (htmlData) {
-                                                setGuiddeHtml(htmlData);
-                                                (e.target as HTMLElement).innerText = `HTML incollato (${htmlData.length} caratteri) - ${(htmlData.match(/<img/gi) || []).length} immagini`;
-                                              } else if (textData) {
-                                                setGuiddeHtml(textData);
-                                                (e.target as HTMLElement).innerText = textData.substring(0, 200) + (textData.length > 200 ? '...' : '');
-                                              }
+                                              const content = htmlData || textData || '';
+                                              setGuiddeEmbedCode(content);
+                                              const pCount = (content.match(/<p>/gi) || []).length;
+                                              const hasIframe = /<iframe/i.test(content);
+                                              (e.target as HTMLElement).innerText = `Embed incollato${hasIframe ? ' (iframe trovato)' : ''} — ${pCount} paragrafi`;
                                             }}
                                             onInput={(e) => {
-                                              if (!guiddeHtml) {
-                                                setGuiddeHtml((e.target as HTMLElement).innerText || '');
+                                              if (!guiddeEmbedCode) {
+                                                setGuiddeEmbedCode((e.target as HTMLElement).innerText || '');
                                               }
                                             }}
                                           />
-                                          {!guiddeHtml && (
+                                          {!guiddeEmbedCode && (
                                             <span className="absolute top-2 left-2 text-gray-400 dark:text-gray-500 text-sm pointer-events-none select-none">
-                                              Usa "Copia per Word" su Guidde, poi Ctrl+V qui...
+                                              Incolla qui il codice embed di Guidde (iframe + step con timestamp)...
                                             </span>
                                           )}
                                         </div>
-                                        <div className="mb-2 flex gap-1.5">
+                                        <div className="flex gap-2">
+                                          <Button size="sm" onClick={() => handleParseGuidde(lesson.id)} disabled={!guiddeEmbedCode.trim()} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
+                                            <ListOrdered size={12} className="mr-1.5" /> Importa step
+                                          </Button>
+                                          {guiddeEmbedCode && (
+                                            <Button size="sm" variant="ghost" onClick={() => { setGuiddeEmbedCode(""); setGuiddeEmbedKey(k => k + 1); }} className="h-9 px-2 text-xs">
+                                              <X size={12} />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className={`mb-4 p-3 rounded-md border ${(lesson.steps?.length ?? 0) > 0 ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700' : 'bg-gray-50 dark:bg-gray-900/50 border-dashed border-gray-300 dark:border-gray-700'}`}>
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <ClipboardPaste size={13} className={(lesson.steps?.length ?? 0) > 0 ? "text-emerald-400" : "text-gray-300"} />
+                                          <span className={`text-[12px] font-medium ${(lesson.steps?.length ?? 0) > 0 ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>2. Associa screenshot (Copia per Word)</span>
+                                          {(lesson.steps?.length ?? 0) === 0 && (
+                                            <span className="text-[10px] text-gray-400 italic ml-auto">Prima importa gli step</span>
+                                          )}
+                                        </div>
+                                        {(lesson.steps?.length ?? 0) > 0 ? (
+                                          <>
+                                            <div className="relative mb-2">
+                                              <div
+                                                key={guiddeWordKey}
+                                                contentEditable
+                                                suppressContentEditableWarning
+                                                className="min-h-[50px] max-h-[100px] overflow-y-auto p-2 text-sm rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-300 text-gray-700 dark:text-gray-200"
+                                                onPaste={(e) => {
+                                                  e.preventDefault();
+                                                  const htmlData = e.clipboardData.getData('text/html');
+                                                  const textData = e.clipboardData.getData('text/plain');
+                                                  if (htmlData) {
+                                                    setGuiddeWordHtml(htmlData);
+                                                    const imgCount = (htmlData.match(/<img/gi) || []).length;
+                                                    const screenshotCount = imgCount > 0 ? imgCount - 1 : 0;
+                                                    (e.target as HTMLElement).innerText = `HTML incollato — ${screenshotCount} screenshot trovati`;
+                                                  } else if (textData) {
+                                                    setGuiddeWordHtml(textData);
+                                                    (e.target as HTMLElement).innerText = textData.substring(0, 150) + '...';
+                                                  }
+                                                }}
+                                              />
+                                              {!guiddeWordHtml && (
+                                                <span className="absolute top-2 left-2 text-gray-400 dark:text-gray-500 text-sm pointer-events-none select-none">
+                                                  Guidde → "Copia per Word" → Ctrl+V qui (per gli screenshot)...
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex gap-2">
+                                              <Button size="sm" onClick={() => handleImportScreenshots(lesson.id)} disabled={!guiddeWordHtml.trim()} className="h-9 px-4 text-xs rounded-md bg-emerald-600 hover:bg-emerald-700 text-white">
+                                                <ClipboardPaste size={12} className="mr-1.5" /> Associa screenshot
+                                              </Button>
+                                              {guiddeWordHtml && (
+                                                <Button size="sm" variant="ghost" onClick={() => { setGuiddeWordHtml(""); setGuiddeWordKey(k => k + 1); }} className="h-9 px-2 text-xs">
+                                                  <X size={12} />
+                                                </Button>
+                                              )}
+                                            </div>
+                                          </>
+                                        ) : (
+                                          <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                                            Gli screenshot vengono associati agli step per posizione. Importa prima gli step dal codice embed (sopra).
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      <div className="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Film size={13} className="text-blue-400" />
+                                          <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300">3. Video URL</span>
+                                        </div>
+                                        <div className="flex gap-1.5">
                                           <Input
                                             value={guiddeVideoUrl}
                                             onChange={e => setGuiddeVideoUrl(e.target.value)}
-                                            placeholder="URL video (tasto destro sul video Guidde → Copia indirizzo video) — opzionale"
+                                            placeholder="URL video (tasto destro sul video → Copia indirizzo video)"
                                             className="h-9 text-xs rounded-md flex-1"
                                           />
                                           {guiddeVideoUrl.startsWith('http') && (
@@ -1155,76 +1249,57 @@ export default function AdminAcademy() {
                                               onClick={() => handleDownloadMediaInline(lesson.id, guiddeVideoUrl.trim(), [])}
                                               disabled={inlineDownload.status === "downloading"}
                                             >
-                                              <Film size={11} /> Scarica
+                                              <Film size={11} /> Scarica video
                                             </Button>
                                           )}
                                         </div>
-                                        {guiddeHtml && (
-                                          <p className="text-[10px] text-green-600 dark:text-green-400 mb-2">
-                                            {(() => {
-                                              const imgCount = (guiddeHtml.match(/<img/gi) || []).length;
-                                              const screenshotCount = imgCount > 0 ? imgCount - 1 : 0;
-                                              return `Pronto: ${screenshotCount > 0 ? `~${screenshotCount} screenshot` : 'solo testo'}${guiddeVideoUrl.startsWith('http') ? ' + video URL' : ''}`;
-                                            })()}
-                                          </p>
-                                        )}
-                                        <div className="flex gap-2">
-                                          <Button size="sm" onClick={() => handleParseGuidde(lesson.id, "replace")} disabled={!guiddeHtml.trim()} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
-                                            <ClipboardPaste size={12} className="mr-1.5" /> Importa step
-                                          </Button>
-                                          {(lesson.steps?.length ?? 0) > 0 && (
-                                            <Button size="sm" variant="outline" onClick={() => handleParseGuidde(lesson.id, "update")} disabled={!guiddeHtml.trim()} className="h-9 px-4 text-xs rounded-md">
-                                              <RefreshCw size={12} className="mr-1.5" /> Aggiorna screenshot
-                                            </Button>
-                                          )}
-                                          {guiddeHtml && (
-                                            <Button size="sm" variant="ghost" onClick={() => { setGuiddeHtml(""); setGuiddeEditorKey(k => k + 1); }} className="h-9 px-2 text-xs">
-                                              <X size={12} />
-                                            </Button>
-                                          )}
-                                        </div>
-                                        {inlineDownload.lessonId === lesson.id && inlineDownload.status !== "idle" && (
-                                          <div className="mt-3 space-y-1.5">
-                                            <div className="flex items-center gap-2 text-[11px]">
-                                              {inlineDownload.status === "downloading" && <Loader2 size={11} className="animate-spin text-indigo-500" />}
-                                              {inlineDownload.status === "done" && <div className="w-2.5 h-2.5 rounded-full bg-green-500" />}
-                                              {inlineDownload.status === "error" && <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />}
-                                              <span className="text-gray-600 dark:text-gray-300">
-                                                {inlineDownload.status === "downloading" && "Download in corso..."}
-                                                {inlineDownload.status === "done" && (() => {
-                                                  const hasLocalVideo = inlineDownload.videoStatus === "done" || !!lesson.guide_local_video_url;
-                                                  const localScreenshots = inlineDownload.screenshotsTotal > 0
-                                                    ? inlineDownload.screenshotsDone
-                                                    : (lesson.steps || []).filter((s: any) => s.screenshot_url && !s.screenshot_url.startsWith('http')).length;
-                                                  const totalScreenshots = inlineDownload.screenshotsTotal > 0
-                                                    ? inlineDownload.screenshotsTotal
-                                                    : (lesson.steps || []).filter((s: any) => s.screenshot_url).length;
-                                                  const parts: string[] = [];
-                                                  if (totalScreenshots > 0) parts.push(`${localScreenshots}/${totalScreenshots} screenshot`);
-                                                  if (hasLocalVideo) parts.push("video");
-                                                  return `Salvato in locale: ${parts.join(" + ")}`;
-                                                })()}
-                                                {inlineDownload.status === "error" && (
-                                                  inlineDownload.screenshotsTotal === 0
-                                                    ? "Errore download video"
-                                                    : `Completato con errori: ${inlineDownload.screenshotsDone}/${inlineDownload.screenshotsTotal} screenshot`
-                                                )}
-                                              </span>
-                                            </div>
-                                            {inlineDownload.errors.length > 0 && (
-                                              <p className="text-[10px] text-amber-600 dark:text-amber-400">{inlineDownload.errors[0]}</p>
-                                            )}
-                                          </div>
-                                        )}
-                                        {inlineDownload.lessonId !== lesson.id && (lesson.steps || []).some(s => s.screenshot_url && s.screenshot_url.startsWith('http')) && (
-                                          <div className="mt-2 flex items-center gap-2">
-                                            <p className="text-[10px] text-blue-600 dark:text-blue-400 flex-1">Screenshot non ancora scaricati in locale.</p>
-                                            <Button size="sm" variant="outline" onClick={() => handleDownloadMediaInline(lesson.id)} className="h-7 px-2 text-[10px] rounded gap-1">
-                                              <Film size={10} /> Scarica ora
-                                            </Button>
-                                          </div>
+                                        {lesson.guide_embed_url && (
+                                          <p className="text-[10px] text-gray-400 mt-1.5">Embed URL: {lesson.guide_embed_url}</p>
                                         )}
                                       </div>
+
+                                      {inlineDownload.lessonId === lesson.id && inlineDownload.status !== "idle" && (
+                                        <div className="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
+                                          <div className="flex items-center gap-2 text-[11px]">
+                                            {inlineDownload.status === "downloading" && <Loader2 size={11} className="animate-spin text-indigo-500" />}
+                                            {inlineDownload.status === "done" && <div className="w-2.5 h-2.5 rounded-full bg-green-500" />}
+                                            {inlineDownload.status === "error" && <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />}
+                                            <span className="text-gray-600 dark:text-gray-300">
+                                              {inlineDownload.status === "downloading" && "Download in corso..."}
+                                              {inlineDownload.status === "done" && (() => {
+                                                const hasLocalVideo = inlineDownload.videoStatus === "done" || !!lesson.guide_local_video_url;
+                                                const localScreenshots = inlineDownload.screenshotsTotal > 0
+                                                  ? inlineDownload.screenshotsDone
+                                                  : (lesson.steps || []).filter((s: any) => s.screenshot_url && !s.screenshot_url.startsWith('http')).length;
+                                                const totalScreenshots = inlineDownload.screenshotsTotal > 0
+                                                  ? inlineDownload.screenshotsTotal
+                                                  : (lesson.steps || []).filter((s: any) => s.screenshot_url).length;
+                                                const parts: string[] = [];
+                                                if (totalScreenshots > 0) parts.push(`${localScreenshots}/${totalScreenshots} screenshot`);
+                                                if (hasLocalVideo) parts.push("video");
+                                                return `Salvato in locale: ${parts.join(" + ")}`;
+                                              })()}
+                                              {inlineDownload.status === "error" && (
+                                                inlineDownload.screenshotsTotal === 0
+                                                  ? "Errore download video"
+                                                  : `Completato con errori: ${inlineDownload.screenshotsDone}/${inlineDownload.screenshotsTotal} screenshot`
+                                              )}
+                                            </span>
+                                          </div>
+                                          {inlineDownload.errors.length > 0 && (
+                                            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">{inlineDownload.errors[0]}</p>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {inlineDownload.lessonId !== lesson.id && (lesson.steps || []).some(s => s.screenshot_url && s.screenshot_url.startsWith('http')) && (
+                                        <div className="mb-4 p-2.5 flex items-center gap-2 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-200 dark:border-blue-900">
+                                          <p className="text-[10px] text-blue-600 dark:text-blue-400 flex-1">Screenshot non ancora scaricati in locale.</p>
+                                          <Button size="sm" variant="outline" onClick={() => handleDownloadMediaInline(lesson.id)} className="h-7 px-2 text-[10px] rounded gap-1">
+                                            <Film size={10} /> Scarica ora
+                                          </Button>
+                                        </div>
+                                      )}
 
                                       <div className="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
                                         <div className="flex items-center gap-2 mb-2">
