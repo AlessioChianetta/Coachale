@@ -32,6 +32,7 @@ export interface GenerateIdeasParams {
   writingStyle?: string;
   customWritingInstructions?: string;
   topicId?: string;
+  onProgress?: (step: string, message: string, progress: number) => void;
   brandVoiceData?: {
     consultantDisplayName?: string;
     businessName?: string;
@@ -2741,7 +2742,7 @@ Questi contenuti sono GIÀ stati creati. Le nuove idee DEVONO essere COMPLETAMEN
 export async function generateContentIdeas(params: GenerateIdeasParams): Promise<GenerateIdeasResult> {
   const { consultantId, niche, targetAudience, objective, additionalContext, count = 3, mediaType = "photo", copyType = "short", awarenessLevel = "problem_aware", sophisticationLevel = "level_3" } = params;
   const { targetPlatform, postCategory, postSchema, schemaStructure, schemaLabel, charLimit, writingStyle = "default", customWritingInstructions } = params;
-  const { preferredCtaType, customCtaText } = params;
+  const { preferredCtaType, customCtaText, onProgress } = params;
   
   // ==================== DEBUG COMPLETO - INIZIO ====================
   console.log(`\n[CONTENT-AI] ╔══════════════════════════════════════════════════════════════╗`);
@@ -3438,10 +3439,14 @@ RISPONDI SOLO con un JSON valido nel formato:
   ]
 }`;
 
+  onProgress?.('building_prompt', 'Prompt costruito, invio all\'AI...', 25);
+
   try {
     const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, "content-ideas");
     setFeature?.('content-ideas');
-    const { model } = getModelWithThinking(metadata?.name);
+    const { model, useThinking } = getModelWithThinking(metadata?.name);
+
+    onProgress?.('thinking', 'AI in elaborazione (pensiero profondo)...', 35);
     
     const result = await trackedGenerateContent({
       model,
@@ -3449,8 +3454,11 @@ RISPONDI SOLO con un JSON valido nel formato:
       generationConfig: {
         temperature: 1.0,
         maxOutputTokens: 8192,
+        ...(useThinking && { thinkingConfig: { thinkingBudget: 16384 } }),
       },
     } as any, { consultantId, feature: 'content-ideas', callerRole: 'consultant' });
+
+    onProgress?.('parsing', 'Elaborando le idee generate...', 70);
     
     const responseText = result.response.text();
     const parsed = parseJsonResponse<{ ideas: ContentIdea[] }>(responseText, { ideas: [] });
@@ -3678,6 +3686,8 @@ RISPONDI SOLO con un JSON valido nel formato:
     
     // POST-PROCESSING: Compress ideas that exceed character limit
     const finalIdeas: ContentIdea[] = [];
+
+    onProgress?.('compressing', 'Verificando lunghezza copy e ottimizzando...', 85);
     
     for (const idea of enrichedIdeas) {
       // Calculate current copy length

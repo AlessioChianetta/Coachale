@@ -113,6 +113,7 @@ import {
 import { motion } from "framer-motion";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
+import { GenerationProgressModal } from "@/components/content-studio/GenerationProgressModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
@@ -689,6 +690,14 @@ export default function ContentStudioIdeas() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
   const [showGeneratedDialog, setShowGeneratedDialog] = useState(false);
+
+  // Stato per il modal di generazione asincrono
+  const [generationJobId, setGenerationJobId] = useState<string | null>(null);
+  const [generationModalOpen, setGenerationModalOpen] = useState(false);
+  const [generationStep, setGenerationStep] = useState<string>("starting");
+  const [generationMessage, setGenerationMessage] = useState<string>("Avvio generazione...");
+  const [generationProgress, setGenerationProgress] = useState<number>(5);
+  const [generationStatus, setGenerationStatus] = useState<"pending" | "running" | "done" | "error">("pending");
   const [savedIdeaIndexes, setSavedIdeaIndexes] = useState<Set<number>>(new Set());
   const [mediaType, setMediaType] = useState<"video" | "photo">("photo");
   const [copyType, setCopyType] = useState<"short" | "long">("long");
@@ -1657,6 +1666,66 @@ export default function ContentStudioIdeas() {
       setCurrentPage(totalPages);
     }
   }, [totalPages, currentPage]);
+
+  // Polling per il job di generazione asincrono
+  useEffect(() => {
+    if (!generationJobId) return;
+
+    let stopped = false;
+    const poll = async () => {
+      while (!stopped) {
+        try {
+          const res = await fetch(`/api/content/ai/generation-status/${generationJobId}`, {
+            headers: getAuthHeaders(),
+          });
+          if (!res.ok) break;
+          const data = await res.json();
+          const job = data.data;
+
+          setGenerationStep(job.step);
+          setGenerationMessage(job.message);
+          setGenerationProgress(job.progress);
+          setGenerationStatus(job.status);
+
+          if (job.status === "done") {
+            const ideas = job.result?.ideas || [];
+            setGeneratedIdeas(ideas);
+            setSavedIdeaIndexes(new Set());
+            stopped = true;
+            // Piccolo delay per mostrare "completato" prima di chiudere
+            await new Promise((r) => setTimeout(r, 1200));
+            setGenerationModalOpen(false);
+            setGenerationJobId(null);
+            setShowGeneratedDialog(true);
+            setIsGenerating(false);
+            toast({
+              title: "Idee generate!",
+              description: `${ideas.length} idee pronte. Clicca "Salva" su quelle che vuoi conservare.`,
+            });
+            return;
+          }
+
+          if (job.status === "error") {
+            stopped = true;
+            setIsGenerating(false);
+            toast({
+              title: "Errore nella generazione",
+              description: job.error || job.message,
+              variant: "destructive",
+            });
+            return;
+          }
+        } catch {
+          // ignora errori di rete transitori
+        }
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    };
+
+    poll();
+    return () => { stopped = true; };
+  }, [generationJobId]);
+
   const paginatedIdeas = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredAndSortedIdeas.slice(start, start + ITEMS_PER_PAGE);
@@ -2063,13 +2132,20 @@ export default function ContentStudioIdeas() {
     const platformLimit = dynamicPlatformLimits[targetPlatform];
 
     setIsGenerating(true);
-    
+
+    // Reset e apri il modal di progresso
+    setGenerationStep("starting");
+    setGenerationMessage("Avvio generazione...");
+    setGenerationProgress(5);
+    setGenerationStatus("pending");
+    setGenerationModalOpen(true);
+
     // Debug log per verificare lo stato di writingStyle
     console.log("[GENERATE] Current writingStyle state:", writingStyle);
     console.log("[GENERATE] customWritingInstructions:", customWritingInstructions);
     
     try {
-      const response = await fetch("/api/content/ai/generate-ideas", {
+      const response = await fetch("/api/content/ai/generate-ideas-async", {
         method: "POST",
         headers: {
           ...getAuthHeaders(),
@@ -2114,25 +2190,17 @@ export default function ContentStudioIdeas() {
       }
 
       const result = await response.json();
-      const ideas = result.data.ideas || [];
-      setGeneratedIdeas(ideas);
-      
-      // Reset saved indexes - user decides what to save manually
-      setSavedIdeaIndexes(new Set());
-      setShowGeneratedDialog(true);
-      
-      toast({
-        title: "Idee generate!",
-        description: `${ideas.length} idee pronte. Clicca "Salva" su quelle che vuoi conservare.`,
-      });
+      const { jobId } = result.data;
+      // Il polling è gestito dal useEffect che osserva generationJobId
+      setGenerationJobId(jobId);
     } catch (error: any) {
+      setGenerationModalOpen(false);
+      setIsGenerating(false);
       toast({
         title: "Errore nella generazione",
         description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -4856,6 +4924,19 @@ export default function ContentStudioIdeas() {
             </div>
           </div>
           </div>
+
+      <GenerationProgressModal
+        open={generationModalOpen}
+        step={generationStep}
+        message={generationMessage}
+        progress={generationProgress}
+        status={generationStatus}
+        onClose={() => {
+          setGenerationModalOpen(false);
+          setGenerationJobId(null);
+          setIsGenerating(false);
+        }}
+      />
 
       <Dialog open={showPhaseConfirmDialog} onOpenChange={setShowPhaseConfirmDialog}>
         <DialogContent className="max-w-sm">

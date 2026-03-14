@@ -22,8 +22,37 @@ import path from "path";
 import { upload } from "../middleware/upload";
 import { extractTextFromFile } from "../services/document-processor";
 import { generateAutopilotBatch, AutopilotConfig } from "../services/content-autopilot-service";
+import crypto from "crypto";
 
 const router = Router();
+
+// ============================================================
+// GENERATION JOB STORE (in-memory, per job di generazione idee)
+// ============================================================
+
+interface GenerationJob {
+  id: string;
+  consultantId: string;
+  status: "pending" | "running" | "done" | "error";
+  step: string;
+  message: string;
+  progress: number;
+  result?: any;
+  error?: string;
+  createdAt: number;
+}
+
+const generationJobs = new Map<string, GenerationJob>();
+
+// Pulizia job più vecchi di 15 minuti
+setInterval(() => {
+  const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
+  for (const [id, job] of generationJobs.entries()) {
+    if (job.createdAt < fifteenMinutesAgo) {
+      generationJobs.delete(id);
+    }
+  }
+}, 60 * 1000);
 
 // ============================================================
 // BRAND ASSETS
@@ -2789,6 +2818,153 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
       error: error.message || "Failed to generate content ideas",
     });
   }
+});
+
+// POST /api/content/ai/generate-ideas-async - Avvia la generazione in background e restituisce un jobId
+router.post("/ai/generate-ideas-async", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  const consultantId = req.user!.id;
+
+  let validatedData: any;
+  try {
+    validatedData = generateIdeasSchema.parse(req.body);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+        details: error.errors,
+      });
+    }
+    return res.status(400).json({ success: false, error: "Invalid request" });
+  }
+
+  const jobId = crypto.randomUUID();
+  const job: GenerationJob = {
+    id: jobId,
+    consultantId,
+    status: "pending",
+    step: "starting",
+    message: "Avvio generazione...",
+    progress: 5,
+    createdAt: Date.now(),
+  };
+  generationJobs.set(jobId, job);
+
+  // Risposta immediata con jobId
+  res.json({ success: true, data: { jobId } });
+
+  // Helper per aggiornare il job
+  const updateJob = (step: string, message: string, progress: number) => {
+    const current = generationJobs.get(jobId);
+    if (current) {
+      generationJobs.set(jobId, { ...current, status: "running", step, message, progress });
+    }
+  };
+
+  // Esecuzione in background (fire and forget)
+  (async () => {
+    try {
+      updateJob("loading_context", "Raccogliendo contesto e Knowledge Base...", 15);
+
+      let kbContentParts: string[] = [];
+      if (validatedData.kbContent && validatedData.kbContent.trim().length > 0) {
+        kbContentParts.push(validatedData.kbContent);
+      }
+      if (validatedData.kbDocumentIds && validatedData.kbDocumentIds.length > 0) {
+        const kbDocs = await db
+          .select()
+          .from(schema.consultantKnowledgeDocuments)
+          .where(
+            and(
+              eq(schema.consultantKnowledgeDocuments.consultantId, consultantId),
+              inArray(schema.consultantKnowledgeDocuments.id, validatedData.kbDocumentIds)
+            )
+          );
+        for (const doc of kbDocs) {
+          if (doc.geminiFileUri && doc.fileType === "pdf") {
+            ensureGeminiFileValid(doc.id).catch((error: any) => {
+              console.warn(`⚠️ [GEMINI] Failed to ensure Gemini file validity: ${error.message}`);
+            });
+          }
+        }
+        const kbDocsContent = kbDocs
+          .filter((d) => d.extractedContent)
+          .map((d) => `## ${d.title}\n\n${d.extractedContent}`)
+          .join("\n\n---\n\n");
+        if (kbDocsContent.length > 0) kbContentParts.push(kbDocsContent);
+      }
+      const kbContent = kbContentParts.join("\n\n---\n\n");
+
+      const selectedSchema = validatedData;
+      const result = await generateContentIdeas({
+        consultantId,
+        niche: validatedData.niche,
+        targetAudience: validatedData.targetAudience,
+        objective: validatedData.objective,
+        additionalContext: validatedData.additionalContext,
+        count: validatedData.count,
+        mediaType: validatedData.mediaType,
+        copyType: validatedData.copyType,
+        awarenessLevel: validatedData.awarenessLevel,
+        sophisticationLevel: validatedData.sophisticationLevel,
+        brandVoiceData: validatedData.brandVoiceData,
+        kbContent,
+        targetPlatform: validatedData.targetPlatform,
+        postCategory: validatedData.postCategory,
+        postSchema: validatedData.postSchema,
+        schemaStructure: validatedData.schemaStructure,
+        schemaLabel: validatedData.schemaLabel,
+        charLimit: validatedData.charLimit,
+        writingStyle: validatedData.writingStyle,
+        customWritingInstructions: validatedData.customWritingInstructions,
+        marketResearchProblems: validatedData.marketResearchProblems,
+        marketResearchData: validatedData.marketResearchData as any,
+        preferredCtaType: validatedData.preferredCtaType,
+        customCtaText: validatedData.customCtaText,
+        onProgress: (step, message, progress) => updateJob(step, message, progress),
+      });
+
+      console.log(`✅ [CONTENT-AI ASYNC] Job ${jobId} completed: ${result.ideas.length} ideas`);
+      generationJobs.set(jobId, {
+        ...generationJobs.get(jobId)!,
+        status: "done",
+        step: "done",
+        message: "Completato!",
+        progress: 100,
+        result,
+      });
+    } catch (error: any) {
+      console.error(`❌ [CONTENT-AI ASYNC] Job ${jobId} failed:`, error);
+      generationJobs.set(jobId, {
+        ...generationJobs.get(jobId)!,
+        status: "error",
+        step: "error",
+        message: error.message || "Errore durante la generazione",
+        progress: 0,
+        error: error.message,
+      });
+    }
+  })();
+});
+
+// GET /api/content/ai/generation-status/:jobId - Stato del job di generazione (polling)
+router.get("/ai/generation-status/:jobId", authenticateToken, requireRole("consultant"), (req: AuthRequest, res) => {
+  const consultantId = req.user!.id;
+  const { jobId } = req.params;
+  const job = generationJobs.get(jobId);
+
+  if (!job || job.consultantId !== consultantId) {
+    return res.status(404).json({ success: false, error: "Job non trovato" });
+  }
+
+  const { result, ...jobWithoutResult } = job;
+  res.json({
+    success: true,
+    data: {
+      ...jobWithoutResult,
+      ...(job.status === "done" && { result }),
+    },
+  });
 });
 
 router.post("/ai/generate-copy", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
