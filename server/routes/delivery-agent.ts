@@ -233,6 +233,7 @@ router.get('/sessions/:id', authenticateToken, requireRole('consultant'), async 
     const reportRes = await db.execute(sql`
       SELECT * FROM delivery_agent_reports
       WHERE session_id = ${id}
+      ORDER BY created_at DESC
       LIMIT 1
     `);
     res.json({
@@ -766,6 +767,9 @@ Rispondi SOLO con il JSON finale nel formato \`\`\`json ... \`\`\`.`,
 
     console.log(`[DeliveryAgent] Report generation COMPLETE — final report has ${reportJson?.pacchetti_consigliati?.length || 0} packages`);
 
+    await db.execute(sql`
+      DELETE FROM delivery_agent_reports WHERE session_id = ${sessionId}
+    `);
     await db.execute(sql`
       INSERT INTO delivery_agent_reports (session_id, consultant_id, report_json)
       VALUES (${sessionId}, ${consultantId}, ${JSON.stringify(reportJson)}::jsonb)
