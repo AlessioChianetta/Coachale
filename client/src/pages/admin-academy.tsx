@@ -132,7 +132,7 @@ const MODULE_GRADIENT: Record<string, string> = {
 };
 
 interface DeleteState {
-  type: "module" | "lesson" | "document" | "video" | "all-steps" | "local-media";
+  type: "module" | "lesson" | "document" | "video" | "all-steps" | "local-media" | "local-video" | "local-screenshots" | "all-steps-and-media";
   id: string;
   name: string;
   step: number;
@@ -495,6 +495,13 @@ export default function AdminAcademy() {
       toast({ title: "Errore", description: "Devi scrivere CONFERMA per procedere", variant: "destructive" });
       return;
     }
+    if (deleteState.type === "all-steps-and-media") {
+      await saveMutation.mutateAsync({ url: `${API_BASE}/admin/lessons/${deleteState.id}/local-media`, method: "DELETE" });
+      await saveMutation.mutateAsync({ url: `${API_BASE}/admin/lessons/${deleteState.id}/all-steps`, method: "DELETE" });
+      setDeleteState(null);
+      toast({ title: "Step e media eliminati con successo" });
+      return;
+    }
     const urlMap: Record<string, string> = {
       module: `${API_BASE}/admin/modules/${deleteState.id}`,
       lesson: `${API_BASE}/admin/lessons/${deleteState.id}`,
@@ -502,11 +509,14 @@ export default function AdminAcademy() {
       video: `${API_BASE}/admin/videos/${deleteState.id}`,
       "all-steps": `${API_BASE}/admin/lessons/${deleteState.id}/all-steps`,
       "local-media": `${API_BASE}/admin/lessons/${deleteState.id}/local-media`,
+      "local-video": `${API_BASE}/admin/lessons/${deleteState.id}/local-video`,
+      "local-screenshots": `${API_BASE}/admin/lessons/${deleteState.id}/local-screenshots`,
     };
     await saveMutation.mutateAsync({ url: urlMap[deleteState.type], method: "DELETE" });
     setDeleteState(null);
-    const labels: Record<string, string> = { module: "Modulo", lesson: "Lezione", document: "Documento", video: "Video", "all-steps": "Tutti gli step", "local-media": "Media locali" };
-    toast({ title: `${labels[deleteState.type]} eliminat${deleteState.type === "all-steps" || deleteState.type === "local-media" ? "i" : "o"} con successo` });
+    const labels: Record<string, string> = { module: "Modulo", lesson: "Lezione", document: "Documento", video: "Video", "all-steps": "Tutti gli step", "local-media": "Media locali", "local-video": "Video locale", "local-screenshots": "Screenshot" };
+    const plural = ["all-steps", "local-media", "local-screenshots"].includes(deleteState.type);
+    toast({ title: `${labels[deleteState.type]} eliminat${plural ? "i" : "o"} con successo` });
   };
 
   const handleReorderModules = async (moduleId: string, direction: "up" | "down") => {
@@ -549,7 +559,12 @@ export default function AdminAcademy() {
 
   const getDeleteStepContent = () => {
     if (!deleteState) return null;
-    const typeLabels: Record<string, string> = { module: "il modulo", lesson: "la lezione", document: "il documento", video: "il video", "all-steps": "tutti gli step", "local-media": "i media locali" };
+    const typeLabels: Record<string, string> = {
+      module: "il modulo", lesson: "la lezione", document: "il documento", video: "il video",
+      "all-steps": "tutti gli step", "local-media": "i media locali",
+      "local-video": "il video locale", "local-screenshots": "gli screenshot",
+      "all-steps-and-media": "tutti gli step e media",
+    };
     const label = typeLabels[deleteState.type];
 
     const extraWarning = deleteState.type === "module"
@@ -557,7 +572,13 @@ export default function AdminAcademy() {
       : deleteState.type === "all-steps"
       ? " Tutti gli step della guida verranno rimossi. Dovrai reimportarli da Guidde o aggiungerli manualmente."
       : deleteState.type === "local-media"
-      ? " Il video e gli screenshot scaricati verranno eliminati dal server. Il player tornera' a usare l'iframe Guidde."
+      ? " Il video e gli screenshot scaricati verranno eliminati dal server."
+      : deleteState.type === "local-video"
+      ? " Il file video locale verra' eliminato dal server."
+      : deleteState.type === "local-screenshots"
+      ? " Tutti gli screenshot verranno rimossi dagli step."
+      : deleteState.type === "all-steps-and-media"
+      ? " Tutti gli step, screenshot e il video locale verranno eliminati permanentemente."
       : "";
 
     if (deleteState.step === 1) {
@@ -573,7 +594,7 @@ export default function AdminAcademy() {
       return {
         icon: <Shield className="h-12 w-12 text-orange-500" />,
         title: "Conferma eliminazione",
-        description: `Questa azione e' irreversibile. ${label} "${deleteState.name}" ${deleteState.type === "all-steps" || deleteState.type === "local-media" ? "verranno eliminati" : "verra' eliminato"} definitivamente.${deleteState.type === "module" ? " Include tutte le lezioni associate, i loro video e documenti." : ""}`,
+        description: `Questa azione e' irreversibile. ${label} "${deleteState.name}" ${["all-steps", "local-media", "local-screenshots", "all-steps-and-media"].includes(deleteState.type) ? "verranno eliminati" : "verra' eliminato"} definitivamente.${deleteState.type === "module" ? " Include tutte le lezioni associate, i loro video e documenti." : ""}`,
         buttonLabel: "Procedi all'eliminazione",
         buttonVariant: "outline" as const,
       };
@@ -1333,50 +1354,92 @@ export default function AdminAcademy() {
                                         </div>
                                       </div>
 
-                                      {lesson.steps && lesson.steps.length > 0 && (
-                                        <div className="space-y-1.5 mb-4">
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-[11px] text-gray-500 font-medium">{lesson.steps.length} step presenti</span>
-                                            <div className="flex-1" />
-                                            {lesson.guide_local_video_url && (
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 px-2 text-[10px] gap-1 text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded-md"
-                                                onClick={() => initiateDelete("local-media", lesson.id, lesson.title)}
-                                              >
-                                                <Trash2 size={10} /> Rimuovi media locali
-                                              </Button>
-                                            )}
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-6 px-2 text-[10px] gap-1 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md"
-                                              onClick={() => initiateDelete("all-steps", lesson.id, lesson.title)}
-                                            >
-                                              <Trash2 size={10} /> Elimina tutti gli step
-                                            </Button>
+                                      {lesson.guide_local_video_url && (
+                                        <div className="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <PlayCircle size={13} className="text-blue-500" />
+                                            <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300">Video locale</span>
+                                            <span className="text-[10px] text-emerald-500 font-medium ml-auto">Salvato</span>
                                           </div>
-                                          {[...lesson.steps].sort((a: any, b: any) => a.sort_order - b.sort_order).map((step: any) => (
-                                            <div key={step.id} className="flex items-center gap-2 p-2 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 group/step">
-                                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[10px] font-bold flex items-center justify-center">
-                                                {step.step_number}
-                                              </span>
-                                              <div className="flex-1 min-w-0">
-                                                <p className="text-[12px] font-medium text-gray-700 dark:text-gray-200 truncate">{step.title}</p>
-                                                {step.timestamp && <span className="text-[10px] text-gray-400">{step.timestamp}</span>}
-                                              </div>
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-5 w-5 p-0 opacity-100 md:opacity-0 md:group-hover/step:opacity-100 md:focus:opacity-100 text-red-400 hover:text-red-600 transition-opacity"
-                                                title="Rimuovi step"
-                                                onClick={() => handleDeleteStepItem(step.id)}
-                                              >
-                                                <Trash2 size={11} />
+                                          <video
+                                            src={lesson.guide_local_video_url}
+                                            controls
+                                            className="w-full max-h-[300px] rounded-md bg-black"
+                                            preload="metadata"
+                                          />
+                                        </div>
+                                      )}
+
+                                      {(lesson.steps && lesson.steps.length > 0) && (
+                                        <div className="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
+                                          <div className="flex items-center gap-2 mb-3">
+                                            <ListOrdered size={13} className="text-gray-500" />
+                                            <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300">{lesson.steps.length} step</span>
+                                            <div className="flex-1" />
+                                            <div className="flex gap-1">
+                                              {(lesson.steps || []).some(s => s.screenshot_url) && (
+                                                <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1 text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded-md"
+                                                  onClick={() => initiateDelete("local-screenshots", lesson.id, lesson.title)}>
+                                                  <Trash2 size={10} /> Screenshot
+                                                </Button>
+                                              )}
+                                              {lesson.guide_local_video_url && (
+                                                <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1 text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded-md"
+                                                  onClick={() => initiateDelete("local-video", lesson.id, lesson.title)}>
+                                                  <Trash2 size={10} /> Video
+                                                </Button>
+                                              )}
+                                              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md"
+                                                onClick={() => initiateDelete("all-steps", lesson.id, lesson.title)}>
+                                                <Trash2 size={10} /> Solo step
+                                              </Button>
+                                              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md font-semibold"
+                                                onClick={() => initiateDelete("all-steps-and-media", lesson.id, lesson.title)}>
+                                                <Trash2 size={10} /> Tutto
                                               </Button>
                                             </div>
-                                          ))}
+                                          </div>
+                                          <div className="space-y-2">
+                                            {[...lesson.steps].sort((a: any, b: any) => a.sort_order - b.sort_order).map((step: any) => (
+                                              <div key={step.id} className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md border border-gray-100 dark:border-gray-700/50 group/step">
+                                                <div className="flex items-start gap-3">
+                                                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-bold flex items-center justify-center mt-0.5">
+                                                    {step.step_number}
+                                                  </span>
+                                                  <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                      <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-100">{step.title}</p>
+                                                      {step.timestamp && (
+                                                        <span className="text-[10px] text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded font-mono">{step.timestamp}</span>
+                                                      )}
+                                                    </div>
+                                                    {step.description && (
+                                                      <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{step.description}</p>
+                                                    )}
+                                                    {step.screenshot_url && (
+                                                      <div className="mt-2">
+                                                        <img
+                                                          src={step.screenshot_url}
+                                                          alt={step.title}
+                                                          className="max-h-[200px] max-w-full rounded-md border border-gray-200 dark:border-gray-600 object-contain object-left"
+                                                          loading="lazy"
+                                                        />
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 w-6 p-0 opacity-100 md:opacity-0 md:group-hover/step:opacity-100 md:focus:opacity-100 text-red-400 hover:text-red-600 transition-opacity shrink-0"
+                                                    title="Rimuovi step"
+                                                    onClick={() => handleDeleteStepItem(step.id)}
+                                                  >
+                                                    <Trash2 size={12} />
+                                                  </Button>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
                                         </div>
                                       )}
 

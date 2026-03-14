@@ -1042,6 +1042,39 @@ router.delete('/admin/lessons/:lessonId/local-media', authenticateToken, require
   }
 });
 
+router.delete('/admin/lessons/:lessonId/local-video', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const lesson = await db.execute(sql`SELECT guide_local_video_url FROM academy_lessons WHERE id = ${lessonId}`);
+    const videoUrl = (lesson.rows[0] as any)?.guide_local_video_url;
+    if (videoUrl) {
+      const filePath = path.join(process.cwd(), videoUrl);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+    await db.execute(sql`UPDATE academy_lessons SET guide_local_video_url = NULL WHERE id = ${lessonId}`);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete('/admin/lessons/:lessonId/local-screenshots', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const steps = await db.execute(sql`SELECT screenshot_url FROM academy_lesson_steps WHERE lesson_id = ${lessonId} AND screenshot_url LIKE '/uploads/%'`);
+    for (const step of steps.rows as any[]) {
+      if (step.screenshot_url) {
+        const filePath = path.join(process.cwd(), step.screenshot_url);
+        if (fs.existsSync(filePath)) { try { fs.unlinkSync(filePath); } catch {} }
+      }
+    }
+    await db.execute(sql`UPDATE academy_lesson_steps SET screenshot_url = NULL WHERE lesson_id = ${lessonId}`);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 function isValidExternalUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
