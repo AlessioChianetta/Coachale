@@ -3255,8 +3255,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       let voiceAffectiveDialog = false;
       let voiceVadStartSensitivity = 'START_SENSITIVITY_HIGH';
       let voiceVadEndSensitivity = 'END_SENSITIVITY_LOW';
-      let voiceVadSilenceMs = 500;
+      let voiceVadSilenceMs = 300;
       let firstAiTurnComplete = false;
+      let firstAiAudioTimestamp = 0;
 
       let _ncLatency = {
         parallelQueriesStartTime: 0,
@@ -3892,7 +3893,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             voiceVadEndSensitivity = settings.voiceVadEndSensitivity || 'END_SENSITIVITY_LOW';
             if (!['START_SENSITIVITY_LOW', 'START_SENSITIVITY_HIGH'].includes(voiceVadStartSensitivity)) voiceVadStartSensitivity = 'START_SENSITIVITY_HIGH';
             if (!['END_SENSITIVITY_LOW', 'END_SENSITIVITY_HIGH'].includes(voiceVadEndSensitivity)) voiceVadEndSensitivity = 'END_SENSITIVITY_LOW';
-            voiceVadSilenceMs = settings.voiceVadSilenceMs ?? 500;
+            voiceVadSilenceMs = settings.voiceVadSilenceMs ?? 300;
             console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}, deferredPrompt=${voiceDeferredPrompt}, affectiveDialog=${voiceAffectiveDialog}, thinkingBudget=${voiceThinkingBudget}`);
             console.log(`🔍 [ROUTING-DEBUG] ━━━ OUTBOUND SETTINGS (non-client path) ━━━`);
             console.log(`🔍 [ROUTING-DEBUG]   consultantId used for query: ${consultantId}`);
@@ -4231,7 +4232,7 @@ Una volta che hanno capito e confermato:
             voiceVadEndSensitivity = settings.voiceVadEndSensitivity || 'END_SENSITIVITY_LOW';
             if (!['START_SENSITIVITY_LOW', 'START_SENSITIVITY_HIGH'].includes(voiceVadStartSensitivity)) voiceVadStartSensitivity = 'START_SENSITIVITY_HIGH';
             if (!['END_SENSITIVITY_LOW', 'END_SENSITIVITY_HIGH'].includes(voiceVadEndSensitivity)) voiceVadEndSensitivity = 'END_SENSITIVITY_LOW';
-            voiceVadSilenceMs = settings.voiceVadSilenceMs ?? 500;
+            voiceVadSilenceMs = settings.voiceVadSilenceMs ?? 300;
             
             if (isOutbound) {
               const rawOutboundSource = settings.outboundPromptSource || settings.nonClientPromptSource || 'template';
@@ -6253,6 +6254,8 @@ Questa regola vale SEMPRE, senza eccezioni, per OGNI prenotazione.`;
                 ]
               },
               realtimeInputConfig: {
+                activityHandling: "START_OF_ACTIVITY_INTERRUPTS",
+                turnCoverage: "TURN_INCLUDES_ALL_INPUT",
                 automaticActivityDetection: {
                   disabled: false,
                   startOfSpeechSensitivity: voiceVadStartSensitivity,
@@ -6296,6 +6299,8 @@ Questa regola vale SEMPRE, senza eccezioni, per OGNI prenotazione.`;
                 ]
               },
               realtime_input_config: {
+                activity_handling: "START_OF_ACTIVITY_INTERRUPTS",
+                turn_coverage: "TURN_INCLUDES_ALL_INPUT",
                 automatic_activity_detection: {
                   disabled: false,
                   start_of_speech_sensitivity: voiceVadStartSensitivity,
@@ -7517,19 +7522,20 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             console.log(`🎯 Action: Stop audio playback immediately`);
             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
             
-            if (voiceProtectFirstMessage && !firstAiTurnComplete) {
-              console.log(`🛡️ [${connectionId}] BARGE-IN SUPPRESSED (protect first message active)`);
-            } else if (isAiSpeaking) {
-              isAiSpeaking = false;
-              console.log(`🔇 [${connectionId}] AI stopped speaking (serverContent.interrupted)`);
+            const protectWindowActive = voiceProtectFirstMessage && !firstAiTurnComplete && firstAiAudioTimestamp > 0 && (Date.now() - firstAiAudioTimestamp < 2000);
+            if (protectWindowActive) {
+              console.log(`🛡️ [${connectionId}] BARGE-IN SUPPRESSED (protect window: ${Date.now() - firstAiAudioTimestamp}ms < 2000ms)`);
+            } else {
+              if (isAiSpeaking) {
+                isAiSpeaking = false;
+              }
+              console.log(`🔇 [${connectionId}] AI interrupted (serverContent.interrupted) - forwarding to client`);
               
               clientWs.send(JSON.stringify({
                 type: 'barge_in_detected',
                 message: 'User interrupted - stop audio playback immediately',
                 source: 'serverContent.interrupted'
               }));
-            } else {
-              console.log(`🔇 [${connectionId}] serverContent.interrupted received but AI was NOT speaking - ignoring (false positive)`);
             }
             
             // Note: We don't return/continue here because the subsequent code
@@ -7574,16 +7580,17 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 console.log(`🎯 VAD Config: start=${voiceVadStartSensitivity}, end=${voiceVadEndSensitivity}, silence=${voiceVadSilenceMs}ms`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                 
-                if (voiceProtectFirstMessage && !firstAiTurnComplete) {
-                  console.log(`🛡️ [${connectionId}] BARGE-IN (part) SUPPRESSED (protect first message active)`);
+                const partProtectWindowActive = voiceProtectFirstMessage && !firstAiTurnComplete && firstAiAudioTimestamp > 0 && (Date.now() - firstAiAudioTimestamp < 2000);
+                if (partProtectWindowActive) {
+                  console.log(`🛡️ [${connectionId}] BARGE-IN (part) SUPPRESSED (protect window: ${Date.now() - firstAiAudioTimestamp}ms < 2000ms)`);
                   continue;
                 }
                 
                 if (isAiSpeaking) {
                   isAiSpeaking = false;
-                  console.log(`🔇 [${connectionId}] AI stopped speaking (user barge-in)`);
                 }
                 
+                console.log(`🔇 [${connectionId}] AI interrupted (part.interrupted) - forwarding to client`);
                 clientWs.send(JSON.stringify({
                   type: 'barge_in_detected',
                   message: 'User interrupted - stop audio playback immediately'
@@ -7609,6 +7616,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 // 🔒 Track AI speaking (audio streaming) - MANTIENI true su OGNI chunk
                 if (!isAiSpeaking) {
                   isAiSpeaking = true;
+                  if (firstAiAudioTimestamp === 0) {
+                    firstAiAudioTimestamp = Date.now();
+                  }
                   if (latencyTracker.firstAudioByteTime === 0) {
                     latencyTracker.firstAudioByteTime = Date.now();
 
@@ -8146,9 +8156,10 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               console.log(`   → AI sta parlando? ${isAiSpeaking ? 'SÌ - INTERROMPO AUDIO!' : 'No'}`);
               console.log(`🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
               
-              if (voiceProtectFirstMessage && !firstAiTurnComplete) {
-                console.log(`🛡️ [${connectionId}] stop_audio SUPPRESSED (protect first message active)`);
-              } else if (isAiSpeaking) {
+              const vadProtectWindowActive = voiceProtectFirstMessage && !firstAiTurnComplete && firstAiAudioTimestamp > 0 && (Date.now() - firstAiAudioTimestamp < 2000);
+              if (vadProtectWindowActive) {
+                console.log(`🛡️ [${connectionId}] stop_audio SUPPRESSED (protect window: ${Date.now() - firstAiAudioTimestamp}ms < 2000ms)`);
+              } else {
                 console.log(`🛑 [${connectionId}] BARGE-IN ATTIVATO - Invio stop_audio al client`);
                 clientWs.send(JSON.stringify({
                   type: 'stop_audio',
@@ -8156,7 +8167,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                   message: 'User is speaking - stop AI audio immediately'
                 }));
                 
-                isAiSpeaking = false;
+                if (isAiSpeaking) {
+                  isAiSpeaking = false;
+                }
               }
               
               // Invia al client la trascrizione dell'utente in tempo reale

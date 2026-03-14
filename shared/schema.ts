@@ -3481,7 +3481,7 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   voiceAffectiveDialog: boolean("voice_affective_dialog").default(false),
   voiceVadStartSensitivity: varchar("voice_vad_start_sensitivity", { length: 30 }).default("START_SENSITIVITY_HIGH"),
   voiceVadEndSensitivity: varchar("voice_vad_end_sensitivity", { length: 30 }).default("END_SENSITIVITY_LOW"),
-  voiceVadSilenceMs: integer("voice_vad_silence_ms").default(500),
+  voiceVadSilenceMs: integer("voice_vad_silence_ms").default(300),
 
   voiceRetryOnNoAnswer: boolean("voice_retry_on_no_answer").default(true),
   voiceRetryOnBusy: boolean("voice_retry_on_busy").default(true),

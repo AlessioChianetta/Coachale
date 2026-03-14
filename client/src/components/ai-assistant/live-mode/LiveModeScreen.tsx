@@ -97,6 +97,12 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
   const pendingUserTranscriptResetRef = useRef<boolean>(false);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const isAudioStoppedRef = useRef(false);
+  const aiTurnIdRef = useRef(0);
+  const incomingAiTurnIdRef = useRef(0);
+  const audioChunkTurnIdRef = useRef<number[]>([]);
+  const localVadFrameCountRef = useRef(0);
+  const LOCAL_VAD_THRESHOLD = 18;
+  const LOCAL_VAD_MIN_FRAMES = 3;
   const isMutedRef = useRef(false);
   const sessionResumeHandleRef = useRef<string | null>(null);
   const isReconnectingRef = useRef(false);
@@ -1009,6 +1015,7 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
 
     if (!isSessionActiveRef.current) {
       audioQueueRef.current = [];
+      audioChunkTurnIdRef.current = [];
       setAudioLevel(0);
       return;
     }
@@ -1031,6 +1038,18 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
       setLiveState('speaking');
 
       const audioBuffer = audioQueueRef.current.shift()!;
+      const chunkTurnId = audioChunkTurnIdRef.current.shift() ?? -1;
+
+      if (chunkTurnId !== aiTurnIdRef.current) {
+        console.log(`🛡️ [TURN GUARD] Audio chunk discarded (chunkTurnId=${chunkTurnId}, currentTurnId=${aiTurnIdRef.current})`);
+        isPlayingRef.current = false;
+        if (audioQueueRef.current.length > 0) {
+          playNextAudioChunk();
+        } else {
+          setLiveState('listening');
+        }
+        return;
+      }
 
       if (!audioContextRef.current) {
         audioContextRef.current = new AudioContext({ sampleRate: 24000 });
@@ -1101,6 +1120,7 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
 
         if (!isSessionActiveRef.current) {
           audioQueueRef.current = [];
+          audioChunkTurnIdRef.current = [];
           return;
         }
 
@@ -1139,10 +1159,9 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
       currentSourceRef.current = null;
     }
 
-    // 3. Svuota coda audio (cancella chunk vecchi)
     audioQueueRef.current = [];
+    audioChunkTurnIdRef.current = [];
 
-    // 4. Reset playing flag
     isPlayingRef.current = false;
 
     // 5. Ferma animazione audio level
@@ -1185,20 +1204,10 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
 
         case 'ai_transcript':
         if (message.text) {
-          // --- FILTRO TESTO INTELLIGENTE ---
           if (isAudioStoppedRef.current) {
-             // Caso A: C'è testo accumulato -> È un "Zombie" della vecchia frase -> BUTTARE
-             if (accumulatedAiTextRef.current !== '') {
-                console.log(`🛡️ [TEXT ZOMBIE] Testo vecchio ignorato: "${message.text.substring(0, 20)}..."`);
-                return; 
-             }
-
-             // Caso B: Accumulatore vuoto -> È l'inizio della NUOVA risposta -> SBLOCCARE
-             // (Significa che il turno precedente è stato pulito correttamente da turn_complete)
-             console.log(`🟢 [NEW TURN START] Nuova risposta rilevata: Sblocco audio.`);
-             isAudioStoppedRef.current = false;
+            console.log(`🛡️ [TEXT ZOMBIE] Testo ignorato durante interruzione: "${message.text.substring(0, 20)}..."`);
+            return;
           }
-          // ---------------------------------
 
           const isNewTurn = accumulatedAiTextRef.current === '';
 
@@ -1207,13 +1216,9 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
             pendingUserTranscriptResetRef.current = true;
           }
 
-          // Se è un nuovo turno E c'è audio in riproduzione, STOP (barge-in server side)
-          // (Questo serve se l'AI decide di interrompersi da sola o cambiare discorso)
           if (isNewTurn && (isPlayingRef.current || audioQueueRef.current.length > 0)) {
             console.log('🛑 New turn barge-in (Server Side logic) - resetting audio');
             stopCurrentAudio();
-            // Importante: riapriamo subito il gate perché questo è un nuovo turno valido
-            isAudioStoppedRef.current = false; 
           }
 
           // Accumula il testo AI
@@ -1282,11 +1287,9 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
                  console.warn(`⚠️ [RACE CONDITION DETECTED] L'utente ha parlato nel "buco" tra due chunk audio! Con la vecchia logica l'AI NON si sarebbe fermata.`);
             }
 
-            // --- FIX CRITICO ---
-            // NESSUNA CONDIZIONE EXTRA. Se l'utente inizia a parlare, zittiamo l'AI.
-            // stopCurrentAudio è sicuro: se l'audio è già fermo, non fa danni.
             console.log('🛑 [BARGE-IN TRIGGER] Nuovo turno utente -> STOP AUDIO FORZATO (Unconditional)');
             stopCurrentAudio();
+            aiTurnIdRef.current++;
             setLiveState('listening');
           }
 
@@ -1323,24 +1326,14 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
 
       case 'audio_output':
       if (message.data) {
-        // --- FILTRO AUDIO INTELLIGENTE ---
         if (isAudioStoppedRef.current) {
-          // Caso A: C'è testo accumulato -> È un pacchetto "Zombie" della vecchia frase -> BUTTARE
-          if (accumulatedAiTextRef.current !== '') {
-             // Nota: Rimuovi il console.log se vuoi meno rumore nella console
-             // console.log('🛡️ [ZOMBIE KILLER] Pacchetto audio scartato (vecchio turno).');
-             return; 
-          } 
-
-          // Caso B: Accumulatore vuoto -> È l'inizio del NUOVO audio -> SBLOCCARE
-          // (Significa che turn_complete ha pulito il vecchio turno)
-          console.log('🟢 [NEW TURN AUDIO] Nuovo audio rilevato a buffer vuoto: Sblocco.');
-          isAudioStoppedRef.current = false;
+          console.log('🛡️ [AUDIO ZOMBIE] Audio chunk discarded during interruption');
+          return;
         }
-        // ---------------------------------
 
         const audioData = Uint8Array.from(atob(message.data), c => c.charCodeAt(0));
         audioQueueRef.current.push(audioData.buffer);
+        audioChunkTurnIdRef.current.push(incomingAiTurnIdRef.current);
 
         playNextAudioChunk();
       }
@@ -1394,27 +1387,17 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
         console.log('🛑 [STOP AUDIO] Server detected user speaking while AI was talking - stopping immediately!');
         console.log(`   → Reason: ${message.reason || 'unknown'}`);
         
-        // FERMA IMMEDIATAMENTE l'audio in riproduzione
         stopCurrentAudio();
-        
-        // 🛡️ RESET TESTO: Forza il prossimo testo ad essere "nuovo turno" 
-        // così i pacchetti audio ritardatari vengono scartati
+        aiTurnIdRef.current++;
         accumulatedAiTextRef.current = '';
-        
-        // CRITICO: Aggiorna liveState per riattivare microfono
         setLiveState('listening');
         
-        // Log per debug
-        console.log(`   → Audio playback stopped`);
-        console.log(`   → Audio queue cleared: ${audioQueueRef.current.length} chunks discarded`);
-        console.log(`   → AI text accumulator reset to detect new turn`);
-        console.log(`   → State reset to listening - user can continue speaking`);
+        console.log(`   → Audio stopped, turnId incremented to ${aiTurnIdRef.current}`);
         break;
 
       case 'barge_in_detected':
         console.log('🛑 [BARGE-IN] Gemini VAD detected user interruption - stopping audio immediately!');
         
-        // 🎯 VAD DEBUG: Mostra che Gemini VAD ha bloccato l'AI
         setVadDebugState('blocked');
         if (vadDebugTimeoutRef.current) {
           clearTimeout(vadDebugTimeoutRef.current);
@@ -1423,31 +1406,20 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
           setVadDebugState('idle');
         }, 2000);
         
-        // FERMA IMMEDIATAMENTE l'audio in riproduzione
         stopCurrentAudio();
-        
-        // 🛡️ RESET TESTO: Forza il prossimo testo ad essere "nuovo turno"
-        // così i pacchetti audio ritardatari vengono scartati
+        aiTurnIdRef.current++;
         accumulatedAiTextRef.current = '';
-        
-        // CRITICO: Aggiorna liveState per riattivare microfono
         setLiveState('listening');
         
-        // Log per debug
-        console.log(`   → Audio queue cleared: ${audioQueueRef.current.length} chunks discarded`);
-        console.log(`   → Playback stopped: isPlayingRef = ${isPlayingRef.current}`);
-        console.log(`   → AI text accumulator reset to detect new turn`);
-        console.log(`   → State reset to listening - microphone re-armed`);
+        console.log(`   → Audio stopped, turnId incremented to ${aiTurnIdRef.current}`);
         break;
 
         case 'turn_complete':
-        console.log('✅ Turn complete');
+        console.log(`✅ Turn complete (playbackTurnId=${aiTurnIdRef.current}, incomingTurnId=${incomingAiTurnIdRef.current})`);
 
-        // PULIZIA FINALE
-        // Quando il turno finisce, resettiamo il flag di stop così siamo pronti
-        // per la NUOVA risposta che l'AI genererà basandosi sulla tua interruzione.
-        isAudioStoppedRef.current = false; 
+        isAudioStoppedRef.current = false;
         accumulatedAiTextRef.current = '';
+        incomingAiTurnIdRef.current = aiTurnIdRef.current;
 
         if (liveState !== 'loading') {
           setLiveState('listening');
@@ -1723,8 +1695,20 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
           analyserRef.current.getByteFrequencyData(dataArray);
           const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
 
-          // Aggiorna micLevel (livello microfono utente)
           setMicLevel(Math.min(255, average * 1.5));
+
+          if (average > LOCAL_VAD_THRESHOLD && (isPlayingRef.current || audioQueueRef.current.length > 0)) {
+            localVadFrameCountRef.current++;
+            if (localVadFrameCountRef.current >= LOCAL_VAD_MIN_FRAMES) {
+              console.log(`🎤 [LOCAL VAD] User speech detected (avg=${average.toFixed(1)}, frames=${localVadFrameCountRef.current}) - stopping audio immediately`);
+              stopCurrentAudio();
+              aiTurnIdRef.current++;
+              accumulatedAiTextRef.current = '';
+              localVadFrameCountRef.current = 0;
+            }
+          } else {
+            localVadFrameCountRef.current = 0;
+          }
 
           micAnimationFrameRef.current = requestAnimationFrame(updateAudioLevel);
         } else {

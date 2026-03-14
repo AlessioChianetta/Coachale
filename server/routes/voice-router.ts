@@ -2563,7 +2563,7 @@ ${brandVoice}`;
       voice_affective_dialog: settings?.voice_affective_dialog ?? false,
       voice_vad_start_sensitivity: settings?.voice_vad_start_sensitivity || 'START_SENSITIVITY_HIGH',
       voice_vad_end_sensitivity: settings?.voice_vad_end_sensitivity || 'END_SENSITIVITY_LOW',
-      voice_vad_silence_ms: settings?.voice_vad_silence_ms ?? 500,
+      voice_vad_silence_ms: settings?.voice_vad_silence_ms ?? 300,
       defaultVoiceDirectives: DEFAULT_VOICE_DIRECTIVES,
       defaultNonClientPrompt: DEFAULT_NON_CLIENT_PROMPT,
       availableInboundTemplates: [
@@ -2702,7 +2702,7 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
           voice_affective_dialog = ${voiceAffectiveDialog ?? false},
           voice_vad_start_sensitivity = ${voiceVadStartSensitivity || 'START_SENSITIVITY_HIGH'},
           voice_vad_end_sensitivity = ${voiceVadEndSensitivity || 'END_SENSITIVITY_LOW'},
-          voice_vad_silence_ms = ${voiceVadSilenceMs ?? 500},
+          voice_vad_silence_ms = ${voiceVadSilenceMs ?? 300},
           non_client_prompt_source = ${legacyPromptSource || 'default'},
           non_client_agent_id = ${legacyAgentId || null},
           non_client_manual_prompt = ${legacyManualPrompt || null},

@@ -1523,7 +1523,7 @@ export default function ConsultantVoiceCallsPage({ embedded = false }: { embedde
   const [voiceAffectiveDialog, setVoiceAffectiveDialog] = useState(false);
   const [voiceVadStartSensitivity, setVoiceVadStartSensitivity] = useState('START_SENSITIVITY_HIGH');
   const [voiceVadEndSensitivity, setVoiceVadEndSensitivity] = useState('END_SENSITIVITY_LOW');
-  const [voiceVadSilenceMs, setVoiceVadSilenceMs] = useState(500);
+  const [voiceVadSilenceMs, setVoiceVadSilenceMs] = useState(300);
 
   const [outboundPhone, setOutboundPhone] = useState("");
   const [outboundFromNumber, setOutboundFromNumber] = useState<string>("");
