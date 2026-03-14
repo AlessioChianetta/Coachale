@@ -1103,20 +1103,47 @@ export default function AdminAcademy() {
                                           <ClipboardPaste size={13} className="text-gray-400" />
                                           <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300">Importa da Guidde</span>
                                         </div>
-                                        <Textarea
-                                          value={guiddeHtml}
-                                          onChange={e => setGuiddeHtml(e.target.value)}
-                                          placeholder="Incolla qui il sorgente pagina (Ctrl+U) di Guidde..."
-                                          rows={3}
-                                          className="text-sm mb-2 rounded-md"
-                                        />
+                                        <div
+                                          contentEditable
+                                          suppressContentEditableWarning
+                                          className="min-h-[60px] max-h-[120px] overflow-y-auto p-2 text-sm mb-2 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none focus:ring-2 focus:ring-ring text-gray-500 dark:text-gray-400"
+                                          onPaste={(e) => {
+                                            e.preventDefault();
+                                            const htmlData = e.clipboardData.getData('text/html');
+                                            const textData = e.clipboardData.getData('text/plain');
+                                            if (htmlData) {
+                                              setGuiddeHtml(htmlData);
+                                              (e.target as HTMLElement).innerText = `HTML incollato (${htmlData.length} caratteri) - contiene ${(htmlData.match(/<img/gi) || []).length} immagini`;
+                                            } else if (textData) {
+                                              setGuiddeHtml(textData);
+                                              (e.target as HTMLElement).innerText = textData.substring(0, 200) + (textData.length > 200 ? '...' : '');
+                                            }
+                                          }}
+                                          onInput={(e) => {
+                                            if (!guiddeHtml) {
+                                              setGuiddeHtml((e.target as HTMLElement).innerText || '');
+                                            }
+                                          }}
+                                        >
+                                          {!guiddeHtml && <span className="pointer-events-none text-gray-400 text-sm">Usa "Copia per Word" su Guidde, poi Ctrl+V qui...</span>}
+                                        </div>
+                                        {guiddeHtml && (
+                                          <p className="text-[10px] text-green-600 dark:text-green-400 mb-2">
+                                            Contenuto pronto: {(guiddeHtml.match(/<img/gi) || []).length > 0 ? `${(guiddeHtml.match(/<img/gi) || []).length} immagini trovate` : 'solo testo (nessuna immagine)'}
+                                          </p>
+                                        )}
                                         <div className="flex gap-2">
-                                          <Button size="sm" onClick={() => handleParseGuidde(lesson.id, "replace")} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
+                                          <Button size="sm" onClick={() => handleParseGuidde(lesson.id, "replace")} disabled={!guiddeHtml.trim()} className="h-9 px-4 text-xs rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900 text-white">
                                             <ClipboardPaste size={12} className="mr-1.5" /> Importa step
                                           </Button>
                                           {(lesson.steps?.length ?? 0) > 0 && (
-                                            <Button size="sm" variant="outline" onClick={() => handleParseGuidde(lesson.id, "update")} className="h-9 px-4 text-xs rounded-md">
+                                            <Button size="sm" variant="outline" onClick={() => handleParseGuidde(lesson.id, "update")} disabled={!guiddeHtml.trim()} className="h-9 px-4 text-xs rounded-md">
                                               <RefreshCw size={12} className="mr-1.5" /> Aggiorna screenshot
+                                            </Button>
+                                          )}
+                                          {guiddeHtml && (
+                                            <Button size="sm" variant="ghost" onClick={() => { setGuiddeHtml(""); }} className="h-9 px-2 text-xs">
+                                              <X size={12} />
                                             </Button>
                                           )}
                                         </div>
