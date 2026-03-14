@@ -3075,9 +3075,22 @@ router.post("/ai/generate-ad-variants", authenticateToken, requireRole("consulta
     const fullCopyText = post.fullCopy || structured.fullCopy || structured.body || post.body || "";
     const originalTitle = post.title || "";
 
+    const [config] = await db.select()
+      .from(schema.contentStudioConfig)
+      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+      .limit(1);
+
+    const brandVoiceData = config?.brandVoiceEnabled ? config?.brandVoiceData : null;
+    const marketResearchData = config?.marketResearchData || null;
+
+    const postSchemaValue = (post as any).postSchema || structured.postSchema || "";
+    const postCategoryValue = structured.postCategory || "";
+
     console.log(`🤖 [CONTENT-AI] Generating 4 ad copy variants for post ${postId}`);
     console.log(`📝 [CONTENT-AI] Titolo: ${originalTitle}`);
     console.log(`📝 [CONTENT-AI] Copy completo (${fullCopyText.length} chars):\n${fullCopyText}`);
+    console.log(`📝 [CONTENT-AI] Schema: ${postSchemaValue || "originale"}, Categoria: ${postCategoryValue || "ads"}`);
+    console.log(`📝 [CONTENT-AI] Brand Voice: ${brandVoiceData ? "SI" : "NO"}, Market Research: ${marketResearchData ? "SI" : "NO"}`);
 
     const result = await generateAdCopyVariants({
       consultantId,
@@ -3086,6 +3099,10 @@ router.post("/ai/generate-ad-variants", authenticateToken, requireRole("consulta
       originalHook: "",
       originalCta: "",
       platform: post.platform || "facebook",
+      postSchema: postSchemaValue,
+      postCategory: postCategoryValue,
+      brandVoiceData,
+      marketResearchData,
     });
 
     const [updated] = await db.update(schema.contentPosts)

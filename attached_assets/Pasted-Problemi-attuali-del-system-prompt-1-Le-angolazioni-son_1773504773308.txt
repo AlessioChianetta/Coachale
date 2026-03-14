@@ -1,0 +1,46 @@
+Problemi attuali del system prompt:
+1. Le angolazioni sono descritte troppo in astratto
+
+Le istruzioni tipo "Apri colpendo il punto debole" sono vaghe. L'AI le interpreta in modo generico e produce testi simili tra loro. Ogni angolazione deve avere una struttura fissa da seguire, non solo una direzione emotiva.
+
+Fix: Aggiungi per ogni angolazione uno schema rigido:
+ANGOLO PROBLEMA:
+- Riga 1: domanda o affermazione che nomina il problema specifico
+- Riga 2-3: amplifica la frustrazione con un scenario concreto
+- Riga 4-5: agita la conseguenza (cosa succede se non risolvi)
+- Riga 6: pivot verso la soluzione
+- CTA: imperativo diretto
+
+2. Il vincolo "NON copiare frasi dall'originale" non basta
+L'AI aggira questa regola riformulando — hai già notato il problema. Devi aggiungere:
+
+"Prima di scrivere ogni variante, elenca mentalmente le 3 parole chiave più usate nell'originale. Non usarne nessuna nel testo della variante."
+
+
+3. Manca il contesto su CHI legge l'inserzione
+Il prompt parla di offerta e target ma non forza l'AI a dichiararlo prima di scrivere. Aggiungi un passaggio obbligatorio:
+PRIMA DI SCRIVERE:
+Dichiara in 2 righe:
+- Chi è il target esatto (ruolo, problema, momento della giornata in cui vede l'ad)
+- Qual è l'unica cosa che deve capire leggendo questo ad
+Poi scrivi le varianti partendo da questa base.
+
+4. Le lunghezze non sono vincolate con numeri reali
+"±20% dell'originale" è inutile se l'originale non ha una lunghezza dichiarata. Specifica:
+- Angolo Problema: 80-120 parole
+- Angolo Desiderio: 120-180 parole  
+- Angolo Riprova Sociale: 150-220 parole
+- Angolo Urgenza: 60-90 parole
+
+5. Le regole anti-robot sono troppo generiche
+Invece di "linguaggio colloquiale", dai esempi concreti di pattern da evitare vs pattern da usare:
+VIETATO:
+- "Nel mondo di oggi..."
+- "Molti imprenditori si trovano a..."
+- "La soluzione è più semplice di quanto pensi"
+- Aprire con "Se sei un [professione]..."
+
+PREFERITO:
+- Aprire con una situazione specifica ("Lunedì mattina, terzo appuntamento saltato...")
+- Usare numeri concreti anche se inventati a scopo illustrativo
+- Dialogo diretto ("Ti dico una cosa che nessuno dice mai")

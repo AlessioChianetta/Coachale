@@ -4278,6 +4278,10 @@ export interface GenerateAdCopyVariantsParams {
   originalHook: string;
   originalCta: string;
   platform: string;
+  postSchema?: string;
+  postCategory?: string;
+  brandVoiceData?: any;
+  marketResearchData?: any;
 }
 
 export interface GenerateAdCopyVariantsResult {
@@ -4286,15 +4290,94 @@ export interface GenerateAdCopyVariantsResult {
 }
 
 export async function generateAdCopyVariants(params: GenerateAdCopyVariantsParams): Promise<GenerateAdCopyVariantsResult> {
-  const { consultantId, originalTitle, originalBody, originalHook, originalCta, platform } = params;
+  const { consultantId, originalTitle, originalBody, platform, brandVoiceData, marketResearchData, postSchema, postCategory } = params;
 
   await rateLimitCheck(consultantId);
 
   const assets = await getBrandAssets(consultantId);
   const brandContext = buildCompleteBrandContext(assets);
+  const brandVoiceContext = buildBrandVoiceContext(brandVoiceData);
+
+  let marketResearchContext = "";
+  if (marketResearchData) {
+    const mr = marketResearchData;
+    const mrParts: string[] = [];
+    if (mr.avatar) {
+      const av = mr.avatar;
+      const avParts: string[] = [];
+      if (av.nightThought) avParts.push(`Pensiero notturno: "${av.nightThought}"`);
+      if (av.biggestFear) avParts.push(`Paura più grande: "${av.biggestFear}"`);
+      if (av.dailyFrustration) avParts.push(`Frustrazione quotidiana: "${av.dailyFrustration}"`);
+      if (av.deepestDesire) avParts.push(`Desiderio più profondo: "${av.deepestDesire}"`);
+      if (av.currentSituation) avParts.push(`Situazione attuale: "${av.currentSituation}"`);
+      if (av.decisionStyle) avParts.push(`Stile decisionale: "${av.decisionStyle}"`);
+      if (av.languageUsed) avParts.push(`Linguaggio usato: "${av.languageUsed}"`);
+      if (avParts.length > 0) mrParts.push(`👤 AVATAR DEL TARGET:\n${avParts.join("\n")}`);
+    }
+    if (mr.currentState?.filter((s: string) => s.trim()).length > 0) {
+      mrParts.push(`📍 STATO ATTUALE DEL TARGET:\n${mr.currentState.filter((s: string) => s.trim()).map((s: string) => `- ${s}`).join("\n")}`);
+    }
+    if (mr.idealState?.filter((s: string) => s.trim()).length > 0) {
+      mrParts.push(`🎯 STATO IDEALE (dove vuole arrivare):\n${mr.idealState.filter((s: string) => s.trim()).map((s: string) => `- ${s}`).join("\n")}`);
+    }
+    if (mr.emotionalDrivers?.filter((s: string) => s.trim()).length > 0) {
+      mrParts.push(`❤️ DRIVER EMOTIVI:\n${mr.emotionalDrivers.filter((s: string) => s.trim()).map((s: string) => `- ${s}`).join("\n")}`);
+    }
+    if (mr.existingSolutionProblems?.filter((s: string) => s.trim()).length > 0) {
+      mrParts.push(`⚠️ PROBLEMI CON SOLUZIONI ESISTENTI:\n${mr.existingSolutionProblems.filter((s: string) => s.trim()).map((s: string) => `- ${s}`).join("\n")}`);
+    }
+    if (mr.internalObjections?.filter((s: string) => s.trim()).length > 0) {
+      mrParts.push(`🧠 OBIEZIONI INTERNE:\n${mr.internalObjections.filter((s: string) => s.trim()).map((s: string) => `- ${s}`).join("\n")}`);
+    }
+    if (mr.externalObjections?.filter((s: string) => s.trim()).length > 0) {
+      mrParts.push(`🗣️ OBIEZIONI ESTERNE:\n${mr.externalObjections.filter((s: string) => s.trim()).map((s: string) => `- ${s}`).join("\n")}`);
+    }
+    if (mr.coreLies?.length > 0) {
+      mrParts.push(`💀 BUGIE DI MERCATO:\n${mr.coreLies.map((l: any) => `- ${l.name}: ${l.problem}`).join("\n")}`);
+    }
+    if (mr.uniqueMechanism?.name) {
+      mrParts.push(`🔧 MECCANISMO UNICO: ${mr.uniqueMechanism.name}${mr.uniqueMechanism.description ? ` — ${mr.uniqueMechanism.description}` : ""}`);
+    }
+    if (mr.uvp) {
+      mrParts.push(`💎 UVP: ${mr.uvp}`);
+    }
+    if (mrParts.length > 0) {
+      marketResearchContext = `\n\n═══════════════════════════════════════════════════════════════\nRICERCA DI MERCATO (usa queste informazioni per rendere il copy specifico e mirato):\n═══════════════════════════════════════════════════════════════\n${mrParts.join("\n\n")}`;
+    }
+  }
+
+  let schemaContext = "";
+  if (postSchema && postSchema !== "originale") {
+    const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: string; structure: string; description: string }>>> = {
+      instagram: {
+        ads: [
+          { value: "hook_problema_nuovo", label: "Hook → Problema → Nuovo modo → Prova → CTA", structure: "Hook|Problema|Nuovo modo|Prova sociale|Offerta|CTA", description: "Per Reels/Stories: aggancia, mostra frizione, presenta meccanismo" },
+          { value: "before_after_bridge", label: "Before → After → Bridge → CTA", structure: "Prima|Dopo|Ponte (processo)|CTA", description: "Ottimo per creativi visual con trasformazione" },
+          { value: "pain_benefit_offer", label: "3 Pain → 3 Benefit → Offer → Urgenza → CTA", structure: "Pain 1|Pain 2|Pain 3|Benefit 1|Benefit 2|Benefit 3|Offerta|Urgenza|CTA", description: "Perfetto per performance con elenco scorrevole" },
+          { value: "obiezione_confutazione", label: "Obiezione → Confutazione → Demo → CTA", structure: "Obiezione forte|Confutazione|Mini-dimostrazione|CTA", description: "Funziona quando il mercato è scettico" },
+          { value: "ugc_founder", label: "UGC/Founder Script (15-30s)", structure: "Chi sono|Cosa odiavo|Cosa ho cambiato|Risultato|Come farlo|CTA", description: "Nativo, credibile, ottimo CPC/CPA" },
+        ],
+      },
+      facebook: {
+        ads: [
+          { value: "hook_problema_nuovo", label: "Hook → Problema → Nuovo modo → Prova → CTA", structure: "Hook|Problema|Nuovo modo|Prova sociale|Offerta|CTA", description: "Per feed: aggancia, mostra frizione, presenta meccanismo" },
+          { value: "before_after_bridge", label: "Before → After → Bridge → CTA", structure: "Prima|Dopo|Ponte (processo)|CTA", description: "Ottimo per creativi visual con trasformazione" },
+          { value: "pain_benefit_offer", label: "3 Pain → 3 Benefit → Offer → Urgenza → CTA", structure: "Pain 1|Pain 2|Pain 3|Benefit 1|Benefit 2|Benefit 3|Offerta|Urgenza|CTA", description: "Perfetto per performance con elenco scorrevole" },
+        ],
+      },
+    };
+
+    const platformSchemas = POST_SCHEMAS[platform]?.ads || POST_SCHEMAS.instagram?.ads || [];
+    const matchedSchema = platformSchemas.find(s => s.value === postSchema);
+    if (matchedSchema) {
+      schemaContext = `\n\nSCHEMA DEL POST ORIGINALE: "${matchedSchema.label}"\nStruttura: ${matchedSchema.structure}\nDescrizione: ${matchedSchema.description}\nIMPORTANTE: Le varianti devono seguire una struttura SIMILE a questo schema (stessa sequenza logica di sezioni), ma con angolazione diversa.`;
+    }
+  }
+
+  const wordCount = originalBody.split(/\s+/).length;
 
   const prompt = `Sei un copywriter senior specializzato in inserzioni Meta Ads (Facebook/Instagram) per il mercato italiano.
-${brandContext}
+${brandContext}${brandVoiceContext}${marketResearchContext}
 
 METODO DI RIFERIMENTO — MARKETING A RISPOSTA DIRETTA (METODO MERENDA):
 ${FRANK_MERENDA_FRAMEWORK}
@@ -4304,72 +4387,95 @@ INSERZIONE ORIGINALE DA CUI PARTIRE:
 ═══════════════════════════════════════════════════════════════
 TITOLO: ${originalTitle || "(nessun titolo)"}
 
-COPY COMPLETO:
+COPY COMPLETO (${wordCount} parole):
 ${originalBody || "(nessun corpo)"}
 
-PIATTAFORMA: ${platform || "facebook"}
+PIATTAFORMA: ${platform || "facebook"}${schemaContext}
 ═══════════════════════════════════════════════════════════════
 
-IL TUO COMPITO:
-Rileggi attentamente l'inserzione originale qui sopra.
-Ora RISCRIVILA DA ZERO in 4 versioni completamente diverse, ognuna con un'ANGOLAZIONE diversa.
+PASSO 1 — ANALISI (falla mentalmente, NON scriverla nel JSON):
+Prima di scrivere, rispondi mentalmente a queste domande:
+- Chi è il target esatto? (ruolo, problema specifico, momento in cui vede l'ad)
+- Qual è l'unica cosa che deve capire leggendo questo ad?
+- Quali sono le 3 parole/espressioni più usate nell'originale? (NON usarle nelle varianti)
 
-⚠️ REGOLA FONDAMENTALE — RISCRITTURA TOTALE:
-- NON copiare frasi dall'originale. Nemmeno una.
-- NON riformulare le frasi originali cambiando qualche parola. RISCRIVI DA CAPO.
-- Usa parole diverse, metafore diverse, strutture di frase diverse.
-- L'unica cosa che deve restare uguale è: l'OFFERTA (cosa vendi), il TARGET (a chi parli), e il MESSAGGIO DI FONDO.
-- Se nell'originale c'è "sai quanto sia drenante trovare e formare", tu NON puoi scrivere "sai quanto sia drenante trovare e formare" — devi esprimere lo stesso concetto con parole COMPLETAMENTE diverse.
+PASSO 2 — SCRIVI LE 4 VARIANTI:
+Riscrivi l'inserzione DA ZERO in 4 versioni con angolazioni diverse.
 
-⚠️ REGOLA FORMATTAZIONE — COPIA LO STILE DELL'ORIGINALE:
-- Guarda come è formattato l'originale: paragrafi corti, righe vuote tra i blocchi, elenchi puntati/numerati, emoji se presenti.
-- REPLICA ESATTAMENTE lo stesso stile di spaziatura e formattazione in ogni variante.
-- Se l'originale ha righe vuote tra i paragrafi → mettile anche tu.
-- Se l'originale ha elenchi numerati → usa elenchi numerati anche tu.
-- Se l'originale usa emoji → usale anche tu (diverse ma stesso stile).
-- La LUNGHEZZA del body deve essere simile a quella dell'originale (±20%).
-- Usa \\n per le righe a capo e \\n\\n per i paragrafi separati, ESATTAMENTE come nel testo originale.
+⚠️ REGOLA ANTI-COPIA (RIGOROSA):
+- NON copiare frasi dall'originale. NEMMENO UNA.
+- NON riformulare cambiando qualche parola. RISCRIVI DA CAPO con vocabolario diverso.
+- Le 3 parole/espressioni chiave dell'originale sono VIETATE nelle varianti.
+- L'unica cosa che resta uguale: OFFERTA, TARGET, MESSAGGIO DI FONDO.
+- Esempio: se l'originale dice "sai quanto sia drenante trovare e formare" → tu NON puoi usare "drenante", "trovare e formare" — esprimi lo stesso concetto con parole COMPLETAMENTE diverse.
 
-COME PROCEDERE:
-- Applica i principi del Metodo Merenda (marketing a risposta diretta, CTA chiara, beneficio concreto, niente marketing istituzionale)
-- Cambia l'ANGOLAZIONE: cosa metti in primo piano, come apri, quale emozione guida il testo
-- Incorpora le strategie di conversione Merenda pertinenti
+⚠️ REGOLA FORMATTAZIONE (RIGOROSA):
+- REPLICA ESATTAMENTE lo stile di spaziatura dell'originale.
+- Se ha righe vuote tra i paragrafi → mettile anche tu con \\n\\n.
+- Se ha elenchi numerati → usa elenchi numerati anche tu.
+- Se usa emoji → usale anche tu (diverse ma stesso stile).
+- Usa \\n per righe a capo e \\n\\n per paragrafi separati.
 
-Le 4 angolazioni di riscrittura:
+Le 4 angolazioni con STRUTTURA OBBLIGATORIA:
 
-1. ANGOLO PROBLEMA — Riscrivi DA ZERO mettendo il DOLORE in primo piano. Apri colpendo il punto debole del target con una frase originale che non esiste nell'inserzione di partenza. Enfatizza l'errore e la frustrazione con parole tue.
+1. ANGOLO PROBLEMA (80-120 parole nel body):
+   - Riga 1: domanda o affermazione che NOMINA il problema specifico del target
+   - Righe 2-3: amplifica la frustrazione con uno SCENARIO CONCRETO (giorno, ora, situazione specifica)
+   - Righe 4-5: agita la CONSEGUENZA (cosa succede se non risolvi — numeri, perdite, rischi)
+   - Righe 6+: pivot verso la soluzione — presenta l'offerta come via d'uscita
+   - CTA: imperativo diretto
 
-2. ANGOLO DESIDERIO — Riscrivi DA ZERO mettendo il RISULTATO DESIDERATO in primo piano. Apri con la trasformazione, il sogno del target. Usa immagini e metafore diverse dall'originale.
+2. ANGOLO DESIDERIO (120-180 parole nel body):
+   - Riga 1: dipingi il RISULTATO FINALE — la vita dopo aver risolto il problema
+   - Righe 2-4: descrivi la GIORNATA TIPO del target dopo la trasformazione (dettagli sensoriali)
+   - Righe 5-7: spiega COME ci arrivi — il meccanismo, il processo, i passi
+   - Righe 8+: rendi concreto — numeri, tempi, risultati specifici
+   - CTA: invito al primo passo verso quel risultato
 
-3. ANGOLO RIPROVA SOCIALE — Riscrivi DA ZERO mettendo le PROVE e i RISULTATI in primo piano. Apri con un caso concreto, un numero, un risultato misurabile. Racconta una mini-storia di successo.
+3. ANGOLO RIPROVA SOCIALE (150-220 parole nel body):
+   - Riga 1: RISULTATO SPECIFICO con numero (€, %, tempo)
+   - Righe 2-4: racconta la MINI-STORIA — chi era il cliente, da dove partiva, cosa non funzionava
+   - Righe 5-7: cosa è CAMBIATO — il momento di svolta, la decisione
+   - Righe 8+: i RISULTATI DOPO — numeri concreti, confronto prima/dopo
+   - CTA: leva sulla prova ("Vedi come hanno fatto" / "Scarica il caso studio")
 
-4. ANGOLO URGENZA — Riscrivi DA ZERO mettendo l'IMMEDIATEZZA in primo piano. Scarsità, deadline, costo dell'inazione. Testo diretto e incalzante.
+4. ANGOLO URGENZA (60-90 parole nel body):
+   - Riga 1: DEADLINE o SCARSITÀ esplicita
+   - Righe 2-3: COSTO DELL'INAZIONE — cosa perdi ogni giorno/settimana che aspetti
+   - Righe 4-5: l'offerta è DISPONIBILE ORA ma non per sempre
+   - CTA: urgenza esplicita con vincolo temporale
 
-Ogni variante deve avere un TITOLO AD proprio (headline che promette un beneficio concreto, max 40 caratteri, come da strategia Merenda #12).
+Ogni variante deve avere un TITOLO AD proprio (headline con beneficio concreto, max 40 caratteri).
 
 REGOLE ANTI-ROBOT:
-- NON usare "Inoltre", "Pertanto", "In un mondo dove", "Non è un segreto"
-- Linguaggio diretto, colloquiale, italiano vero — come parla un imprenditore al bar, non un copywriter AI
-- Niente frasi generiche — sii specifico e concreto
-- Il testo deve sembrare scritto da un umano esperto di marketing, non generato da AI
-- Se una frase ti suona "da ChatGPT", riscrivila più grezza e diretta
+VIETATO:
+- "Nel mondo di oggi...", "Molti imprenditori si trovano a...", "La soluzione è più semplice di quanto pensi"
+- Aprire con "Se sei un [professione]..." 
+- "Inoltre", "Pertanto", "In un mondo dove", "Non è un segreto"
+- Qualsiasi frase che suoni "da ChatGPT"
 
-RISPONDI SOLO con un JSON valido (nessun testo prima o dopo):
+PREFERITO:
+- Aprire con una situazione specifica ("Lunedì mattina, terzo appuntamento saltato...")
+- Usare numeri concreti anche inventati a scopo illustrativo
+- Dialogo diretto ("Ti dico una cosa che nessuno dice mai")
+- Linguaggio grezzo, da imprenditore vero, non da copywriter AI
+
+RISPONDI SOLO con un JSON valido (nessun testo prima o dopo, nessuna analisi nel JSON):
 {
   "variants": [
     {
       "angle": "problema",
-      "title": "Headline con beneficio concreto",
+      "title": "Headline max 40 char",
       "hook": "Hook provocatorio max 125 caratteri",
-      "body": "Riscrittura completa dell'inserzione con angolazione problema...",
-      "cta": "Call to action diretta e specifica",
-      "hashtags": ["hashtag1", "hashtag2"]
+      "body": "Testo completo 80-120 parole con \\n per a capo e \\n\\n per paragrafi",
+      "cta": "Call to action diretta",
+      "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
     },
     {
       "angle": "desiderio",
       "title": "...",
       "hook": "...",
-      "body": "...",
+      "body": "Testo completo 120-180 parole...",
       "cta": "...",
       "hashtags": ["..."]
     },
@@ -4377,7 +4483,7 @@ RISPONDI SOLO con un JSON valido (nessun testo prima o dopo):
       "angle": "riprova_sociale",
       "title": "...",
       "hook": "...",
-      "body": "...",
+      "body": "Testo completo 150-220 parole...",
       "cta": "...",
       "hashtags": ["..."]
     },
@@ -4385,7 +4491,7 @@ RISPONDI SOLO con un JSON valido (nessun testo prima o dopo):
       "angle": "urgenza",
       "title": "...",
       "hook": "...",
-      "body": "...",
+      "body": "Testo completo 60-90 parole...",
       "cta": "...",
       "hashtags": ["..."]
     }
@@ -4395,14 +4501,15 @@ RISPONDI SOLO con un JSON valido (nessun testo prima o dopo):
   try {
     const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, "ad-copy-variants");
     setFeature?.('ad-copy-variants');
-    const { model } = getModelWithThinking(metadata?.name);
+    const { model, useThinking } = getModelWithThinking(metadata?.name);
 
     const result = await trackedGenerateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 12288,
+        ...(useThinking && { thinkingConfig: { thinkingBudget: 8192 } }),
       },
     } as any, { consultantId, feature: 'ad-copy-variants', callerRole: 'consultant' });
 
