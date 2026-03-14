@@ -346,6 +346,9 @@ function LessonDetail({
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
       {(() => {
+        const hasInteractiveGuide = !!lesson.guide_local_video_url && lesson.steps && lesson.steps.length > 0;
+        if (hasInteractiveGuide) return null;
+
         const allVids: Array<{ url: string; type: string; title: string }> = [];
         if (lesson.video_url) {
           allVids.push({ url: lesson.video_url, type: lesson.video_type, title: lesson.title });

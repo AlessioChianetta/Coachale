@@ -23,15 +23,16 @@ interface StepByStepGuideProps {
 export function StepByStepGuide({ steps, guideEmbedUrl, guideLocalVideoUrl, displayMode = "native" }: StepByStepGuideProps) {
   const [activeStep, setActiveStep] = useState(0);
   const [tocOpen, setTocOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"native" | "embed">(
-    displayMode === "embed" ? "embed" : "native"
-  );
+  const hasLocalInteractive = !!guideLocalVideoUrl && steps.length > 0;
+  const defaultTab = hasLocalInteractive ? "embed" : (displayMode === "embed" ? "embed" : "native");
+  const [activeTab, setActiveTab] = useState<"native" | "embed">(defaultTab);
 
   useEffect(() => {
-    setActiveTab(displayMode === "embed" ? "embed" : "native");
+    const tab = (!!guideLocalVideoUrl && steps.length > 0) ? "embed" : (displayMode === "embed" ? "embed" : "native");
+    setActiveTab(tab);
     setActiveStep(0);
     setTocOpen(false);
-  }, [displayMode, steps]);
+  }, [displayMode, steps, guideLocalVideoUrl]);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const scrollToStep = useCallback((index: number) => {
@@ -79,8 +80,6 @@ export function StepByStepGuide({ steps, guideEmbedUrl, guideLocalVideoUrl, disp
     }
     return null;
   }
-
-  const hasLocalInteractive = !!guideLocalVideoUrl && steps.length > 0;
   const showTabs = displayMode === "both" && (guideEmbedUrl || hasLocalInteractive);
 
   return (
