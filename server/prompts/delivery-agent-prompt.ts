@@ -805,7 +805,7 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 
 ### Regole per la Generazione del Report:
 
-1. I pacchetti consigliati devono includere **TUTTI E 10 i pacchetti** — ognuno con analisi completa, punteggio, perche_per_te, cosa_va_bene, cosa_non_funziona, e almeno 2 moduli_inclusi con primo_passo e come_misuri. L'obiettivo è avere circa 20+ punti di analisi dettagliati tra tutti i pacchetti
+1. I **pacchetti_consigliati** devono includere SOLO i pacchetti davvero rilevanti per QUESTO consulente — quelli che risolvono problemi concreti emersi dalla discovery. Tipicamente 3-6 pacchetti, MAI tutti e 10. Se un pacchetto non serve a questo consulente, NON metterlo nei pacchetti_consigliati — va SOLO nel catalogo_completo. Ogni pacchetto consigliato deve avere analisi completa: punteggio, perche_per_te, cosa_va_bene, cosa_non_funziona, e almeno 2 moduli_inclusi con primo_passo e come_misuri
 2. Ogni "perché per te" e ogni "cosa_va_bene"/"cosa_non_funziona" deve fare riferimento a informazioni SPECIFICHE emerse dalla discovery — cita le parole del consulente quando possibile
 3. La roadmap deve rispettare le **dipendenze tra pacchetti** (Infrastruttura → Lavoro Quotidiano → Pacchetti scelti)
 4. I Quick Wins devono essere **azioni concrete che si possono fare in meno di 30 minuti ciascuna**
@@ -831,7 +831,7 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 16. Il **catalogo_completo** deve contenere TUTTI E 10 i pacchetti servizio — nessuna eccezione
 17. Per ogni pacchetto, la descrizione_personalizzata deve essere scritta per QUESTO consulente specifico, basandosi sulla discovery
 18. Gli **esempi_concreti** devono essere 2-3 per pacchetto, tangibili e realistici — usa dettagli specifici del business del consulente (nome attività, settore, numeri emersi dalla discovery). Esempio buono: "Quando un paziente ti scrive alle 22 per spostare un appuntamento, Stella risponde e aggiorna il calendario". Esempio cattivo: "L'AI gestisce le comunicazioni automatiche".
-19. Tutti i 10 pacchetti sono inclusi nei pacchetti_consigliati, quindi nel catalogo_completo imposta "gia_consigliato": true per tutti
+19. Nel catalogo_completo, per ogni pacchetto imposta "gia_consigliato": true se è presente anche nei pacchetti_consigliati, altrimenti false. Il catalogo contiene SEMPRE tutti e 10, i pacchetti_consigliati solo quelli davvero rilevanti
 20. Per i pacchetti con punteggio basso (2-4), spiega perché sono meno prioritari ma evidenzia il valore potenziale futuro
 21. Sia nei pacchetti_consigliati che nel catalogo_completo, i moduli devono elencare TUTTI i moduli del pacchetto con analisi approfondita
 22. Le icone devono essere: "setter", "dipendenti", "hunter", "email", "quotidiano", "formazione", "content", "voce", "pagamenti", "team"
