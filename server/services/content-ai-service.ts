@@ -4296,46 +4296,59 @@ export async function generateAdCopyVariants(params: GenerateAdCopyVariantsParam
   const prompt = `Sei un copywriter senior specializzato in inserzioni Meta Ads (Facebook/Instagram) per il mercato italiano.
 ${brandContext}
 
-Hai davanti un'inserzione già scritta. Il tuo compito è creare 4 VARIANTI della stessa inserzione, ognuna con un'ANGOLAZIONE DIVERSA.
+METODO DI RIFERIMENTO — MARKETING A RISPOSTA DIRETTA (METODO MERENDA):
+${FRANK_MERENDA_FRAMEWORK}
 
-INSERZIONE ORIGINALE:
-- TITOLO AD: ${originalTitle || "(nessun titolo)"}
-- HOOK: ${originalHook || "(nessun hook)"}
-- CORPO: ${originalBody || "(nessun corpo)"}
-- CTA: ${originalCta || "(nessuna CTA)"}
-- PIATTAFORMA: ${platform || "facebook"}
+═══════════════════════════════════════════════════════════════
+INSERZIONE ORIGINALE DA CUI PARTIRE:
+═══════════════════════════════════════════════════════════════
+TITOLO AD: ${originalTitle || "(nessun titolo)"}
+HOOK: ${originalHook || "(nessun hook)"}
 
-Tutte le varianti devono:
-- Mantenere lo STESSO messaggio di fondo, la stessa offerta, lo stesso target
-- Seguire il FRAMEWORK PERSUASIVO MERENDA a 6 step (Hook → Chi-Cosa-Come → Errore → Soluzione → Riprova Sociale → CTA)
-- Avere un TITOLO AD (headline breve, max 40 caratteri, impatto immediato)
-- Essere SIGNIFICATIVAMENTE diverse tra loro nell'angolazione, nelle prime righe e nella CTA
+${originalBody || "(nessun corpo)"}
 
-Le 4 angolazioni:
+CTA: ${originalCta || "(nessuna CTA)"}
+PIATTAFORMA: ${platform || "facebook"}
+═══════════════════════════════════════════════════════════════
 
-1. ANGOLO PROBLEMA — Focus totale sul dolore, frustrazione, errore che sta commettendo il target. Hook provocatorio che colpisce il punto debole. Testo MEDIO-CORTO. CTA diretta che offre la via d'uscita.
+IL TUO COMPITO:
+Rileggi attentamente l'inserzione originale qui sopra.
+Ora RISCRIVILA in 4 versioni diverse, ognuna con un'ANGOLAZIONE diversa.
 
-2. ANGOLO DESIDERIO — Focus sul risultato desiderato, la trasformazione, il "come sarebbe se...". Hook aspirazionale e positivo. Testo MEDIO. CTA che invita a fare il primo passo verso il risultato.
+COME PROCEDERE:
+- PARTI dal copy originale — stessa offerta, stesso target, stesso messaggio di fondo
+- Applica i principi del Metodo Merenda (marketing a risposta diretta, CTA chiara, beneficio concreto, niente marketing istituzionale)
+- Cambia l'ANGOLAZIONE: cosa metti in primo piano, come apri, quale emozione guida il testo
+- Incorpora le strategie di conversione Merenda pertinenti (headline con beneficio, doppia via di risposta, urgenza, riprova sociale, offerta gratuita, ecc.)
 
-3. ANGOLO RIPROVA SOCIALE — Focus su testimonianze, casi concreti, numeri, risultati misurabili di clienti reali. Hook che inizia con un nome e un risultato specifico. Testo MEDIO-LUNGO. CTA che usa la prova sociale come leva.
+Le 4 angolazioni di riscrittura:
 
-4. ANGOLO URGENZA — Focus su scarsità, "perché adesso e non domani", deadline, posti limitati, costo dell'inazione. Hook con senso di immediatezza. Testo CORTO e diretto. CTA con urgenza esplicita.
+1. ANGOLO PROBLEMA — Riscrivi mettendo il DOLORE in primo piano. Apri colpendo il punto debole del target. Enfatizza l'errore e la frustrazione. Testo MEDIO-CORTO. CTA che offre la via d'uscita dal dolore.
+
+2. ANGOLO DESIDERIO — Riscrivi mettendo il RISULTATO DESIDERATO in primo piano. Apri con la trasformazione, il "come sarebbe se...". Testo MEDIO. CTA che invita al primo passo verso il risultato.
+
+3. ANGOLO RIPROVA SOCIALE — Riscrivi mettendo le PROVE e i RISULTATI in primo piano. Apri con un caso concreto, un numero, un risultato misurabile. Testo MEDIO-LUNGO. CTA che usa la prova sociale come leva.
+
+4. ANGOLO URGENZA — Riscrivi mettendo l'IMMEDIATEZZA in primo piano. Scarsità, deadline, costo dell'inazione. Testo CORTO e diretto. CTA con urgenza esplicita.
+
+Ogni variante deve avere un TITOLO AD proprio (headline che promette un beneficio concreto, max 40 caratteri, come da strategia Merenda #12).
 
 REGOLE ANTI-ROBOT:
 - NON usare "Inoltre", "Pertanto", "In un mondo dove", "Non è un segreto"
 - Ogni frase su una riga separata per leggibilità social
 - Linguaggio diretto, colloquiale, italiano vero
 - Niente frasi generiche — sii specifico e concreto
+- Il testo deve sembrare scritto da un umano, non generato
 
 RISPONDI SOLO con un JSON valido (nessun testo prima o dopo):
 {
   "variants": [
     {
       "angle": "problema",
-      "title": "Titolo ad breve e d'impatto",
+      "title": "Headline con beneficio concreto",
       "hook": "Hook provocatorio max 125 caratteri",
-      "body": "Corpo completo dell'inserzione con il framework a 6 step...",
-      "cta": "Call to action diretta",
+      "body": "Riscrittura completa dell'inserzione con angolazione problema...",
+      "cta": "Call to action diretta e specifica",
       "hashtags": ["hashtag1", "hashtag2"]
     },
     {
