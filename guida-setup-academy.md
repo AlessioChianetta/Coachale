@@ -14,7 +14,7 @@
 
 ---
 
-### Lezione 1 — AI Engine (Google AI Studio)
+### Lezione 1 — AI Engine (Gemini)
 **Durata stimata: 3 minuti**
 
 Benvenuto nella prima lezione del setup base. Qui parliamo del motore AI della piattaforma, cioè Google AI Studio con le API di Gemini.
@@ -277,9 +277,9 @@ Per completare questa lezione, se hai già configurato la tua API Key nel setup 
 
 Stripe è il sistema che ti permette di ricevere pagamenti dai tuoi clienti direttamente dalla piattaforma. Tutto è automatizzato: dal momento in cui un cliente paga, il sistema gli crea l'account, gli assegna il livello di accesso e lo attiva automaticamente.
 
-[Mostra schermo — Setup Wizard → Stripe Connect]
+[Mostra schermo — Configurazione → tab Stripe]
 
-Nello Setup Wizard, clicca su "Stripe Connect". Il sistema usa Stripe Connect Express, che significa che Stripe gestisce tutta la parte di conformità bancaria per te.
+Dalla pagina Configurazione, vai al tab "Stripe" — oppure dallo Setup Wizard, clicca sullo step "Stripe Connect". Il sistema usa Stripe Connect Express, che significa che Stripe gestisce tutta la parte di conformità bancaria per te.
 
 La configurazione è un mini-wizard a tre step.
 
@@ -503,21 +503,25 @@ Per completare questo step, devi effettuare almeno una chiamata vocale con esito
 ---
 
 ### Lezione 21 — Calendario Agenti AI
-**Durata stimata: 3 minuti**
+**Durata stimata: 4 minuti**
 
-Questa lezione riguarda il collegamento del tuo Google Calendar a ciascun agente WhatsApp. Quando un agente ha il calendario connesso, può verificare la tua disponibilità in tempo reale e proporre slot liberi ai lead durante la conversazione.
+Questa lezione riguarda il collegamento di Google Calendar ai singoli agenti WhatsApp — ma è molto più di un semplice calendario. Include il sistema di round robin e i booking pool per distribuire gli appuntamenti tra più operatori.
 
 [Mostra schermo — sidebar → Agenti WhatsApp]
 
 Dalla sidebar, vai su "Agenti WhatsApp". Apri un agente esistente cliccando sul suo nome.
 
-Nella configurazione dell'agente, nello step "Disponibilità e Automazioni", trovi il blocco "Prenotazione Appuntamenti". Quando lo attivi, l'agente avrà accesso al tuo calendario per verificare gli slot liberi e proporre orari.
+Nella configurazione dell'agente, nello step "Disponibilità e Automazioni", trovi il blocco "Prenotazione Appuntamenti". Quando lo attivi, l'agente avrà accesso al calendario per verificare gli slot liberi e proporre orari.
 
-Ma attenzione: perché funzioni, devi anche aver collegato Google Calendar come consulente — cosa che abbiamo fatto nella lezione 4. Il calendario dell'agente usa lo stesso collegamento OAuth ma va attivato per ogni singolo agente.
+Ogni agente può avere il suo calendario Google dedicato — indipendente dal tuo calendario personale. Questo è fondamentale se hai più setter o venditori: ognuno ha il suo calendario e l'agente propone gli slot liberi della persona giusta.
 
-Nella pagina degli agenti, vedrai un indicatore che mostra quanti agenti su quanti totali hanno il calendario connesso — ad esempio "2/3 agenti connessi". L'obiettivo è arrivare a tutti connessi.
+Ma la vera potenza arriva con il sistema Round Robin e i Booking Pool. Se hai più agenti o più operatori, puoi raggrupparli in un "pool di prenotazione". Quando un lead chiede un appuntamento, il sistema sceglie automaticamente l'operatore migliore in base a tre strategie: "Round Robin Stretto" che alterna equamente; "Pesato" che distribuisce in base ai pesi che assegni — ad esempio il settanta per cento al venditore senior e il trenta per cento al junior; oppure "Disponibilità Prima" che sceglie chi ha meno appuntamenti nel giorno.
 
-Il risultato pratico è potente: un lead scrive al tuo agente WhatsApp chiedendo un appuntamento, l'agente controlla il tuo calendario in tempo reale, propone tre slot disponibili, il lead sceglie, e l'appuntamento viene creato automaticamente sia sulla piattaforma che su Google Calendar.
+Il sistema verifica in tempo reale la disponibilità di ogni membro del pool controllando il suo Google Calendar. Se il primo operatore selezionato è occupato in quello slot, passa al successivo. Puoi anche impostare un tetto massimo di appuntamenti giornalieri per ogni membro del pool.
+
+I pool possono includere sia agenti AI collegati alla piattaforma che "membri standalone" — persone esterne con solo un numero di telefono e il loro calendario. Questo è perfetto se hai collaboratori che non usano direttamente la piattaforma.
+
+Nella pagina degli agenti, vedrai un indicatore che mostra quanti agenti su quanti totali hanno il calendario connesso — ad esempio "2/3 agenti connessi". L'obiettivo è arrivare a tutti connessi per sfruttare al massimo il booking automatico e il round robin.
 
 ---
 
