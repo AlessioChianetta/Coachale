@@ -362,7 +362,11 @@ export default function AdminAcademy() {
         queryClient.invalidateQueries({ queryKey: ["admin-academy-modules"] });
         setGuiddeHtml("");
         const screenshotsCount = steps.filter((s: any) => s.screenshot_url).length;
-        toast({ title: "Step importati!", description: `${steps.length} step importati${screenshotsCount > 0 ? `, ${screenshotsCount} screenshot trovati` : ""}${embedUrl ? " + embed URL salvato" : ""}` });
+        const videoProvided = guiddeVideoUrl.trim().startsWith('http');
+        toast({
+          title: `${steps.length} step importati!`,
+          description: `${screenshotsCount > 0 ? `${screenshotsCount} screenshot da scaricare` : "Nessuno screenshot trovato"}${videoProvided ? " + video" : ""}${embedUrl ? " + embed URL" : ""}${screenshotsCount === 0 ? " — titoli importati senza immagini" : ""}`
+        });
       }
 
       const stepsWithScreenshots = insertedSteps.filter((s: any) => s.screenshot_url && s.screenshot_url.startsWith('http'));
@@ -1121,7 +1125,11 @@ export default function AdminAcademy() {
                                         </div>
                                         {guiddeHtml && (
                                           <p className="text-[10px] text-green-600 dark:text-green-400 mb-2">
-                                            Pronto: {(guiddeHtml.match(/<img/gi) || []).length > 0 ? `${(guiddeHtml.match(/<img/gi) || []).length} immagini` : 'testo'}{guiddeVideoUrl.startsWith('http') ? ' + video' : ''}
+                                            {(() => {
+                                              const imgCount = (guiddeHtml.match(/<img/gi) || []).length;
+                                              const screenshotCount = imgCount > 0 ? imgCount - 1 : 0;
+                                              return `Pronto: ${screenshotCount > 0 ? `~${screenshotCount} screenshot` : 'solo testo'}${guiddeVideoUrl.startsWith('http') ? ' + video URL' : ''}`;
+                                            })()}
                                           </p>
                                         )}
                                         <div className="flex gap-2">

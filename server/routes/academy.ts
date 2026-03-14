@@ -621,123 +621,132 @@ router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (
 
     const steps: Array<{ step_number: number; timestamp: string; title: string; description: string; screenshot_url?: string }> = [];
 
+    // ── Collect all images with positions (skip video thumbnails) ──────────────
+    interface ImgEntry { pos: number; url: string; isScreenshot: boolean }
+    const allImgs: ImgEntry[] = [];
+    const imgSrcRx = /<img[^>]+src="(https?:\/\/[^"]+)"/gi;
+    let imgM: RegExpExecArray | null;
+    while ((imgM = imgSrcRx.exec(html)) !== null) {
+      const url = imgM[1];
+      const low = url.toLowerCase();
+      if (low.includes('logo') || low.includes('favicon') || low.includes('avatar')) continue;
+      // Detect if this img is the Guidde video placeholder (usually the first image,
+      // sized differently, or ending in .mp4 or containing /video/)
+      const isVideo = low.includes('.mp4') || low.includes('/video/') || low.includes('video_thumbnail') || low.includes('guidde-video');
+      const isScreenshot = low.includes('quickguiddescreenshots') || low.includes('_doc.png') || low.includes('_doc.webp') || low.includes('_doc.jpg') || low.includes('firebasestorage');
+      allImgs.push({ pos: imgM.index, url, isScreenshot });
+    }
+
+    // First image in Guidde "Copy for Word" is often the video — skip it when assigning to steps
+    const firstNonVideoImgIdx = allImgs.findIndex((img, i) => {
+      if (i === 0) {
+        // Heuristic: first image is video if there are many images after it and it comes before any step numbers
+        const firstSpanPos = html.search(/<span[^>]*>\s*1\s*<\/span>/i);
+        if (firstSpanPos > 0 && img.pos < firstSpanPos) return false; // it's before step 1 → it's the video
+      }
+      return true;
+    });
+    const screenshotImgs = firstNonVideoImgIdx === -1 ? allImgs : allImgs.slice(firstNonVideoImgIdx);
+    const skippedFirst = firstNonVideoImgIdx > 0 ? firstNonVideoImgIdx : 0;
+    if (skippedFirst > 0) console.log(`[Academy] Skipped first ${skippedFirst} image(s) as video thumbnail`);
+
+    // ── Strategy 1: CSS class split (works if Guidde keeps css-o1fo5z class) ────
     const stepBlocks = html.split(/css-o1fo5z">/);
     if (stepBlocks.length > 1) {
+      let offset = stepBlocks[0].length + 'css-o1fo5z">'.length;
       for (let i = 1; i < stepBlocks.length; i++) {
         const block = stepBlocks[i];
         const numMatch = block.match(/^(\d+)<\/span>/);
-        if (!numMatch) continue;
+        if (!numMatch) { offset += block.length + 'css-o1fo5z">'.length; continue; }
         const stepNum = parseInt(numMatch[1], 10);
-
-        const titleMatch = block.match(/css-4fjv0z"><bdi>([^<]+)<\/bdi>/);
+        const titleMatch = block.match(/css-4fjv0z"><bdi>([^<]+)<\/bdi>/) || block.match(/<bdi>([^<]+)<\/bdi>/);
         const title = titleMatch ? titleMatch[1].trim() : `Step ${stepNum}`;
-
-        const descMatch = block.match(/css-1vyj9vp">([^<]+)<\/h6>/);
+        const descMatch = block.match(/css-1vyj9vp">([^<]+)<\/h6>/) || block.match(/<h6[^>]*>([^<]+)<\/h6>/);
         const description = descMatch ? descMatch[1].trim() : '';
-
         let screenshotUrl = '';
-        const firebaseImgMatch = block.match(/<img[^>]+src="(https:\/\/firebasestorage\.googleapis\.com[^"]+quickguiddeScreenshots[^"]+)"/i);
-        if (firebaseImgMatch) {
-          screenshotUrl = firebaseImgMatch[1];
-        }
+        const fbMatch = block.match(/<img[^>]+src="(https:\/\/firebasestorage\.googleapis\.com[^"]+quickguiddeScreenshots[^"]+)"/i);
+        if (fbMatch) screenshotUrl = fbMatch[1];
         if (!screenshotUrl) {
-          const cdnImgMatch = block.match(/<img[^>]+src="(https:\/\/[^"]*guidde[^"]*screenshot[^"]+)"/i);
-          if (cdnImgMatch) screenshotUrl = cdnImgMatch[1];
+          const anyMatch = block.match(/<img[^>]+src="(https?:\/\/[^"]+)"/i);
+          if (anyMatch) screenshotUrl = anyMatch[1];
         }
-        if (!screenshotUrl) {
-          const savedImgMatch = block.match(/quickguiddeScreenshots_([^"'\s]+?)_doc\.(png|jpg|webp)/);
-          if (savedImgMatch) {
-            screenshotUrl = reconstructGuiddeScreenshotUrl(`quickguiddeScreenshots_${savedImgMatch[1]}_doc.${savedImgMatch[2]}`);
-          }
-        }
-        if (!screenshotUrl) {
-          const encodedImgMatch = block.match(/<img[^>]+src="(https:\/\/[^"]*quickguiddeScreenshots%2F[^"]+)"/i);
-          if (encodedImgMatch) screenshotUrl = encodedImgMatch[1];
-        }
-        if (!screenshotUrl) {
-          const anyImgMatch = block.match(/<img[^>]+src="(https:\/\/[^"]+\.(png|jpg|jpeg|webp)[^"]*)"/i);
-          if (anyImgMatch) screenshotUrl = anyImgMatch[1];
-        }
-
         steps.push({ step_number: stepNum, timestamp: '', title, description, screenshot_url: screenshotUrl || undefined });
+        offset += block.length + 'css-o1fo5z">'.length;
       }
     }
 
-    if (steps.length > 0 && steps.every(s => !s.screenshot_url)) {
-      const allDocImgs: string[] = [];
-      const globalFirebaseRegex = /<img[^>]+src="(https:\/\/firebasestorage\.googleapis\.com[^"]+)"/gi;
-      let gfMatch;
-      while ((gfMatch = globalFirebaseRegex.exec(html)) !== null) {
-        if (gfMatch[1].includes('doc.png') || gfMatch[1].includes('doc.webp') || gfMatch[1].includes('doc.jpg')) {
-          allDocImgs.push(gfMatch[1]);
-        }
-      }
-      if (allDocImgs.length === 0) {
-        const globalSavedRegex = /quickguiddeScreenshots_([^"]+?)_doc\.(png|jpg|webp)/g;
-        let gsMatch;
-        while ((gsMatch = globalSavedRegex.exec(html)) !== null) {
-          const url = reconstructGuiddeScreenshotUrl(`quickguiddeScreenshots_${gsMatch[1]}_doc.${gsMatch[2]}`);
-          if (url) allDocImgs.push(url);
-        }
-      }
-      if (allDocImgs.length === 0) {
-        const globalEncodedRegex = /<img[^>]+src="(https:\/\/[^"]*quickguiddeScreenshots%2F[^"]+doc\.[^"]+)"/gi;
-        let geMatch;
-        while ((geMatch = globalEncodedRegex.exec(html)) !== null) {
-          allDocImgs.push(geMatch[1]);
-        }
-      }
-      if (allDocImgs.length === 0) {
-        const allImgRegex = /<img[^>]+src="(https:\/\/[^"]+\.(png|jpg|jpeg|webp)[^"]*)"/gi;
-        let aiMatch;
-        while ((aiMatch = allImgRegex.exec(html)) !== null) {
-          if (!aiMatch[1].includes('logo') && !aiMatch[1].includes('favicon') && !aiMatch[1].includes('avatar')) {
-            allDocImgs.push(aiMatch[1]);
-          }
-        }
-      }
-      if (allDocImgs.length > 0) {
-        console.log(`[Academy] Fallback: found ${allDocImgs.length} doc images globally, assigning to ${steps.length} steps`);
-        for (let i = 0; i < steps.length && i < allDocImgs.length; i++) {
-          steps[i].screenshot_url = allDocImgs[i];
-        }
-      }
-    }
-
+    // ── Strategy 2: Span-based step number detection (CSS-class-independent) ───
     if (steps.length === 0) {
-      const allImgsForFallback: string[] = [];
-      const allImgTagsRegex = /<img[^>]+src="(https?:\/\/[^"]+)"/gi;
-      let allImgMatch;
-      while ((allImgMatch = allImgTagsRegex.exec(html)) !== null) {
-        if (!allImgMatch[1].includes('logo') && !allImgMatch[1].includes('favicon') && !allImgMatch[1].includes('avatar')) {
-          allImgsForFallback.push(allImgMatch[1]);
-        }
+      // Find all <span>N</span> patterns that look like step numbers
+      const spanNumRx = /<span[^>]*>\s*(\d+)\s*<\/span>/gi;
+      let spanM: RegExpExecArray | null;
+      const spanPositions: Array<{ pos: number; num: number }> = [];
+      while ((spanM = spanNumRx.exec(html)) !== null) {
+        const n = parseInt(spanM[1], 10);
+        if (n >= 1 && n <= 200) spanPositions.push({ pos: spanM.index, num: n });
       }
-      const numberedStepRegex = /(?:<[^>]+>)*\s*(\d+)[\.\)]\s*(?:<[^>]+>)*\s*([^<\n]{3,100})(?:<\/[^>]+>)*(?:[\s\S]{0,500}?(?:<p[^>]*>([^<]{5,300})<\/p>))?(?:[\s\S]{0,300}?<img[^>]+src="(https?:\/\/[^"]+)")?/gi;
-      let nMatch;
-      let nStep = 0;
-      while ((nMatch = numberedStepRegex.exec(html)) !== null) {
-        const num = parseInt(nMatch[1], 10);
-        if (num < 1 || num > 200) continue;
-        const title = nMatch[2].replace(/<[^>]+>/g, '').trim();
-        if (!title || title.length < 3) continue;
-        nStep++;
-        const desc = nMatch[3] ? nMatch[3].replace(/<[^>]+>/g, '').trim() : '';
-        const imgUrl = nMatch[4] || allImgsForFallback[nStep - 1] || undefined;
-        steps.push({ step_number: num, timestamp: '', title, description: desc, screenshot_url: imgUrl });
+      // Keep only sequential spans: 1, 2, 3...
+      const seqSpans = spanPositions.filter((sp, i) => sp.num === i + 1);
+      if (seqSpans.length >= 2) {
+        console.log(`[Academy] Strategy 2: found ${seqSpans.length} sequential step spans`);
+        for (let i = 0; i < seqSpans.length; i++) {
+          const start = seqSpans[i].pos;
+          const end = i + 1 < seqSpans.length ? seqSpans[i + 1].pos : html.length;
+          const block = html.slice(start, end);
+          // Extract title: first substantial text in a bdi, h3, h4, h5, h6, or span after the number
+          const titleMatch = block.match(/<bdi>([^<]{3,})<\/bdi>/) ||
+            block.match(/<h[3-6][^>]*>([^<]{3,})<\/h[3-6]>/) ||
+            block.match(/<span[^>]*>([^<]{5,80})<\/span>/);
+          const title = titleMatch ? titleMatch[1].trim() : `Step ${seqSpans[i].num}`;
+          // Extract description: first paragraph after the title
+          const descMatch = block.match(/<p[^>]*>([^<]{5,})<\/p>/);
+          const description = descMatch ? descMatch[1].trim() : '';
+          // Find the screenshot image nearest to this step (use position-matched allImgs)
+          const stepScreenshots = screenshotImgs.filter(img => img.pos >= start && img.pos < end);
+          const screenshotUrl = stepScreenshots[0]?.url || undefined;
+          steps.push({ step_number: seqSpans[i].num, timestamp: '', title, description, screenshot_url: screenshotUrl });
+        }
       }
     }
 
+    // ── Strategy 3: Heading-based detection (h2/h3/h4 starting with "N.") ─────
+    if (steps.length === 0) {
+      const headingRx = /<h[2-5][^>]*>\s*(?:<[^>]+>)*\s*(\d+)[\.\)]\s*(?:<[^>]+>)*\s*([^<]{3,100}?)(?:<\/[^>]+>)*\s*<\/h[2-5]>/gi;
+      let hM: RegExpExecArray | null;
+      const headings: Array<{ pos: number; num: number; title: string }> = [];
+      while ((hM = headingRx.exec(html)) !== null) {
+        const num = parseInt(hM[1], 10);
+        const title = hM[2].replace(/<[^>]+>/g, '').trim();
+        if (num >= 1 && num <= 200 && title.length >= 3) headings.push({ pos: hM.index, num, title });
+      }
+      if (headings.length >= 2) {
+        console.log(`[Academy] Strategy 3: found ${headings.length} numbered headings`);
+        for (let i = 0; i < headings.length; i++) {
+          const start = headings[i].pos;
+          const end = i + 1 < headings.length ? headings[i + 1].pos : html.length;
+          const block = html.slice(start, end);
+          const descMatch = block.match(/<p[^>]*>([^<]{5,})<\/p>/);
+          const description = descMatch ? descMatch[1].trim() : '';
+          const stepScreenshots = screenshotImgs.filter(img => img.pos >= start && img.pos < end);
+          const screenshotUrl = stepScreenshots[0]?.url || undefined;
+          steps.push({ step_number: headings[i].num, timestamp: '', title: headings[i].title, description, screenshot_url: screenshotUrl });
+        }
+      }
+    }
+
+    // ── Assign screenshots by order if steps have none ────────────────────────
+    if (steps.length > 0 && steps.every(s => !s.screenshot_url) && screenshotImgs.length > 0) {
+      console.log(`[Academy] Assigning ${screenshotImgs.length} screenshots to ${steps.length} steps by order`);
+      for (let i = 0; i < steps.length && i < screenshotImgs.length; i++) {
+        steps[i].screenshot_url = screenshotImgs[i].url;
+      }
+    }
+
+    // ── Strategy 4: Timestamp-based (MM:SS: text format) ─────────────────────
     if (steps.length === 0) {
       const pRegex = /<p>(\d{2}:\d{2}):\s*(.*?)<\/p>/gi;
-      let match;
+      let match: RegExpExecArray | null;
       let stepNum = 0;
-      const imgUrls: string[] = [];
-      const imgRegex = /<img[^>]+src="(https?:\/\/[^"]+)"/gi;
-      let imgMatch;
-      while ((imgMatch = imgRegex.exec(html)) !== null) {
-        imgUrls.push(imgMatch[1]);
-      }
       while ((match = pRegex.exec(html)) !== null) {
         stepNum++;
         const timestamp = match[1];
@@ -745,35 +754,21 @@ router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (
         const firstSentenceEnd = text.indexOf('. ');
         const title = firstSentenceEnd > 0 && firstSentenceEnd < 60 ? text.substring(0, firstSentenceEnd) : text.substring(0, 60);
         const description = firstSentenceEnd > 0 && firstSentenceEnd < 60 ? text.substring(firstSentenceEnd + 2) : text;
-        steps.push({ step_number: stepNum, timestamp, title, description: description || text, screenshot_url: imgUrls[stepNum - 1] || undefined });
+        const imgUrl = screenshotImgs[stepNum - 1]?.url;
+        steps.push({ step_number: stepNum, timestamp, title, description: description || text, screenshot_url: imgUrl });
       }
     }
 
-    if (steps.length === 0) {
-      const docImgRegex = /quickguiddeScreenshots_([^"]+?)_doc\.(png|jpg|webp)/g;
-      let dimMatch;
-      const imgFilenames: string[] = [];
-      while ((dimMatch = docImgRegex.exec(html)) !== null) {
-        const url = reconstructGuiddeScreenshotUrl(`quickguiddeScreenshots_${dimMatch[1]}_doc.${dimMatch[2]}`);
-        if (url) imgFilenames.push(url);
-      }
-      if (imgFilenames.length > 0) {
-        imgFilenames.forEach((url, i) => {
-          steps.push({ step_number: i + 1, timestamp: '', title: `Step ${i + 1}`, description: '', screenshot_url: url });
-        });
-      }
+    // ── Last resort: create one step per screenshot ───────────────────────────
+    if (steps.length === 0 && screenshotImgs.length > 0) {
+      console.log(`[Academy] Last resort: creating ${screenshotImgs.length} steps from screenshots`);
+      screenshotImgs.forEach((img, i) => {
+        steps.push({ step_number: i + 1, timestamp: '', title: `Step ${i + 1}`, description: '', screenshot_url: img.url });
+      });
     }
 
     const screenshotsFound = steps.filter(s => s.screenshot_url).length;
-    console.log(`[Academy] Parsed Guidde HTML: ${steps.length} steps, ${screenshotsFound} screenshots, embedUrl: ${embedUrl ? 'yes' : 'no'}`);
-    if (steps.length > 0 && screenshotsFound === 0) {
-      const allImgTags = html.match(/<img[^>]+src="([^"]+)"/gi);
-      const allQuickguidde = html.match(/quickguiddeScreenshots/gi);
-      console.log(`[Academy] DEBUG no screenshots: total <img> in html: ${allImgTags?.length || 0}, quickguiddeScreenshots mentions: ${allQuickguidde?.length || 0}`);
-      if (allImgTags && allImgTags.length > 0) {
-        console.log(`[Academy] DEBUG first img:`, allImgTags[0].substring(0, 150));
-      }
-    }
+    console.log(`[Academy] Parsed: ${steps.length} steps, ${screenshotsFound} screenshots, ${allImgs.length} total imgs (${skippedFirst} skipped), embedUrl: ${embedUrl ? 'yes' : 'no'}`);
 
     res.json({ success: true, data: { embedUrl, steps, screenshotsFound } });
   } catch (err: any) {
