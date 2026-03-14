@@ -37,6 +37,7 @@ import {
   HelpCircle,
   Info,
   RefreshCw,
+  HardDrive,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -945,6 +946,22 @@ export default function AdminAcademy() {
                                         {stepCount > 0 && (
                                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[11px] font-medium">
                                             <ListOrdered size={10} className="text-gray-400" /> {stepCount} step
+                                          </span>
+                                        )}
+                                        {(() => {
+                                          const localShots = (lesson.steps || []).filter((s: any) => s.screenshot_url && !s.screenshot_url.startsWith('http')).length;
+                                          const totalShots = (lesson.steps || []).filter((s: any) => s.screenshot_url).length;
+                                          if (localShots === 0) return null;
+                                          const allLocal = localShots === totalShots;
+                                          return (
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${allLocal ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400' : 'bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400'}`}>
+                                              <HardDrive size={10} /> {localShots}/{totalShots} locale
+                                            </span>
+                                          );
+                                        })()}
+                                        {lesson.guide_local_video_url && (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-[11px] font-medium">
+                                            <Film size={10} /> video locale
                                           </span>
                                         )}
                                       </div>
