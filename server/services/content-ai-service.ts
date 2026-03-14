@@ -4262,6 +4262,153 @@ export async function generatePostCopyVariations(params: GeneratePostCopyVariati
   }
 }
 
+export interface AdCopyVariant {
+  angle: string;
+  title: string;
+  body: string;
+  hook: string;
+  cta: string;
+  hashtags?: string[];
+}
+
+export interface GenerateAdCopyVariantsParams {
+  consultantId: string;
+  originalTitle: string;
+  originalBody: string;
+  originalHook: string;
+  originalCta: string;
+  platform: string;
+}
+
+export interface GenerateAdCopyVariantsResult {
+  variants: AdCopyVariant[];
+  modelUsed: string;
+}
+
+export async function generateAdCopyVariants(params: GenerateAdCopyVariantsParams): Promise<GenerateAdCopyVariantsResult> {
+  const { consultantId, originalTitle, originalBody, originalHook, originalCta, platform } = params;
+
+  await rateLimitCheck(consultantId);
+
+  const assets = await getBrandAssets(consultantId);
+  const brandContext = buildCompleteBrandContext(assets);
+
+  const prompt = `Sei un copywriter senior specializzato in inserzioni Meta Ads (Facebook/Instagram) per il mercato italiano.
+${brandContext}
+
+Hai davanti un'inserzione già scritta. Il tuo compito è creare 4 VARIANTI della stessa inserzione, ognuna con un'ANGOLAZIONE DIVERSA.
+
+INSERZIONE ORIGINALE:
+- TITOLO AD: ${originalTitle || "(nessun titolo)"}
+- HOOK: ${originalHook || "(nessun hook)"}
+- CORPO: ${originalBody || "(nessun corpo)"}
+- CTA: ${originalCta || "(nessuna CTA)"}
+- PIATTAFORMA: ${platform || "facebook"}
+
+Tutte le varianti devono:
+- Mantenere lo STESSO messaggio di fondo, la stessa offerta, lo stesso target
+- Seguire il FRAMEWORK PERSUASIVO MERENDA a 6 step (Hook → Chi-Cosa-Come → Errore → Soluzione → Riprova Sociale → CTA)
+- Avere un TITOLO AD (headline breve, max 40 caratteri, impatto immediato)
+- Essere SIGNIFICATIVAMENTE diverse tra loro nell'angolazione, nelle prime righe e nella CTA
+
+Le 4 angolazioni:
+
+1. ANGOLO PROBLEMA — Focus totale sul dolore, frustrazione, errore che sta commettendo il target. Hook provocatorio che colpisce il punto debole. Testo MEDIO-CORTO. CTA diretta che offre la via d'uscita.
+
+2. ANGOLO DESIDERIO — Focus sul risultato desiderato, la trasformazione, il "come sarebbe se...". Hook aspirazionale e positivo. Testo MEDIO. CTA che invita a fare il primo passo verso il risultato.
+
+3. ANGOLO RIPROVA SOCIALE — Focus su testimonianze, casi concreti, numeri, risultati misurabili di clienti reali. Hook che inizia con un nome e un risultato specifico. Testo MEDIO-LUNGO. CTA che usa la prova sociale come leva.
+
+4. ANGOLO URGENZA — Focus su scarsità, "perché adesso e non domani", deadline, posti limitati, costo dell'inazione. Hook con senso di immediatezza. Testo CORTO e diretto. CTA con urgenza esplicita.
+
+REGOLE ANTI-ROBOT:
+- NON usare "Inoltre", "Pertanto", "In un mondo dove", "Non è un segreto"
+- Ogni frase su una riga separata per leggibilità social
+- Linguaggio diretto, colloquiale, italiano vero
+- Niente frasi generiche — sii specifico e concreto
+
+RISPONDI SOLO con un JSON valido (nessun testo prima o dopo):
+{
+  "variants": [
+    {
+      "angle": "problema",
+      "title": "Titolo ad breve e d'impatto",
+      "hook": "Hook provocatorio max 125 caratteri",
+      "body": "Corpo completo dell'inserzione con il framework a 6 step...",
+      "cta": "Call to action diretta",
+      "hashtags": ["hashtag1", "hashtag2"]
+    },
+    {
+      "angle": "desiderio",
+      "title": "...",
+      "hook": "...",
+      "body": "...",
+      "cta": "...",
+      "hashtags": ["..."]
+    },
+    {
+      "angle": "riprova_sociale",
+      "title": "...",
+      "hook": "...",
+      "body": "...",
+      "cta": "...",
+      "hashtags": ["..."]
+    },
+    {
+      "angle": "urgenza",
+      "title": "...",
+      "hook": "...",
+      "body": "...",
+      "cta": "...",
+      "hashtags": ["..."]
+    }
+  ]
+}`;
+
+  try {
+    const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, "ad-copy-variants");
+    setFeature?.('ad-copy-variants');
+    const { model } = getModelWithThinking(metadata?.name);
+
+    const result = await trackedGenerateContent({
+      model,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.9,
+        maxOutputTokens: 8192,
+      },
+    } as any, { consultantId, feature: 'ad-copy-variants', callerRole: 'consultant' });
+
+    const responseText = result.response.text();
+    let parsed: any;
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON found in response");
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch {
+      console.error("[CONTENT-AI] Failed to parse ad variants JSON:", responseText.substring(0, 500));
+      throw new Error("Failed to parse AI response as JSON");
+    }
+
+    const variants: AdCopyVariant[] = (parsed.variants || []).slice(0, 4).map((v: any) => ({
+      angle: v.angle || "variante",
+      title: v.title || "",
+      body: v.body || "",
+      hook: v.hook || "",
+      cta: v.cta || "",
+      hashtags: v.hashtags || [],
+    }));
+
+    return {
+      variants,
+      modelUsed: model,
+    };
+  } catch (error: any) {
+    console.error("[CONTENT-AI] Error generating ad copy variants:", error);
+    throw new Error(`Failed to generate ad copy variants: ${error.message}`);
+  }
+}
+
 export async function generateCampaignContent(params: GenerateCampaignParams): Promise<GenerateCampaignResult> {
   const { consultantId, productOrService, targetAudience, objective, budget, duration, uniqueSellingPoints, brandVoice, brandVoiceData } = params;
   

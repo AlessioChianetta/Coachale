@@ -217,6 +217,8 @@ interface Post {
   publerError?: string;
   publerMediaIds?: Array<string | { id: string; path?: string; thumbnail?: string }>;
   metaAdId?: string | null;
+  fullCopy?: string;
+  copyVariants?: Array<{ angle: string; title: string; body: string; hook: string; cta: string; hashtags?: string[] }>;
 }
 
 interface ContentFolder {
@@ -1095,6 +1097,8 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
 
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [isAd, setIsAd] = useState(false);
+  const [editVariants, setEditVariants] = useState<Array<{ angle: string; title: string; body: string; hook: string; cta: string; hashtags?: string[] }>>([]);
+  const [editVariantIdx, setEditVariantIdx] = useState(0);
   const [isCarouselMode, setIsCarouselMode] = useState(false);
   const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[]>([
     { title: "", content: "" },
@@ -1122,6 +1126,8 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
 
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [viewingPost, setViewingPost] = useState<Post | null>(null);
+  const [activeVariantIdx, setActiveVariantIdx] = useState(0);
+  const [generatingVariants, setGeneratingVariants] = useState(false);
   const [publerDialogOpen, setPublerDialogOpen] = useState(false);
   const [bulkPublishDialogOpen, setBulkPublishDialogOpen] = useState(false);
   const [publerPost, setPublerPost] = useState<Post | null>(null);
@@ -1543,6 +1549,8 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
       setEditingPost(null);
       setFormData({ title: "", hook: "", body: "", cta: "", fullCopy: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", videoFullScript: "", videoUrl: "", imageDescription: "", imageOverlayText: "" });
       setIsAd(false);
+      setEditVariants([]);
+      setEditVariantIdx(0);
       setWizardStep(1);
       setSuggestedHashtags([]);
       resetCarouselState();
@@ -2271,6 +2279,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
       structuredContent,
       ideaId: sourceIdeaId || undefined,
       publerMediaIds,
+      copyVariants: editVariants.length > 0 ? editVariants : undefined,
     };
 
     if (isCarouselMode) {
@@ -2379,6 +2388,8 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
     }
     
     setIsAd(!!post.isAd);
+    setEditVariants(post.copyVariants || []);
+    setEditVariantIdx(0);
     setWizardStep(1);
     setEditingPost(post);
     setIsDialogOpen(true);
@@ -2812,6 +2823,8 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                   setFormData({ title: "", hook: "", body: "", cta: "", fullCopy: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", videoFullScript: "", videoUrl: "", imageDescription: "", imageOverlayText: "" });
                   setSuggestedHashtags([]);
                   setIsAd(false);
+                  setEditVariants([]);
+                  setEditVariantIdx(0);
                   setWizardStep(1);
                   resetCarouselState();
                   uploadedMedia.forEach(m => {
@@ -3485,6 +3498,90 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                               value={getCharacterProgress()}
                               className={`h-1 ${isOverLimit() ? "[&>div]:bg-red-500" : "[&>div]:bg-green-500"}`}
                             />
+                          </div>
+                        )}
+
+                        {editVariants.length > 0 && (
+                          <div className="border-t pt-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-semibold flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-indigo-500" />
+                                Varianti Meta Ad ({editVariants.length})
+                              </h4>
+                            </div>
+                            <div className="flex gap-1.5 flex-wrap">
+                              {editVariants.map((v, idx) => {
+                                const labels: Record<string, string> = { problema: "🔥 Problema", desiderio: "✨ Desiderio", riprova_sociale: "👥 Sociale", urgenza: "⚡ Urgenza" };
+                                return (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => setEditVariantIdx(idx)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                                      editVariantIdx === idx
+                                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 shadow-sm"
+                                        : "border-border hover:border-gray-400 text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    {labels[v.angle] || v.angle}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {editVariants[editVariantIdx] && (
+                              <div className="space-y-3 p-3 rounded-lg border bg-muted/20">
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Titolo Ad</Label>
+                                  <Input
+                                    value={editVariants[editVariantIdx].title}
+                                    onChange={(e) => {
+                                      const updated = [...editVariants];
+                                      updated[editVariantIdx] = { ...updated[editVariantIdx], title: e.target.value };
+                                      setEditVariants(updated);
+                                    }}
+                                    placeholder="Titolo dell'inserzione..."
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Hook</Label>
+                                  <Input
+                                    value={editVariants[editVariantIdx].hook}
+                                    onChange={(e) => {
+                                      const updated = [...editVariants];
+                                      updated[editVariantIdx] = { ...updated[editVariantIdx], hook: e.target.value };
+                                      setEditVariants(updated);
+                                    }}
+                                    placeholder="Hook..."
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Body</Label>
+                                  <Textarea
+                                    value={editVariants[editVariantIdx].body}
+                                    onChange={(e) => {
+                                      const updated = [...editVariants];
+                                      updated[editVariantIdx] = { ...updated[editVariantIdx], body: e.target.value };
+                                      setEditVariants(updated);
+                                    }}
+                                    placeholder="Testo della variante..."
+                                    className="min-h-[80px]"
+                                    style={{ fieldSizing: 'content' } as React.CSSProperties}
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">CTA</Label>
+                                  <Input
+                                    value={editVariants[editVariantIdx].cta}
+                                    onChange={(e) => {
+                                      const updated = [...editVariants];
+                                      updated[editVariantIdx] = { ...updated[editVariantIdx], cta: e.target.value };
+                                      setEditVariants(updated);
+                                    }}
+                                    placeholder="Call to action..."
+                                  />
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -4203,7 +4300,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                       <div
                         key={post.id}
                         className={`grid grid-cols-[1fr_120px_100px_100px_40px] gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors cursor-pointer items-center`}
-                        onClick={() => setViewingPost(post)}
+                        onClick={() => { setViewingPost(post); setActiveVariantIdx(0); }}
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -4628,7 +4725,7 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
                             variant="outline" 
                             size="sm"
                             className="h-9 px-3"
-                            onClick={() => setViewingPost(post)}
+                            onClick={() => { setViewingPost(post); setActiveVariantIdx(0); }}
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
@@ -4804,93 +4901,202 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
 
                       {/* Copy Tab */}
                       <TabsContent value="copy" className="flex-1 p-6 space-y-4 m-0">
-                        {/* Copy All Button */}
-                        <div className="flex justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const fullText = [bodyText, hookText, ctaText].filter(Boolean).join("\n\n");
-                              navigator.clipboard.writeText(fullText);
-                              toast({ title: "Copiato!", description: "Testo completo copiato negli appunti" });
-                            }}
-                            className="gap-2"
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                            Copia Tutto
-                          </Button>
-                        </div>
+                        {(() => {
+                          const ANGLE_LABELS: Record<string, { label: string; emoji: string; color: string; bg: string }> = {
+                            originale: { label: "Originale", emoji: "📝", color: "text-slate-700 dark:text-slate-300", bg: "bg-slate-100 dark:bg-zinc-800" },
+                            problema: { label: "Problema", emoji: "🔥", color: "text-red-700 dark:text-red-300", bg: "bg-red-50 dark:bg-red-950/30" },
+                            desiderio: { label: "Desiderio", emoji: "✨", color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-50 dark:bg-amber-950/30" },
+                            riprova_sociale: { label: "Sociale", emoji: "👥", color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
+                            urgenza: { label: "Urgenza", emoji: "⚡", color: "text-orange-700 dark:text-orange-300", bg: "bg-orange-50 dark:bg-orange-950/30" },
+                          };
 
-                        {/* Body/Contenuto - Prima */}
-                        {bodyText && (
-                          <div className="rounded-xl overflow-hidden border group relative">
-                            <div className="bg-slate-100 dark:bg-zinc-800 px-4 py-2 flex items-center justify-between">
-                              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">📝 Contenuto</span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(bodyText);
-                                  toast({ title: "Copiato!", description: "Contenuto copiato" });
-                                }}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <div className="bg-white dark:bg-zinc-900 p-4">
-                              <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                                {formatTextWithHashtags(bodyText)}
+                          const originalVariant = {
+                            angle: "originale",
+                            title: viewingPost.title || "",
+                            body: bodyText || "",
+                            hook: hookText || "",
+                            cta: ctaText || "",
+                            hashtags: [] as string[],
+                          };
+
+                          const allVariants = [originalVariant, ...(viewingPost.copyVariants || [])];
+                          const safeIdx = Math.min(activeVariantIdx, allVariants.length - 1);
+                          const currentVariant = allVariants[safeIdx] || originalVariant;
+                          const angleMeta = ANGLE_LABELS[currentVariant.angle] || ANGLE_LABELS.originale;
+                          const hasVariants = (viewingPost.copyVariants || []).length > 0;
+
+                          const handleGenerateVariants = async () => {
+                            setGeneratingVariants(true);
+                            try {
+                              const res = await fetch("/api/content/ai/generate-ad-variants", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+                                body: JSON.stringify({ postId: viewingPost.id }),
+                              });
+                              const data = await res.json();
+                              if (!data.success) throw new Error(data.error);
+                              setViewingPost({
+                                ...viewingPost,
+                                copyVariants: data.data.variants,
+                              });
+                              setActiveVariantIdx(0);
+                              queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
+                              toast({ title: "Varianti generate!", description: `${data.data.variants.length} angolazioni create` });
+                            } catch (err: any) {
+                              toast({ title: "Errore", description: err.message || "Errore nella generazione", variant: "destructive" });
+                            } finally {
+                              setGeneratingVariants(false);
+                            }
+                          };
+
+                          return (
+                            <>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  {hasVariants && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {allVariants.length} varianti
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {hasVariants && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleGenerateVariants}
+                                      disabled={generatingVariants}
+                                      className="gap-1.5 text-xs"
+                                    >
+                                      {generatingVariants ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                                      Rigenera
+                                    </Button>
+                                  )}
+                                  {!hasVariants && (
+                                    <Button
+                                      size="sm"
+                                      onClick={handleGenerateVariants}
+                                      disabled={generatingVariants}
+                                      className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white"
+                                    >
+                                      {generatingVariants ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                                      Genera Varianti Meta
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const fullText = [currentVariant.title ? `TITOLO: ${currentVariant.title}` : null, currentVariant.hook, currentVariant.body, currentVariant.cta].filter(Boolean).join("\n\n");
+                                      navigator.clipboard.writeText(fullText);
+                                      toast({ title: "Copiato!", description: "Testo completo copiato negli appunti" });
+                                    }}
+                                    className="gap-1.5"
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                    Copia Tutto
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        )}
 
-                        {/* Hook - Dopo contenuto */}
-                        {hookText && (
-                          <div className="rounded-xl overflow-hidden group relative">
-                            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 flex items-center justify-between">
-                              <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎣 Hook</span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(hookText);
-                                  toast({ title: "Copiato!", description: "Hook copiato" });
-                                }}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-4">
-                              <p className="text-sm font-medium leading-relaxed">{hookText}</p>
-                            </div>
-                          </div>
-                        )}
+                              {hasVariants && (
+                                <div className="flex gap-1.5 flex-wrap">
+                                  {allVariants.map((v, idx) => {
+                                    const meta = ANGLE_LABELS[v.angle] || ANGLE_LABELS.originale;
+                                    return (
+                                      <button
+                                        key={idx}
+                                        onClick={() => setActiveVariantIdx(idx)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                                          safeIdx === idx
+                                            ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 shadow-sm"
+                                            : "border-border hover:border-gray-400 text-muted-foreground hover:text-foreground"
+                                        }`}
+                                      >
+                                        <span>{meta.emoji}</span>
+                                        <span className="hidden sm:inline">{meta.label}</span>
+                                        <span className="sm:hidden">{idx + 1}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
 
-                        {/* CTA - Alla fine */}
-                        {ctaText && (
-                          <div className="rounded-xl overflow-hidden group relative">
-                            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 flex items-center justify-between">
-                              <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎯 Call to Action</span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(ctaText);
-                                  toast({ title: "Copiato!", description: "CTA copiato" });
-                                }}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 p-4">
-                              <p className="text-sm font-medium">{ctaText}</p>
-                            </div>
-                          </div>
-                        )}
+                              {generatingVariants && (
+                                <div className="flex items-center justify-center py-8 gap-3">
+                                  <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
+                                  <span className="text-sm text-muted-foreground">Generazione varianti in corso...</span>
+                                </div>
+                              )}
+
+                              {!generatingVariants && (
+                                <>
+                                  {currentVariant.title && (
+                                    <div className="rounded-xl overflow-hidden border">
+                                      <div className="bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800 px-4 py-2 flex items-center justify-between">
+                                        <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🏷️ Titolo Ad</span>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20"
+                                          onClick={() => { navigator.clipboard.writeText(currentVariant.title); toast({ title: "Copiato!", description: "Titolo copiato" }); }}>
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      <div className="bg-gray-50 dark:bg-zinc-900 p-4">
+                                        <p className="text-base font-bold leading-tight">{currentVariant.title}</p>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {currentVariant.body && (
+                                    <div className="rounded-xl overflow-hidden border">
+                                      <div className={`${angleMeta.bg} px-4 py-2 flex items-center justify-between`}>
+                                        <span className={`text-xs font-semibold uppercase tracking-wide ${angleMeta.color}`}>{angleMeta.emoji} Contenuto {hasVariants && safeIdx > 0 ? `(${angleMeta.label})` : ""}</span>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
+                                          onClick={() => { navigator.clipboard.writeText(currentVariant.body); toast({ title: "Copiato!", description: "Contenuto copiato" }); }}>
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      <div className="bg-white dark:bg-zinc-900 p-4">
+                                        <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                                          {formatTextWithHashtags(currentVariant.body)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {currentVariant.hook && (
+                                    <div className="rounded-xl overflow-hidden">
+                                      <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 flex items-center justify-between">
+                                        <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎣 Hook</span>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20"
+                                          onClick={() => { navigator.clipboard.writeText(currentVariant.hook); toast({ title: "Copiato!", description: "Hook copiato" }); }}>
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-4">
+                                        <p className="text-sm font-medium leading-relaxed">{currentVariant.hook}</p>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {currentVariant.cta && (
+                                    <div className="rounded-xl overflow-hidden">
+                                      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 flex items-center justify-between">
+                                        <span className="text-xs font-semibold text-white/90 uppercase tracking-wide">🎯 Call to Action</span>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20"
+                                          onClick={() => { navigator.clipboard.writeText(currentVariant.cta); toast({ title: "Copiato!", description: "CTA copiato" }); }}>
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 p-4">
+                                        <p className="text-sm font-medium">{currentVariant.cta}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
                       </TabsContent>
 
                       {/* Video Tab */}
@@ -5040,10 +5246,40 @@ export default function ContentStudioPosts({ embedded = false }: { embedded?: bo
 
                       {/* Modulo Lead Tab */}
                       <TabsContent value="modulo" className="flex-1 p-6 space-y-4 m-0 overflow-y-auto">
-                        <LeadFormTab post={viewingPost} onUpdate={(updatedPost) => {
-                          setViewingPost(updatedPost);
-                          queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
-                        }} />
+                        {(() => {
+                          const variants = [
+                            { angle: "originale", title: viewingPost.title || "", body: bodyText || "", hook: hookText || "", cta: ctaText || "" },
+                            ...(viewingPost.copyVariants || []),
+                          ];
+                          const safeIdx = Math.min(activeVariantIdx, variants.length - 1);
+                          const activeV = variants[safeIdx];
+                          const variantOverlay = activeV && safeIdx > 0 ? {
+                            body: activeV.body,
+                            hook: activeV.hook,
+                            cta: activeV.cta,
+                            fullCopy: activeV.body,
+                          } : {};
+                          const postForLead = {
+                            ...viewingPost,
+                            ...variantOverlay,
+                            structuredContent: {
+                              ...viewingPost.structuredContent,
+                              ...variantOverlay,
+                            },
+                          };
+                          return (
+                            <LeadFormTab post={postForLead} onUpdate={(updatedPost) => {
+                              setViewingPost({
+                                ...viewingPost,
+                                structuredContent: {
+                                  ...viewingPost.structuredContent,
+                                  leadForm: updatedPost.structuredContent?.leadForm,
+                                },
+                              });
+                              queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
+                            }} />
+                          );
+                        })()}
                       </TabsContent>
                     </Tabs>
                   </div>

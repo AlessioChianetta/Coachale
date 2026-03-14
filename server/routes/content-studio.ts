@@ -1819,6 +1819,7 @@ import {
   generateCampaignContent,
   generateImagePrompt,
   shortenCopy,
+  generateAdCopyVariants,
   type ContentType,
   type ContentObjective,
   type Platform,
@@ -3045,6 +3046,114 @@ router.post("/ai/generate-copy-variations", authenticateToken, requireRole("cons
     res.status(500).json({
       success: false,
       error: error.message || "Failed to generate post copy variations",
+    });
+  }
+});
+
+router.post("/ai/generate-ad-variants", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { postId } = req.body;
+
+    if (!postId) {
+      return res.status(400).json({ success: false, error: "postId is required" });
+    }
+
+    const [post] = await db.select()
+      .from(schema.contentPosts)
+      .where(and(
+        eq(schema.contentPosts.id, postId),
+        eq(schema.contentPosts.consultantId, consultantId)
+      ))
+      .limit(1);
+
+    if (!post) {
+      return res.status(404).json({ success: false, error: "Post not found" });
+    }
+
+    const structured = (post.structuredContent || {}) as Record<string, any>;
+    const originalBody = post.fullCopy || structured.fullCopy || structured.body || post.body || "";
+    const originalHook = structured.hook || post.hook || "";
+    const originalCta = structured.cta || post.cta || "";
+    const originalTitle = post.title || "";
+
+    console.log(`🤖 [CONTENT-AI] Generating 4 ad copy variants for post ${postId}`);
+
+    const result = await generateAdCopyVariants({
+      consultantId,
+      originalTitle,
+      originalBody,
+      originalHook,
+      originalCta,
+      platform: post.platform || "facebook",
+    });
+
+    const [updated] = await db.update(schema.contentPosts)
+      .set({
+        copyVariants: result.variants,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.contentPosts.id, postId))
+      .returning();
+
+    console.log(`✅ [CONTENT-AI] Generated ${result.variants.length} ad variants using ${result.modelUsed}`);
+
+    res.json({
+      success: true,
+      data: {
+        variants: result.variants,
+        modelUsed: result.modelUsed,
+        post: updated,
+      },
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-AI] Error generating ad copy variants:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate ad copy variants",
+    });
+  }
+});
+
+router.patch("/posts/:id/variants", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const postId = req.params.id;
+    const { variants } = req.body;
+
+    if (!Array.isArray(variants)) {
+      return res.status(400).json({ success: false, error: "variants must be an array" });
+    }
+
+    const [existing] = await db.select()
+      .from(schema.contentPosts)
+      .where(and(
+        eq(schema.contentPosts.id, postId),
+        eq(schema.contentPosts.consultantId, consultantId)
+      ))
+      .limit(1);
+
+    if (!existing) {
+      return res.status(404).json({ success: false, error: "Post not found" });
+    }
+
+    const [updated] = await db.update(schema.contentPosts)
+      .set({
+        copyVariants: variants,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.contentPosts.id, postId))
+      .returning();
+
+    res.json({
+      success: true,
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error saving variants:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to save variants",
     });
   }
 });

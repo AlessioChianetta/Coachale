@@ -9042,6 +9042,8 @@ export const contentPosts = pgTable("content_posts", {
   reviewedAt: timestamp("reviewed_at"),
   charLimitRetries: integer("char_limit_retries").default(0),
   
+  copyVariants: jsonb("copy_variants").$type<Array<{ angle: string; title: string; body: string; hook: string; cta: string; hashtags?: string[] }>>().default(sql`'[]'::jsonb`),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
