@@ -4420,48 +4420,69 @@ Riscrivi l'inserzione DA ZERO in 4 versioni con angolazioni diverse.
 L'originale ha ${wordCount} parole. OGNI variante deve avere una lunghezza SIMILE: tra ${Math.round(wordCount * 0.8)} e ${Math.round(wordCount * 1.2)} parole nel body.
 NON fare varianti più corte dell'originale. Il lettore si aspetta un testo completo, non un riassunto.
 
+⚠️ REGOLA HOOK (CRITICA):
+Ogni variante DEVE iniziare con un HOOK POTENTE — una frase d'apertura che FERMA LO SCROLL e fa dire "devo leggere il resto".
+Il campo "hook" nel JSON è questa frase (max 1-2 righe).
+Il campo "body" DEVE INIZIARE con lo stesso hook, seguito dal resto del testo.
+L'hook NON è un titolo. È la prima frase che il lettore vede nel feed, PRIMA di cliccare "leggi altro".
+
+Tipi di hook efficaci (usa uno diverso per ogni variante):
+- SCENARIO SPECIFICO: "Gestire un'agenzia oggi sembra più un lavoro da educatore che da imprenditore."
+- RISULTATO SHOCK: "147 appuntamenti in 30 giorni. Senza aver mandato un solo messaggio manuale."
+- DATO BRUTALE: "Rispondevano ai messaggi WhatsApp dopo una media di 3 ore. Risultato? I lead erano già dai competitor."
+- URGENZA DIRETTA: "Il mercato non aspetta. Se non rispondi su WhatsApp entro 60 secondi, sei fuori dai giochi."
+- PROVOCAZIONE: "La persona più costosa della tua agenzia sei tu. E stai facendo il lavoro di un chatbot."
+- CONFESSIONE: "Ho licenziato 3 setter in un mese. Non perché fossero scarsi — perché il modello era sbagliato."
+
+NON iniziare MAI con:
+- "Se sei un imprenditore..." / "Se gestisci un'agenzia..."
+- Domande generiche tipo "Ti è mai capitato di...?"
+- Frasi che suonano da brochure aziendale
+
 Le 4 angolazioni con STRUTTURA OBBLIGATORIA:
 
 1. ANGOLO PROBLEMA (${Math.round(wordCount * 0.85)}-${Math.round(wordCount * 1.1)} parole nel body):
-   - Apri con una domanda o affermazione che NOMINA il problema specifico del target
-   - Amplifica la frustrazione con uno SCENARIO CONCRETO (giorno, ora, situazione specifica)
-   - Agita la CONSEGUENZA (cosa succede se non risolvi — numeri, perdite, rischi)
-   - Pivot verso la soluzione — presenta l'offerta come via d'uscita con dettagli specifici
-   - Chiudi con CTA imperativo diretto
+   - HOOK: Scenario specifico e viscerale che il target vive sulla propria pelle (tipo "Gestire un'agenzia oggi sembra più un lavoro da educatore che da imprenditore. Passi metà del tempo a spiegare come rispondere su WhatsApp...")
+   - AMPLIFICA: scenario concreto con giorno, ora, situazione specifica
+   - CONSEGUENZA: cosa succede se non risolvi — numeri, perdite, rischi reali
+   - PIVOT: la soluzione — presenta l'offerta come via d'uscita con dettagli specifici
+   - CTA: imperativo diretto
 
 2. ANGOLO DESIDERIO (${Math.round(wordCount * 0.9)}-${Math.round(wordCount * 1.15)} parole nel body):
-   - Apri dipingendo il RISULTATO FINALE — la vita dopo aver risolto il problema
-   - Descrivi la GIORNATA TIPO del target dopo la trasformazione (dettagli sensoriali)
-   - Spiega COME ci arrivi — il meccanismo, il processo, i passi concreti
-   - Rendi concreto con numeri, tempi, risultati specifici
-   - Chiudi con CTA: invito al primo passo verso quel risultato
+   - HOOK: Risultato concreto che fa sognare (tipo "147 appuntamenti qualificati in 30 giorni. Senza aver mandato un solo messaggio manuale. Senza aver controllato Slack compulsivamente.")
+   - VISIONE: la giornata tipo del target dopo la trasformazione — dettagli sensoriali
+   - COME: il meccanismo, il processo, i passi concreti
+   - PROVA: numeri, tempi, risultati specifici
+   - CTA: invito al primo passo verso quel risultato
 
 3. ANGOLO RIPROVA SOCIALE (${Math.round(wordCount * 0.95)}-${Math.round(wordCount * 1.2)} parole nel body):
-   - Apri con un RISULTATO SPECIFICO con numero (€, %, tempo)
-   - Racconta la MINI-STORIA — chi era il cliente, da dove partiva, cosa non funzionava
-   - Cosa è CAMBIATO — il momento di svolta, la decisione
-   - I RISULTATI DOPO — numeri concreti, confronto prima/dopo dettagliato
-   - Chiudi con CTA che leva sulla prova ("Vedi come hanno fatto" / "Scarica il caso studio")
+   - HOOK: Fatto specifico con numero shock (tipo "Rispondevano ai messaggi WhatsApp dopo una media di 3 ore. I lead avevano già contattato tre concorrenti.")
+   - STORIA: chi era il cliente, da dove partiva, cosa non funzionava — nomi e dettagli
+   - SVOLTA: cosa è cambiato, la decisione
+   - RISULTATI: numeri concreti, confronto prima/dopo dettagliato
+   - CTA: leva sulla prova ("Vedi come hanno fatto" / "Scarica il caso studio")
 
 4. ANGOLO URGENZA (${Math.round(wordCount * 0.8)}-${Math.round(wordCount * 1.0)} parole nel body):
-   - Apri con DEADLINE o SCARSITÀ esplicita
-   - COSTO DELL'INAZIONE — cosa perdi ogni giorno/settimana che aspetti, con numeri
-   - L'offerta è DISPONIBILE ORA ma non per sempre — spiega perché con dettagli concreti
-   - Chiudi con CTA con urgenza esplicita e vincolo temporale
+   - HOOK: Dato allarmante che crea ansia (tipo "Il mercato non aspetta. Le PMI italiane oggi hanno una soglia di attenzione bassissima: se non rispondi subito su WhatsApp, sei fuori dai giochi.")
+   - COSTO: cosa perdi ogni giorno/settimana che aspetti, con numeri concreti
+   - SCARSITÀ: perché l'offerta non durerà — dettagli concreti, non generico
+   - CTA: urgenza esplicita con vincolo temporale
 
 Ogni variante deve avere un TITOLO AD proprio (headline con beneficio concreto, max 40 caratteri).
 
 REGOLE ANTI-ROBOT:
 VIETATO:
 - "Nel mondo di oggi...", "Molti imprenditori si trovano a...", "La soluzione è più semplice di quanto pensi"
-- Aprire con "Se sei un [professione]..." 
+- Aprire con "Se sei un [professione]..." o "Ti è mai capitato di...?"
 - "Inoltre", "Pertanto", "In un mondo dove", "Non è un segreto"
-- Qualsiasi frase che suoni "da ChatGPT"
+- Qualsiasi frase che suoni "da ChatGPT" o da brochure aziendale
+- Hook generici o deboli che non fermano lo scroll
 
 PREFERITO:
-- Aprire con una situazione specifica ("Lunedì mattina, terzo appuntamento saltato...")
-- Usare numeri concreti anche inventati a scopo illustrativo
-- Dialogo diretto ("Ti dico una cosa che nessuno dice mai")
+- Aprire con una situazione SPECIFICA e VISCERALE ("Lunedì mattina, terzo appuntamento saltato. Il setter ti scrive 'scusa ero al telefono'...")
+- Usare numeri concreti, anche inventati a scopo illustrativo ("3 ore di risposta media", "4.500€/mese buttati")
+- Dialogo diretto come se parlassi a un amico ("Ti dico una cosa che nessuno dice mai")
+- Confessioni e ammissioni brutali ("Ho smesso di assumere. Punto.")
 - Linguaggio grezzo, da imprenditore vero, non da copywriter AI
 
 RISPONDI SOLO con un JSON valido (nessun testo prima o dopo, nessuna analisi nel JSON):
