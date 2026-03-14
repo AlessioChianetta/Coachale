@@ -90,6 +90,14 @@ import {
   BarChart3,
   Info,
   Briefcase,
+  Pencil,
+  Link,
+  Snowflake,
+  Flame,
+  RotateCcw,
+  Thermometer,
+  MailCheck,
+  MailX,
 } from "lucide-react";
 
 import Papa from "papaparse";
@@ -160,6 +168,8 @@ interface ProactiveLead {
   lastContactedAt: string | null;
   lastMessageSent: string | null;
   status: "pending" | "contacted" | "responded" | "converted" | "inactive";
+  source?: "manual" | "import" | "referral" | "optin" | "webhook" | "whatsapp" | "hunter";
+  leadCategory?: "freddo" | "tiepido" | "caldo" | "recupero" | "referral";
   welcomeEmailEnabled?: boolean;
   nurturingEnabled?: boolean;
   welcomeEmailSent?: boolean;
@@ -287,6 +297,72 @@ const statusLabels = {
   inactive: "Inattivo",
 };
 
+const sourceConfig: Record<string, { color: string; icon: any; label: string }> = {
+  manual: {
+    color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+    icon: Pencil,
+    label: "Manuale",
+  },
+  import: {
+    color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
+    icon: Upload,
+    label: "Import CSV",
+  },
+  webhook: {
+    color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    icon: Zap,
+    label: "Webhook",
+  },
+  whatsapp: {
+    color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+    icon: MessageCircle,
+    label: "WhatsApp",
+  },
+  hunter: {
+    color: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
+    icon: Crosshair,
+    label: "Hunter",
+  },
+  referral: {
+    color: "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300",
+    icon: Users,
+    label: "Referral",
+  },
+  optin: {
+    color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300",
+    icon: Link,
+    label: "Lead Magnet",
+  },
+};
+
+const categoryConfig: Record<string, { color: string; icon: any; label: string }> = {
+  freddo: {
+    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+    icon: Snowflake,
+    label: "Freddo",
+  },
+  tiepido: {
+    color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+    icon: Thermometer,
+    label: "Tiepido",
+  },
+  caldo: {
+    color: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+    icon: Flame,
+    label: "Caldo",
+  },
+  recupero: {
+    color: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+    icon: RotateCcw,
+    label: "Recupero",
+  },
+  referral: {
+    color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    icon: Users,
+    label: "Referral",
+  },
+};
+
 export default function ProactiveLeadsPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -304,6 +380,8 @@ export default function ProactiveLeadsPage() {
   const [dialogTab, setDialogTab] = useState("contatto");
   const [hunterContext, setHunterContext] = useState<any>(null);
   const [hunterCtxLoading, setHunterCtxLoading] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -1172,10 +1250,16 @@ export default function ProactiveLeadsPage() {
     }
   };
 
-  // Filter leads by status
   const filteredLeads = leads.filter((lead) => {
-    if (statusFilter === "all") return true;
-    return lead.status === statusFilter;
+    if (statusFilter !== "all" && lead.status !== statusFilter) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const fullName = `${lead.firstName} ${lead.lastName}`.toLowerCase();
+      const phone = (lead.phoneNumber || "").toLowerCase();
+      const email = (lead.email || lead.leadInfo?.email || "").toLowerCase();
+      if (!fullName.includes(q) && !phone.includes(q) && !email.includes(q)) return false;
+    }
+    return true;
   });
 
   // Calculate pagination
@@ -2303,7 +2387,16 @@ export default function ProactiveLeadsPage() {
               </Collapsible>
             )}
 
-            {/* Status Filter Tabs */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Cerca per nome, telefono o email..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                className="pl-10 max-w-md"
+              />
+            </div>
+
             <Tabs value={statusFilter} onValueChange={handleStatusFilterChange} className="w-full">
               <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
                 <TabsTrigger value="all">Tutti ({leads.length})</TabsTrigger>
@@ -2398,7 +2491,7 @@ export default function ProactiveLeadsPage() {
                           <TableHead>Obiettivo</TableHead>
                           <TableHead>Prossimo Contatto</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Nurturing</TableHead>
+                          <TableHead>Canali</TableHead>
                           <TableHead className="text-right">Azioni</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -2422,20 +2515,37 @@ export default function ProactiveLeadsPage() {
                                     <User className={`h-4 w-4 ${hasResponded ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`} />
                                   </div>
                                   <div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
                                       <span>{lead.firstName} {lead.lastName}</span>
                                       {hasResponded && (
-                                        <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 px-1.5 py-0.5 rounded-full">
-                                          <CheckCircle2 className="h-3 w-3" />
+                                        <span className="inline-flex items-center gap-1 text-[10px] bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 px-1.5 py-0.5 rounded-full">
+                                          <CheckCircle2 className="h-2.5 w-2.5" />
                                           Risposta
                                         </span>
                                       )}
-                                      {(lead as any).source === "hunter" && (
-                                        <span className="inline-flex items-center gap-1 text-[10px] bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400 px-1.5 py-0.5 rounded-full">
-                                          <Crosshair className="h-2.5 w-2.5" />
-                                          Hunter
-                                        </span>
-                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                                      {(() => {
+                                        const src = sourceConfig[lead.source || "manual"];
+                                        if (!src) return null;
+                                        const SrcIcon = src.icon;
+                                        return (
+                                          <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${src.color}`}>
+                                            <SrcIcon className="h-2.5 w-2.5" />
+                                            {src.label}
+                                          </span>
+                                        );
+                                      })()}
+                                      {lead.leadCategory && categoryConfig[lead.leadCategory] && (() => {
+                                        const cat = categoryConfig[lead.leadCategory!];
+                                        const CatIcon = cat.icon;
+                                        return (
+                                          <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${cat.color}`}>
+                                            <CatIcon className="h-2.5 w-2.5" />
+                                            {cat.label}
+                                          </span>
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                 </div>
@@ -2493,35 +2603,89 @@ export default function ProactiveLeadsPage() {
                                   {config?.label || "In Attesa"}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="w-20">
-                                {getLeadEmail(lead) ? (
+                              <TableCell>
+                                <div className="flex items-center gap-2">
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <div className="flex flex-col items-center gap-1">
-                                          <Switch
-                                            checked={lead.nurturingEnabled || false}
-                                            onCheckedChange={(checked) => {
-                                              toggleNurturingMutation.mutate({ leadId: lead.id, enable: checked });
-                                            }}
-                                            disabled={toggleNurturingMutation.isPending}
-                                            className="scale-90"
-                                          />
-                                          <span className={`text-[10px] font-medium ${lead.nurturingEnabled ? 'text-green-600' : 'text-gray-400'}`}>
-                                            {lead.nurturingEnabled ? `${lead.nurturingEmailsSent || 0}/365` : 'Off'}
-                                          </span>
-                                        </div>
+                                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${
+                                          lead.status === "contacted" || lead.status === "responded" || lead.status === "converted"
+                                            ? "bg-green-100 dark:bg-green-900/40"
+                                            : "bg-gray-100 dark:bg-gray-800"
+                                        }`}>
+                                          <MessageCircle className={`h-3.5 w-3.5 ${
+                                            lead.status === "contacted" || lead.status === "responded" || lead.status === "converted"
+                                              ? "text-green-600 dark:text-green-400"
+                                              : "text-gray-400"
+                                          }`} />
+                                        </span>
                                       </TooltipTrigger>
                                       <TooltipContent>
-                                        {lead.nurturingEnabled 
-                                          ? `Nurturing attivo: Giorno ${lead.nurturingEmailsSent || 0}/365`
-                                          : 'Nurturing disattivato'}
+                                        {lead.status === "contacted" || lead.status === "responded" || lead.status === "converted"
+                                          ? "WhatsApp Stella: Messaggio inviato"
+                                          : "WhatsApp Stella: Non ancora contattato"}
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
-                                ) : (
-                                  <span className="text-[10px] text-gray-400 text-center block">No email</span>
-                                )}
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${
+                                          lead.welcomeEmailSent
+                                            ? "bg-blue-100 dark:bg-blue-900/40"
+                                            : "bg-gray-100 dark:bg-gray-800"
+                                        }`}>
+                                          {lead.welcomeEmailSent
+                                            ? <MailCheck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                            : <MailX className="h-3.5 w-3.5 text-gray-400" />
+                                          }
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        {lead.welcomeEmailSent
+                                          ? `Email benvenuto inviata${lead.welcomeEmailSentAt ? ` il ${format(new Date(lead.welcomeEmailSentAt), "d MMM yyyy", { locale: it })}` : ""}`
+                                          : lead.welcomeEmailError
+                                            ? `Email benvenuto fallita: ${lead.welcomeEmailError}`
+                                            : "Email benvenuto non inviata"}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  {getLeadEmail(lead) ? (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="flex items-center gap-1 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                                            <Switch
+                                              checked={lead.nurturingEnabled || false}
+                                              onCheckedChange={(checked) => {
+                                                toggleNurturingMutation.mutate({ leadId: lead.id, enable: checked });
+                                              }}
+                                              disabled={toggleNurturingMutation.isPending}
+                                              className="scale-75"
+                                            />
+                                            <span className={`text-[10px] font-semibold whitespace-nowrap ${lead.nurturingEnabled ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
+                                              {lead.nurturingEnabled ? `${lead.nurturingEmailsSent || 0}/365` : '365'}
+                                            </span>
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          {lead.nurturingEnabled
+                                            ? `Lead 365 attivo: Giorno ${lead.nurturingEmailsSent || 0}/365`
+                                            : 'Lead 365 disattivato — attiva per nurturing email annuale'}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  ) : (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="text-[10px] text-gray-400 whitespace-nowrap">365</span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Lead 365 non disponibile: email mancante</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-1">
@@ -4092,7 +4256,19 @@ export default function ProactiveLeadsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs text-gray-500">Fonte</Label>
-                  <p className="font-medium text-gray-800">{selectedViewLead.source || "-"}</p>
+                  <p className="font-medium text-gray-800">
+                    {(() => {
+                      const src = sourceConfig[selectedViewLead.source || "manual"];
+                      if (!src) return selectedViewLead.source || "-";
+                      const SrcIcon = src.icon;
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${src.color}`}>
+                          <SrcIcon className="h-3 w-3" />
+                          {src.label}
+                        </span>
+                      );
+                    })()}
+                  </p>
                 </div>
                 <div>
                   <Label className="text-xs text-gray-500">Data Creazione</Label>
