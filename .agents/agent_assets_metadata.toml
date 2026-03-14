@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "KrxdE9UQAZoPkkdhUeN6g"
+uri = "file://guida-setup-academy.md"
+type = "text"
+title = "Guida Completa Setup 27/27 + Accademia 30/30"
