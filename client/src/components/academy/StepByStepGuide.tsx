@@ -34,11 +34,17 @@ export function StepByStepGuide({ steps, guideEmbedUrl, guideLocalVideoUrl, disp
     setTocOpen(false);
   }, [displayMode, steps, guideLocalVideoUrl]);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const stepsContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToStep = useCallback((index: number) => {
     setActiveStep(index);
     setTocOpen(false);
-    stepRefs.current[index]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const container = stepsContainerRef.current;
+    const el = stepRefs.current[index];
+    if (container && el) {
+      const elTop = el.offsetTop - container.offsetTop;
+      container.scrollTo({ top: Math.max(0, elTop - 8), behavior: "smooth" });
+    }
   }, []);
 
   if (!steps || steps.length === 0) {
@@ -177,7 +183,7 @@ export function StepByStepGuide({ steps, guideEmbedUrl, guideLocalVideoUrl, disp
             )}
           </div>
 
-          <aside className="hidden lg:block w-56 xl:w-64 flex-shrink-0 border-r border-border/40 max-h-[600px] overflow-y-auto scrollbar-thin">
+          <aside className="hidden lg:block w-56 xl:w-64 flex-shrink-0 border-r border-border/40 max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin">
             <div className="px-3 py-3 border-b border-border/40 bg-muted/20">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Indice</p>
             </div>
@@ -207,7 +213,7 @@ export function StepByStepGuide({ steps, guideEmbedUrl, guideLocalVideoUrl, disp
             </div>
           </aside>
 
-          <div className="flex-1 min-w-0 p-4 sm:p-5 space-y-6 max-h-[600px] overflow-y-auto scrollbar-thin">
+          <div ref={stepsContainerRef} className="flex-1 min-w-0 p-4 sm:p-5 space-y-6 max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin">
             {steps.map((step, idx) => (
               <div
                 key={step.id}
