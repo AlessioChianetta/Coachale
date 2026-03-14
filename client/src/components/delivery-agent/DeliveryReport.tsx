@@ -9,7 +9,13 @@ import {
   Target, TrendingUp, ExternalLink, ChevronDown, ChevronUp,
   Layers, ArrowRight, AlertTriangle, Globe, MapPin, FileText,
   Lightbulb, BookOpen, Play, CheckSquare, AlertCircle, ArrowDown,
+  RefreshCw,
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -612,6 +618,36 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
   const chapterRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [funnelId, setFunnelId] = useState<string | null>(null);
   const [funnelLoading, setFunnelLoading] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+
+  const handleRegenerate = useCallback(async () => {
+    setRegenerating(true);
+    try {
+      const res = await fetch(`/api/consultant/delivery-agent/generate-report/${sessionId}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Errore nella rigenerazione");
+      }
+      const url = `/api/consultant/delivery-agent/reports/${sessionId}`;
+      const reportRes = await fetch(url, { headers: getAuthHeaders() });
+      if (reportRes.ok) {
+        const data = await reportRes.json();
+        const reportData = data.data || data.report || data;
+        const rawReport = reportData.report_json || reportData;
+        if (rawReport) {
+          setReport(normalizeReport(rawReport));
+        }
+      }
+      toast({ title: "Report rigenerato!", description: "Il report è stato rigenerato con successo." });
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message || "Impossibile rigenerare il report", variant: "destructive" });
+    } finally {
+      setRegenerating(false);
+    }
+  }, [sessionId, toast]);
 
   useEffect(() => {
     const loadReport = async () => {
@@ -924,6 +960,26 @@ export function DeliveryReport({ sessionId, onBackToChat, publicToken }: Deliver
             )}
             {!isPublic && (
               <>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" disabled={regenerating} className="gap-1 text-xs h-7 sm:h-8 px-1.5 sm:px-3 shrink-0">
+                      {regenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      <span className="hidden sm:inline">{regenerating ? "Rigenerando..." : "Rigenera"}</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Rigenerare il report?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Il report attuale verrà sostituito con uno nuovo generato dall'AI. Questa operazione può richiedere qualche minuto.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annulla</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleRegenerate}>Rigenera</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <Button variant="ghost" size="sm" onClick={handleShare} className="gap-1 text-xs h-7 sm:h-8 px-1.5 sm:px-3 shrink-0">
                   <Share2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Condividi</span>
                 </Button>
