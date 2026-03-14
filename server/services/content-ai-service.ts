@@ -2,6 +2,7 @@ import { getAIProvider, getModelWithThinking, GEMINI_3_MODEL } from "../ai/provi
 import { db } from "../db";
 import { brandAssets, contentIdeas, contentPosts, contentTopics } from "@shared/schema";
 import { eq, desc, and, inArray } from "drizzle-orm";
+import { FRANK_MERENDA_FRAMEWORK } from "../data/marketing-frameworks";
 
 export type ContentType = "post" | "carosello" | "reel" | "video" | "story" | "articolo";
 export type ContentObjective = "awareness" | "engagement" | "leads" | "sales" | "education";
@@ -54,6 +55,8 @@ export interface GenerateIdeasParams {
   kbContent?: string;
   marketResearchProblems?: string[];
   marketResearchData?: import("@shared/schema").MarketResearchData;
+  preferredCtaType?: string;
+  customCtaText?: string;
 }
 
 export interface StructuredCopyShort {
@@ -2738,6 +2741,7 @@ Questi contenuti sono GIÀ stati creati. Le nuove idee DEVONO essere COMPLETAMEN
 export async function generateContentIdeas(params: GenerateIdeasParams): Promise<GenerateIdeasResult> {
   const { consultantId, niche, targetAudience, objective, additionalContext, count = 3, mediaType = "photo", copyType = "short", awarenessLevel = "problem_aware", sophisticationLevel = "level_3" } = params;
   const { targetPlatform, postCategory, postSchema, schemaStructure, schemaLabel, charLimit, writingStyle = "default", customWritingInstructions } = params;
+  const { preferredCtaType, customCtaText } = params;
   
   // ==================== DEBUG COMPLETO - INIZIO ====================
   console.log(`\n[CONTENT-AI] ╔══════════════════════════════════════════════════════════════╗`);
@@ -3293,7 +3297,37 @@ ${styleInstructions}`;
   console.log(`[CONTENT-AI DEBUG] ${structuredContentInstructions}`);
   console.log(`[CONTENT-AI DEBUG] ========================================`);
 
-  const prompt = `Sei un esperto di content marketing italiano specializzato nella Piramide della Consapevolezza. Genera ${count} idee creative per contenuti COMPLETI.
+  const CTA_LABELS: Record<string, string> = {
+    demo_gratuita: "Demo / Prodotto gratuito da provare",
+    lead_magnet: "Scarica risorsa gratuita (guida, report, checklist)",
+    consulenza_gratuita: "Prenota consulenza gratuita",
+    whatsapp: "Contatta su WhatsApp",
+    acquisto_diretto: "Acquista / Prenota direttamente",
+    iscrizione: "Iscriviti / Registrati",
+    scopri_di_piu: "Scopri di più / Vai alla pagina",
+    urgenza_offerta: "Approfitta dell'offerta a tempo limitato",
+    lascia_dati: "Lascia i tuoi dati per essere ricontattato",
+  };
+
+  const ctaContext = preferredCtaType
+    ? `\n🎯 CALL TO ACTION PREFERITA DAL CONSULENTE:
+Il consulente ha indicato che la CTA preferita per questi contenuti è: "${CTA_LABELS[preferredCtaType] || preferredCtaType}".${customCtaText ? `\nTesto/offerta CTA personalizzata: "${customCtaText}"` : ""}
+ISTRUZIONE OBBLIGATORIA: Il campo "suggestedCta" di OGNI idea generata DEVE riflettere questa preferenza. Adatta la CTA al contesto specifico del contenuto mantenendo il tipo richiesto.`
+    : "";
+
+  const prompt = `Sei un esperto di content marketing italiano specializzato nella Piramide della Consapevolezza E nel Marketing a Risposta Diretta secondo il Metodo Merenda. Genera ${count} idee creative per contenuti COMPLETI.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+METODOLOGIA OBBLIGATORIA — METODO MERENDA (Marketing a Risposta Diretta)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${FRANK_MERENDA_FRAMEWORK}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ISTRUZIONE CRITICA — APPLICA IL METODO MERENDA:
+- Ogni idea deve servire uno specifico pilastro (Acquisizione / Conversione / Fidelizzazione) — indicalo in "aiReasoning"
+- Il campo "suggestedCta" DEVE sempre applicare il principio della risposta diretta (CTA chiara, misurabile, con valore)
+- Privilegia le strategie: lead magnet, prova gratuita, headline con beneficio, offerta gratuita stressata, doppia via di risposta
+- MAI contenuti di pura immagine/brand senza risposta diretta misurabile
 
 CONTESTO:
 - Nicchia/Settore: ${niche}
@@ -3301,7 +3335,7 @@ CONTESTO:
 - Obiettivo: ${objective}
 - Tipo Media: ${mediaType}
 - Tipo Copy: ${copyType}
-${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
+${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}${ctaContext}
 ${(() => {
   const mrd = params.marketResearchData;
   if (mrd && (mrd.currentState?.some((s: string) => s.trim()) || mrd.uvp?.trim() || Object.values(mrd.avatar || {}).some((v: any) => typeof v === 'string' && v.trim()))) {

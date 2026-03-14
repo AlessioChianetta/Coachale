@@ -38,6 +38,7 @@ import nodemailer from 'nodemailer';
 import { decrypt, decryptForConsultant } from '../encryption';
 import { upload } from '../middleware/upload';
 import { extractTextFromFile } from '../services/document-processor';
+import { FRANK_MERENDA_FRAMEWORK } from '../data/marketing-frameworks';
 import fs from 'fs/promises';
 
 const router = Router();
@@ -1906,7 +1907,20 @@ router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), 
     // Build the allowed types string for the prompt
     const allowedTypesEnum = selectedAgentTypes.map((t: string) => `"${t}"`).join(' | ');
     
-    const prompt = `Sei un esperto di automazione WhatsApp per business. Analizza APPROFONDITAMENTE il seguente contesto aziendale e genera ${numberOfIdeas || 3} idee per agenti AI WhatsApp.
+    const prompt = `Sei un esperto di automazione WhatsApp per business E un esperto di marketing a risposta diretta formato sul Metodo Merenda. Analizza APPROFONDITAMENTE il seguente contesto aziendale e genera ${numberOfIdeas || 3} idee per agenti AI WhatsApp che applicano ossessivamente i principi del Metodo Merenda.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+METODOLOGIA OBBLIGATORIA — METODO MERENDA (Marketing a Risposta Diretta)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${FRANK_MERENDA_FRAMEWORK}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ISTRUZIONE CRITICA PER GLI AGENTI:
+Le "suggestedInstructions" di ogni agente DEVONO specificare:
+- Quale dei 3 PILASTRI Merenda l'agente serve principalmente (Acquisizione / Conversione / Fidelizzazione)
+- Almeno 5-8 delle 22 STRATEGIE DI CONVERSIONE adattate al business specifico del cliente
+- Come l'agente contribuisce a creare un sistema MISURABILE E TRACCIABILE (NON marketing istituzionale)
+- CTA chiare e concrete che l'agente deve proporre attivamente agli utenti WhatsApp
 
 CONTESTO AZIENDALE (LEGGI E ANALIZZA OGNI DETTAGLIO):
 ${combinedContent}

@@ -99,6 +99,9 @@ import {
   X,
   GitBranch,
   Facebook,
+  MessageCircle,
+  MousePointerClick,
+  Mail,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -199,6 +202,18 @@ const OBJECTIVES = [
   { value: "sales", label: "Vendite", description: "Converti il pubblico in clienti", icon: ShoppingCart },
   { value: "education", label: "Educazione", description: "Insegna e condividi valore", icon: GraduationCap },
   { value: "authority", label: "Autorità", description: "Posizionati come esperto del settore", icon: Award },
+];
+
+const CTA_OPTIONS = [
+  { value: "demo_gratuita", label: "Demo / Prova Gratis", description: "Offri una demo o prodotto/servizio da provare gratuitamente", icon: Gift },
+  { value: "lead_magnet", label: "Risorsa Gratuita", description: "Scarica guida, report, checklist o altro materiale gratuito", icon: Download },
+  { value: "consulenza_gratuita", label: "Consulenza Gratis", description: "Prenota una consulenza gratuita o prima sessione", icon: Calendar },
+  { value: "whatsapp", label: "WhatsApp", description: "Contatta direttamente su WhatsApp", icon: MessageCircle },
+  { value: "acquisto_diretto", label: "Acquista Ora", description: "Invita ad acquistare o prenotare direttamente", icon: ShoppingCart },
+  { value: "iscrizione", label: "Iscriviti", description: "Iscrizione a newsletter, corso, community o programma", icon: UserPlus },
+  { value: "scopri_di_piu", label: "Scopri di Più", description: "Rimanda alla landing page o approfondimento", icon: ExternalLink },
+  { value: "urgenza_offerta", label: "Offerta a Tempo", description: "Crea urgenza con un'offerta limitata nel tempo", icon: Zap },
+  { value: "lascia_dati", label: "Lascia i Dati", description: "Richiedi i contatti per essere richiamato", icon: Mail },
 ];
 
 const AWARENESS_LEVELS = [
@@ -682,6 +697,8 @@ export default function ContentStudioIdeas() {
   const [postSchema, setPostSchema] = useState<string>("originale");
   const [writingStyle, setWritingStyle] = useState<string>("default");
   const [customWritingInstructions, setCustomWritingInstructions] = useState<string>("");
+  const [preferredCtaType, setPreferredCtaType] = useState<string>("");
+  const [customCtaText, setCustomCtaText] = useState<string>("");
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     return (localStorage.getItem('ideas_view_mode') as 'grid' | 'list') || 'list';
@@ -2078,6 +2095,8 @@ export default function ContentStudioIdeas() {
           customWritingInstructions: writingStyle === "custom" ? customWritingInstructions : undefined,
           marketResearchProblems: marketResearchProblems.filter(p => p.trim()),
           marketResearchData: researchCompletedPhases > 0 ? marketResearchData : undefined,
+          ...(preferredCtaType && { preferredCtaType }),
+          ...(preferredCtaType && customCtaText?.trim() && { customCtaText: customCtaText.trim() }),
           ...(useBrandVoice && Object.keys(brandVoiceData).length > 0 && { brandVoiceData }),
           ...(useKnowledgeBase && selectedKbDocIds.length > 0 && { kbDocumentIds: selectedKbDocIds }),
           ...(useKnowledgeBase && tempFiles.filter(f => f.status === "success").length > 0 && { 
@@ -2847,6 +2866,61 @@ export default function ContentStudioIdeas() {
                           })}
                         </div>
                       </TooltipProvider>
+                    </div>
+
+                    <div className="border-t border-border/50" />
+
+                    {/* Call to Action preferita */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-md bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
+                          <MousePointerClick className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <Label className="text-sm font-semibold">Call to Action preferita</Label>
+                        <span className="text-xs text-muted-foreground">(opzionale)</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Seleziona il tipo di CTA che vuoi privilegiare. L'AI la applicherà ad ogni idea generata secondo il Metodo Merenda.
+                      </p>
+                      <TooltipProvider delayDuration={200}>
+                        <div className="flex flex-wrap gap-2">
+                          {CTA_OPTIONS.map((cta) => {
+                            const IconComponent = cta.icon;
+                            const isSelected = preferredCtaType === cta.value;
+                            return (
+                              <Tooltip key={cta.value}>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    onClick={() => setPreferredCtaType(isSelected ? "" : cta.value)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                                      isSelected
+                                        ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md"
+                                        : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    <IconComponent className="h-3.5 w-3.5" />
+                                    {cta.label}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">
+                                  <p className="text-xs">{cta.description}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })}
+                        </div>
+                      </TooltipProvider>
+                      {preferredCtaType && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground font-normal">Testo / offerta CTA personalizzata (opzionale)</Label>
+                          <Input
+                            value={customCtaText}
+                            onChange={(e) => setCustomCtaText(e.target.value)}
+                            placeholder={`Es. "ti fornisco un dipendente AI gratis per la tua attività"`}
+                            className="text-sm h-9"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="border-t border-border/50" />

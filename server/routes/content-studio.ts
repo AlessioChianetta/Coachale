@@ -1836,6 +1836,8 @@ const generateIdeasSchema = z.object({
   }).optional(),
   kbDocumentIds: z.array(z.string()).optional(),
   kbContent: z.string().optional(),
+  preferredCtaType: z.string().optional(),
+  customCtaText: z.string().optional(),
   marketResearchProblems: z.array(z.string()).optional(),
   marketResearchData: z.object({
     currentState: z.array(z.string()).optional(),
@@ -2763,6 +2765,8 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
       customWritingInstructions: validatedData.customWritingInstructions,
       marketResearchProblems: validatedData.marketResearchProblems,
       marketResearchData: validatedData.marketResearchData as any,
+      preferredCtaType: validatedData.preferredCtaType,
+      customCtaText: validatedData.customCtaText,
     });
     
     console.log(`✅ [CONTENT-AI] Generated ${result.ideas.length} ideas using ${result.modelUsed}`);
