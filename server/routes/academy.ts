@@ -661,8 +661,8 @@ router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (
         const stepNum = parseInt(numMatch[1], 10);
         const titleMatch = block.match(/css-4fjv0z"><bdi>([^<]+)<\/bdi>/) || block.match(/<bdi>([^<]+)<\/bdi>/);
         const title = titleMatch ? titleMatch[1].trim() : `Step ${stepNum}`;
-        const descMatch = block.match(/css-1vyj9vp">([^<]+)<\/h6>/) || block.match(/<h6[^>]*>([^<]+)<\/h6>/);
-        const description = descMatch ? descMatch[1].trim() : '';
+        const descMatch = block.match(/css-1vyj9vp">([\s\S]*?)<\/h6>/) || block.match(/<h6[^>]*>([\s\S]*?)<\/h6>/) || block.match(/<p[^>]*>([\s\S]{5,}?)<\/p>/);
+        const description = descMatch ? descMatch[1].replace(/<[^>]+>/g, '').trim() : '';
         let screenshotUrl = '';
         const fbMatch = block.match(/<img[^>]+src="(https:\/\/firebasestorage\.googleapis\.com[^"]+quickguiddeScreenshots[^"]+)"/i);
         if (fbMatch) screenshotUrl = fbMatch[1];
@@ -698,9 +698,8 @@ router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (
             block.match(/<h[3-6][^>]*>([^<]{3,})<\/h[3-6]>/) ||
             block.match(/<span[^>]*>([^<]{5,80})<\/span>/);
           const title = titleMatch ? titleMatch[1].trim() : `Step ${seqSpans[i].num}`;
-          // Extract description: first paragraph after the title
-          const descMatch = block.match(/<p[^>]*>([^<]{5,})<\/p>/);
-          const description = descMatch ? descMatch[1].trim() : '';
+          const descMatch = block.match(/<h6[^>]*>([\s\S]*?)<\/h6>/) || block.match(/<p[^>]*>([\s\S]{5,}?)<\/p>/);
+          const description = descMatch ? descMatch[1].replace(/<[^>]+>/g, '').trim() : '';
           // Find the screenshot image nearest to this step (use position-matched allImgs)
           const stepScreenshots = screenshotImgs.filter(img => img.pos >= start && img.pos < end);
           const screenshotUrl = stepScreenshots[0]?.url || undefined;
@@ -725,8 +724,8 @@ router.post('/admin/parse-guidde', authenticateToken, requireSuperAdmin, async (
           const start = headings[i].pos;
           const end = i + 1 < headings.length ? headings[i + 1].pos : html.length;
           const block = html.slice(start, end);
-          const descMatch = block.match(/<p[^>]*>([^<]{5,})<\/p>/);
-          const description = descMatch ? descMatch[1].trim() : '';
+          const descMatch = block.match(/<h6[^>]*>([\s\S]*?)<\/h6>/) || block.match(/<p[^>]*>([\s\S]{5,}?)<\/p>/);
+          const description = descMatch ? descMatch[1].replace(/<[^>]+>/g, '').trim() : '';
           const stepScreenshots = screenshotImgs.filter(img => img.pos >= start && img.pos < end);
           const screenshotUrl = stepScreenshots[0]?.url || undefined;
           steps.push({ step_number: headings[i].num, timestamp: '', title: headings[i].title, description, screenshot_url: screenshotUrl });

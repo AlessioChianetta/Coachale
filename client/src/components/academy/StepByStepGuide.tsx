@@ -252,11 +252,11 @@ export function StepByStepGuide({ steps, guideEmbedUrl, guideLocalVideoUrl, disp
 
                   {step.screenshot_url && (
                     <div className="mt-3 pl-11">
-                      <div className="relative rounded-xl overflow-hidden border border-border/60 shadow-lg bg-muted/20">
+                      <div className="relative rounded-xl overflow-hidden border border-border/60 shadow-lg bg-muted/20 max-w-2xl">
                         <img
                           src={step.screenshot_url}
                           alt={`Step ${step.step_number}: ${step.title}`}
-                          className="w-full h-auto"
+                          className="w-full h-auto max-h-[420px] object-contain object-top"
                           loading="lazy"
                         />
                         <div className="absolute top-2 right-2">
