@@ -256,7 +256,7 @@ const getLeadEmail = (lead: ProactiveLead): string | null => {
 
 const statusConfig = {
   pending: {
-    color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600",
+    color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300 dark:border-amber-600",
     icon: Clock,
     label: "In Attesa",
   },
@@ -283,7 +283,7 @@ const statusConfig = {
 };
 
 const statusColors = {
-  pending: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
+  pending: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
   contacted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
   responded: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
   converted: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
@@ -366,6 +366,48 @@ const categoryConfig: Record<CategoryKey, { color: string; icon: LucideIcon; lab
     label: "Referral",
   },
 };
+
+const AVATAR_PALETTE = [
+  "bg-blue-500", "bg-violet-500", "bg-emerald-500", "bg-orange-500",
+  "bg-pink-500", "bg-teal-500", "bg-amber-600", "bg-rose-500",
+  "bg-indigo-500", "bg-cyan-600",
+];
+
+function getAvatarColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = seed.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_PALETTE[Math.abs(h) % AVATAR_PALETTE.length];
+}
+
+function getInitials(firstName: string, lastName: string): string {
+  const f = (firstName || "").trim();
+  const l = (lastName || "").trim();
+  if (!f && !l) return "?";
+  return `${f[0] || ""}${l[0] || ""}`.toUpperCase();
+}
+
+function hasRealName(firstName: string, lastName: string): boolean {
+  return !!(firstName?.trim() || lastName?.trim());
+}
+
+function formatRelativeContact(dateString: string): { relative: string; precise: string } | null {
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    let relative: string;
+    if (diffDays === 0) relative = "Oggi";
+    else if (diffDays === 1) relative = "Domani";
+    else if (diffDays === -1) relative = "Ieri";
+    else if (diffDays > 1) relative = `Tra ${diffDays} giorni`;
+    else relative = `${Math.abs(diffDays)} giorni fa`;
+    const precise = format(date, "dd MMM yyyy", { locale: it });
+    return { relative, precise };
+  } catch {
+    return null;
+  }
+}
 
 export default function ProactiveLeadsPage() {
   const isMobile = useIsMobile();
@@ -2402,23 +2444,31 @@ export default function ProactiveLeadsPage() {
             </div>
 
             <Tabs value={statusFilter} onValueChange={handleStatusFilterChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
-                <TabsTrigger value="all">Tutti ({leads.length})</TabsTrigger>
-                <TabsTrigger value="pending">
-                  In Attesa ({leads.filter((l) => l.status === "pending").length})
-                </TabsTrigger>
-                <TabsTrigger value="contacted">
-                  Contattati ({leads.filter((l) => l.status === "contacted").length})
-                </TabsTrigger>
-                <TabsTrigger value="responded">
-                  Risposto ({leads.filter((l) => l.status === "responded").length})
-                </TabsTrigger>
-                <TabsTrigger value="converted">
-                  Convertiti ({leads.filter((l) => l.status === "converted").length})
-                </TabsTrigger>
-                <TabsTrigger value="inactive">
-                  Inattivi ({leads.filter((l) => l.status === "inactive").length})
-                </TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg gap-1">
+                {([
+                  { value: "all", label: "Tutti", count: leads.length },
+                  { value: "pending", label: "In Attesa", count: leads.filter((l) => l.status === "pending").length },
+                  { value: "contacted", label: "Contattati", count: leads.filter((l) => l.status === "contacted").length },
+                  { value: "responded", label: "Risposto", count: leads.filter((l) => l.status === "responded").length },
+                  { value: "converted", label: "Convertiti", count: leads.filter((l) => l.status === "converted").length },
+                  { value: "inactive", label: "Inattivi", count: leads.filter((l) => l.status === "inactive").length },
+                ] as const).map(({ value, label, count }) => {
+                  const isActive = statusFilter === value;
+                  return (
+                    <TabsTrigger
+                      key={value}
+                      value={value}
+                      className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:ring-1 data-[state=active]:ring-gray-200 dark:data-[state=active]:ring-gray-700 data-[state=active]:shadow-sm rounded-md flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium"
+                    >
+                      <span>{label}</span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[11px] font-semibold leading-none ${
+                        isActive
+                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                          : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                      }`}>{count}</span>
+                    </TabsTrigger>
+                  );
+                })}
               </TabsList>
             </Tabs>
 
@@ -2496,7 +2546,7 @@ export default function ProactiveLeadsPage() {
                           <TableHead>Prossimo Contatto</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Canali</TableHead>
-                          <TableHead className="text-right">Azioni</TableHead>
+                          <TableHead className="text-right sticky right-0 bg-white dark:bg-gray-950 z-10 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]">Azioni</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -2514,45 +2564,57 @@ export default function ProactiveLeadsPage() {
                                 />
                               </TableCell>
                               <TableCell className="font-medium">
-                                <div className="flex items-center gap-2">
-                                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${hasResponded ? 'bg-green-100 dark:bg-green-900/40' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                                    <User className={`h-4 w-4 ${hasResponded ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`} />
-                                  </div>
-                                  <div>
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span>{lead.firstName} {lead.lastName}</span>
-                                      {hasResponded && (
-                                        <span className="inline-flex items-center gap-1 text-[10px] bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 px-1.5 py-0.5 rounded-full">
-                                          <CheckCircle2 className="h-2.5 w-2.5" />
-                                          Risposta
-                                        </span>
-                                      )}
+                                {(() => {
+                                  const isReal = hasRealName(lead.firstName, lead.lastName);
+                                  const initials = getInitials(lead.firstName, lead.lastName);
+                                  const avatarColor = isReal ? getAvatarColor(`${lead.firstName}${lead.lastName}`) : "";
+                                  const shortId = lead.id?.slice(-4) || "";
+                                  return (
+                                    <div className="flex items-center gap-2">
+                                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${isReal ? avatarColor : "bg-gray-300 dark:bg-gray-600"}`}>
+                                        {initials}
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          {isReal ? (
+                                            <span className="font-semibold text-gray-900 dark:text-gray-100">{lead.firstName} {lead.lastName}</span>
+                                          ) : (
+                                            <span className="italic text-gray-400 dark:text-gray-500 text-sm">Sconosciuto · {shortId}</span>
+                                          )}
+                                          {hasResponded && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 px-1.5 py-0.5 rounded-full">
+                                              <CheckCircle2 className="h-2.5 w-2.5" />
+                                              Risposta
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                                          {(() => {
+                                            const src = sourceConfig[lead.source || "manual"];
+                                            if (!src) return null;
+                                            const SrcIcon = src.icon;
+                                            return (
+                                              <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${src.color}`}>
+                                                <SrcIcon className="h-2.5 w-2.5" />
+                                                {src.label}
+                                              </span>
+                                            );
+                                          })()}
+                                          {lead.leadCategory && categoryConfig[lead.leadCategory] && (() => {
+                                            const cat = categoryConfig[lead.leadCategory!];
+                                            const CatIcon = cat.icon;
+                                            return (
+                                              <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${cat.color}`}>
+                                                <CatIcon className="h-2.5 w-2.5" />
+                                                {cat.label}
+                                              </span>
+                                            );
+                                          })()}
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                                      {(() => {
-                                        const src = sourceConfig[lead.source || "manual"];
-                                        if (!src) return null;
-                                        const SrcIcon = src.icon;
-                                        return (
-                                          <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${src.color}`}>
-                                            <SrcIcon className="h-2.5 w-2.5" />
-                                            {src.label}
-                                          </span>
-                                        );
-                                      })()}
-                                      {lead.leadCategory && categoryConfig[lead.leadCategory] && (() => {
-                                        const cat = categoryConfig[lead.leadCategory!];
-                                        const CatIcon = cat.icon;
-                                        return (
-                                          <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${cat.color}`}>
-                                            <CatIcon className="h-2.5 w-2.5" />
-                                            {cat.label}
-                                          </span>
-                                        );
-                                      })()}
-                                    </div>
-                                  </div>
-                                </div>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
@@ -2592,14 +2654,24 @@ export default function ProactiveLeadsPage() {
                                   })()}
                                 </div>
                               </TableCell>
-                              <TableCell className="max-w-xs truncate">
-                                {lead.leadInfo?.obiettivi || lead.campaignSnapshot?.obiettivi || lead.campaignSnapshot?.goal || lead.idealState || "N/A"}
+                              <TableCell className="max-w-xs">
+                                {(() => {
+                                  const obj = lead.leadInfo?.obiettivi || lead.campaignSnapshot?.obiettivi || lead.campaignSnapshot?.goal || lead.idealState;
+                                  if (!obj) return <span className="text-gray-300 dark:text-gray-600">—</span>;
+                                  return <span className="line-clamp-2 text-sm">{obj}</span>;
+                                })()}
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="h-4 w-4 text-gray-400" />
-                                  <span className="text-sm">{formatContactSchedule(lead.contactSchedule)}</span>
-                                </div>
+                                {(() => {
+                                  const dt = formatRelativeContact(lead.contactSchedule);
+                                  if (!dt) return <span className="text-gray-300 dark:text-gray-600">—</span>;
+                                  return (
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">{dt.relative}</span>
+                                      <span className="text-[11px] text-gray-400 dark:text-gray-500 whitespace-nowrap">{dt.precise}</span>
+                                    </div>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell>
                                 <Badge className={`${config?.color || statusConfig.pending.color} border flex items-center gap-1.5 w-fit`}>
@@ -2703,7 +2775,7 @@ export default function ProactiveLeadsPage() {
                                   )}
                                 </div>
                               </TableCell>
-                              <TableCell className="text-right">
+                              <TableCell className={`text-right sticky right-0 z-10 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] ${hasResponded ? "bg-green-50 dark:bg-green-950/20" : "bg-white dark:bg-gray-950"}`}>
                                 <div className="flex justify-end gap-1">
                                   <TooltipProvider>
                                     <Tooltip>
