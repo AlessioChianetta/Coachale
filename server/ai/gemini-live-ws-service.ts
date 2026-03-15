@@ -6267,7 +6267,6 @@ Questa regola vale SEMPRE, senza eccezioni, per OGNI prenotazione.`;
               proactivity: {
                 proactiveAudio: true
               },
-              enableAffectiveDialog: voiceAffectiveDialog,
               sessionResumption: { handle: validatedResumeHandle || null }
             }
           };
@@ -6319,7 +6318,6 @@ Questa regola vale SEMPRE, senza eccezioni, per OGNI prenotazione.`;
               proactivity: {
                 proactive_audio: true
               },
-              enable_affective_dialog: voiceAffectiveDialog,
               session_resumption: { handle: validatedResumeHandle || null }
             }
           };
@@ -6330,7 +6328,7 @@ Questa regola vale SEMPRE, senza eccezioni, per OGNI prenotazione.`;
         console.log(`🎛️ [${connectionId}]  🎙️ Voice:            ${voiceName}`);
         console.log(`🎛️ [${connectionId}]  🧠 ThinkingBudget:   ${voiceThinkingBudget} ${voiceThinkingBudget > 0 ? '✅' : '⚪ (disabled)'}`);
         console.log(`🎛️ [${connectionId}]  🎯 ProactiveAudio:   ON ✅ (ignora rumore di fondo)`);
-        console.log(`🎛️ [${connectionId}]  💬 AffectiveDialog:  ${voiceAffectiveDialog ? 'ON ✅' : 'OFF ⚪'}`);
+        console.log(`🎛️ [${connectionId}]  💬 AffectiveDialog:  N/A (non supportato dalla Live API)`);
         console.log(`🎛️ [${connectionId}]  📡 VAD Start:        ${voiceVadStartSensitivity}`);
         console.log(`🎛️ [${connectionId}]  📡 VAD End:          ${voiceVadEndSensitivity}`);
         console.log(`🎛️ [${connectionId}]  🔇 VAD Silence:      ${voiceVadSilenceMs}ms`);
