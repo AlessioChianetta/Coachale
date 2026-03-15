@@ -468,6 +468,36 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     if (payload.dnd !== undefined) leadInfo.dnd = payload.dnd;
     if (payload.dndSettings) leadInfo.dndSettings = payload.dndSettings;
 
+    // Cattura TUTTI i campi extra non mappati dal payload originale
+    // Questo include risposte a form Facebook, campi custom GHL, triggerData, etc.
+    const mappedHubdigitalKeys = new Set([
+      'type', 'locationId', 'id', 'contact_id', 'contact_type',
+      'firstName', 'lastName', 'first_name', 'last_name', 'name', 'full_name', 'dateOfBirth',
+      'email', 'phone', 'address1', 'full_address', 'city', 'state', 'postalCode', 'country',
+      'companyName', 'website', 'source', 'contact_source', 'assignedTo',
+      'dateAdded', 'date_created', 'tags', 'customFields', 'customData', 'attachments',
+      'location', 'user', 'workflow', 'dnd', 'dndSettings',
+    ]);
+    const rawSnapshot: Record<string, any> = {};
+    for (const [key, value] of Object.entries(payload)) {
+      if (!mappedHubdigitalKeys.has(key) && value !== null && value !== undefined && value !== '') {
+        rawSnapshot[key] = value;
+      }
+    }
+    if (payload.triggerData && typeof payload.triggerData === 'object') {
+      rawSnapshot.triggerData = payload.triggerData;
+    }
+    if (payload.contact && typeof payload.contact === 'object') {
+      rawSnapshot.contactRaw = payload.contact;
+    }
+    if (payload.attributionSource && typeof payload.attributionSource === 'object') {
+      rawSnapshot.attributionSource = payload.attributionSource;
+    }
+    if (Object.keys(rawSnapshot).length > 0) {
+      (leadInfo as any).rawPayloadSnapshot = rawSnapshot;
+      console.log(`📦 [WEBHOOK] Captured ${Object.keys(rawSnapshot).length} extra payload fields in rawPayloadSnapshot`);
+    }
+
     // Apply idealState from campaign or agent config (support both camelCase and snake_case)
     const idealState = campaign?.idealStateDescription || campaign?.ideal_state_description || agentConfig?.defaultIdealState || undefined;
 
@@ -880,6 +910,44 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
     if (contact.fieldValues) leadInfo.customFields = contact.fieldValues;
     if (contact.orgname) leadInfo.companyName = contact.orgname;
     if (payload.list) leadInfo.list = payload.list;
+
+    // Cattura TUTTI i campi extra dal payload ActiveCampaign
+    const mappedACKeys = new Set([
+      'type', 'list', 'date_time', 'initiated_by', 'initiated_from',
+    ]);
+    const mappedContactKeys = new Set([
+      'firstName', 'first_name', 'lastName', 'last_name', 'email',
+      'phone', 'phone_number', 'mobile', 'cellulare', 'telefono',
+      'id', 'orgname', 'tags', 'fieldValues',
+    ]);
+    const acRawSnapshot: Record<string, any> = {};
+    for (const [key, value] of Object.entries(payload)) {
+      if (key === 'contact') continue;
+      if (!mappedACKeys.has(key) && value !== null && value !== undefined && value !== '') {
+        acRawSnapshot[key] = value;
+      }
+    }
+    if (contact && typeof contact === 'object') {
+      const contactExtra: Record<string, any> = {};
+      for (const [key, value] of Object.entries(contact)) {
+        if (!mappedContactKeys.has(key) && value !== null && value !== undefined && value !== '') {
+          contactExtra[key] = value;
+        }
+      }
+      if (contact.fields && typeof contact.fields === 'object' && Object.keys(contact.fields).length > 0) {
+        contactExtra.fields = contact.fields;
+      }
+      if (contact.fieldValues && Array.isArray(contact.fieldValues)) {
+        contactExtra.fieldValues = contact.fieldValues;
+      }
+      if (Object.keys(contactExtra).length > 0) {
+        acRawSnapshot.contactExtra = contactExtra;
+      }
+    }
+    if (Object.keys(acRawSnapshot).length > 0) {
+      (leadInfo as any).rawPayloadSnapshot = acRawSnapshot;
+      console.log(`📦 [AC-WEBHOOK] Captured ${Object.keys(acRawSnapshot).length} extra payload fields in rawPayloadSnapshot`);
+    }
 
     // Apply idealState from campaign or agent config (support both camelCase and snake_case)
     const idealState = campaign?.idealStateDescription || campaign?.ideal_state_description || agentConfig?.defaultIdealState || undefined;

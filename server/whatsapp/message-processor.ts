@@ -39,6 +39,7 @@ import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalen
 import { decryptJSON } from "../encryption";
 import { resolveInstructionVariables } from "./template-engine";
 import { resolveHunterContext, formatHunterContextForPrompt } from "../services/hunter-context-resolver";
+import { resolveLeadImportContext, formatLeadImportContextForPrompt } from "../services/lead-import-context-resolver";
 import {
   getMandatoryBookingBlock,
   CORE_CONVERSATION_RULES_BLOCK,
@@ -1898,6 +1899,32 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
           }
         } catch (hunterErr: any) {
           console.warn(`⚠️ [HUNTER-CTX] Error loading Hunter context for WhatsApp: ${hunterErr.message}`);
+        }
+
+        try {
+          const leadImportCtx = await resolveLeadImportContext({
+            consultantId,
+            proactiveLeadId: conversation.proactiveLeadId || undefined,
+            phoneNumber,
+          });
+          if (leadImportCtx) {
+            const hasExtraData = leadImportCtx.companyName || leadImportCtx.website ||
+              leadImportCtx.address || leadImportCtx.tags.length > 0 ||
+              Object.keys(leadImportCtx.customFields).length > 0 ||
+              Object.keys(leadImportCtx.formAnswers).length > 0 ||
+              Object.keys(leadImportCtx.extraFields).length > 0 ||
+              leadImportCtx.campaignName || leadImportCtx.fonte ||
+              leadImportCtx.obiettivi || leadImportCtx.desideri ||
+              leadImportCtx.uncino || leadImportCtx.idealState ||
+              leadImportCtx.rawPayloadSnapshot;
+            if (hasExtraData) {
+              const leadImportBlock = formatLeadImportContextForPrompt(leadImportCtx);
+              systemPrompt += '\n\n' + leadImportBlock;
+              console.log(`📦 [LEAD-IMPORT-CTX] Injected lead import context into WhatsApp prompt for lead`);
+            }
+          }
+        } catch (leadImportErr: any) {
+          console.warn(`⚠️ [LEAD-IMPORT-CTX] Error loading lead import context for WhatsApp: ${leadImportErr.message}`);
         }
       }
 

@@ -195,6 +195,7 @@ export class VoiceCallManager extends EventEmitter {
         userContext: call.userContext,
         greeting: context?.greeting || 'Buongiorno, sono Alessia. Come posso aiutarti?',
         consultantId: call.consultantId,
+        callerPhone: call.callerId || undefined,
       });
 
       await bridge.playGreeting();

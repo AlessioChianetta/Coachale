@@ -8,6 +8,7 @@ import { createTicketFromEmail, getTicketSettings } from "./ticket-webhook-servi
 import { FileSearchService, fileSearchService } from "../../ai/file-search-service";
 import { FileSearchSyncService } from "../file-search-sync-service";
 import { resolveHunterContext, formatHunterContextForPrompt } from "../hunter-context-resolver";
+import { resolveLeadImportContext, formatLeadImportContextForPrompt } from "../lead-import-context-resolver";
 
 
 export interface EmailClassification {
@@ -949,6 +950,41 @@ export async function buildContactContext(fromEmail: string, consultantId: strin
         const leadInfo = lead.leadInfo as any;
         if (leadInfo?.email) parts.push(`Email lead: ${leadInfo.email}`);
         if (leadInfo?.companyName) parts.push(`Azienda: ${leadInfo.companyName}`);
+
+        try {
+          const leadImportCtx = await resolveLeadImportContext({
+            consultantId,
+            proactiveLeadId: lead.id,
+            email: normalizedEmail,
+          });
+          if (leadImportCtx) {
+            if (leadImportCtx.website) parts.push(`Sito web: ${leadImportCtx.website}`);
+            if (leadImportCtx.address) parts.push(`Indirizzo: ${leadImportCtx.address}`);
+            if (leadImportCtx.fonte) parts.push(`Fonte: ${leadImportCtx.fonte}`);
+            if (leadImportCtx.campaignName) parts.push(`Campagna: ${leadImportCtx.campaignName}`);
+            if (leadImportCtx.obiettivi) parts.push(`Obiettivi: ${leadImportCtx.obiettivi}`);
+            if (leadImportCtx.desideri) parts.push(`Desideri: ${leadImportCtx.desideri}`);
+            if (leadImportCtx.uncino) parts.push(`Uncino: ${leadImportCtx.uncino}`);
+            if (leadImportCtx.idealState) parts.push(`Stato ideale: ${leadImportCtx.idealState}`);
+            if (leadImportCtx.tags.length > 0) parts.push(`Tag: ${leadImportCtx.tags.join(', ')}`);
+            for (const [key, value] of Object.entries(leadImportCtx.formAnswers)) {
+              const label = key.startsWith('question') ? `Risposta ${key.replace('question', '')}` : key;
+              parts.push(`${label}: ${value}`);
+            }
+            for (const [key, value] of Object.entries(leadImportCtx.customFields)) {
+              parts.push(`${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`);
+            }
+            for (const [key, value] of Object.entries(leadImportCtx.extraFields)) {
+              const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+              if (displayValue.length < 300) {
+                parts.push(`${key}: ${displayValue}`);
+              }
+            }
+            console.log(`📦 [EMAIL-AI] Enriched proactive_lead with lead import context`);
+          }
+        } catch (leadImportErr: any) {
+          console.warn(`⚠️ [EMAIL-AI] Error loading lead import context: ${leadImportErr.message}`);
+        }
 
         phoneNumber = lead.phoneNumber || null;
 

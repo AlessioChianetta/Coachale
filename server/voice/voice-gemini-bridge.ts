@@ -3,6 +3,8 @@ import { buildSystemPrompt } from '../ai-prompts';
 import { EventEmitter } from 'events';
 import { voiceConfig } from './config';
 import { tokenTracker } from '../ai/token-tracker';
+import { resolveLeadImportContext, formatLeadImportContextForPrompt } from '../services/lead-import-context-resolver';
+import { resolveHunterContext, formatHunterContextForPrompt } from '../services/hunter-context-resolver';
 
 interface LiveServerMessage {
   serverContent?: {
@@ -30,6 +32,7 @@ interface ConversationContext {
   userContext: any;
   greeting: string;
   consultantId: string;
+  callerPhone?: string;
 }
 
 type SessionState = 'idle' | 'connecting' | 'active' | 'closing' | 'closed' | 'error';
@@ -158,7 +161,48 @@ Quando hai capito le esigenze, proponi naturalmente:
 Sii energico come sempre. NON essere formale. NON fare subito pitch commerciali. NON parlare di prezzi senza aver capito le esigenze.`
 }`;
 
-    return basePrompt + voiceInstructions;
+    let enrichedContext = '';
+
+    if (context.callerPhone && context.consultantId) {
+      try {
+        const leadImportCtx = await resolveLeadImportContext({
+          consultantId: context.consultantId,
+          phoneNumber: context.callerPhone,
+        });
+        if (leadImportCtx) {
+          const hasExtraData = leadImportCtx.companyName || leadImportCtx.website ||
+            leadImportCtx.address || leadImportCtx.tags.length > 0 ||
+            Object.keys(leadImportCtx.customFields).length > 0 ||
+            Object.keys(leadImportCtx.formAnswers).length > 0 ||
+            Object.keys(leadImportCtx.extraFields).length > 0 ||
+            leadImportCtx.campaignName || leadImportCtx.fonte ||
+            leadImportCtx.obiettivi || leadImportCtx.desideri ||
+            leadImportCtx.uncino || leadImportCtx.idealState ||
+            leadImportCtx.rawPayloadSnapshot;
+          if (hasExtraData) {
+            enrichedContext += '\n\n' + formatLeadImportContextForPrompt(leadImportCtx);
+            console.log(`📦 [VOICE] Injected lead import context into voice prompt`);
+          }
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ [VOICE] Error loading lead import context: ${err.message}`);
+      }
+
+      try {
+        const hunterCtx = await resolveHunterContext({
+          consultantId: context.consultantId,
+          phoneNumber: context.callerPhone,
+        });
+        if (hunterCtx) {
+          enrichedContext += '\n\n' + formatHunterContextForPrompt(hunterCtx);
+          console.log(`🔍 [VOICE] Injected Hunter context into voice prompt: ${hunterCtx.businessName}`);
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ [VOICE] Error loading Hunter context: ${err.message}`);
+      }
+    }
+
+    return basePrompt + voiceInstructions + enrichedContext;
   }
 
   private setupSessionHandlers(): void {
