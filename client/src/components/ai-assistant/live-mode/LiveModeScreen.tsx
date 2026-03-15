@@ -1204,12 +1204,12 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
 
         case 'ai_transcript':
         if (message.text) {
-          const isNewTurn = accumulatedAiTextRef.current === '';
-
-          if (isAudioStoppedRef.current && isNewTurn) {
-            console.log(`✅ [AUDIO RESUME] Nuovo turno AI dopo barge-in — riabilito audio (was stopped)`);
+          if (isAudioStoppedRef.current) {
+            console.log(`✅ [AUDIO RESUME] AI sta parlando — riabilito audio (was stopped)`);
             isAudioStoppedRef.current = false;
           }
+
+          const isNewTurn = accumulatedAiTextRef.current === '';
 
           // Se è un nuovo turno AI, prepara reset user transcript per il PROSSIMO turno utente
           if (isNewTurn) {
@@ -1290,6 +1290,7 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
             console.log('🛑 [BARGE-IN TRIGGER] Nuovo turno utente -> STOP AUDIO FORZATO (Unconditional)');
             stopCurrentAudio();
             aiTurnIdRef.current++;
+            accumulatedAiTextRef.current = '';
             setLiveState('listening');
           }
 
