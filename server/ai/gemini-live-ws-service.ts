@@ -3046,10 +3046,14 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     type ClosingState = 'idle' | 'waiting_ai_finish' | 'waiting_saluto' | 'ready_to_close';
     let closingState: ClosingState = 'idle';
-    let isAiSpeaking = false; // Track se AI sta parlando (streaming audio)
-    let closeCheckInterval: NodeJS.Timeout | null = null; // Check ogni secondo dopo 90 min
-    let hardTimeoutTimer: NodeJS.Timeout | null = null; // Failsafe: force close dopo 30s
-    let hasTriggered90MinClose = false; // Flag per evitare multiple trigger
+    let isAiSpeaking = false;
+    let lastAiSpeakingEndTime = 0;
+    let lastStopAudioSentTime = 0;
+    const ECHO_PROTECT_MS = 1500;
+    const STOP_AUDIO_DEBOUNCE_MS = 500;
+    let closeCheckInterval: NodeJS.Timeout | null = null;
+    let hardTimeoutTimer: NodeJS.Timeout | null = null;
+    let hasTriggered90MinClose = false;
     
     // 🆕 TASK 7: prospectHasSpoken - blocca output AI finché utente non parla
     // Questo previene che l'AI parli per primo sia all'inizio della call che dopo resume
@@ -7536,13 +7540,18 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
             
             const protectWindowActive = voiceProtectFirstMessage && !firstAiTurnComplete && firstAiAudioTimestamp > 0 && (Date.now() - firstAiAudioTimestamp < 2000);
+            const echoProtectActiveInterrupt = lastAiSpeakingEndTime > 0 && !isAiSpeaking && (Date.now() - lastAiSpeakingEndTime < ECHO_PROTECT_MS);
             if (protectWindowActive) {
               console.log(`🛡️ [${connectionId}] BARGE-IN SUPPRESSED (protect window: ${Date.now() - firstAiAudioTimestamp}ms < 2000ms)`);
+            } else if (echoProtectActiveInterrupt) {
+              console.log(`🛡️ [${connectionId}] BARGE-IN SUPPRESSED (echo protect: ${Date.now() - lastAiSpeakingEndTime}ms < ${ECHO_PROTECT_MS}ms after AI stopped)`);
             } else {
               if (isAiSpeaking) {
                 isAiSpeaking = false;
+                lastAiSpeakingEndTime = Date.now();
               }
               console.log(`🔇 [${connectionId}] AI interrupted (serverContent.interrupted) - forwarding to client`);
+              lastStopAudioSentTime = Date.now();
               
               clientWs.send(JSON.stringify({
                 type: 'barge_in_detected',
@@ -8170,19 +8179,27 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               console.log(`🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
               
               const vadProtectWindowActive = voiceProtectFirstMessage && !firstAiTurnComplete && firstAiAudioTimestamp > 0 && (Date.now() - firstAiAudioTimestamp < 2000);
+              const echoProtectActive = lastAiSpeakingEndTime > 0 && (Date.now() - lastAiSpeakingEndTime < ECHO_PROTECT_MS);
+              const debounceActive = lastStopAudioSentTime > 0 && (Date.now() - lastStopAudioSentTime < STOP_AUDIO_DEBOUNCE_MS);
+              
               if (vadProtectWindowActive) {
-                console.log(`🛡️ [${connectionId}] stop_audio SUPPRESSED (protect window: ${Date.now() - firstAiAudioTimestamp}ms < 2000ms)`);
+                console.log(`🛡️ [${connectionId}] stop_audio SUPPRESSED (first-message protect: ${Date.now() - firstAiAudioTimestamp}ms < 2000ms)`);
+              } else if (echoProtectActive && !isAiSpeaking) {
+                console.log(`🛡️ [${connectionId}] stop_audio SUPPRESSED (echo protect: ${Date.now() - lastAiSpeakingEndTime}ms < ${ECHO_PROTECT_MS}ms after AI stopped, text="${userTranscriptText}")`);
+              } else if (!isAiSpeaking && !debounceActive) {
+                console.log(`ℹ️ [${connectionId}] stop_audio SKIPPED (AI not speaking, no audio to stop)`);
+              } else if (debounceActive) {
+                console.log(`ℹ️ [${connectionId}] stop_audio DEBOUNCED (${Date.now() - lastStopAudioSentTime}ms < ${STOP_AUDIO_DEBOUNCE_MS}ms)`);
               } else {
                 console.log(`🛑 [${connectionId}] BARGE-IN ATTIVATO - Invio stop_audio al client`);
+                lastStopAudioSentTime = Date.now();
                 clientWs.send(JSON.stringify({
                   type: 'stop_audio',
                   reason: 'user_speaking',
                   message: 'User is speaking - stop AI audio immediately'
                 }));
                 
-                if (isAiSpeaking) {
-                  isAiSpeaking = false;
-                }
+                isAiSpeaking = false;
               }
               
               // Invia al client la trascrizione dell'utente in tempo reale
@@ -8235,12 +8252,12 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             turnFirstGeminiResponseTime = 0;
             firstAudioSentToPhoneTime = 0;
             
-            // 🔒 AI has finished speaking
             const wasAiSpeaking = isAiSpeaking;
             isAiSpeaking = false;
             lastAiTurnCompleteTimestamp = Date.now();
             if (wasAiSpeaking) {
-              console.log(`🔇 [${connectionId}] AI finished speaking (turn complete)`);
+              lastAiSpeakingEndTime = Date.now();
+              console.log(`🔇 [${connectionId}] AI finished speaking (turn complete) — echo protect until +${ECHO_PROTECT_MS}ms`);
             }
 
             if (!firstAiTurnComplete) {

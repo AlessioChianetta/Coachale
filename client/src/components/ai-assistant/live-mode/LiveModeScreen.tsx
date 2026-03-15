@@ -1390,34 +1390,36 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
         break;
 
       case 'stop_audio':
-        console.log('🛑 [STOP AUDIO] Server detected user speaking while AI was talking - stopping immediately!');
-        console.log(`   → Reason: ${message.reason || 'unknown'}`);
-        
-        stopCurrentAudio();
-        aiTurnIdRef.current++;
-        accumulatedAiTextRef.current = '';
-        setLiveState('listening');
-        
-        console.log(`   → Audio stopped, turnId incremented to ${aiTurnIdRef.current}`);
+        if (liveState === 'speaking') {
+          console.log('🛑 [STOP AUDIO] Server detected user speaking while AI was talking - stopping immediately!');
+          stopCurrentAudio();
+          aiTurnIdRef.current++;
+          accumulatedAiTextRef.current = '';
+          setLiveState('listening');
+          console.log(`   → Audio stopped, turnId incremented to ${aiTurnIdRef.current}`);
+        } else {
+          console.log(`ℹ️ [STOP AUDIO] Ignored — AI not in speaking state (state=${liveState})`);
+        }
         break;
 
       case 'barge_in_detected':
-        console.log('🛑 [BARGE-IN] Gemini VAD detected user interruption - stopping audio immediately!');
-        
-        setVadDebugState('blocked');
-        if (vadDebugTimeoutRef.current) {
-          clearTimeout(vadDebugTimeoutRef.current);
+        if (liveState === 'speaking') {
+          console.log('🛑 [BARGE-IN] Gemini VAD detected user interruption - stopping audio immediately!');
+          setVadDebugState('blocked');
+          if (vadDebugTimeoutRef.current) {
+            clearTimeout(vadDebugTimeoutRef.current);
+          }
+          vadDebugTimeoutRef.current = setTimeout(() => {
+            setVadDebugState('idle');
+          }, 2000);
+          stopCurrentAudio();
+          aiTurnIdRef.current++;
+          accumulatedAiTextRef.current = '';
+          setLiveState('listening');
+          console.log(`   → Audio stopped, turnId incremented to ${aiTurnIdRef.current}`);
+        } else {
+          console.log(`ℹ️ [BARGE-IN] Ignored — AI not in speaking state (state=${liveState})`);
         }
-        vadDebugTimeoutRef.current = setTimeout(() => {
-          setVadDebugState('idle');
-        }, 2000);
-        
-        stopCurrentAudio();
-        aiTurnIdRef.current++;
-        accumulatedAiTextRef.current = '';
-        setLiveState('listening');
-        
-        console.log(`   → Audio stopped, turnId incremented to ${aiTurnIdRef.current}`);
         break;
 
         case 'turn_complete':
