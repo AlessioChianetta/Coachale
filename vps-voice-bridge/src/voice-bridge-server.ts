@@ -788,6 +788,7 @@ const GATE_OPEN_RMS = 328;
 const GATE_CLOSE_RMS = 200;
 const GATE_HOLD_CHUNKS = 4;
 const GATE_RELEASE_CHUNKS = 3;
+const GATE_FLOOR = 0.02;
 
 interface NoiseGateState {
   open: boolean;
@@ -859,7 +860,13 @@ function applyNoiseGate(sessionId: string, pcm: Buffer): Buffer {
     if (envelope <= 0) {
       gate.open = false;
       gate.releaseCounter = 0;
+      const sampleCount = Math.floor(pcm.length / 2);
       outputPcm = Buffer.alloc(pcm.length);
+      for (let i = 0; i < sampleCount; i++) {
+        const sample = pcm.readInt16LE(i * 2);
+        const attenuated = Math.round(sample * GATE_FLOOR);
+        outputPcm.writeInt16LE(Math.max(-32768, Math.min(32767, attenuated)), i * 2);
+      }
       gateState = 'CLOSED';
     } else {
       const sampleCount = Math.floor(pcm.length / 2);
@@ -868,13 +875,19 @@ function applyNoiseGate(sessionId: string, pcm: Buffer): Buffer {
         const sample = pcm.readInt16LE(i * 2);
         const progress = i / sampleCount;
         const sampleEnvelope = envelope * (1.0 - progress) + (envelope - (1.0 / GATE_RELEASE_CHUNKS)) * progress;
-        const fadedSample = Math.round(sample * Math.max(0, sampleEnvelope));
+        const fadedSample = Math.round(sample * Math.max(GATE_FLOOR, sampleEnvelope));
         outputPcm.writeInt16LE(Math.max(-32768, Math.min(32767, fadedSample)), i * 2);
       }
       gateState = `RELEASE(${gate.releaseCounter}/${GATE_RELEASE_CHUNKS})`;
     }
   } else {
+    const sampleCount = Math.floor(pcm.length / 2);
     outputPcm = Buffer.alloc(pcm.length);
+    for (let i = 0; i < sampleCount; i++) {
+      const sample = pcm.readInt16LE(i * 2);
+      const attenuated = Math.round(sample * GATE_FLOOR);
+      outputPcm.writeInt16LE(Math.max(-32768, Math.min(32767, attenuated)), i * 2);
+    }
     gateState = 'CLOSED';
   }
 

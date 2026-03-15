@@ -1749,6 +1749,7 @@ class PCMProcessor extends AudioWorkletProcessor {
     this.GATE_CLOSE_THRESHOLD = 0.006;
     this.HOLD_BUFFERS = 4;
     this.RELEASE_BUFFERS = 3;
+    this.GATE_FLOOR = 0.02;
     this.gateOpen = false;
     this.holdCounter = 0;
     this.releaseCounter = 0;
@@ -1809,18 +1810,24 @@ class PCMProcessor extends AudioWorkletProcessor {
         this.gateOpen = false;
         this.releaseCounter = 0;
         dataToSend = new Float32Array(totalLength);
+        for (let i = 0; i < totalLength; i++) {
+          dataToSend[i] = concatenated[i] * this.GATE_FLOOR;
+        }
         gateState = 'CLOSED';
       } else {
         dataToSend = new Float32Array(totalLength);
         for (let i = 0; i < totalLength; i++) {
           const progress = i / totalLength;
           const se = envelope * (1.0 - progress) + (envelope - (1.0 / this.RELEASE_BUFFERS)) * progress;
-          dataToSend[i] = concatenated[i] * Math.max(0, se);
+          dataToSend[i] = concatenated[i] * Math.max(this.GATE_FLOOR, se);
         }
         gateState = 'RELEASE(' + this.releaseCounter + '/' + this.RELEASE_BUFFERS + ')';
       }
     } else {
       dataToSend = new Float32Array(totalLength);
+      for (let i = 0; i < totalLength; i++) {
+        dataToSend[i] = concatenated[i] * this.GATE_FLOOR;
+      }
       gateState = 'CLOSED';
     }
     this.logCounter++;
