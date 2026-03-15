@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -147,6 +147,15 @@ export default function WhatsAppAgentWizard({
   const [instructionsSaved, setInstructionsSaved] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { toast } = useToast();
+  const wizardTopRef = useRef<HTMLDivElement>(null);
+
+  const scrollToTop = useCallback(() => {
+    if (wizardTopRef.current) {
+      wizardTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, []);
 
   const steps = mode === "edit" ? [...baseSteps, instagramStep] : baseSteps;
   const lastMainStep = 4;
@@ -254,18 +263,18 @@ export default function WhatsAppAgentWizard({
 
     setValidationErrors({});
     setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToTop();
   };
 
   const handleBack = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 0));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToTop();
   };
 
   const handleStepClick = (stepIndex: number) => {
     if (stepIndex < currentStep) {
       setCurrentStep(stepIndex);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToTop();
     }
   };
 
@@ -367,7 +376,7 @@ export default function WhatsAppAgentWizard({
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-8">
-      <div className="bg-muted/30 rounded-lg p-6 border shadow-sm">
+      <div ref={wizardTopRef} className="bg-muted/30 rounded-lg p-6 border shadow-sm">
         <Stepper
           steps={steps}
           currentStep={currentStep}

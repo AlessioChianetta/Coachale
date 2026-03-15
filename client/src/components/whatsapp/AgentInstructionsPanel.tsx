@@ -1905,9 +1905,9 @@ export default function AgentInstructionsPanel({
     }
   }, [initialData, mode]);
 
-  // Sync changes with parent (create mode)
+  // Sync changes with parent (both create and edit mode)
   useEffect(() => {
-    if (mode === "create" && onChange && !isHydratingRef.current) {
+    if (onChange && !isHydratingRef.current) {
       const payload = {
         agentInstructions: instructions,
         agentInstructionsEnabled: enabled,
