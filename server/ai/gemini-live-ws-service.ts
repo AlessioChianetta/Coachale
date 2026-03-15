@@ -6267,7 +6267,6 @@ Questa regola vale SEMPRE, senza eccezioni, per OGNI prenotazione.`;
               proactivity: {
                 proactiveAudio: true
               },
-              enableAffectiveDialog: voiceAffectiveDialog,
               sessionResumption: { handle: validatedResumeHandle || null }
             }
           };
