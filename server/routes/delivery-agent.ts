@@ -644,7 +644,7 @@ Ragiona in modo strutturato e critico. Questa analisi servirà come base per il 
             parts: [{
               text: `Perfetto. Ora basandoti sulla tua analisi, genera il report JSON strutturato completo. Segui esattamente il template nel system prompt. Ricorda:
 - I pacchetti_consigliati devono includere SOLO i pacchetti davvero rilevanti per QUESTO consulente (tipicamente 3-6, NON tutti e 10). Includi solo quelli che risolvono problemi concreti emersi dalla discovery. Per il resto c'è il catalogo_completo.
-- Ogni pacchetto consigliato deve avere ALMENO 2 moduli analizzati in profondità nei moduli_inclusi, ognuno con "primo_passo" e "come_misuri"
+- Ogni pacchetto consigliato deve avere ALMENO 2 moduli analizzati in profondità nei moduli_inclusi, ognuno con "hook", "primo_passo" e "come_misuri". L'hook di ogni modulo DEVE seguire lo schema: "Questo ti serve perché aiuta [chi] a fare [cosa] e [come]" — se non è prioritario: "Aiuta [chi] a fare [cosa], ma per te ora è meglio [alternativa]"
 - Ogni "perche_per_te" deve citare cose specifiche dette dal consulente durante la conversazione
 - La roadmap deve rispettare le dipendenze — ogni fase deve avere "vita_dopo" che descrive come cambia la vita lavorativa
 - I quick_wins devono essere azioni concrete sotto i 30 minuti — includi "testo_da_copiare" quando l'azione prevede un messaggio o template
@@ -713,7 +713,7 @@ COMPITO DI REVISIONE CRITICA: Rileggi il report e valuta:
 
 1. **Coerenza con la conversazione**: I "perche_per_te" citano davvero cose dette dal consulente o sono generici? Se sono generici, riscrivili con riferimenti specifici.
 
-2. **Selezione pacchetti**: I pacchetti_consigliati contengono SOLO quelli davvero rilevanti per questo consulente (tipicamente 3-6, NON tutti e 10)? Ogni pacchetto consigliato ha almeno 2 moduli con primo_passo e come_misuri? I pacchetti non consigliati sono comunque nel catalogo_completo?
+2. **Selezione pacchetti**: I pacchetti_consigliati contengono SOLO quelli davvero rilevanti per questo consulente (tipicamente 3-6, NON tutti e 10)? Ogni pacchetto consigliato ha almeno 2 moduli con hook, primo_passo e come_misuri? L'hook di ogni modulo segue lo schema "Questo ti serve perché aiuta [chi] a fare [cosa] e [come]"? Se un modulo non è prioritario dice "Aiuta [chi] a fare [cosa], ma per te ora è meglio [alternativa]"? I pacchetti non consigliati sono comunque nel catalogo_completo?
 
 3. **Roadmap realistica**: L'ordine delle settimane rispetta le dipendenze? Le azioni sono concrete e fattibili nei tempi indicati?
 
@@ -725,7 +725,7 @@ COMPITO DI REVISIONE CRITICA: Rileggi il report e valuta:
 
 7. **Catalogo Completo**: Ci sono tutti e 10 i pacchetti? Ogni pacchetto ha punteggio, cosa_va_bene, cosa_non_funziona, come_correggere con almeno 2 azioni concrete? Le descrizioni sono personalizzate e gli esempi tangibili?
 
-8. **Nuovi campi**: C'è il flusso_completo (paragrafo narrativo)? L'avvertimento_onesto è genuinamente onesto? I segnali_successo hanno almeno 3 entry con timeframe diversificati? Le quick_wins hanno testo_da_copiare dove serve? I moduli hanno primo_passo e come_misuri? La roadmap ha vita_dopo per ogni fase?
+8. **Nuovi campi**: C'è il flusso_completo (paragrafo narrativo)? L'avvertimento_onesto è genuinamente onesto? I segnali_successo hanno almeno 3 entry con timeframe diversificati? Le quick_wins hanno testo_da_copiare dove serve? I moduli hanno hook (schema: "Questo ti serve perché aiuta [chi] a fare [cosa] e [come]"), primo_passo e come_misuri? La roadmap ha vita_dopo per ogni fase?
 
 Se trovi problemi, genera il report JSON CORRETTO e COMPLETO (incluso catalogo_completo con TUTTI i 10 pacchetti e analisi approfondita). Se il report è già buono, restituiscilo invariato.
 Verifica che pacchetti_consigliati contenga SOLO i pacchetti davvero rilevanti (3-6, NON tutti e 10) e che il catalogo_completo contenga TUTTI E 10 i pacchetti con analisi approfondita.

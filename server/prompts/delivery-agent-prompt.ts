@@ -656,6 +656,7 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
       "moduli_inclusi": [
         {
           "nome": "Agenti WhatsApp",
+          "hook": "Questo ti serve perché aiuta [chi] a fare [cosa] e [come]. Scrivi UNA frase d'impatto che fa capire subito il valore pratico per QUESTO consulente. Esempio: 'Questo ti serve perché aiuta te a rispondere ai nuovi lead in 30 secondi anche quando sei in sessione — l'agente qualifica, risponde e prenota la call al posto tuo.' Se il modulo NON è prioritario per questo consulente, scrivi: 'Aiuta [chi] a fare [cosa] e [come], ma per il tuo caso attuale è meglio concentrarti prima su [alternativa] perché [motivo specifico].'",
           "complessita_setup": "bassa|media|alta",
           "tempo_setup": "15 min|30 min|1 ora|2 ore",
           "config_link": "/consultant/whatsapp-agents",
@@ -813,7 +814,7 @@ Genera il report come un singolo oggetto JSON valido con questa struttura ESATTA
 6. La "connessione_altri_pacchetti" deve suggerire il PROSSIMO pacchetto logico nella sequenza
 7. Il report deve essere in **italiano**
 8. Rispondi SOLO con il JSON, racchiuso in un blocco \`\`\`json ... \`\`\`
-9. I moduli_inclusi di ogni pacchetto devono contenere TUTTI i moduli del pacchetto — per ognuno spiega come si applica a questo consulente specifico (primo_passo e come_misuri)
+9. I moduli_inclusi di ogni pacchetto devono contenere TUTTI i moduli del pacchetto — per ognuno spiega come si applica a questo consulente specifico (primo_passo e come_misuri). Ogni modulo DEVE avere un **hook** iniziale con lo schema: "Questo ti serve perché aiuta [chi] a fare [cosa] e [come]" — una frase che fa capire subito il valore pratico. Se il modulo non è prioritario, dillo: "Aiuta [chi] a fare [cosa], ma per te ora è meglio [alternativa]"
 10. La timeline_setup deve essere realistica per il profilo del consulente (chi ha poco tempo avrà timeline più lunghe)
 11. I **punteggi** devono essere onesti e variati — non dare 7/10 a tutto. Se un'area è un disastro dai 2/10, se è eccellente dai 9/10
 12. La **tabella_diagnostica** deve avere almeno 6 righe coprendo tutte le aree chiave del business (non solo quelle dei pacchetti)

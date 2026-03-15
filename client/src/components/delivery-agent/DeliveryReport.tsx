@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface PackageModule {
   name: string;
+  hook?: string;
   complexity: string;
   setup_time: string;
   config_link?: string;
@@ -304,6 +305,7 @@ function normalizeReport(raw: any): ReportData {
       modules: Array.isArray(pk.moduli_inclusi || pk.modules)
         ? (pk.moduli_inclusi || pk.modules).map((mod: any) => ({
             name: mod.nome || mod.name || '',
+            hook: mod.hook || '',
             complexity: mod.complessita_setup || mod.complexity || 'media',
             setup_time: mod.tempo_setup || mod.setup_time || '',
             config_link: mod.config_link,
@@ -481,16 +483,21 @@ function ComplexityMeter({ level }: { level: string }) {
 
 function ExpandableModule({ mod, index }: { mod: PackageModule; index: number }) {
   const [open, setOpen] = useState(false);
-  const hasExtra = !!(mod.first_step || mod.success_signal);
+  const hasExtra = !!(mod.hook || mod.first_step || mod.success_signal);
   return (
     <div className="border-b border-border/30 last:border-0">
       <div
         className={cn("flex items-center justify-between py-2.5 px-1", hasExtra && "cursor-pointer hover:bg-muted/30 rounded-lg transition-colors")}
         onClick={hasExtra ? () => setOpen(v => !v) : undefined}
       >
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <CheckCircle2 className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
-          <span className="text-sm font-medium text-foreground">{mod.name}</span>
+          <div className="min-w-0">
+            <span className="text-sm font-medium text-foreground">{mod.name}</span>
+            {mod.hook && !open && (
+              <p className="text-[11px] text-muted-foreground/70 mt-0.5 line-clamp-1">{mod.hook}</p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <ComplexityMeter level={mod.complexity} />
@@ -520,6 +527,12 @@ function ExpandableModule({ mod, index }: { mod: PackageModule; index: number })
             className="overflow-hidden"
           >
             <div className="px-6 pb-3 space-y-2">
+              {mod.hook && (
+                <div className="flex items-start gap-2">
+                  <Lightbulb className="w-3 h-3 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-foreground/90 italic">{mod.hook}</p>
+                </div>
+              )}
               {mod.first_step && (
                 <div className="flex items-start gap-2">
                   <Play className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
