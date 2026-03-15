@@ -1,0 +1,20 @@
+# WhatsApp Agent Wizard — Bug Fix Salvataggio + Miglioramento UI
+## Obiettivo
+Risolvere i bug di salvataggio del template AI e identità AI nel wizard agente WhatsApp, e rendere la grafica più professionale e mono-brand.
+Risolvere i bug di salvataggio del template AI e identità AI nel wizard agente WhatsApp, rendere la grafica più professionale e mono-brand, e migliorare la navigazione.
+## Bug da risolvere
+-1
++11
+- Collegato al Bug 2 — quando `selectedTemplate` cambia nel formData del wizard ma l'`AgentInstructionsPanel` non viene aggiornato perché ha il suo stato interno (`instructions`, `selectedTemplate` locali). Il panel legge le props iniziali ma poi gestisce lo stato internamente.
+- **Fix**: Assicurarsi che quando `formData.selectedTemplate` cambia nel wizard, il panel riceva le nuove props e aggiorni il suo stato interno (verificare la logica useEffect in AgentInstructionsPanel che sincronizza le props).
+### BUG 4: "Avanti" non porta in alto nella pagina
+- **File**: `client/src/components/whatsapp/WhatsAppAgentWizard.tsx`
+- **Problema**: Riga 239-254 — `handleNext` cambia step ma non fa scroll to top. L'utente resta in fondo alla pagina e non vede la nuova sezione.
+- **Fix**: Aggiungere `window.scrollTo({ top: 0, behavior: 'smooth' })` dopo `setCurrentStep` sia in `handleNext` che in `handleBack` e `handleStepClick`.
+## Rimozione Feature Blocks
+- **File**: `client/src/components/whatsapp/wizard-steps/AgentAvailability.tsx`
+- **Problema**: I tab "Gestione Obiezioni" (`objectionHandlingEnabled`), "Disqualifica Lead" (`disqualificationEnabled`), e "Upselling" (`upsellingEnabled`) devono essere rimossi dalla sezione Funzionalità Avanzate.
+- **Fix**: Rimuovere queste 3 voci dall'array `featureBlocks` (righe 55-80). Mantenere solo "Prenotazione Appuntamenti" (`bookingEnabled`) e "Risposte Audio TTS" (`ttsEnabled`).
+- **Nota**: Rimuovere anche i riferimenti nel dialog di conferma in `WhatsAppAgentWizard.tsx` (righe 595-607).
+## Miglioramento UI
+### Grafica più professionale e mono-brand
