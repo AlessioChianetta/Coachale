@@ -6264,6 +6264,10 @@ Questa regola vale SEMPRE, senza eccezioni, per OGNI prenotazione.`;
                   silenceDurationMs: voiceVadSilenceMs
                 }
               },
+              proactivity: {
+                proactiveAudio: true
+              },
+              enableAffectiveDialog: voiceAffectiveDialog,
               sessionResumption: { handle: validatedResumeHandle || null }
             }
           };
@@ -6287,7 +6291,10 @@ Questa regola vale SEMPRE, senza eccezioni, per OGNI prenotazione.`;
                 temperature: 1.0,
                 top_p: 0.95,
                 top_k: 40,
-                max_output_tokens: 8192
+                max_output_tokens: 8192,
+                thinking_config: {
+                  thinking_budget: voiceThinkingBudget
+                }
               },
               input_audio_transcription: {},
               output_audio_transcription: {},
@@ -6321,7 +6328,7 @@ Questa regola vale SEMPRE, senza eccezioni, per OGNI prenotazione.`;
         console.log(`🎙️ [${connectionId}] Using voice: ${voiceName}`);
         console.log(`🧠 [${connectionId}] ThinkingBudget: ${voiceThinkingBudget} (applies to entire session)`);
         console.log(`🤖 [${connectionId}] Model: ${liveModelId} [${liveApiBackend}] - Language: ITALIAN ONLY`);
-        console.log(`🎙️ [${connectionId}] VAD: start=${voiceVadStartSensitivity}, end=${voiceVadEndSensitivity}, silence=${voiceVadSilenceMs}ms`);
+        console.log(`🎙️ [${connectionId}] VAD: start=${voiceVadStartSensitivity}, end=${voiceVadEndSensitivity}, silence=${voiceVadSilenceMs}ms, proactiveAudio=ON, affectiveDialog=${voiceAffectiveDialog}`);
         if (validatedResumeHandle) {
           console.log(`🔄 [${connectionId}] RESUMING SESSION with handle: ${validatedResumeHandle.substring(0, 20)}...`);
         } else {

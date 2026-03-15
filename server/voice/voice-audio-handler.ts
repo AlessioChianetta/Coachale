@@ -51,9 +51,6 @@ const ULAW_DECODE_TABLE = new Int16Array([
 
 export class VoiceAudioHandler {
   private config: AudioConfig;
-  private vadThreshold: number = 500;
-  private vadSilenceDuration: number = 1500;
-  private lastSpeechTime: number = 0;
 
   constructor(config?: Partial<AudioConfig>) {
     this.config = {
@@ -168,37 +165,6 @@ export class VoiceAudioHandler {
 
     await fs.promises.writeFile(tempFile, outputData);
     return tempFile;
-  }
-
-  detectSpeechEnd(samples: Buffer): boolean {
-    const now = Date.now();
-
-    const rms = this.calculateRMS(samples);
-
-    if (rms > this.vadThreshold) {
-      this.lastSpeechTime = now;
-      return false;
-    }
-
-    if (this.lastSpeechTime === 0) {
-      this.lastSpeechTime = now;
-      return false;
-    }
-
-    const silenceDuration = now - this.lastSpeechTime;
-    return silenceDuration >= this.vadSilenceDuration;
-  }
-
-  private calculateRMS(samples: Buffer): number {
-    let sum = 0;
-    const numSamples = samples.length / 2;
-
-    for (let i = 0; i < numSamples; i++) {
-      const sample = samples.readInt16LE(i * 2);
-      sum += sample * sample;
-    }
-
-    return Math.sqrt(sum / numSamples);
   }
 
   async cleanupTempFiles(): Promise<number> {
