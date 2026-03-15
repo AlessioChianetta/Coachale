@@ -7,7 +7,11 @@
  * BUFFER SIZE: 1920 samples = 40ms at 48kHz native rate
  * After resampling 48kHz → 16kHz (3:1), becomes 640 samples = 40ms at 16kHz
  * 
- * NOISE GATE: 0 (DISABLED) - All audio passes through, Gemini handles everything
+ * NOISE GATE: Professional gate with hysteresis, hold time, and gradual release
+ * - Open threshold:  0.01 RMS (-40 dBFS) — standard WebRTC voice threshold
+ * - Close threshold: 0.006 RMS — hysteresis prevents gate flutter
+ * - Hold time: 4 buffers (~160ms) — preserves natural pauses between syllables
+ * - Release: 3-buffer fade-out — eliminates audible clicks on gate close
  */
 
 class PCMProcessor extends AudioWorkletProcessor {
@@ -17,27 +21,41 @@ class PCMProcessor extends AudioWorkletProcessor {
     /** @type {number} */
     this.bufferSize = 0;
     
-    /** 
-     * @type {number} 
-     * INCREASED: 1920 samples = 40ms at 48kHz (native rate)
-     * After resampling 3:1 → 640 samples = 40ms at 16kHz (what Gemini expects)
-     */
+    /** @type {number} */
     this.bufferThreshold = 1920;
     
     /** @type {Float32Array[]} */
     this.audioBuffer = [];
     
-    /** 
-     * @type {number} - Noise Gate DISABLED
-     * All audio passes through to Gemini
-     */
-    this.NOISE_THRESHOLD = 0;
+    /** @type {number} */
+    this.GATE_OPEN_THRESHOLD = 0.01;
+    /** @type {number} */
+    this.GATE_CLOSE_THRESHOLD = 0.006;
+    /** @type {number} */
+    this.HOLD_BUFFERS = 4;
+    /** @type {number} */
+    this.RELEASE_BUFFERS = 3;
+
+    /** @type {boolean} */
+    this.gateOpen = false;
+    /** @type {number} */
+    this.holdCounter = 0;
+    /** @type {number} */
+    this.releaseCounter = 0;
+    /** @type {number} */
+    this.logCounter = 0;
     
-    console.log('🎙️ PCMProcessor initialized (buffer: 1920 samples = 40ms @48kHz, noise gate: DISABLED)');
+    console.log(
+      '🎙️ PCMProcessor initialized\n' +
+      '   ├─ Buffer: 1920 samples = 40ms @48kHz\n' +
+      '   ├─ Gate OPEN threshold:  0.01 RMS (-40 dBFS)\n' +
+      '   ├─ Gate CLOSE threshold: 0.006 RMS (hysteresis)\n' +
+      '   ├─ Hold: 4 buffers (~160ms)\n' +
+      '   └─ Release: 3-buffer fade-out'
+    );
   }
 
   /**
-   * Process audio input
    * @param {Float32Array[][]} inputs
    * @param {Float32Array[][]} outputs
    * @param {Record<string, Float32Array>} parameters
@@ -45,16 +63,10 @@ class PCMProcessor extends AudioWorkletProcessor {
    */
   process(inputs, outputs, parameters) {
     const input = inputs[0];
-    
-    if (!input || input.length === 0) {
-      return true;
-    }
+    if (!input || input.length === 0) return true;
 
     const inputChannel = input[0];
-    
-    if (!inputChannel || inputChannel.length === 0) {
-      return true;
-    }
+    if (!inputChannel || inputChannel.length === 0) return true;
 
     this.audioBuffer.push(new Float32Array(inputChannel));
     this.bufferSize += inputChannel.length;
@@ -67,7 +79,6 @@ class PCMProcessor extends AudioWorkletProcessor {
   }
 
   /**
-   * Calculate RMS (Root Mean Square) volume of audio data
    * @param {Float32Array} data
    * @returns {number}
    * @private
@@ -81,13 +92,10 @@ class PCMProcessor extends AudioWorkletProcessor {
   }
 
   /**
-   * Send buffered audio data to main thread with Noise Gate filtering
    * @private
    */
   sendAudioData() {
-    if (this.audioBuffer.length === 0) {
-      return;
-    }
+    if (this.audioBuffer.length === 0) return;
 
     const totalLength = this.bufferSize;
     const concatenated = new Float32Array(totalLength);
@@ -98,16 +106,57 @@ class PCMProcessor extends AudioWorkletProcessor {
       offset += chunk.length;
     }
 
-    // 🎚️ NOISE GATE: Calculate RMS and filter low-level noise
     const rms = this.calculateRMS(concatenated);
-    
     let dataToSend;
-    if (rms < this.NOISE_THRESHOLD) {
-      // Background noise - send digital silence
-      dataToSend = new Float32Array(totalLength).fill(0);
-    } else {
-      // Real audio - pass through
+    let gateState;
+
+    if (rms >= this.GATE_OPEN_THRESHOLD) {
+      this.gateOpen = true;
+      this.holdCounter = this.HOLD_BUFFERS;
+      this.releaseCounter = 0;
       dataToSend = concatenated;
+      gateState = 'OPEN';
+    } else if (this.gateOpen && rms >= this.GATE_CLOSE_THRESHOLD) {
+      this.holdCounter = this.HOLD_BUFFERS;
+      this.releaseCounter = 0;
+      dataToSend = concatenated;
+      gateState = 'OPEN-HYSTERESIS';
+    } else if (this.holdCounter > 0) {
+      this.holdCounter--;
+      dataToSend = concatenated;
+      gateState = 'HOLD(' + this.holdCounter + ')';
+    } else if (this.gateOpen) {
+      this.releaseCounter++;
+      const envelope = 1.0 - (this.releaseCounter / this.RELEASE_BUFFERS);
+      if (envelope <= 0) {
+        this.gateOpen = false;
+        this.releaseCounter = 0;
+        dataToSend = new Float32Array(totalLength);
+        gateState = 'CLOSED';
+      } else {
+        dataToSend = new Float32Array(totalLength);
+        for (let i = 0; i < totalLength; i++) {
+          const progress = i / totalLength;
+          const sampleEnvelope = envelope * (1.0 - progress) + (envelope - (1.0 / this.RELEASE_BUFFERS)) * progress;
+          dataToSend[i] = concatenated[i] * Math.max(0, sampleEnvelope);
+        }
+        gateState = 'RELEASE(' + this.releaseCounter + '/' + this.RELEASE_BUFFERS + ')';
+      }
+    } else {
+      dataToSend = new Float32Array(totalLength);
+      gateState = 'CLOSED';
+    }
+
+    this.logCounter++;
+    if (this.logCounter % 50 === 0 || (gateState !== 'CLOSED' && gateState !== 'OPEN')) {
+      const barFull = Math.min(20, Math.round(rms * 200));
+      const barEmpty = Math.max(0, 20 - barFull);
+      let bar = '';
+      for (let i = 0; i < barFull; i++) bar += '\u2588';
+      for (let i = 0; i < barEmpty; i++) bar += '\u2591';
+      const icon = this.gateOpen ? '\uD83D\uDFE2' : '\uD83D\uDD34';
+      const padded = (gateState + '                  ').substring(0, 18);
+      console.log(icon + ' GATE ' + padded + ' \u2502 RMS ' + rms.toFixed(4) + ' \u2502 ' + bar + ' \u2502');
     }
 
     this.port.postMessage({
@@ -115,7 +164,8 @@ class PCMProcessor extends AudioWorkletProcessor {
       data: dataToSend,
       timestamp: globalThis.currentTime || Date.now(),
       rms: rms,
-      isFiltered: rms < this.NOISE_THRESHOLD
+      isFiltered: !this.gateOpen && this.holdCounter === 0 && this.releaseCounter === 0,
+      gateState: gateState
     });
 
     this.audioBuffer = [];

@@ -784,16 +784,111 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage, 
   }
 }
 
-function isVoiceActivity(pcmData: Buffer): boolean {
-  if (pcmData.length < 4) return false;
+const GATE_OPEN_RMS = 328;
+const GATE_CLOSE_RMS = 200;
+const GATE_HOLD_CHUNKS = 4;
+const GATE_RELEASE_CHUNKS = 3;
+
+interface NoiseGateState {
+  open: boolean;
+  holdCounter: number;
+  releaseCounter: number;
+  logCounter: number;
+}
+
+const noiseGates = new Map<string, NoiseGateState>();
+
+function getNoiseGate(sessionId: string): NoiseGateState {
+  let gate = noiseGates.get(sessionId);
+  if (!gate) {
+    gate = { open: false, holdCounter: 0, releaseCounter: 0, logCounter: 0 };
+    noiseGates.set(sessionId, gate);
+    log.info(`🎚️ [NOISE-GATE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    log.info(`🎚️ [NOISE-GATE] Gate created for session ${sessionId.slice(0, 8)}`);
+    log.info(`🎚️ [NOISE-GATE]   OPEN threshold:  ${GATE_OPEN_RMS} RMS (≈0.01 normalized)`);
+    log.info(`🎚️ [NOISE-GATE]   CLOSE threshold: ${GATE_CLOSE_RMS} RMS (≈0.006 normalized)`);
+    log.info(`🎚️ [NOISE-GATE]   Hold: ${GATE_HOLD_CHUNKS} chunks, Release: ${GATE_RELEASE_CHUNKS} fade`);
+    log.info(`🎚️ [NOISE-GATE] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  }
+  return gate;
+}
+
+function destroyNoiseGate(sessionId: string): void {
+  noiseGates.delete(sessionId);
+}
+
+function calculatePcmRMS(pcmData: Buffer): number {
+  if (pcmData.length < 4) return 0;
   let sumSquares = 0;
   const sampleCount = Math.floor(pcmData.length / 2);
   for (let i = 0; i < sampleCount; i++) {
     const sample = pcmData.readInt16LE(i * 2);
     sumSquares += sample * sample;
   }
-  const rms = Math.sqrt(sumSquares / sampleCount);
-  return rms > 200;
+  return Math.sqrt(sumSquares / sampleCount);
+}
+
+function isVoiceActivity(pcmData: Buffer): boolean {
+  return calculatePcmRMS(pcmData) > GATE_OPEN_RMS;
+}
+
+function applyNoiseGate(sessionId: string, pcm: Buffer): Buffer {
+  const gate = getNoiseGate(sessionId);
+  const rms = calculatePcmRMS(pcm);
+  let gateState: string;
+  let outputPcm: Buffer;
+
+  if (rms >= GATE_OPEN_RMS) {
+    gate.open = true;
+    gate.holdCounter = GATE_HOLD_CHUNKS;
+    gate.releaseCounter = 0;
+    outputPcm = pcm;
+    gateState = 'OPEN';
+  } else if (gate.open && rms >= GATE_CLOSE_RMS) {
+    gate.holdCounter = GATE_HOLD_CHUNKS;
+    gate.releaseCounter = 0;
+    outputPcm = pcm;
+    gateState = 'OPEN-HYST';
+  } else if (gate.holdCounter > 0) {
+    gate.holdCounter--;
+    outputPcm = pcm;
+    gateState = `HOLD(${gate.holdCounter})`;
+  } else if (gate.open) {
+    gate.releaseCounter++;
+    const envelope = 1.0 - (gate.releaseCounter / GATE_RELEASE_CHUNKS);
+    if (envelope <= 0) {
+      gate.open = false;
+      gate.releaseCounter = 0;
+      outputPcm = Buffer.alloc(pcm.length);
+      gateState = 'CLOSED';
+    } else {
+      const sampleCount = Math.floor(pcm.length / 2);
+      outputPcm = Buffer.alloc(pcm.length);
+      for (let i = 0; i < sampleCount; i++) {
+        const sample = pcm.readInt16LE(i * 2);
+        const progress = i / sampleCount;
+        const sampleEnvelope = envelope * (1.0 - progress) + (envelope - (1.0 / GATE_RELEASE_CHUNKS)) * progress;
+        const fadedSample = Math.round(sample * Math.max(0, sampleEnvelope));
+        outputPcm.writeInt16LE(Math.max(-32768, Math.min(32767, fadedSample)), i * 2);
+      }
+      gateState = `RELEASE(${gate.releaseCounter}/${GATE_RELEASE_CHUNKS})`;
+    }
+  } else {
+    outputPcm = Buffer.alloc(pcm.length);
+    gateState = 'CLOSED';
+  }
+
+  gate.logCounter++;
+  const shouldLog = gate.logCounter % 100 === 0 || (gateState !== 'CLOSED' && gateState !== 'OPEN');
+  if (shouldLog) {
+    const normalized = (rms / 32768).toFixed(4);
+    const barLen = Math.min(20, Math.round((rms / 32768) * 200));
+    const bar = '█'.repeat(barLen) + '░'.repeat(20 - barLen);
+    const icon = gate.open ? '🟢' : '🔴';
+    log.info(`${icon} [GATE] ${gateState.padEnd(16)} │ RMS ${String(Math.round(rms)).padStart(5)} (${normalized}) │ ${bar} │ ${sessionId.slice(0, 8)}`);
+  }
+
+  return outputPcm;
 }
 
 function handleAudioData(sessionId: string, audioData: Buffer): void {
@@ -804,7 +899,8 @@ function handleAudioData(sessionId: string, audioData: Buffer): void {
   if (isVoiceActivity(pcm)) {
     sessionManager.recordAudioIn(sessionId, audioData.length);
   }
-  session.replitClient?.sendAudio(pcm);
+  const gatedPcm = applyNoiseGate(sessionId, pcm);
+  session.replitClient?.sendAudio(gatedPcm);
 }
 
 function queueAudioForFreeSWITCH(sessionId: string, audio: Buffer): void {
@@ -861,6 +957,7 @@ function cleanupSession(sessionId: string): void {
   audioOutputQueues.delete(sessionId);
   lastQueueHadAudio.delete(sessionId);
   bgDestroySession(sessionId);
+  destroyNoiseGate(sessionId);
 }
 
 async function routeToOverflow(uuid: string, calledNumber: string, overflowCfg?: any): Promise<boolean> {

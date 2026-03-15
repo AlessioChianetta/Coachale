@@ -6325,10 +6325,18 @@ Questa regola vale SEMPRE, senza eccezioni, per OGNI prenotazione.`;
           };
         }
         
-        console.log(`🎙️ [${connectionId}] Using voice: ${voiceName}`);
-        console.log(`🧠 [${connectionId}] ThinkingBudget: ${voiceThinkingBudget} (applies to entire session)`);
-        console.log(`🤖 [${connectionId}] Model: ${liveModelId} [${liveApiBackend}] - Language: ITALIAN ONLY`);
-        console.log(`🎙️ [${connectionId}] VAD: start=${voiceVadStartSensitivity}, end=${voiceVadEndSensitivity}, silence=${voiceVadSilenceMs}ms, proactiveAudio=ON, affectiveDialog=${voiceAffectiveDialog}`);
+        console.log(`\n🎛️ [${connectionId}] ━━━━━━━━━━━━━ GEMINI LIVE SESSION CONFIG ━━━━━━━━━━━━━`);
+        console.log(`🎛️ [${connectionId}]  🤖 Model:            ${liveModelId} [${liveApiBackend}]`);
+        console.log(`🎛️ [${connectionId}]  🎙️ Voice:            ${voiceName}`);
+        console.log(`🎛️ [${connectionId}]  🧠 ThinkingBudget:   ${voiceThinkingBudget} ${voiceThinkingBudget > 0 ? '✅' : '⚪ (disabled)'}`);
+        console.log(`🎛️ [${connectionId}]  🎯 ProactiveAudio:   ON ✅ (ignora rumore di fondo)`);
+        console.log(`🎛️ [${connectionId}]  💬 AffectiveDialog:  ${voiceAffectiveDialog ? 'ON ✅' : 'OFF ⚪'}`);
+        console.log(`🎛️ [${connectionId}]  📡 VAD Start:        ${voiceVadStartSensitivity}`);
+        console.log(`🎛️ [${connectionId}]  📡 VAD End:          ${voiceVadEndSensitivity}`);
+        console.log(`🎛️ [${connectionId}]  🔇 VAD Silence:      ${voiceVadSilenceMs}ms`);
+        console.log(`🎛️ [${connectionId}]  🔄 Session Resume:   ${validatedResumeHandle ? 'RESUMING' : 'NEW SESSION'}`);
+        console.log(`🎛️ [${connectionId}]  🌐 Source:           ${mode === 'phone_service' ? '📞 TELEFONO/VPS' : '💻 BROWSER'}`);
+        console.log(`🎛️ [${connectionId}] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         if (validatedResumeHandle) {
           console.log(`🔄 [${connectionId}] RESUMING SESSION with handle: ${validatedResumeHandle.substring(0, 20)}...`);
         } else {

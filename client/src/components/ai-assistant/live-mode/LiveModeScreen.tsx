@@ -1731,57 +1731,110 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
         const workletCode = `
 // @ts-check
 // PCM Audio Processor - captures audio for streaming to Gemini Live API
-// Buffer threshold: 1920 samples = 40ms at 48kHz native sample rate
+// Noise Gate: open=0.01, close=0.006 (hysteresis), hold=4buf (~160ms), release=3buf fade
 
 class PCMProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this.bufferSize = 0;
-    // INCREASED: 1920 samples = 40ms at 48kHz (native rate)
-    // This ensures proper chunk size BEFORE resampling to 16kHz
     this.bufferThreshold = 1920;
     this.audioBuffer = [];
-    console.log('🎙️ PCMProcessor initialized (buffer: 1920 samples = 40ms @48kHz)');
+    this.GATE_OPEN_THRESHOLD = 0.01;
+    this.GATE_CLOSE_THRESHOLD = 0.006;
+    this.HOLD_BUFFERS = 4;
+    this.RELEASE_BUFFERS = 3;
+    this.gateOpen = false;
+    this.holdCounter = 0;
+    this.releaseCounter = 0;
+    this.logCounter = 0;
+    console.log('🎙️ PCMProcessor (inline fallback) initialized — Gate: open=0.01 close=0.006 hold=4 release=3');
   }
 
   process(inputs, outputs, parameters) {
     const input = inputs[0];
     if (!input || input.length === 0) return true;
-
     const inputChannel = input[0];
     if (!inputChannel || inputChannel.length === 0) return true;
-
-    // Store audio chunk
     this.audioBuffer.push(new Float32Array(inputChannel));
     this.bufferSize += inputChannel.length;
-
-    // Send when buffer is full
     if (this.bufferSize >= this.bufferThreshold) {
       this.sendAudioData();
     }
-
     return true;
+  }
+
+  calculateRMS(data) {
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+    return Math.sqrt(sum / data.length);
   }
 
   sendAudioData() {
     if (this.audioBuffer.length === 0) return;
-
     const totalLength = this.bufferSize;
     const concatenated = new Float32Array(totalLength);
-    
     let offset = 0;
     for (const chunk of this.audioBuffer) {
       concatenated.set(chunk, offset);
       offset += chunk.length;
     }
-
-    // Send to main thread for resampling and transmission
+    const rms = this.calculateRMS(concatenated);
+    let dataToSend;
+    let gateState;
+    if (rms >= this.GATE_OPEN_THRESHOLD) {
+      this.gateOpen = true;
+      this.holdCounter = this.HOLD_BUFFERS;
+      this.releaseCounter = 0;
+      dataToSend = concatenated;
+      gateState = 'OPEN';
+    } else if (this.gateOpen && rms >= this.GATE_CLOSE_THRESHOLD) {
+      this.holdCounter = this.HOLD_BUFFERS;
+      this.releaseCounter = 0;
+      dataToSend = concatenated;
+      gateState = 'OPEN-HYSTERESIS';
+    } else if (this.holdCounter > 0) {
+      this.holdCounter--;
+      dataToSend = concatenated;
+      gateState = 'HOLD(' + this.holdCounter + ')';
+    } else if (this.gateOpen) {
+      this.releaseCounter++;
+      const envelope = 1.0 - (this.releaseCounter / this.RELEASE_BUFFERS);
+      if (envelope <= 0) {
+        this.gateOpen = false;
+        this.releaseCounter = 0;
+        dataToSend = new Float32Array(totalLength);
+        gateState = 'CLOSED';
+      } else {
+        dataToSend = new Float32Array(totalLength);
+        for (let i = 0; i < totalLength; i++) {
+          const progress = i / totalLength;
+          const se = envelope * (1.0 - progress) + (envelope - (1.0 / this.RELEASE_BUFFERS)) * progress;
+          dataToSend[i] = concatenated[i] * Math.max(0, se);
+        }
+        gateState = 'RELEASE(' + this.releaseCounter + '/' + this.RELEASE_BUFFERS + ')';
+      }
+    } else {
+      dataToSend = new Float32Array(totalLength);
+      gateState = 'CLOSED';
+    }
+    this.logCounter++;
+    if (this.logCounter % 50 === 0 || (gateState !== 'CLOSED' && gateState !== 'OPEN')) {
+      const bf = Math.min(20, Math.round(rms * 200));
+      const be = Math.max(0, 20 - bf);
+      let bar = '';
+      for (let b = 0; b < bf; b++) bar += String.fromCharCode(0x2588);
+      for (let b = 0; b < be; b++) bar += String.fromCharCode(0x2591);
+      const icon = this.gateOpen ? '\\uD83D\\uDFE2' : '\\uD83D\\uDD34';
+      console.log(icon + ' GATE ' + gateState + ' | RMS ' + rms.toFixed(4) + ' | ' + bar + ' |');
+    }
     this.port.postMessage({
       type: 'audio',
-      data: concatenated,
+      data: dataToSend,
       timestamp: globalThis.currentTime || Date.now(),
+      rms: rms,
+      isFiltered: !this.gateOpen && this.holdCounter === 0 && this.releaseCounter === 0,
+      gateState: gateState
     });
-
     this.audioBuffer = [];
     this.bufferSize = 0;
   }
