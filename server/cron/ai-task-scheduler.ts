@@ -546,7 +546,7 @@ export async function handleCrmLeadOutreach(task: AIScheduledTask): Promise<void
     }
 
     try {
-      const channelLead = { ...leadObj, phone: ch.contactValue, email: ch.channel === 'email' ? ch.contactValue : leadObj.email };
+      const channelLead = { ...leadObj, phone: ch.channel === 'email' ? leadObj.phone : ch.contactValue, email: ch.channel === 'email' ? ch.contactValue : leadObj.email };
       const content = await generateOutreachContent(task.consultant_id, channelLead, ch.channel, salesCtx, consultantName, undefined, outreachConfig, loadedWaTemplates, consultantBusinessName);
       const result = await scheduleIndividualOutreach(task.consultant_id, channelLead, ch.channel, content, scheduleConfig, hunterMode === 'autonomous' ? 'autonomous' : 'approval', i);
 

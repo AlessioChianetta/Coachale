@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Bot, Wand2, Sparkles, Target, AlertCircle, UserCircle2, Save, Loader2 } from "lucide-react";
+import { Wand2, Sparkles, Target, AlertCircle, UserCircle2 } from "lucide-react";
 import AgentInstructionsPanel from "../AgentInstructionsPanel";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,10 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { getAuthHeaders } from "@/lib/auth";
 
 interface AgentInstructionsProps {
   formData: any;
@@ -36,9 +32,6 @@ const aiPersonalities = [
 ];
 
 export default function AgentInstructions({ formData, onChange, errors, mode, agentId, onInstructionsSaved }: AgentInstructionsProps) {
-  const { toast } = useToast();
-  const [isSavingIdentity, setIsSavingIdentity] = useState(false);
-
   const handleInstructionsChange = (data: {
     agentInstructions: string;
     agentInstructionsEnabled: boolean;
@@ -53,55 +46,6 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
     if (data.businessHeaderMode !== undefined) onChange("businessHeaderMode", data.businessHeaderMode);
     if (data.professionalRole !== undefined) onChange("professionalRole", data.professionalRole);
     if (data.customBusinessHeader !== undefined) onChange("customBusinessHeader", data.customBusinessHeader);
-  };
-
-  const handleSaveIdentity = async () => {
-    if (!agentId || mode !== "edit") return;
-
-    setIsSavingIdentity(true);
-    try {
-      const payload = {
-        businessHeaderMode: formData.businessHeaderMode,
-        professionalRole: formData.professionalRole,
-        customBusinessHeader: formData.customBusinessHeader,
-      };
-
-      console.log("🔵 [SAVE IDENTITY] Inizio salvataggio identità AI");
-      console.log("🔵 [SAVE IDENTITY] Agent ID:", agentId);
-      console.log("🔵 [SAVE IDENTITY] Payload:", JSON.stringify(payload, null, 2));
-
-      const response = await fetch(`/api/whatsapp/config/${agentId}/instructions`, {
-        method: "PUT",
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("❌ [SAVE IDENTITY] Errore dal server:", errorData);
-        throw new Error(errorData.error || "Failed to save identity");
-      }
-
-      const responseData = await response.json();
-      console.log("✅ [SAVE IDENTITY] Risposta server:", JSON.stringify(responseData, null, 2));
-
-      toast({
-        title: "✅ Identità salvata",
-        description: "L'identità AI è stata aggiornata con successo.",
-      });
-    } catch (error: any) {
-      console.error("❌ [SAVE IDENTITY] Errore catch:", error);
-      toast({
-        title: "❌ Errore",
-        description: error.message || "Impossibile salvare l'identità",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingIdentity(false);
-    }
   };
 
   const isProactiveAgent = formData.agentType === "proactive_setter" || formData.isProactiveAgent === true;
@@ -202,26 +146,6 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
               </Alert>
             )}
 
-            {mode === "edit" && agentId && (
-              <Button
-                onClick={handleSaveIdentity}
-                disabled={isSavingIdentity}
-                className="w-full mt-4"
-                variant="secondary"
-              >
-                {isSavingIdentity ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Salvataggio...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Salva Identità AI
-                  </>
-                )}
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>

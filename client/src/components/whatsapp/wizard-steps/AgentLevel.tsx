@@ -148,7 +148,7 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
         </p>
       </div>
 
-      <Card className="border border-indigo-200 bg-gradient-to-br from-indigo-50/80 to-white shadow-sm">
+      <Card className="border shadow-sm">
         <CardContent className="pt-5 pb-4">
           <div className="flex gap-3 items-start">
             <div className="p-2 rounded-lg bg-indigo-100 shrink-0 mt-0.5">

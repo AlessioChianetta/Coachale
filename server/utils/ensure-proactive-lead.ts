@@ -22,9 +22,19 @@ export async function ensureProactiveLead(params: EnsureProactiveLeadParams): Pr
     return { id: '', created: false };
   }
 
-  let normalizedPhone = phoneNumber.replace(/[\s\-()]/g, '');
-  if (!normalizedPhone.startsWith('+') && normalizedPhone.length >= 9) {
+  let normalizedPhone = phoneNumber.replace(/[\s\-\.\(\)]/g, '');
+  if (normalizedPhone.includes('@') || /[a-zA-Z]/.test(normalizedPhone)) {
+    console.warn(`${LOG} ⚠️ Skipping invalid phone (contains letters or @): "${phoneNumber}" (source: ${source || 'unknown'})`);
+    return { id: '', created: false };
+  }
+  if (normalizedPhone.startsWith('0039')) {
+    normalizedPhone = '+39' + normalizedPhone.substring(4);
+  } else if (!normalizedPhone.startsWith('+') && normalizedPhone.length >= 9) {
     normalizedPhone = '+39' + normalizedPhone;
+  }
+  if (!/^\+\d{4,15}$/.test(normalizedPhone)) {
+    console.warn(`${LOG} ⚠️ Skipping invalid phone after normalization: "${normalizedPhone}" (original: "${phoneNumber}", source: ${source || 'unknown'})`);
+    return { id: '', created: false };
   }
 
   const PLACEHOLDER_NAMES_LEAD = ['contatto', 'cliente', 'unknown', 'sconosciuto', 'lead', 'lead sconosciuto'];

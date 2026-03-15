@@ -83,9 +83,6 @@ const emptyFormData = {
   workingDays: ["monday", "tuesday", "wednesday", "thursday", "friday"],
   afterHoursMessage: "Ciao! Ti risponderò durante i miei orari di lavoro.",
   bookingEnabled: true,
-  objectionHandlingEnabled: true,
-  disqualificationEnabled: true,
-  upsellingEnabled: false,
   ttsEnabled: true,
   audioResponseMode: "mirror" as const,
   businessName: "",
@@ -320,9 +317,6 @@ export default function WhatsAppAgentWizard({
     
     console.log("📋 [WIZARD] Feature Blocks:", {
       bookingEnabled: formData.bookingEnabled,
-      objectionHandlingEnabled: formData.objectionHandlingEnabled,
-      disqualificationEnabled: formData.disqualificationEnabled,
-      upsellingEnabled: formData.upsellingEnabled,
     });
     console.log("🎙️ [WIZARD] TTS Configuration:", {
       ttsEnabled: formData.ttsEnabled,
@@ -373,7 +367,7 @@ export default function WhatsAppAgentWizard({
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-8">
-      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background rounded-lg p-6 shadow-lg">
+      <div className="bg-muted/30 rounded-lg p-6 border shadow-sm">
         <Stepper
           steps={steps}
           currentStep={currentStep}
@@ -389,7 +383,7 @@ export default function WhatsAppAgentWizard({
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.3 }}
         >
-          <Card className="shadow-xl">
+          <Card className="border shadow-sm">
             <CardContent className="pt-6">
               {currentStep === 0 && (
                 <AgentBasicSetup
@@ -475,7 +469,7 @@ export default function WhatsAppAgentWizard({
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                className="gap-2"
               >
                 {isSaving ? (
                   <>
@@ -501,7 +495,7 @@ export default function WhatsAppAgentWizard({
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+              className="gap-2"
             >
               {isSaving ? (
                 <>
@@ -524,7 +518,7 @@ export default function WhatsAppAgentWizard({
         <DialogContent className="max-w-6xl max-h-[95vh]">
           <DialogHeader className="space-y-3">
             <DialogTitle className="flex items-center gap-3 text-3xl">
-              <div className="p-2 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg">
+              <div className="p-2 bg-primary/10 rounded-lg">
                 <Sparkles className="h-8 w-8 text-primary" />
               </div>
               {mode === "create" ? "🎉 Conferma Creazione Agente" : "✨ Conferma Modifica Agente"}
@@ -879,7 +873,7 @@ export default function WhatsAppAgentWizard({
             <Button
               onClick={confirmSave}
               disabled={isSaving}
-              className="gap-2 bg-gradient-to-r from-primary to-primary/80"
+              className="gap-2"
             >
               {isSaving ? (
                 <>

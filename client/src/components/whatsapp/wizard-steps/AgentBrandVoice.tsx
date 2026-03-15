@@ -958,7 +958,7 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
       {/* File Search Sync Overlay */}
       {isSyncingFileSearch && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-card border rounded-xl p-8 shadow-xl max-w-md text-center space-y-4">
+          <div className="bg-card border rounded-xl p-8 shadow-sm max-w-md text-center space-y-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">Sincronizzazione AI in corso</h3>
@@ -984,7 +984,7 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
       <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-500 shadow-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary shadow-sm">
               <Wand2 className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -2458,7 +2458,7 @@ function QuickUploadDropzone({ onFilesDropped }: QuickUploadDropzoneProps) {
       className={`relative p-8 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 ${
         isDragActive
           ? "border-primary bg-primary/10 scale-[1.02]"
-          : "border-primary/30 bg-gradient-to-br from-primary/5 to-orange-500/5 hover:border-primary/50 hover:bg-primary/10"
+          : "border-primary/30 bg-primary/5 hover:border-primary/50 hover:bg-primary/10"
       }`}
     >
       <input {...getInputProps()} />

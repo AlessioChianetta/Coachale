@@ -541,6 +541,21 @@ export default function ConsultantClientsPage() {
     });
   };
 
+  const normalizePhoneInput = (phone: string): string => {
+    if (!phone || phone.trim().length === 0) return phone;
+    let cleaned = phone.replace(/[\s\-\.\(\)]/g, '');
+    if (cleaned.includes('@') || /[a-zA-Z]/.test(cleaned)) return phone;
+    if (cleaned.startsWith('0039')) {
+      cleaned = '+39' + cleaned.substring(4);
+    } else if (cleaned.startsWith('+')) {
+    } else if (/^3\d{8,9}$/.test(cleaned)) {
+      cleaned = '+39' + cleaned;
+    } else if (cleaned.startsWith('39') && /^393\d{8,9}$/.test(cleaned)) {
+      cleaned = '+' + cleaned;
+    }
+    return cleaned;
+  };
+
   const handleSaveClient = async () => {
     if (!editingClient) return;
 
@@ -2463,6 +2478,7 @@ export default function ConsultantClientsPage() {
                 type="tel"
                 value={newClientForm.phoneNumber}
                 onChange={(e) => setNewClientForm(prev => ({...prev, phoneNumber: e.target.value}))}
+                onBlur={(e) => setNewClientForm(prev => ({...prev, phoneNumber: normalizePhoneInput(e.target.value)}))}
                 className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="+39 333 1234567"
               />
@@ -2632,8 +2648,9 @@ export default function ConsultantClientsPage() {
                 id="phoneNumber"
                 value={editForm.phoneNumber}
                 onChange={(e) => setEditForm(prev => ({...prev, phoneNumber: e.target.value}))}
+                onBlur={(e) => setEditForm(prev => ({...prev, phoneNumber: normalizePhoneInput(e.target.value)}))}
                 className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
-                placeholder="+39 123 456 7890"
+                placeholder="+39 333 1234567"
               />
             </div>
             
