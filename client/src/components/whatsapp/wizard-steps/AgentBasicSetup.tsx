@@ -240,8 +240,8 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
         </p>
       </div>
 
-      <Card className="border-2 border-primary/20 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10">
+      <Card className="border shadow-sm">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5 text-primary" />
             Nome Agente
@@ -288,10 +288,10 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
         </CardContent>
       </Card>
 
-      <Card className="border-2 border-blue-500/20 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-500/5 to-blue-500/10">
+      <Card className="border shadow-sm">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-blue-500" />
+            <MessageSquare className="h-5 w-5 text-primary" />
             Tipo Agente
           </CardTitle>
           <CardDescription>Scegli come questo agente interagisce con i lead</CardDescription>
@@ -431,10 +431,10 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
         </CardContent>
       </Card>
 
-      <Card className="border-2 border-cyan-500/20 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-cyan-500/5 to-cyan-500/10">
+      <Card className="border shadow-sm">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-cyan-500" />
+            <MessageSquare className="h-5 w-5 text-primary" />
             Modalità di Integrazione
           </CardTitle>
           <CardDescription>Scegli se integrare WhatsApp o usare solo l'agente AI</CardDescription>
@@ -502,10 +502,10 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
       </Card>
 
       {(formData.integrationMode || "whatsapp_ai") === "whatsapp_ai" && (
-        <Card className="border-2 border-purple-500/20 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-purple-500/5 to-purple-500/10">
+        <Card className="border shadow-sm">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5 text-purple-500" />
+              <Key className="h-5 w-5 text-primary" />
               Credenziali Twilio
             </CardTitle>
             <CardDescription>Account e Auth Token dalle impostazioni centralizzate, numero WhatsApp specifico per agente</CardDescription>
@@ -583,10 +583,10 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
         </Card>
       )}
 
-      <Card className="border-2 border-amber-500/20 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-amber-500/5 to-amber-500/10">
+      <Card className="border shadow-sm">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-amber-500" />
+            <Sparkles className="h-5 w-5 text-primary" />
             Opzioni Agente
           </CardTitle>
           <CardDescription>Configura il comportamento del tuo agente</CardDescription>
@@ -658,10 +658,10 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
         </CardContent>
       </Card>
 
-      <Card className="border-2 border-orange-500/20 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-orange-500/5 to-orange-500/10">
+      <Card className="border shadow-sm">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-orange-500" />
+            <Bell className="h-5 w-5 text-primary" />
             Notifiche Appuntamenti
           </CardTitle>
           <CardDescription>

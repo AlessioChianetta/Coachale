@@ -981,7 +981,7 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
         </p>
       </div>
 
-      <div className="rounded-xl border border-violet-200/60 bg-gradient-to-r from-violet-50/80 to-purple-50/80 p-4">
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-500 shadow-sm">
@@ -995,7 +995,7 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
           <Button
             onClick={handleGenerateFromLuca}
             disabled={isGeneratingFromLuca}
-            className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white shadow-sm shrink-0"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm shrink-0"
           >
             {isGeneratingFromLuca ? (
               <>
@@ -1013,9 +1013,9 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
       </div>
 
       <Collapsible open={businessInfoOpen} onOpenChange={setBusinessInfoOpen}>
-        <Card className="border-2 border-primary/20 shadow-lg">
+        <Card className="border shadow-sm">
           <CollapsibleTrigger className="w-full">
-            <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 cursor-pointer hover:from-primary/10 hover:to-primary/15 transition-colors">
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Building2 className="h-5 w-5 text-primary" />
@@ -1095,12 +1095,12 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
       </Collapsible>
 
       <Collapsible open={authorityOpen} onOpenChange={setAuthorityOpen}>
-        <Card className="border-2 border-blue-500/20 shadow-lg">
+        <Card className="border shadow-sm">
           <CollapsibleTrigger className="w-full">
-            <CardHeader className="bg-gradient-to-r from-blue-500/5 to-blue-500/10 cursor-pointer hover:from-blue-500/10 hover:to-blue-500/15 transition-colors">
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-blue-500" />
+                  <Target className="h-5 w-5 text-primary" />
                   <CardTitle>Authority & Posizionamento</CardTitle>
                 </div>
                 {authorityOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
@@ -1234,12 +1234,12 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
       </Collapsible>
 
       <Collapsible open={credentialsOpen} onOpenChange={setCredentialsOpen}>
-        <Card className="border-2 border-green-500/20 shadow-lg">
+        <Card className="border shadow-sm">
           <CollapsibleTrigger className="w-full">
-            <CardHeader className="bg-gradient-to-r from-green-500/5 to-green-500/10 cursor-pointer hover:from-green-500/10 hover:to-green-500/15 transition-colors">
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Award className="h-5 w-5 text-green-500" />
+                  <Award className="h-5 w-5 text-primary" />
                   <CardTitle>Credenziali & Risultati</CardTitle>
                 </div>
                 {credentialsOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
@@ -1405,12 +1405,12 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
       </Collapsible>
 
       <Collapsible open={servicesOpen} onOpenChange={setServicesOpen}>
-        <Card className="border-2 border-purple-500/20 shadow-lg">
+        <Card className="border shadow-sm">
           <CollapsibleTrigger className="w-full">
-            <CardHeader className="bg-gradient-to-r from-purple-500/5 to-purple-500/10 cursor-pointer hover:from-purple-500/10 hover:to-purple-500/15 transition-colors">
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-purple-500" />
+                  <Star className="h-5 w-5 text-primary" />
                   <CardTitle>Servizi & Garanzie</CardTitle>
                 </div>
                 {servicesOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
@@ -1481,12 +1481,12 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
       </Collapsible>
 
       <Collapsible open={voiceStyleOpen} onOpenChange={setVoiceStyleOpen}>
-        <Card className="border-2 border-indigo-500/20 shadow-lg">
+        <Card className="border shadow-sm">
           <CollapsibleTrigger className="w-full">
-            <CardHeader className="bg-gradient-to-r from-indigo-500/5 to-indigo-500/10 cursor-pointer hover:from-indigo-500/10 hover:to-indigo-500/15 transition-colors">
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-indigo-500" />
+                  <MessageSquare className="h-5 w-5 text-primary" />
                   <CardTitle>Voce & Stile Personale</CardTitle>
                 </div>
                 {voiceStyleOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
@@ -1617,12 +1617,12 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
       </Collapsible>
 
       <Collapsible open={marketResearchOpen} onOpenChange={setMarketResearchOpen}>
-        <Card className="border-2 border-amber-500/20 shadow-lg">
+        <Card className="border shadow-sm">
           <CollapsibleTrigger className="w-full">
-            <CardHeader className="bg-gradient-to-r from-amber-500/5 to-amber-500/10 cursor-pointer hover:from-amber-500/10 hover:to-amber-500/15 transition-colors">
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Search className="h-5 w-5 text-amber-500" />
+                  <Search className="h-5 w-5 text-primary" />
                   <CardTitle>Ricerca di Mercato</CardTitle>
                   {!marketResearchOpen && (() => {
                     const d = marketResearchData;
@@ -1673,12 +1673,12 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
       </Collapsible>
 
       <Collapsible open={knowledgeOpen} onOpenChange={setKnowledgeOpen}>
-        <Card className="border-2 border-orange-500/20 shadow-lg">
+        <Card className="border shadow-sm">
           <CollapsibleTrigger className="w-full">
-            <CardHeader className="bg-gradient-to-r from-orange-500/5 to-orange-500/10 cursor-pointer hover:from-orange-500/10 hover:to-orange-500/15 transition-colors">
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-orange-500" />
+                  <BookOpen className="h-5 w-5 text-primary" />
                   <CardTitle>📚 Knowledge Base & Documenti</CardTitle>
                 </div>
                 {knowledgeOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}

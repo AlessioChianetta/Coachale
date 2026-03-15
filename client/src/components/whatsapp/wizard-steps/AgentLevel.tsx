@@ -182,8 +182,8 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
         </CardContent>
       </Card>
 
-      <Card className="border-2 border-primary/20 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-4">
+      <Card className="border shadow-sm">
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5 text-primary" />
             Selezione Livelli
@@ -201,8 +201,8 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
       </Card>
 
       {hasLevel1 && (
-        <Card className="border-2 border-amber-500/30 shadow-lg overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-amber-500/10 to-orange-400/10 pb-4">
+        <Card className="border shadow-sm overflow-hidden">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <div className="p-1.5 rounded-md bg-amber-500/20">
@@ -344,8 +344,8 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
       )}
 
       {hasLevel2 && (
-        <Card className="border-2 border-slate-300/50 shadow-lg overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-slate-100/80 to-slate-50 pb-4">
+        <Card className="border shadow-sm overflow-hidden">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <div className="p-1.5 rounded-md bg-slate-200">
@@ -407,8 +407,8 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
       )}
 
       {hasLevel3 && (
-        <Card className="border-2 border-yellow-400/40 shadow-lg overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50/70 pb-4">
+        <Card className="border shadow-sm overflow-hidden">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <div className="p-1.5 rounded-md bg-yellow-200/70">
@@ -476,7 +476,7 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
               <ArrowUpCircle className="h-5 w-5 text-emerald-600" />
               <p className="font-semibold text-sm text-emerald-800">Percorso di Upgrade</p>
             </div>
-            <div className="flex items-center gap-2 justify-center p-4 bg-gradient-to-r from-amber-50 via-slate-50 to-yellow-50 rounded-lg flex-wrap">
+            <div className="flex items-center gap-2 justify-center p-4 bg-muted/50 rounded-lg flex-wrap">
               {hasLevel1 && (
                 <>
                   <div className="text-center">

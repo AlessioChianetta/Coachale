@@ -118,10 +118,10 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
         </p>
       </div>
 
-      <Card className="bg-gradient-to-br from-indigo-50/50 to-violet-50/50 dark:from-indigo-950/20 dark:to-violet-950/20 border-indigo-200 dark:border-indigo-800">
+      <Card className="border shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <UserCircle2 className="h-5 w-5 text-indigo-600" />
+            <UserCircle2 className="h-5 w-5 text-primary" />
             Identità AI
           </CardTitle>
           <CardDescription>
@@ -194,9 +194,9 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
             </RadioGroup>
 
             {formData.businessHeaderMode === 'none' && (
-              <Alert className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
-                <AlertCircle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-sm text-amber-800 dark:text-amber-200">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">
                   Con questa opzione, il tuo template custom ha controllo completo sull'identità. Assicurati di definire chiaramente "Chi sei" nelle istruzioni.
                 </AlertDescription>
               </Alert>
@@ -226,10 +226,10 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200 dark:border-purple-800">
+      <Card className="border shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="h-5 w-5 text-purple-600" />
+            <Sparkles className="h-5 w-5 text-primary" />
             Personalità AI
           </CardTitle>
           <CardDescription>
@@ -268,10 +268,10 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
       </Card>
 
       {isProactiveAgent && (
-        <Card className="bg-gradient-to-br from-blue-50/50 to-cyan-50/50 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800">
+        <Card className="border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Target className="h-5 w-5 text-blue-600" />
+              <Target className="h-5 w-5 text-primary" />
               Default Lead Proattivi
             </CardTitle>
             <CardDescription>
@@ -279,9 +279,9 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Alert className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
-              <AlertCircle className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-sm text-blue-800 dark:text-blue-200">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-sm">
                 Questi campi saranno usati come valori di default quando crei lead proattivi senza specificare obiettivi personalizzati.
               </AlertDescription>
             </Alert>
@@ -289,7 +289,7 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Label htmlFor="defaultObiettivi">Obiettivi Default</Label>
-                <Badge variant="secondary" className="text-xs font-mono bg-purple-100 text-purple-700">
+                <Badge variant="secondary" className="text-xs font-mono">
                   {"{obiettivi}"}
                 </Badge>
               </div>

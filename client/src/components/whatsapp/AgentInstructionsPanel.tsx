@@ -268,8 +268,7 @@ interface InstructionsConfig {
   bookingEnabled?: boolean;
 }
 
-// Predefined templates (matching backend)
-const RECEPTIONIST_TEMPLATE = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+export const RECEPTIONIST_TEMPLATE = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 RUOLO: RECEPTIONIST VIRTUALE (INBOUND)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1220,7 +1219,7 @@ A presto! 👋"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
-const MARCO_SETTER_TEMPLATE = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+export const MARCO_SETTER_TEMPLATE = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 RUOLO: PROACTIVE SETTER (OUTBOUND)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

@@ -53,33 +53,6 @@ const featureBlocks = [
     borderColor: "border-blue-500/20",
   },
   {
-    id: "objectionHandlingEnabled",
-    label: "Gestione Obiezioni",
-    description: "Risponde alle obiezioni con tecniche di vendita avanzate",
-    icon: Shield,
-    color: "text-green-500",
-    bgColor: "bg-green-500/10",
-    borderColor: "border-green-500/20",
-  },
-  {
-    id: "disqualificationEnabled",
-    label: "Disqualificazione Lead",
-    description: "Filtra automaticamente i lead non qualificati",
-    icon: AlertCircle,
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
-    borderColor: "border-orange-500/20",
-  },
-  {
-    id: "upsellingEnabled",
-    label: "Upselling",
-    description: "Propone servizi premium e upgrade durante la conversazione",
-    icon: TrendingUp,
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-    borderColor: "border-purple-500/20",
-  },
-  {
     id: "ttsEnabled",
     label: "Risposte Audio (TTS)",
     description: "L'agente risponde con audio + testo per maggiore accessibilità",
@@ -112,8 +85,8 @@ export default function AgentAvailability({ formData, onChange, errors }: AgentA
         </p>
       </div>
 
-      <Card className="border-2 border-primary/20 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10">
+      <Card className="border shadow-sm">
+        <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
@@ -236,10 +209,10 @@ export default function AgentAvailability({ formData, onChange, errors }: AgentA
         </CardContent>
       </Card>
 
-      <Card className="border-2 border-blue-500/20 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-500/5 to-blue-500/10">
+      <Card className="border shadow-sm">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-blue-500" />
+            <Zap className="h-5 w-5 text-primary" />
             Funzionalità Avanzate
           </CardTitle>
           <CardDescription>Attiva le automazioni per il tuo agente</CardDescription>
@@ -368,10 +341,10 @@ export default function AgentAvailability({ formData, onChange, errors }: AgentA
 
       {/* Appointment Availability Settings - Only shown when booking is enabled */}
       {formData.bookingEnabled && (
-        <Card className="border-2 border-green-500/20 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-green-500/5 to-green-500/10">
+        <Card className="border shadow-sm">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CalendarDays className="h-5 w-5 text-green-500" />
+              <CalendarDays className="h-5 w-5 text-primary" />
               Configurazione Appuntamenti
             </CardTitle>
             <CardDescription>
