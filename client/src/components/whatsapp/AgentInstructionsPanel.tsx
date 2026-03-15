@@ -1784,60 +1784,55 @@ export default function AgentInstructionsPanel({
   // Initialize form when config loads (edit mode)
   useEffect(() => {
     if (configData && mode === "edit") {
-      console.log("📥 [LOAD CONFIG] Caricamento dati dal database");
-      console.log("📥 [LOAD CONFIG] Dati ricevuti:", JSON.stringify({
-        agentInstructionsEnabled: configData.agentInstructionsEnabled,
-        selectedTemplate: configData.selectedTemplate,
-        businessHeaderMode: configData.businessHeaderMode,
-        professionalRole: configData.professionalRole,
-        customBusinessHeader: configData.customBusinessHeader,
-        instructionsLength: configData.agentInstructions?.length || 0,
-      }, null, 2));
+      const wizardTemplate = initialData?.selectedTemplate;
+      const dbTemplate = configData.selectedTemplate;
+      const userChangedTemplate = wizardTemplate && wizardTemplate !== dbTemplate;
 
-      // enabled is always true - removed setEnabled(configData.agentInstructionsEnabled)
-      setSelectedTemplate(configData.selectedTemplate);
-      setBusinessHeaderMode(configData.businessHeaderMode || "assistant");
-      setProfessionalRole(configData.professionalRole || "");
-      setCustomBusinessHeader(configData.customBusinessHeader || "");
+      const effectiveTemplate = userChangedTemplate ? wizardTemplate : dbTemplate;
 
-      // Derive agentType from selectedTemplate
-      if (configData.selectedTemplate === "receptionist" || configData.selectedTemplate === "custom") {
-        // If custom, default to inbound; if receptionist, it's inbound
-        if (configData.selectedTemplate === "receptionist") {
+      console.log("📥 [LOAD CONFIG] Caricamento dati (edit mode)");
+      console.log("📥 [LOAD CONFIG] DB template:", dbTemplate, "| Wizard template:", wizardTemplate, "| Using:", effectiveTemplate);
+
+      isHydratingRef.current = true;
+
+      setSelectedTemplate(effectiveTemplate);
+      setBusinessHeaderMode(userChangedTemplate ? (initialData?.businessHeaderMode || "assistant") : (configData.businessHeaderMode || "assistant"));
+      setProfessionalRole(userChangedTemplate ? (initialData?.professionalRole || "") : (configData.professionalRole || ""));
+      setCustomBusinessHeader(userChangedTemplate ? (initialData?.customBusinessHeader || "") : (configData.customBusinessHeader || ""));
+
+      if (externalAgentType) {
+        setAgentType(mapAgentTypeToInternal(externalAgentType));
+      } else if (effectiveTemplate === "receptionist" || effectiveTemplate === "custom") {
+        if (effectiveTemplate === "receptionist") {
           setAgentType("inbound");
         }
-      } else if (configData.selectedTemplate === "marco_setter") {
+      } else if (effectiveTemplate === "marco_setter") {
         setAgentType("outbound");
-      } else if (configData.selectedTemplate === "informative_advisor") {
+      } else if (effectiveTemplate === "informative_advisor") {
         setAgentType("consultative");
-      } else if (configData.selectedTemplate === "customer_success") {
+      } else if (effectiveTemplate === "customer_success") {
         setAgentType("customer_success");
-      } else if (configData.selectedTemplate === "intake_coordinator") {
+      } else if (effectiveTemplate === "intake_coordinator") {
         setAgentType("intake_coordinator");
       }
 
-      console.log("📥 [LOAD CONFIG] State popolato con:");
-      console.log("  - businessHeaderMode:", configData.businessHeaderMode || "assistant");
-      console.log("  - professionalRole:", configData.professionalRole || "");
-      console.log("  - customBusinessHeader:", configData.customBusinessHeader || "");
-      console.log("  - selectedTemplate:", configData.selectedTemplate);
-
-      // Set initial instructions based on template
-      if (configData.selectedTemplate === "custom") {
-        setInstructions(configData.agentInstructions || "");
-      } else if (configData.selectedTemplate === "receptionist") {
+      if (effectiveTemplate === "custom") {
+        setInstructions(userChangedTemplate ? (initialData?.agentInstructions || "") : (configData.agentInstructions || ""));
+      } else if (effectiveTemplate === "receptionist") {
         setInstructions(RECEPTIONIST_TEMPLATE);
-      } else if (configData.selectedTemplate === "marco_setter") {
+      } else if (effectiveTemplate === "marco_setter") {
         setInstructions(MARCO_SETTER_TEMPLATE);
-      } else if (configData.selectedTemplate === "informative_advisor") {
+      } else if (effectiveTemplate === "informative_advisor") {
         setInstructions(INFORMATIVE_ADVISOR_TEMPLATE);
-      } else if (configData.selectedTemplate === "customer_success") {
+      } else if (effectiveTemplate === "customer_success") {
         setInstructions(CUSTOMER_SUCCESS_TEMPLATE);
-      } else if (configData.selectedTemplate === "intake_coordinator") {
+      } else if (effectiveTemplate === "intake_coordinator") {
         setInstructions(INTAKE_COORDINATOR_TEMPLATE);
       }
+
+      isHydratingRef.current = false;
     }
-  }, [configData, mode]);
+  }, [configData, mode, initialData?.selectedTemplate]);
 
   // Sync businessHeaderMode, professionalRole, customBusinessHeader from initialData (create mode)
   useEffect(() => {
