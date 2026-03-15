@@ -1336,7 +1336,7 @@ export async function getGoogleAIStudioKeyForLive(
 
     return {
       apiKey,
-      modelId: 'gemini-2.5-flash-native-audio-preview-12-2025',
+      modelId: 'gemini-live-2.5-flash-native-audio',
     };
   } catch (error: any) {
     console.error(`❌ Failed to get Google AI Studio key for Live API:`, error.message);
