@@ -1,0 +1,61 @@
+📝 [WEBHOOK] Creating proactive lead: alessioss chianetta trovatoss (+393519272875)
+📧 [EMAIL EXTRACTION] Copying email from leadInfo to main field: assisstenza@conorbitale.it
+📧 [NURTURING AUTO] Enabling nurturing for new lead (consultant has nurturing active)
+Error creating proactive lead: error: duplicate key value violates unique constraint "proactive_leads_consultant_id_phone_number_key"
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async DatabaseStorage.createProactiveLead (/home/runner/workspace/server/storage.ts:4525:22)
+    at async <anonymous> (/home/runner/workspace/server/routes/webhook.ts:530:18) {
+  length: 337,
+  severity: 'ERROR',
+  code: '23505',
+  detail: 'Key (consultant_id, phone_number)=(0c73bbe5-51e1-4108-866b-6be7a52fce3b, +393519272875) already exists.',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'proactive_leads',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'proactive_leads_consultant_id_phone_number_key',
+  file: 'nbtinsert.c',
+  line: '666',
+  routine: '_bt_check_unique'
+}
+❌ [WEBHOOK] Error processing webhook: error: duplicate key value violates unique constraint "proactive_leads_consultant_id_phone_number_key"
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async DatabaseStorage.createProactiveLead (/home/runner/workspace/server/storage.ts:4525:22)
+    at async <anonymous> (/home/runner/workspace/server/routes/webhook.ts:530:18) {
+  length: 337,
+  severity: 'ERROR',
+  code: '23505',
+  detail: 'Key (consultant_id, phone_number)=(0c73bbe5-51e1-4108-866b-6be7a52fce3b, +393519272875) already exists.',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'proactive_leads',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'proactive_leads_consultant_id_phone_number_key',
+  file: 'nbtinsert.c',
+  line: '666',
+  routine: '_bt_check_unique'
+}
+/home/runner/workspace/server/routes/webhook.ts:562
+    if (webhookConfig) {
+    ^
+
+
+ReferenceError: webhookConfig is not defined
+    at <anonymous> (/home/runner/workspace/server/routes/webhook.ts:562:5)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+Node.js v20.20.0

@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { storage } from '../storage';
 import { db } from '../db';
 import * as schema from '@shared/schema';
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { authenticateToken, type AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -213,6 +213,7 @@ router.get('/hubdigital/:secretKey/test', async (req: Request, res: Response) =>
 });
 
 router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
+  let webhookConfig: any = null;
   try {
     const { secretKey } = req.params;
     const payload: HubdigitalPayload = req.body;
@@ -220,7 +221,7 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     console.log(`📨 [WEBHOOK] Received webhook with secretKey: ${secretKey.substring(0, 8)}...`);
     console.log(`📨 [WEBHOOK] RAW PAYLOAD:`, JSON.stringify(payload, null, 2));
 
-    const webhookConfig = await storage.getWebhookConfigBySecret(secretKey);
+    webhookConfig = await storage.getWebhookConfigBySecret(secretKey);
     
     if (!webhookConfig) {
       console.log(`❌ [WEBHOOK] Invalid secretKey: ${secretKey.substring(0, 8)}...`);
@@ -527,11 +528,50 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
 
     console.log(`📝 [WEBHOOK] Creating proactive lead: ${firstName} ${lastName} (${phoneNumber})`);
 
-    const lead = await storage.createProactiveLead(leadData);
+    let lead: any;
+    let wasUpdated = false;
+    try {
+      lead = await storage.createProactiveLead(leadData);
+    } catch (createErr: any) {
+      if (createErr.code === '23505' && createErr.constraint?.includes('phone_number')) {
+        console.log(`🔄 [WEBHOOK] Lead with phone ${phoneNumber} already exists — updating lead_info`);
+        const existingLeads = await db.select()
+          .from(schema.proactiveLeads)
+          .where(
+            and(
+              eq(schema.proactiveLeads.consultantId, webhookConfig.consultantId),
+              eq(schema.proactiveLeads.phoneNumber, phoneNumber)
+            )
+          )
+          .limit(1);
+        if (existingLeads.length > 0) {
+          lead = existingLeads[0];
+          const existingLeadInfo = (lead.leadInfo || {}) as Record<string, any>;
+          const mergedLeadInfo = { ...existingLeadInfo, ...leadInfo };
+          if (existingLeadInfo.rawPayloadSnapshot && leadInfo.rawPayloadSnapshot) {
+            mergedLeadInfo.rawPayloadSnapshot = { ...existingLeadInfo.rawPayloadSnapshot, ...leadInfo.rawPayloadSnapshot };
+          }
+          await db.update(schema.proactiveLeads)
+            .set({
+              leadInfo: mergedLeadInfo,
+              firstName: firstName || lead.firstName,
+              lastName: lastName || lead.lastName,
+              email: leadInfo.email || lead.email,
+            })
+            .where(eq(schema.proactiveLeads.id, lead.id));
+          wasUpdated = true;
+          console.log(`✅ [WEBHOOK] Existing lead updated: ${lead.id}`);
+        } else {
+          throw createErr;
+        }
+      } else {
+        throw createErr;
+      }
+    }
 
     await storage.incrementWebhookLeadsCount(webhookConfig.id);
 
-    console.log(`✅ [WEBHOOK] Lead created successfully: ${lead.id}`);
+    console.log(`✅ [WEBHOOK] Lead ${wasUpdated ? 'updated' : 'created'} successfully: ${lead.id}`);
 
     await logWebhookDebug({
       consultantId: webhookConfig.consultantId,
@@ -677,6 +717,7 @@ function parseACBracketNotation(payload: Record<string, any>): Record<string, an
 
 // ActiveCampaign Webhook Handler
 router.post('/activecampaign/:secretKey', async (req: Request, res: Response) => {
+  let webhookConfig: any = null;
   try {
     const { secretKey } = req.params;
     const rawPayload = req.body;
@@ -687,7 +728,7 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
     console.log(`📨 [AC-WEBHOOK] Received ActiveCampaign webhook with secretKey: ${secretKey.substring(0, 8)}...`);
 
     // Validate webhook config BEFORE logging payload data
-    const webhookConfig = await storage.getWebhookConfigBySecret(secretKey);
+    webhookConfig = await storage.getWebhookConfigBySecret(secretKey);
     
     if (!webhookConfig) {
       console.log(`❌ [AC-WEBHOOK] Invalid secretKey: ${secretKey.substring(0, 8)}...`);
@@ -978,11 +1019,50 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
 
     console.log(`📝 [AC-WEBHOOK] Creating proactive lead: ${firstName} ${lastName} (${phoneNumber})`);
 
-    const lead = await storage.createProactiveLead(leadData);
+    let lead: any;
+    let wasUpdated = false;
+    try {
+      lead = await storage.createProactiveLead(leadData);
+    } catch (createErr: any) {
+      if (createErr.code === '23505' && createErr.constraint?.includes('phone_number')) {
+        console.log(`🔄 [AC-WEBHOOK] Lead with phone ${phoneNumber} already exists — updating lead_info`);
+        const existingLeads = await db.select()
+          .from(schema.proactiveLeads)
+          .where(
+            and(
+              eq(schema.proactiveLeads.consultantId, webhookConfig.consultantId),
+              eq(schema.proactiveLeads.phoneNumber, phoneNumber)
+            )
+          )
+          .limit(1);
+        if (existingLeads.length > 0) {
+          lead = existingLeads[0];
+          const existingLeadInfo = (lead.leadInfo || {}) as Record<string, any>;
+          const mergedLeadInfo = { ...existingLeadInfo, ...leadInfo };
+          if (existingLeadInfo.rawPayloadSnapshot && leadInfo.rawPayloadSnapshot) {
+            mergedLeadInfo.rawPayloadSnapshot = { ...existingLeadInfo.rawPayloadSnapshot, ...leadInfo.rawPayloadSnapshot };
+          }
+          await db.update(schema.proactiveLeads)
+            .set({
+              leadInfo: mergedLeadInfo,
+              firstName: firstName || lead.firstName,
+              lastName: lastName || lead.lastName,
+              email: email || lead.email,
+            })
+            .where(eq(schema.proactiveLeads.id, lead.id));
+          wasUpdated = true;
+          console.log(`✅ [AC-WEBHOOK] Existing lead updated: ${lead.id}`);
+        } else {
+          throw createErr;
+        }
+      } else {
+        throw createErr;
+      }
+    }
 
     await storage.incrementWebhookLeadsCount(webhookConfig.id);
 
-    console.log(`✅ [AC-WEBHOOK] Lead created successfully: ${lead.id}`);
+    console.log(`✅ [AC-WEBHOOK] Lead ${wasUpdated ? 'updated' : 'created'} successfully: ${lead.id}`);
 
     await logWebhookDebug({
       consultantId: webhookConfig.consultantId,
