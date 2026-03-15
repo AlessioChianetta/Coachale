@@ -1204,12 +1204,12 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
 
         case 'ai_transcript':
         if (message.text) {
-          if (isAudioStoppedRef.current) {
-            console.log(`🛡️ [TEXT ZOMBIE] Testo ignorato durante interruzione: "${message.text.substring(0, 20)}..."`);
-            return;
-          }
-
           const isNewTurn = accumulatedAiTextRef.current === '';
+
+          if (isAudioStoppedRef.current && isNewTurn) {
+            console.log(`✅ [AUDIO RESUME] Nuovo turno AI dopo barge-in — riabilito audio (was stopped)`);
+            isAudioStoppedRef.current = false;
+          }
 
           // Se è un nuovo turno AI, prepara reset user transcript per il PROSSIMO turno utente
           if (isNewTurn) {
