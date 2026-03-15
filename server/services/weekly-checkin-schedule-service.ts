@@ -177,6 +177,38 @@ async function fetchTwilioTemplates(
 }
 
 /**
+ * Seeded pseudo-random number generator (mulberry32)
+ * Returns a function that produces deterministic random numbers [0, 1) from a seed
+ */
+function seededRng(seed: string): () => number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
+  }
+  let state = h >>> 0;
+  return function() {
+    state |= 0;
+    state = state + 0x6D2B79F5 | 0;
+    let t = Math.imul(state ^ state >>> 15, 1 | state);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Fisher-Yates shuffle with seeded PRNG for deterministic results
+ */
+function seededShuffle<T>(array: T[], seed: string): T[] {
+  const result = [...array];
+  const rng = seededRng(seed);
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/**
  * Generate a deterministic time within the specified range based on date and client ID
  * Uses a hash function to ensure same inputs always produce same outputs
  */
@@ -455,14 +487,7 @@ export async function generateScheduleForWeeks(
         continue; // Skip - already has an entry for this week
       }
       
-      // Choose a RANDOM day each week, but respecting minDaysBetweenContacts (default 5 days)
-      // Shuffle allowed days randomly for this client/week combination
-      const shuffledDays = [...allowedDays].sort(() => {
-        // Use deterministic seed based on client ID + week to ensure consistent results on regeneration
-        const seed = `${client.id}|${isoWeekKey}`;
-        const hash = seed.split('').reduce((acc, char, i) => acc + char.charCodeAt(0) * (i + 1), 0);
-        return (hash % 100) / 100 - 0.5;
-      });
+      const shuffledDays = seededShuffle(allowedDays, `${client.id}|${isoWeekKey}`);
       
       // Try to find a valid date in this week, trying days in shuffled order
       let targetDate: Date | null = null;

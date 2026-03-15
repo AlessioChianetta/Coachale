@@ -2,20 +2,46 @@
  * Check-in Personalization Service
  * 
  * Generates AI-personalized messages for weekly check-in.
- * NOW uses buildUserContext() to load REAL client data (like ai-service.ts)
- * plus File Search as a supplemental source.
+ * Uses File Search (client's PRIVATE store only) + Brand Voice + last 2 consultations.
  * 
- * The AI acts as the consultant's personal assistant, generating messages
- * as if the consultant themselves is reaching out to the client.
+ * PRIVACY: Each message generation loads ONLY the target client's private store.
+ * Never loads other clients' data. Brand Voice comes from the consultant's config (shared).
+ * 
+ * The AI acts as the consultant, generating messages with a compelling hook + CTA.
  */
 
 import { db } from "../db";
-import { users } from "../../shared/schema";
+import { users, leadNurturingConfig } from "../../shared/schema";
 import { eq } from "drizzle-orm";
 import { getRawGoogleGenAIForFileSearch, getModelWithThinking, trackedGenerateContent } from "./provider-factory";
 import { tokenTracker } from "./token-tracker";
 import { fileSearchService } from "./file-search-service";
 import { buildUserContext, UserContext } from "../ai-context-builder";
+
+export interface BrandVoiceData {
+  consultantDisplayName?: string;
+  businessName?: string;
+  businessDescription?: string;
+  consultantBio?: string;
+  vision?: string;
+  mission?: string;
+  values?: string[];
+  usp?: string;
+  whoWeHelp?: string;
+  whatWeDo?: string;
+  howWeDoIt?: string;
+  yearsExperience?: number;
+  clientsHelped?: number;
+  resultsGenerated?: string;
+  servicesOffered?: { name: string; price: string; description: string }[];
+  guarantees?: string;
+  personalTone?: string;
+  contentPersonality?: string;
+  audienceLanguage?: string;
+  writingExamples?: string[];
+  signaturePhrases?: string[];
+  avoidPatterns?: string;
+}
 
 export interface ClientCheckinContext {
   clientName: string;
@@ -25,7 +51,9 @@ export interface ClientCheckinContext {
   hasFileSearchStore: boolean;
   storeNames: string[];
   totalDocs: number;
-  userContext?: UserContext; // NEW: Full user context from buildUserContext
+  userContext?: UserContext;
+  brandVoice?: BrandVoiceData;
+  hasBrandVoice: boolean;
 }
 
 export interface PersonalizedCheckinResult {
@@ -39,13 +67,76 @@ export interface PersonalizedCheckinResult {
 }
 
 /**
- * Fetch basic client info and check for File Search stores with documents
+ * Shared validator: does a BrandVoiceData object contain enough meaningful content?
+ * Used by both fetchClientContext and checkBrandVoiceStatus for consistency.
+ */
+function hasMeaningfulBrandVoice(bv: BrandVoiceData): boolean {
+  const checks = [
+    !!bv.personalTone,
+    !!(bv.writingExamples?.length),
+    !!(bv.signaturePhrases?.length),
+    !!bv.businessName,
+    !!bv.usp,
+    !!bv.consultantDisplayName,
+  ];
+  return checks.some(Boolean);
+}
+
+/**
+ * Build brand voice context string from consultant's brand voice data
+ * Reuses the pattern from content-ai-service.ts but adapted for WhatsApp tone
+ */
+function buildBrandVoiceForCheckin(bv: BrandVoiceData): string {
+  const sections: string[] = [];
+
+  const identityParts: string[] = [];
+  if (bv.businessName) identityParts.push(`Azienda: ${bv.businessName}`);
+  if (bv.consultantDisplayName) identityParts.push(`Nome: ${bv.consultantDisplayName}`);
+  if (bv.businessDescription) identityParts.push(`Descrizione: ${bv.businessDescription}`);
+  if (bv.usp) identityParts.push(`USP: ${bv.usp}`);
+  if (bv.whatWeDo) identityParts.push(`Servizi: ${bv.whatWeDo}`);
+  if (bv.howWeDoIt) identityParts.push(`Metodo: ${bv.howWeDoIt}`);
+
+  if (identityParts.length > 0) {
+    sections.push(`IDENTITÀ CONSULENTE:\n${identityParts.join("\n")}`);
+  }
+
+  if (bv.personalTone) {
+    sections.push(`TONO DI COMUNICAZIONE (IMITA QUESTO STILE):\n${bv.personalTone}`);
+  }
+
+  if (bv.audienceLanguage) {
+    sections.push(`REGISTRO LINGUISTICO DEL TARGET:\n${bv.audienceLanguage}`);
+  }
+
+  const writingExamples = bv.writingExamples?.filter((ex: string) => ex && ex.trim().length > 0);
+  if (writingExamples && writingExamples.length > 0) {
+    const examplesText = writingExamples.slice(0, 2).map((ex: string, i: number) => `--- ESEMPIO ${i + 1} ---\n${ex.trim()}`).join("\n\n");
+    sections.push(`ESEMPI DI SCRITTURA REALE (REPLICA questo ritmo, vocabolario e struttura):\n${examplesText}`);
+  }
+
+  if (bv.signaturePhrases?.length) {
+    sections.push(`FRASI FIRMA (integra naturalmente 1 di queste):\n${bv.signaturePhrases.join(" | ")}`);
+  }
+
+  if (bv.avoidPatterns) {
+    sections.push(`NON FARE MAI:\n${bv.avoidPatterns}`);
+  }
+
+  return sections.length > 0 ? sections.join("\n\n") : "";
+}
+
+/**
+ * Fetch client context + brand voice for check-in message generation
+ * PRIVACY: Loads ONLY the target client's private File Search store
  */
 export async function fetchClientContext(
   clientId: string,
   consultantId: string
 ): Promise<ClientCheckinContext | null> {
   try {
+    console.log(`[CHECKIN-AI] 🔒 Loading context ONLY for client ${clientId} (consultant: ${consultantId})`);
+
     const [client] = await db
       .select({
         id: users.id,
@@ -74,13 +165,36 @@ export async function fetchClientContext(
     const clientName = `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Cliente';
     const consultantName = consultant ? `${consultant.firstName || ''} ${consultant.lastName || ''}`.trim() : undefined;
 
-    // Check if File Search is enabled for this client (default: true)
+    console.log(`[CHECKIN-AI] 🔒 Target client: ${clientName} (${clientId}) — loading ONLY this client's data`);
+
+    // Load Brand Voice from consultant's lead_nurturing_config
+    let brandVoice: BrandVoiceData | undefined;
+    let hasBrandVoice = false;
+    try {
+      const [nurturingConfig] = await db
+        .select({ brandVoiceData: leadNurturingConfig.brandVoiceData })
+        .from(leadNurturingConfig)
+        .where(eq(leadNurturingConfig.consultantId, consultantId))
+        .limit(1);
+
+      if (nurturingConfig?.brandVoiceData && Object.keys(nurturingConfig.brandVoiceData).length > 0) {
+        brandVoice = nurturingConfig.brandVoiceData as BrandVoiceData;
+        hasBrandVoice = hasMeaningfulBrandVoice(brandVoice);
+        console.log(`[CHECKIN-AI] ${hasBrandVoice ? '✅' : '⚠️'} Brand Voice ${hasBrandVoice ? 'loaded' : 'exists but incomplete'} for consultant ${consultantId} (${consultantName})`);
+      } else {
+        console.log(`[CHECKIN-AI] ⚠️ No Brand Voice configured for consultant ${consultantId} — messages will use generic tone`);
+      }
+    } catch (err) {
+      console.log(`[CHECKIN-AI] ⚠️ Failed to load Brand Voice:`, err);
+    }
+
+    // PRIVACY: Get File Search store info — scoped to this specific client + consultant's shared knowledge
+    // getStoreBreakdownForGeneration returns: client's private stores + consultant's system stores
+    // System stores contain general consultant methodology (NOT other clients' data) — this is intentional
     const fileSearchEnabled = client.fileSearchEnabled !== false;
-    
-    // Get File Search store info
     let storeNames: string[] = [];
     let totalDocs = 0;
-    
+
     if (fileSearchEnabled) {
       try {
         const { storeNames: stores, breakdown } = await fileSearchService.getStoreBreakdownForGeneration(
@@ -90,11 +204,11 @@ export async function fetchClientContext(
         );
         storeNames = stores;
         totalDocs = breakdown.reduce((sum, store) => sum + store.totalDocs, 0);
-        
-        console.log(`[CHECKIN-AI] File Search stores for ${clientName}: ${storeNames.length} stores, ${totalDocs} total docs`);
+
+        console.log(`[CHECKIN-AI] 🔒 File Search stores for ${clientName} ONLY: ${storeNames.length} stores, ${totalDocs} docs`);
         if (breakdown.length > 0) {
           breakdown.forEach(store => {
-            console.log(`  - ${store.storeDisplayName}: ${store.totalDocs} docs`);
+            console.log(`  - ${store.storeDisplayName}: ${store.totalDocs} docs (owner: ${store.ownerType})`);
           });
         }
       } catch (err) {
@@ -102,19 +216,19 @@ export async function fetchClientContext(
       }
     }
 
-    // NEW: Load FULL user context (like ai-service.ts does)
+    // PRIVACY: Load user context for THIS client ONLY
     let userContext: UserContext | undefined;
     try {
-      console.log(`[CHECKIN-AI] Loading full userContext for ${clientName}...`);
+      console.log(`[CHECKIN-AI] 🔒 Loading userContext for client ${clientId} (${clientName}) ONLY...`);
       userContext = await buildUserContext(clientId, {
-        intent: 'general', // Load everything
-        useFileSearch: false, // We want the actual data, not just metadata
+        intent: 'general',
+        useFileSearch: false,
       });
-      console.log(`[CHECKIN-AI] ✅ UserContext loaded: ${userContext.exercises?.all?.length || 0} exercises, ${userContext.consultations?.recent?.length || 0} consultations, ${userContext.goals?.length || 0} goals`);
+      console.log(`[CHECKIN-AI] ✅ UserContext loaded for ${clientName}: ${userContext.consultations?.recent?.length || 0} consultations, ${userContext.goals?.length || 0} goals`);
     } catch (err) {
       console.error(`[CHECKIN-AI] ⚠️ Failed to load userContext for ${clientName}:`, err);
     }
-    
+
     return {
       clientName,
       clientId,
@@ -124,6 +238,8 @@ export async function fetchClientContext(
       storeNames,
       totalDocs,
       userContext,
+      brandVoice,
+      hasBrandVoice,
     };
   } catch (error) {
     console.error('[CHECKIN-AI] Error fetching client context:', error);
@@ -132,276 +248,221 @@ export async function fetchClientContext(
 }
 
 /**
- * Build FULL context string from UserContext - NO TRUNCATION
- * Used only in FALLBACK mode (when File Search is not available)
+ * Build context string from UserContext — focused on consultations + client profile
+ * NO exercises (the consultant doesn't talk about "exercises" with clients)
  */
 function buildFullContextForFallback(userContext: UserContext): string {
   const sections: string[] = [];
-  
-  // 1. CONSULENZE COMPLETE - NESSUN TRONCAMENTO - TUTTE
+
+  // 1. LAST 2 CONSULTATIONS — PRIMARY CONTEXT
   if (userContext.consultations?.recent && userContext.consultations.recent.length > 0) {
-    const consultationList = userContext.consultations.recent.map(c => {
+    const lastTwo = userContext.consultations.recent.slice(0, 2);
+    const consultationList = lastTwo.map(c => {
       let line = `- Data: ${new Date(c.scheduledAt).toLocaleDateString('it-IT')}`;
       if (c.notes) {
-        line += `\n  NOTE COMPLETE: "${c.notes}"`;
+        line += `\n  NOTE: "${c.notes}"`;
       }
       if (c.summaryEmail) {
-        line += `\n  RIEPILOGO EMAIL COMPLETO: "${c.summaryEmail}"`;
-      }
-      if (c.transcript) {
-        line += `\n  TRASCRIZIONE: "${c.transcript}"`;
+        line += `\n  RIEPILOGO: "${c.summaryEmail}"`;
       }
       return line;
     }).join('\n\n');
-    
-    sections.push(`1. CONSULENZE PASSATE (${userContext.consultations.recent.length} totali - TUTTE INCLUSE):
+
+    sections.push(`ULTIME CONSULENZE (${lastTwo.length}):
 ${consultationList}`);
   }
-  
-  // Prossime consulenze - TUTTE
+
+  // 2. UPCOMING CONSULTATIONS
   if (userContext.consultations?.upcoming && userContext.consultations.upcoming.length > 0) {
-    const upcomingList = userContext.consultations.upcoming.map(c => {
+    const upcomingList = userContext.consultations.upcoming.slice(0, 2).map(c => {
       const date = new Date(c.scheduledAt);
-      return `- ${date.toLocaleDateString('it-IT')} ore ${date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} (${c.duration} min)${c.consultantType ? ` - ${c.consultantType}` : ''}${c.notes ? `\n  Note: ${c.notes}` : ''}`;
+      return `- ${date.toLocaleDateString('it-IT')} ore ${date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}${c.consultantType ? ` - ${c.consultantType}` : ''}`;
     }).join('\n');
-    
-    sections.push(`PROSSIME CONSULENZE (${userContext.consultations.upcoming.length} totali):
+
+    sections.push(`PROSSIME CONSULENZE:
 ${upcomingList}`);
   }
-  
-  // 2. TASK DA CONSULENZE - TUTTI
+
+  // 3. TASKS FROM CONSULTATIONS
   if (userContext.consultationTasks && userContext.consultationTasks.length > 0) {
-    const taskList = userContext.consultationTasks.map(t => {
-      const done = t.completed ? '[COMPLETATO]' : '[DA FARE]';
-      const priority = t.priority === 'high' ? ' [PRIORITA ALTA]' : '';
-      const due = t.dueDate ? ` | Scadenza: ${new Date(t.dueDate).toLocaleDateString('it-IT')}` : '';
-      return `${done}${priority} ${t.title}${due}${t.description ? `\n  Descrizione: ${t.description}` : ''}`;
-    }).join('\n');
-    
-    sections.push(`2. TASK ASSEGNATI DA CONSULENZE (${userContext.consultationTasks.length} totali - TUTTI):
+    const pendingTasks = userContext.consultationTasks.filter(t => !t.completed);
+    if (pendingTasks.length > 0) {
+      const taskList = pendingTasks.slice(0, 5).map(t => {
+        const priority = t.priority === 'high' ? ' [PRIORITA ALTA]' : '';
+        return `- ${t.title}${priority}`;
+      }).join('\n');
+
+      sections.push(`TASK IN SOSPESO (${pendingTasks.length}):
 ${taskList}`);
+    }
   }
-  
-  // 3. ESERCIZI - TUTTI CON FEEDBACK COMPLETO
-  if (userContext.exercises?.all && userContext.exercises.all.length > 0) {
-    const exerciseList = userContext.exercises.all.map(e => {
-      const status = e.status === 'completed' ? '[COMPLETATO]' : e.status === 'in_progress' ? '[IN CORSO]' : '[DA FARE]';
-      let line = `${status} ${e.title} (${e.category})`;
-      if (e.dueDate) {
-        line += ` | Scadenza: ${new Date(e.dueDate).toLocaleDateString('it-IT')}`;
-      }
-      if (e.score) {
-        line += ` | Punteggio: ${e.score}`;
-      }
-      if (e.completedAt) {
-        line += ` | Completato: ${new Date(e.completedAt).toLocaleDateString('it-IT')}`;
-      }
-      if (e.clientNotes) {
-        line += `\n  Note cliente: "${e.clientNotes}"`;
-      }
-      if (e.consultantFeedback && e.consultantFeedback.length > 0) {
-        e.consultantFeedback.forEach((f, i) => {
-          line += `\n  Feedback ${i + 1}: "${f.feedback}"`;
-        });
-      }
-      return line;
-    }).join('\n\n');
-    
-    sections.push(`3. ESERCIZI (${userContext.exercises.all.length} totali - TUTTI CON FEEDBACK COMPLETO):
-${exerciseList}`);
-  }
-  
-  // 4. OBIETTIVI - TUTTI
+
+  // 4. GOALS
   if (userContext.goals && userContext.goals.length > 0) {
     const goalList = userContext.goals.map(g => {
       const status = g.status === 'completed' ? '[RAGGIUNTO]' : '[IN CORSO]';
-      const target = g.targetDate ? ` | Target: ${new Date(g.targetDate).toLocaleDateString('it-IT')}` : '';
-      return `${status} ${g.title} (Progresso: ${g.currentValue}/${g.targetValue})${target}`;
+      return `${status} ${g.title} (${g.currentValue}/${g.targetValue})`;
     }).join('\n');
-    
-    sections.push(`4. OBIETTIVI (${userContext.goals.length} totali):
+
+    sections.push(`OBIETTIVI:
 ${goalList}`);
   }
-  
-  // 5. TASK GIORNALIERI
-  if (userContext.dailyActivity?.todayTasks && userContext.dailyActivity.todayTasks.length > 0) {
-    const taskList = userContext.dailyActivity.todayTasks.map(t => {
-      const done = t.completed ? '[FATTO]' : '[DA FARE]';
-      return `${done} ${t.description}`;
-    }).join('\n');
-    
-    sections.push(`5. TASK DI OGGI (${userContext.dailyActivity.todayTasks.length} totali):
-${taskList}`);
-  }
-  
-  // 6. MOMENTUM E PROGRESSI
+
+  // 5. MOMENTUM (brief)
   if (userContext.momentum) {
     const stats = userContext.momentum.stats || userContext.momentum;
-    sections.push(`6. MOMENTUM E PROGRESSI:
-- Streak attuale: ${stats.currentStreak || 0} giorni consecutivi
-- Check-in produttivi: ${stats.productiveCheckins || 0}/${stats.totalCheckins || 0}
-- Tasso produttivita: ${stats.productivityRate || 0}%`);
+    if (stats.currentStreak > 0) {
+      sections.push(`MOMENTUM: ${stats.currentStreak} giorni consecutivi, produttivita ${stats.productivityRate || 0}%`);
+    }
   }
-  
-  // 7. RIEPILOGO DASHBOARD
-  if (userContext.dashboard) {
-    sections.push(`7. RIEPILOGO DASHBOARD:
-- Esercizi in sospeso: ${userContext.dashboard.pendingExercises || 0}
-- Esercizi completati: ${userContext.dashboard.completedExercises || 0}
-- Task di oggi: ${userContext.dashboard.todayTasks || 0}
-- Prossime consulenze: ${userContext.dashboard.upcomingConsultations || 0}`);
-  }
-  
+
   return sections.join('\n\n');
 }
 
 /**
- * Build FILE SEARCH mode prompt - Minimal system prompt, AI uses file_search tool
+ * Common message instructions shared between both prompt modes
  */
-function buildFileSearchModePrompt(context: ClientCheckinContext): string {
-  const consultantRef = context.consultantName 
-    ? `Sei ${context.consultantName}, consulente finanziario di ${context.clientName}.`
-    : `Sei il consulente finanziario personale di ${context.clientName}.`;
+function getMessageInstructions(context: ClientCheckinContext): string {
+  return `STRUTTURA OBBLIGATORIA DEL MESSAGGIO:
 
-  // Get summary stats from userContext if available
-  const stats = context.userContext ? {
-    exercises: context.userContext.exercises?.all?.length || 0,
-    pendingExercises: context.userContext.dashboard?.pendingExercises || 0,
-    completedExercises: context.userContext.dashboard?.completedExercises || 0,
-    consultations: context.userContext.consultations?.recent?.length || 0,
-    upcomingConsultations: context.userContext.consultations?.upcoming?.length || 0,
-    goals: context.userContext.goals?.length || 0,
-    tasks: context.userContext.consultationTasks?.length || 0,
-  } : null;
+1. HOOK (prima riga) — Cattura l'attenzione subito. Deve essere specifico e personale.
+   Esempi di hook efficaci:
+   - "Mi e' rimasta in mente una cosa dalla nostra ultima call..."
+   - "Ho riflettuto su quello che mi hai detto riguardo a [tema specifico]..."
+   - "Stavo pensando al tuo percorso con [obiettivo specifico]..."
+   - "Sai cosa mi ha colpito dell'ultimo periodo?"
 
-  return `${consultantRef}
+2. CORPO — 2-3 frasi che dimostrano che conosci il cliente. Cita 1-2 dettagli SPECIFICI dalle consulenze recenti o dal suo profilo (cosa fa, i suoi obiettivi, le sue sfide). MAI parlare di "esercizi" — il cliente non li chiama cosi.
 
-Stai per inviare un messaggio WhatsApp di check-in settimanale al tuo cliente ${context.clientName}.
+3. CTA (ultima riga) — Chiudi con una domanda o proposta specifica che invita a rispondere.
+   Esempi di CTA efficaci:
+   - "Ti va di sentirci questa settimana per fare il punto?"
+   - "C'e' qualcosa su cui ti piacerebbe lavorare nel prossimo incontro?"
+   - "Hai 5 minuti per aggiornarmi su come sta andando con [tema]?"
+   - "Dimmi, come ti senti rispetto a [obiettivo]?"
 
-═══════════════════════════════════════════════════════════════════
-DATI DISPONIBILI VIA FILE SEARCH (${context.totalDocs} documenti indicizzati)
-═══════════════════════════════════════════════════════════════════
-
-Hai accesso COMPLETO ai seguenti dati tramite ricerca semantica:
-- Tutte le consulenze passate (note complete, riepiloghi, trascrizioni)
-- Tutti gli esercizi assegnati (risposte, feedback, punteggi)
-- Progressi email journey
-- Obiettivi e task
-- Documenti della libreria
-
-${stats ? `STATISTICHE RAPIDE:
-- Esercizi: ${stats.exercises} totali (${stats.pendingExercises} in sospeso, ${stats.completedExercises} completati)
-- Consulenze: ${stats.consultations} passate, ${stats.upcomingConsultations} prossime
-- Obiettivi: ${stats.goals}
-- Task da consulenze: ${stats.tasks}
-` : ''}
-
-IMPORTANTE - USA IL TOOL file_search PER CERCARE I DETTAGLI!
-Esempi di query da fare:
-- "consulenze recenti ${context.clientName}" per trovare le note delle consulenze
-- "esercizi ${context.clientName}" per trovare progressi e feedback
-- "obiettivi ${context.clientName}" per trovare gli obiettivi
-- "note consulenza ${context.clientName}" per dettagli specifici
-
-═══════════════════════════════════════════════════════════════════
-
-ISTRUZIONI PER IL MESSAGGIO WHATSAPP:
-
-1. USA file_search per cercare informazioni SPECIFICHE sul cliente
-2. Cita dettagli REALI dalle consulenze e dagli esercizi trovati
-
-⚠️ STILE WHATSAPP - IMPORTANTE:
-- MASSIMO 500-700 caratteri (come un messaggio WhatsApp normale)
-- Stile CONVERSAZIONALE e DIRETTO, come se stessi scrivendo su WhatsApp
-- Frasi BREVI e SCORREVOLI
-- NO muri di testo, NO paragrafi lunghi
-- Vai DRITTO al punto con 1-2 riferimenti specifici
-
-Il messaggio deve:
-- Riferirsi a 1-2 dettagli SPECIFICI (non tutti i dati disponibili!)
-- Essere BREVE ma PERSONALIZZATO
-- Tono amichevole da messaggio WhatsApp
-- NON avere emoji, saluti formali, o firma
+REGOLE TASSATIVE:
+- Lunghezza: 600-1000 caratteri (un vero messaggio WhatsApp sostanzioso ma non un muro)
+- Tono: CONVERSAZIONALE, come un messaggio reale tra due persone che si conoscono
+- NESSUN emoji
+- NESSUN saluto formale (Ciao, Buongiorno, Gentile) — parti diretto con l'hook
+- NESSUNA firma
+- Italiano naturale e colloquiale — frasi brevi, ritmo scorrevole
+- Il messaggio deve sembrare scritto da un umano, NON da un'AI
+- NON usare MAI la parola "esercizi" o "esercizio" — parla di "attivita", "lavoro", "percorso", "quello che stiamo facendo"
 
 IMPORTANTE: Rispondi SOLO con il messaggio finale, senza virgolette, spiegazioni o prefissi.`;
 }
 
 /**
- * Build FALLBACK mode prompt - Full context in system prompt (when File Search not available)
+ * Build FILE SEARCH mode prompt
+ * PRIVACY: storeNames contain ONLY the target client's stores
  */
-function buildFallbackModePrompt(context: ClientCheckinContext, fullContext: string): string {
-  const consultantRef = context.consultantName 
-    ? `Sei ${context.consultantName}, consulente finanziario di ${context.clientName}.`
-    : `Sei il consulente finanziario personale di ${context.clientName}.`;
+function buildFileSearchModePrompt(context: ClientCheckinContext): string {
+  const consultantRef = context.consultantName
+    ? `Sei ${context.consultantName}, consulente di ${context.clientName}.`
+    : `Sei il consulente personale di ${context.clientName}.`;
+
+  const brandVoiceSection = context.brandVoice
+    ? `\n═══════════════════════════════════════════════════════════════════
+IL TUO STILE DI COMUNICAZIONE (Brand Voice)
+═══════════════════════════════════════════════════════════════════
+
+${buildBrandVoiceForCheckin(context.brandVoice)}
+`
+    : '';
+
+  const lastTwoConsultations = context.userContext?.consultations?.recent?.slice(0, 2);
+  let consultationContext = '';
+  if (lastTwoConsultations && lastTwoConsultations.length > 0) {
+    const entries = lastTwoConsultations.map(c => {
+      let line = `- ${new Date(c.scheduledAt).toLocaleDateString('it-IT')}`;
+      if (c.notes) line += `: "${c.notes.substring(0, 500)}"`;
+      if (c.summaryEmail) line += `\n  Riepilogo: "${c.summaryEmail.substring(0, 500)}"`;
+      return line;
+    }).join('\n');
+    consultationContext = `\nULTIME 2 CONSULENZE (usa questi dettagli nel messaggio):\n${entries}\n`;
+  }
 
   return `${consultantRef}
+${brandVoiceSection}
+═══════════════════════════════════════════════════════════════════
+PROFILO CLIENTE via File Search (${context.totalDocs} documenti PRIVATI di ${context.clientName})
+═══════════════════════════════════════════════════════════════════
 
-Stai per inviare un messaggio WhatsApp di check-in settimanale al tuo cliente ${context.clientName}.
+Hai accesso al profilo PRIVATO di ${context.clientName} tramite file_search:
+- Consulenze passate, note e riepiloghi
+- Obiettivi e progressi
+- Profilo personale e attivita
+${consultationContext}
+USA file_search per cercare:
+- "consulenze recenti ${context.clientName}" — per trovare note specifiche
+- "obiettivi ${context.clientName}" — per trovare su cosa sta lavorando
+- "profilo ${context.clientName}" — per capire cosa fa e le sue sfide
 
 ═══════════════════════════════════════════════════════════════════
-DATI COMPLETI DEL CLIENTE - USA QUESTI PER PERSONALIZZARE IL MESSAGGIO
+
+${getMessageInstructions(context)}`;
+}
+
+/**
+ * Build FALLBACK mode prompt — full context injection
+ * PRIVACY: context contains ONLY the target client's data
+ */
+function buildFallbackModePrompt(context: ClientCheckinContext, fullContext: string): string {
+  const consultantRef = context.consultantName
+    ? `Sei ${context.consultantName}, consulente di ${context.clientName}.`
+    : `Sei il consulente personale di ${context.clientName}.`;
+
+  const brandVoiceSection = context.brandVoice
+    ? `\n═══════════════════════════════════════════════════════════════════
+IL TUO STILE DI COMUNICAZIONE (Brand Voice)
+═══════════════════════════════════════════════════════════════════
+
+${buildBrandVoiceForCheckin(context.brandVoice)}
+`
+    : '';
+
+  return `${consultantRef}
+${brandVoiceSection}
+═══════════════════════════════════════════════════════════════════
+DATI DEL CLIENTE ${context.clientName.toUpperCase()} — USA QUESTI PER PERSONALIZZARE
 ═══════════════════════════════════════════════════════════════════
 
 ${fullContext}
 
 ═══════════════════════════════════════════════════════════════════
 
-ISTRUZIONI PER IL MESSAGGIO WHATSAPP:
+${getMessageInstructions(context)}
 
-Basandoti sui DATI sopra, genera un messaggio BREVE e PERSONALIZZATO.
+ESEMPIO DI MESSAGGIO EFFICACE:
 
-⚠️ STILE WHATSAPP - IMPORTANTE:
-- MASSIMO 500-700 caratteri (come un messaggio WhatsApp normale)
-- Stile CONVERSAZIONALE e DIRETTO, come se stessi scrivendo su WhatsApp
-- Frasi BREVI e SCORREVOLI
-- NO muri di testo, NO paragrafi lunghi
-- Vai DRITTO al punto con 1-2 riferimenti specifici
+"Mi e' rimasta in mente una cosa dalla nostra ultima call — quando mi hai parlato di come stai gestendo [tema specifico dalla consulenza]. Ho notato che stai facendo progressi importanti, soprattutto su [dettaglio specifico].
 
-Il messaggio deve:
-- Citare 1-2 dettagli SPECIFICI (non tutti i dati!)
-- Essere BREVE ma PERSONALIZZATO
-- Tono amichevole da messaggio WhatsApp
-- CALDO e PERSONALE
-- SPECIFICO - menziona esercizi per NOME, cita note consulenze
-- In italiano naturale e colloquiale
-- SENZA emoji, SENZA saluti formali, SENZA firma
+Pero' c'e' un aspetto che secondo me meriterebbe un po' piu' di attenzione: [task o obiettivo specifico]. Non e' urgente, ma potrebbe davvero fare la differenza nel prossimo mese.
 
-ESEMPIO BUONO (dettagliato e personalizzato):
-"Ho dato un'occhiata ai tuoi progressi e vedo che hai ancora tre esercizi in sospeso: l'analisi del budget mensile, la pianificazione degli obiettivi trimestrali e l'esercizio sulle abitudini di risparmio. So che a volte il tempo e' poco, ma completare questi esercizi ti aiutera' davvero a fare chiarezza sulla tua situazione finanziaria.
+Ti va di dedicarci 15 minuti la prossima volta che ci sentiamo? Oppure se preferisci, scrivimi qui cosa ne pensi e ne parliamo."
 
-Dalla nostra ultima consulenza mi e' rimasto impresso quanto tenevi a migliorare la gestione delle spese - questi esercizi sono proprio pensati per quello. Se hai difficolta' con qualcuno di questi o hai bisogno di chiarimenti, scrivimi pure e ne parliamo insieme.
-
-Come sta andando questa settimana? C'e' qualcosa in particolare su cui vorresti concentrarti?"
-
-ESEMPIO CATTIVO (troppo generico o corto):
-- "Ho visto che hai esercizi in sospeso, come va?"
-- "Spero che tu stia bene. Come procede tutto?"
-
-IMPORTANTE: Rispondi SOLO con il messaggio finale, senza virgolette, spiegazioni o prefissi.`;
+ESEMPIO CATTIVO (generico — NON fare cosi):
+- "Come stai? Come procede tutto?"
+- "Volevo farti un check-in veloce, spero tutto bene"`;
 }
 
 /**
  * Generate AI-personalized message for weekly check-in
  * 
- * DUAL MODE ARCHITECTURE (aligned with ai-service.ts):
+ * DUAL MODE:
+ * 1. FILE SEARCH MODE — when client has private store with docs
+ * 2. FALLBACK MODE — full context injection when File Search unavailable
  * 
- * 1. FILE SEARCH MODE (Primary - when hasFileSearchStore=true):
- *    - Minimal system prompt with statistics only
- *    - AI uses file_search tool to find specific details
- *    - ~90% token savings
- * 
- * 2. FALLBACK MODE (when File Search not available):
- *    - Full context injection (NO TRUNCATION)
- *    - All data included in system prompt
+ * PRIVACY: Both modes load ONLY the target client's data
  */
 export async function generateCheckinAiMessage(
   context: ClientCheckinContext
 ): Promise<PersonalizedCheckinResult> {
   try {
-    // Get raw GoogleGenAI instance for direct SDK access (required for file_search responses)
-    // The raw SDK returns response.text as a property, not a method
     const providerResult = await getRawGoogleGenAIForFileSearch(context.consultantId);
-    
+
     if (!providerResult) {
       console.log('[CHECKIN-AI] No AI provider available for File Search');
       return {
@@ -411,54 +472,46 @@ export async function generateCheckinAiMessage(
     }
 
     const { ai, metadata } = providerResult;
-    
-    // Get correct model based on provider (Gemini 3 for Google AI Studio)
     const { model } = getModelWithThinking(metadata.name);
 
-    // DUAL MODE: Determine which mode to use
     const useFileSearchMode = context.hasFileSearchStore && context.storeNames.length > 0 && context.totalDocs > 0;
-    
+
     let systemPrompt: string;
     let fileSearchTool: any = null;
     let userMessage: string;
 
     if (useFileSearchMode) {
-      // ═══════════════════════════════════════════════════════════════════
-      // FILE SEARCH MODE: AI uses file_search tool to find details
-      // ═══════════════════════════════════════════════════════════════════
-      console.log(`[CHECKIN-AI] 🔍 FILE SEARCH MODE: ${context.storeNames.length} stores, ${context.totalDocs} docs`);
-      
+      console.log(`[CHECKIN-AI] 🔍 FILE SEARCH MODE: ${context.storeNames.length} stores, ${context.totalDocs} docs (client ${context.clientId} ONLY)`);
+      console.log(`[CHECKIN-AI] 🔒 Store names: ${context.storeNames.join(', ')}`);
+
       systemPrompt = buildFileSearchModePrompt(context);
       fileSearchTool = fileSearchService.buildFileSearchTool(context.storeNames);
-      userMessage = `Genera il messaggio di check-in per ${context.clientName}. USA file_search per cercare dettagli specifici sul cliente (consulenze, esercizi, obiettivi) prima di scrivere il messaggio.`;
-      
-      console.log(`[CHECKIN-AI]   System prompt size: ${systemPrompt.length} chars (minimal - AI will search)`);
-      
+      userMessage = `Genera un messaggio WhatsApp di check-in per ${context.clientName}. USA file_search per cercare il profilo e le consulenze recenti del cliente, poi scrivi un messaggio con hook iniziale + dettagli personali + CTA finale.`;
+
+      console.log(`[CHECKIN-AI]   System prompt size: ${systemPrompt.length} chars`);
+      console.log(`[CHECKIN-AI]   Brand Voice: ${context.hasBrandVoice ? 'YES' : 'NO'}`);
+
     } else {
-      // ═══════════════════════════════════════════════════════════════════
-      // FALLBACK MODE: Full context injection (NO TRUNCATION)
-      // ═══════════════════════════════════════════════════════════════════
-      console.log(`[CHECKIN-AI] 📋 FALLBACK MODE: Full context injection (File Search not available)`);
-      
+      console.log(`[CHECKIN-AI] 📋 FALLBACK MODE: Full context injection (client ${context.clientId} ONLY)`);
+
       if (context.userContext) {
         const fullContext = buildFullContextForFallback(context.userContext);
         systemPrompt = buildFallbackModePrompt(context, fullContext);
-        userMessage = `Genera ora il messaggio di check-in personalizzato per ${context.clientName} basandoti sui dati completi forniti sopra.`;
-        
-        console.log(`[CHECKIN-AI]   Full context size: ${fullContext.length} chars (NO TRUNCATION)`);
+        userMessage = `Genera un messaggio WhatsApp di check-in per ${context.clientName} basandoti sui dati forniti. Il messaggio deve avere: hook personale all'inizio, 1-2 dettagli specifici dal suo percorso, e una CTA che invita a rispondere.`;
+
+        console.log(`[CHECKIN-AI]   Full context size: ${fullContext.length} chars`);
         console.log(`[CHECKIN-AI]   System prompt size: ${systemPrompt.length} chars`);
+        console.log(`[CHECKIN-AI]   Brand Voice: ${context.hasBrandVoice ? 'YES' : 'NO'}`);
       } else {
-        // Questo non dovrebbe mai succedere - userContext viene sempre caricato
-        console.error(`[CHECKIN-AI] ❌ ERRORE: userContext non disponibile per ${context.clientName} - questo non dovrebbe mai accadere`);
+        console.error(`[CHECKIN-AI] ❌ userContext non disponibile per ${context.clientName}`);
         return {
           success: false,
-          error: 'UserContext non disponibile - impossibile generare messaggio personalizzato',
+          error: 'UserContext non disponibile',
         };
       }
     }
 
     console.log(`[CHECKIN-AI] Generating message for ${context.clientName} using ${metadata.name}`);
-    console.log(`[CHECKIN-AI]   Mode: ${useFileSearchMode ? 'FILE_SEARCH' : 'FALLBACK'}`);
 
     const response = await trackedGenerateContent(ai, {
       model,
@@ -471,7 +524,6 @@ export async function generateCheckinAiMessage(
       },
     } as any, { consultantId: context.consultantId, feature: 'checkin-personalization', keySource: 'superadmin' });
 
-    // Extract text from response - response.text is a property (not a method)
     const aiMessage = response.text?.trim() || '';
 
     if (!aiMessage) {
@@ -482,7 +534,6 @@ export async function generateCheckinAiMessage(
       };
     }
 
-    // Log File Search citations if available
     if (fileSearchTool) {
       try {
         const citations = fileSearchService.parseCitations(response);
@@ -491,28 +542,24 @@ export async function generateCheckinAiMessage(
           citations.forEach((c, i) => {
             console.log(`  ${i + 1}. ${c.sourceTitle}`);
           });
-        } else {
-          console.log(`[CHECKIN-AI] File Search enabled but no citations (using userContext data instead)`);
         }
       } catch (err) {
         // Ignore citation parsing errors
       }
     }
 
-    // Clean up response - remove any quotes, prefixes, or formatting
     let cleanedMessage = aiMessage
-      .replace(/^["']|["']$/g, '') // Remove surrounding quotes
-      .replace(/^\.+|\.+$/g, '') // Remove leading/trailing dots
-      .replace(/^(Messaggio:|Check-in:|Ecco il messaggio:)/i, '') // Remove common prefixes
-      .replace(/^(Ciao|Buongiorno|Buonasera|Salve)[,!]?\s*/i, '') // Remove greetings
+      .replace(/^["']|["']$/g, '')
+      .replace(/^\.+|\.+$/g, '')
+      .replace(/^(Messaggio:|Check-in:|Ecco il messaggio:)/i, '')
+      .replace(/^(Ciao|Buongiorno|Buonasera|Salve)[,!]?\s*/i, '')
       .trim();
 
-    // Validate message length - if too short, it might be truncated
-    if (cleanedMessage.length < 20) {
-      console.log(`[CHECKIN-AI] ⚠️ Message too short (${cleanedMessage.length} chars), might be truncated`);
+    if (cleanedMessage.length < 50) {
+      console.log(`[CHECKIN-AI] ⚠️ Message too short (${cleanedMessage.length} chars)`);
     }
 
-    console.log(`[CHECKIN-AI] ✅ Generated for ${context.clientName} (${cleanedMessage.length} chars): "${cleanedMessage}"`);
+    console.log(`[CHECKIN-AI] ✅ Generated for ${context.clientName} (${cleanedMessage.length} chars): "${cleanedMessage.substring(0, 100)}..."`);
 
     return {
       success: true,
@@ -540,7 +587,7 @@ export async function generateCheckinVariables(
   consultantId: string
 ): Promise<{ name: string; aiMessage: string } | null> {
   const context = await fetchClientContext(clientId, consultantId);
-  
+
   if (!context) {
     return null;
   }
@@ -548,25 +595,61 @@ export async function generateCheckinVariables(
   const result = await generateCheckinAiMessage(context);
 
   if (!result.success || !result.aiMessage) {
-    // Log why we're using fallback
     console.log(`[CHECKIN-AI] ⚠️ Fallback triggered for ${context.clientName}:`);
     console.log(`  success: ${result.success}, aiMessage: ${!!result.aiMessage}`);
     console.log(`  usedUserContext: ${result.usedUserContext}, usedFileSearch: ${result.usedFileSearch}`);
     if (result.error) {
       console.log(`  error: ${result.error}`);
     }
-    // Fallback to generic message
     return {
       name: context.clientName,
       aiMessage: 'spero che questa settimana stia andando bene per te',
     };
   }
-  
-  console.log(`[CHECKIN-AI] ✅ AI generated message for ${context.clientName}: "${result.aiMessage}"`);
-  console.log(`[CHECKIN-AI]   Sources: userContext=${result.usedUserContext}, fileSearch=${result.usedFileSearch}`);
+
+  console.log(`[CHECKIN-AI] ✅ AI generated message for ${context.clientName}: "${result.aiMessage.substring(0, 100)}..."`);
+  console.log(`[CHECKIN-AI]   Sources: userContext=${result.usedUserContext}, fileSearch=${result.usedFileSearch}, brandVoice=${context.hasBrandVoice}`);
 
   return {
     name: context.clientName,
     aiMessage: result.aiMessage,
   };
+}
+
+/**
+ * Check if a consultant has Brand Voice configured
+ * Used by frontend to show warning when missing
+ */
+export async function checkBrandVoiceStatus(consultantId: string): Promise<{
+  hasBrandVoice: boolean;
+  fields: string[];
+}> {
+  try {
+    const [config] = await db
+      .select({ brandVoiceData: leadNurturingConfig.brandVoiceData })
+      .from(leadNurturingConfig)
+      .where(eq(leadNurturingConfig.consultantId, consultantId))
+      .limit(1);
+
+    if (!config?.brandVoiceData || Object.keys(config.brandVoiceData).length === 0) {
+      return { hasBrandVoice: false, fields: [] };
+    }
+
+    const bv = config.brandVoiceData as BrandVoiceData;
+    const populatedFields: string[] = [];
+    if (bv.personalTone) populatedFields.push('personalTone');
+    if (bv.writingExamples?.length) populatedFields.push('writingExamples');
+    if (bv.signaturePhrases?.length) populatedFields.push('signaturePhrases');
+    if (bv.businessName) populatedFields.push('businessName');
+    if (bv.usp) populatedFields.push('usp');
+    if (bv.consultantDisplayName) populatedFields.push('consultantDisplayName');
+
+    return {
+      hasBrandVoice: hasMeaningfulBrandVoice(bv),
+      fields: populatedFields,
+    };
+  } catch (error) {
+    console.error('[CHECKIN-AI] Error checking brand voice status:', error);
+    return { hasBrandVoice: false, fields: [] };
+  }
 }

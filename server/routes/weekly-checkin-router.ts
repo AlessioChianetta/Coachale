@@ -13,6 +13,7 @@ import {
   getScheduleForConsultant,
   cancelScheduleEntry 
 } from "../services/weekly-checkin-schedule-service";
+import { checkBrandVoiceStatus } from "../ai/checkin-personalization-service";
 
 /**
  * Get or create a WhatsApp conversation for check-in messages
@@ -1358,6 +1359,16 @@ router.get("/schedule/summary", authenticateToken, requireRole("consultant"), as
   } catch (error: any) {
     console.error("Error fetching schedule summary:", error);
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get("/brand-voice-status", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const status = await checkBrandVoiceStatus(req.user!.id);
+    res.json(status);
+  } catch (error: any) {
+    console.error("Error checking brand voice status:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 

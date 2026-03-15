@@ -44,7 +44,8 @@ import {
   Eye,
   HelpCircle,
   ArrowRight,
-  Lightbulb
+  Lightbulb,
+  Star
 } from "lucide-react";
 import {
   Tooltip,
@@ -88,7 +89,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
   "Setter": { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", icon: "bg-blue-500" },
   "Receptionist": { bg: "bg-green-50", text: "text-green-700", border: "border-green-200", icon: "bg-green-500" },
   "Follow-up": { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200", icon: "bg-orange-500" },
-  "Check-in": { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", icon: "bg-purple-500" },
+  "Check-in": { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", icon: "bg-amber-500" },
   "Riattivazione": { bg: "bg-pink-50", text: "text-pink-700", border: "border-pink-200", icon: "bg-pink-500" },
   "Notifica": { bg: "bg-cyan-50", text: "text-cyan-700", border: "border-cyan-200", icon: "bg-cyan-500" },
   "Generale": { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200", icon: "bg-gray-500" },
@@ -311,6 +312,11 @@ export function WeeklyCheckinCard() {
     enabled: !!config?.isEnabled,
   });
 
+  const { data: brandVoiceStatus } = useQuery<{ hasBrandVoice: boolean; fields: string[] }>({
+    queryKey: ["/api/weekly-checkin/brand-voice-status"],
+    enabled: !!config?.useAiPersonalization,
+  });
+
   // Live countdown state
   const [countdown, setCountdown] = useState<{
     days: number;
@@ -526,12 +532,12 @@ export function WeeklyCheckinCard() {
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg">
-              <CalendarCheck className="h-5 w-5 text-white" />
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-500 shadow-lg">
+              <Star className="h-5 w-5 text-white" />
             </div>
             <div>
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-                Check-in Settimanale Automatico
+                Stella — Check-in Settimanale
               </CardTitle>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Contatta automaticamente i tuoi clienti ogni settimana
@@ -577,11 +583,11 @@ export function WeeklyCheckinCard() {
 
           <TabsContent value="dashboard" className="space-y-4 mt-0">
             {/* SEZIONE COUNTDOWN PROMINENTE */}
-            <div className="p-6 rounded-2xl border-2 border-indigo-300 dark:border-indigo-700 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950/40 dark:via-purple-950/40 dark:to-pink-950/40 shadow-lg">
+            <div className="p-6 rounded-2xl border-2 border-amber-300 dark:border-amber-700 bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/40 dark:via-yellow-950/40 dark:to-orange-950/40 shadow-lg">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md">
-                    <Timer className="h-7 w-7 text-white" />
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-500 shadow-md">
+                    <Star className="h-7 w-7 text-white" />
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -652,22 +658,22 @@ export function WeeklyCheckinCard() {
                       {/* Countdown Timer - GRANDE E VISIBILE */}
                       <div className="flex justify-center py-4">
                         <div className="flex gap-3">
-                          <div className="bg-gradient-to-b from-indigo-500 to-indigo-700 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg">
+                          <div className="bg-gradient-to-b from-amber-500 to-amber-700 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg">
                             <div className="text-3xl font-bold font-mono">{countdown.days}</div>
                             <div className="text-xs uppercase tracking-wider opacity-80 mt-1">giorni</div>
                           </div>
-                          <div className="flex items-center text-2xl font-bold text-indigo-400">:</div>
-                          <div className="bg-gradient-to-b from-indigo-500 to-indigo-700 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg">
+                          <div className="flex items-center text-2xl font-bold text-amber-400">:</div>
+                          <div className="bg-gradient-to-b from-amber-500 to-amber-700 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg">
                             <div className="text-3xl font-bold font-mono">{String(countdown.hours).padStart(2, '0')}</div>
                             <div className="text-xs uppercase tracking-wider opacity-80 mt-1">ore</div>
                           </div>
-                          <div className="flex items-center text-2xl font-bold text-indigo-400">:</div>
-                          <div className="bg-gradient-to-b from-indigo-500 to-indigo-700 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg">
+                          <div className="flex items-center text-2xl font-bold text-amber-400">:</div>
+                          <div className="bg-gradient-to-b from-amber-500 to-amber-700 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg">
                             <div className="text-3xl font-bold font-mono">{String(countdown.minutes).padStart(2, '0')}</div>
                             <div className="text-xs uppercase tracking-wider opacity-80 mt-1">min</div>
                           </div>
-                          <div className="flex items-center text-2xl font-bold text-purple-400">:</div>
-                          <div className="bg-gradient-to-b from-purple-500 to-purple-700 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg animate-pulse">
+                          <div className="flex items-center text-2xl font-bold text-yellow-400">:</div>
+                          <div className="bg-gradient-to-b from-yellow-500 to-yellow-600 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg animate-pulse">
                             <div className="text-3xl font-bold font-mono">{String(countdown.seconds).padStart(2, '0')}</div>
                             <div className="text-xs uppercase tracking-wider opacity-80 mt-1">sec</div>
                           </div>
@@ -750,9 +756,9 @@ export function WeeklyCheckinCard() {
 
                       {/* Template selezionato */}
                       {nextSendData.selectedTemplate && (
-                        <div className="p-3 rounded-lg bg-white/80 dark:bg-gray-800/50 border border-indigo-100 dark:border-indigo-900">
+                        <div className="p-3 rounded-lg bg-white/80 dark:bg-gray-800/50 border border-amber-100 dark:border-amber-900">
                           <div className="flex items-center gap-2 mb-2">
-                            <MessageSquare className="h-4 w-4 text-indigo-500" />
+                            <MessageSquare className="h-4 w-4 text-amber-500" />
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                               Template: {nextSendData.selectedTemplate.name}
                             </span>
@@ -787,8 +793,8 @@ export function WeeklyCheckinCard() {
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Risposte</div>
               </div>
-              <div className="text-center p-3 rounded-xl bg-purple-50 dark:bg-purple-900/20">
-                <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+              <div className="text-center p-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/20">
+                <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
                   {stats?.responseRate || 0}%
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Tasso</div>
@@ -879,7 +885,7 @@ export function WeeklyCheckinCard() {
               {/* Avvia ora */}
               <Button 
                 variant="default" 
-                className="w-full gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                className="w-full gap-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white"
                 onClick={() => triggerNowMutation.mutate()}
                 disabled={triggerNowMutation.isPending || !nextSendData?.isEnabled}
               >
@@ -1179,11 +1185,11 @@ export function WeeklyCheckinCard() {
                     </Button>
                     <div className="text-center">
                       <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 justify-center">
-                        <Calendar className="h-4 w-4 text-indigo-500" />
+                        <Calendar className="h-4 w-4 text-amber-500" />
                         {formatWeekRange()}
                       </h4>
                       {calendarWeekOffset === 0 && (
-                        <Badge className="mt-1 bg-indigo-100 text-indigo-700">Settimana corrente</Badge>
+                        <Badge className="mt-1 bg-amber-100 text-amber-700">Settimana corrente</Badge>
                       )}
                     </div>
                     <Button
@@ -1204,7 +1210,7 @@ export function WeeklyCheckinCard() {
                         variant="ghost"
                         size="sm"
                         onClick={() => setCalendarWeekOffset(0)}
-                        className="text-indigo-600 hover:text-indigo-700"
+                        className="text-amber-600 hover:text-amber-700"
                       >
                         Torna a oggi
                       </Button>
@@ -1216,7 +1222,7 @@ export function WeeklyCheckinCard() {
                       size="sm"
                       onClick={() => generateScheduleMutation.mutate()}
                       disabled={generateScheduleMutation.isPending}
-                      className="gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                      className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white"
                     >
                       {generateScheduleMutation.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -1230,7 +1236,7 @@ export function WeeklyCheckinCard() {
                   {/* Placeholder se non ci sono dati */}
                   {scheduleLoading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                      <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
                     </div>
                   ) : !hasScheduleData ? (
                     <div className="text-center py-12 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
@@ -1244,7 +1250,7 @@ export function WeeklyCheckinCard() {
                       <Button
                         onClick={() => generateScheduleMutation.mutate()}
                         disabled={generateScheduleMutation.isPending}
-                        className="gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                        className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white"
                       >
                         {generateScheduleMutation.isPending ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1272,7 +1278,7 @@ export function WeeklyCheckinCard() {
                               key={index}
                               className={`p-3 rounded-xl border transition-all ${
                                 dayToday
-                                  ? 'border-indigo-300 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-700 ring-2 ring-indigo-200'
+                                  ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 ring-2 ring-amber-200'
                                   : isExcluded
                                   ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/30 dark:border-gray-700 opacity-60'
                                   : dayPast
@@ -1286,7 +1292,7 @@ export function WeeklyCheckinCard() {
                                 {/* Data del giorno */}
                                 <div className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center flex-shrink-0 ${
                                   dayToday
-                                    ? 'bg-indigo-500 text-white'
+                                    ? 'bg-amber-500 text-white'
                                     : isExcluded
                                     ? 'bg-gray-200 text-gray-500 dark:bg-gray-700'
                                     : hasEntries
@@ -1300,10 +1306,10 @@ export function WeeklyCheckinCard() {
                                 {/* Contenuto del giorno */}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <span className={`font-medium ${dayToday ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                    <span className={`font-medium ${dayToday ? 'text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-gray-300'}`}>
                                       {dayNames[dayOfWeek]}
                                     </span>
-                                    {dayToday && <Badge className="bg-indigo-500 text-white text-[10px]">OGGI</Badge>}
+                                    {dayToday && <Badge className="bg-amber-500 text-white text-[10px]">OGGI</Badge>}
                                     {hasEntries && (
                                       <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px]">
                                         {scheduleEntries.length} check-in
@@ -1358,7 +1364,7 @@ export function WeeklyCheckinCard() {
                                                   {scheduledTime}
                                                 </span>
                                                 {entry.templateName && (
-                                                  <span className="text-xs text-indigo-600 dark:text-indigo-400 truncate max-w-[150px]">
+                                                  <span className="text-xs text-amber-600 dark:text-amber-400 truncate max-w-[150px]">
                                                     <MessageSquare className="h-3 w-3 inline mr-1" />
                                                     {entry.templateName}
                                                   </span>
@@ -1414,7 +1420,7 @@ export function WeeklyCheckinCard() {
                       {/* Legenda */}
                       <div className="flex flex-wrap gap-4 pt-2 text-xs text-gray-500">
                         <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded bg-indigo-500"></div>
+                          <div className="w-3 h-3 rounded bg-amber-500"></div>
                           <span>Oggi</span>
                         </div>
                         <div className="flex items-center gap-1">
@@ -1550,7 +1556,7 @@ export function WeeklyCheckinCard() {
               Template WhatsApp Approvati
             </h4>
             {(config?.templateIds || []).length > 0 && (
-              <Badge className="bg-purple-500 text-white text-xs px-3 py-1">
+              <Badge className="bg-amber-500 text-white text-xs px-3 py-1">
                 {(config?.templateIds || []).length} selezionati
               </Badge>
             )}
@@ -1602,7 +1608,7 @@ export function WeeklyCheckinCard() {
                             {categoryTemplates.length} template
                           </Badge>
                           {selectedInCategory > 0 && (
-                            <Badge className="bg-purple-500 text-white text-xs">
+                            <Badge className="bg-amber-500 text-white text-xs">
                               {selectedInCategory} selezionati
                             </Badge>
                           )}
@@ -1619,8 +1625,8 @@ export function WeeklyCheckinCard() {
                               key={template.id}
                               className={`flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 ${
                                 isSelected
-                                  ? "border-purple-400 bg-purple-50 dark:bg-purple-900/20 shadow-md"
-                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-200 hover:bg-gray-50"
+                                  ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20 shadow-md"
+                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-amber-200 hover:bg-gray-50"
                               }`}
                             >
                               <Checkbox
@@ -1671,10 +1677,10 @@ export function WeeklyCheckinCard() {
 
           <div className="space-y-4">
             {/* Selezione Agente WhatsApp */}
-            <div className="p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 space-y-3">
+            <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 space-y-3">
               <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/50">
-                  <Phone className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                  <Phone className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div className="flex-1">
                   <h5 className="font-medium text-gray-900 dark:text-white text-sm">Agente WhatsApp</h5>
@@ -1773,16 +1779,16 @@ export function WeeklyCheckinCard() {
             </div>
 
             {/* Personalizzazione AI */}
-            <div className="p-4 rounded-xl border border-purple-100 dark:border-purple-900/50 bg-purple-50/50 dark:bg-purple-950/20">
+            <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
-                    <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                    <Star className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                   </div>
                   <div className="flex-1">
-                    <h5 className="font-medium text-gray-900 dark:text-white text-sm">Personalizzazione AI</h5>
+                    <h5 className="font-medium text-gray-900 dark:text-white text-sm">Personalizzazione AI (Stella)</h5>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      L'AI adatta il messaggio in base al nome del cliente e al suo percorso, rendendo ogni check-in unico e personale
+                      Stella usa la tua Brand Voice, il profilo del cliente e le ultime consulenze per generare messaggi unici e personali
                     </p>
                   </div>
                 </div>
@@ -1791,6 +1797,17 @@ export function WeeklyCheckinCard() {
                   onCheckedChange={(checked) => updateConfigMutation.mutate({ useAiPersonalization: checked })}
                 />
               </div>
+              {config?.useAiPersonalization && brandVoiceStatus && !brandVoiceStatus.hasBrandVoice && (
+                <div className="mt-3 p-3 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700">
+                  <p className="text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Brand Voice non configurata.</strong> Stella genererà messaggi con un tono generico. 
+                      Per risultati migliori, configura la tua Brand Voice nella sezione Lead Nurturing &gt; Brand Voice.
+                    </span>
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Esclusione Contatti Recenti */}
@@ -1856,10 +1873,10 @@ export function WeeklyCheckinCard() {
             <ScrollArea className="h-[600px] pr-4">
               <div className="space-y-6">
                 {/* Intestazione */}
-                <div className="p-5 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800">
+                <div className="p-5 rounded-xl bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 border border-amber-200 dark:border-amber-800">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-indigo-500 shadow-md">
-                      <Lightbulb className="h-5 w-5 text-white" />
+                    <div className="p-2 rounded-lg bg-amber-500 shadow-md">
+                      <Star className="h-5 w-5 text-white" />
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                       Guida al Check-in Settimanale
@@ -1908,7 +1925,7 @@ export function WeeklyCheckinCard() {
                     <p>
                       <strong className="text-gray-800 dark:text-gray-200">All'orario programmato</strong> (es. alle 10:44), 
                       il messaggio viene inviato. Se hai attivato la personalizzazione AI, il sistema legge 
-                      le informazioni del cliente (esercizi in sospeso, ultimo contatto, obiettivi) e 
+                      le informazioni del cliente (attività in sospeso, ultimo contatto, obiettivi) e 
                       crea un messaggio su misura. Il cliente riceve un messaggio che sembra scritto da te, 
                       non da un robot.
                     </p>
@@ -1947,9 +1964,9 @@ export function WeeklyCheckinCard() {
                       </p>
                     </div>
 
-                    <div className="pl-4 border-l-4 border-purple-400">
+                    <div className="pl-4 border-l-4 border-amber-400">
                       <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1 flex items-center gap-2">
-                        <CalendarCheck className="h-4 w-4 text-purple-500" /> Calendario
+                        <CalendarCheck className="h-4 w-4 text-amber-500" /> Calendario
                       </p>
                       <p>
                         Qui vedi la programmazione delle prossime 4 settimane. Per ogni giorno puoi vedere 
@@ -2002,7 +2019,7 @@ export function WeeklyCheckinCard() {
                     </p>
                     <p>
                       <strong>Attiva l'AI:</strong> La personalizzazione AI rende i messaggi molto più efficaci. 
-                      L'AI sa quanti esercizi ha in sospeso il cliente, quali sono i suoi obiettivi, 
+                      L'AI conosce il percorso del cliente, le ultime consulenze, i suoi obiettivi, 
                       e scrive un messaggio che sembra davvero pensato per lui.
                     </p>
                     <p>
@@ -2014,9 +2031,9 @@ export function WeeklyCheckinCard() {
                 </div>
 
                 {/* Domande frequenti */}
-                <div className="p-5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-gray-800/50">
+                <div className="p-5 rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-800/50">
                   <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <HelpCircle className="h-5 w-5 text-indigo-500" />
+                    <HelpCircle className="h-5 w-5 text-amber-500" />
                     Domande frequenti
                   </h4>
                   <div className="space-y-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
