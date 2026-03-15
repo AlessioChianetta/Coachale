@@ -1211,6 +1211,11 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
 
           const isNewTurn = accumulatedAiTextRef.current === '';
 
+          if (isNewTurn) {
+            incomingAiTurnIdRef.current = aiTurnIdRef.current;
+            console.log(`🔄 [TURN SYNC] Nuovo turno AI — sincronizzato incomingTurnId=${incomingAiTurnIdRef.current} con aiTurnId=${aiTurnIdRef.current}`);
+          }
+
           // Se è un nuovo turno AI, prepara reset user transcript per il PROSSIMO turno utente
           if (isNewTurn) {
             pendingUserTranscriptResetRef.current = true;
