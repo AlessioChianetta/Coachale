@@ -101,8 +101,8 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
   const incomingAiTurnIdRef = useRef(0);
   const audioChunkTurnIdRef = useRef<number[]>([]);
   const localVadFrameCountRef = useRef(0);
-  const LOCAL_VAD_THRESHOLD = 18;
-  const LOCAL_VAD_MIN_FRAMES = 3;
+  const LOCAL_VAD_THRESHOLD = 35;
+  const LOCAL_VAD_MIN_FRAMES = 8;
   const isMutedRef = useRef(false);
   const sessionResumeHandleRef = useRef<string | null>(null);
   const isReconnectingRef = useRef(false);
@@ -1705,18 +1705,7 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
 
           setMicLevel(Math.min(255, average * 1.5));
 
-          if (average > LOCAL_VAD_THRESHOLD && (isPlayingRef.current || audioQueueRef.current.length > 0)) {
-            localVadFrameCountRef.current++;
-            if (localVadFrameCountRef.current >= LOCAL_VAD_MIN_FRAMES) {
-              console.log(`🎤 [LOCAL VAD] User speech detected (avg=${average.toFixed(1)}, frames=${localVadFrameCountRef.current}) - stopping audio immediately`);
-              stopCurrentAudio();
-              aiTurnIdRef.current++;
-              accumulatedAiTextRef.current = '';
-              localVadFrameCountRef.current = 0;
-            }
-          } else {
-            localVadFrameCountRef.current = 0;
-          }
+          localVadFrameCountRef.current = 0;
 
           micAnimationFrameRef.current = requestAnimationFrame(updateAudioLevel);
         } else {

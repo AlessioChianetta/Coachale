@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Phone, Mic, MicOff, User, Clock, ChevronUp, ChevronDown, Grid3x3, X, Loader2, LogOut, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -62,11 +62,32 @@ export function PhoneCallLayout({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Soglia per rilevare quando l'utente parla
-  const USER_AUDIO_THRESHOLD = 10;
+  const USER_AUDIO_THRESHOLD = 30;
   
-  // Stati semplificati: AI parla quando liveState è 'speaking'
-  const isUserSpeaking = liveState === 'listening' && micLevel > USER_AUDIO_THRESHOLD && !isMuted;
+  const [isUserSpeakingSmoothed, setIsUserSpeakingSmoothed] = useState(false);
+  const userSpeakingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const rawUserSpeaking = liveState === 'listening' && micLevel > USER_AUDIO_THRESHOLD && !isMuted;
+  
+  useEffect(() => {
+    if (rawUserSpeaking && !isUserSpeakingSmoothed) {
+      if (userSpeakingTimerRef.current) clearTimeout(userSpeakingTimerRef.current);
+      setIsUserSpeakingSmoothed(true);
+    } else if (!rawUserSpeaking && isUserSpeakingSmoothed) {
+      if (!userSpeakingTimerRef.current) {
+        userSpeakingTimerRef.current = setTimeout(() => {
+          setIsUserSpeakingSmoothed(false);
+          userSpeakingTimerRef.current = null;
+        }, 600);
+      }
+    }
+    return () => {
+      if (!rawUserSpeaking && userSpeakingTimerRef.current) {
+      }
+    };
+  }, [rawUserSpeaking, isUserSpeakingSmoothed]);
+  
+  const isUserSpeaking = isUserSpeakingSmoothed;
   const isAISpeaking = liveState === 'speaking';
   const isSomeoneActivelyTalking = isUserSpeaking || isAISpeaking;
   
