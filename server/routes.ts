@@ -16599,7 +16599,13 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       if (customBusinessHeader !== undefined) updateData.customBusinessHeader = customBusinessHeader;
       
       // Integration Mode and Proactive Agent Configuration
-      if (integrationMode !== undefined) updateData.integrationMode = integrationMode;
+      if (integrationMode !== undefined) {
+        updateData.integrationMode = integrationMode;
+        if (integrationMode === "ai_only") {
+          updateData.twilioWhatsappNumber = null;
+          console.log(`[WHATSAPP CONFIG] Integration mode changed to ai_only — clearing twilioWhatsappNumber for agent ${agentId}`);
+        }
+      }
       if (isProactiveAgent !== undefined) updateData.isProactiveAgent = isProactiveAgent;
       
       // Active Status
@@ -17238,8 +17244,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         const updateData: any = {
           agentName: agentName || existingConfig.agentName,
           integrationMode: integrationMode,
-          twilioAccountSid: effectiveTwilioAccountSid || existingConfig.twilioAccountSid,
-          twilioWhatsappNumber: twilioWhatsappNumber || existingConfig.twilioWhatsappNumber,
+          twilioAccountSid: integrationMode === "ai_only" ? existingConfig.twilioAccountSid : (effectiveTwilioAccountSid || existingConfig.twilioAccountSid),
+          twilioWhatsappNumber: integrationMode === "ai_only" ? null : (twilioWhatsappNumber || existingConfig.twilioWhatsappNumber),
           autoResponseEnabled: autoResponseEnabled ?? true,
           agentType: agentType || existingConfig.agentType || "reactive_lead",
           workingHoursEnabled: workingHoursEnabled ?? false,
